@@ -9,8 +9,7 @@
     "dev": "tsc --watch",
     "clean": "node --input-type=module -e \"import{rmSync}from'node:fs';rmSync('dist',{recursive:true,force:true})\"",
     "start": "tsx src/index.ts",
-    "api": "tsx src/api.ts",
-    "dev:api": "tsx watch src/api.ts"
+    "dev:server": "tsx watch src/index.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
