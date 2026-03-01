@@ -9,7 +9,7 @@
  *   GET    /methodologies/:n  REST — full methodology
  *
  * Connect from Claude:  { "url": "http://localhost:47821/mcp" }
- * Web visualizer:       http://localhost:5173  (Vite dev, proxied)
+ * Web visualizer:       http://localhost:47820  (Vite dev, proxied)
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
