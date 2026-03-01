@@ -8,7 +8,7 @@
  *   GET    /methodologies     REST — list summaries
  *   GET    /methodologies/:n  REST — full methodology
  *
- * Connect from Claude:  { "url": "http://localhost:3001/mcp" }
+ * Connect from Claude:  { "url": "http://localhost:47821/mcp" }
  * Web visualizer:       http://localhost:5173  (Vite dev, proxied)
  */
 
@@ -22,7 +22,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { loadMethodologies } from './runtime/loader.js';
 import { registerTools } from './tools/index.js';
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.PORT ?? 47821);
 
 // ── Shared state ──────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "method": {
-      "url": "http://localhost:3001/mcp"
+      "url": "http://localhost:47821/mcp"
     }
   }
 }
