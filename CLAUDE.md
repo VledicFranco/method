@@ -58,4 +58,4 @@ When an epoch includes designing a new methodology, write a **Methodology Spec**
 
 The Methodology Spec maps 1:1 to the YAML it becomes. Writing it first surfaces field name decisions, invariant choices, and validation criteria before they're hard to change.
 
-See `epochs/e1-methodology-spec-and-iteration-loop/` for the first example.
+Template: `docs/methodology-spec.yaml`. See `epochs/e1-methodology-spec-and-iteration-loop/` for the first example.

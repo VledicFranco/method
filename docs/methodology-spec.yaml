@@ -1,0 +1,65 @@
+# Methodology Spec Template
+#
+# Fill this out before implementing a methodology YAML. These fields answer
+# the questions the runtime YAML cannot hold: why this methodology exists,
+# what cognitive model grounds it, and how we know it works.
+#
+# Design-time fields (motivation, cognitive_model, acceptance_criteria,
+# open_questions) do NOT appear in the runtime YAML. Everything under
+# `phases` maps directly to the YAML implementation.
+#
+# Usage: copy this file to epochs/eN-*/methodology-spec-{name}.yaml,
+# fill it out, then implement src/methodologies/{name}.yaml from it.
+
+name: ""
+description: ""
+
+# ─── Design-time fields (not in runtime YAML) ───────────────────────────────
+
+motivation: |
+  What cognitive failure mode or product gap does this methodology prevent?
+  Be specific: what goes wrong without it? What pattern of failures or
+  omissions does it structurally eliminate?
+
+cognitive_model: |
+  Which theoretical framework grounds the phase design?
+  Name the frameworks and explain what each contributes.
+  Examples: TOTE (recursive test-operate structure), Zimmerman self-regulation
+  (forethought / performance / reflection phases), Argyris single/double-loop
+  (single-loop fixes action, double-loop revises the goal), Gollwitzer
+  implementation intentions (deliberative vs implemental mind-set), Cognitive
+  Team (Monitor, Planner, Executor, Evaluator, Synthesizer roles).
+
+acceptance_criteria:
+  # How do we know this methodology works in real LLM sessions?
+  # These are not type-check criteria — they are behavioral criteria.
+  # Each must be checkable: true or false after a real session.
+  - ""
+  # Example: "An agent using this methodology surfaces field name errors on
+  #   first attempt less than 20% of the time across 5 sessions"
+  # Example: "Phase 4 (validation) catches at least one real issue per session
+  #   that Phase 3 (implementation) did not surface"
+
+open_questions:
+  # Things to resolve before or during implementation.
+  - ""
+
+# ─── Phase design (maps to runtime YAML) ────────────────────────────────────
+
+phases:
+  - id: 0
+    name: ""
+    role: null        # null or cognitive team role name
+    purpose: ""       # one line: what this phase accomplishes
+    output_fields:
+      - name: ""
+        type: ""      # string | array | number | enum
+        constraint: "" # e.g. "min 3 items", "0.0–1.0", "one of: stop, continue"
+        required: true # false = soft invariant (warns, does not block)
+    key_invariants:
+      - description: ""
+        hard: true    # true = blocks; false = warns only
+
+  # - id: 1
+  #   name: ""
+  #   ...
