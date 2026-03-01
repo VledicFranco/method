@@ -5,6 +5,7 @@ import { registerStart } from './start.js';
 import { registerAdvance } from './advance.js';
 import { registerStatus } from './status.js';
 import { registerReload } from './reload.js';
+import { registerImport } from './import.js';
 
 export function registerTools(server: McpServer, methodologies: Map<string, Methodology>): void {
   registerList(server, methodologies);
@@ -12,4 +13,5 @@ export function registerTools(server: McpServer, methodologies: Map<string, Meth
   registerAdvance(server, methodologies);
   registerStatus(server, methodologies);
   registerReload(server, methodologies);
+  registerImport(server, methodologies);
 }

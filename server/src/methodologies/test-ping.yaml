@@ -6,17 +6,21 @@ phases:
     name: "Readiness Check"
     role: null
     guidance: |
-      Phase 0 — Readiness Check
+      ## Phase 0 — Readiness Check
 
       Confirm the server is connected and you are ready.
 
-      Submit a single non-empty string in the message field. Any text is fine.
+      Submit a single non-empty string in the `message` field. Any text is fine.
 
-      Use this exact field name in your submission:
-        message   — string (any non-empty text)
+      ### Output Fields
+      ```
+      message   — string (any non-empty text)
+      ```
 
-      Example valid output:
-        { "message": "ready" }
+      **Valid example:**
+      ```json
+      { "message": "ready" }
+      ```
     output_schema:
       message:
         type: string
@@ -31,16 +35,20 @@ phases:
     name: "Stop/Continue"
     role: null
     guidance: |
-      Phase 1 — Stop/Continue
+      ## Phase 1 — Stop/Continue
 
       Make an explicit decision and provide a rationale. This is the final phase.
 
-      Use these exact field names in your submission:
-        decision   — string, must be exactly "stop" or "continue"
-        rationale  — string, non-empty
+      ### Output Fields
+      ```
+      decision   — string, must be exactly "stop" or "continue"
+      rationale  — string, non-empty
+      ```
 
-      Example valid output:
-        { "decision": "stop", "rationale": "Smoke test passed. Server is connected and advancing phases correctly." }
+      **Valid example:**
+      ```json
+      { "decision": "stop", "rationale": "Smoke test passed. Server is connected and advancing phases correctly." }
+      ```
     output_schema:
       decision:
         type: string

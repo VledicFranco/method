@@ -6,27 +6,27 @@ phases:
     name: "Context Loading"
     role: null
     guidance: |
-      Phase 0 — Context Loading
+      ## Phase 0 — Context Loading
 
       Before proposing any change to {{topic}}, inventory the current state of the product.
 
-      Tasks:
-      - List all existing methodologies in src/methodologies/ and their current status
-        (tested, untested, known issues)
+      ### Tasks
+      - List all existing methodologies in `src/methodologies/` and their current status (tested, untested, known issues)
       - List any open issues, known failure patterns, or gaps surfaced in prior sessions
-      - Review the active epoch hypothesis (epochs/eN-*/hypothesis.md) to understand
-        what this iteration is working toward
-      - Note which acceptance criteria from the epoch are still open
+      - Read this experiment's `spec.md` (`epochs/eN-*/experiments/hN-*/spec.md`) to find its acceptance criteria
+      - Note which of the experiment's acceptance criteria are not yet satisfied
 
       Do NOT propose solutions yet. Only inventory.
 
-      Use these exact field names in your submission:
-        prior_methodologies   — array of strings: existing methodology names and their status
-        open_issues           — array of strings: known gaps, failures, or missing features
-        epoch_criteria_open   — array of strings: acceptance criteria not yet closed
-        summary               — string: current state of the product and what this iteration addresses
+      ### Output Fields
+      ```
+      prior_methodologies      — array of strings: existing methodology names and their status
+      open_issues              — array of strings: known gaps, failures, or missing features
+      experiment_criteria_open — array of strings: acceptance criteria from this experiment's spec.md not yet satisfied
+      summary                  — string: current state of the product and what this iteration addresses
+      ```
 
-      Submit when: all four fields populated, summary is specific about what gap this iteration closes.
+      **Submit when:** all four fields populated, summary is specific about what gap this iteration closes.
     output_schema:
       prior_methodologies:
         type: array
@@ -38,11 +38,11 @@ phases:
         items: string
         min_items: 0
         description: "Known gaps, failure patterns, or missing features"
-      epoch_criteria_open:
+      experiment_criteria_open:
         type: array
         items: string
         min_items: 1
-        description: "Acceptance criteria from the active epoch that are not yet closed"
+        description: "Acceptance criteria from this experiment's spec.md that are not yet satisfied"
       summary:
         type: string
         min_length: 1
@@ -51,8 +51,8 @@ phases:
       - id: prior_methodologies_min_one
         description: "prior_methodologies must list at least one existing methodology"
         hard: true
-      - id: epoch_criteria_open_min_one
-        description: "epoch_criteria_open must reference at least one open criterion"
+      - id: experiment_criteria_open_min_one
+        description: "experiment_criteria_open must reference at least one open criterion from the experiment spec"
         hard: true
       - id: summary_non_empty
         description: "summary must be a non-empty string"
@@ -62,40 +62,42 @@ phases:
     name: "Objective Setting"
     role: null
     guidance: |
-      Phase 1 — Objective Setting
+      ## Phase 1 — Objective Setting
 
       Define the objective for this iteration at three levels, then classify the change type.
 
-      Be level — What quality or standard does a successful iteration embody?
-        Example: "methodologies that work on first try without field name errors"
+      **Be level** — What quality or standard does a successful iteration embody?
+      > Example: "methodologies that work on first try without field name errors"
 
-      Do level — What must this iteration specifically accomplish?
-        Example: "design and implement method-iteration.yaml with a validated test session"
+      **Do level** — What must this iteration specifically accomplish?
+      > Example: "design and implement method-iteration.yaml with a validated test session"
 
-      Motor level — What is the concrete, inspectable deliverable?
-        Example: "a YAML file that loads in the server and completes at least one full session"
+      **Motor level** — What is the concrete, inspectable deliverable?
+      > Example: "a YAML file that loads in the server and completes at least one full session"
 
-      Then:
-      1. Write at least 3 checkable acceptance criteria. Each must be verifiable — true or false.
-         BAD:  "The methodology works well"
-         GOOD: "method_list returns method-iteration; at least one test session completes with delta=1.0"
+      ### Then
+      1. Write at least 3 checkable acceptance criteria — each must be verifiable (true or false).
+         - **BAD:** "The methodology works well"
+         - **GOOD:** "`method_list` returns `method-iteration`; at least one test session completes with `delta=1.0`"
 
       2. List at least 2 priority questions this iteration must answer.
 
       3. Classify the change type:
-         - "methodology"     — adding or modifying a YAML methodology file
-         - "infrastructure"  — changing runtime code, tools, schema, or server behavior
-         - "both"            — touching both
+         - `"methodology"` — adding or modifying a YAML methodology file
+         - `"infrastructure"` — changing runtime code, tools, schema, or server behavior
+         - `"both"` — touching both
 
-      Use these exact field names in your submission:
-        be_level              — string
-        do_level              — string
-        motor_level           — string
-        acceptance_criteria   — array of strings, at least 3 items
-        priority_questions    — array of strings, at least 2 items
-        change_type           — string, must be exactly "methodology", "infrastructure", or "both"
+      ### Output Fields
+      ```
+      be_level              — string
+      do_level              — string
+      motor_level           — string
+      acceptance_criteria   — array of strings, at least 3 items
+      priority_questions    — array of strings, at least 2 items
+      change_type           — string, must be exactly "methodology", "infrastructure", or "both"
+      ```
 
-      Submit when: all three levels defined, at least 3 criteria, at least 2 questions, change_type set.
+      **Submit when:** all three levels defined, at least 3 criteria, at least 2 questions, `change_type` set.
     output_schema:
       be_level:
         type: string
@@ -147,40 +149,40 @@ phases:
     name: "Design"
     role: null
     guidance: |
-      Phase 2 — Design
+      ## Phase 2 — Design
 
-      Produce the design artifact before touching any files. The type of artifact depends
-      on your change_type from Phase 1.
+      Produce the design artifact before touching any files. The type of artifact depends on your `change_type` from Phase 1.
 
-      If change_type is "methodology" or "both":
-        Write a Methodology Spec covering:
-        - motivation: what cognitive failure mode or gap this closes
-        - cognitive_model: which framework grounds the phase design
-          (TOTE, Zimmerman, Argyris, Cognitive Team, etc.)
-        - phases sketch: name, role, key output fields, key invariants for each phase
-        - acceptance_criteria: how we know it works in real sessions (not just type-checks)
-        Use docs/methodology-spec.yaml as a template.
+      ### If `change_type` is `"methodology"` or `"both"`
+      Write a Methodology Spec covering:
+      - **motivation:** what cognitive failure mode or gap this closes
+      - **cognitive_model:** which framework grounds the phase design (TOTE, Zimmerman, Argyris, Cognitive Team, etc.)
+      - **phases sketch:** name, role, key output fields, key invariants for each phase
+      - **acceptance_criteria:** how we know it works in real sessions (not just type-checks)
 
-      If change_type is "infrastructure" or "both":
-        Write a technical design covering:
-        - what component changes and how
-        - which files are affected
-        - what the before/after behavior is
-        - what could break
+      Use `docs/methodology-spec.yaml` as a template.
 
-      In both cases:
-        - Make at least 2 explicit key decisions (field names, phase structure, API shape, etc.)
-        - Resolve any open questions from the epoch hypothesis that are answerable now
+      ### If `change_type` is `"infrastructure"` or `"both"`
+      Write a technical design covering:
+      - what component changes and how
+      - which files are affected
+      - what the before/after behavior is
+      - what could break
 
-      Use these exact field names in your submission:
-        design_summary          — string: the full design (spec or technical design as prose)
-        key_decisions           — array of strings, at least 2 items: decisions made and why
-        affected_files          — array of strings: files to be created or modified
-        open_questions_resolved — array of strings: open questions from hypothesis now resolved (can be empty)
-        methodology_name        — string: name of the new or modified methodology (soft — only if change_type includes methodology)
+      ### In both cases
+      - Make at least 2 explicit key decisions (field names, phase structure, API shape, etc.)
+      - Resolve any open questions from the epoch hypothesis that are answerable now
 
-      Submit when: design_summary is complete enough to implement from, key_decisions list is specific,
-      affected_files is accurate.
+      ### Output Fields
+      ```
+      design_summary          — string: the full design (spec or technical design as prose)
+      key_decisions           — array of strings, at least 2 items: decisions made and why
+      affected_files          — array of strings: files to be created or modified
+      open_questions_resolved — array of strings: open questions from hypothesis now resolved (can be empty)
+      methodology_name        — string: name of the new or modified methodology (soft — only if change_type includes methodology)
+      ```
+
+      **Submit when:** `design_summary` is complete enough to implement from, `key_decisions` is specific, `affected_files` is accurate.
     output_schema:
       design_summary:
         type: string
@@ -223,26 +225,24 @@ phases:
     name: "Implementation"
     role: null
     guidance: |
-      Phase 3 — Implementation
+      ## Phase 3 — Implementation
 
-      Execute the design from Phase 2. You are now in implemental mode — the design is
-      committed. Do not re-open design decisions here. If you encounter a blocker that
-      requires a design change, surface it explicitly rather than silently adapting.
+      Execute the design from Phase 2. You are now in implementation mode — the design is committed. Do not re-open design decisions here. If you encounter a blocker that requires a design change, surface it explicitly rather than silently adapting.
 
-      Tasks:
-      - Create or modify the files listed in affected_files from Phase 2
-      - For methodology changes: write the YAML, include "Use these exact field names"
-        blocks in every phase guidance section
+      ### Tasks
+      - Create or modify the files listed in `affected_files` from Phase 2
+      - For methodology changes: write the YAML, include "Use these exact field names" blocks in every phase guidance section
       - For infrastructure changes: make the code changes, verify type-check passes
       - Write planned test cases (TC descriptions, not runs — those happen in Phase 4)
 
-      Use these exact field names in your submission:
-        implemented_artifacts   — array of strings, at least 1 item: files created or modified
-        implementation_notes    — string: anything unexpected encountered, decisions forced by implementation
-        planned_tcs             — array of strings, at least 1 item: test cases planned for Phase 4
+      ### Output Fields
+      ```
+      implemented_artifacts   — array of strings, at least 1 item: files created or modified
+      implementation_notes    — string: anything unexpected encountered, decisions forced by implementation
+      planned_tcs             — array of strings, at least 1 item: test cases planned for Phase 4
+      ```
 
-      Submit when: all affected_files from Phase 2 are implemented, type-check passes,
-      planned_tcs lists at least one concrete test scenario.
+      **Submit when:** all `affected_files` from Phase 2 are implemented, type-check passes, `planned_tcs` lists at least one concrete test scenario.
     output_schema:
       implemented_artifacts:
         type: array
@@ -273,28 +273,26 @@ phases:
     name: "Validation"
     role: null
     guidance: |
-      Phase 4 — Validation
+      ## Phase 4 — Validation
 
-      Run real tests against the implementation. For methodology changes, this means running
-      actual LLM sessions through the methodology — not just confirming the YAML loads.
-      Structural validity (type-check, method_list) is necessary but not sufficient.
+      Run real tests against the implementation. For methodology changes, this means running actual LLM sessions through the methodology — not just confirming the YAML loads. Structural validity (type-check, `method_list`) is necessary but not sufficient.
 
-      Tasks:
-      - Run the test cases planned in Phase 3 (use the Agent tool to spawn subagents
-        with MCP access for methodology tests)
+      ### Tasks
+      - Run the test cases planned in Phase 3 (use the Agent tool to spawn subagents with MCP access for methodology tests)
       - For each TC: record the outcome, what the server returned, whether it passed
       - Note any failure patterns: field name errors, unclear guidance, unexpected blocks
       - Assess how many acceptance criteria from Phase 1 are now closed
 
-      Use these exact field names in your submission:
-        sessions_run        — number: how many test sessions or TCs were executed (must be >= 1)
-        session_outcomes    — array of strings, at least 1 item: outcome per TC (pass/fail + what happened)
-        failure_patterns    — array of strings: anything that failed, was unclear, or surprised you
-        delta_estimate      — number between 0.0 and 1.0: fraction of Phase 1 acceptance criteria now closed
-        criteria_closed     — array of strings: which specific acceptance criteria are now satisfied
+      ### Output Fields
+      ```
+      sessions_run        — number: how many test sessions or TCs were executed (must be >= 1)
+      session_outcomes    — array of strings, at least 1 item: outcome per TC (pass/fail + what happened)
+      failure_patterns    — array of strings: anything that failed, was unclear, or surprised you
+      delta_estimate      — number between 0.0 and 1.0: fraction of Phase 1 acceptance criteria now closed
+      criteria_closed     — array of strings: which specific acceptance criteria are now satisfied
+      ```
 
-      Submit when: all planned TCs have been run, delta_estimate is honest, criteria_closed
-      lists only criteria that are genuinely satisfied.
+      **Submit when:** all planned TCs have been run, `delta_estimate` is honest, `criteria_closed` lists only genuinely satisfied criteria.
     output_schema:
       sessions_run:
         type: number
@@ -336,35 +334,33 @@ phases:
     name: "Decide"
     role: null
     guidance: |
-      Phase 5 — Decide
+      ## Phase 5 — Decide
 
       Make an explicit stop/continue decision for this iteration.
 
-      Review:
-      - delta_estimate and criteria_closed from Phase 4
+      ### Review
+      - `delta_estimate` and `criteria_closed` from Phase 4
       - Which acceptance criteria from Phase 1 remain open
-      - Whether another iteration would meaningfully close remaining gaps
-        or whether the remaining gaps belong in a new epoch
+      - Whether another iteration would meaningfully close remaining gaps, or whether they belong in a new epoch
 
-      Decision options:
-      - "stop"     — this iteration is done; delta is high enough and the open criteria
-                     don't justify another pass before moving to the next epoch step
-      - "continue" — unmet criteria justify another iteration; state what the next
-                     iteration will specifically target
+      ### Decision options
+      - `"stop"` — this iteration is done; delta is high enough and open criteria don't justify another pass
+      - `"continue"` — unmet criteria justify another iteration; state what the next iteration will specifically target
 
       The rationale must reference specific criteria by name. Vague rationales are not accepted.
 
-      GOOD: "stop — criteria 1, 2, 3 satisfied; criterion 4 deferred to e2 as a separate epoch"
-      GOOD: "continue — criterion 3 (test session end-to-end) failed due to field name issue; i2 will fix guidance and re-run"
-      BAD:  "stop — looks good"
+      - **GOOD:** "stop — criteria 1, 2, 3 satisfied; criterion 4 deferred to e2 as a separate epoch"
+      - **GOOD:** "continue — criterion 3 (test session end-to-end) failed due to field name issue; i2 will fix guidance and re-run"
+      - **BAD:** "stop — looks good"
 
-      Use these exact field names in your submission:
-        decision              — string, must be exactly "stop" or "continue"
-        rationale             — string: criterion-referenced rationale
-        next_hypothesis       — string: what the next iteration or epoch should target (soft — encouraged always)
+      ### Output Fields
+      ```
+      decision              — string, must be exactly "stop" or "continue"
+      rationale             — string: criterion-referenced rationale
+      next_hypothesis       — string: what the next iteration or epoch should target (soft — encouraged always)
+      ```
 
-      Submit when: decision is made, rationale names specific criteria, next_hypothesis gives
-      the team something concrete to pick up from.
+      **Submit when:** decision is made, rationale names specific criteria, `next_hypothesis` gives the team something concrete to pick up from.
     output_schema:
       decision:
         type: string

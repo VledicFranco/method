@@ -13,7 +13,7 @@ export function registerStatus(server: McpServer, methodologies: Map<string, Met
     async ({ session_id }) => {
       let session;
       try {
-        session = getSession(session_id);
+        session = await getSession(session_id);
       } catch {
         return {
           content: [

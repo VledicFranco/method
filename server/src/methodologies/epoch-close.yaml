@@ -1,0 +1,199 @@
+name: epoch-close
+description: "3-phase ceremony for closing an epoch: document experiment outcomes, produce retrospective, commit decision.md with carry-forward dispositions"
+version: "0.1.0"
+phases:
+  - id: 0
+    name: "Experiment Outcomes"
+    role: null
+    guidance: |
+      ## Phase 0 — Experiment Outcomes
+
+      Document the outcome of every experiment in this epoch. Do not write the retrospective yet — only record what happened per experiment.
+
+      ### Tasks
+      - For each experiment, state its final status and what was learned
+      - For any experiments not yet closed, state an explicit disposition
+
+      ### Experiment outcome format
+      Each item in `experiment_outcomes` must follow this format:
+      ```
+      {slug} | status: {confirmed|refuted|superseded|open} | learning: {what was learned or found}
+      ```
+
+      Status definitions:
+      - `confirmed` — the hypothesis was validated
+      - `refuted` — the hypothesis was falsified (this is a valuable outcome)
+      - `superseded` — the experiment was overtaken by other findings or became irrelevant
+      - `open` — the experiment was not completed; requires a disposition in `open_experiments`
+
+      ### Open experiment disposition format
+      Each item in `open_experiments` must follow this format:
+      ```
+      {slug} → {deferred to E(N+1)|promoted to own epoch|superseded}: {rationale}
+      ```
+
+      ### Output Fields
+      ```
+      experiment_outcomes — array of strings, min 1: one entry per experiment in the format above
+      open_experiments    — array of strings, min 0: one entry per open/unclosed experiment with explicit disposition
+      ```
+
+      **Use these exact field names:** `experiment_outcomes`, `open_experiments`
+
+      **Submit when:** every experiment in the epoch has an entry in `experiment_outcomes`. Every `open` experiment must also appear in `open_experiments` with a disposition.
+    output_schema:
+      experiment_outcomes:
+        type: array
+        items: string
+        min_items: 1
+        description: "One entry per experiment: slug | status: confirmed/refuted/superseded/open | learning: ..."
+      open_experiments:
+        type: array
+        items: string
+        min_items: 0
+        description: "One entry per unclosed experiment with disposition: slug → deferred/promoted/superseded: rationale"
+    invariants:
+      - id: experiment_outcomes_min_one
+        description: "experiment_outcomes must list at least one experiment outcome"
+        hard: true
+      - id: open_experiments_dispositions
+        description: "every 'open' experiment in experiment_outcomes should have a corresponding disposition in open_experiments"
+        hard: false
+
+  - id: 1
+    name: "Retrospective"
+    role: null
+    guidance: |
+      ## Phase 1 — Retrospective
+
+      Reflect on what the epoch revealed. This is a double-loop review: not just "did the experiments work" but "what did we learn about our assumptions."
+
+      ### Tasks
+      - State whether the epoch's core concern was addressed
+      - Extract at least 2 specific learnings — things now known that weren't known before
+      - Note any findings that contradicted your expectations (these are the most valuable)
+      - List any known issues encountered but not resolved in this epoch
+
+      ### Output Fields
+      ```
+      epoch_theme_addressed       — string: was the epoch's core concern addressed? what changed?
+      key_learnings               — array of strings, min 2: specific things now known that weren't known before
+      surprising_findings         — array of strings, min 0: findings that contradicted expectations
+      known_issues_carried_forward — array of strings, min 0: problems encountered but not resolved
+      ```
+
+      **Use these exact field names:** `epoch_theme_addressed`, `key_learnings`, `surprising_findings`, `known_issues_carried_forward`
+
+      **Submit when:** `epoch_theme_addressed` gives a specific answer (not "yes, it went well"), `key_learnings` has at least 2 concrete items. Vague learnings ("improved quality") are not accepted — each must name what specifically is now known.
+    output_schema:
+      epoch_theme_addressed:
+        type: string
+        min_length: 1
+        description: "Whether the epoch's core concern was addressed and what changed"
+      key_learnings:
+        type: array
+        items: string
+        min_items: 2
+        description: "Specific things now known that weren't known before (min 2)"
+      surprising_findings:
+        type: array
+        items: string
+        min_items: 0
+        description: "Findings that contradicted expectations"
+      known_issues_carried_forward:
+        type: array
+        items: string
+        min_items: 0
+        description: "Problems encountered but not resolved in this epoch"
+    invariants:
+      - id: epoch_theme_addressed_non_empty
+        description: "epoch_theme_addressed must be non-empty and specific"
+        hard: true
+      - id: key_learnings_min_two
+        description: "key_learnings must contain at least 2 specific items"
+        hard: true
+
+  - id: 2
+    name: "Forward"
+    role: null
+    guidance: |
+      ## Phase 2 — Forward
+
+      Translate the retrospective into forward action. Produce the `decision.md` content that closes this epoch.
+
+      ### Tasks
+      - State explicit carry-forward dispositions for every open or deferred item
+      - Propose the next epoch (or state that this concern area is complete)
+      - Write the full content for `decision.md`
+
+      ### Carry-forward entry format
+      Each item in `carry_forward` must follow this format:
+      ```
+      {slug} → {deferred|promoted|superseded}: {rationale}
+      ```
+
+      Disposition definitions:
+      - `deferred` — carries into E(N+1) as-is
+      - `promoted` — warrants its own epoch
+      - `superseded` — no longer relevant; explain why
+
+      ### decision.md content format
+      ```markdown
+      # E{N} — Decision
+
+      **Date:** {date}
+
+      ## Experiment Outcomes
+      {table or list from Phase 0 experiment_outcomes}
+
+      ## Retrospective
+      {epoch_theme_addressed from Phase 1}
+
+      ### Key Learnings
+      {key_learnings list}
+
+      ### Surprising Findings
+      {surprising_findings list, or "None"}
+
+      ### Known Issues
+      {known_issues_carried_forward list, or "None"}
+
+      ## Forward
+      ### Carry-Forward Dispositions
+      {carry_forward list}
+
+      ### Next Epoch
+      {next_epoch_proposal}
+      ```
+
+      ### Output Fields
+      ```
+      carry_forward         — array of strings, min 0: one entry per open item with disposition
+      next_epoch_proposal   — string: what the next epoch should tackle and why (or "concern area complete")
+      decision_md_content   — string: full markdown content to write to decision.md
+      ```
+
+      **Use these exact field names:** `carry_forward`, `next_epoch_proposal`, `decision_md_content`
+
+      **Submit when:** `next_epoch_proposal` is specific, `decision_md_content` is complete enough to write to disk as the epoch's retrospective artifact.
+    output_schema:
+      carry_forward:
+        type: array
+        items: string
+        min_items: 0
+        description: "Per open/deferred item: slug → deferred|promoted|superseded: rationale"
+      next_epoch_proposal:
+        type: string
+        min_length: 1
+        description: "What the next epoch should tackle and why, or 'concern area complete'"
+      decision_md_content:
+        type: string
+        min_length: 1
+        description: "Full markdown content for the epoch decision.md"
+    invariants:
+      - id: next_epoch_proposal_non_empty
+        description: "next_epoch_proposal must be non-empty"
+        hard: true
+      - id: decision_md_content_non_empty
+        description: "decision_md_content must be non-empty and complete enough to write to disk"
+        hard: true

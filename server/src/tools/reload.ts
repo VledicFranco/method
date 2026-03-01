@@ -8,7 +8,7 @@ export function registerReload(server: McpServer, methodologies: Map<string, Met
     'Reload all methodology YAML files from disk without restarting the server. Call this after adding or modifying a methodology file. Returns the names of successfully loaded methodologies and any validation errors.',
     {},
     async () => {
-      const { loaded, errors } = reloadMethodologies(methodologies);
+      const { loaded, errors } = await reloadMethodologies(methodologies);
 
       return {
         content: [

@@ -22,7 +22,7 @@ function checkField(
   value: unknown,
 ): FieldViolation | null {
   if (value === undefined || value === null) {
-    return { field: fieldName, reason: `"${fieldName}" is required but missing` };
+    return { field: fieldName, reason: `"${fieldName}" was not provided` };
   }
 
   switch (fieldSchema.type) {

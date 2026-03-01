@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Methodology } from '../schema.js';
-import { createSession, getSession } from '../runtime/session.js';
+import { createSession, getSession, insertEvent } from '../runtime/session.js';
 import { renderGuidance } from '../runtime/guidance.js';
 
 export function registerStart(server: McpServer, methodologies: Map<string, Methodology>): void {
@@ -11,8 +11,9 @@ export function registerStart(server: McpServer, methodologies: Map<string, Meth
     {
       name: z.string().describe('Methodology name (from method_list)'),
       topic: z.string().describe('The topic or objective for this session'),
+      project: z.string().optional().describe('Project slug to associate this session with (auto-created if new)'),
     },
-    async ({ name, topic }) => {
+    async ({ name, topic, project }) => {
       const methodology = methodologies.get(name);
       if (!methodology) {
         const available = Array.from(methodologies.keys()).join(', ');
@@ -30,8 +31,9 @@ export function registerStart(server: McpServer, methodologies: Map<string, Meth
       }
 
       const context: Record<string, unknown> = { topic };
-      const sessionId = createSession(methodology, context);
-      const session = getSession(sessionId);
+      const sessionId = await createSession(methodology, context, project);
+      await insertEvent(sessionId, 0, 'session_started', { topic, methodology: name });
+      const session = await getSession(sessionId);
       const phase0 = methodology.phases[0];
 
       if (!phase0) {

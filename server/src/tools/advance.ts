@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Methodology } from '../schema.js';
-import { getSession, advanceSession, completeSession } from '../runtime/session.js';
+import { getSession, advanceSession, completeSession, insertEvent } from '../runtime/session.js';
 import { renderGuidance } from '../runtime/guidance.js';
 import { validateOutput } from '../runtime/validator.js';
 
@@ -21,7 +21,7 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
       // Get session
       let session;
       try {
-        session = getSession(session_id);
+        session = await getSession(session_id);
       } catch {
         return {
           content: [
@@ -88,6 +88,7 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
 
       // Validation failed
       if (!validation.passed) {
+        await insertEvent(session_id, session.current_phase, 'validation_failed', { failed_invariants: validation.failed_hard });
         const guidance = renderGuidance(currentPhase, session.context, session.total_phases);
         return {
           content: [
@@ -112,12 +113,17 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
       }
 
       const isFinalPhase = session.current_phase === session.total_phases - 1;
+      // ⚠️ Compute next phase index BEFORE advancing (session object will be stale after DB update)
+      const nextPhaseIndex = session.current_phase + 1;
+
+      // Fire phase_advanced event before DB write (currentPhase is still valid here)
+      await insertEvent(session_id, session.current_phase, 'phase_advanced', { phase_name: currentPhase.name });
 
       // Advance session
-      advanceSession(session_id, output);
+      await advanceSession(session_id, output);
 
       if (isFinalPhase) {
-        completeSession(session_id);
+        await completeSession(session_id);
         return {
           content: [
             {
@@ -139,8 +145,8 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
         };
       }
 
-      // Non-final: advance and deliver next phase guidance
-      const nextPhase = methodology.phases[session.current_phase];
+      // Non-final: deliver next phase guidance
+      const nextPhase = methodology.phases[nextPhaseIndex];
       if (!nextPhase) {
         return {
           content: [
@@ -156,6 +162,8 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
       }
 
       const nextGuidance = renderGuidance(nextPhase, session.context, session.total_phases);
+      // Read updated delta from DB for accuracy
+      const updatedSession = await getSession(session_id);
 
       return {
         content: [
@@ -163,10 +171,10 @@ export function registerAdvance(server: McpServer, methodologies: Map<string, Me
             type: 'text' as const,
             text: JSON.stringify(
               {
-                advanced_to_phase: session.current_phase,
+                advanced_to_phase: nextPhaseIndex,
                 current_phase_name: nextPhase.name,
-                delta: session.delta,
-                status: session.status,
+                delta: updatedSession.delta,
+                status: updatedSession.status,
                 invariants_passed: currentPhase.invariants
                   .filter((inv) => inv.hard)
                   .map((inv) => inv.id),

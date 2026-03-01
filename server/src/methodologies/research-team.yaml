@@ -6,24 +6,27 @@ phases:
     name: "Context Loading"
     role: null
     guidance: |
-      Phase 0 — Context Loading
+      ## Phase 0 — Context Loading
 
       Before beginning any research on {{topic}}, inventory all prior work that already exists.
 
-      Tasks:
+      ### Tasks
       - Search memory files, prior research notes, related documents, earlier sessions on this topic
       - For each document found, note its name and what it contributes
       - Do NOT begin analysis or form opinions — only inventory
 
       If there is genuinely no prior work, submit:
-        prior_documents: ["none — fresh start"]
-        summary: "No prior work found. This is a fresh research session."
+      ```json
+      { "prior_documents": ["none — fresh start"], "summary": "No prior work found. This is a fresh research session." }
+      ```
 
-      Use these exact field names in your submission:
-        prior_documents   — array of strings, at least 1 item (use ["none — fresh start"] if nothing exists)
-        summary           — string (what was found and what each document contributes)
+      ### Output Fields
+      ```
+      prior_documents   — array of strings, at least 1 item (use ["none — fresh start"] if nothing exists)
+      summary           — string (what was found and what each document contributes)
+      ```
 
-      Submit when: prior_documents is populated (at least one entry).
+      **Submit when:** `prior_documents` is populated (at least one entry).
     output_schema:
       prior_documents:
         type: array
@@ -46,43 +49,42 @@ phases:
     name: "Architect — Forethought"
     role: "Architect"
     guidance: |
-      Phase 1 — Architect: Forethought
+      ## Phase 1 — Architect: Forethought
 
-      You are acting as the Architect for this research session on {{topic}}.
+      You are acting as the **Architect** for this research session on {{topic}}.
 
       Define the session objective at three levels:
 
-      Be level — What identity, values, or standards does good research on this topic embody?
-        Example: "rigorous, citable, and honest about uncertainty"
+      **Be level** — What identity, values, or standards does good research on this topic embody?
+      > Example: "rigorous, citable, and honest about uncertainty"
 
-      Do level — What must this session specifically accomplish?
-        Example: "map the design space of MCP sampling patterns and identify trade-offs"
+      **Do level** — What must this session specifically accomplish?
+      > Example: "map the design space of MCP sampling patterns and identify trade-offs"
 
-      Motor level — What is the concrete, inspectable deliverable?
-        Example: "a structured summary covering 4+ design patterns with trade-off analysis"
+      **Motor level** — What is the concrete, inspectable deliverable?
+      > Example: "a structured summary covering 4+ design patterns with trade-off analysis"
 
-      Then:
-
+      ### Then
       1. Write at least 3 checkable acceptance criteria.
-         BAD:  "The research is comprehensive"
-         GOOD: "Covers at least 4 of the priority questions with cited sources"
-         GOOD: "Each identified pattern has at least one concrete example"
+         - **BAD:** "The research is comprehensive"
+         - **GOOD:** "Covers at least 4 of the priority questions with cited sources"
+         - **GOOD:** "Each identified pattern has at least one concrete example"
 
-      2. List at least 2 priority research questions this session must answer.
-         These will guide the Scout and Researcher in later phases.
+      2. List at least 2 priority research questions this session must answer. These will guide the Scout and Researcher in later phases.
 
-      3. Define what is explicitly out of scope.
-         This prevents scope creep and makes expectations honest.
+      3. Define what is explicitly out of scope. This prevents scope creep and makes expectations honest.
 
-      Use these exact field names in your submission:
-        be_level              — string (identity/values that success embodies)
-        do_level              — string (what this session must specifically accomplish)
-        motor_level           — string (the concrete, inspectable deliverable)
-        acceptance_criteria   — array of strings, at least 3 items
-        priority_questions    — array of strings, at least 2 items
-        out_of_scope          — array of strings (can be empty)
+      ### Output Fields
+      ```
+      be_level              — string (identity/values that success embodies)
+      do_level              — string (what this session must specifically accomplish)
+      motor_level           — string (the concrete, inspectable deliverable)
+      acceptance_criteria   — array of strings, at least 3 items
+      priority_questions    — array of strings, at least 2 items
+      out_of_scope          — array of strings (can be empty)
+      ```
 
-      Submit when: all three levels defined, at least 3 criteria, at least 2 priority questions.
+      **Submit when:** all three levels defined, at least 3 criteria, at least 2 priority questions.
     output_schema:
       be_level:
         type: string
@@ -126,26 +128,26 @@ phases:
     name: "Scout — Territory Mapping"
     role: "Scout"
     guidance: |
-      Phase 2 — Scout: Territory Mapping
+      ## Phase 2 — Scout: Territory Mapping
 
-      You are now acting as the Scout for {{topic}}.
+      You are now acting as the **Scout** for {{topic}}.
 
-      Your job is breadth, not depth. Map the territory — identify sources, do not evaluate them.
+      Your job is **breadth, not depth**. Map the territory — identify sources, do not evaluate them.
 
-      Tasks:
-      - List at least 3 sources relevant to {{topic}}
-        (papers, documentation pages, codebases, articles, existing knowledge, prior art)
+      ### Tasks
+      - List at least 3 sources relevant to {{topic}} (papers, documentation pages, codebases, articles, existing knowledge, prior art)
       - For each source, note which priority questions from Phase 1 it might address
       - Do NOT read deeply or form strong opinions yet — only identify what exists
 
-      Write coverage_notes: which priority questions have good source coverage, and which
-      look thin or missing. This guides the Researcher in Phase 3.
+      Write `coverage_notes`: which priority questions have good source coverage, and which look thin or missing. This guides the Researcher in Phase 3.
 
-      Use these exact field names in your submission:
-        sources          — array of strings, at least 3 items
-        coverage_notes   — string (which priority questions have good coverage, which look thin)
+      ### Output Fields
+      ```
+      sources          — array of strings, at least 3 items
+      coverage_notes   — string (which priority questions have good coverage, which look thin)
+      ```
 
-      Submit when: at least 3 sources listed, coverage_notes written.
+      **Submit when:** at least 3 sources listed, `coverage_notes` written.
     output_schema:
       sources:
         type: array
@@ -168,33 +170,27 @@ phases:
     name: "Researcher — Deep Dive"
     role: "Researcher"
     guidance: |
-      Phase 3 — Researcher: Deep Dive
+      ## Phase 3 — Researcher: Deep Dive
 
-      You are now acting as the Deep Researcher for {{topic}}.
+      You are now acting as the **Deep Researcher** for {{topic}}.
 
-      Select 2-4 of the most relevant sources from Phase 2 and go deep.
-      Quality over breadth — read carefully and extract precisely.
+      Select 2–4 of the most relevant sources from Phase 2 and go deep. Quality over breadth — read carefully and extract precisely.
 
-      Tasks:
-      1. Select 2-4 sources (deep_sources). Prefer sources that address priority questions
-         from Phase 1 that currently lack coverage.
+      ### Tasks
+      1. Select 2–4 sources (`deep_sources`). Prefer sources that address priority questions from Phase 1 that currently lack coverage.
+      2. Write consolidated `findings`: what do we now know about {{topic}}? Be specific — cite sections, examples, or exact quotes where possible.
+      3. Trace `citations`: for each key claim, note its source.
+      4. Note `limitations`: what does the research NOT cover? What assumptions does it make that may not hold in your context? At least 1 limitation required.
 
-      2. Write consolidated findings: what do we now know about {{topic}}?
-         Be specific. Cite sections, examples, or exact quotes where possible.
+      ### Output Fields
+      ```
+      deep_sources   — array of 2-4 strings (source names)
+      findings       — string, prose narrative (NOT a dict, object, or nested structure)
+      citations      — array of strings, one per key claim
+      limitations    — array of strings
+      ```
 
-      3. Trace citations: for each key claim, note its source.
-
-      4. Note limitations: what does the research NOT cover?
-         What assumptions does it make that may not hold in your context?
-         At least 1 limitation required.
-
-      Use these exact field names in your submission:
-        deep_sources   — array of 2-4 strings (source names)
-        findings       — string, prose narrative (NOT a dict, object, or nested structure)
-        citations      — array of strings, one per key claim
-        limitations    — array of strings
-
-      Submit when: 2-4 deep sources examined, findings written, citations listed, limitations noted.
+      **Submit when:** 2–4 deep sources examined, findings written, citations listed, limitations noted.
     output_schema:
       deep_sources:
         type: array
@@ -234,31 +230,29 @@ phases:
     name: "Critic — Challenge"
     role: "Critic"
     guidance: |
-      Phase 4 — Critic: Challenge
+      ## Phase 4 — Critic: Challenge
 
-      You are now acting as the Critic for {{topic}}.
+      You are now acting as the **Critic** for {{topic}}.
 
-      Your role is adversarial. Challenge the research from Phase 3.
+      Your role is **adversarial**. Challenge the research from Phase 3.
 
-      Tasks:
-      1. List at least 1 blocking challenge — something that, if true, would meaningfully
-         undermine the main findings or their applicability.
-
-         Examples:
+      ### Tasks
+      1. List at least 1 `blocking_challenge` — something that, if true, would meaningfully undermine the main findings or their applicability.
          - "The primary source is from 2019 — key APIs have changed significantly"
          - "All sources assume a stateless architecture, but our context is stateful"
          - "The cited benchmarks used controlled conditions unlike our production environment"
 
-      2. List at least 1 thing that stands — something the research got right that survives scrutiny.
-         This prevents the Critic from being purely destructive.
+      2. List at least 1 item in `what_stands` — something the research got right that survives scrutiny. This prevents the Critic from being purely destructive.
 
       Be specific. Generic skepticism ("needs more sources") is not useful.
 
-      Use these exact field names in your submission:
-        blocking_challenges   — array of strings
-        what_stands           — array of strings (NOT "things_that_stand" or any other name)
+      ### Output Fields
+      ```
+      blocking_challenges   — array of strings
+      what_stands           — array of strings (NOT "things_that_stand" or any other name)
+      ```
 
-      Submit when: at least 1 blocking challenge, at least 1 thing that stands.
+      **Submit when:** at least 1 blocking challenge, at least 1 thing that stands.
     output_schema:
       blocking_challenges:
         type: array
@@ -282,32 +276,31 @@ phases:
     name: "Synthesizer — Integration"
     role: "Synthesizer"
     guidance: |
-      Phase 5 — Synthesizer: Integration
+      ## Phase 5 — Synthesizer: Integration
 
-      You are now acting as the Synthesizer for {{topic}}.
+      You are now acting as the **Synthesizer** for {{topic}}.
 
       Integrate the research (Phase 3) and the Critic's challenges (Phase 4) into a coherent output.
 
-      Tasks:
-      1. Write a synthesis: what do we now know about {{topic}}?
-         This is the main deliverable. It should be dense and useful.
-         Address the priority questions from Phase 1.
+      ### Tasks
+      1. Write a `synthesis`: what do we now know about {{topic}}? This is the main deliverable — dense and useful. Address the priority questions from Phase 1.
 
-      2. For each blocking challenge from Phase 4, state its resolution:
-         - "resolved — [how]"
-         - "partially resolved — [what remains]"
-         - "still open — [why it couldn't be resolved and what it means]"
+      2. For each blocking challenge from Phase 4, state its resolution in `blocking_challenges_addressed`:
+         - `"resolved — [how]"`
+         - `"partially resolved — [what remains]"`
+         - `"still open — [why it couldn't be resolved and what it means]"`
 
-      3. Assess delta against the acceptance criteria from Phase 1:
-         How close are we to done?
-         Example: "3 of 5 criteria met. Criteria 4 and 5 remain open — insufficient data on X."
+      3. Assess `delta_assessment` against the acceptance criteria from Phase 1.
+         > Example: "3 of 5 criteria met. Criteria 4 and 5 remain open — insufficient data on X."
 
-      Use these exact field names in your submission:
-        synthesis                       — string, prose
-        blocking_challenges_addressed   — array of strings, one entry per challenge (NOT "challenge_resolutions")
-        delta_assessment                — string
+      ### Output Fields
+      ```
+      synthesis                       — string, prose
+      blocking_challenges_addressed   — array of strings, one entry per challenge (NOT "challenge_resolutions")
+      delta_assessment                — string
+      ```
 
-      Submit when: synthesis written, all blocking challenges addressed, delta assessed.
+      **Submit when:** synthesis written, all blocking challenges addressed, delta assessed.
     output_schema:
       synthesis:
         type: string
@@ -337,31 +330,33 @@ phases:
     name: "Architect — Stop/Continue"
     role: "Architect"
     guidance: |
-      Phase 6 — Architect: Stop/Continue
+      ## Phase 6 — Architect: Stop/Continue
 
-      You are again the Architect. This is the final gate.
+      You are again the **Architect**. This is the final gate.
 
-      Review:
+      ### Review
       - The synthesis from Phase 5
       - The delta assessment from Phase 5
       - The acceptance criteria you defined in Phase 1
       - Any still-open blocking challenges
 
       Make an explicit decision:
-      - "stop"     — the session has delivered sufficient value; the deliverable meets the criteria
-      - "continue" — unmet criteria or open challenges justify a follow-on session
+      - `"stop"` — the session has delivered sufficient value; the deliverable meets the criteria
+      - `"continue"` — unmet criteria or open challenges justify a follow-on session
 
       The rationale must reference specific criteria or challenges.
 
-      GOOD: "stop — all 4 criteria met; synthesis covers all priority questions with citations"
-      GOOD: "continue — criteria 3 and 4 unmet; next session should focus on Y and Z"
-      BAD:  "stop — research looks good"
+      - **GOOD:** "stop — all 4 criteria met; synthesis covers all priority questions with citations"
+      - **GOOD:** "continue — criteria 3 and 4 unmet; next session should focus on Y and Z"
+      - **BAD:** "stop — research looks good"
 
-      Use these exact field names in your submission:
-        decision   — string, must be exactly "stop" or "continue"
-        rationale  — string (specific, criterion-referenced rationale for the decision)
+      ### Output Fields
+      ```
+      decision   — string, must be exactly "stop" or "continue"
+      rationale  — string (specific, criterion-referenced rationale for the decision)
+      ```
 
-      Submit when: decision is "stop" or "continue", rationale references specific criteria.
+      **Submit when:** decision is `"stop"` or `"continue"`, rationale references specific criteria.
     output_schema:
       decision:
         type: string

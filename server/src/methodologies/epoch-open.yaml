@@ -1,0 +1,195 @@
+name: epoch-open
+description: "3-phase ceremony for opening a new epoch: frame the concern area, spec falsifiable experiments, commit hypothesis.md"
+version: "0.1.0"
+phases:
+  - id: 0
+    name: "Theme"
+    role: null
+    guidance: |
+      ## Phase 0 — Theme
+
+      Frame the concern area for this epoch. Do not propose experiments yet — only establish why this epoch warrants bounded work and what success looks like.
+
+      ### Tasks
+      - Name the concern area: what domain, problem, or product gap this epoch addresses
+      - State the motivation: what failure mode or gap makes this a worthwhile epoch?
+      - Describe what success looks like: what would be true at epoch close if this epoch succeeds?
+      - State the scope boundary: what is explicitly out of scope for this epoch?
+
+      ### Output Fields
+      ```
+      concern_area      — string: the domain or concern this epoch addresses (e.g. "runtime validation quality", "epoch lifecycle tooling")
+      motivation        — string: why this concern warrants a bounded epoch — what failure mode or gap does it address?
+      success_looks_like — string: what would be true at epoch close if this epoch succeeds?
+      scope_boundaries  — string: what is explicitly out of scope for this epoch?
+      ```
+
+      **Use these exact field names:** `concern_area`, `motivation`, `success_looks_like`, `scope_boundaries`
+
+      **Submit when:** all four fields are specific and non-empty. "motivation" must name a concrete failure mode or gap, not just a vague goal.
+    output_schema:
+      concern_area:
+        type: string
+        min_length: 1
+        description: "The domain or concern this epoch addresses"
+      motivation:
+        type: string
+        min_length: 1
+        description: "Why this concern warrants a bounded epoch — what failure mode or gap"
+      success_looks_like:
+        type: string
+        min_length: 1
+        description: "What would be true at epoch close if this epoch succeeds"
+      scope_boundaries:
+        type: string
+        min_length: 1
+        description: "What is explicitly out of scope for this epoch"
+    invariants:
+      - id: concern_area_non_empty
+        description: "concern_area must be a non-empty string"
+        hard: true
+      - id: motivation_non_empty
+        description: "motivation must be a non-empty string naming a concrete failure mode or gap"
+        hard: true
+      - id: success_looks_like_non_empty
+        description: "success_looks_like must be a non-empty string"
+        hard: true
+      - id: scope_boundaries_non_empty
+        description: "scope_boundaries must be a non-empty string"
+        hard: true
+
+  - id: 1
+    name: "Experiments"
+    role: null
+    guidance: |
+      ## Phase 1 — Experiments
+
+      Decompose the epoch theme into falsifiable sub-hypotheses. Each experiment must have a measurable acceptance criterion — a statement that is definitively true or false after the experiment runs.
+
+      ### Tasks
+      - List each experiment as a structured entry (see format below)
+      - For each experiment, separately state its measurable "how we'll know" criterion
+      - Note explicit dependencies between experiments if any exist
+
+      ### Experiment entry format
+      Each item in `experiments` must follow this format:
+      ```
+      {slug} | hypothesis: {what this tests} | how_we_know: {falsifiable criterion} | methodology: {method name} | depends_on: {slug or none}
+      ```
+
+      Example:
+      ```
+      h1-soft-invariant-copy | hypothesis: validator copy for soft invariants says "was not provided" not "is required" | how_we_know: method_advance soft_warnings show "was not provided" in a real session | methodology: method-iteration | depends_on: none
+      ```
+
+      ### Output Fields
+      ```
+      experiments         — array of strings, min 1: one entry per experiment in the format above
+      experiment_names    — array of strings, min 1: just the slugs (e.g. ["h1-soft-invariant-copy", "h2-topic-goal"])
+      measurable_criteria — array of strings, min 1: one "how we'll know" criterion per experiment, in order matching experiment_names
+      ```
+
+      **Use these exact field names:** `experiments`, `experiment_names`, `measurable_criteria`
+
+      **Submit when:** every experiment has a slug in `experiment_names` and a corresponding entry in `measurable_criteria`. Vague criteria ("works correctly", "looks good") are not measurable — each must be checkable as true or false.
+    output_schema:
+      experiments:
+        type: array
+        items: string
+        min_items: 1
+        description: "One entry per experiment in structured format: slug | hypothesis: ... | how_we_know: ... | methodology: ... | depends_on: ..."
+      experiment_names:
+        type: array
+        items: string
+        min_items: 1
+        description: "Just the experiment slugs, for reference and count"
+      measurable_criteria:
+        type: array
+        items: string
+        min_items: 1
+        description: "One falsifiable 'how we'll know' criterion per experiment, in order matching experiment_names"
+    invariants:
+      - id: experiments_min_one
+        description: "experiments must list at least one experiment"
+        hard: true
+      - id: experiment_names_min_one
+        description: "experiment_names must list at least one slug"
+        hard: true
+      - id: measurable_criteria_min_one
+        description: "measurable_criteria must list at least one falsifiable criterion"
+        hard: true
+
+  - id: 2
+    name: "Commit"
+    role: null
+    guidance: |
+      ## Phase 2 — Commit
+
+      Commit the epoch by producing its `hypothesis.md` content. Finalize the epoch acceptance criteria and stopping condition before writing the document.
+
+      ### Tasks
+      - Write at least 2 epoch-level acceptance criteria (what must be true for the epoch to succeed overall)
+      - State the stopping condition: when do we close this epoch even if not all experiments are done?
+      - Write the full content for `hypothesis.md` — this is the output that gets written to `epochs/eN-{slug}/hypothesis.md`
+
+      ### hypothesis.md content format
+      ```markdown
+      # E{N} — {epoch slug}
+
+      **Theme:** {concern_area from Phase 0}
+
+      ## Motivation
+      {motivation from Phase 0}
+
+      ## Success looks like
+      {success_looks_like from Phase 0}
+
+      ## Scope boundaries
+      {scope_boundaries from Phase 0}
+
+      ## Experiments
+      | Slug | Hypothesis | How we'll know | Methodology |
+      |------|-----------|----------------|-------------|
+      {one row per experiment from Phase 1}
+
+      ## Epoch acceptance criteria
+      {numbered list from epoch_acceptance_criteria}
+
+      ## Stopping condition
+      {stopping_condition}
+      ```
+
+      ### Output Fields
+      ```
+      epoch_acceptance_criteria — array of strings, min 2: what must be true for the epoch to succeed
+      stopping_condition        — string: when to close this epoch even if not all experiments are done
+      hypothesis_md_content     — string: full markdown content to write to hypothesis.md
+      ```
+
+      **Use these exact field names:** `epoch_acceptance_criteria`, `stopping_condition`, `hypothesis_md_content`
+
+      **Submit when:** `epoch_acceptance_criteria` has at least 2 specific criteria, `stopping_condition` names a concrete trigger, and `hypothesis_md_content` is complete enough to write to disk.
+    output_schema:
+      epoch_acceptance_criteria:
+        type: array
+        items: string
+        min_items: 2
+        description: "Epoch-level acceptance criteria — what must be true for the epoch to succeed"
+      stopping_condition:
+        type: string
+        min_length: 1
+        description: "When to close this epoch even if not all experiments are done"
+      hypothesis_md_content:
+        type: string
+        min_length: 1
+        description: "Full markdown content to write to hypothesis.md"
+    invariants:
+      - id: epoch_acceptance_criteria_min_two
+        description: "epoch_acceptance_criteria must contain at least 2 items"
+        hard: true
+      - id: stopping_condition_non_empty
+        description: "stopping_condition must be a non-empty string naming a concrete trigger"
+        hard: true
+      - id: hypothesis_md_content_non_empty
+        description: "hypothesis_md_content must be non-empty and complete enough to write to disk"
+        hard: true

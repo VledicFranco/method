@@ -6,20 +6,25 @@ phases:
     name: "String and Array Gate"
     role: null
     guidance: |
-      Phase 0 — String and Array Gate
+      ## Phase 0 — String and Array Gate
 
-      This phase tests string non-empty and array minimum-length constraints.
-      No research required — invent any values that satisfy the schema.
+      This phase tests string non-empty and array minimum-length constraints. No research required — invent any values that satisfy the schema.
 
-      Use these exact field names in your submission:
-        label   — string, must not be empty
-        tags    — array of strings, must have at least 3 items
+      ### Output Fields
+      ```
+      label   — string, must not be empty
+      tags    — array of strings, must have at least 3 items
+      ```
 
-      Example valid output:
-        { "label": "test run", "tags": ["alpha", "beta", "gamma"] }
+      **Valid example:**
+      ```json
+      { "label": "test run", "tags": ["alpha", "beta", "gamma"] }
+      ```
 
-      Example INVALID output (will be rejected):
-        { "label": "", "tags": ["only-one"] }
+      **Invalid example (will be rejected):**
+      ```json
+      { "label": "", "tags": ["only-one"] }
+      ```
     output_schema:
       label:
         type: string
@@ -42,20 +47,25 @@ phases:
     name: "Number and Enum Gate"
     role: null
     guidance: |
-      Phase 1 — Number and Enum Gate
+      ## Phase 1 — Number and Enum Gate
 
-      This phase tests number range constraints and enum validation.
-      No research required — invent any values that satisfy the schema.
+      This phase tests number range constraints and enum validation. No research required — invent any values that satisfy the schema.
 
-      Use these exact field names in your submission:
-        score      — number, must be between 0.0 and 1.0 inclusive
-        priority   — string, must be exactly one of: "low", "medium", "high"
+      ### Output Fields
+      ```
+      score      — number, must be between 0.0 and 1.0 inclusive
+      priority   — string, must be exactly one of: "low", "medium", "high"
+      ```
 
-      Example valid output:
-        { "score": 0.75, "priority": "high" }
+      **Valid example:**
+      ```json
+      { "score": 0.75, "priority": "high" }
+      ```
 
-      Example INVALID output (will be rejected):
-        { "score": 1.5, "priority": "urgent" }
+      **Invalid example (will be rejected):**
+      ```json
+      { "score": 1.5, "priority": "urgent" }
+      ```
     output_schema:
       score:
         type: number
@@ -78,20 +88,25 @@ phases:
     name: "Array Range Gate"
     role: null
     guidance: |
-      Phase 2 — Array Range Gate
+      ## Phase 2 — Array Range Gate
 
-      This phase tests array range constraints — both a minimum AND a maximum.
-      No research required — invent any values that satisfy the schema.
+      This phase tests array range constraints — both a minimum AND a maximum. No research required — invent any values that satisfy the schema.
 
-      Use this exact field name in your submission:
-        items   — array of strings, must have between 2 and 4 items (inclusive)
+      ### Output Fields
+      ```
+      items   — array of strings, must have between 2 and 4 items (inclusive)
+      ```
 
-      Example valid output:
-        { "items": ["first", "second", "third"] }
+      **Valid example:**
+      ```json
+      { "items": ["first", "second", "third"] }
+      ```
 
-      Example INVALID output (will be rejected):
-        { "items": ["only-one"] }          ← too few
-        { "items": ["a","b","c","d","e"] } ← too many
+      **Invalid examples (will be rejected):**
+      ```json
+      { "items": ["only-one"] }           // too few
+      { "items": ["a","b","c","d","e"] }  // too many
+      ```
     output_schema:
       items:
         type: array
@@ -108,25 +123,30 @@ phases:
     name: "Soft Invariant Gate"
     role: null
     guidance: |
-      Phase 3 — Soft Invariant Gate
+      ## Phase 3 — Soft Invariant Gate
 
-      This phase tests the hard/soft invariant distinction.
+      This phase tests the **hard/soft invariant distinction**.
 
-      required_field is a HARD invariant — missing it blocks advancement.
-      optional_note is a SOFT invariant — missing it produces a warning but does NOT block.
+      - `required_field` is a **HARD** invariant — missing it blocks advancement.
+      - `optional_note` is a **SOFT** invariant — missing it produces a warning but does NOT block.
 
-      Use these exact field names in your submission:
-        required_field   — string, must not be empty (hard — blocks if missing)
-        optional_note    — string, non-empty (soft — warns but still advances)
+      ### Output Fields
+      ```
+      required_field   — string, must not be empty (hard — blocks if missing)
+      optional_note    — string, non-empty (soft — warns but still advances)
+      ```
 
-      To deliberately trigger the soft warning: omit optional_note entirely.
-      The phase will still advance, and soft_warnings will appear in the server response.
+      To deliberately trigger the soft warning: omit `optional_note` entirely. The phase will still advance, and `soft_warnings` will appear in the server response.
 
-      Example output that passes with a soft warning:
-        { "required_field": "this is required" }
+      **Passes with soft warning:**
+      ```json
+      { "required_field": "this is required" }
+      ```
 
-      Example output that passes cleanly:
-        { "required_field": "this is required", "optional_note": "this is optional but helpful" }
+      **Passes cleanly:**
+      ```json
+      { "required_field": "this is required", "optional_note": "this is optional but helpful" }
+      ```
     output_schema:
       required_field:
         type: string
