@@ -1,0 +1,145 @@
+name: test-gates
+description: "4-phase gate exerciser — tests every constraint type: string, array min, array min+max, number range, enum, soft invariants. No research required."
+version: "0.1.0"
+phases:
+  - id: 0
+    name: "String and Array Gate"
+    role: null
+    guidance: |
+      Phase 0 — String and Array Gate
+
+      This phase tests string non-empty and array minimum-length constraints.
+      No research required — invent any values that satisfy the schema.
+
+      Use these exact field names in your submission:
+        label   — string, must not be empty
+        tags    — array of strings, must have at least 3 items
+
+      Example valid output:
+        { "label": "test run", "tags": ["alpha", "beta", "gamma"] }
+
+      Example INVALID output (will be rejected):
+        { "label": "", "tags": ["only-one"] }
+    output_schema:
+      label:
+        type: string
+        min_length: 1
+        description: "Any non-empty string"
+      tags:
+        type: array
+        items: string
+        min_items: 3
+        description: "At least 3 string items"
+    invariants:
+      - id: label_non_empty
+        description: "label must be a non-empty string"
+        hard: true
+      - id: tags_min_three
+        description: "tags must contain at least 3 items"
+        hard: true
+
+  - id: 1
+    name: "Number and Enum Gate"
+    role: null
+    guidance: |
+      Phase 1 — Number and Enum Gate
+
+      This phase tests number range constraints and enum validation.
+      No research required — invent any values that satisfy the schema.
+
+      Use these exact field names in your submission:
+        score      — number, must be between 0.0 and 1.0 inclusive
+        priority   — string, must be exactly one of: "low", "medium", "high"
+
+      Example valid output:
+        { "score": 0.75, "priority": "high" }
+
+      Example INVALID output (will be rejected):
+        { "score": 1.5, "priority": "urgent" }
+    output_schema:
+      score:
+        type: number
+        min_value: 0
+        max_value: 1
+        description: "A number between 0.0 and 1.0 inclusive"
+      priority:
+        type: string
+        enum: ["low", "medium", "high"]
+        description: "Must be one of: low, medium, high"
+    invariants:
+      - id: score_range
+        description: "score must be between 0.0 and 1.0"
+        hard: true
+      - id: priority_valid
+        description: "priority must be one of: low, medium, high"
+        hard: true
+
+  - id: 2
+    name: "Array Range Gate"
+    role: null
+    guidance: |
+      Phase 2 — Array Range Gate
+
+      This phase tests array range constraints — both a minimum AND a maximum.
+      No research required — invent any values that satisfy the schema.
+
+      Use this exact field name in your submission:
+        items   — array of strings, must have between 2 and 4 items (inclusive)
+
+      Example valid output:
+        { "items": ["first", "second", "third"] }
+
+      Example INVALID output (will be rejected):
+        { "items": ["only-one"] }          ← too few
+        { "items": ["a","b","c","d","e"] } ← too many
+    output_schema:
+      items:
+        type: array
+        items: string
+        min_items: 2
+        max_items: 4
+        description: "Between 2 and 4 string items, inclusive"
+    invariants:
+      - id: items_range
+        description: "items must contain between 2 and 4 items"
+        hard: true
+
+  - id: 3
+    name: "Soft Invariant Gate"
+    role: null
+    guidance: |
+      Phase 3 — Soft Invariant Gate
+
+      This phase tests the hard/soft invariant distinction.
+
+      required_field is a HARD invariant — missing it blocks advancement.
+      optional_note is a SOFT invariant — missing it produces a warning but does NOT block.
+
+      Use these exact field names in your submission:
+        required_field   — string, must not be empty (hard — blocks if missing)
+        optional_note    — string, non-empty (soft — warns but still advances)
+
+      To deliberately trigger the soft warning: omit optional_note entirely.
+      The phase will still advance, and soft_warnings will appear in the server response.
+
+      Example output that passes with a soft warning:
+        { "required_field": "this is required" }
+
+      Example output that passes cleanly:
+        { "required_field": "this is required", "optional_note": "this is optional but helpful" }
+    output_schema:
+      required_field:
+        type: string
+        min_length: 1
+        description: "Required — hard invariant, blocks advance if missing"
+      optional_note:
+        type: string
+        min_length: 1
+        description: "Optional — soft invariant, warns but does not block"
+    invariants:
+      - id: required_field_non_empty
+        description: "required_field must be a non-empty string"
+        hard: true
+      - id: optional_note_present
+        description: "optional_note is recommended but not required to advance"
+        hard: false

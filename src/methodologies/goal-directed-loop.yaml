@@ -1,0 +1,291 @@
+name: goal-directed-loop
+description: "6-phase base loop: objective → criteria → measure → strategy → evaluate → iterate"
+version: "0.1.0"
+phases:
+  - id: 0
+    name: "Context Loading"
+    role: null
+    guidance: |
+      Phase 0 — Context Loading
+
+      Before beginning any work on {{topic}}, inventory all relevant prior work that already exists.
+
+      Tasks:
+      - Search for existing work: memory files, prior notes, related documents, earlier sessions
+      - For each item found, note what it is and what it contributes to the current objective
+      - If no prior work exists, state this explicitly: "no prior work found — fresh start"
+
+      Do NOT begin analysis or planning yet. Only inventory.
+
+      Use these exact field names in your submission:
+        prior_work   — array of strings, at least 1 item (use ["none — fresh start"] if nothing exists)
+        summary      — string (what was found and how it relates to the current objective)
+
+      Submit when: you have listed at least one entry in prior_work (even if it is "none").
+    output_schema:
+      prior_work:
+        type: array
+        items: string
+        min_items: 1
+        description: "List of prior documents, notes, or sessions found. Use ['none — fresh start'] if nothing exists."
+      summary:
+        type: string
+        min_length: 1
+        description: "What was found and how it relates to the current objective"
+    invariants:
+      - id: prior_work_min_one
+        description: "prior_work must be a non-empty array"
+        hard: true
+      - id: summary_non_empty
+        description: "summary must be a non-empty string"
+        hard: true
+
+  - id: 1
+    name: "Objective Setting"
+    role: null
+    guidance: |
+      Phase 1 — Objective Setting
+
+      Define the objective for this session on {{topic}} at three levels:
+
+      Be level — What identity, values, or standards does success embody?
+        Example: "rigorous, citable, and actionable"
+
+      Do level — What must this session specifically accomplish?
+        Example: "identify the top 3 failure modes and their mitigations"
+
+      Motor level — What is the concrete, inspectable deliverable?
+        Example: "a written report with failure modes, mitigations, and confidence levels"
+
+      Then:
+      1. Write at least 3 acceptance criteria. Each must be checkable — true or false, or measurable.
+         BAD:  "The research is thorough"
+         GOOD: "Covers all 3 failure modes identified in phase 0 with at least one mitigation each"
+
+      2. List at least 2 priority questions this session must answer.
+
+      Use these exact field names in your submission:
+        be_level              — string (identity/values that success embodies)
+        do_level              — string (the specific task this session must accomplish)
+        motor_level           — string (the concrete, inspectable deliverable)
+        acceptance_criteria   — array of strings, at least 3 items
+        priority_questions    — array of strings, at least 2 items
+
+      Submit when: all three levels defined, at least 3 criteria written, at least 2 questions listed.
+    output_schema:
+      be_level:
+        type: string
+        min_length: 1
+        description: "Identity/values that success embodies"
+      do_level:
+        type: string
+        min_length: 1
+        description: "The specific task this session must accomplish"
+      motor_level:
+        type: string
+        min_length: 1
+        description: "The concrete, inspectable deliverable"
+      acceptance_criteria:
+        type: array
+        items: string
+        min_items: 3
+        description: "Checkable acceptance criteria — each must be falsifiable"
+      priority_questions:
+        type: array
+        items: string
+        min_items: 2
+        description: "Priority questions this session must answer"
+    invariants:
+      - id: be_level_non_empty
+        description: "be_level must be a non-empty string"
+        hard: true
+      - id: do_level_non_empty
+        description: "do_level must be a non-empty string"
+        hard: true
+      - id: motor_level_non_empty
+        description: "motor_level must be a non-empty string"
+        hard: true
+      - id: acceptance_criteria_min_three
+        description: "acceptance_criteria must contain at least 3 items"
+        hard: true
+      - id: priority_questions_min_two
+        description: "priority_questions must contain at least 2 items"
+        hard: true
+
+  - id: 2
+    name: "Expectation Measurement"
+    role: null
+    guidance: |
+      Phase 2 — Expectation Measurement
+
+      Measure the current state against the acceptance criteria you defined in Phase 1.
+
+      For each criterion, write one assessment entry in this format:
+        "<criterion text>: <score or status> — <reasoning>"
+
+      Example:
+        "Covers all 3 failure modes: 0/3 — no research done yet, baseline is zero"
+
+      Then estimate the overall delta: how close are we to fully achieving the objective?
+        0.0 = nothing done, starting from zero
+        1.0 = objective fully achieved, all criteria met
+
+      This is a baseline measurement taken BEFORE executing the strategy. It establishes
+      the gap the strategy must close.
+
+      Use these exact field names in your submission:
+        criterion_assessments — array of strings, at least 1 item
+        delta_estimate        — number between 0.0 and 1.0
+
+      Submit when: one assessment per criterion, delta_estimate between 0.0 and 1.0.
+    output_schema:
+      criterion_assessments:
+        type: array
+        items: string
+        min_items: 1
+        description: "One entry per acceptance criterion: 'criterion: score/status — reasoning'"
+      delta_estimate:
+        type: number
+        min_value: 0
+        max_value: 1
+        description: "Overall delta estimate from 0.0 (nothing done) to 1.0 (fully achieved)"
+    invariants:
+      - id: criterion_assessments_min_one
+        description: "criterion_assessments must contain at least 1 entry"
+        hard: true
+      - id: delta_estimate_range
+        description: "delta_estimate must be a number between 0.0 and 1.0"
+        hard: true
+
+  - id: 3
+    name: "Strategy"
+    role: null
+    guidance: |
+      Phase 3 — Strategy
+
+      Design the actions that will move the delta toward 1.0.
+
+      For each action:
+      - State what you will do (action)
+      - State the expected delta contribution (expected_delta): e.g., "+0.3", "closes criterion 2"
+
+      Order actions by expected impact — highest impact first.
+
+      Write a scope note: what are you explicitly NOT doing in this strategy?
+      This prevents scope creep and makes the strategy honest about its limits.
+
+      Minimum 2 actions required.
+
+      Use these exact field names in your submission:
+        actions     — array of objects, at least 2 items. Each: { "action": "...", "expected_delta": "..." }
+        scope_note  — string (what is explicitly out of scope for this strategy)
+
+      Submit when: at least 2 actions listed with expected deltas, scope_note written.
+    output_schema:
+      actions:
+        type: array
+        items: object
+        min_items: 2
+        description: "Ordered list of actions. Each item: {action: string, expected_delta: string}"
+      scope_note:
+        type: string
+        min_length: 1
+        description: "What is explicitly out of scope for this strategy"
+    invariants:
+      - id: actions_min_two
+        description: "actions must contain at least 2 items"
+        hard: true
+      - id: scope_note_non_empty
+        description: "scope_note must be a non-empty string"
+        hard: true
+
+  - id: 4
+    name: "Evaluation"
+    role: null
+    guidance: |
+      Phase 4 — Evaluation
+
+      Evaluate the results of the Phase 3 strategy.
+
+      For each criterion from Phase 1, write one change entry:
+        "<criterion>: <before score> → <after score> — <what changed and why>"
+
+      Update the delta estimate based on actual results.
+
+      Write an overall assessment: what worked, what did not, what remains open.
+
+      Use these exact field names in your submission:
+        criterion_changes    — array of strings, at least 1 item
+        delta_estimate       — number between 0.0 and 1.0
+        overall_assessment   — string (what worked, what did not, what remains open)
+
+      Submit when: criterion_changes has one entry per criterion, delta_estimate updated, overall_assessment written.
+    output_schema:
+      criterion_changes:
+        type: array
+        items: string
+        min_items: 1
+        description: "One entry per criterion: 'criterion: before → after — explanation'"
+      delta_estimate:
+        type: number
+        min_value: 0
+        max_value: 1
+        description: "Updated delta estimate after executing the strategy"
+      overall_assessment:
+        type: string
+        min_length: 1
+        description: "Summary: what worked, what did not, what remains open"
+    invariants:
+      - id: criterion_changes_min_one
+        description: "criterion_changes must contain at least 1 entry"
+        hard: true
+      - id: delta_estimate_range
+        description: "delta_estimate must be a number between 0.0 and 1.0"
+        hard: true
+      - id: overall_assessment_non_empty
+        description: "overall_assessment must be a non-empty string"
+        hard: true
+
+  - id: 5
+    name: "Iteration"
+    role: null
+    guidance: |
+      Phase 5 — Iteration
+
+      Make an explicit stop/continue decision.
+
+      Review:
+      - Updated delta from Phase 4
+      - Which acceptance criteria are met, which are not
+      - Whether another iteration would meaningfully close remaining gaps
+
+      Decision options:
+      - "stop"     — sufficient value delivered; the deliverable meets the objective
+      - "continue" — unmet criteria justify another loop; a follow-on session is needed
+
+      The rationale must reference specific criteria. Vague rationales are not accepted.
+
+      GOOD: "continue — criteria 2 and 3 unmet; next session should focus on mitigation strategies"
+      BAD:  "continue — more research needed"
+
+      Use these exact field names in your submission:
+        decision   — string, must be exactly "stop" or "continue"
+        rationale  — string (specific, criterion-referenced rationale for the decision)
+
+      Submit when: decision is "stop" or "continue", rationale is specific and criterion-referenced.
+    output_schema:
+      decision:
+        type: string
+        enum: ["stop", "continue"]
+        description: "Explicit stop or continue decision"
+      rationale:
+        type: string
+        min_length: 1
+        description: "Criterion-referenced rationale for the decision"
+    invariants:
+      - id: decision_valid
+        description: "decision must be 'stop' or 'continue'"
+        hard: true
+      - id: rationale_non_empty
+        description: "rationale must be a non-empty string"
+        hard: true
