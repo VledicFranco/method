@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "method": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/method/src/index.ts"]
+    }
+  }
+}
