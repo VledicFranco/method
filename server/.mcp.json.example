@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "method": {
-      "type": "http",
-      "url": "http://localhost:47821/mcp"
-    }
-  }
-}

@@ -1,9 +1,0 @@
-node_modules/
-dist/
-tmp/
-.claude/
-.mcp.json
-web/dist/
-.next/
-.env.local
-# drizzle/ migrations must be committed — do NOT add drizzle/ here
