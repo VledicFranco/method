@@ -6,6 +6,7 @@ dist/
 docs/impl/*
 !docs/impl/README.md
 !docs/impl/prompt-*.md
+!docs/impl/*-phasedoc.md
 
 # volatile artifacts
 tmp/*
