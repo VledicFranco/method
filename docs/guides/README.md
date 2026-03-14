@@ -11,9 +11,11 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 5 | [Software Delivery (P2)](05-software-delivery.md) | Delivery teams | The full PRD-to-audit loop, all 7 methods, worked example |
 | 6 | [Project Cards & Instantiation](06-project-cards.md) | Project leads | How to parameterize a methodology for your project |
 | 7 | [Compilation Gates (G0-G6)](07-compilation-gates.md) | Method designers | What each gate checks, common failures, how to fix them |
+| 8 | [Prompting Methodology Agents](08-prompting-methodology-agents.md) | Agent operators | How to write orchestrator prompts, based on 4 production sessions |
 
 ## How to read these guides
 
 - **Using the system?** Start with Guides 1-2 (concepts), then 4 or 5 (whichever methodology you're using), then 6 (project cards).
+- **Running agents?** Read Guide 8 (prompting) after Guides 1-2. It includes a template and empirical evidence.
 - **Designing methods?** Read all guides in order, especially 3 and 7.
 - **Just curious?** Guide 1 is self-contained and gives you the core idea in 5 minutes.
