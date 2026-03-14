@@ -1,9 +1,9 @@
-import type { Step, LoadedMethod, SessionStatus } from './types.js';
+import type { LoadedMethod, SessionStatus, AdvanceResult, CurrentStepResult } from './types.js';
 
 export type Session = {
   load(method: LoadedMethod): void;
-  current(): Step;
-  advance(): { previousStep: string; nextStep: string | null };
+  current(): CurrentStepResult;
+  advance(): AdvanceResult;
   status(): SessionStatus;
   isLoaded(): boolean;
 };
@@ -25,20 +25,36 @@ export function createSession(): Session {
       currentIndex = 0;
     },
 
-    current(): Step {
+    current(): CurrentStepResult {
       const m = assertLoaded();
-      return m.steps[currentIndex];
+      return {
+        methodologyId: m.methodologyId,
+        methodId: m.methodId,
+        stepIndex: currentIndex,
+        totalSteps: m.steps.length,
+        step: m.steps[currentIndex],
+      };
     },
 
-    advance(): { previousStep: string; nextStep: string | null } {
+    advance(): AdvanceResult {
       const m = assertLoaded();
       if (currentIndex >= m.steps.length - 1) {
         throw new Error('Already at terminal step — method is complete');
       }
-      const previousStep = m.steps[currentIndex].id;
+      const previousStep = { id: m.steps[currentIndex].id, name: m.steps[currentIndex].name };
       currentIndex++;
-      const nextStep = m.steps[currentIndex].id;
-      return { previousStep, nextStep };
+      const atTerminal = currentIndex >= m.steps.length - 1;
+      const nextStep = atTerminal
+        ? null
+        : { id: m.steps[currentIndex].id, name: m.steps[currentIndex].name };
+      return {
+        methodologyId: m.methodologyId,
+        methodId: m.methodId,
+        previousStep,
+        nextStep,
+        stepIndex: currentIndex,
+        totalSteps: m.steps.length,
+      };
     },
 
     status(): SessionStatus {

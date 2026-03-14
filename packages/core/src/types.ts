@@ -39,6 +39,23 @@ export type SessionStatus = {
   totalSteps: number;
 };
 
+export type AdvanceResult = {
+  methodologyId: string;
+  methodId: string;
+  previousStep: { id: string; name: string };
+  nextStep: { id: string; name: string } | null;
+  stepIndex: number;
+  totalSteps: number;
+};
+
+export type CurrentStepResult = {
+  methodologyId: string;
+  methodId: string;
+  stepIndex: number;
+  totalSteps: number;
+  step: Step;
+};
+
 export type TheoryResult = {
   source: string;
   section: string;
