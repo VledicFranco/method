@@ -2,12 +2,20 @@ methodology:
   id: P0-META
   name: "Genesis Methodology for the Meta-Method Family"
   formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
-  version: "1.0"
+  version: "1.1"
   status: compiled
-  compilation_date: "2026-03-12"
+  compilation_date: "2026-03-14"
   formal_grounding: "theory/F1-FTH.md §7"
   source_document: "P0-META/P0-META.md"
   supersedes: "P0-META/M1-MDES/family-proposals.md"
+  changes_from_v1_0: >
+    Tier-1 compliance fixes (2026-03-14): declared nat sort; added in_meta_family,
+    deprecated, self_consistent predicates to Pi; added active_registry predicate (Tier-2);
+    fixed Ax-1 (mutual exclusion with deprecated); added Ax-7 (deprecated exclusion),
+    Ax-8 (active_registry uniqueness); fixed Ax-6 (meta_family -> in_meta_family);
+    fixed delta_META arm 5 (deprecated guard); O_META and nu_META de-parametrized from T
+    via active_registry; renamed derived_predicates section with clarifying note;
+    nu_META term clarified for M4-MINS and M7-DTID arms.
 
 domain_theory:
   id: D_META
@@ -46,6 +54,9 @@ domain_theory:
     - name: Domain
       cardinality: unbounded
       description: "A many-sorted signature+axioms pair D = (Sigma, Ax)"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — codomain of target_size; built-in numeric type, not a domain entity"
 
   function_symbols:
     - name: status
@@ -69,6 +80,9 @@ domain_theory:
     - name: proposed
       signature: "Method"
       description: "m exists as a design proposal, not yet compiled"
+    - name: deprecated
+      signature: "Method"
+      description: "m has been formally retired — no longer actively maintained or instantiated"
     - name: has_gap
       signature: "Method x Gap"
       description: "gap g has been identified in compiled method m from execution evidence"
@@ -93,8 +107,28 @@ domain_theory:
     - name: composition_in_scope
       signature: "Method x Method x TargetRegistry"
       description: "the composite of m1;m2 is a declared target in T"
+    - name: in_meta_family
+      signature: "Method"
+      description: "m is a member of the P0-META repertoire (M1-MDES, M2-MDIS, M3-MEVO, M4-MINS, M5-MCOM, M6-MAUD, M7-DTID)"
+    - name: self_consistent
+      signature: "Method"
+      description: >
+        m passes M1-MDES sigma_6 self-application gate — its domain theory is internally
+        consistent with all gates holding. Operationalized by running M1-MDES sigma_6
+        against m. Promoted from known_wip to formal predicate in v1.1.
+    - name: active_registry
+      signature: "TargetRegistry"
+      description: >
+        T is the target registry declared for the current META run. Exactly one T satisfies
+        this predicate at any time (Ax-8). Encodes the scope parameter as a state component,
+        making O_META and nu_META proper predicates over Mod(D_META) with no free parameters.
 
-  derived_predicates:
+  defined_predicates:
+    note: >
+      The following are Sigma-definable abbreviations — closed formulas expressible entirely
+      in the primitive predicates of Pi above. They are defined symbols, not primitive
+      predicate symbols; their semantics is fully determined by their definition. They
+      appear in O_META, nu_META, and delta_META conditions as abbreviations only.
     - name: high_gap
       signature: "Method"
       definition: "exists g. has_gap(m, g) AND severity(g) IN {HIGH, CRITICAL}"
@@ -104,8 +138,8 @@ domain_theory:
 
   axioms:
     - id: Ax-1
-      statement: "forall m. compiled(m) -> NOT proposed(m)"
-      rationale: "Compilation is a terminal transition from proposed status."
+      statement: "forall m. compiled(m) -> NOT proposed(m) AND NOT deprecated(m)"
+      rationale: "Compilation is a terminal active status; compiled methods are neither proposals nor retired."
     - id: Ax-2
       statement: "forall m g. has_gap(m, g) -> compiled(m)"
       rationale: "Gaps exist only for compiled methods. Proposed methods have incompleteness, not gaps."
@@ -117,10 +151,19 @@ domain_theory:
       rationale: "Only compiled methods are instantiated."
     - id: Ax-5
       statement: "forall T. target_size(T) in nat"
-      rationale: "Target scope is finite — foundational condition for ν_META."
+      rationale: "Target scope is finite — foundational condition for nu_META."
     - id: Ax-6
-      statement: "forall m in meta_family. compiled(m) -> lifecycle_pos(m) in {design, evolution, instantiation, composition, audit, derivation}"
-      rationale: "Every compiled meta-method occupies a defined lifecycle position."
+      statement: "forall m. in_meta_family(m) AND compiled(m) -> lifecycle_pos(m) in {design, evolution, instantiation, composition, audit, derivation}"
+      rationale: "Every compiled meta-method occupies a defined lifecycle position; discovery is pre-compile only."
+    - id: Ax-7
+      statement: "forall m. deprecated(m) -> NOT compiled(m) AND NOT proposed(m)"
+      rationale: "Deprecated methods are formally retired; mutually exclusive with compiled and proposed."
+    - id: Ax-8
+      statement: "exists! T. active_registry(T)"
+      rationale: >
+        Exactly one target registry is active at any META run, declared by the meta-architect
+        at initialization. Encodes T as a proper state component, eliminating the free parameter
+        from O_META and nu_META. (Tier-2 fix — promotes T from parameter to state predicate.)
 
 roles:
   - id: meta-architect
@@ -133,7 +176,7 @@ roles:
       sub_theory: D_META
       note: "pi_{meta-arch} = id — full domain visibility required to evaluate delta_META"
     authorized_transitions:
-      - "Declare a target registry T (scope declaration)"
+      - "Declare a target registry T by asserting active_registry(T) in the initial state (Ax-8)"
       - "Invoke any compiled method in the meta-family repertoire per delta_META"
       - "Record method completion: mark compiled, close gap records, register instances"
       - "Extend T when new work is discovered mid-run (with justification)"
@@ -141,25 +184,28 @@ roles:
     not_authorized:
       - "Execute the dispatched meta-method directly"
       - "Modify gap severity records retroactively"
-      - "Evaluate delta_META without a declared target registry T"
+      - "Evaluate delta_META without a declared target registry T (active_registry must hold)"
     coverage_claim: "G3-C1: all D_META predicates used in delta_META are in Sigma_{meta-arch}"
     authority_claim: "G3-C2: all registry state changes produced by delta_META outputs are in alpha_{meta-arch}"
 
 objective:
   formal_statement: >
     O_META(s) ≡
-      (forall m. in_scope(m, T) -> compiled_clean(m, T))
-      AND (forall m in meta_family. compiled(m) -> self_consistent(m))
+      (forall T. active_registry(T) ->
+        forall m. in_scope(m, T) -> compiled_clean(m, T))
+      AND (forall m. in_meta_family(m) AND compiled(m) -> self_consistent(m))
   note: >
-    self_consistent(m) is checked operationally by running M1-MDES sigma_6 gate
-    against m. Carry-forward: promote to formal D_META predicate in v2.0.
+    T is state-encoded via active_registry(T) (Ax-8) — O_META is a proper predicate
+    over Mod(D_META) with no free parameters. self_consistent is now a formal predicate
+    in D_META (v1.1); operationalized by running M1-MDES sigma_6 against m.
 
   progress_preorder:
     statement: >
       s1 ≼ s2 iff
-        |compiled_clean(s1, T)| >= |compiled_clean(s2, T)|
-        AND |{m | high_gap(m) AND in_scope(m,T)}|_s1 <= |{m | high_gap(m) AND in_scope(m,T)}|_s2
-    note: "Product preorder — both components must hold. Terminal states are maximal."
+        (let T1 = unique T s.t. active_registry(T, s1); T2 = unique T s.t. active_registry(T, s2)):
+        |compiled_clean(s1, T1)| >= |compiled_clean(s2, T2)|
+        AND |{m | high_gap(m) AND in_scope(m, T1)}|_s1 <= |{m | high_gap(m) AND in_scope(m, T2)}|_s2
+    note: "Product preorder — both components must hold. Terminal states are maximal. T read from state via active_registry."
 
   success_profile:
     - id: mu_1
@@ -174,10 +220,10 @@ objective:
       priority: 2
     - id: mu_3
       name: meta_family_health
-      formula: "|self_consistent_meta_methods(s)| / |meta_family|"
+      formula: "|{m | in_meta_family(m) AND self_consistent(m)}(s)| / |{m | in_meta_family(m)}(s)|"
       range: "[0, 1]"
       priority: 3
-    note: "Lexicographic priority: mu_1 > mu_2 > mu_3"
+    note: "Lexicographic priority: mu_1 > mu_2 > mu_3. T resolved via active_registry(T, s)."
 
 transition_function:
   id: delta_META
@@ -221,11 +267,12 @@ transition_function:
 
     - priority: 5
       label: structural_audit
-      condition: "exists m in T. NOT compiled(m, s) AND NOT proposed(m, s)"
+      condition: "exists m in T. NOT compiled(m, s) AND NOT proposed(m, s) AND NOT deprecated(m, s)"
       selects: M6-MAUD
       rationale: >
-        An informal method (no formal record) is in scope. Audit formalizes it
-        before informal practice drifts further from theory.
+        An informal method (no formal record, not retired) is in scope. Audit formalizes
+        it before informal practice drifts further from theory. Guard against deprecated
+        methods added in v1.1 — deprecated methods do not route to M6-MAUD.
 
     - priority: 6
       label: implementation_derivation
@@ -248,13 +295,19 @@ transition_function:
 
     - priority: 8
       label: terminate
-      condition: "O_META(s) OR all_remaining_conditions_blocked_by_wip"
+      condition: "O_META(s) OR (arms 1-7 all evaluate false)"
       selects: None
+      note: >
+        Formal expansion: NOT(exists m in T. high_gap(m)) AND NOT(domain_sketch_ready fires)
+        AND NOT(needs_instantiation fires) AND NOT(composable_pair fires)
+        AND NOT(informal_unrecorded fires) AND NOT(has_impl_target fires)
+        AND NOT(informal_no_sketch fires). Informal shorthand retained for readability.
 
 termination:
   certificate_id: nu_META
   formula: >
-    nu_META(s, T) =
+    nu_META(s) =
+      let T = unique TargetRegistry s.t. active_registry(T, s) in
       (target_size(T) - |compiled_clean(s, T)|) * W_method
       + sum_{m in T} |high_gaps(m, s)| * W_gap
   weights:
@@ -264,17 +317,27 @@ termination:
   bound: "bounded above by target_size(T) * W_method + max_gaps * W_gap for fixed T"
   decrease_per_invocation:
     - arm: M1-MDES
-      effect: "compiles one method → |compiled_clean| increases by >= 1 → first term decreases"
+      effect: "compiles one method → |compiled_clean| increases by >= 1 → first term strictly decreases"
     - arm: M3-MEVO
-      effect: "closes HIGH gap → second term decreases by >= 1; first term increases by 1 if last gap"
+      effect: "closes HIGH gap → second term decreases by >= 1; if last gap on m, compiled_clean(m) holds → first term decreases"
     - arm: M4-MINS
-      effect: "completes instantiation → pending_instantiation removed from scope contribution"
+      effect: "clears needs_instantiation(m, ctx) → arm 3 condition weakens"
+      note: >
+        nu_META does not directly decrease numerically for M4-MINS (instantiation does not
+        increase compiled_clean or close gaps). Arm 3 fires only while instantiation is pending;
+        once cleared it cannot re-fire for the same (m, ctx). Known-WIP: formal nu-decrease
+        argument requires showing no arm 3 re-fire without prior arm-1 or arm-6 decrease.
     - arm: M5-MCOM
-      effect: "compiles composite → |compiled_clean| increases by 1 → first term decreases"
+      effect: "compiles composite method → |compiled_clean| increases by 1 → first term strictly decreases"
     - arm: M6-MAUD
-      effect: "formalizes informal method → method promoted to proposed or compiled"
+      effect: "formalizes informal method → promotes to proposed or compiled → arm 5 condition clears for m"
+      note: "If audit result is compiled, first term decreases. If proposed, arm 5 clears and arm 2 may fire next."
     - arm: M7-DTID
-      effect: "completes derivation → has_impl_target(m) satisfied → arm condition no longer fires"
+      effect: "completes derivation → has_impl_target(m) no longer holds → arm 6 condition clears for m"
+      note: >
+        nu_META does not directly decrease numerically for M7-DTID (derivation does not
+        increase compiled_clean or close gaps). Arm 6 fires only while impl target is pending.
+        Known-WIP: formal nu-decrease argument mirrors M4-MINS case.
 
 inter_method_coherence:
   retraction_pairs:
@@ -296,8 +359,13 @@ inter_method_coherence:
       project: "extracts composite method; registers in registry"
     - id: RP-5
       to: M6-MAUD
-      embed: "projects informal method artifact into D_MAUD (shares structure with D_MDES sigma_5)"
+      embed: "projects informal method artifact into D_MAUD"
       project: "extracts MAUD report; updates method status"
+      note: >
+        D_MAUD is the domain theory of M6-MAUD. It shares structural overlap with D_MDES
+        (the audit reviews the same gate structure) but is a distinct domain theory.
+        D_MAUD requires explicit declaration when M6-MAUD compiles. Tier-2 open item:
+        RP-5 embed/project cannot be formally verified until D_MAUD is declared.
     - id: RP-6
       to: M7-DTID
       embed: "projects compiled method and implementation target spec into D_DTID"
@@ -305,7 +373,15 @@ inter_method_coherence:
     - id: RP-7
       to: M2-MDIS
       status: WIP
-      note: "Not declared. Unblocks when M2-MDIS compiles."
+      embed: >
+        type-level sketch: embed_MDIS maps (domain d s.t. informal_practice(d) AND
+        NOT domain_sketch_ready(d)) into D_MDIS as initial discovery state
+      project: >
+        type-level sketch: project_MDIS extracts domain_sketch_ready artifact,
+        asserting domain_sketch_ready(d) in D_META state
+      note: >
+        M2-MDIS is proposed. Retraction pair declared at type level only; formal
+        embed/project functions require D_MDIS declaration, which blocks on M2-MDIS compile.
 
 known_wip:
   - id: M2-MDIS
@@ -315,6 +391,15 @@ known_wip:
   - id: nu_META_weights
     status: open
     description: "W_method and W_gap have no calibrated values; first empirical runs will calibrate"
-  - id: self_consistent_predicate
+  - id: nu_META_M4_M7_decrease
     status: open
-    description: "self_consistent(m) is operationally defined (run sigma_6) but not formal in D_META"
+    description: >
+      Arms M4-MINS and M7-DTID clear their firing conditions but do not directly decrease
+      nu_META's numeric value. Formal termination argument requires showing these arms cannot
+      re-fire without another arm having already strictly decreased nu_META.
+  - id: D_MAUD_declaration
+    status: open
+    description: >
+      M6-MAUD's domain theory D_MAUD is referenced in RP-5 but not formally declared.
+      Requires M6-MAUD compile pass to produce D_MAUD specification. Blocks formal
+      verification of RP-5 retraction condition.
