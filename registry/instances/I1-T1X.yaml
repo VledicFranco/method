@@ -1,0 +1,18 @@
+instance:
+  id: I1-T1X
+  project: t1-cortex
+  description: "MCP-native AI governance gateway for enterprise Claude deployments"
+  methodology: P2-SD
+  methodology_version: "2.0"
+  card_location: "t1-cortex/.method/project-card.yaml"
+  instance_date: "2026-03-14"
+  status: active
+  methods_instantiated: [M1-IMPL, M2-DIMPL, M3-PHRV, M4-DDAG]
+  delivery_rule_count: 20
+  role_notes_count: 6
+  migrated_from: "P2-SI/M1-IMPL/I1-T1X (10 handwritten role files R1-R10)"
+  notes: >
+    First MIC instance. Migrated from 10 handwritten I1-T1X role files + D_T1X
+    domain extension proposal to project card format (2026-03-14). Card validated
+    against original role files — 9/9 active roles covered, 2 minor items deferred
+    to supplementary guidance. See tmp/I1-T1X-card-analysis.yaml for validation.

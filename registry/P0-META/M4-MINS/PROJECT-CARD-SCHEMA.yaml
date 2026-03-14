@@ -298,12 +298,230 @@ example_cards:
       full-surface security, drift every 3 phases). 3 role notes (orchestrator,
       reviewer, impl_sub_agent). Replaces 10 handwritten role files.
 
+card_placement:
+  description: >
+    Where the project card lives, how it's named, and how the agent discovers it.
+
+  location: >
+    The project card lives in the PROJECT REPO, not in pv-method. It is a project
+    artifact, not a method artifact. The card describes what's specific to this project —
+    it belongs with the project's other configuration and documentation.
+
+  recommended_paths:
+    primary: ".method/project-card.yaml"
+    alternative: "organon/project-card.yaml"
+    convention: >
+      .method/ is preferred — it mirrors .claude/ and .github/ as a project-level
+      configuration directory. organon/ is acceptable for projects that already use
+      the organon documentation pattern (e.g., t1-cortex).
+
+  naming: >
+    The file is always named project-card.yaml. One card per project per methodology.
+    If a project uses two methodologies (e.g., P2-SD for delivery and P1-EXEC for
+    ad-hoc execution), it has two cards:
+      .method/project-card-P2-SD.yaml
+      .method/project-card-P1-EXEC.yaml
+
+  discovery: >
+    An agent starting a session in a project repo looks for the card at:
+    1. .method/project-card.yaml (primary)
+    2. .method/project-card-{methodology}.yaml (if multiple methodologies)
+    3. organon/project-card.yaml (fallback)
+    If no card found: the project has not been instantiated. The agent operates
+    with the abstract methodology directly (no project-specific constraints).
+
+  gitignore: >
+    The project card is COMMITTED to the repo. It is a versioned configuration
+    artifact, not ephemeral. Changes to the card are reviewed like any other
+    project configuration change.
+
+  claude_md_integration: >
+    The project's CLAUDE.md should reference the card:
+      "This project uses P2-SD methodology. Project-specific constraints are in
+      .method/project-card.yaml. Load the card at session start."
+    This ensures the agent discovers the card without searching.
+
+usage:
+  description: >
+    When to use the card, when not to, and how the agent consumes it at runtime.
+
+  when_to_create:
+    - "A project adopts a methodology (P2-SD, P1-EXEC, etc.) for the first time"
+    - "A project has been using a methodology informally and wants to formalize its constraints"
+    - "An existing hand-authored instance (like I1-T1X) needs to be migrated to card format"
+
+  when_not_to_create:
+    - "The project has no methodology-specific constraints — the abstract methodology is sufficient"
+    - "The project is a one-off or prototype where method formalism adds no value"
+    - "The constraints are purely runtime (e.g., 'use M1-COUNCIL when the design is contested') — these belong in P1-EXEC's delta_EXEC predicates, not in the card"
+
+  who_creates:
+    primary: "The project lead or tech lead who understands the project's constraints"
+    not: "A method theorist — the card is deliberately designed to require only project knowledge"
+    review: >
+      Card changes should be reviewed by someone who has run sessions on the project.
+      Delivery rules that are too strict produce friction; rules that are too loose
+      let drift accumulate. Calibrate from execution experience.
+
+  how_agent_uses_card:
+    session_start: >
+      1. Agent reads CLAUDE.md → discovers card path.
+      2. Agent reads the card → loads context, delivery_rules, role_notes.
+      3. Agent identifies which methodology method is being invoked (via delta_SD or direct).
+      4. Agent filters delivery_rules to those with applies_to matching the current method.
+      5. Agent applies role_notes for the role it occupies.
+      6. Agent executes with the abstract method's guidance + card's constraints layered on top.
+    constraint_application: >
+      Card constraints are ADDITIVE — they supplement the abstract method's guidance,
+      not replace it. The agent follows the abstract step DAG, applies the abstract
+      pre/post conditions, AND also enforces the card's delivery_rules. If a card rule
+      conflicts with the abstract method, the card rule takes precedence (project-specific
+      overrides general).
+    runtime_example: >
+      Agent starts a M2-DIMPL session on t1-cortex.
+      1. Reads card → finds DR-01 (Metals MCP mandatory for M2-DIMPL).
+      2. Reads card → finds DR-03 (Source Verification Worksheet for orchestrator).
+      3. Reads card → finds DR-05 (structural dissent for qa_sub_agent).
+      4. At sigma_0 (Decompose): applies abstract M2-DIMPL sigma_0 guidance + card constraints.
+      5. At sigma_2 (Gate A): dispatches qa_sub_agent with DR-05 dissent protocol active.
+      6. At sigma_3 (Gate B): dispatches sec_arch_sub_agent with DR-08 full-surface scope.
+
+  how_to_evolve_the_card:
+    adding_rules: >
+      When a new project-specific constraint is identified (e.g., from a post-phase
+      review or drift audit), add a new delivery_rule with a unique id (DR-NN).
+      The constraint takes effect on the next session without regenerating the instance.
+    removing_rules: >
+      When a constraint is no longer needed (e.g., a temporary restriction during a
+      migration), remove the delivery_rule. Document the removal in git commit message.
+    updating_context: >
+      When the project's tech stack changes (e.g., build tool migration), update the
+      context section. All methods that reference build/test/lint commands pick up
+      the change automatically.
+    versioning: >
+      The card does not have a formal version field — git history IS the version.
+      The methodology_version field tracks which abstract methodology version the card
+      targets. Update this when the methodology upgrades and the card is confirmed
+      compatible.
+
+instance_tracking:
+  description: >
+    How to track which instances have been produced from which cards, and how to
+    manage the card-instance-methodology relationship over time.
+
+  instance_registry:
+    description: >
+      The method registry (pv-method) tracks ABSTRACT methodologies and methods.
+      Project instances are tracked in a separate section of the registry — an
+      instance index that maps project cards to their derived instances.
+    location: "pv-method/registry/instances/"
+    structure: |
+      registry/instances/
+        I1-T1X.yaml          ← instance record (NOT the full instance — just the tracking entry)
+        I2-SILKY.yaml         ← another project instance
+        ...
+
+  instance_record_schema:
+    description: >
+      A lightweight tracking entry in the registry. Records what was instantiated,
+      from what card, at what methodology version. Does NOT contain the full
+      derived instance — that lives in the project repo.
+    fields:
+      - name: id
+        type: string
+        description: "Instance identifier, e.g. I1-T1X"
+      - name: project
+        type: string
+        description: "Project name"
+      - name: methodology
+        type: string
+        description: "Which methodology was instantiated"
+      - name: methodology_version
+        type: string
+        description: "Version of the methodology at instantiation time"
+      - name: card_location
+        type: string
+        description: "Path to the project card in the project repo"
+      - name: instance_date
+        type: string
+        description: "When the instance was last derived"
+      - name: status
+        type: enum
+        values: [active, stale, migrating, retired]
+        description: >
+          active: card and methodology are in sync.
+          stale: methodology has upgraded but instance not regenerated.
+          migrating: card is being updated for a new methodology version.
+          retired: project no longer uses this methodology.
+      - name: methods_instantiated
+        type: array
+        items: string
+        description: "Which methods in the methodology have project-specific overrides"
+      - name: delivery_rule_count
+        type: integer
+        description: "Number of delivery rules in the card"
+      - name: notes
+        type: string
+        required: false
+    example: |
+      instance:
+        id: I1-T1X
+        project: t1-cortex
+        methodology: P2-SD
+        methodology_version: "2.0"
+        card_location: "t1-cortex/.method/project-card.yaml"
+        instance_date: "2026-03-14"
+        status: active
+        methods_instantiated: [M1-IMPL, M2-DIMPL, M3-PHRV, M4-DDAG]
+        delivery_rule_count: 20
+        notes: "Migrated from 10 handwritten I1-T1X role files to MIC format."
+
+  staleness_detection:
+    description: >
+      How to detect when an instance is out of sync with its methodology.
+    mechanism: >
+      The instance record's methodology_version is compared against the registry's
+      current version of that methodology. If they differ:
+        - Compatible upgrade: status = stale, regenerate instance.
+        - Incompatible upgrade: status = migrating, card needs updates.
+    check_frequency: >
+      Check at session start. If the agent loads a card targeting P2-SD v2.0 but
+      the registry has P2-SD v3.0, warn the user and suggest regeneration.
+    automated_check: >
+      A simple version comparison: card.methodology_version vs registry methodology
+      version. If different, surface the discrepancy before proceeding.
+
+  lifecycle:
+    creation: >
+      1. Project lead writes the project card (.method/project-card.yaml).
+      2. M4-MINS derives the instance (or agent applies card at runtime without explicit derivation).
+      3. An instance record is created in pv-method/registry/instances/{id}.yaml.
+    update_card: >
+      1. Project lead edits the card (adds/removes delivery rules, updates context).
+      2. Instance is regenerated (or agent picks up changes at next session start).
+      3. Instance record's instance_date is updated.
+    update_methodology: >
+      1. Methodology upgrades (e.g., P2-SD v2.0 → v3.0).
+      2. Instance record's status changes to stale.
+      3. Project lead reviews card compatibility with new version.
+      4. If compatible: update card.methodology_version, regenerate instance.
+      5. If incompatible: update card delivery_rules/role_notes, then regenerate.
+      6. Instance record's status returns to active.
+    retirement: >
+      1. Project stops using the methodology.
+      2. Instance record's status changes to retired.
+      3. Card remains in project repo (historical reference) but is no longer loaded.
+
 implementation_status:
-  schema: proposed
-  derivation_engine: not_yet_built
-  example_card: in_memory
+  schema: "proposed v0.1"
+  card_placement: "specified"
+  usage_guide: "specified"
+  instance_tracking: "specified"
+  derivation_engine: "not yet built"
+  prototype: "validated (t1-cortex card reproduces I1-T1X, see tmp/I1-T1X-card-analysis.yaml)"
   next_steps:
-    - "Prototype: write t1-cortex card, manually derive instance, compare to I1-T1X"
-    - "Validate: does the derived instance produce equivalent operational behavior?"
+    - "Create registry/instances/ directory and I1-T1X.yaml tracking entry"
+    - "Place the t1-cortex card in the t1-cortex project repo at .method/project-card.yaml"
+    - "Add card discovery instructions to t1-cortex CLAUDE.md"
+    - "Test: run a P2-SD session on t1-cortex using the card instead of I1-T1X role files"
     - "Build: extend M4-MINS sigma_0 to accept project cards with this schema"
-    - "Evolve: update M4-MINS step guidance to reference derivation_rules"
