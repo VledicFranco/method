@@ -64,8 +64,11 @@ All six ArchDocs verified accessible (sigma_0).
 - **Files:** `packages/mcp/src/index.ts`
 - **Acceptance:**
   - `step_advance` JSON includes all enriched fields
+  - Terminal step (`nextStep: null`) returns the full enriched JSON response, not plain text. Remove the current plain-text special case.
   - `step_current` JSON includes context envelope
   - `methodology_load` returns structured JSON with `methodologyId`, `methodId`, `methodName`, `stepCount`, `objective`, `firstStep`, `message`
+  - For `methodology_load`, construct the structured response in MCP from the `LoadedMethod` object returned by `loadMethodology()`. Fields `methodologyId`, `methodId`, `name` (as `methodName`), `objective`, and `steps.length` (as `stepCount`) are available on `LoadedMethod`. `firstStep` is `steps[0]` `{id, name}`. This is response formatting, not business logic — acceptable under DR-04.
+  - If `LoadedMethod.objective` is null, include `"objective": null` in the response — do not omit the field.
   - No new tools or dependencies
 
 ### Task 4: P2-CORE — Unicode normalization for theory lookup

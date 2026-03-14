@@ -50,7 +50,7 @@ Tool responses are JSON-stringified core return values. The MCP layer does not c
 
 ```json
 {
-  "methodologyId": "M1-MDES",
+  "methodologyId": "P0-META",
   "methodId": "M1-MDES",
   "methodName": "Method Design from Established Domain Knowledge",
   "stepCount": 7,
@@ -66,16 +66,18 @@ Context envelope — gives the agent its position within the method alongside th
 
 ```json
 {
-  "methodologyId": "M1-MDES",
+  "methodologyId": "P0-META",
   "methodId": "M1-MDES",
   "stepIndex": 0,
   "totalSteps": 7,
   "step": {
     "id": "S1",
     "name": "Domain Retraction",
+    "role": "designer",
+    "precondition": "Domain literature reviewed",
+    "postcondition": "Retracted principles documented",
     "guidance": "...",
-    "preconditions": ["..."],
-    "output_schema": { "...": "..." }
+    "outputSchema": { "...": "..." }
   }
 }
 ```
@@ -86,7 +88,7 @@ Enriched with navigation context — previous/next step identifiers and position
 
 ```json
 {
-  "methodologyId": "M1-MDES",
+  "methodologyId": "P0-META",
   "methodId": "M1-MDES",
   "previousStep": { "id": "S1", "name": "Domain Retraction" },
   "nextStep": { "id": "S2", "name": "Morphism Framing" },
