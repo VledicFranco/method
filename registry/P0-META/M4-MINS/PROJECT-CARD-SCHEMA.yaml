@@ -1,0 +1,309 @@
+specification:
+  id: MIC-SCHEMA
+  name: "Method Instance Card (MIC) — Project Card Schema"
+  parent: M4-MINS
+  version: "0.1"
+  status: proposed
+  date: "2026-03-14"
+  description: >
+    Defines the concrete schema for M4-MINS's ProjectContext sort. A project card
+    is a lightweight YAML document that a project author writes to parameterize an
+    abstract methodology for their specific project. M4-MINS reads the card and
+    produces the project instance as a derived artifact.
+
+formal_grounding:
+  sort_instantiated: ProjectContext
+  method: M4-MINS
+  theory: "F1-FTH §6.3 (domain retraction)"
+  relationship: >
+    The project card IS the ProjectContext that M4-MINS sigma_0 receives as input.
+    This schema makes the ProjectContext sort concrete — defining its fields, types,
+    and constraints so project authors can fill it out without knowledge of formal
+    method theory.
+
+motivation:
+  before: >
+    I1-T1X (t1-cortex instance of M1-IMPL) = 10 handwritten role files + domain
+    extension proposal. ~500 lines of markdown, deeply coupled to M1-IMPL v3.1
+    internal structure. Each new project requires a comparable manual effort.
+  after: >
+    One project card (~50-80 lines YAML) + derived instance. The card is human-authored
+    without formal theory. The instance is regenerated from card + abstract methodology.
+    New project = fill out card template. Methodology upgrade = regenerate instance.
+  key_property: >
+    Instance = M4-MINS(AbstractMethodology_version, ProjectCard_version).
+    Both inputs versioned independently. The instance is a derived artifact.
+
+schema:
+  project_card:
+    description: "The top-level object a project author writes."
+
+    identity:
+      fields:
+        - name: id
+          type: string
+          required: true
+          description: "Instance identifier, e.g. I1-T1X"
+          convention: "I{N}-{ProjectCode}"
+        - name: project
+          type: string
+          required: true
+          description: "Human-readable project name"
+        - name: methodology
+          type: enum
+          required: true
+          description: "Which abstract methodology this card instantiates"
+          values: [P0-META, P1-EXEC, P2-SD]
+          note: "Extensible as new methodologies are added to the registry"
+        - name: methodology_version
+          type: string
+          required: true
+          description: "Version of the abstract methodology this card targets"
+          example: "2.0"
+
+    context:
+      description: >
+        Technical environment of the project. These values propagate to every method
+        in the methodology that touches source code, compilation, testing, or tooling.
+      fields:
+        - name: language
+          type: string
+          required: true
+          example: "Scala 3"
+        - name: build_command
+          type: string
+          required: true
+          example: "sbt compile"
+        - name: test_command
+          type: string
+          required: true
+          example: "sbt test"
+        - name: lint_command
+          type: string
+          required: false
+          example: "scalafmt --check"
+        - name: language_server
+          type: string
+          required: false
+          description: "Language server for symbol navigation"
+          example: "Metals"
+        - name: language_server_protocol
+          type: string
+          required: false
+          description: "How the language server is accessed"
+          example: "MCP"
+        - name: additional_tools
+          type: array
+          items: object
+          required: false
+          description: "Other tools the project requires for execution"
+          item_fields:
+            - name: name
+              type: string
+            - name: purpose
+              type: string
+            - name: protocol
+              type: string
+
+    architecture:
+      description: >
+        Paths to project documentation artifacts. These tell methods where to find
+        architecture specs, PRDs, gaps, and other reference documents.
+      fields:
+        - name: docs_root
+          type: string
+          required: true
+          description: "Root path for project documentation"
+          example: "docs/"
+        - name: architecture_path
+          type: string
+          required: true
+          description: "Path to architecture spec directory"
+          example: "docs/arch/"
+        - name: prd_path
+          type: string
+          required: false
+          description: "Path to PRD documents"
+          example: "docs/prds/"
+        - name: gaps_path
+          type: string
+          required: false
+          description: "Path to known architectural gaps file"
+          example: "docs/arch/gaps.md"
+        - name: implementation_path
+          type: string
+          required: false
+          description: "Path to implementation docs (phases, sessions, reviews)"
+          example: "docs/impl/"
+
+    delivery_rules:
+      description: >
+        Project-specific constraints on how methodology methods execute. Written as
+        prose rules — no formal theory required. Each rule names which methods and
+        roles it affects. The instantiation process (M4-MINS) derives formal
+        constraints from these prose rules.
+      type: array
+      items:
+        fields:
+          - name: id
+            type: string
+            required: true
+            description: "Rule identifier, e.g. DR-1"
+          - name: rule
+            type: string
+            required: true
+            description: "The constraint in plain language"
+          - name: applies_to
+            type: array
+            items: string
+            required: true
+            description: "Method IDs this rule affects"
+          - name: affects_roles
+            type: array
+            items: string
+            required: false
+            description: "Role IDs within those methods that this rule constrains"
+          - name: protocol
+            type: string
+            required: false
+            description: "Named protocol this rule enforces, if any"
+            examples: ["structural_dissent", "pre_dispatch_verification"]
+          - name: artifact
+            type: string
+            required: false
+            description: "Named artifact this rule requires, if any"
+            examples: ["source_verification_worksheet", "coverage_trace_matrix"]
+          - name: trigger
+            type: string
+            required: false
+            description: "Condition that activates this rule, if conditional"
+            examples: ["phase_count % 3 == 0", "multi_task_scope = true"]
+
+    role_notes:
+      description: >
+        Per-role operational guidance specific to this project. Keys are role IDs
+        from the methodology's methods. Values are prose notes that override or
+        supplement the abstract method's role descriptions.
+      type: object
+      keys: "role IDs (e.g., orchestrator, reviewer, impl_sub_agent)"
+      value_fields:
+        - name: default_mode
+          type: boolean
+          required: false
+          description: "Whether this role is the default execution mode"
+        - name: note
+          type: string
+          required: true
+          description: "Project-specific operational guidance for this role"
+
+    domain_extensions:
+      description: >
+        Optional explicit domain theory extensions for advanced users. Most project
+        authors will not fill this out — M4-MINS derives domain extensions from
+        delivery_rules automatically. This section is for cases where the author
+        wants direct control over the formal extension.
+      required: false
+      fields:
+        - name: sorts
+          type: array
+          items: object
+          description: "Additional sorts for the project domain"
+        - name: predicates
+          type: array
+          items: object
+          description: "Additional predicates for the project domain"
+        - name: axioms
+          type: array
+          items: object
+          description: "Additional axioms for the project domain"
+
+derivation_rules:
+  description: >
+    How M4-MINS transforms card fields into instance components. These rules define
+    the systematic mapping from Layer 1 (human-authored card) to Layer 2 (formal
+    instance).
+  rules:
+    - input: "context.language + context.language_server"
+      output: "tool constraints on impl_sub_agent, qa_sub_agent roles"
+      mechanism: >
+        If language_server is declared: add tool_requirements to affected roles
+        (impl_sub_agent gets "use {language_server} for symbol navigation").
+        If language_server_protocol = MCP: add constraint "Do not use Read/Grep
+        for symbol lookup — use {language_server} MCP tools."
+
+    - input: "context.build_command, context.test_command, context.lint_command"
+      output: "compile_exit, test validation, lint check bindings in M1-IMPL/M2-DIMPL"
+      mechanism: >
+        Map to the function symbols that M1-IMPL's Ax-I_compile, Ax-I_test, Ax-I_lint
+        reference. The instance's compile_exit function calls build_command; the
+        test validation calls test_command; lint_verify calls lint_command.
+
+    - input: "delivery_rules with protocol field"
+      output: "role override with named protocol"
+      mechanism: >
+        Generate a role override clause: the affected role's guidance is supplemented
+        with the protocol's behavioral rules. E.g., structural_dissent protocol adds:
+        "Produce independent findings before reading any prior review."
+
+    - input: "delivery_rules with artifact field"
+      output: "pre-step artifact requirement"
+      mechanism: >
+        Generate a precondition extension on the affected step: the artifact must
+        exist before the step can execute. E.g., source_verification_worksheet
+        becomes a precondition on M2-DIMPL sigma_1 (Dispatch).
+
+    - input: "delivery_rules with trigger field"
+      output: "conditional invocation rule on delta_SD"
+      mechanism: >
+        Generate a governance binding: the trigger condition determines when the
+        affected method is invoked. E.g., "phase_count % 3 == 0" becomes a condition
+        on delta_SD's audit arm.
+
+    - input: "architecture paths"
+      output: "artifact path bindings in all methods"
+      mechanism: >
+        Map architecture_path, gaps_path, prd_path to the path references in method
+        guidance blocks. M6-ARFN reads from architecture_path; M5-PLAN reads from
+        prd_path; M4-DDAG reads from gaps_path for baseline.
+
+    - input: "role_notes"
+      output: "guidance overlay per role"
+      mechanism: >
+        Append role_notes.{role}.note to the abstract method's role description
+        and step guidance for that role. The note is additive — it supplements,
+        not replaces, the abstract guidance.
+
+version_compatibility:
+  compatible_upgrade: >
+    Card targets methodology_version X. Methodology upgrades to Y. Compatible if:
+    (1) all methods referenced in delivery_rules.applies_to still exist in Y,
+    (2) all roles referenced in delivery_rules.affects_roles still exist in Y,
+    (3) no axioms in Y contradict axioms derived from the card.
+    On compatible upgrade: regenerate instance with new methodology version.
+  incompatible_upgrade: >
+    If any referenced method or role is removed in Y: card needs migration.
+    M4-MINS sigma_0 should detect this and report: "Card references {method/role}
+    which does not exist in {methodology} v{Y}. Migration required."
+  card_upgrade: >
+    Card evolves (e.g., project changes build tool). Regenerate instance with same
+    methodology version. No methodology change needed. Instance picks up new
+    tool bindings automatically.
+
+example_cards:
+  t1_cortex:
+    file: "See memory/project_mic_system.md for the full t1-cortex card example"
+    summary: >
+      I1-T1X: P2-SD v2.0 instance for t1-cortex. Scala 3 + Metals MCP + sbt.
+      5 delivery rules (MCP navigation, structural dissent, source verification,
+      full-surface security, drift every 3 phases). 3 role notes (orchestrator,
+      reviewer, impl_sub_agent). Replaces 10 handwritten role files.
+
+implementation_status:
+  schema: proposed
+  derivation_engine: not_yet_built
+  example_card: in_memory
+  next_steps:
+    - "Prototype: write t1-cortex card, manually derive instance, compare to I1-T1X"
+    - "Validate: does the derived instance produce equivalent operational behavior?"
+    - "Build: extend M4-MINS sigma_0 to accept project cards with this schema"
+    - "Evolve: update M4-MINS step guidance to reference derivation_rules"
