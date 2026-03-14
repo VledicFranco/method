@@ -6,10 +6,115 @@ method:
     5-tuple M = (D, Roles, Γ, O, μ⃗). Produces a method document and a YAML encoding
     ready to load into the method server. The method compiles when it passes all seven
     acceptance gates (G0–G6) at σ₆.
-  version: "0.2"
-  status: draft
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
   source_document: "P0-META/M1-MDES/M1-MDES.md"
   formal_grounding: "theory/F1-FTH.md"
+
+domain_theory:
+  id: D_MDES
+  reference: "theory/F1-FTH.md §1"
+  note: >
+    D_MDES is the domain in which M1-MDES operates. The world is the method design workspace:
+    a knowledge corpus being crystallized and a method candidate being progressively assembled.
+    Initial states: corpus loaded, candidate empty. Terminal states: candidate compiled (all gates PASS).
+  sorts:
+    - name: KnowledgeCorpus
+      cardinality: unbounded
+      description: "The enumerated domain knowledge sources the designer reads prior to crystallization"
+    - name: MethodCandidate
+      cardinality: unbounded
+      description: "The method artifact under progressive construction — initially empty, terminally compiled"
+    - name: ComponentID
+      cardinality: finite
+      values: [DomainTheory, Roles, StepDAG, Objective, Measure]
+      description: "The five components of M = (D, Roles, Gamma, O, mu_vec)"
+    - name: Gate
+      cardinality: finite
+      values: [G0, G1, G2, G3, G4, G5, G6]
+      description: "The seven acceptance gates of the compilation check"
+    - name: Verdict
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "The outcome of a gate evaluation"
+    - name: SufficiencyChoice
+      cardinality: finite
+      values: [proceed, redirect]
+      description: "The sigma_0 decision: whether domain knowledge is sufficient to proceed"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — cardinality of declared component sets"
+
+  function_symbols:
+    - name: gate_verdict
+      signature: "MethodCandidate x Gate -> Option(Verdict)"
+      totality: partial
+      note: "None when gate has not yet been evaluated; Some(v) after sigma_6 evaluates it"
+    - name: declared_count
+      signature: "MethodCandidate -> nat"
+      totality: total
+      note: "The number of ComponentID values declared in the candidate (0 to 5)"
+
+  predicates:
+    - name: corpus_loaded
+      signature: "KnowledgeCorpus"
+      description: "KC has been read by the executing agent — precondition for sigma_0"
+    - name: corpus_sufficient
+      signature: "KnowledgeCorpus"
+      description: "KC passes the four-question sufficiency test (sigma_0 procedure)"
+    - name: sufficiency_decided
+      signature: "MethodCandidate x SufficiencyChoice"
+      description: "The go/proceed or go/redirect decision has been recorded for this design run"
+    - name: component_declared
+      signature: "MethodCandidate x ComponentID"
+      description: "Component k has been declared in candidate c"
+    - name: guidance_finalized
+      signature: "MethodCandidate"
+      description: "All step guidance in c is complete, structurally adequate, and constraints-first formatted"
+    - name: gate_evaluated
+      signature: "MethodCandidate x Gate"
+      description: "Gate g has been run against candidate c at sigma_6"
+    - name: all_gates_pass
+      signature: "MethodCandidate"
+      description: "All 7 gates have PASS verdicts against c"
+    - name: compiled
+      signature: "MethodCandidate"
+      description: "c is in the terminal state: passed all gates and registered"
+
+  axioms:
+    - id: Ax-1
+      statement: "forall c. compiled(c) <-> all_gates_pass(c)"
+      rationale: "Compilation is definitionally equivalent to all gates passing; no weaker condition suffices."
+    - id: Ax-2
+      statement: "forall c g v. gate_verdict(c, g) = Some(v) -> gate_evaluated(c, g)"
+      rationale: "A gate verdict is only available after evaluation — a partial function constraint."
+    - id: Ax-3
+      statement: "forall c. all_gates_pass(c) -> forall g. gate_verdict(c, g) = Some(PASS)"
+      rationale: "all_gates_pass requires each individual gate to carry a PASS verdict."
+    - id: Ax-4
+      statement: "forall c. guidance_finalized(c) -> component_declared(c, StepDAG)"
+      rationale: "Guidance is over steps; steps must be declared before guidance can be finalized."
+    - id: Ax-5
+      statement: "forall c. compiled(c) -> guidance_finalized(c)"
+      rationale: "Gate G5 checks guidance finalization; passing G5 implies guidance_finalized."
+    - id: Ax-6
+      statement: "forall c. declared_count(c) = |{k | component_declared(c, k)}|"
+      rationale: "declared_count is the cardinality of the declared ComponentID set — definitional."
+
+  initial_state_valid_claim: >
+    A state with corpus_loaded(KC) = true and no component_declared, no gate_evaluated,
+    compiled(c) = false satisfies all axioms: Ax-1 (false <-> false), Ax-2 through Ax-5
+    (antecedents all false, vacuously true), Ax-6 (declared_count = 0 = |{}|). Valid.
+  terminal_state_valid_claim: >
+    A state with all component_declared(c, k) for k in ComponentID, guidance_finalized(c),
+    all_gates_pass(c), compiled(c), gate_verdict(c, g) = Some(PASS) for all g satisfies all
+    axioms: Ax-1 (true <-> true), Ax-2 (Some(PASS) -> gate_evaluated: true), Ax-3 (PASS for all),
+    Ax-4 (StepDAG declared: true), Ax-5 (guidance_finalized: true), Ax-6 (count = 5). Valid.
+  domain_boundary_note: >
+    Excludes: the content of the domain being designed (D_target); the domain knowledge corpus
+    content beyond its loaded/sufficient status; the identity of the human or LLM executing the
+    method; execution history across sessions. D_MDES tracks assembly state only.
 
 roles:
   - id: designer
@@ -761,6 +866,59 @@ phases:
         - "repair_targets entries name specific missing fields or structural violations, not general guidance"
         - "CONDITIONAL verdicts name the specific condition that must hold for the gate to be treated as PASS"
 
+step_dag:
+  structure: linear_path
+  init: sigma_0
+  term: sigma_6
+  edges:
+    - sigma_0 -> sigma_1
+    - sigma_1 -> sigma_2
+    - sigma_2 -> sigma_3
+    - sigma_3 -> sigma_4
+    - sigma_4 -> sigma_5
+    - sigma_5 -> sigma_6
+  composability_claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_{sigma_0} asserts sufficiency_decided(c, proceed) with corpus_sufficient(KC).
+        pre_{sigma_1} requires sufficiency_decision = "proceed" and corpus read by agent.
+        The sigma_0 hard invariant "sufficiency_decision == proceed -> entity_classes_preview >= 3"
+        guarantees the knowledge state required by sigma_1 is achieved.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_{sigma_1} asserts component_declared(c, DomainTheory) with well_formed(D) —
+        at least one sort, at least one axiom, domain_boundary_note, initial/terminal state claims.
+        pre_{sigma_2} requires D = (Sigma, Ax) declared and well-formed.
+        The sigma_1 hard invariants are exactly the well-formedness conditions sigma_2 needs.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_{sigma_2} asserts component_declared(c, Objective) and component_declared(c, Measure).
+        pre_{sigma_3} requires D and O declared. D is declared (sigma_1 postcondition persists
+        in state); O and Measure are declared by sigma_2. Composability holds by cumulative state.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_{sigma_3} asserts component_declared(c, Roles) with covers(Roles, D) and authority coverage.
+        pre_{sigma_4} requires D, Roles, and O all declared. All three hold by cumulative postconditions:
+        sigma_1 (DomainTheory), sigma_2 (Objective, Measure), sigma_3 (Roles). Composability holds.
+    - edge: "sigma_4 -> sigma_5"
+      claim: >
+        post_{sigma_4} asserts component_declared(c, StepDAG): all steps declared with guidance
+        summaries and output schemas. pre_{sigma_5} requires exactly this.
+        Composability holds trivially — postcondition is the precondition.
+    - edge: "sigma_5 -> sigma_6"
+      claim: >
+        post_{sigma_5} asserts guidance_finalized(c): final_guidance_confirmed = "yes",
+        no open INADEQUATE or FORMAT-FAIL items, adequacy_results count = step count.
+        All five components are declared (cumulative from sigma_1 through sigma_4).
+        pre_{sigma_6} requires all five M-components declared AND guidance finalized.
+        post_{sigma_5} ⊆ pre_{sigma_6} by direct containment.
+  weakest_edge: "sigma_5 -> sigma_6"
+  weakest_edge_defense: >
+    The claim assumes declared_count(c) = 5 is guaranteed by sigma_5's precondition.
+    sigma_5's precondition requires sigma_4's postcondition, which requires all five components.
+    The chain is valid but long; a repair that skips sigma_4 could break it. Defense: sigma_6's
+    own pre-check (G1 through G4) will catch any missing component before compilation proceeds.
+
 termination_certificate:
   measure: "7 minus gates_passed_count"
   formal: "ν(s) = 7 − |{g ∈ {G0,...,G6} | g passes in state s}|"
@@ -804,14 +962,14 @@ objective:
 
 output_artifacts:
   - name: method_document
-    path_pattern: "M.00N-ACRO/M.00N-ACRO-{slug}.md"
-    description: "Full M-spec document with all five components"
+    path_pattern: "PNN-SLUG/MNN-SLUG/MNN-SLUG.md"
+    description: "Full method document with all five components (optional — YAML-only format accepted)"
   - name: yaml_encoding
-    path_pattern: "M.00N-ACRO/M.00N-ACRO.yaml"
-    description: "Machine-executable encoding for pv-method"
+    path_pattern: "PNN-SLUG/MNN-SLUG/MNN-SLUG.yaml"
+    description: "Compiled YAML encoding — primary artifact; loaded into pv-method registry"
   - name: registry_entry
-    path_pattern: "methods/README.md"
-    description: "Row in the Methods (M) registry table with ID, directory, and description"
+    path_pattern: "pv-method/registry/PNN-SLUG/MNN-SLUG/MNN-SLUG.yaml"
+    description: "Copy in pv-method registry after successful compilation"
 
 family:
   id: meta-methods
