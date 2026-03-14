@@ -2,273 +2,513 @@ methodology:
   id: P2-SD
   name: "Software Delivery Methodology"
   formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
-  version: "1.0"
+  version: "2.0"
   status: compiled
-  compilation_date: "2026-03-13"
-  supersedes: "P2-SI v1.0"
+  compilation_date: "2026-03-14"
+  supersedes: "P2-SD v1.0 (5-arm), P2-SI v1.0"
   niche: >
     LLM-assisted, gate-controlled delivery of typed-language software against
-    pre-existing PRD and architecture artifacts, organized in discrete sessions.
-    Excludes: product discovery, architecture design, deployment/ops, free-form research.
+    pre-existing PRD artifacts, organized in discrete sessions. Covers: PRD
+    sectioning, architecture refinement, phase planning, implementation
+    (single-agent and parallel), phase review, and cross-phase drift audit.
+    Excludes: product discovery, PRD writing, greenfield architecture design
+    (from scratch with no existing codebase), deployment/ops, free-form research.
 
 navigation:
   what: >
-    P2-SD receives a software delivery challenge and routes it to the appropriate
-    execution method. It classifies the challenge by task type and delegates — it does
-    not deliver anything directly.
+    P2-SD receives a software delivery challenge, classifies it by task type,
+    and routes it to the appropriate execution method. It does not deliver anything
+    directly — it evaluates delta_SD and dispatches. Seven task types map to seven
+    methods covering the full delivery loop: PRD sectioning, architecture refinement,
+    planning, implementation, review, and audit.
   who: >
     The dispatcher role — any agent (human or LLM) who receives a software delivery
     challenge and must decide which method to invoke.
   why: >
-    Seven structurally different delivery activities exist: PRD sectioning, architecture
-    refinement, planning, single-agent implementation, parallel implementation, phase
-    review, and drift audit. Each has a distinct input/output signature and execution
-    model. Routing must happen once, cleanly, before delivery work begins.
+    Seven structurally different delivery activities exist, each with a distinct
+    input/output signature, domain theory, and execution model. Routing the wrong
+    method to a challenge wastes effort (M1-COUNCIL on a simple implementation task)
+    or produces poor results (M3-TMP on a problem needing adversarial review).
+    delta_SD externalizes the routing decision into an explicit, auditable function.
   how: >
     Evaluate task_type(challenge, t) against the operationalization criteria. Apply
     delta_SD (7-arm priority stack). For implement challenges, additionally evaluate
     multi_task_scope to choose M1-IMPL vs M2-DIMPL.
-  when: >
-    Any time a software delivery challenge arrives within the niche. Entry point for
-    all T1X sessions. Not appropriate for discovery, architecture design, deployment,
-    or pure research tasks.
-
-  compilation_record:
-    result: PASS
-    gates:
-      G0: PASS
-      G1: PASS
-      G2: PASS
-      G3: PASS
-      G4: "PASS (RP-2/3/4/5 partially grounded; acceptable given known_wip)"
-      G5: PASS
-      G6: PASS
+  when_to_use:
+    - "A software delivery challenge arrives within the niche"
+    - "The executor is unsure which delivery method to invoke"
+    - "The full delivery loop needs orchestrating: PRD -> architecture -> plan -> implement -> review -> audit"
+  when_not_to_use:
+    - "Product discovery or PRD writing — outside niche"
+    - "Greenfield architecture with no existing codebase — outside niche"
+    - "Deployment, ops, infrastructure — outside niche"
+    - "Free-form research or exploration — outside niche"
+    - "A specific method is already identified — invoke it directly"
 
 domain_theory:
   id: D_Phi_SD
-  reference: "P2-SD/P2-SD.md §1"
   sorts:
     - name: Challenge
       cardinality: singleton_per_invocation
       description: "The software delivery task presented to the methodology"
     - name: TaskType
-      cardinality: finite_enum
+      cardinality: finite
       values: [section, architecture, plan, implement, review, audit]
       description: "The category of delivery work being requested"
     - name: MethodID
       cardinality: finite
-      description: "Opaque identifier for the selected method"
+      values: [M7-PRDS, M6-ARFN, M5-PLAN, M2-DIMPL, M1-IMPL, M3-PHRV, M4-DDAG]
+      description: "Identifier for the selected method"
+    - name: ExecutionResult
+      cardinality: singleton_per_invocation
+      description: "Terminal output produced by the selected method"
+    - name: State
+      cardinality: singleton_per_invocation
+      description: "Full execution state: { challenge, task_type, method_selected, result }"
+  function_symbols:
+    - name: classify
+      signature: "Challenge -> TaskType"
+      totality: total
+      description: "Determines the task type of a challenge"
+    - name: route
+      signature: "TaskType -> MethodID"
+      totality: total
+      description: "Maps task type to method (delta_SD's core logic)"
+      note: "For implement: additionally evaluates multi_task_scope to split M1-IMPL vs M2-DIMPL"
+    - name: method_selected
+      signature: "State -> Option(MethodID)"
+      totality: total
+      note: "None before classification; Some(M) after delta_SD returns"
+    - name: result_of
+      signature: "State -> Option(ExecutionResult)"
+      totality: total
+      note: "None until selected method completes"
   predicates:
     - name: task_type
-      signature: "Challenge x TaskType -> Bool"
+      signature: "Challenge x TaskType"
       description: "The challenge is of the given task type"
-      operationalization: "See P2-SD.md §1 — four-case operationalization (plan/implement/review/audit)"
     - name: multi_task_scope
-      signature: "Challenge -> Bool"
+      signature: "Challenge"
       description: >
-        The challenge decomposes into n >= 3 independent sub-tasks with fully declarable
-        scopes before execution begins. Only evaluated when task_type = implement.
-      operationalization: >
-        decomposable_before_execution(c) AND |subtasks(c)| >= 3. If M2-DIMPL sigma_0 rejects,
-        predicate was evaluated incorrectly — re-route to M1-IMPL.
+        The challenge decomposes into n >= 3 independent sub-tasks with fully
+        declarable scopes before execution begins. Only evaluated when task_type = implement.
     - name: dispatched
-      signature: "Challenge x MethodID -> Bool"
+      signature: "Challenge x MethodID"
       description: "The challenge was routed to the named method"
+    - name: is_method_selected
+      signature: "State"
+      description: "method_selected(s) != None"
+    - name: method_completed
+      signature: "State"
+      description: "The selected method has terminated and produced an ExecutionResult"
+    - name: addresses
+      signature: "ExecutionResult x Challenge"
+      description: "Result adequately addresses the challenge; operationalized as method-specific O_M satisfaction"
   axioms:
-    - id: Ax-0a
-      statement: "task_type(c, section) -> dispatched(c, M7-PRDS)"
-      rationale: "PRD sectioning challenge — decompose full PRD into plannable PRDSections."
-    - id: Ax-0b
-      statement: "task_type(c, architecture) -> dispatched(c, M6-ARFN)"
-      rationale: "Architecture refinement challenge — update ArchDoc to accommodate new requirements."
     - id: Ax-1
-      statement: "task_type(c, plan) -> dispatched(c, M5-PLAN)"
-      rationale: "Planning challenge — produce a PhaseDoc."
+      name: Task-type uniqueness
+      statement: "forall c : Challenge. exists! t : TaskType. task_type(c, t)"
+      rationale: "Each challenge has exactly one task type. Classification is deterministic."
     - id: Ax-2
-      statement: "task_type(c, implement) AND multi_task_scope(c) -> dispatched(c, M2-DIMPL)"
-      rationale: "Multi-task scope detected — parallel orchestration appropriate."
+      name: Routing uniqueness
+      statement: "forall c : Challenge. exists! m : MethodID. dispatched(c, m)"
+      rationale: "Exactly one method selected per challenge. No ambiguous routing."
     - id: Ax-3
-      statement: "task_type(c, implement) AND NOT multi_task_scope(c) -> dispatched(c, M1-IMPL)"
-      rationale: "Single-agent sequential execution is the default for implement challenges."
+      name: Routing totality
+      statement: >
+        forall c : Challenge, t : TaskType. task_type(c, t) ->
+          (t = section -> dispatched(c, M7-PRDS)) AND
+          (t = architecture -> dispatched(c, M6-ARFN)) AND
+          (t = plan -> dispatched(c, M5-PLAN)) AND
+          (t = implement AND multi_task_scope(c) -> dispatched(c, M2-DIMPL)) AND
+          (t = implement AND NOT multi_task_scope(c) -> dispatched(c, M1-IMPL)) AND
+          (t = review -> dispatched(c, M3-PHRV)) AND
+          (t = audit -> dispatched(c, M4-DDAG))
+      rationale: "Every task type maps to exactly one method. The seven arms are mutually exclusive and exhaustive (with implement split by multi_task_scope)."
     - id: Ax-4
-      statement: "task_type(c, review) -> dispatched(c, M3-PHRV)"
-      rationale: "Review challenge — evaluate phase against PRD and architecture."
+      name: Selection before completion
+      statement: "forall s : State. method_completed(s) -> is_method_selected(s)"
+      rationale: "A method cannot complete without having been selected."
     - id: Ax-5
-      statement: "task_type(c, audit) -> dispatched(c, M4-DDAG)"
-      rationale: "Audit challenge — cross-phase drift analysis."
-    - id: Ax-6
-      statement: "forall c. exists! m. dispatched(c, m)"
-      rationale: "Routing uniqueness — exactly one method selected per challenge."
-    - id: Ax-7
-      statement: "forall c. exists! t. task_type(c, t)"
-      rationale: "Task-type uniqueness — each challenge has exactly one type."
+      name: Single dispatch per invocation
+      statement: "forall s : State. |{invocations of delta_SD in this run}| = 1"
+      rationale: "delta_SD fires exactly once per challenge. No re-evaluation at the methodology level."
+  domain_boundary_note: >
+    Excludes: internal execution of the selected method (P2-SD sees only the terminal
+    result); the content domain of the software being built; PRD writing (product
+    discovery); greenfield architecture design; deployment and operations; execution
+    history across invocations. D_Phi_SD tracks routing state only.
+  initial_state_valid_claim: >
+    A state with Challenge present, method_selected = None, result_of = None,
+    method_completed = false satisfies all axioms: Ax-1 (challenge exists, can be
+    classified), Ax-2 (no dispatch yet — will hold after delta_SD), Ax-3 (not yet
+    applied), Ax-4 (method_completed false — vacuously true), Ax-5 (zero invocations).
+    Valid.
+  terminal_state_valid_claim: >
+    A state with method_selected = Some(M), method_completed = true, result_of =
+    Some(r), addresses(r, challenge) = true satisfies all axioms: Ax-1 (type was
+    classified), Ax-2 (one dispatch), Ax-3 (routing followed the rules), Ax-4
+    (completed -> selected: holds), Ax-5 (one invocation). Valid.
 
 roles:
   - id: dispatcher
     description: >
-      The agent (human or LLM) who evaluates delta_SD and invokes the selected method.
-      Holds full D_Phi_SD observability — appropriate given the domain is minimal.
-    observation_projection:
-      sub_theory: D_Phi_SD
-      note: "pi_dispatcher = id — full visibility over the minimal three-sort domain"
+      The agent (human or LLM) who evaluates delta_SD and invokes the selected
+      method. Holds full D_Phi_SD observability — appropriate given the domain
+      is minimal (three sorts for routing, no delivery state).
+    observation_projection: >
+      pi_dispatcher = id : Mod(D_Phi_SD) -> Mod(D_Phi_SD) — full visibility over
+      the minimal routing domain. Required to evaluate task_type and multi_task_scope.
     authorized_transitions:
-      - "Evaluate task_type(challenge, t) using §1 operationalization criteria"
+      - "Classify challenge: evaluate task_type(challenge, t)"
       - "Evaluate multi_task_scope(challenge) when task_type = implement"
-      - "Invoke the selected method per delta_SD"
+      - "Apply delta_SD: invoke the selected method via retraction pair"
       - "Record dispatched(challenge, method) before the selected method begins"
+      - "Receive result from completed method"
     not_authorized:
-      - "Execute delivery work directly"
+      - "Execute delivery work directly (method's own roles handle execution)"
       - "Modify the routing decision after the selected method has begun"
-    coverage_claim: "G3-C1: all D_Phi_SD predicates in Sigma_dispatcher; G3-C2: all routing state changes in alpha_dispatcher"
+      - "Override the selected method's domain theory or step structure"
+  coverage_claim: >
+    pi_dispatcher is identity over Mod(D_Phi_SD) — all routing state visible.
+    No dimension of the routing domain is unobservable. The dispatcher sees
+    Challenge, TaskType classification, MethodID selection, and ExecutionResult.
+  authority_claim: >
+    The dispatcher holds authority over all delta_SD transitions: classification,
+    routing, dispatch, and result reception. No required routing transition is
+    unauthorized. The selected method's internal transitions are authorized by
+    the method's own roles, not by the dispatcher.
+  role_partition_rationale: >
+    One role because the methodology is a pure routing function. The dispatcher
+    classifies and dispatches — it does not execute. Adding a second role (e.g.,
+    a separate classifier) would split classification from dispatch, but both
+    require the same state visibility and produce no epistemic benefit. One role
+    is minimal for a routing methodology.
 
-objective:
-  formal_statement: >
-    O_SD(s) = dispatched(c, m) AND O_m(s_final)
-    where O_m is the objective of the selected method:
-      M1-IMPL: all tasks complete, no unresolved CRITICAL/HIGH discrepancies, all invariants hold
-      M2-DIMPL: covers(Integration, Challenge) AND consistent(Integration) AND all sub-tasks complete
-      M3-PHRV: reviewReport_produced(s) AND verdict_recorded(s)
-      M4-DDAG: driftReport_produced(s)
-      M5-PLAN: phaseDoc_produced(s) AND phaseDoc_validates(s, PRDSection)
-  note: "P2-SD does not carry delivery state — satisfaction is delegated to the selected method."
-  termination:
-    certificate_id: nu_SD
-    formula: "nu_SD = 1"
-    rationale: >
-      delta_SD fires exactly once per challenge. No re-entry loop at the methodology level.
-      Each selected method carries its own termination certificate.
+predicate_operationalization:
+  note: >
+    Each task_type value must be evaluable by the dispatcher at invocation time.
+    The following criteria provide concrete True/False conditions.
+  predicates:
+    - name: "task_type = section"
+      true_when: >
+        The challenge is a full PRD document (not a single section) that needs to be
+        decomposed into plannable PRDSections. The PRD covers multiple features or
+        domains that should be delivered incrementally.
+      false_when: >
+        The PRD is already a single section, or the challenge is not about PRD decomposition.
+    - name: "task_type = architecture"
+      true_when: >
+        A new PRD or PRDSection requires changes to the system architecture. Existing
+        architecture docs are stale, missing, or don't cover the new requirements.
+        M5-PLAN or M1-IMPL needs an ArchDoc that doesn't yet reflect current requirements.
+      false_when: >
+        The architecture is unchanged by the new PRD. Existing ArchDoc fully covers
+        the requirements. No architectural impact identified.
+    - name: "task_type = plan"
+      true_when: >
+        A PRDSection exists with up-to-date ArchDoc, and a PhaseDoc is needed for
+        the next implementation cycle. The input is a section-level requirement, not
+        a full PRD.
+      false_when: >
+        No PRDSection exists (need M7-PRDS first). No ArchDoc exists (need M6-ARFN first).
+        A PhaseDoc already exists for this section.
+    - name: "task_type = implement"
+      true_when: >
+        A PhaseDoc exists with tasks ready for execution. go_no_go_decision = TRUE
+        from M1-IMPL Phase A (or the phase is ready for fresh execution).
+      false_when: >
+        No PhaseDoc exists (need M5-PLAN first). The challenge is about planning,
+        reviewing, or auditing — not implementing.
+    - name: multi_task_scope
+      true_when: >
+        The PhaseDoc has >= 3 tasks with non-overlapping file scopes, all boundaries
+        declarable before execution, and no execution dependencies between tasks.
+      false_when: >
+        Tasks share state, fewer than 3 tasks, or decomposition requires exploratory execution.
+    - name: "task_type = review"
+      true_when: >
+        A phase has completed via M1-IMPL or M2-DIMPL and the delivered work needs
+        evaluation against PRD and architecture. A ReviewReport is needed.
+      false_when: >
+        The phase is still in progress. The task is to fix issues, not find them.
+        Cross-phase analysis is needed (use audit instead).
+    - name: "task_type = audit"
+      true_when: >
+        3+ phases have completed since last drift audit. M3-PHRV findings show
+        recurring patterns. Architecture docs have been updated and prior phases
+        may not conform.
+      false_when: >
+        Fewer than 2 completed phases available. Single-phase review is sufficient.
+  evaluation_order: >
+    1. Is this a full PRD needing sectioning? If yes: section.
+    2. Does the architecture need updating for new requirements? If yes: architecture.
+    3. Is a PhaseDoc needed? If yes: plan.
+    4. Is implementation work ready? If yes: implement (evaluate multi_task_scope).
+    5. Has a phase completed and needs review? If yes: review.
+    6. Are 3+ phases due for drift analysis? If yes: audit.
 
 transition_function:
   id: delta_SD
+  formal_type: "delta_SD : Mod(D_Phi_SD) -> Option(Method)"
   evaluation_order: priority_stack
+  note: >
+    Conditions evaluated in strict priority order. First condition that holds
+    determines the selection. Priority order reflects the delivery pipeline:
+    upstream activities (sectioning, architecture) before downstream (implementation,
+    review, audit).
   arms:
     - priority: 1
       label: section
-      condition: "task_type(challenge, section) = TRUE"
-      selects: M7-PRDS
-      note: "Full PRD needs sectioning before planning. M7-PRDS produces SectionMap."
+      condition: "NOT is_method_selected(s) AND task_type(challenge, section)"
+      returns: "Some(M7-PRDS)"
+      rationale: "Full PRD needs sectioning before any downstream work."
     - priority: 2
       label: architecture
-      condition: "task_type(challenge, architecture) = TRUE"
-      selects: M6-ARFN
-      note: "Architecture refinement needed before planning. M6-ARFN produces/updates ArchDoc."
+      condition: "NOT is_method_selected(s) AND task_type(challenge, architecture)"
+      returns: "Some(M6-ARFN)"
+      rationale: "Architecture refinement needed — ArchDoc is a prerequisite for planning and implementation."
     - priority: 3
       label: plan
-      condition: "task_type(challenge, plan) = TRUE"
-      selects: M5-PLAN
+      condition: "NOT is_method_selected(s) AND task_type(challenge, plan)"
+      returns: "Some(M5-PLAN)"
+      rationale: "PRDSection + ArchDoc ready — produce PhaseDoc for implementation."
     - priority: 4
-      label: orchestrated
-      condition: "task_type(challenge, implement) = TRUE AND multi_task_scope(challenge) = TRUE"
-      selects: M2-DIMPL
+      label: orchestrated_implement
+      condition: "NOT is_method_selected(s) AND task_type(challenge, implement) AND multi_task_scope(challenge)"
+      returns: "Some(M2-DIMPL)"
+      rationale: "Multi-task scope — parallel orchestration with quality gates."
     - priority: 5
       label: implement
-      condition: "task_type(challenge, implement) = TRUE"
-      selects: M1-IMPL
+      condition: "NOT is_method_selected(s) AND task_type(challenge, implement)"
+      returns: "Some(M1-IMPL)"
+      rationale: "Single-agent sequential implementation — default for implement challenges."
     - priority: 6
       label: review
-      condition: "task_type(challenge, review) = TRUE"
-      selects: M3-PHRV
+      condition: "NOT is_method_selected(s) AND task_type(challenge, review)"
+      returns: "Some(M3-PHRV)"
+      rationale: "Phase completed — post-implementation review."
     - priority: 7
       label: audit
-      condition: "task_type(challenge, audit) = TRUE"
-      selects: M4-DDAG
+      condition: "NOT is_method_selected(s) AND task_type(challenge, audit)"
+      returns: "Some(M4-DDAG)"
+      rationale: "Cross-phase drift analysis."
+    - priority: 8
+      label: terminate
+      condition: "is_method_selected(s) AND method_completed(s)"
+      returns: "None"
+    - priority: 9
+      label: executing
+      condition: "is_method_selected(s) AND NOT method_completed(s)"
+      returns: "None"
+      note: "Method is running — no re-evaluation until completion."
+
+termination_certificate:
+  id: nu_SD
+  definition: "nu_SD(s) = 1 - |{delta_SD invocations in this run}|"
+  initial_value: 1
+  final_value: 0
+  decrease_witness: >
+    delta_SD fires exactly once per challenge (Ax-5). After the single invocation,
+    a method is selected and executing (arms 8-9 return None). nu_SD decreases from
+    1 to 0. Each selected method carries its own termination certificate — P2-SD
+    does not need to guarantee the selected method terminates, only that routing
+    terminates.
 
 retraction_pairs:
   - id: RP-1
+    to: M7-PRDS
+    status: declared
+    embed:
+      signature: "embed_PRDS : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_PRDS)"
+      definition: "embed_PRDS(s) = { prd := s.challenge, arch_docs := available_architecture }"
+    project:
+      signature: "project_PRDS : Mod(D_PRDS)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_PRDS(t) = { result := ExecutionResult(t.section_map), method_completed := true }"
+    retraction_verification: "project_PRDS(embed_PRDS(s)).challenge = s.challenge — trivially true"
+  - id: RP-2
+    to: M6-ARFN
+    status: declared
+    embed:
+      signature: "embed_ARFN : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_ARFN)"
+      definition: "embed_ARFN(s) = { prd_input := s.challenge, existing_architecture := current_arch_docs }"
+    project:
+      signature: "project_ARFN : Mod(D_ARFN)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_ARFN(t) = { result := ExecutionResult(t.arch_doc), method_completed := true }"
+    retraction_verification: "project_ARFN(embed_ARFN(s)).challenge = s.challenge — trivially true"
+  - id: RP-3
+    to: M5-PLAN
+    status: declared
+    embed:
+      signature: "embed_PLAN : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_PLAN)"
+      definition: "embed_PLAN(s) = { prd_section := s.challenge, arch_docs := current_arch_docs, phase_history := prior_phases }"
+    project:
+      signature: "project_PLAN : Mod(D_PLAN)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_PLAN(t) = { result := ExecutionResult(t.phase_doc), method_completed := true }"
+    retraction_verification: "project_PLAN(embed_PLAN(s)).challenge = s.challenge — trivially true"
+  - id: RP-4
+    to: M2-DIMPL
+    status: declared
+    embed:
+      signature: "embed_DIMPL : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_DIMPL)"
+      definition: "embed_DIMPL(s) = { phase_doc := s.challenge.phase_doc }"
+    project:
+      signature: "project_DIMPL : Mod(D_DIMPL)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_DIMPL(t) = { result := ExecutionResult(t.session_log), method_completed := true }"
+    retraction_verification: "project_DIMPL(embed_DIMPL(s)).challenge = s.challenge — trivially true"
+  - id: RP-5
     to: M1-IMPL
     status: grounded
-    embed: >
-      embed_IMPL: Challenge -> Mod(D_SI). Challenge statement -> initial PhaseDoc + Task set;
-      challenge scope -> authorized SourceFile and ArchDoc sets; challenge constraints ->
-      OrgDoc invariants in scope.
-    project: >
-      project_IMPL: Mod(D_SI)_final -> Mod(D_Phi_SD). O_SI_IMPL(s_final) -> O_Phi_SD satisfied;
-      MutationRecord -> auditable record of work.
-    retraction_condition: "project_IMPL o embed_IMPL = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
-    granularity: type-level
-  - id: RP-2
-    to: M2-DIMPL
-    status: partial
-    embed: >
-      embed_ORCH: Challenge -> Mod(D_ORCH). Challenge maps to D_ORCH.Challenge (same sort,
-      different domain); challenge scope -> initial SubTask decomposition at sigma_1.
-    project: >
-      project_ORCH: Mod(D_ORCH)_final -> Mod(D_Phi_SD). VerificationOutcome = PASS ->
-      O_Phi_SD satisfied; Integration artifact -> auditable output.
-    retraction_condition: "project_ORCH o embed_ORCH = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
-    granularity: type-level
-    note: "Partial: M2-DIMPL is a stub."
-  - id: RP-3
+    embed:
+      signature: "embed_IMPL : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_SI)"
+      definition: >
+        embed_IMPL(s) = { phase_doc := s.challenge.phase_doc, source_files := authorized_scope,
+        arch_docs := current_arch_docs, org_docs := org_invariants }
+    project:
+      signature: "project_IMPL : Mod(D_SI)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_IMPL(t) = { result := ExecutionResult(t.mutation_record), method_completed := true }"
+    retraction_verification: "project_IMPL(embed_IMPL(s)).challenge = s.challenge — trivially true"
+  - id: RP-6
     to: M3-PHRV
-    status: partial
-    embed: >
-      embed_PHRV: Challenge -> Mod(D_PHRV). Challenge (review type) -> PhaseResult + ArchDocs
-      input model; review scope -> authorized artifact sets.
-    project: >
-      project_PHRV: Mod(D_PHRV)_final -> Mod(D_Phi_SD). ReviewReport produced ->
-      O_Phi_SD satisfied; Verdict recorded -> auditable output.
-    retraction_condition: "project_PHRV o embed_PHRV = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
-    granularity: type-level
-    note: "Partial: M3-PHRV pending compile."
-  - id: RP-4
+    status: declared
+    embed:
+      signature: "embed_PHRV : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_PHRV)"
+      definition: "embed_PHRV(s) = { phase_artifact := s.challenge.phase_output, arch_docs := current_arch_docs }"
+    project:
+      signature: "project_PHRV : Mod(D_PHRV)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_PHRV(t) = { result := ExecutionResult(t.review_report), method_completed := true }"
+    retraction_verification: "project_PHRV(embed_PHRV(s)).challenge = s.challenge — trivially true"
+  - id: RP-7
     to: M4-DDAG
-    status: partial
-    embed: >
-      embed_DDAG: Challenge -> Mod(D_DDAG). Challenge (audit type) -> SessionHistory(N) model;
-      audit scope -> N most recent sessions.
-    project: >
-      project_DDAG: Mod(D_DDAG)_final -> Mod(D_Phi_SD). DriftReport produced ->
-      O_Phi_SD satisfied; DriftReport -> auditable output.
-    retraction_condition: "project_DDAG o embed_DDAG = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
-    granularity: type-level
-    note: "Partial: M4-DDAG pending compile."
-  - id: RP-5
-    to: M5-PLAN
-    status: partial
-    embed: >
-      embed_PLAN: Challenge -> Mod(D_PLAN). Challenge (plan type) -> PRDSection +
-      PhaseHistory + ArchDocs model; planning scope -> PRD section boundaries.
-    project: >
-      project_PLAN: Mod(D_PLAN)_final -> Mod(D_Phi_SD). PhaseDoc produced and validated ->
-      O_Phi_SD satisfied; PhaseDoc -> handoff artifact for next implementation invocation.
-    retraction_condition: "project_PLAN o embed_PLAN = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
-    granularity: type-level
-    note: "M5-PLAN compiled v1.0. RP-5 upgrade to verified pending formal embed/project check."
+    status: declared
+    embed:
+      signature: "embed_DDAG : Mod(D_Phi_SD)[pre-dispatch] -> Mod(D_DDAG)"
+      definition: "embed_DDAG(s) = { audit_window := last_N_phases, arch_docs := current_arch_docs }"
+    project:
+      signature: "project_DDAG : Mod(D_DDAG)[terminal] -> Mod(D_Phi_SD)[post-method]"
+      definition: "project_DDAG(t) = { result := ExecutionResult(t.drift_report), method_completed := true }"
+    retraction_verification: "project_DDAG(embed_DDAG(s)).challenge = s.challenge — trivially true"
+
+objective:
+  id: O_Phi_SD
+  formal: >
+    O_Phi_SD(s) =
+      method_completed(s)
+      AND result_of(s) != None
+      AND addresses(result_of(s), s.challenge)
+  type: terminal
+  expressible_claim: >
+    O_Phi_SD references method_completed (declared predicate over State), result_of
+    (declared function symbol State -> Option(ExecutionResult)), addresses (declared
+    predicate over ExecutionResult x Challenge). All symbols are in Sigma_Phi_SD.
+    O_Phi_SD is expressible as a closed sentence over Mod(D_Phi_SD).
+  addresses_operationalization: >
+    addresses(r, c) is operationalized as the selected method's objective O_M being
+    satisfied: O_M(s_final) -> addresses(r, c). This is stronger than PO judgment —
+    it's structural satisfaction of the method's own terminal condition. Each method's
+    O_M is defined in its own domain theory.
+  progress_preorder:
+    name: "leq_Phi_SD"
+    definition: >
+      Total chain over three canonical states:
+        s_0 (challenge received, not classified) < s_1 (method selected, executing)
+        < s_2 (method completed, O_Phi_SD = true).
+      Well-founded: three states, strict total order, s_2 is maximal.
+  success_profile:
+    - id: mu_1
+      name: method_completion
+      formula: "1 if method_completed(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_1 = 1 is necessary for O_Phi_SD. Tracks whether delta_SD successfully
+        dispatched a method and it terminated.
+    - id: mu_2
+      name: result_existence
+      formula: "1 if result_of(s) != None else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_2 = 1 is necessary for O_Phi_SD. A completed method that produces no
+        result is a method-level failure propagated to methodology level.
 
 known_wip:
-  - id: M2-DIMPL
-    status: compiled_v1.0
-    description: "Distributed Implementation method compiled 2026-03-14."
-  - id: M3-PHRV
-    status: compiled_v1.0
-    description: "Phase Review method compiled 2026-03-14."
-  - id: M4-DDAG
-    status: compiled_v1.0
-    description: "Drift Audit method compiled 2026-03-14."
-  - id: M6-ARFN
-    status: draft_v0.1
-    description: >
-      Architecture Refinement method drafted. PRD + existing architecture -> updated
-      ArchDoc (horizontal spec files). Needs G0-G6 compile pass.
-  - id: M7-PRDS
-    status: draft_v0.1
-    description: >
-      PRD Sectioning method drafted. Full PRD -> SectionMap with dependencies and
-      delivery ordering. Needs G0-G6 compile pass.
-  - id: M5-PLAN
-    status: resolved
-    description: "Phase Planning method — compiled v1.0 (2026-03-13)."
-  - id: nu_SD_threshold
-    status: open
-    description: "n >= 3 sub-task threshold for multi_task_scope is empirical. Calibrate from first orchestration runs."
-  - id: D_T1X_morphism
+  - id: W1
     status: open
     description: >
-      P2-SD/M1-IMPL/I1-T1X/D_T1X-extension-proposal.md at proposal stage. Three implicit
-      sorts need explicit §1 declarations; retraction pairs not yet declared. Blocks formal
-      M4-MINS compliance; does not block T1X execution.
-  - id: directory_migration
-    status: resolved
+      Predicate operationalization for task_type is heuristic. Boundary cases exist:
+      a challenge that is both an architecture refinement and a planning task. The
+      priority ordering (architecture before plan) resolves this, but two independent
+      dispatchers may disagree on the classification. Calibration from empirical runs
+      would improve agreement.
+  - id: W2
+    status: open
     description: >
-      M1-IMPL and M2-DIMPL copied from P2-SI/ into P2-SD/. P2-SI/ retained as historical
-      record. All internal path references updated to P2-SD/.
+      multi_task_scope threshold (n >= 3) is empirical. Calibrate from first
+      orchestration runs. If n = 2 tasks consistently benefit from parallel dispatch,
+      lower the threshold.
+  - id: W3
+    status: open
+    description: >
+      Retraction pairs RP-1 through RP-4, RP-6, RP-7 are declared at type level
+      (embed/project signatures stated) but not formally verified (project o embed = id
+      not proven, only claimed). Verification requires checking that each method's
+      terminal state projects back to D_Phi_SD correctly. RP-5 (M1-IMPL) is grounded
+      from the original P2-SI compilation.
+
+compilation_record:
+  methodology_gate_adaptation: >
+    P2-SD is a methodology Phi = (D_Phi, delta_Phi, O_Phi). M1-MDES gates are
+    adapted: G4 checks delta_SD (transition function), retraction pairs, and
+    termination certificate. G5 checks predicate operationalization for task_type
+    values and multi_task_scope. All other gates apply as-is.
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: 7-arm routing methodology for software delivery.
+        Who: single dispatcher role. Why: wrong method selection degrades quality.
+        How: evaluate task_type -> apply delta_SD -> dispatch. When: software delivery
+        challenges within the niche.
+    - gate: G1
+      result: PASS
+      note: >
+        D_Phi_SD = (Sigma_Phi_SD, Ax_Phi_SD). 5 sorts with cardinality (Challenge,
+        TaskType with 6 values, MethodID with 7 values, ExecutionResult, State).
+        4 function symbols with totality. 6 predicates with typed signatures referencing
+        declared sorts. 5 closed axioms with rationale. Domain boundary stated. Initial
+        and terminal state membership claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_Phi_SD stated as conjunction of three Sigma-predicates. Type: terminal.
+        Expressibility claim present. addresses operationalized as method-specific O_M
+        satisfaction. Progress preorder as 3-state total chain. Two measures with
+        formulas, ranges, terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (dispatcher) with identity observation projection and explicit
+        authorized/not-authorized transitions. Coverage claim: trivially total.
+        Authority claim: all routing transitions authorized. Role partition rationale:
+        one role is minimal for a pure routing methodology.
+    - gate: G4
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks delta_SD + retraction pairs + termination certificate"
+      note: >
+        delta_SD declared as 9-arm priority stack (7 routing + terminate + executing).
+        Totality: Ax-3 guarantees every task type maps to a method. Termination
+        certificate nu_SD = 1 with single-invocation decrease witness. Seven retraction
+        pairs declared (RP-1 through RP-7) with embed/project signatures and retraction
+        verification claims. RP-5 (M1-IMPL) grounded; others declared at type level (W3).
+    - gate: G5
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks predicate operationalization"
+      note: >
+        Six task_type values operationalized with True/False conditions and concrete
+        criteria. multi_task_scope operationalized with n >= 3 threshold. Evaluation
+        order specified: upstream activities (section, architecture) before downstream
+        (plan, implement, review, audit).
+    - gate: G6
+      result: PASS
+      note: "This file (P2-SD/P2-SD.yaml). Structurally complete."

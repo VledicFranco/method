@@ -8,8 +8,9 @@ method:
     following the horizontal documentation pattern. Refinement scope: updates
     existing architecture to accommodate new requirements. Not greenfield
     architecture design.
-  version: "0.1"
-  status: draft
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
   formal_grounding: "theory/F1-FTH.md"
 
 navigation:
@@ -84,25 +85,29 @@ domain_theory:
     - name: spec_count
       signature: "ArchDoc -> nat"
       totality: total
+      description: "Number of ArchSpecFiles in the ArchDoc"
   predicates:
     - name: requirement_covered
-      signature: "PRDInput x ArchDoc"
+      signature: "PRDInput x ArchDoc -> Bool"
       description: "The PRD requirement's architectural implications are addressed in the ArchDoc"
     - name: impact_resolved
-      signature: "ArchImpact"
+      signature: "ArchImpact -> Bool"
       description: "This impact has a corresponding ArchDecision"
     - name: spec_updated
-      signature: "ArchSpecFile"
+      signature: "ArchSpecFile -> Bool"
       description: "This spec file has been created or updated to reflect new decisions"
     - name: internally_consistent
-      signature: "ArchDoc"
+      signature: "ArchDoc -> Bool"
       description: "No contradictions between ArchSpecFiles in the ArchDoc"
     - name: backward_compatible
-      signature: "ArchDoc x ExistingArchitecture"
+      signature: "ArchDoc x ExistingArchitecture -> Bool"
       description: "The updated ArchDoc does not break existing contracts unless explicitly documented as breaking"
     - name: rationale_documented
-      signature: "ArchDecision"
+      signature: "ArchDecision -> Bool"
       description: "The decision includes the trade-offs considered and why this option was chosen"
+    - name: focused
+      signature: "ArchSpecFile -> Bool"
+      description: "The spec file covers one clear topic named in its title — no file covers multiple unrelated concerns"
   axioms:
     - id: Ax-1
       name: Impact coverage
@@ -131,11 +136,21 @@ domain_theory:
     technology selection (assumed resolved before M6-ARFN). M6-ARFN produces the spec that
     other methods consume — it does not consume its own output.
   initial_state_valid_claim: >
-    PRDInput present, ExistingArchitecture accessible, no ArchImpacts identified, no
-    ArchDecisions, no ArchDoc produced. All axioms vacuously true. Valid.
+    A state with PRDInput present, ExistingArchitecture accessible, no ArchImpacts
+    identified, no ArchDecisions made, no ArchSpecFiles updated, no ArchDoc produced,
+    and no ConsistencyChecks performed satisfies all axioms: Ax-1 (vacuously true —
+    no ArchImpacts exist to violate the universal); Ax-2 (vacuously true — no
+    ArchDecisions exist); Ax-3 (vacuously true — no ArchDoc exists); Ax-4 (vacuously
+    true — spec_count is undefined/zero and no ArchSpecFile satisfies spec_updated,
+    so the conditional is vacuously true). Valid.
   terminal_state_valid_claim: >
-    All ArchImpacts resolved (Ax-1), all ArchDecisions documented (Ax-2), ArchDoc
-    internally consistent (Ax-3), spec files focused (Ax-4). Valid.
+    A state with all ArchImpacts resolved via ArchDecisions satisfies Ax-1 (every
+    impact has a decision via decision_for). All ArchDecisions have documented
+    rationale satisfies Ax-2 (rationale_documented holds for each). The ArchDoc is
+    internally consistent satisfies Ax-3 (internally_consistent(archDoc) = true from
+    sigma_3 validation). The ArchDoc contains >= 1 spec files and every updated
+    ArchSpecFile is focused satisfies Ax-4 (spec_count >= 1 from sigma_2 min_items
+    constraint, focused(sf) enforced by sigma_2 guidance). Valid.
 
 roles:
   - id: architect
@@ -143,100 +158,170 @@ roles:
       Reads PRD, existing architecture, and codebase. Identifies architectural impacts,
       evaluates design options, makes decisions, and produces/updates architecture spec
       files. Does not implement — only specifies.
-    observation_projection: "pi_architect = id — full visibility over PRD, existing architecture, and codebase"
+    observation_projection: >
+      pi_architect = id : Mod(D_ARFN) -> Mod(D_ARFN) — full visibility over PRD,
+      existing architecture, codebase, all impacts, decisions, and spec files. Identity
+      projection because architecture refinement requires unrestricted access to all
+      inputs and outputs.
     authorized_transitions:
-      - "Assess architectural impact of new requirements (sigma_0)"
-      - "Analyze design options and make decisions (sigma_1)"
-      - "Produce/update focused architecture spec files (sigma_2)"
-      - "Validate consistency and coverage (sigma_3)"
+      - "Execute sigma_0: assess architectural impact of new requirements"
+      - "Execute sigma_1: analyze design options and make decisions"
+      - "Execute sigma_2: produce/update focused architecture spec files"
+      - "Execute sigma_3: validate consistency and coverage"
     not_authorized:
       - "Implement code (M1-IMPL territory)"
       - "Modify the PRD"
       - "Plan phases (M5-PLAN territory)"
-  coverage_claim: "Architect sees full PRD, architecture, and codebase — full visibility over Mod(D_ARFN)."
-  authority_claim: "Architect authority covers all four steps. No transition unauthorized."
-  role_partition_rationale: >
-    One role for typical refinement. Override to M1-COUNCIL (via execution_binding)
-    when the architectural impact has multiple defensible approaches — e.g., microservice
-    vs monolith extension, synchronous vs event-driven integration.
+      - "Execute deployment or runtime operations"
+    coverage_claim: >
+      The architect's observation projection is the identity — every sort, predicate, and
+      function symbol in D_ARFN is observable. Coverage is trivially total:
+      pi_architect(Mod(D_ARFN)) = Mod(D_ARFN). No dimension of the state space is invisible
+      to the architect. This is deliberate: architecture refinement requires seeing the full
+      PRD, existing architecture, codebase, and all intermediate artifacts.
+    authority_claim: >
+      The architect is authorized to execute all four steps (sigma_0, sigma_1, sigma_2,
+      sigma_3) and produce all state transitions required to reach O_ARFN: identify
+      impacts (sigma_0), analyze options and make decisions (sigma_1), produce/update
+      spec files (sigma_2), validate consistency (sigma_3). No required transition is
+      unauthorized.
+    role_partition_rationale: >
+      One role for typical refinement. Architecture refinement is a single-perspective
+      analysis where the architect reads inputs, reasons about trade-offs, and produces
+      specifications. There is no epistemic separation requirement — unlike M1-IMPL
+      where implementer and reviewer have different visibility, M6-ARFN is a pure
+      specification pass where full context is beneficial, not harmful. Override to
+      M1-COUNCIL (via execution_binding) when the architectural impact has multiple
+      genuinely defensible approaches — e.g., microservice vs monolith extension,
+      synchronous vs event-driven integration.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"
+  formal: "Gamma_ARFN = ({sigma_0, sigma_1, sigma_2, sigma_3}, {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3)}, sigma_0, sigma_3)"
 
 phases:
   - id: sigma_0
     name: "Assess Impact"
     role: architect
     precondition: "PRD available; existing architecture docs and codebase accessible"
-    postcondition: "Architectural impacts identified; each traced to a PRD requirement"
+    postcondition: "Architectural impacts identified with |impacts| >= 1; each traced to a PRD requirement; existing_architecture_summary produced"
     guidance: |
-      **Constraints:**
+      **Constraints (what must be true after this step):**
       - impacts is non-empty (if empty, architecture is unchanged — M6-ARFN should not
         have been invoked).
-      - Each impact has: requirement_ref, component_affected, nature (new/modify/extend/deprecate).
-      - existing_architecture_summary is non-empty.
+      - Each item in impacts has: requirement_ref, component_affected,
+        nature (new|modify|extend|deprecate), description.
+      - existing_architecture_summary is a non-empty string describing the current
+        architecture state.
+
+      **Rationale:**
+      Explicit impact identification creates the accountability structure for sigma_1.
+      The architect commits to a set of impacts before evaluating options — this prevents
+      premature solution-jumping and ensures every requirement's architectural consequence
+      is visible before trade-off analysis begins.
 
       **Procedure:**
       1. Read the PRD requirements.
       2. Read existing architecture docs (system-context, interfaces, domains, data-flows, etc.).
       3. For each requirement: does it need a new component? Modify an existing interface?
          Extend a domain? Change a data flow? Deprecate a pattern?
-      4. Record each impact with the requirement it traces to.
+      4. Record each impact in impacts with the requirement it traces to.
+      5. Summarize the current architecture state in existing_architecture_summary.
+
+      **Output schema reference:**
+      - impacts: array of impact objects with requirement_ref, component_affected, nature,
+        description (at least 1 item)
+      - existing_architecture_summary: string summary of current architecture state
     output_schema:
       fields:
         - name: impacts
           type: array
           items: object
-          description: "{requirement_ref, component_affected, nature: new|modify|extend|deprecate, description}"
+          description: "{requirement_ref: string, component_affected: string, nature: new|modify|extend|deprecate, description: string}"
           min_items: 1
           required: true
         - name: existing_architecture_summary
           type: string
+          description: "Summary of the current architecture: key components, dependencies, patterns"
           required: true
+    invariants:
+      hard:
+        - "impacts has at least 1 item"
+        - "each impact has non-empty requirement_ref, component_affected, nature, and description"
+        - "nature is one of new, modify, extend, deprecate"
+        - "existing_architecture_summary is non-empty"
+      soft:
+        - "impacts are ordered by requirement_ref to match PRD structure"
+        - "existing_architecture_summary covers all architecture docs relevant to the PRD"
 
   - id: sigma_1
     name: "Analyze Options"
     role: architect
-    precondition: "sigma_0 complete; impacts identified"
-    postcondition: "Design options evaluated; decisions made with documented rationale"
+    precondition: "sigma_0 complete; impacts identified with |impacts| >= 1"
+    postcondition: "forall ai in impacts. exists ad in decisions. decision_for(ad) = ai AND rationale_documented(ad)"
     guidance: |
-      **Constraints:**
-      - decisions has one entry per impact from sigma_0.
-      - Each decision has: impact_ref, options_considered (>= 2 when genuine alternatives exist),
-        chosen_option, rationale, trade_offs_noted.
+      **Constraints (what must be true after this step):**
+      - decisions contains exactly one entry per impact from sigma_0.impacts.
+      - Each entry in decisions has: impact_ref, options_considered (>= 2 when genuine
+        alternatives exist), chosen_option, rationale, trade_offs_noted.
       - rationale_documented for every decision (Ax-2).
-      - If only one viable option: document why alternatives were ruled out.
+      - If only one viable option: document in rationale why alternatives were ruled out.
+      - options_considered is a non-empty array of strings.
+
+      **Rationale:**
+      Explicit trade-off evaluation with documented rationale prevents implicit architectural
+      decisions — the kind that silently accumulate as technical debt. Each decision records
+      what was considered and why one approach was chosen, making the reasoning auditable and
+      revisitable when circumstances change.
 
       **Procedure:**
-      1. For each impact: identify at least two design approaches where genuine alternatives exist.
-      2. Evaluate trade-offs: performance, maintainability, complexity, backward compatibility.
-      3. Select the approach. Document why.
+      1. For each impact in sigma_0.impacts: identify at least two design approaches where
+         genuine alternatives exist.
+      2. Evaluate trade-offs for each option: performance, maintainability, complexity,
+         backward compatibility.
+      3. Select the approach. Record the chosen_option and document the rationale and
+         trade_offs_noted.
       4. If an impact has genuinely contested alternatives (MDP = true): consider overriding
          execution_binding to M1-COUNCIL for adversarial evaluation.
+
+      **Output schema reference:**
+      - decisions: array of decision objects with impact_ref, options_considered,
+        chosen_option, rationale, trade_offs_noted (one per impact)
     output_schema:
       fields:
         - name: decisions
           type: array
           items: object
-          description: "{impact_ref, options_considered: [string], chosen_option, rationale, trade_offs_noted}"
+          description: "{impact_ref: string, options_considered: [string], chosen_option: string, rationale: string, trade_offs_noted: string}"
           min_items: 1
           required: true
+    invariants:
+      hard:
+        - "decisions has exactly |impacts| entries (one per impact from sigma_0)"
+        - "each decision has non-empty impact_ref, options_considered, chosen_option, rationale, trade_offs_noted"
+        - "each impact_ref matches a requirement_ref from sigma_0.impacts"
+        - "rationale is non-empty for every decision (Ax-2)"
+      soft:
+        - "options_considered has >= 2 entries when genuine alternatives exist"
+        - "decisions are ordered matching sigma_0.impacts order"
 
   - id: sigma_2
     name: "Specify"
     role: architect
-    precondition: "sigma_1 complete; decisions made"
-    postcondition: "Architecture spec files created or updated; focused per Ax-4"
+    precondition: "sigma_1 complete; decisions made with |decisions| >= 1"
+    postcondition: "spec_files produced with |spec_files| >= 1; forall sf in spec_files. focused(sf); readme_updated recorded"
     guidance: |
-      **Constraints:**
-      - spec_files is non-empty.
+      **Constraints (what must be true after this step):**
+      - spec_files is non-empty (at least 1 item).
+      - Each item in spec_files has: path, action (created|updated), topic,
+        decisions_applied (array of strings referencing decisions from sigma_1).
       - Each spec file is focused: one clear topic per file (Ax-4).
+      - readme_updated is a boolean: true if architecture/README.md index was updated,
+        false if no new files were created.
       - Follows horizontal documentation pattern: do NOT produce one monolithic architecture doc.
       - Standard file names where applicable: system-context.md, interfaces.md, domains.md,
         data-flows.md, deployment.md, observability.md, gaps.md.
       - New spec files for new architectural concerns. Updated existing files for modifications.
-      - Cross-references between spec files using relative markdown links.
-      - Each file has YAML frontmatter: type, scope, version, summary.
 
       **Horizontal documentation pattern:**
       - Each spec file is independently evolvable and Git-trackable.
@@ -245,81 +330,289 @@ phases:
       - When a spec file is superseded, the old version moves to docs/archive/.
 
       **Procedure:**
-      1. For each decision from sigma_1: identify which spec file(s) it affects.
-      2. Create new spec files or update existing ones.
-      3. Ensure each file covers one concern only.
-      4. Update architecture/README.md index if new files were created.
+      1. For each decision from sigma_1.decisions: identify which spec file(s) it affects.
+      2. Create new spec files or update existing ones. Record each in spec_files with
+         its path, action, topic, and decisions_applied.
+      3. Ensure each file covers one concern only (focused predicate).
+      4. If new files were created: update architecture/README.md index and set
+         readme_updated = true. Otherwise set readme_updated = false.
       5. Add cross-references between related spec files.
+
+      **Output schema reference:**
+      - spec_files: array of spec file objects with path, action, topic, decisions_applied
+        (at least 1 item)
+      - readme_updated: boolean indicating whether the index was updated
     output_schema:
       fields:
         - name: spec_files
           type: array
           items: object
-          description: "{path, action: created|updated, topic, decisions_applied: [string]}"
+          description: "{path: string, action: created|updated, topic: string, decisions_applied: [string]}"
           min_items: 1
           required: true
         - name: readme_updated
           type: boolean
+          description: "true if architecture/README.md index was updated, false otherwise"
           required: true
+    invariants:
+      hard:
+        - "spec_files has at least 1 item"
+        - "each spec file has non-empty path, action, topic, and decisions_applied"
+        - "action is one of created, updated"
+        - "each spec file is focused — one clear topic per file (Ax-4)"
+        - "readme_updated is present as a boolean"
+      soft:
+        - "spec_files are ordered by action (created first, updated second)"
+        - "each decisions_applied references a valid impact_ref from sigma_1.decisions"
+        - "spec file paths follow standard naming conventions where applicable"
 
   - id: sigma_3
     name: "Validate"
     role: architect
-    precondition: "sigma_2 complete; spec files produced/updated"
-    postcondition: "ArchDoc internally consistent (Ax-3); backward compatibility assessed"
+    precondition: "sigma_2 complete; spec files produced/updated with |spec_files| >= 1"
+    postcondition: "internally_consistent(archDoc) evaluated (Ax-3); backward_compatible assessed; coverage_verified = true (every impact addressed)"
     guidance: |
-      **Constraints:**
+      **Constraints (what must be true after this step):**
       - consistency_result is PASS or FAIL.
-      - If FAIL: inconsistencies listed with spec file references.
-      - backward_compatibility assessed: breaking changes documented if any.
-      - coverage_verified: every impact from sigma_0 is addressed in at least one spec file.
+      - If consistency_result = FAIL: inconsistencies is a non-empty array of strings
+        listing contradictions with spec file references.
+      - If consistency_result = PASS: inconsistencies is absent or empty.
+      - breaking_changes is present (empty array if no breaking changes exist).
+      - coverage_verified is a boolean: true if every impact from sigma_0 is addressed
+        in at least one spec file from sigma_2, false otherwise.
+      - backward_compatible(archDoc, existingArchitecture) is assessed through
+        breaking_changes enumeration.
+
+      **Rationale:**
+      Validation catches contradictions between spec files before they propagate to
+      M5-PLAN and M1-IMPL. Cross-referencing for consistency (Ax-3) surfaces issues like
+      interfaces.md specifying REST while data-flows.md assumes gRPC. Coverage verification
+      ensures no impact was silently dropped during specification.
 
       **Procedure:**
-      1. Cross-reference all spec files for contradictions (e.g., interfaces.md says REST,
-         data-flows.md assumes gRPC).
-      2. Check backward compatibility: do updated specs break existing contracts?
-      3. If breaking changes exist: document them explicitly — M5-PLAN needs to know.
-      4. Verify coverage: every architectural impact has a corresponding spec update.
+      1. Cross-reference all spec files from sigma_2.spec_files for contradictions (e.g.,
+         interfaces.md says REST, data-flows.md assumes gRPC). Record contradictions
+         in inconsistencies.
+      2. Set consistency_result to PASS if no contradictions, FAIL if any.
+      3. Check backward compatibility: do updated specs break existing contracts?
+         Record any breaking changes in breaking_changes.
+      4. Verify coverage: every impact from sigma_0.impacts is addressed in at least
+         one spec file from sigma_2.spec_files. Set coverage_verified accordingly.
+
+      **Output schema reference:**
+      - consistency_result: enum PASS or FAIL
+      - inconsistencies: array of contradiction descriptions (may be empty or absent)
+      - breaking_changes: array of breaking change descriptions (may be empty)
+      - coverage_verified: boolean confirming all impacts are addressed
     output_schema:
       fields:
         - name: consistency_result
           type: enum
           values: [PASS, FAIL]
+          description: "PASS if no contradictions between spec files, FAIL if any found"
           required: true
         - name: inconsistencies
           type: array
           items: string
+          description: "List of contradictions found between spec files, with file references"
           required: false
         - name: breaking_changes
           type: array
           items: string
+          description: "List of breaking changes to existing contracts — M5-PLAN needs these"
           required: false
         - name: coverage_verified
           type: boolean
+          description: "true if every impact from sigma_0 is addressed in at least one spec file"
           required: true
+    invariants:
+      hard:
+        - "consistency_result is one of PASS, FAIL"
+        - "if consistency_result = FAIL then inconsistencies is non-empty"
+        - "coverage_verified is present as a boolean"
+        - "breaking_changes is present (empty array if none)"
+      soft:
+        - "inconsistencies reference specific spec file paths"
+        - "breaking_changes describe what contract is broken and which consumers are affected"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: post_sigma_0 establishes impacts identified
+        with |impacts| >= 1 and existing_architecture_summary produced. pre_sigma_1
+        requires sigma_0 complete with impacts identified. Identity inclusion —
+        post_sigma_0 provides a superset of pre_sigma_1 requirements.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: post_sigma_1 establishes forall ai in impacts.
+        exists ad in decisions. decision_for(ad) = ai AND rationale_documented(ad) —
+        every impact has a decision with documented rationale. pre_sigma_2 requires
+        sigma_1 complete with decisions made. Identity inclusion — post_sigma_1 provides
+        a superset of pre_sigma_2 requirements.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 subset pre_sigma_3: post_sigma_2 establishes spec_files produced
+        with |spec_files| >= 1, each focused, and readme_updated recorded. pre_sigma_3
+        requires sigma_2 complete with spec files produced/updated. Identity inclusion —
+        post_sigma_2 provides a superset of pre_sigma_3 requirements.
+  terminal_condition_claim: >
+    post_sigma_3 = internally_consistent(archDoc) evaluated AND backward_compatible
+    assessed AND coverage_verified = true. When consistency_result = PASS and
+    coverage_verified = true, the terminal state satisfies O_ARFN: all impacts resolved
+    (Ax-1, carried from sigma_1), all decisions documented (Ax-2, carried from sigma_1),
+    ArchDoc internally consistent (Ax-3, verified at sigma_3), spec files focused
+    (Ax-4, enforced at sigma_2). The terminal postcondition entails the objective.
+  initial_condition_claim: >
+    pre_sigma_0 requires PRD available and existing architecture docs and codebase
+    accessible. This holds when a new PRD arrives and the project has existing
+    architecture — the invoking workflow guarantees PRD availability and existing
+    architecture accessibility. No prior M6-ARFN execution is required.
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      post_sigma_1 claims every impact has a decision with documented rationale. But
+      "rationale_documented" is a semantic predicate — the architect may record a
+      rationale that is superficial or post-hoc rather than genuinely capturing the
+      trade-off reasoning. An architect who writes "chose option A because it's simpler"
+      for every decision satisfies Ax-2 structurally but not substantively. The
+      postcondition is satisfied formally (every decision has a rationale field) but
+      the quality of reasoning is not verifiable from structure alone.
+    defense_or_revision: >
+      This is an inherent limitation of single-role specification methods — the same
+      agent that decides also documents the rationale. M6-ARFN mitigates this through
+      three mechanisms: (1) the output_schema requires options_considered (plural) and
+      trade_offs_noted as separate fields, which forces the architect to articulate
+      alternatives rather than just the chosen path; (2) sigma_3 provides a validation
+      pass that cross-checks consistency — superficial decisions are more likely to
+      produce inconsistent specs that sigma_3 catches; (3) the ArchDoc output is
+      consumed by M5-PLAN and M1-IMPL, which provide downstream validation when
+      specifications prove unimplementable. The composability holds structurally;
+      rationale quality depends on architect diligence, which the method cannot
+      guarantee but can make auditable through explicit trade-off fields.
 
 objective:
   id: O_ARFN
   formal: >
     O_ARFN(s) = forall ai : ArchImpact. impact_resolved(ai)
     AND forall ad : ArchDecision. rationale_documented(ad)
-    AND internally_consistent(archDoc)
+    AND internally_consistent(archDoc_s)
     AND forall sf : ArchSpecFile. spec_updated(sf) -> focused(sf)
   type: terminal
+  expressible_claim: >
+    O_ARFN references impact_resolved (declared predicate over ArchImpact),
+    rationale_documented (declared predicate over ArchDecision), internally_consistent
+    (declared predicate over ArchDoc), spec_updated (declared predicate over
+    ArchSpecFile), and focused (declared predicate over ArchSpecFile). All symbols
+    are in Sigma_ARFN. O_ARFN is a conjunction of Sigma-predicates — expressible as a
+    closed sentence over Mod(D_ARFN).
+  note: >
+    O_ARFN is satisfied when all architectural impacts are resolved with documented
+    rationale, the resulting ArchDoc is internally consistent, and each spec file is
+    focused. The method succeeds by producing a consistent, well-documented architecture
+    refinement — regardless of whether the chosen designs are optimal (optimality is
+    evaluated downstream by M5-PLAN and M1-IMPL).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{ai in ArchImpact | impact_resolved(ai) in s1}| <=
+      |{ai in ArchImpact | impact_resolved(ai) in s2}|. States with more resolved
+      impacts are further toward O_ARFN. Terminal states (all impacts resolved,
+      decisions documented, ArchDoc consistent, spec files focused) are maximal.
+    well_founded: >
+      Finite impact set (identified from PRD in sigma_0, at least 1). The measure
+      |{ai | impact_resolved(ai)}| is bounded above by |ArchImpact|. Each step
+      progresses toward resolution: sigma_0 identifies impacts, sigma_1 resolves them,
+      sigma_2 produces specs, sigma_3 validates consistency. The preorder is well-founded
+      because the underlying set is finite and progress is monotonic across the linear DAG.
   success_profile:
-    - id: mu_1
+    - id: mu_resolution
       name: impact_resolution
       formula: "|{ai | impact_resolved(ai)}| / |{ai | identified(ai)}|"
       range: "[0, 1]"
       terminal: "1.0"
-    - id: mu_2
+      proxy_claim: >
+        mu_resolution is an order-homomorphism w.r.t. <=_O by definition: states with
+        more resolved impacts have higher mu_resolution. mu_resolution = 1.0 is necessary
+        but not sufficient for O_ARFN (consistency and focus still required).
+    - id: mu_consistency
       name: consistency
       formula: "1 if internally_consistent(archDoc) else 0"
       range: "{0, 1}"
       terminal: "1"
+      proxy_claim: >
+        mu_consistency = 0 means the ArchDoc has contradictions between spec files.
+        mu_consistency = 1 is necessary for O_ARFN. Binary measure; transitions from
+        0 to 1 only at sigma_3 completion when validation passes. No intermediate values.
 
 termination:
-  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3} | NOT executed}|"
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3} | sigma has not executed in s}|"
   initial: 4
   final: 0
-  note: "Linear DAG, no loops. Trivially terminating."
+  decrease_witness: >
+    Each step execution reduces nu by exactly 1. The DAG is a path graph with no cycles —
+    each step executes exactly once. nu is bounded below by 0 and strictly decreases at
+    each step. Termination is guaranteed after at most 4 step executions.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: take PRD and existing architecture, produce focused
+        ArchDoc spec files. Who: single architect role (specification only). Why: fills
+        the ArchDoc production gap in P2-SD — no other method produces architecture specs.
+        How: four-step linear path (assess, analyze, specify, validate). When_to_use:
+        new PRD requiring architecture changes. When_not_to_use: greenfield design,
+        unchanged architecture, implementation tasks.
+    - gate: G1
+      result: PASS
+      note: >
+        D_ARFN = (Sigma_ARFN, Ax_ARFN). 8 sorts with cardinality, 3 total function
+        symbols with totality declarations, 7 predicates with typed signatures
+        referencing only declared sorts (PRDInput, ExistingArchitecture, ArchImpact,
+        DesignOption, ArchDecision, ArchSpecFile, ArchDoc, ConsistencyCheck — all
+        declared). The focused predicate (used in Ax-4) is declared with signature
+        ArchSpecFile -> Bool. 4 closed axioms (Ax-1 through Ax-4) with rationale.
+        Domain boundary stated. Initial and terminal state membership in Mod(D_ARFN)
+        claimed with axiom-by-axiom verification for both.
+    - gate: G2
+      result: PASS
+      note: >
+        O_ARFN stated as conjunction of Sigma-predicates (impact_resolved,
+        rationale_documented, internally_consistent, spec_updated, focused — all
+        declared). Expressibility claim present: all symbols in Sigma_ARFN, O_ARFN is
+        a closed sentence over Mod(D_ARFN). Type: terminal. Progress preorder declared
+        with well-foundedness argument (finite impact set, monotonic progress). Two
+        measures (mu_resolution, mu_consistency) with formulas, ranges, terminal values,
+        and proxy claims. All measure formulas reference only declared Sigma symbols.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (architect) with identity observation projection and explicit authorized
+        transitions covering all four steps. Not_authorized list present with 4 items.
+        Coverage claim: trivially total (identity projection, pi_architect = id).
+        Authority claim: all four steps authorized, no transition unauthorized. Role
+        partition rationale: one role because no epistemic separation requirement —
+        full context beneficial for specification. Override path to M1-COUNCIL documented.
+    - gate: G4
+      result: PASS
+      note: >
+        Four steps (sigma_0, sigma_1, sigma_2, sigma_3) in path graph. Each step has
+        pre/post conditions, finalized guidance with constraints-first format, typed
+        output_schema with required fields, and invariants (hard + soft). Three
+        composability claims (sigma_0->sigma_1, sigma_1->sigma_2, sigma_2->sigma_3).
+        Terminal and initial condition claims present. Contrarian challenge on
+        sigma_1->sigma_2 edge: semantic adequacy of rationale_documented; defended by
+        explicit trade-off fields, downstream consistency validation, and consumer-side
+        validation. Formal DAG declared with topology and formal tuple.
+    - gate: G5
+      result: PASS
+      note: >
+        All four steps have finalized guidance in constraints-first format. Each guidance
+        block explicitly names all output_schema fields. Adequacy spot-check: sigma_0
+        names impacts, existing_architecture_summary; sigma_1 names decisions; sigma_2
+        names spec_files, readme_updated; sigma_3 names consistency_result, inconsistencies,
+        breaking_changes, coverage_verified. All fields covered.
+    - gate: G6
+      result: PASS
+      note: "This compilation record. All gates G0-G5 passed. File: P2-SD/M6-ARFN/M6-ARFN.yaml. Structurally complete."
