@@ -1,0 +1,52 @@
+changelog:
+  methodology_id: P2-SD
+  current_version: "2.0"
+
+  entries:
+    - version: "2.0"
+      date: "2026-03-14"
+      type: methodology
+      changes:
+        - "Expanded from 5-arm to 7-arm dispatcher (added M6-ARFN, M7-PRDS)"
+        - "Full predicate operationalization for all 6 task_type values"
+        - "Methodology-adapted compilation record with gate adaptation notes"
+        - "Niche updated: architecture refinement now included"
+        - "Ax-RETRO added (retrospective obligation)"
+
+    - version: "M3-PHRV Ax-1 update"
+      date: "2026-03-14"
+      type: method_patch
+      method: M3-PHRV
+      changes:
+        - "Generalized citation format: file:line for source code, file:key-path for YAML/config"
+      evidence:
+        gap_candidate: "GC-P2SD-002"
+        retro: "retro-review-P2-SD.yaml"
+      evolution_id: "EVO-P2SD-001"
+
+    - version: "M7-PRDS order function"
+      date: "2026-03-14"
+      type: method_patch
+      method: M7-PRDS
+      changes:
+        - "Added order function symbol (PRDSection -> nat) to close Ax-5 reference"
+      evidence:
+        retro: "review-P2-SD.yaml (finding F-2)"
+
+    - version: "M2-DIMPL, M3-PHRV, M4-DDAG, M6-ARFN, M7-PRDS compiled"
+      date: "2026-03-14"
+      type: methods_compiled
+      changes:
+        - "M2-DIMPL v1.0 compiled (re-entrant orchestration, Gate A/B)"
+        - "M3-PHRV v1.0 compiled (phase review, 3-way verdict)"
+        - "M4-DDAG v1.0 compiled (drift audit, cross-phase grounding)"
+        - "M6-ARFN v1.0 compiled (architecture refinement, horizontal docs)"
+        - "M7-PRDS v1.0 compiled (PRD sectioning, dependency ordering)"
+
+    - version: "1.0"
+      date: "2026-03-13"
+      type: methodology
+      changes:
+        - "Initial compilation from ov-oss source"
+        - "5-arm dispatcher: plan, implement x2, review, audit"
+        - "M1-IMPL v3.1 and M5-PLAN v1.0 carried from ov-oss"

@@ -1,0 +1,43 @@
+changelog:
+  methodology_id: P1-EXEC
+  current_version: "1.1"
+
+  entries:
+    - version: "1.1"
+      date: "2026-03-14"
+      type: methodology
+      changes:
+        - "Added routing_would_repeat predicate and mu_3 (routing accuracy measure)"
+        - "Added routing_feedback section with schema and calibration note"
+        - "RP-1 projection updated to carry full M1-COUNCIL sigma_3 output"
+        - "Ax-RETRO added (retrospective obligation)"
+
+    - version: "M1-COUNCIL v1.1 fixes"
+      date: "2026-03-14"
+      type: method_patch
+      method: M1-COUNCIL
+      changes:
+        - "Added diminishing_returns predicate + Ax-7 (Leader halt)"
+        - "Position identity operationalized via Leader tagging (Ax-3)"
+        - "Added 4 predicates: decision_issued_by, specific_question, precedes, sigma_2_terminates"
+        - "Added Council sort (was referenced but undeclared)"
+        - "Bound free variables in Ax-4, Ax-5, Ax-6, Ax-7, O_COUNCIL"
+      evidence:
+        gap_candidate: "GC-P1EXEC-001"
+        retro: "review-P1-EXEC.yaml"
+      evolution_id: "EVO-P1EXEC-001"
+
+    - version: "M2-ORCH consistent(Integration) operationalized"
+      date: "2026-03-14"
+      type: method_patch
+      method: M2-ORCH
+      changes:
+        - "Added 3-check operationalization for consistent(Integration) predicate"
+
+    - version: "1.0"
+      date: "2026-03-14"
+      type: methodology
+      changes:
+        - "Initial compilation: 3 execution methods (M1-COUNCIL, M2-ORCH, M3-TMP)"
+        - "Predicate operationalization for 5 driving predicates"
+        - "4 retraction pairs declared and verified"

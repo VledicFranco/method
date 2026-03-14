@@ -1,10 +1,11 @@
 protocol:
   id: RETRO-PROTO
   name: "Retrospective Protocol — Methodology Self-Improvement Loop"
-  version: "0.1"
-  status: draft
+  version: "1.0"
+  status: promoted
   date: "2026-03-14"
-  maturity: draft
+  promotion_date: "2026-03-14"
+  maturity: promoted
   description: >
     Universal protocol for methodology self-improvement through agent retrospectives.
     Every methodology session produces a structured retrospective artifact. Observations
@@ -213,15 +214,24 @@ enforcement:
 
   where_retrospectives_live:
     project_level: >
-      Retrospectives are stored in the project repo at:
-        docs/impl/retrospectives/retro-{session_id}.yaml
-      This follows the PROJECT-STRUCTURE.yaml convention. Retrospectives are
-      ephemeral session artifacts (gitignored by default) but can be committed
-      if the team wants persistent records.
+      Retrospectives are stored in the project repo at .method/retros/retro-YYYY-MM-DD-NNN.yaml.
+      Retrospectives are COMMITTED (not ephemeral) — they are the evidence base for card
+      evolution. One file per method execution per session. Files accumulate horizontally.
+      See RETRO-ARTIFACTS.yaml for the full artifact flow specification.
     aggregation: >
-      For accumulation analysis, retrospectives are summarized in the methodology's
-      evolution ledger (not copied — summarized). The ledger tracks observation counts
-      per step, not full retrospective content.
+      Processed via aggregation sessions (REF-01: every 5 retros OR weekly, whichever
+      comes first). Card-level observations stay in the project repo and drive card
+      revisions. Method-level observations are extracted to .method/submissions/ and
+      submitted to pv-method/registry/submissions/incoming/ for registry-level processing.
+    aggregation_cadence: >
+      REF-01 (from trial meta-retrospective): Process retrospectives at least once per
+      week or after every 5 retros. The processing step is a lightweight M3-TMP session:
+      read new retros, split by improvement_target, check thresholds, update card or
+      submit to registry.
+    quality_monitoring: >
+      REF-03 (from trial meta-retrospective): If a project's last 5 retrospectives all
+      have severity = LOW and type = success (no gaps, no friction), flag for attention.
+      Either the method is perfect (unlikely) or the agent is producing rote compliance.
 
 accumulation:
   description: >
@@ -235,10 +245,16 @@ accumulation:
       rationale: "HIGH = guidance produced wrong output or blocked progress. One occurrence is sufficient evidence."
 
     - severity: MEDIUM
-      count: 3
-      scope: "2+ projects for abstract_method, 1 project for project_card"
+      count: 2
+      scope: "2+ projects for abstract_method, 3 observations for project_card (1 project)"
       action: "Gap candidate created with aggregated evidence"
       rationale: "MEDIUM = agent improvised significantly. Pattern across sessions confirms it's a real gap, not an outlier."
+      calibration_note: >
+        REF-02 (from trial meta-retrospective): Abstract method threshold lowered from
+        3 to 2 MEDIUM (2+ projects) for a 6-month calibration period (until 2026-09-14).
+        The trial showed 2-project evidence was sufficient for confident decisions.
+        After 6 months: evaluate whether the lower threshold produced premature evolutions.
+        If not, keep it. If yes, restore to 3.
 
     - severity: LOW
       count: "no auto-trigger"

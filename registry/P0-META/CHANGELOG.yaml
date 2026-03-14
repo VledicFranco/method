@@ -1,0 +1,15 @@
+changelog:
+  methodology_id: P0-META
+  current_version: "1.2"
+  note: "P0-META versions are managed in ov-oss. This changelog tracks registry-side additions only."
+
+  entries:
+    - version: "registry additions"
+      date: "2026-03-14"
+      type: registry
+      changes:
+        - "PROJECT-CARD-SCHEMA.yaml — MIC project card schema for M4-MINS ProjectContext"
+        - "RETROSPECTIVE-PROTOCOL.yaml — promoted v1.0 (self-improvement loop)"
+        - "RETRO-ARTIFACTS.yaml — artifact flow specification"
+        - "RETRO-PROTO-PROMOTION.yaml — promotion proposal (approved)"
+        - "EVOLUTION-LEDGER.yaml — created for promoted protocol"

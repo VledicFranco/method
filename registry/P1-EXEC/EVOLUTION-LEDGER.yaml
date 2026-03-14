@@ -1,0 +1,49 @@
+evolution_ledger:
+  methodology: P1-EXEC
+  ledger_version: "1"
+  protocol: RETRO-PROTO
+  protocol_stage: promoted
+  created: "2026-03-14"
+  last_updated: "2026-03-14"
+
+  summary:
+    total_retrospectives_processed: 3
+    total_gap_candidates: 2
+    total_evolutions: 1
+    total_card_revisions: 0
+
+  gap_candidates:
+    - gap_id: "GC-P1EXEC-001"
+      target: "M1-COUNCIL domain theory"
+      status: resolved
+      observation_count: 7
+      first_observed: "2026-03-14"
+      sessions: ["PHRV-P1EXEC-001"]
+      projects: ["pv-method"]
+      summary: "7 undeclared symbols and free variables in M1-COUNCIL axioms"
+      resolution: "EVO-P1EXEC-001"
+
+    - gap_id: "GC-P1EXEC-002"
+      target: "M1-COUNCIL proportionality"
+      status: open
+      observation_count: 2
+      first_observed: "2026-03-14"
+      sessions: ["PRD002-IMPL-20260314", "T1X-VALGAPS-20260314"]
+      projects: ["pv-method", "t1-cortex"]
+      summary: "No guidance on when M1-COUNCIL overhead is proportionate vs M3-TMP"
+
+  evolution_history:
+    - evolution_id: "EVO-P1EXEC-001"
+      gap_id: "GC-P1EXEC-001"
+      type: "abstract_method"
+      method: "M1-COUNCIL"
+      from_version: "1.1"
+      to_version: "1.1 (symbols declared, axioms closed)"
+      change_summary: "Added 4 predicates, bound free variables in Ax-4/5/6/7, added Council sort"
+      date: "2026-03-14"
+      validated: true
+
+  regression_flags: []
+
+  observation_counts:
+    M1-COUNCIL.domain_theory: { HIGH: 0, MEDIUM: 7, LOW: 0, total_sessions: 1 }

@@ -133,6 +133,15 @@ domain_theory:
       name: Single dispatch per invocation
       statement: "forall s : State. |{invocations of delta_SD in this run}| = 1"
       rationale: "delta_SD fires exactly once per challenge. No re-evaluation at the methodology level."
+    - id: Ax-RETRO
+      name: Retrospective obligation
+      statement: >
+        forall s : State. method_completed(s) -> exists r : Retrospective.
+        retrospective_of(r, s) AND |r.observations| >= 1 AND r.hardest_decision is non-empty
+      rationale: >
+        A methodology session cannot be marked complete without producing a retrospective
+        with at least one observation and a named hardest decision. Structural enforcement
+        for the self-improvement loop (RETRO-PROTO promoted 2026-03-14).
   domain_boundary_note: >
     Excludes: internal execution of the selected method (P2-SD sees only the terminal
     result); the content domain of the software being built; PRD writing (product

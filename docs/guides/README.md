@@ -12,6 +12,7 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 6 | [Project Cards & Instantiation](06-project-cards.md) | Project leads | How to parameterize a methodology for your project |
 | 7 | [Compilation Gates (G0-G6)](07-compilation-gates.md) | Method designers | What each gate checks, common failures, how to fix them |
 | 8 | [Prompting Methodology Agents](08-prompting-methodology-agents.md) | Agent operators | How to write orchestrator prompts, based on 4 production sessions |
+| 9 | [The Retrospective Protocol](09-retrospective-protocol.md) | Everyone | Self-improvement loop, retro schema, aggregation, thresholds, empirical results |
 
 ## How to read these guides
 

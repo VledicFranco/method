@@ -156,6 +156,15 @@ domain_theory:
       name: Selection before completion
       formal: "forall s : State. method_completed(s) -> is_method_selected(s)"
       rationale: "A method cannot complete without having been selected. Selection is the precondition for execution."
+    - id: Ax-RETRO
+      name: Retrospective obligation
+      formal: >
+        forall s : State. method_completed(s) -> exists r : Retrospective.
+        retrospective_of(r, s) AND |r.observations| >= 1 AND r.hardest_decision is non-empty
+      rationale: >
+        A methodology session cannot be marked complete without producing a retrospective
+        with at least one observation and a named hardest decision. Structural enforcement
+        for the self-improvement loop (RETRO-PROTO promoted 2026-03-14).
   domain_boundary_note: >
     Excludes: the internal execution of the selected method (Phi_EXEC sees only the
     terminal result, not intermediate states); the content domain of the challenge;

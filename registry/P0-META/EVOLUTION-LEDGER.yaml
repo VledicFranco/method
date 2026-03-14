@@ -1,0 +1,18 @@
+evolution_ledger:
+  methodology: P0-META
+  ledger_version: "1"
+  protocol: RETRO-PROTO
+  protocol_stage: promoted
+  created: "2026-03-14"
+  last_updated: "2026-03-14"
+
+  summary:
+    total_retrospectives_processed: 0
+    total_gap_candidates: 0
+    total_evolutions: 0
+    total_card_revisions: 0
+
+  gap_candidates: []
+  evolution_history: []
+  regression_flags: []
+  observation_counts: {}
