@@ -99,6 +99,73 @@ When the MCP layer receives a tool call with no `session_id` parameter, it passe
 
 Sessions are never evicted. For the MCP use case (one Claude desktop session), the map stays small. If session cleanup becomes necessary (e.g., long-running server with many clients), an eviction policy can be added later without changing the `getOrCreate` interface.
 
+## Step Context (PRD 003)
+
+### Purpose
+
+`step_context` provides an enriched snapshot for prompt composition — everything an agent needs to execute the current step without making multiple tool calls. It combines methodology context, method metadata, the full step record, position, and prior step outputs into a single response.
+
+### Function Signature
+
+A new method on the `Session` object returned by `createSession()`:
+
+```typescript
+context(): StepContext
+```
+
+This lives alongside the existing `current()`, `advance()`, `status()`, and `isLoaded()` methods in `state.ts`. It is a session method (not a standalone function) because it needs access to the loaded method and current index — the same state that `current()` reads.
+
+### Return Type
+
+```typescript
+type StepContext = {
+  methodology: {
+    id: string;
+    name: string;
+    progress: string;          // e.g., "3 / 7"
+  };
+  method: {
+    id: string;
+    name: string;
+    objective: string | null;
+  };
+  step: Step;                  // full step record (same as current().step)
+  stepIndex: number;
+  totalSteps: number;
+  priorStepOutputs: PriorStepOutput[];
+};
+
+type PriorStepOutput = {
+  stepId: string;
+  summary: string;
+};
+```
+
+### Enrichment Over `current()`
+
+`current()` returns the step record with position context (`stepIndex`, `totalSteps`, `methodologyId`, `methodId`). `context()` adds:
+
+| Field | Source | Value in `current()` |
+|---|---|---|
+| `methodology.name` | `LoadedMethod.name` | Not included |
+| `methodology.progress` | Computed from `stepIndex` and `totalSteps` | Not included |
+| `method.objective` | `LoadedMethod.objective` | Not included |
+| `priorStepOutputs` | Session output history | Not included |
+
+### `priorStepOutputs` — Phase 1 Limitation
+
+In Phase 1, `priorStepOutputs` always returns an empty array (`[]`). The session does not currently track step outputs — there is no mechanism to record what an agent produced at each step.
+
+Phase 3's `step_validate` tool will add output recording to the session. Once outputs are recorded, `context()` will return them as prior step summaries. The `StepContext` type includes `priorStepOutputs` from the start so the response shape is stable across phases — consumers never see a field appear or disappear.
+
+### Error Cases
+
+- No methodology loaded: `"No methodology loaded"` (same guard as `current()`)
+
+### Design Note
+
+`context()` reads the same internal state as `current()` and `status()`. It is intentionally a superset — an agent that calls `step_context` does not need to also call `step_current` or `methodology_status`. The three methods coexist because `step_current` and `methodology_status` are established tools with existing consumers; `step_context` is additive, not a replacement.
+
 ## Post-MVP
 
 When DAG traversal is added, `advance()` will need to accept a branch selector or evaluate preconditions to determine the next step. The factory API stays the same; the internal logic changes.

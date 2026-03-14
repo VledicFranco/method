@@ -17,6 +17,10 @@
 | `tsx` | root (dev) | Dev execution |
 | `@types/node` | root (dev) | Node.js types |
 
+## PRD 003 Phase 1 — No New Dependencies
+
+`getMethodologyRouting` (routing extraction) and `session.context()` (step context) use `js-yaml` for YAML parsing, which is already a dependency of `@method/core`. No new packages are required. The MCP layer uses the same `zod` schemas pattern for input validation.
+
 ## Dependency Principles
 
 - `@method/core` has **no MCP dependency** — it's a pure domain library

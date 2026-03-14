@@ -10,7 +10,8 @@ Evolving architecture documentation for `pv-method`.
 | [loader.md](loader.md) | YAML parsing, registry scanning, `listMethodologies` and `loadMethodology` design |
 | [state-model.md](state-model.md) | `SessionState`, `LoadedMethod`, factory-based session, traversal API |
 | [theory-lookup.md](theory-lookup.md) | Theory file parsing, section/definition extraction, search hierarchy |
-| [mcp-layer.md](mcp-layer.md) | Thin MCP adapter design, 6 tools, error handling, response formatting |
+| [routing.md](routing.md) | Transition function extraction, predicate merge, `getMethodologyRouting` design |
+| [mcp-layer.md](mcp-layer.md) | Thin MCP adapter design, 8 tools, error handling, response formatting |
 | [dependencies.md](dependencies.md) | Package dependencies and principles |
 
 ## Conventions

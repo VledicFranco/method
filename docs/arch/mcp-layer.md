@@ -6,7 +6,7 @@
 
 1. Resolves filesystem paths (see [path-resolution.md](path-resolution.md))
 2. Creates one session instance via `createSession()`
-3. Defines 6 MCP tools with Zod input schemas
+3. Defines 8 MCP tools with Zod input schemas
 4. Maps each tool call to a core function
 5. Formats responses and catches errors
 
@@ -22,6 +22,8 @@
 | `step_current` | `{ session_id?: string }` | `session.current()` | Returns context envelope from core |
 | `step_advance` | `{ session_id?: string }` | `session.advance()` | Returns enriched response from core |
 | `theory_lookup` | `{ term: string, session_id?: string }` | `lookupTheory(THEORY, term)` | |
+| `methodology_get_routing` | `{ methodology_id: string, session_id?: string }` | `getMethodologyRouting(REGISTRY, mid)` | PRD 003 Phase 1 |
+| `step_context` | `{ session_id?: string }` | `session.context()` | PRD 003 Phase 1 |
 
 `session_id` is optional on all tools (P3). When omitted, the MCP layer passes `"__default__"` to the SessionManager. See [state-model.md](state-model.md) for SessionManager design.
 
@@ -99,6 +101,74 @@ Enriched with navigation context — previous/next step identifiers and position
 
 When advancing to the terminal step, `nextStep` is `null` to signal method completion.
 
+### `methodology_get_routing`
+
+Returns the transition function structure for agent-side evaluation. See [routing.md](routing.md) for extraction details.
+
+```json
+{
+  "methodologyId": "P2-SD",
+  "name": "Software Delivery Methodology",
+  "predicates": [
+    {
+      "name": "task_type",
+      "description": "The challenge is of the given task type",
+      "trueWhen": null,
+      "falseWhen": null
+    },
+    {
+      "name": "task_type = section",
+      "description": null,
+      "trueWhen": "The challenge is a full PRD document that needs to be decomposed...",
+      "falseWhen": "The PRD is already a single section..."
+    }
+  ],
+  "arms": [
+    {
+      "priority": 1,
+      "label": "section",
+      "condition": "NOT is_method_selected(s) AND task_type(challenge, section)",
+      "selects": "M7-PRDS",
+      "rationale": "Full PRD needs sectioning before any downstream work."
+    }
+  ],
+  "evaluationOrder": "1. Is this a full PRD needing sectioning? If yes: section. ..."
+}
+```
+
+### `step_context`
+
+Enriched context envelope for prompt composition — a superset of `step_current`:
+
+```json
+{
+  "methodology": {
+    "id": "P0-META",
+    "name": "Meta-Methodology",
+    "progress": "3 / 7"
+  },
+  "method": {
+    "id": "M1-MDES",
+    "name": "Method Design from Established Domain Knowledge",
+    "objective": "Design a validated methodology..."
+  },
+  "step": {
+    "id": "S3",
+    "name": "Morphism Framing",
+    "role": "designer",
+    "precondition": "Retracted principles documented",
+    "postcondition": "Morphisms defined",
+    "guidance": "...",
+    "outputSchema": { "...": "..." }
+  },
+  "stepIndex": 2,
+  "totalSteps": 7,
+  "priorStepOutputs": []
+}
+```
+
+`priorStepOutputs` is always `[]` in Phase 1. See [state-model.md](state-model.md) for the Phase 3 plan.
+
 ### Design Note
 
 All enrichment is computed by core functions. The MCP layer's only job is `JSON.stringify(result, null, 2)`. This keeps MCP as a thin wrapper (DR-04) and ensures core has zero transport dependencies (DR-03).
@@ -113,3 +183,5 @@ Tool descriptions are what the agent reads to decide which tool to call. They mu
 - `step_current`: "Get the full record for the current step: guidance, preconditions, output schema."
 - `step_advance`: "Mark the current step complete and advance to the next step."
 - `theory_lookup`: "Search the formal theory (F1-FTH, F4-PHI) for a term or definition."
+- `methodology_get_routing`: "Get the routing criteria for a methodology — predicates and transition function arms for agent-side evaluation."
+- `step_context`: "Get enriched context for the current step: methodology progress, method objective, step record, and prior outputs."
