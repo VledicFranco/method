@@ -1,0 +1,201 @@
+proposal:
+  id: RETRO-PROTO-PROMOTION
+  name: "Retrospective Protocol Promotion — Trial → Promoted"
+  date: "2026-03-14"
+  status: proposed
+  author: "Lysica (meta-retrospective analysis)"
+
+  summary: >
+    The Retrospective Protocol (RETRO-PROTO) has met all 5 promotion criteria in a
+    single-day trial across 2 projects. This proposal requests promotion from trial
+    to promoted status, making Ax-RETRO a required axiom in all methodology domain
+    theories.
+
+  # ═══════════════════════════════════════════════════════
+  # CRITERIA VERIFICATION
+  # ═══════════════════════════════════════════════════════
+
+  criteria_met:
+    - criterion: "retrospective_count >= 10"
+      result: "11 collected"
+      evidence: "5 sessions across pv-method + t1-cortex. 11 YAML artifacts in tmp/."
+      met: true
+
+    - criterion: "gap_candidates_surfaced >= 2"
+      result: "4 surfaced"
+      evidence: >
+        GC-P2SD-001 (sigma_B3 multi-task friction),
+        GC-P2SD-002 (M3-PHRV citation format — resolved),
+        GC-P2SD-003 (I1-T1X Metals mandate — resolved),
+        GC-P2SD-004 (M1-COUNCIL proportionality)
+      met: true
+
+    - criterion: "evolution_triggered >= 1"
+      result: "2 triggered"
+      evidence: >
+        EVO-P2SD-001: M3-PHRV Ax-1 citation format generalized.
+        EVO-P2SD-CARD-001: I1-T1X card DR-01/02/03/04 scoped + DR-21 added.
+      met: true
+
+    - criterion: "evolution_validated >= 1"
+      result: "1 validated"
+      evidence: >
+        M1-COUNCIL undeclared symbols fix: re-review confirmed 5/7 resolved on
+        first pass, 7/7+1 resolved on second pass. Post-evolution observation
+        count on M1-COUNCIL G1 issues: 0 (was 7).
+      met: true
+
+    - criterion: "self_referential_test >= 1"
+      result: "1 met"
+      evidence: >
+        M3-PHRV Ax-1 improved based on retrospective observation collected through
+        RETRO-PROTO. The protocol's feedback mechanism (collect → accumulate →
+        trigger → evolve) produced an abstract method change. The protocol improved
+        a method through its own loop.
+      met: true
+
+  # ═══════════════════════════════════════════════════════
+  # WHAT PROMOTION MEANS
+  # ═══════════════════════════════════════════════════════
+
+  promotion_effects:
+    ax_retro:
+      description: >
+        Every methodology in the registry gets Ax-RETRO added to its domain theory:
+        "forall s : Session. completed(s) -> exists r : Retrospective.
+        retrospective_of(r, s) AND |r.observations| >= 1 AND r.hardest_decision
+        is non-empty."
+      affected_methodologies: [P0-META, P1-EXEC, P2-SD]
+      note: >
+        Ax-RETRO is added to the methodology-level domain theory, not to individual
+        method domain theories. The axiom applies at the session level — each
+        methodology session produces one retrospective per method executed.
+
+    evolution_ledger:
+      description: "Every methodology gets an EVOLUTION-LEDGER.yaml."
+      current_state:
+        P2-SD: "EVOLUTION-LEDGER.yaml exists and is populated (trial data)"
+        P1-EXEC: "No ledger yet — create at promotion"
+        P0-META: "No ledger yet — create at promotion"
+
+    compilation_gate:
+      description: >
+        G1 (Domain Theory) verification includes checking for Ax-RETRO presence
+        in methodology-level compilations. This does NOT affect method-level
+        compilations — methods don't have retrospective axioms, methodologies do.
+
+  # ═══════════════════════════════════════════════════════
+  # REFINEMENTS FROM TRIAL (meta-retrospective learnings)
+  # ═══════════════════════════════════════════════════════
+
+  refinements:
+    description: >
+      The meta-retrospective identified 3 friction points and 2 proposed changes.
+      These are incorporated into the promoted version of the protocol.
+
+    - id: REF-01
+      finding: "Manual aggregation is the weakest link"
+      change: >
+        Add recommended aggregation cadence to the protocol: process retrospectives
+        into the evolution ledger at least once per week, or after every 5 retros,
+        whichever comes first. The processing step is a lightweight M3-TMP session.
+      section_affected: "enforcement.where_retrospectives_live.aggregation"
+
+    - id: REF-02
+      finding: "Cross-project threshold (3 MEDIUM, 2+ projects) may be too slow"
+      change: >
+        Introduce a 6-month calibration period: lower abstract method threshold to
+        2 MEDIUM across 2+ projects during the first 6 months after promotion. After
+        6 months, evaluate whether the lower threshold produced premature evolutions.
+        If not, keep it. If yes, restore to 3.
+      section_affected: "accumulation.thresholds"
+
+    - id: REF-03
+      finding: "Long-term retrospective quality decay unvalidated"
+      change: >
+        Add a quality monitoring check: if a project's last 5 retrospectives all have
+        severity = LOW and type = success (no gaps, no friction), flag for attention.
+        Either the method is perfect (unlikely) or the agent is producing rote
+        compliance. A human should review.
+      section_affected: "unforeseen_challenges.UC-1.mitigation"
+
+  # ═══════════════════════════════════════════════════════
+  # WHAT STAYS THE SAME
+  # ═══════════════════════════════════════════════════════
+
+  unchanged:
+    - "Retrospective schema (hardest_decision, observations, card_feedback, proposed_deltas)"
+    - "Severity classification (HIGH/MEDIUM/LOW)"
+    - "HIGH fast-track (1 observation = immediate gap candidate)"
+    - "Card-level threshold (3 observations, 1 project)"
+    - "Two-level evolution model (abstract method vs project card)"
+    - "Evolution ledger structure (gap candidates, evolution history, regression flags)"
+    - "Proposed deltas are optional"
+
+  # ═══════════════════════════════════════════════════════
+  # IMPLEMENTATION PLAN
+  # ═══════════════════════════════════════════════════════
+
+  implementation:
+    step_1:
+      action: "Update RETRO-PROTO status from trial to promoted"
+      file: "registry/P0-META/RETROSPECTIVE-PROTOCOL.yaml"
+      changes:
+        - "maturity: trial → promoted"
+        - "Apply REF-01 (aggregation cadence)"
+        - "Apply REF-02 (calibration period threshold)"
+        - "Apply REF-03 (quality decay monitoring)"
+
+    step_2:
+      action: "Add Ax-RETRO to P1-EXEC domain theory"
+      file: "registry/P1-EXEC/P1-EXEC.yaml"
+      changes:
+        - "Add Ax-RETRO to axioms section"
+        - "Add Retrospective predicate to predicates"
+
+    step_3:
+      action: "Add Ax-RETRO to P2-SD domain theory"
+      file: "registry/P2-SD/P2-SD.yaml"
+      changes:
+        - "Add Ax-RETRO to axioms section"
+        - "Add Retrospective predicate to predicates"
+
+    step_4:
+      action: "Create evolution ledgers for P1-EXEC and P0-META"
+      files:
+        - "registry/P1-EXEC/EVOLUTION-LEDGER.yaml"
+        - "registry/P0-META/EVOLUTION-LEDGER.yaml"
+
+    step_5:
+      action: "Update RETRO-PROTO-PROMOTION status to approved"
+      condition: "Product Owner approves this proposal"
+
+  # ═══════════════════════════════════════════════════════
+  # EMPIRICAL EVIDENCE SUMMARY
+  # ═══════════════════════════════════════════════════════
+
+  evidence_summary:
+    what_worked:
+      - "Zero-friction schema: 11 genuine retros in one day, 0 rote compliance"
+      - "hardest_decision field: highest-signal element, 11/11 genuine"
+      - "card_feedback with per-rule verdicts: 4 card revisions from 7 verdicts"
+      - "Optional proposed_deltas: 8/11 retros had actionable deltas, 3 had none (no noise)"
+      - "Two-level evolution: card changes from 1-project evidence, method changes from cross-project"
+      - "Self-referential loop: protocol produced a method improvement through its own mechanism"
+
+    what_needs_attention:
+      - "Manual aggregation latency: signal available at retro #2, processed at retro #11"
+      - "Cross-project threshold may be slow for organic (non-trial) usage"
+      - "Long-term quality decay unvalidated (all retros from day 1 — no longitudinal data)"
+      - "Evolution validation requires a re-run (re-review or re-session) — not automated"
+
+    numbers:
+      retrospectives: 11
+      gap_candidates: 4
+      evolutions: 2
+      card_revisions: 4
+      methods_improved: [M1-COUNCIL, M3-PHRV, M7-PRDS]
+      cards_improved: [I1-T1X, I2-METHOD]
+      total_proposed_deltas: 12
+      actionable_deltas: 12
+      rote_retros: 0
