@@ -3,29 +3,424 @@ method:
   parent: P2-SD
   name: "Distributed Implementation Method"
   description: >
-    Re-entrant orchestration method for software implementation tasks decomposable
-    into parallel independent sub-tasks. Each sub-task is delegated to an
-    impl-sub-agent. Unlike P1-EXEC/M2-ORCH (single-pass, verification failure is
-    terminal), M2-DIMPL includes a patch-on-fail dispatch loop: failed sub-tasks
-    trigger patching sub-agents and re-evaluation. Dispatched by P2-SD when
-    multi_task_scope = TRUE.
-  version: "0.1"
-  status: stub
+    Re-entrant orchestration method for software implementation. Decomposes a
+    multi-task phase into parallel sub-tasks, dispatches impl-sub-agents, evaluates
+    results through Gate A (quality) and Gate B (security/architecture), patches
+    failures, and iterates until all gates pass or budget exhausted. Extracted from
+    M1-IMPL §11 Orchestrator Mode.
+  version: "0.2"
+  status: draft
   formerly: "M2-ORCH (renamed to resolve collision with P1-EXEC/M2-ORCH)"
-  source: "Extracted from M1-IMPL §11 (Orchestrator Mode), formerly M.002-SI v3.1"
-  compile_pending: >
-    Requires a full G0-G6 pass via P0-META.M1-MDES.
+  source: "M1-IMPL §11 (Orchestrator Mode), M.002-SI v3.1"
+  formal_grounding: "theory/F1-FTH.md"
 
-references:
-  orchestrator_role: "P2-SD/M1-IMPL/I1-T1X/R3-ORCH"
-  source_section: "P2-SD/M1-IMPL §11 Orchestrator Mode"
+navigation:
+  what: >
+    M2-DIMPL takes a PhaseDoc with multiple independent tasks, dispatches parallel
+    impl-sub-agents to execute them, evaluates each via Gate A (quality) and Gate B
+    (security/architecture), patches failed tasks, and produces an integrated session
+    log with all tasks passing both gates. Unlike P1-EXEC/M2-ORCH (single-pass,
+    terminal on failure), M2-DIMPL re-dispatches on failure.
+  who: >
+    Four role types: orchestrator (1, holds architectural context, coordinates),
+    impl-sub-agent (n, executes scoped tasks), qa-sub-agent (per-task Gate A
+    reviewer), sec-arch-sub-agent (1, Gate B security/architecture verifier).
+  why: >
+    Single-agent execution of large multi-task phases burns context windows —
+    architectural context is crowded out by source-level detail. Serialization of
+    independent tasks wastes time. M2-DIMPL separates architectural context
+    (orchestrator) from task execution (sub-agents) and adds quality gates that
+    catch failures before integration.
+  how: >
+    Five steps: decompose (produce sub-task set from PhaseDoc) -> dispatch (parallel
+    sub-agents) -> gate_a (quality review per task) -> gate_b (security/architecture
+    review) -> integrate (assemble session log). Gate A failures trigger patch
+    sub-agents and re-evaluation (bounded re-entry loop).
+  when_to_use:
+    - "PhaseDoc has >= 3 tasks with non-overlapping file scopes"
+    - "Task boundaries are clear from the PhaseDoc (scope declarable before execution)"
+    - "Tasks are independent: completing task i does not change inputs for task j"
+    - "Quality gates (compilation, test regression, architecture alignment) are required"
+  when_not_to_use:
+    - "Tasks share state or have execution dependencies — use M1-IMPL (single-agent)"
+    - "Fewer than 3 tasks — single-agent execution is more efficient"
+    - "Review-patch sessions — targeted single-agent sigma_B1-B5 is better for localized correction"
+    - "Decomposition requires exploratory execution"
+
+domain_theory:
+  id: D_DIMPL
+  sorts:
+    - name: PhaseDoc
+      cardinality: singleton_per_execution
+      description: "The phase plan produced by M5-PLAN — contains task list, scopes, acceptance criteria"
+    - name: Task
+      cardinality: "finite, n >= 1 from PhaseDoc"
+      description: "A scoped unit of implementation work from the PhaseDoc"
+    - name: FileScope
+      cardinality: "one per Task"
+      description: "The authorized set of source/test files a sub-agent may read and write"
+    - name: SubAgent
+      cardinality: "one per Task"
+      description: "An impl-sub-agent assigned to execute one Task"
+    - name: TaskResult
+      cardinality: "one per SubAgent"
+      description: "Output: files changed, divergences, test results, status"
+    - name: GateAVerdict
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "Per-task quality review verdict from qa-sub-agent"
+    - name: GateBVerdict
+      cardinality: finite
+      values: [PASS, FAIL, GAP_DOCUMENTED]
+      description: "Session-level security/architecture verdict from sec-arch-sub-agent"
+    - name: PatchResult
+      cardinality: unbounded
+      description: "Output of a patch sub-agent dispatched after Gate A FAIL"
+    - name: SessionLog
+      cardinality: singleton_per_execution
+      description: "Integrated record of all task results, gate verdicts, patches"
+  function_symbols:
+    - name: file_scope
+      signature: "Task -> FileScope"
+      totality: total
+    - name: assignee
+      signature: "Task -> SubAgent"
+      totality: total
+    - name: gate_a
+      signature: "Task -> Option(GateAVerdict)"
+      totality: total
+      note: "None until qa-sub-agent evaluates"
+    - name: compile_exit
+      signature: "SessionLog -> {0, nonzero}"
+      totality: total
+  predicates:
+    - name: from_phase
+      signature: "Task x PhaseDoc"
+      description: "Task was extracted from this PhaseDoc"
+    - name: independent
+      signature: "Task x Task"
+      description: "Two Tasks have disjoint FileScopes and no data dependency"
+    - name: task_complete
+      signature: "Task"
+      description: "Sub-agent has returned a TaskResult"
+    - name: gate_a_pass
+      signature: "Task"
+      description: "qa-sub-agent returned PASS for this Task"
+    - name: gate_b_pass
+      signature: "SessionLog"
+      description: "sec-arch-sub-agent returned PASS or GAP_DOCUMENTED"
+    - name: patched
+      signature: "Task"
+      description: "A patch sub-agent was dispatched and completed for this Task after Gate A FAIL"
+    - name: dispatched
+      signature: "Task"
+      description: "Task has been assigned to a SubAgent and dispatch has occurred"
+    - name: scope_declared
+      signature: "Task"
+      description: "Task has a fully declared FileScope before dispatch"
+    - name: no_regression
+      signature: "SessionLog"
+      description: "No test regressions in integrated session"
+  axioms:
+    - id: Ax-1
+      name: Finite task set
+      statement: "forall p : PhaseDoc. |{t : Task | from_phase(t, p)}| >= 1"
+      rationale: "PhaseDoc contains at least one task."
+    - id: Ax-2
+      name: Scope before dispatch
+      statement: "forall t : Task. dispatched(t) -> scope_declared(t)"
+      rationale: "Every task must have a declared FileScope before dispatch."
+    - id: Ax-3
+      name: Independence for parallel dispatch
+      statement: "forall t1 t2 : Task. dispatched(t1) AND dispatched(t2) AND t1 != t2 -> independent(t1, t2)"
+      rationale: "All dispatched tasks are pairwise independent."
+    - id: Ax-4
+      name: Gate A before integration
+      statement: "forall t : Task. task_complete(t) -> gate_a(t) != None"
+      rationale: "Every completed task must be evaluated by Gate A before integration."
+    - id: Ax-5
+      name: Patch bounded by dispatch count
+      statement: "forall t : Task. |{patch_dispatches for t}| <= max_patch_attempts"
+      rationale: "Patch re-dispatch is bounded. After max_patch_attempts, task failure is terminal."
+      note: "max_patch_attempts = 2 (default). Prevents infinite patch loops."
+  domain_boundary_note: >
+    Excludes: internal execution of sub-agents (orchestrator sees only TaskResult
+    boundary outputs); the content domain of the software being built; tool
+    availability beyond compile/test; architecture design decisions (those belong
+    to the PhaseDoc and architecture docs, not to M2-DIMPL).
+  initial_state_valid_claim: >
+    A state with PhaseDoc present, no Tasks dispatched, no TaskResults, no gate
+    verdicts satisfies all axioms vacuously. Valid.
+  terminal_state_valid_claim: >
+    A state with all Tasks complete, all gate_a_pass, gate_b_pass(SessionLog),
+    no_regression(SessionLog), compile_exit = 0 satisfies all axioms. Valid.
+
+roles:
+  - id: orchestrator
+    description: >
+      Holds architectural context across the full phase. Decomposes PhaseDoc into
+      Tasks, dispatches sub-agents, evaluates gate results, dispatches patch
+      sub-agents on failure, assembles SessionLog. Does NOT write source files.
+    observation_projection: >
+      Sees: PhaseDoc, Task set, FileScopes, all TaskResults, all GateVerdicts,
+      SessionLog. Does NOT see sub-agent internal execution.
+    authorized_transitions:
+      - "Decompose PhaseDoc into Task set with FileScopes (sigma_0)"
+      - "Dispatch impl-sub-agents (sigma_1)"
+      - "Dispatch qa-sub-agents for Gate A (sigma_2)"
+      - "Dispatch patch sub-agents on Gate A FAIL (sigma_2 re-entry)"
+      - "Dispatch sec-arch-sub-agent for Gate B (sigma_3)"
+      - "Assemble SessionLog (sigma_4)"
+    not_authorized:
+      - "Write source files (sub-agent territory)"
+      - "Override gate verdicts"
+  - id: impl_sub_agent
+    count: "n (one per Task)"
+    description: >
+      Executes one Task within its FileScope. Runs M1-IMPL Phase B (sigma_B1-B5)
+      on the scoped task. Returns TaskResult with files changed, divergences, test
+      results. Epistemically isolated from other sub-agents.
+    observation_projection: "file_scope(t) only"
+    authorized_transitions:
+      - "Read and write within file_scope(t)"
+      - "Run task-scoped tests"
+      - "Return TaskResult"
+  - id: qa_sub_agent
+    count: "one per Task (dispatched after impl_sub_agent completes)"
+    description: >
+      Gate A quality reviewer. Read-only. Checks compilation, test regression,
+      scope discipline. Returns PASS or FAIL with findings.
+    observation_projection: "read-only on all files"
+    authorized_transitions:
+      - "Evaluate Gate A criteria"
+      - "Return GateAVerdict with findings"
+  - id: sec_arch_sub_agent
+    count: "1 per session"
+    description: >
+      Gate B security and architecture verifier. Checks security chain (6 checks)
+      and architecture alignment (4 questions). Returns PASS, FAIL, or GAP_DOCUMENTED.
+    observation_projection: "read-only on all files"
+    authorized_transitions:
+      - "Evaluate Gate B criteria"
+      - "Return GateBVerdict with findings"
+  coverage_claim: >
+    Orchestrator covers coordination state. impl_sub_agent covers task execution.
+    qa_sub_agent covers quality evaluation. sec_arch_sub_agent covers security/architecture.
+    Union covers all of Mod(D_DIMPL).
+  authority_claim: >
+    Orchestrator: decomposition, dispatch, gate evaluation coordination, integration.
+    Sub-agents: task execution (impl), quality review (qa), security review (sec-arch).
+    Union covers all transitions to O_DIMPL.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (sigma_2 has bounded re-entry)"
+  note: "sigma_2 contains a patch loop: Gate A FAIL -> patch sub-agent -> re-evaluate. Bounded by Ax-5."
+
+phases:
+  - id: sigma_0
+    name: "Decompose"
+    role: orchestrator
+    precondition: "PhaseDoc received with task list; go_no_go_decision = TRUE from M1-IMPL Phase A"
+    postcondition: "Task set produced with FileScopes; independence verified; coverage verified"
+    guidance: |
+      **Constraints:**
+      - tasks is non-empty (>= 1 from PhaseDoc).
+      - Each task has: id, description, file_scope, acceptance_criteria.
+      - Independence verified for all task pairs.
+      - Coverage: every PhaseDoc acceptance criterion traced to a task.
+
+      **Procedure:**
+      1. Read PhaseDoc task list. Each task becomes a Task with declared FileScope.
+      2. Verify pairwise independence: disjoint file scopes, no data dependency.
+      3. Domain-adjacent sweep: files near scope boundaries must be accounted for.
+      4. Trace every acceptance criterion to at least one task.
+    output_schema:
+      fields:
+        - name: tasks
+          type: array
+          items: object
+          description: "{id, description, file_scope, acceptance_criteria, parallel_with}"
+          min_items: 1
+          required: true
+        - name: coverage_verified
+          type: boolean
+          required: true
+
+  - id: sigma_1
+    name: "Dispatch"
+    role: orchestrator
+    precondition: "sigma_0 complete; tasks decomposed; independence verified"
+    postcondition: "All impl-sub-agents dispatched; all TaskResults received"
+    guidance: |
+      **Constraints:**
+      - Each sub-agent receives only its Task, FileScope, and return format.
+      - All TaskResults received before proceeding to sigma_2.
+      - Concurrent editing conflicts recorded as expected, not investigated.
+
+      **Procedure:**
+      1. Dispatch all independent tasks in parallel.
+      2. Each sub-agent runs M1-IMPL Phase B (sigma_B1-B5) on its scoped task.
+      3. Wait for all TaskResults.
+    output_schema:
+      fields:
+        - name: dispatch_log
+          type: array
+          items: object
+          description: "{task_id, agent_id, status: received|failed}"
+          min_items: 1
+          required: true
+        - name: all_results_received
+          type: boolean
+          required: true
+
+  - id: sigma_2
+    name: "Gate A — Quality Review"
+    role: orchestrator
+    precondition: "sigma_1 complete; all TaskResults received"
+    postcondition: "All tasks have gate_a_pass = true (after patching if needed)"
+    guidance: |
+      **Constraints:**
+      - Every task evaluated by qa-sub-agent.
+      - Gate A checks: compile_exit = 0, no test regression, scope discipline.
+      - FAIL triggers patch sub-agent dispatch (bounded by max_patch_attempts = 2).
+      - After max_patch_attempts with continued FAIL: task failure is terminal,
+        recorded in SessionLog as unresolved.
+      - all_gate_a_pass = true required to proceed to sigma_3.
+
+      **Procedure — per task:**
+      1. Dispatch qa-sub-agent with task's files and test results.
+      2. If PASS: record and move on.
+      3. If FAIL: dispatch patch sub-agent with failure findings.
+      4. After patch: re-dispatch qa-sub-agent.
+      5. If still FAIL after max_patch_attempts: record as terminal failure.
+
+      **Termination:** nu_gate_a = |{t : Task | NOT gate_a_pass(t)}|.
+      Each patch cycle resolves at least one failure or exhausts patch budget.
+      Bounded by |Tasks| * max_patch_attempts.
+    output_schema:
+      fields:
+        - name: gate_a_results
+          type: array
+          items: object
+          description: "{task_id, verdict: PASS|FAIL, findings, patch_count}"
+          min_items: 1
+          required: true
+        - name: all_gate_a_pass
+          type: boolean
+          required: true
+        - name: terminal_failures
+          type: array
+          items: string
+          description: "Task IDs that failed Gate A after max patch attempts"
+          required: false
+
+  - id: sigma_3
+    name: "Gate B — Security & Architecture"
+    role: orchestrator
+    precondition: "sigma_2 complete; all Gate A passed (or terminal failures recorded)"
+    postcondition: "Gate B verdict determined"
+    guidance: |
+      **Constraints:**
+      - sec-arch-sub-agent dispatched with full session context.
+      - Security chain: 6 checks (authentication, authorization, input validation,
+        output encoding, error handling, logging).
+      - Architecture alignment: 4 questions (dependency direction, layer violations,
+        interface contracts, naming conventions).
+      - GAP_DOCUMENTED is acceptable — means gap exists but is explicitly recorded.
+
+      **Procedure:**
+      1. Dispatch sec-arch-sub-agent with all modified files and architecture docs.
+      2. Record verdict and findings.
+    output_schema:
+      fields:
+        - name: gate_b_verdict
+          type: enum
+          values: [PASS, FAIL, GAP_DOCUMENTED]
+          required: true
+        - name: gate_b_findings
+          type: array
+          items: string
+          required: false
+
+  - id: sigma_4
+    name: "Integrate"
+    role: orchestrator
+    precondition: "sigma_3 complete; Gate B verdict determined"
+    postcondition: "SessionLog assembled; all task results, gate verdicts, patches recorded"
+    guidance: |
+      **Constraints:**
+      - session_log is non-empty.
+      - All TaskResults included.
+      - All gate verdicts included.
+      - All patches and their outcomes included.
+      - Terminal failures explicitly recorded (not silently dropped).
+      - compile_exit checked on integrated codebase.
+      - Full test suite run on integrated codebase.
+
+      **Procedure:**
+      1. Assemble SessionLog from all TaskResults.
+      2. Include gate verdicts and patch history.
+      3. Run full compile on integrated codebase.
+      4. Run full test suite on integrated codebase.
+      5. Record integration-level results.
+    output_schema:
+      fields:
+        - name: session_log
+          type: object
+          description: "Full integrated session record"
+          required: true
+        - name: compile_exit
+          type: enum
+          values: [0, nonzero]
+          required: true
+        - name: test_results
+          type: object
+          description: "{pass_count, fail_count, regression_count}"
+          required: true
+        - name: outcome
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+
+objective:
+  id: O_DIMPL
+  formal: >
+    O_DIMPL(s) =
+      (forall t : Task. from_phase(t, phaseDoc) -> gate_a_pass(t))
+      AND gate_b_pass(sessionLog)
+      AND compile_exit(sessionLog) = 0
+      AND no_regression(sessionLog)
+  progress_preorder:
+    definition: "s1 <= s2 iff |{t | gate_a_pass(t) in s1}| <= |{t | gate_a_pass(t) in s2}|"
+  success_profile:
+    - id: mu_1
+      name: task_gate_coverage
+      formula: "|{t | gate_a_pass(t)}| / |{t | from_phase(t, phaseDoc)}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+    - id: mu_2
+      name: compile_integrity
+      formula: "1 if compile_exit = 0 else 0"
+      range: "{0, 1}"
+      terminal: "1"
+    - id: mu_3
+      name: test_stability
+      formula: "1 if no_regression(sessionLog) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+
+termination:
+  certificate: >
+    nu_DIMPL(s) = |{t : Task | NOT gate_a_pass(t)}| * (max_patch_attempts + 1)
+    + |{sigma in {sigma_0,..,sigma_4} | NOT executed}|
+  decrease_witness: >
+    Each impl dispatch + gate_a evaluation reduces nu by at least 1 (task passes or
+    patch attempt consumed). Bounded by |Tasks| * (max_patch_attempts + 1) + 5.
+    After all patch budgets exhausted, remaining failures are terminal — nu reaches 0.
 
 structural_distinction:
   vs_p1_exec_m2_orch: >
-    P1-EXEC/M2-ORCH is a single-pass orchestrator: dispatch once, integrate, verify,
-    terminal on failure. M2-DIMPL is re-entrant: dispatch, evaluate, patch failed
-    sub-tasks, re-dispatch, iterate until convergence or budget exhaustion. The
-    MAUD report (2026-03-09) identified this re-entrant structure as methodology-level
-    behavior (delta_SI selects next sub-agent based on gate state). M2-DIMPL
-    formalizes that structure as a standalone method with explicit termination
-    certificate.
+    P1-EXEC/M2-ORCH: single-pass, terminal on failure, no patch loop.
+    M2-DIMPL: re-entrant, patch-on-fail with bounded retry, quality gates (A + B).
+    M2-DIMPL is the full orchestration extracted from M1-IMPL §11.
+    P1-EXEC/M2-ORCH is the simplified universal orchestrator.

@@ -1,0 +1,337 @@
+method:
+  id: M4-DDAG
+  parent: P2-SD
+  name: "Drift Audit Method"
+  description: >
+    Cross-phase drift detection method. Analyzes N most recent completed phases to
+    identify architectural drift, accumulating divergences, pattern violations, and
+    inter-phase inconsistencies that single-phase review (M3-PHRV) cannot detect.
+    Produces a DriftReport with drift vectors and remediation recommendations.
+    Read-only — M4-DDAG does not modify source.
+  version: "0.1"
+  status: draft
+  formal_grounding: "theory/F1-FTH.md"
+  source: "M1-IMPL Drift-Auditor role (lines 223-228); P2-SD delta_SD arm 5"
+
+navigation:
+  what: >
+    M4-DDAG takes the session logs and source artifacts from N recent phases and
+    produces a DriftReport: identified drift vectors (where the codebase is diverging
+    from architecture), accumulated divergences (individually minor but collectively
+    significant), and remediation recommendations. Output is a diagnostic artifact,
+    not a fix.
+  who: >
+    One role — drift-auditor. Read-only access to all phase artifacts across the
+    N-phase window. The auditor looks for patterns invisible to per-phase review.
+  why: >
+    Individual phases may pass M3-PHRV review while the codebase drifts from its
+    architecture over time. Each phase introduces small divergences that are locally
+    acceptable but collectively produce architectural decay. M4-DDAG detects this
+    accumulation by comparing the current codebase against the architecture across
+    multiple phases. Typically invoked every ~3 phases.
+  how: >
+    Four linear steps: scope (define audit window) -> collect (gather cross-phase
+    divergences) -> analyze (identify drift vectors) -> report (produce DriftReport).
+  when_to_use:
+    - "3+ phases have completed since last drift audit"
+    - "M3-PHRV findings show recurring MEDIUM/LOW issues across phases"
+    - "Architecture docs have been updated and prior phases may not conform"
+    - "A significant refactor or migration is being planned (need drift baseline)"
+  when_not_to_use:
+    - "Single-phase review — use M3-PHRV"
+    - "Mid-implementation audit — use M1-IMPL Phase A (confidence raising)"
+    - "The task is to fix drift, not detect it — use M1-IMPL with drift-fix PhaseDoc"
+
+domain_theory:
+  id: D_DDAG
+  sorts:
+    - name: AuditWindow
+      cardinality: singleton_per_execution
+      description: "The N-phase window under audit — defines the scope of cross-phase analysis"
+    - name: Phase
+      cardinality: "finite, N phases in window"
+      description: "A completed delivery phase with session log, source changes, and review report"
+    - name: ArchDoc
+      cardinality: finite
+      description: "Architecture documents the codebase should conform to"
+    - name: Divergence
+      cardinality: unbounded
+      description: "A specific deviation from architecture observed in a phase's session log or source"
+    - name: DriftVector
+      cardinality: unbounded
+      description: "An identified pattern of accumulating divergences — the codebase is moving away from architecture in a specific direction"
+    - name: Remediation
+      cardinality: unbounded
+      description: "A recommended action to address a drift vector"
+    - name: DriftReport
+      cardinality: singleton_per_execution
+      description: "Assembled analysis: drift vectors, accumulated divergences, remediation recommendations"
+    - name: DriftSeverity
+      cardinality: finite
+      values: [STRUCTURAL, MODERATE, COSMETIC]
+      description: "STRUCTURAL: architecture violation. MODERATE: convention drift. COSMETIC: style drift."
+  function_symbols:
+    - name: severity_of
+      signature: "DriftVector -> DriftSeverity"
+      totality: total
+    - name: phase_count
+      signature: "AuditWindow -> nat"
+      totality: total
+    - name: divergence_source
+      signature: "Divergence -> Phase"
+      totality: total
+      description: "Which phase introduced this divergence"
+  predicates:
+    - name: in_window
+      signature: "Phase x AuditWindow"
+      description: "Phase is within the audit window"
+    - name: divergence_recorded
+      signature: "Divergence x Phase"
+      description: "Divergence was recorded in this phase's session log (via M1-IMPL Ax-I_record)"
+    - name: accumulates
+      signature: "Divergence x DriftVector"
+      description: "This divergence contributes to this drift vector"
+    - name: architecture_current
+      signature: "ArchDoc"
+      description: "This architecture document is current (not superseded)"
+    - name: drift_detected
+      signature: "DriftVector"
+      description: "This drift vector has been identified from accumulated divergences"
+    - name: remediation_proposed
+      signature: "Remediation x DriftVector"
+      description: "This remediation addresses this drift vector"
+    - name: report_complete
+      signature: "DriftReport"
+      description: "The report covers all phases in the window"
+  axioms:
+    - id: Ax-1
+      name: Window coverage
+      statement: "forall p : Phase. in_window(p, auditWindow) -> evaluated(p)"
+      rationale: "Every phase in the audit window must be evaluated. No phase is silently skipped."
+    - id: Ax-2
+      name: Divergence traceability
+      statement: "forall d : Divergence. exists p : Phase. divergence_source(d) = p AND in_window(p, auditWindow)"
+      rationale: "Every divergence traces to a specific phase. Undated divergences cannot be analyzed for drift direction."
+    - id: Ax-3
+      name: Drift vector grounding
+      statement: "forall dv : DriftVector. drift_detected(dv) -> exists d1 d2 : Divergence. accumulates(d1, dv) AND accumulates(d2, dv) AND divergence_source(d1) != divergence_source(d2)"
+      rationale: "A drift vector requires evidence from at least two different phases. A single-phase divergence is a finding (M3-PHRV), not drift (M4-DDAG)."
+    - id: Ax-4
+      name: Remediation coverage
+      statement: "forall dv : DriftVector. drift_detected(dv) AND severity_of(dv) IN {STRUCTURAL, MODERATE} -> exists r : Remediation. remediation_proposed(r, dv)"
+      rationale: "Every STRUCTURAL or MODERATE drift vector must have a remediation recommendation. COSMETIC drift may be documented without remediation."
+  domain_boundary_note: >
+    Excludes: fixing drift (M4-DDAG is diagnostic, not corrective); single-phase
+    quality issues (those belong to M3-PHRV); architecture design decisions (those
+    belong to the architecture design process, not to the drift audit).
+  initial_state_valid_claim: >
+    AuditWindow defined with N phases, no Divergences collected, no DriftVectors
+    identified. All axioms vacuously true. Valid.
+  terminal_state_valid_claim: >
+    All phases evaluated (Ax-1), all divergences traced (Ax-2), drift vectors
+    grounded in cross-phase evidence (Ax-3), STRUCTURAL/MODERATE vectors have
+    remediations (Ax-4), DriftReport complete. Valid.
+
+roles:
+  - id: drift_auditor
+    description: >
+      Cross-phase evaluator. Read-only access to all phase artifacts across the
+      N-phase window: session logs, source files, architecture docs, M3-PHRV review
+      reports. Looks for patterns invisible to single-phase review: accumulating
+      divergences, convention erosion, architectural drift.
+    observation_projection: "pi_auditor = id on read-only view of all N-phase artifacts + architecture docs"
+    authorized_transitions:
+      - "Define audit window scope (sigma_0)"
+      - "Collect divergences across phases (sigma_1)"
+      - "Identify drift vectors from divergence patterns (sigma_2)"
+      - "Produce DriftReport with remediations (sigma_3)"
+    not_authorized:
+      - "Modify source files"
+      - "Override phase review verdicts (M3-PHRV)"
+      - "Produce fixes (output is diagnosis only)"
+  coverage_claim: "Drift auditor sees all N-phase artifacts — full visibility over Mod(D_DDAG)."
+  authority_claim: "Auditor authority covers all diagnostic transitions. No corrective authority needed."
+  role_partition_rationale: "One role — drift audit is a single-perspective longitudinal analysis with no adversarial structure."
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"
+
+phases:
+  - id: sigma_0
+    name: "Scope"
+    role: drift_auditor
+    precondition: "At least 2 completed phases available; architecture docs accessible"
+    postcondition: "Audit window defined; N phases identified; architecture baseline established"
+    guidance: |
+      **Constraints:**
+      - audit_window_size >= 2 (drift requires cross-phase comparison).
+      - phases listed by identifier, ordered chronologically.
+      - architecture_baseline identifies which architecture docs are current.
+
+      **Procedure:**
+      1. Determine N (default: last 3 phases, or since last drift audit).
+      2. List the N phases chronologically.
+      3. Identify current architecture docs (the baseline to compare against).
+      4. Check: are M3-PHRV review reports available for these phases? If yes, use
+         them as a starting point. If no, work from session logs directly.
+    output_schema:
+      fields:
+        - name: audit_window_size
+          type: integer
+          description: "Number of phases in audit window"
+          required: true
+        - name: phases
+          type: array
+          items: string
+          description: "Phase identifiers, chronological order"
+          min_items: 2
+          required: true
+        - name: architecture_baseline
+          type: array
+          items: string
+          description: "Current architecture document identifiers"
+          required: true
+
+  - id: sigma_1
+    name: "Collect"
+    role: drift_auditor
+    precondition: "sigma_0 complete; audit window defined"
+    postcondition: "All divergences across N phases collected with phase attribution"
+    guidance: |
+      **Constraints:**
+      - divergences is present (empty array if none found).
+      - Each divergence has: phase_source, location (file:line), description,
+        architecture_ref (which arch doc it diverges from).
+      - Every phase in the window is examined (Ax-1).
+
+      **Procedure:**
+      1. For each phase in the window:
+         a. Read session log — extract recorded divergences (M1-IMPL Ax-I_record).
+         b. Read M3-PHRV review report if available — extract GAP findings.
+         c. Compare source changes against architecture baseline.
+         d. Record each divergence with phase attribution (Ax-2).
+      2. Include divergences that were individually classified as MEDIUM/LOW by
+         M3-PHRV — these are the drift candidates.
+    output_schema:
+      fields:
+        - name: divergences
+          type: array
+          items: object
+          description: "{phase_source, location, description, architecture_ref}"
+          min_items: 0
+          required: true
+        - name: phases_examined
+          type: integer
+          description: "Must equal audit_window_size"
+          required: true
+
+  - id: sigma_2
+    name: "Analyze"
+    role: drift_auditor
+    precondition: "sigma_1 complete; divergences collected"
+    postcondition: "Drift vectors identified from cross-phase divergence patterns"
+    guidance: |
+      **Constraints:**
+      - drift_vectors is present (empty array if no drift detected).
+      - Each drift vector is grounded in divergences from >= 2 different phases (Ax-3).
+      - Each drift vector has severity: STRUCTURAL, MODERATE, or COSMETIC.
+      - Single-phase divergences are NOT drift vectors — they are M3-PHRV findings.
+
+      **Procedure:**
+      1. Group divergences by architecture dimension (dependency direction, layer
+         boundaries, interface contracts, naming conventions, etc.).
+      2. For each group with divergences from 2+ phases: this is a drift vector.
+         Name the direction of drift (what is the codebase moving toward/away from?).
+      3. Classify severity:
+         STRUCTURAL: architecture violation that affects system properties (performance,
+         reliability, security). Example: dependency inversion accumulating across phases.
+         MODERATE: convention drift that increases maintenance cost. Example: inconsistent
+         error handling patterns across modules added in different phases.
+         COSMETIC: style drift with no functional impact. Example: naming convention
+         erosion in new files.
+      4. For each STRUCTURAL/MODERATE vector: propose remediation (Ax-4).
+    output_schema:
+      fields:
+        - name: drift_vectors
+          type: array
+          items: object
+          description: "{name, direction, severity, phases_involved, divergence_count, remediation}"
+          min_items: 0
+          required: true
+        - name: no_drift_detected
+          type: boolean
+          description: "True if no cross-phase drift patterns found"
+          required: true
+
+  - id: sigma_3
+    name: "Report"
+    role: drift_auditor
+    precondition: "sigma_2 complete; drift vectors identified"
+    postcondition: "DriftReport produced"
+    guidance: |
+      **Constraints:**
+      - drift_report is non-empty.
+      - All drift vectors from sigma_2 included.
+      - All STRUCTURAL/MODERATE vectors have remediations (Ax-4).
+      - severity_breakdown is accurate.
+      - phases_covered equals audit_window_size.
+
+      **Procedure:**
+      1. Assemble DriftReport from drift vectors and divergences.
+      2. For each STRUCTURAL/MODERATE vector: include remediation recommendation.
+         Remediations should be actionable as PhaseDoc tasks for the next M1-IMPL cycle.
+      3. Summarize: how many drift vectors, severity distribution, trend direction.
+      4. If no drift detected: report explicitly states this (healthy codebase signal).
+    output_schema:
+      fields:
+        - name: drift_report
+          type: object
+          description: "Full drift analysis report"
+          required: true
+        - name: drift_vector_count
+          type: integer
+          required: true
+        - name: severity_breakdown
+          type: object
+          description: "{STRUCTURAL, MODERATE, COSMETIC counts}"
+          required: true
+        - name: phases_covered
+          type: integer
+          required: true
+        - name: remediations
+          type: array
+          items: object
+          description: "{drift_vector, recommendation, suggested_phase_doc_task}"
+          required: false
+
+objective:
+  id: O_DDAG
+  formal: >
+    O_DDAG(s) = report_complete(driftReport)
+      AND forall p : Phase. in_window(p, auditWindow) -> evaluated(p)
+      AND forall dv : DriftVector. drift_detected(dv) AND severity_of(dv) IN {STRUCTURAL, MODERATE}
+        -> exists r : Remediation. remediation_proposed(r, dv)
+  note: >
+    O_DDAG is satisfied when a complete drift report exists covering all phases in
+    the window, with remediations for all non-cosmetic drift. The method succeeds
+    by producing an honest diagnosis — whether or not drift exists.
+  progress_preorder:
+    definition: "s1 <= s2 iff |{p | evaluated(p) in s1}| <= |{p | evaluated(p) in s2}|"
+  success_profile:
+    - id: mu_1
+      name: phase_coverage
+      formula: "|{p | evaluated(p)}| / phase_count(auditWindow)"
+      range: "[0, 1]"
+      terminal: "1.0"
+    - id: mu_2
+      name: remediation_coverage
+      formula: "|{dv | has_remediation(dv)}| / |{dv | severity IN {STRUCTURAL, MODERATE}}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      note: "1.0 when no STRUCTURAL/MODERATE drift exists (0/0 = 1 by convention)"
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0,..,sigma_3} | NOT executed}|"
+  initial: 4
+  final: 0
+  note: "Linear DAG, no loops. Trivially terminating."

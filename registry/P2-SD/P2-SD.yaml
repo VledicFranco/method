@@ -224,14 +224,20 @@ retraction_pairs:
 
 known_wip:
   - id: M2-DIMPL
-    status: stub
-    description: "Requires G0–G6 compile pass via M1-MDES. delta_SD arm 2 declared but method not callable in practice."
+    status: draft_v0.2
+    description: >
+      Distributed Implementation method drafted with domain theory, 4 roles, 5-step DAG,
+      Gate A/B quality gates, bounded patch loop. Needs G0-G6 compile pass.
   - id: M3-PHRV
-    status: pending
-    description: "Phase Review method — design and compile pending."
+    status: draft_v0.1
+    description: >
+      Phase Review method drafted with domain theory, 1 role, 4-step linear DAG,
+      severity-classified findings with file:line citations, 3-way verdict. Needs G0-G6 compile pass.
   - id: M4-DDAG
-    status: pending
-    description: "Drift Audit method — design and compile pending. 'drift' predicate needs formal definition in D_DDAG."
+    status: draft_v0.1
+    description: >
+      Drift Audit method drafted with domain theory, 1 role, 4-step linear DAG,
+      cross-phase divergence analysis, drift vectors with severity. Needs G0-G6 compile pass.
   - id: M5-PLAN
     status: resolved
     description: "Phase Planning method — compiled v1.0 (2026-03-13)."

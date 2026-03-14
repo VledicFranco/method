@@ -1,0 +1,292 @@
+method:
+  id: M3-PHRV
+  parent: P2-SD
+  name: "Phase Review Method"
+  description: >
+    Post-implementation review method. After a phase completes via M1-IMPL or
+    M2-DIMPL, M3-PHRV evaluates the delivered work against the PhaseDoc,
+    architecture docs, and PRD. Produces a ReviewReport with per-finding citations
+    (file:line) and an overall verdict. Read-only — M3-PHRV does not modify source.
+  version: "0.1"
+  status: draft
+  formal_grounding: "theory/F1-FTH.md"
+  source: "M1-IMPL Reviewer role (lines 215-221); P2-SD delta_SD arm 4"
+
+navigation:
+  what: >
+    M3-PHRV takes a completed phase's artifacts (source files, session log, PhaseDoc,
+    architecture docs) and produces a ReviewReport: a list of findings with file:line
+    citations, severity ratings, and an overall verdict (PASS, CONDITIONAL, FAIL).
+    Does not fix anything — findings are input to the next M1-IMPL or M3-MEVO cycle.
+  who: >
+    One role — reviewer. Read-only access to all phase artifacts. The reviewer
+    evaluates delivered work against the spec, not against their own judgment about
+    what the code should do.
+  why: >
+    Implementation without review accumulates silent drift: the code works but
+    diverges from the spec, architecture constraints are violated without detection,
+    and acceptance criteria are partially met without explicit acknowledgment. M3-PHRV
+    makes the gap between spec and delivery visible and citable.
+  how: >
+    Four linear steps: orient (load phase artifacts) -> audit (check each task against
+    PhaseDoc acceptance criteria) -> assess (evaluate architecture and cross-cutting
+    concerns) -> report (produce ReviewReport with verdict).
+  when_to_use:
+    - "A phase has completed via M1-IMPL or M2-DIMPL"
+    - "The delivered work needs evaluation against PRD and architecture"
+    - "Findings are needed as input to the next planning or evolution cycle"
+  when_not_to_use:
+    - "Mid-implementation review — use M1-IMPL sigma_A1-A4 (confidence raising) instead"
+    - "Cross-phase drift analysis — use M4-DDAG instead"
+    - "The task is to fix issues, not find them — use M1-IMPL"
+
+domain_theory:
+  id: D_PHRV
+  sorts:
+    - name: PhaseArtifact
+      cardinality: singleton_per_execution
+      description: "The bundle of phase outputs: source files, session log, PhaseDoc, test results"
+    - name: ArchDoc
+      cardinality: finite
+      description: "Architecture documents the phase should conform to"
+    - name: AcceptanceCriterion
+      cardinality: "finite, from PhaseDoc"
+      description: "A specific criterion from the PhaseDoc that the delivered work must satisfy"
+    - name: Finding
+      cardinality: unbounded
+      description: "A specific observation: what was expected, what was delivered, where the gap is"
+    - name: Severity
+      cardinality: finite
+      values: [CRITICAL, HIGH, MEDIUM, LOW]
+      description: "Finding severity — same scale as M1-IMPL discrepancy classification"
+    - name: ReviewReport
+      cardinality: singleton_per_execution
+      description: "Assembled findings with verdict"
+    - name: Verdict
+      cardinality: finite
+      values: [PASS, CONDITIONAL, FAIL]
+      description: "PASS: all criteria met. CONDITIONAL: met with documented gaps. FAIL: criteria not met."
+  function_symbols:
+    - name: severity_of
+      signature: "Finding -> Severity"
+      totality: total
+    - name: verdict_of
+      signature: "ReviewReport -> Verdict"
+      totality: total
+    - name: criterion_of
+      signature: "Finding -> AcceptanceCriterion"
+      totality: total
+      note: "Each finding traces to a specific acceptance criterion"
+  predicates:
+    - name: criterion_met
+      signature: "AcceptanceCriterion"
+      description: "The acceptance criterion is fully satisfied by the delivered work"
+    - name: criterion_gap
+      signature: "AcceptanceCriterion x Finding"
+      description: "The acceptance criterion has a gap documented by this finding"
+    - name: architecture_aligned
+      signature: "PhaseArtifact x ArchDoc"
+      description: "The phase artifacts conform to the architecture document"
+    - name: finding_cited
+      signature: "Finding"
+      description: "The finding has a specific file:line citation"
+    - name: report_complete
+      signature: "ReviewReport"
+      description: "The report covers all acceptance criteria and architecture checks"
+  axioms:
+    - id: Ax-1
+      name: Finding citation required
+      statement: "forall f : Finding. finding_cited(f)"
+      rationale: "Every finding must have a specific file:line citation. Uncited findings are opinions, not review results."
+    - id: Ax-2
+      name: Criterion traceability
+      statement: "forall ac : AcceptanceCriterion. criterion_met(ac) OR exists f : Finding. criterion_gap(ac, f)"
+      rationale: "Every acceptance criterion is either met or has an explicit gap finding. No criterion goes unevaluated."
+    - id: Ax-3
+      name: Verdict consistency
+      statement: >
+        verdict_of(report) = PASS -> forall ac. criterion_met(ac).
+        verdict_of(report) = FAIL -> exists ac. NOT criterion_met(ac) AND exists f. criterion_gap(ac, f) AND severity_of(f) IN {CRITICAL, HIGH}.
+        verdict_of(report) = CONDITIONAL -> forall ac. criterion_met(ac) OR (criterion_gap(ac, f) AND severity_of(f) IN {MEDIUM, LOW}).
+      rationale: "Verdict must be consistent with findings. PASS requires all met. FAIL requires at least one CRITICAL/HIGH gap. CONDITIONAL allows only MEDIUM/LOW gaps."
+  domain_boundary_note: >
+    Excludes: fixing found issues (M3-PHRV is read-only); implementation decisions
+    (the reviewer evaluates against spec, not against personal judgment); cross-phase
+    concerns (those belong to M4-DDAG).
+  initial_state_valid_claim: >
+    Phase artifacts loaded, no Findings, no ReviewReport. All axioms vacuously true. Valid.
+  terminal_state_valid_claim: >
+    All AcceptanceCriteria evaluated per Ax-2, all Findings cited per Ax-1,
+    ReviewReport complete with consistent verdict per Ax-3. Valid.
+
+roles:
+  - id: reviewer
+    description: >
+      Read-only evaluator. Reads completed phase source files, PhaseDoc, architecture
+      docs, and session log. Produces Findings with file:line citations. Does NOT
+      modify source — findings are output, not fixes.
+    observation_projection: "pi_reviewer = id on read-only view of all phase artifacts"
+    authorized_transitions:
+      - "Load and read phase artifacts (sigma_0)"
+      - "Evaluate acceptance criteria (sigma_1)"
+      - "Evaluate architecture alignment (sigma_2)"
+      - "Produce ReviewReport with verdict (sigma_3)"
+    not_authorized:
+      - "Modify source files"
+      - "Override PhaseDoc acceptance criteria"
+      - "Produce fixes (output is findings only)"
+  coverage_claim: "Reviewer sees all phase artifacts — full visibility over Mod(D_PHRV)."
+  authority_claim: "Reviewer authority covers all evaluation transitions. No fix authority needed — M3-PHRV is read-only."
+  role_partition_rationale: "One role because review is a single-perspective evaluation with no adversarial or parallel structure."
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"
+
+phases:
+  - id: sigma_0
+    name: "Orient"
+    role: reviewer
+    precondition: "Phase artifacts available (source files, session log, PhaseDoc, architecture docs)"
+    postcondition: "All artifacts loaded; acceptance criteria enumerated; review scope understood"
+    guidance: |
+      **Constraints:**
+      - artifacts_loaded = true.
+      - acceptance_criteria enumerated from PhaseDoc (at least 1).
+      - architecture_docs identified.
+
+      **Procedure:**
+      1. Load PhaseDoc. Extract all acceptance criteria.
+      2. Load session log. Identify which tasks were executed and their outcomes.
+      3. Load architecture docs relevant to this phase.
+      4. Identify the source files modified in this phase.
+    output_schema:
+      fields:
+        - name: acceptance_criteria
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: architecture_docs
+          type: array
+          items: string
+          required: true
+        - name: files_in_scope
+          type: array
+          items: string
+          required: true
+
+  - id: sigma_1
+    name: "Criteria Audit"
+    role: reviewer
+    precondition: "sigma_0 complete; acceptance criteria enumerated"
+    postcondition: "Every acceptance criterion evaluated — met or gap finding produced"
+    guidance: |
+      **Constraints:**
+      - Every acceptance criterion has a result: MET or GAP with Finding.
+      - Every Finding has file:line citation (Ax-1).
+      - Every Finding has severity (CRITICAL/HIGH/MEDIUM/LOW).
+      - No criterion goes unevaluated (Ax-2).
+
+      **Procedure:**
+      1. For each acceptance criterion from sigma_0:
+         a. Find the source code / artifact that should satisfy it.
+         b. Evaluate: is it fully met?
+         c. If met: record criterion_met.
+         d. If gap: produce Finding with file:line, expected vs actual, severity.
+      2. Classify severity using M1-IMPL scale:
+         CRITICAL = compile failure, HIGH = runtime behavior impact,
+         MEDIUM = underspecified, LOW = documentation gap.
+    output_schema:
+      fields:
+        - name: criteria_results
+          type: array
+          items: object
+          description: "{criterion, result: MET|GAP, finding: {location, expected, actual, severity}}"
+          min_items: 1
+          required: true
+
+  - id: sigma_2
+    name: "Architecture Assessment"
+    role: reviewer
+    precondition: "sigma_1 complete; criteria audited"
+    postcondition: "Architecture alignment evaluated; cross-cutting findings produced if any"
+    guidance: |
+      **Constraints:**
+      - architecture_findings is present (empty array if no issues).
+      - Each finding has file:line citation.
+
+      **Procedure:**
+      1. Check dependency direction: do new files depend in the right direction?
+      2. Check layer violations: does code cross layer boundaries inappropriately?
+      3. Check interface contracts: are interfaces used as designed?
+      4. Check naming conventions: do new symbols follow project conventions?
+      5. For each violation: produce Finding with file:line, severity.
+    output_schema:
+      fields:
+        - name: architecture_findings
+          type: array
+          items: object
+          description: "{check, location, expected, actual, severity}"
+          min_items: 0
+          required: true
+        - name: architecture_aligned
+          type: boolean
+          required: true
+
+  - id: sigma_3
+    name: "Report"
+    role: reviewer
+    precondition: "sigma_1 and sigma_2 complete"
+    postcondition: "ReviewReport produced with verdict"
+    guidance: |
+      **Constraints:**
+      - review_report is non-empty.
+      - verdict is one of PASS, CONDITIONAL, FAIL.
+      - verdict is consistent with findings per Ax-3:
+        PASS: all criteria met, no architecture violations.
+        CONDITIONAL: all criteria met or gaps are MEDIUM/LOW only.
+        FAIL: at least one CRITICAL or HIGH gap.
+      - All findings from sigma_1 and sigma_2 included.
+      - finding_count is accurate.
+
+      **Procedure:**
+      1. Merge criteria findings (sigma_1) and architecture findings (sigma_2).
+      2. Determine verdict per Ax-3 severity rules.
+      3. Produce ReviewReport with: all findings, severity breakdown, verdict, summary.
+    output_schema:
+      fields:
+        - name: review_report
+          type: object
+          description: "Full review report with findings and verdict"
+          required: true
+        - name: verdict
+          type: enum
+          values: [PASS, CONDITIONAL, FAIL]
+          required: true
+        - name: finding_count
+          type: integer
+          required: true
+        - name: severity_breakdown
+          type: object
+          description: "{CRITICAL, HIGH, MEDIUM, LOW counts}"
+          required: true
+
+objective:
+  id: O_PHRV
+  formal: >
+    O_PHRV(s) = report_complete(reviewReport) AND verdict_of(reviewReport) IN {PASS, CONDITIONAL, FAIL}
+  note: "O_PHRV is satisfied when a complete, consistent review report exists — regardless of verdict. The method succeeds by producing an honest evaluation, not by the code being good."
+  progress_preorder:
+    definition: "s1 <= s2 iff |{ac | evaluated(ac) in s1}| <= |{ac | evaluated(ac) in s2}|"
+  success_profile:
+    - id: mu_1
+      name: criteria_coverage
+      formula: "|{ac | evaluated(ac)}| / |{ac | from PhaseDoc}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0,..,sigma_3} | NOT executed}|"
+  initial: 4
+  final: 0
+  note: "Linear DAG, no loops. Trivially terminating."
