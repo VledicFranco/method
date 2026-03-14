@@ -1,0 +1,192 @@
+# Method Instance Card — pv-method
+# Layer 1 input to M4-MINS. Parameterizes P2-SD for this project.
+
+project_card:
+  id: I2-METHOD
+  project: pv-method
+  description: >
+    Method MCP server — loads formal methodology YAML specs and exposes them to
+    LLM agents via MCP tools. TypeScript monorepo (core + mcp packages). The
+    registry/ directory IS the product: compiled methodology and method YAMLs
+    that the server loads and serves. Dual nature: this project both USES P2-SD
+    for its own development AND IS the runtime for P2-SD methods.
+  methodology: P2-SD
+  methodology_version: "2.0"
+
+  context:
+    language: "TypeScript 5.7"
+    build_command: "npm run build"
+    test_command: "npm test"
+    lint_command: "npx tsc --noEmit"
+    language_server: "TypeScript Language Server"
+    language_server_protocol: "LSP (via IDE)"
+    additional_tools:
+      - name: "tsx"
+        purpose: "TypeScript execution without compilation for dev/debug"
+        protocol: CLI
+
+  architecture:
+    docs_root: "docs/"
+    architecture_path: "docs/arch/"
+    prd_path: "docs/prds/"
+    gaps_path: "docs/arch/gaps.md"
+    implementation_path: "docs/impl/"
+
+  source_layout:
+    monorepo: true
+    packages:
+      - name: "@method/core"
+        path: "packages/core/"
+        purpose: "YAML loader, session manager, theory lookup — pure logic, no transport"
+      - name: "@method/mcp"
+        path: "packages/mcp/"
+        purpose: "MCP server — wires core functions to MCP tool handlers"
+    registry: "registry/"
+    theory: "theory/"
+
+  delivery_rules:
+    # --- Registry integrity ---
+    - id: DR-01
+      rule: >
+        The registry/ directory contains the canonical method specifications. Any
+        change to a method YAML must preserve compilation status — do not introduce
+        changes that would cause a compiled method to fail G0-G6 gates. Treat
+        registry files as production artifacts, not scratch documents.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+      protocol: registry_integrity
+
+    - id: DR-02
+      rule: >
+        Method YAML files follow a strict structure: navigation, domain_theory
+        (sorts, function_symbols, predicates, axioms, state claims, boundary),
+        roles (with coverage/authority), phases (with guidance/output_schema/invariants),
+        composability, objective, termination, compilation_record. When editing
+        registry YAMLs, preserve all sections — do not delete sections to simplify.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    # --- Package boundary discipline ---
+    - id: DR-03
+      rule: >
+        Core package (@method/core) must have zero transport dependencies — no MCP
+        SDK, no HTTP, no socket imports. Core exports pure functions that the MCP
+        package wraps. This separation allows core logic to be used by other
+        transports in the future.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    - id: DR-04
+      rule: >
+        MCP package (@method/mcp) is a thin wrapper over core. MCP tool handlers
+        should be minimal: parse input, call core function, format output. Business
+        logic in MCP handlers is a violation — move it to core.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    # --- YAML handling ---
+    - id: DR-05
+      rule: >
+        Use js-yaml for all YAML parsing. The registry contains complex YAML with
+        multi-line strings, nested objects, and arrays of objects. Parsing must
+        preserve structure faithfully — no lossy transformations.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    - id: DR-06
+      rule: >
+        Path resolution for registry files must handle both relative and absolute
+        paths, and work on Windows (backslash) and Unix (forward slash). The
+        registry is loaded from disk at server start; paths are resolved relative
+        to the registry root.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    # --- Theory alignment ---
+    - id: DR-07
+      rule: >
+        The MCP server's tool surface must align with formal methodology concepts.
+        Tool names should map to methodology operations: methodology_list (enumerate),
+        methodology_load (load into session), step_current (read current step),
+        step_advance (execute step transition), theory_lookup (query formal theory).
+        Do not invent tools that have no methodology-level grounding.
+      applies_to: [M1-IMPL, M6-ARFN]
+      affects_roles: [impl_sub_agent, architect]
+
+    - id: DR-08
+      rule: >
+        When the formal theory (theory/ directory) and the implementation diverge,
+        the theory is the source of truth. If an implementation decision contradicts
+        F1-FTH or a compiled method's axioms, the implementation must be revised —
+        not the theory.
+      applies_to: [M1-IMPL, M2-DIMPL, M3-PHRV]
+      affects_roles: [impl_sub_agent, reviewer]
+
+    # --- Testing ---
+    - id: DR-09
+      rule: >
+        Every core function that loads or transforms YAML should have a test with
+        a real registry YAML fixture (not a minimal mock). The registry YAMLs are
+        complex and the loader must handle their full structure.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    # --- Review focus ---
+    - id: DR-10
+      rule: >
+        Phase reviews (M3-PHRV) must check registry integrity: do any registry
+        YAMLs have broken references (e.g., parent methodology that doesn't exist,
+        retraction pair to a method that was renamed)? Registry consistency is a
+        first-class review criterion.
+      applies_to: [M3-PHRV]
+      affects_roles: [reviewer]
+
+    # --- Drift audit focus ---
+    - id: DR-11
+      rule: >
+        Drift audits (M4-DDAG) should check for theory-implementation drift: does
+        the MCP server's behavior match the formal methodology specs? Common drift:
+        step_advance allows transitions the step DAG doesn't permit, tools expose
+        state the role's observation projection shouldn't include.
+      applies_to: [M4-DDAG]
+      affects_roles: [drift_auditor]
+      trigger: "phase_count % 3 == 0"
+
+    # --- Architecture refinement ---
+    - id: DR-12
+      rule: >
+        Architecture specs follow the horizontal documentation pattern: one concern
+        per file in docs/arch/ (loader.md, state-model.md, mcp-layer.md, etc.).
+        Do not merge architecture specs into monolithic documents. Each file is
+        3-12 KB and independently evolvable.
+      applies_to: [M6-ARFN]
+      affects_roles: [architect]
+      protocol: horizontal_documentation
+
+  role_notes:
+    impl_sub_agent:
+      note: >
+        This project has two distinct artifact types: TypeScript source code
+        (packages/) and methodology YAML specifications (registry/). Both require
+        care but in different ways. Code changes follow standard TypeScript practices.
+        Registry changes must preserve method compilation status and structural
+        completeness. When in doubt about a registry change, check the method's
+        compilation_record to understand what gates it passed.
+    reviewer:
+      note: >
+        Review has two dimensions: code quality (standard) and registry integrity
+        (project-specific). Check that registry YAMLs are structurally complete,
+        cross-references are valid (parent methodologies exist, retraction pairs
+        reference real methods), and no compiled method has been degraded.
+    architect:
+      note: >
+        Architecture decisions must respect the dual nature of this project: it is
+        both a software product (MCP server) and a method registry (YAML specs).
+        The architecture must support loading arbitrary methodology YAMLs at runtime
+        while keeping the server simple and transport-agnostic.
+    drift_auditor:
+      note: >
+        Primary drift risk: the MCP server's tool behavior diverges from the formal
+        methodology specs it serves. Check that step transitions match the step DAG,
+        observation projections match what tools expose, and authority constraints
+        match what tools allow.

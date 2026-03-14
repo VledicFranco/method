@@ -1,0 +1,17 @@
+instance:
+  id: I2-METHOD
+  project: pv-method
+  description: "Method MCP server — loads formal methodology YAMLs and serves them to LLM agents"
+  methodology: P2-SD
+  methodology_version: "2.0"
+  card_location: "pv-method/.method/project-card.yaml"
+  instance_date: "2026-03-14"
+  status: active
+  methods_instantiated: [M1-IMPL, M2-DIMPL, M3-PHRV, M4-DDAG, M6-ARFN]
+  delivery_rule_count: 12
+  role_notes_count: 4
+  notes: >
+    Second MIC instance. TypeScript monorepo with dual artifact types: source code
+    (packages/core, packages/mcp) and methodology registry (registry/). Key
+    project-specific constraints: registry integrity preservation, package boundary
+    discipline (core has zero transport deps), theory-implementation alignment.
