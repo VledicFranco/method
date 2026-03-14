@@ -122,9 +122,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { methodology_id, method_id } = loadInput.parse(args);
         const method = loadMethodology(REGISTRY, methodology_id, method_id);
         session.load(method);
-        return ok(
-          `Loaded ${method.methodId} — ${method.name} (${method.steps.length} steps).\nCall step_current to see the first step.`
-        );
+        const response = {
+          methodologyId: method.methodologyId,
+          methodId: method.methodId,
+          methodName: method.name,
+          stepCount: method.steps.length,
+          objective: method.objective ?? null,
+          firstStep: { id: method.steps[0].id, name: method.steps[0].name },
+          message: `Loaded ${method.methodId} — ${method.name} (${method.steps.length} steps). Call step_current to see the first step.`,
+        };
+        return ok(JSON.stringify(response, null, 2));
       }
 
       case "methodology_status": {
@@ -139,9 +146,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "step_advance": {
         const result = session.advance();
-        if (result.nextStep === null) {
-          return ok("Method complete. All steps finished.");
-        }
         return ok(JSON.stringify(result, null, 2));
       }
 
