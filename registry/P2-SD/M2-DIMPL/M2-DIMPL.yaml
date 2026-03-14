@@ -8,8 +8,9 @@ method:
     results through Gate A (quality) and Gate B (security/architecture), patches
     failures, and iterates until all gates pass or budget exhausted. Extracted from
     M1-IMPL §11 Orchestrator Mode.
-  version: "0.2"
-  status: draft
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
   formerly: "M2-ORCH (renamed to resolve collision with P1-EXEC/M2-ORCH)"
   source: "M1-IMPL §11 (Orchestrator Mode), M.002-SI v3.1"
   formal_grounding: "theory/F1-FTH.md"
@@ -33,9 +34,9 @@ navigation:
     catch failures before integration.
   how: >
     Five steps: decompose (produce sub-task set from PhaseDoc) -> dispatch (parallel
-    sub-agents) -> gate_a (quality review per task) -> gate_b (security/architecture
-    review) -> integrate (assemble session log). Gate A failures trigger patch
-    sub-agents and re-evaluation (bounded re-entry loop).
+    sub-agents) -> gate_a (quality review per task, PAT-003A hybrid step with bounded
+    patch loop) -> gate_b (security/architecture review) -> integrate (assemble session
+    log). Gate A failures trigger patch sub-agents and re-evaluation (bounded re-entry).
   when_to_use:
     - "PhaseDoc has >= 3 tasks with non-overlapping file scopes"
     - "Task boundaries are clear from the PhaseDoc (scope declarable before execution)"
@@ -74,11 +75,19 @@ domain_theory:
       values: [PASS, FAIL, GAP_DOCUMENTED]
       description: "Session-level security/architecture verdict from sec-arch-sub-agent"
     - name: PatchResult
-      cardinality: unbounded
+      cardinality: "finite, bounded by |Tasks| * max_patch_attempts"
       description: "Output of a patch sub-agent dispatched after Gate A FAIL"
     - name: SessionLog
       cardinality: singleton_per_execution
       description: "Integrated record of all task results, gate verdicts, patches"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — used for counts, bounds, and the termination certificate"
+  constants:
+    - name: max_patch_attempts
+      sort: nat
+      value: 2
+      description: "Maximum number of patch re-dispatches per task before failure is terminal. Default 2."
   function_symbols:
     - name: file_scope
       signature: "Task -> FileScope"
@@ -93,6 +102,10 @@ domain_theory:
     - name: compile_exit
       signature: "SessionLog -> {0, nonzero}"
       totality: total
+    - name: patch_count
+      signature: "Task -> nat"
+      totality: total
+      note: "Number of patch dispatches for this task. 0 <= patch_count(t) <= max_patch_attempts."
   predicates:
     - name: from_phase
       signature: "Task x PhaseDoc"
@@ -121,6 +134,9 @@ domain_theory:
     - name: no_regression
       signature: "SessionLog"
       description: "No test regressions in integrated session"
+    - name: budget_exhausted
+      signature: "Task"
+      description: "patch_count(t) = max_patch_attempts AND NOT gate_a_pass(t) — task failure is terminal"
   axioms:
     - id: Ax-1
       name: Finite task set
@@ -139,10 +155,16 @@ domain_theory:
       statement: "forall t : Task. task_complete(t) -> gate_a(t) != None"
       rationale: "Every completed task must be evaluated by Gate A before integration."
     - id: Ax-5
-      name: Patch bounded by dispatch count
-      statement: "forall t : Task. |{patch_dispatches for t}| <= max_patch_attempts"
-      rationale: "Patch re-dispatch is bounded. After max_patch_attempts, task failure is terminal."
-      note: "max_patch_attempts = 2 (default). Prevents infinite patch loops."
+      name: Patch bounded by constant
+      statement: "forall t : Task. patch_count(t) <= max_patch_attempts"
+      rationale: >
+        Patch re-dispatch is bounded by the declared constant max_patch_attempts (= 2).
+        After max_patch_attempts exhausted with continued FAIL, budget_exhausted(t) holds
+        and task failure is terminal. Prevents infinite patch loops.
+    - id: Ax-6
+      name: Budget exhaustion terminality
+      statement: "forall t : Task. budget_exhausted(t) -> NOT gate_a_pass(t) AND patch_count(t) = max_patch_attempts"
+      rationale: "budget_exhausted is definitionally: max patches consumed and still failing. Terminal failure state for that task."
   domain_boundary_note: >
     Excludes: internal execution of sub-agents (orchestrator sees only TaskResult
     boundary outputs); the content domain of the software being built; tool
@@ -150,10 +172,17 @@ domain_theory:
     to the PhaseDoc and architecture docs, not to M2-DIMPL).
   initial_state_valid_claim: >
     A state with PhaseDoc present, no Tasks dispatched, no TaskResults, no gate
-    verdicts satisfies all axioms vacuously. Valid.
+    verdicts, patch_count(t) = 0 for all t satisfies all axioms: Ax-1 (PhaseDoc has
+    tasks — antecedent satisfied by PhaseDoc contract), Ax-2 through Ax-4 (false
+    antecedents — no dispatched or completed tasks), Ax-5 (patch_count = 0 <= 2),
+    Ax-6 (no budget_exhausted — vacuously true). Valid.
   terminal_state_valid_claim: >
-    A state with all Tasks complete, all gate_a_pass, gate_b_pass(SessionLog),
-    no_regression(SessionLog), compile_exit = 0 satisfies all axioms. Valid.
+    A state with all Tasks complete, all gate_a_pass (or budget_exhausted for terminal
+    failures), gate_b_pass(SessionLog), no_regression(SessionLog), compile_exit = 0
+    satisfies all axioms: Ax-1 (tasks exist), Ax-2 (all dispatched with scopes),
+    Ax-3 (independence verified at sigma_0), Ax-4 (all gate_a evaluated), Ax-5
+    (patch_count <= max_patch_attempts), Ax-6 (budget_exhausted implies terminal
+    failure recorded). Valid.
 
 roles:
   - id: orchestrator
@@ -162,78 +191,139 @@ roles:
       Tasks, dispatches sub-agents, evaluates gate results, dispatches patch
       sub-agents on failure, assembles SessionLog. Does NOT write source files.
     observation_projection: >
-      Sees: PhaseDoc, Task set, FileScopes, all TaskResults, all GateVerdicts,
-      SessionLog. Does NOT see sub-agent internal execution.
+      pi_orch : Mod(D_DIMPL) -> Mod(D_DIMPL_orch) — projects out sub-agent internal
+      execution state. Orchestrator sees: PhaseDoc, Task set, FileScopes, all
+      TaskResults (boundary outputs only), all GateAVerdicts, GateBVerdict,
+      patch_count per task, SessionLog. Does NOT see sub-agent internal execution.
     authorized_transitions:
       - "Decompose PhaseDoc into Task set with FileScopes (sigma_0)"
       - "Dispatch impl-sub-agents (sigma_1)"
       - "Dispatch qa-sub-agents for Gate A (sigma_2)"
-      - "Dispatch patch sub-agents on Gate A FAIL (sigma_2 re-entry)"
+      - "Dispatch patch sub-agents on Gate A FAIL (sigma_2 re-entry, bounded by Ax-5)"
       - "Dispatch sec-arch-sub-agent for Gate B (sigma_3)"
       - "Assemble SessionLog (sigma_4)"
     not_authorized:
       - "Write source files (sub-agent territory)"
       - "Override gate verdicts"
+      - "Dispatch patches beyond max_patch_attempts (Ax-5)"
   - id: impl_sub_agent
     count: "n (one per Task)"
     description: >
       Executes one Task within its FileScope. Runs M1-IMPL Phase B (sigma_B1-B5)
       on the scoped task. Returns TaskResult with files changed, divergences, test
       results. Epistemically isolated from other sub-agents.
-    observation_projection: "file_scope(t) only"
+    observation_projection: >
+      pi_impl(t) : Mod(D_DIMPL) -> Mod(D_DIMPL_impl) — restricted to file_scope(t).
+      Sub-agent sees only its assigned Task description, FileScope, and return format.
     authorized_transitions:
       - "Read and write within file_scope(t)"
       - "Run task-scoped tests"
       - "Return TaskResult"
+    not_authorized:
+      - "Read or write outside file_scope(t)"
+      - "Observe other sub-agents' scopes or results"
+      - "Write to orchestrator's session record"
   - id: qa_sub_agent
     count: "one per Task (dispatched after impl_sub_agent completes)"
     description: >
       Gate A quality reviewer. Read-only. Checks compilation, test regression,
       scope discipline. Returns PASS or FAIL with findings.
-    observation_projection: "read-only on all files"
+    observation_projection: >
+      pi_qa(t) : Mod(D_DIMPL) -> Mod(D_DIMPL_qa) — read-only on all files relevant
+      to the task. Sees TaskResult, file_scope(t), test results.
     authorized_transitions:
-      - "Evaluate Gate A criteria"
+      - "Evaluate Gate A criteria (compile, test, scope discipline)"
       - "Return GateAVerdict with findings"
+    not_authorized:
+      - "Write source files"
+      - "Override or reinterpret scope boundaries"
   - id: sec_arch_sub_agent
     count: "1 per session"
     description: >
       Gate B security and architecture verifier. Checks security chain (6 checks)
       and architecture alignment (4 questions). Returns PASS, FAIL, or GAP_DOCUMENTED.
-    observation_projection: "read-only on all files"
+    observation_projection: >
+      pi_sec : Mod(D_DIMPL) -> Mod(D_DIMPL_sec) — read-only on all files, architecture
+      docs, and full session context. Sees all TaskResults, all GateAVerdicts,
+      architecture documentation.
     authorized_transitions:
-      - "Evaluate Gate B criteria"
+      - "Evaluate Gate B criteria (security chain + architecture alignment)"
       - "Return GateBVerdict with findings"
+    not_authorized:
+      - "Write source files"
+      - "Override Gate A verdicts"
+      - "Issue patch dispatches"
   coverage_claim: >
-    Orchestrator covers coordination state. impl_sub_agent covers task execution.
-    qa_sub_agent covers quality evaluation. sec_arch_sub_agent covers security/architecture.
-    Union covers all of Mod(D_DIMPL).
+    pi_orch covers coordination state: PhaseDoc, Task set, FileScopes, TaskResults
+    (boundary), GateVerdicts, SessionLog. pi_impl(t) covers task execution: source
+    files within scope. pi_qa(t) covers quality evaluation: TaskResult and test state.
+    pi_sec covers security/architecture: all files and architecture docs. Union covers
+    all of Mod(D_DIMPL): orchestration structure (pi_orch), execution detail per task
+    (pi_impl), quality assessment (pi_qa), security/architecture assessment (pi_sec).
+    No dimension is invisible to all four role types.
   authority_claim: >
-    Orchestrator: decomposition, dispatch, gate evaluation coordination, integration.
-    Sub-agents: task execution (impl), quality review (qa), security review (sec-arch).
-    Union covers all transitions to O_DIMPL.
+    Orchestrator authority covers: decomposition, dispatch, gate evaluation
+    coordination, patch dispatch, integration. impl_sub_agent authority covers:
+    task execution within scope. qa_sub_agent authority covers: Gate A quality
+    evaluation. sec_arch_sub_agent authority covers: Gate B security/architecture
+    evaluation. Union covers all transitions required to advance from initial state
+    (PhaseDoc presented) to O_DIMPL (all gates pass, SessionLog assembled).
+  role_partition_rationale: >
+    Four role types because the method requires four distinct epistemic and authority
+    positions: (1) architectural coordination without source-level execution
+    (orchestrator), (2) scoped task execution with file-write authority
+    (impl_sub_agent), (3) quality evaluation with read-only assessment authority
+    (qa_sub_agent), (4) security/architecture evaluation with cross-cutting read
+    authority (sec_arch_sub_agent). The orchestrator-impl split prevents context
+    window burn (the motivating problem). The qa/sec-arch split separates per-task
+    quality gates from session-level security review. Merging qa into orchestrator
+    would conflate coordination with evaluation; merging sec-arch into qa would
+    lose the cross-cutting session-level perspective.
 
 step_dag:
-  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (sigma_2 has bounded re-entry)"
-  note: "sigma_2 contains a patch loop: Gate A FAIL -> patch sub-agent -> re-evaluate. Bounded by Ax-5."
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (sigma_2 is PAT-003A hybrid with bounded internal convergence)"
+  formal: >
+    Gamma_DIMPL = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4},
+    {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_3, sigma_4)},
+    sigma_0, sigma_4).
+    sigma_2 is a PAT-003A hybrid step: externally atomic in the DAG, internally
+    contains a bounded patch-evaluate convergence loop governed by nu_sigma_2.
 
 phases:
   - id: sigma_0
     name: "Decompose"
     role: orchestrator
     precondition: "PhaseDoc received with task list; go_no_go_decision = TRUE from M1-IMPL Phase A"
-    postcondition: "Task set produced with FileScopes; independence verified; coverage verified"
+    postcondition: >
+      Task set produced with FileScopes. Independence verified for all pairs.
+      Coverage verified: every PhaseDoc acceptance criterion traced to a task.
+      scope_declared(t) holds for all Tasks.
     guidance: |
-      **Constraints:**
+      **Constraints (what must be true after this step):**
       - tasks is non-empty (>= 1 from PhaseDoc).
       - Each task has: id, description, file_scope, acceptance_criteria.
-      - Independence verified for all task pairs.
-      - Coverage: every PhaseDoc acceptance criterion traced to a task.
+      - Independence verified for all task pairs (Ax-3 prerequisite).
+      - coverage_verified = true: every PhaseDoc acceptance criterion traced to a task.
+      - deferred_gaps lists any known gaps not in scope for this execution.
+
+      **Rationale:**
+      Scope declaration before dispatch (Ax-2) is the method's central constraint. A task
+      dispatched without a fully declared FileScope produces unpredictable results — the
+      sub-agent may observe or act on state outside its authorized context. Independence
+      verification (Ax-3) prevents parallel dispatch of dependent tasks, which produces
+      race conditions or inconsistent results.
 
       **Procedure:**
       1. Read PhaseDoc task list. Each task becomes a Task with declared FileScope.
       2. Verify pairwise independence: disjoint file scopes, no data dependency.
       3. Domain-adjacent sweep: files near scope boundaries must be accounted for.
       4. Trace every acceptance criterion to at least one task.
+      5. Record pre-existing gaps in deferred_gaps.
+
+      **Output schema reference:**
+      - tasks: array of task declarations with id, description, file_scope, acceptance_criteria, parallel_with
+      - coverage_verified: boolean (must be true)
+      - deferred_gaps: array of known out-of-scope gaps
     output_schema:
       fields:
         - name: tasks
@@ -245,22 +335,50 @@ phases:
         - name: coverage_verified
           type: boolean
           required: true
+        - name: deferred_gaps
+          type: array
+          items: string
+          description: "Known gaps not in scope for this execution"
+          min_items: 0
+          required: false
+    invariants:
+      hard:
+        - "tasks has at least 1 item"
+        - "each task has id, description, file_scope, and acceptance_criteria"
+        - "coverage_verified = true"
+        - "for each parallel pair: file_scopes are disjoint"
+      soft:
+        - "tasks count >= 3 (orchestration overhead justified)"
+        - "deferred_gaps is populated if any known gaps exist"
 
   - id: sigma_1
     name: "Dispatch"
     role: orchestrator
-    precondition: "sigma_0 complete; tasks decomposed; independence verified"
-    postcondition: "All impl-sub-agents dispatched; all TaskResults received"
+    precondition: "sigma_0 complete; tasks decomposed; independence verified; scope_declared(t) for all t"
+    postcondition: "All impl-sub-agents dispatched; each received scoped context and return format; all TaskResults received"
     guidance: |
-      **Constraints:**
-      - Each sub-agent receives only its Task, FileScope, and return format.
-      - All TaskResults received before proceeding to sigma_2.
-      - Concurrent editing conflicts recorded as expected, not investigated.
+      **Constraints (what must be true after this step):**
+      - dispatch_log contains one entry per task with task_id, agent_id, and status.
+      - all_results_received = true before proceeding to sigma_2 (all TaskResults in hand).
+      - Each sub-agent received only its Task, FileScope, and return format.
+      - Orchestrator did not write to sub-agent work artifacts.
+
+      **Rationale:**
+      Dispatch assigns one SubAgent per Task (Ax-2 satisfied by sigma_0 scope declaration).
+      All TaskResults must be received before sigma_2 — partial evaluation is not valid.
+      Concurrent editing conflicts are expected artifacts of parallel dispatch, not
+      regressions.
 
       **Procedure:**
       1. Dispatch all independent tasks in parallel.
       2. Each sub-agent runs M1-IMPL Phase B (sigma_B1-B5) on its scoped task.
-      3. Wait for all TaskResults.
+      3. Provide each sub-agent: (a) Task description, (b) FileScope, (c) return format.
+      4. Wait for all TaskResults.
+      5. If a sub-agent reports concurrent editing conflicts, record as expected.
+
+      **Output schema reference:**
+      - dispatch_log: array of dispatch entries
+      - all_results_received: boolean (must be true)
     output_schema:
       fields:
         - name: dispatch_log
@@ -272,37 +390,75 @@ phases:
         - name: all_results_received
           type: boolean
           required: true
+    invariants:
+      hard:
+        - "dispatch_log has exactly |tasks| entries"
+        - "all_results_received = true"
+        - "each dispatch_log entry has task_id and status"
+      soft:
+        - "all independent tasks dispatched in parallel (not serialized)"
 
   - id: sigma_2
-    name: "Gate A — Quality Review"
+    name: "Gate A — Quality Review (PAT-003A hybrid)"
     role: orchestrator
     precondition: "sigma_1 complete; all TaskResults received"
-    postcondition: "All tasks have gate_a_pass = true (after patching if needed)"
+    postcondition: >
+      EITHER (full pass): forall t : Task. gate_a_pass(t).
+        all_gate_a_pass = true. No terminal failures.
+      OR (budget-exhausted terminal failure): exists t : Task. budget_exhausted(t).
+        budget_exhausted tasks recorded in terminal_failures with patch history.
+        Remaining tasks have gate_a_pass(t). Method proceeds to sigma_3 with
+        terminal_failures explicitly recorded.
     guidance: |
-      **Constraints:**
-      - Every task evaluated by qa-sub-agent.
+      **Constraints (what must be true after this step):**
+      - gate_a_results contains one entry per task with verdict, findings, and patch_count.
+      - all_gate_a_pass = true if all tasks passed (possibly after patching).
+      - terminal_failures lists task IDs that exhausted patch budget without passing.
+      - Every task evaluated by qa-sub-agent at least once.
       - Gate A checks: compile_exit = 0, no test regression, scope discipline.
-      - FAIL triggers patch sub-agent dispatch (bounded by max_patch_attempts = 2).
-      - After max_patch_attempts with continued FAIL: task failure is terminal,
-        recorded in SessionLog as unresolved.
-      - all_gate_a_pass = true required to proceed to sigma_3.
+      - FAIL triggers patch sub-agent dispatch (bounded by max_patch_attempts = 2, Ax-5).
+      - After max_patch_attempts with continued FAIL: budget_exhausted(t) — task failure
+        is terminal, recorded in terminal_failures.
+      - Method proceeds to sigma_3 regardless (terminal failures are carried forward).
 
-      **Procedure — per task:**
+      **Rationale:**
+      This step is a PAT-003A hybrid: externally it is a single step in the DAG, internally
+      it contains a bounded convergence loop. The convergence measure nu_sigma_2 strictly
+      decreases on each patch-evaluate cycle, and Ax-5 bounds the total iterations. This
+      structure avoids infinite loops while allowing fault recovery.
+
+      **Procedure — per task (internal convergence loop):**
       1. Dispatch qa-sub-agent with task's files and test results.
-      2. If PASS: record and move on.
-      3. If FAIL: dispatch patch sub-agent with failure findings.
-      4. After patch: re-dispatch qa-sub-agent.
-      5. If still FAIL after max_patch_attempts: record as terminal failure.
+      2. If PASS: record verdict, set gate_a_pass(t), move to next task.
+      3. If FAIL and patch_count(t) < max_patch_attempts:
+         a. Dispatch patch sub-agent with failure findings.
+         b. Increment patch_count(t).
+         c. After patch completes: re-dispatch qa-sub-agent (go to step 1 for this task).
+      4. If FAIL and patch_count(t) = max_patch_attempts:
+         a. Set budget_exhausted(t).
+         b. Record in terminal_failures with full patch history.
+         c. Move to next task.
+      5. Continue until all tasks have gate_a_pass(t) OR budget_exhausted(t).
 
-      **Termination:** nu_gate_a = |{t : Task | NOT gate_a_pass(t)}|.
-      Each patch cycle resolves at least one failure or exhausts patch budget.
-      Bounded by |Tasks| * max_patch_attempts.
+      **Termination (PAT-003A internal convergence measure):**
+      nu_sigma_2 = sum over all t of (max_patch_attempts - patch_count(t) + 1) for
+      tasks where NOT gate_a_pass(t) AND NOT budget_exhausted(t).
+      Each qa evaluation either: (a) produces PASS (removes task from sum), or
+      (b) triggers a patch (increments patch_count, reducing that task's contribution by 1),
+      or (c) exhausts budget (removes task from sum).
+      nu_sigma_2 is bounded above by |Tasks| * (max_patch_attempts + 1).
+      Strictly decreases on each evaluation cycle. Terminates at nu_sigma_2 = 0.
+
+      **Output schema reference:**
+      - gate_a_results: array of per-task verdict entries
+      - all_gate_a_pass: boolean
+      - terminal_failures: array of task IDs that exhausted patch budget
     output_schema:
       fields:
         - name: gate_a_results
           type: array
           items: object
-          description: "{task_id, verdict: PASS|FAIL, findings, patch_count}"
+          description: "{task_id, verdict: PASS|FAIL, findings: string, patch_count: nat}"
           min_items: 1
           required: true
         - name: all_gate_a_pass
@@ -311,26 +467,51 @@ phases:
         - name: terminal_failures
           type: array
           items: string
-          description: "Task IDs that failed Gate A after max patch attempts"
+          description: "Task IDs that failed Gate A after max_patch_attempts exhausted"
           required: false
+    invariants:
+      hard:
+        - "gate_a_results has exactly |tasks| entries"
+        - "each gate_a_results entry has task_id, verdict, and patch_count"
+        - "for all t: verdict = PASS OR (verdict = FAIL AND patch_count = max_patch_attempts)"
+        - "all_gate_a_pass = true iff terminal_failures is empty"
+        - "for all t: patch_count <= max_patch_attempts (Ax-5)"
+      soft:
+        - "terminal_failures is empty (all tasks recovered via patching)"
+        - "total patch dispatches < |tasks| * max_patch_attempts (most tasks pass first try)"
 
   - id: sigma_3
     name: "Gate B — Security & Architecture"
     role: orchestrator
-    precondition: "sigma_2 complete; all Gate A passed (or terminal failures recorded)"
-    postcondition: "Gate B verdict determined"
+    precondition: "sigma_2 complete; all tasks have gate_a_pass OR budget_exhausted; gate_a_results recorded"
+    postcondition: "Gate B verdict determined; gate_b_findings recorded"
     guidance: |
-      **Constraints:**
-      - sec-arch-sub-agent dispatched with full session context.
+      **Constraints (what must be true after this step):**
+      - gate_b_verdict is one of: PASS, FAIL, GAP_DOCUMENTED.
+      - gate_b_findings is non-empty: contains findings from security and architecture review.
+      - sec-arch-sub-agent dispatched with full session context including terminal failures.
       - Security chain: 6 checks (authentication, authorization, input validation,
         output encoding, error handling, logging).
       - Architecture alignment: 4 questions (dependency direction, layer violations,
         interface contracts, naming conventions).
       - GAP_DOCUMENTED is acceptable — means gap exists but is explicitly recorded.
+      - If terminal_failures exist from sigma_2, they are included in the review context.
+
+      **Rationale:**
+      Gate B is a session-level gate, not per-task. The sec-arch-sub-agent sees the full
+      integrated picture including terminal failures. This cross-cutting review catches
+      systemic issues that per-task Gate A cannot detect (e.g., two tasks that individually
+      pass compilation but introduce conflicting architectural patterns).
 
       **Procedure:**
-      1. Dispatch sec-arch-sub-agent with all modified files and architecture docs.
+      1. Dispatch sec-arch-sub-agent with all modified files, architecture docs, and
+         terminal failure list from sigma_2.
       2. Record verdict and findings.
+      3. If FAIL: record specific security or architecture violations in gate_b_findings.
+
+      **Output schema reference:**
+      - gate_b_verdict: PASS, FAIL, or GAP_DOCUMENTED
+      - gate_b_findings: array of finding strings
     output_schema:
       fields:
         - name: gate_b_verdict
@@ -340,34 +521,61 @@ phases:
         - name: gate_b_findings
           type: array
           items: string
-          required: false
+          description: "Security chain and architecture alignment findings"
+          required: true
+    invariants:
+      hard:
+        - "gate_b_verdict is one of PASS, FAIL, GAP_DOCUMENTED"
+        - "gate_b_findings is non-empty"
+      soft:
+        - "gate_b_findings names specific checks that passed or failed"
+        - "if GAP_DOCUMENTED: at least one finding describes the documented gap"
 
   - id: sigma_4
     name: "Integrate"
     role: orchestrator
-    precondition: "sigma_3 complete; Gate B verdict determined"
-    postcondition: "SessionLog assembled; all task results, gate verdicts, patches recorded"
+    precondition: "sigma_3 complete; Gate B verdict determined; all gate_a_results and gate_b_verdict recorded"
+    postcondition: >
+      SessionLog assembled. All task results, gate verdicts, patches, and terminal
+      failures recorded. compile_exit and test_results determined on integrated codebase.
+      outcome determined.
     guidance: |
-      **Constraints:**
-      - session_log is non-empty.
-      - All TaskResults included.
-      - All gate verdicts included.
+      **Constraints (what must be true after this step):**
+      - session_log is non-empty: the full integrated session record.
+      - All TaskResults included (no silent omission).
+      - All gate verdicts (Gate A per task + Gate B session-level) included.
       - All patches and their outcomes included.
       - Terminal failures explicitly recorded (not silently dropped).
       - compile_exit checked on integrated codebase.
       - Full test suite run on integrated codebase.
+      - test_results records pass_count, fail_count, regression_count.
+      - outcome is PASS only if: all_gate_a_pass AND gate_b_verdict in {PASS, GAP_DOCUMENTED}
+        AND compile_exit = 0 AND regression_count = 0.
+
+      **Rationale:**
+      Integration is the terminal step. The SessionLog is the method's deliverable — it
+      must be complete and honest. Silent omission of terminal failures is a method
+      violation. A FAIL outcome with explicit cause is more useful than a quietly degraded
+      PASS.
 
       **Procedure:**
       1. Assemble SessionLog from all TaskResults.
       2. Include gate verdicts and patch history.
-      3. Run full compile on integrated codebase.
-      4. Run full test suite on integrated codebase.
-      5. Record integration-level results.
+      3. Include terminal failures with full patch history.
+      4. Run full compile on integrated codebase — record compile_exit.
+      5. Run full test suite on integrated codebase — record test_results.
+      6. Determine outcome based on all gate verdicts and integration checks.
+
+      **Output schema reference:**
+      - session_log: full integrated session record
+      - compile_exit: 0 or nonzero
+      - test_results: {pass_count, fail_count, regression_count}
+      - outcome: PASS or FAIL
     output_schema:
       fields:
         - name: session_log
           type: object
-          description: "Full integrated session record"
+          description: "Full integrated session record: task results, gate verdicts, patches, terminal failures"
           required: true
         - name: compile_exit
           type: enum
@@ -375,12 +583,76 @@ phases:
           required: true
         - name: test_results
           type: object
-          description: "{pass_count, fail_count, regression_count}"
+          description: "{pass_count: nat, fail_count: nat, regression_count: nat}"
           required: true
         - name: outcome
           type: enum
           values: [PASS, FAIL]
           required: true
+    invariants:
+      hard:
+        - "session_log is non-empty"
+        - "compile_exit is 0 or nonzero"
+        - "test_results has pass_count, fail_count, regression_count"
+        - "outcome is PASS or FAIL"
+        - "outcome = PASS implies: all_gate_a_pass AND gate_b_verdict != FAIL AND compile_exit = 0 AND regression_count = 0"
+      soft:
+        - "terminal failures from sigma_2 are explicitly listed in session_log"
+        - "session_log includes patch history for every patched task"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 establishes Task set with declared FileScopes, independence verified,
+        coverage verified. pre_sigma_1 requires sigma_0 complete, tasks decomposed,
+        independence verified, scope_declared for all t. post_sigma_0 is a superset of
+        pre_sigma_1 (additionally establishes coverage_verified).
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 establishes all TaskResults received (all_results_received = true),
+        dispatch_log with one entry per task. pre_sigma_2 requires sigma_1 complete, all
+        TaskResults received. Identity inclusion.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 establishes gate_a_results for all tasks, with each task either
+        gate_a_pass or budget_exhausted. pre_sigma_3 requires sigma_2 complete, all tasks
+        have gate_a_pass or budget_exhausted, gate_a_results recorded. Identity inclusion.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 establishes gate_b_verdict and gate_b_findings. pre_sigma_4 requires
+        sigma_3 complete, Gate B verdict determined, all gate_a_results and gate_b_verdict
+        recorded. post_sigma_3 satisfies pre_sigma_4 because gate_a_results were established
+        at sigma_2 and carried forward.
+  terminal_condition_claim: >
+    post_sigma_4 produces SessionLog with outcome. If outcome = PASS: all_gate_a_pass AND
+    gate_b_pass AND compile_exit = 0 AND no_regression — this is O_DIMPL. If outcome = FAIL:
+    the method terminates with an explicit failure cause (terminal_failures, gate_b FAIL,
+    compile failure, or test regression). Both outcomes are terminal states in Mod(D_DIMPL).
+  initial_condition_claim: >
+    pre_sigma_0 requires PhaseDoc received with task list and go_no_go_decision = TRUE.
+    This holds at method invocation: M1-IMPL Phase A produces the PhaseDoc and the
+    go/no-go decision. M2-DIMPL is invoked only on the go path.
+  contrarian_challenge:
+    weakest_edge: "sigma_2 -> sigma_3"
+    challenge: >
+      post_sigma_2 allows budget_exhausted tasks to proceed to sigma_3. But Gate B
+      (security/architecture review) operates on the full session including terminal
+      failures. Can sec-arch-sub-agent meaningfully review a session where some tasks
+      failed quality gates? The review context is degraded — the codebase may contain
+      unreviewed changes from failed tasks.
+    defense_or_revision: >
+      This is by design. Terminal failures in sigma_2 mean patch attempts were exhausted,
+      but the underlying TaskResult (files changed) still exists in the codebase. Gate B
+      must review the full integrated state including these changes — ignoring them would
+      be worse than reviewing a degraded context. The sec-arch-sub-agent receives the
+      terminal_failures list explicitly and can factor degraded-confidence into its verdict
+      (GAP_DOCUMENTED is the appropriate outcome when failed-task changes cannot be fully
+      validated). The chain is: task failure -> terminal_failures recorded -> sigma_3
+      reviews with awareness -> GAP_DOCUMENTED or FAIL with cause -> sigma_4 records
+      honestly. The composability holds because sigma_3 does not require all tasks to
+      have passed Gate A — it requires all gate_a_results to be recorded, which sigma_2
+      guarantees.
 
 objective:
   id: O_DIMPL
@@ -390,33 +662,68 @@ objective:
       AND gate_b_pass(sessionLog)
       AND compile_exit(sessionLog) = 0
       AND no_regression(sessionLog)
+  type: terminal
+  expressible_claim: >
+    O_DIMPL references gate_a_pass (predicate over Task), from_phase (predicate over
+    Task x PhaseDoc), gate_b_pass (predicate over SessionLog), compile_exit (function
+    symbol SessionLog -> {0, nonzero}), no_regression (predicate over SessionLog). All
+    symbols are in Sigma_DIMPL. O_DIMPL is a conjunction of Sigma-predicates —
+    expressible as a closed sentence over Mod(D_DIMPL).
   progress_preorder:
-    definition: "s1 <= s2 iff |{t | gate_a_pass(t) in s1}| <= |{t | gate_a_pass(t) in s2}|"
+    definition: >
+      s1 <=_O s2 iff |{t | gate_a_pass(t) in s1}| <= |{t | gate_a_pass(t) in s2}|.
+      States with more gate_a_pass tasks are further toward O_DIMPL. Terminal states
+      (all gate_a_pass, gate_b_pass, compile_exit = 0, no_regression) are maximal.
+    well_founded: >
+      Task set is finite (Ax-1). Bounded above by n = |Tasks|. Patch budget is finite
+      (Ax-5, max_patch_attempts = 2). Total state transitions bounded by
+      |Tasks| * (max_patch_attempts + 1) + 5 (DAG steps).
   success_profile:
     - id: mu_1
       name: task_gate_coverage
       formula: "|{t | gate_a_pass(t)}| / |{t | from_phase(t, phaseDoc)}|"
       range: "[0, 1]"
       terminal: "1.0"
+      proxy_claim: >
+        mu_1 is an order-homomorphism w.r.t. <=_O by definition. mu_1 = 1.0 is necessary
+        but not sufficient for O_DIMPL (Gate B, compilation, and test stability still
+        required). mu_1 < 1.0 means at least one task has budget_exhausted — terminal
+        failure.
     - id: mu_2
       name: compile_integrity
-      formula: "1 if compile_exit = 0 else 0"
+      formula: "1 if compile_exit(sessionLog) = 0 else 0"
       range: "{0, 1}"
       terminal: "1"
+      proxy_claim: >
+        mu_2 = 0 means integration-level compilation failure. mu_2 = 1 is necessary for
+        O_DIMPL. This measure is observable only at sigma_4 (integration-level compile).
     - id: mu_3
       name: test_stability
       formula: "1 if no_regression(sessionLog) else 0"
       range: "{0, 1}"
       terminal: "1"
+      proxy_claim: >
+        mu_3 = 0 means test regressions exist in the integrated session. mu_3 = 1 is
+        necessary for O_DIMPL. Observable only at sigma_4 after full test suite run.
 
 termination:
   certificate: >
-    nu_DIMPL(s) = |{t : Task | NOT gate_a_pass(t)}| * (max_patch_attempts + 1)
-    + |{sigma in {sigma_0,..,sigma_4} | NOT executed}|
+    nu_DIMPL(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3, sigma_4} | NOT executed}|.
+    sigma_2 is a PAT-003A hybrid step with internal convergence governed by
+    nu_sigma_2 = sum over {t | NOT gate_a_pass(t) AND NOT budget_exhausted(t)} of
+    (max_patch_attempts - patch_count(t) + 1).
+  initial: 5
+  final: 0
   decrease_witness: >
-    Each impl dispatch + gate_a evaluation reduces nu by at least 1 (task passes or
-    patch attempt consumed). Bounded by |Tasks| * (max_patch_attempts + 1) + 5.
-    After all patch budgets exhausted, remaining failures are terminal — nu reaches 0.
+    Steps sigma_0, sigma_1, sigma_3, sigma_4 each execute once (trivial decrease, nu
+    decreases by 1 per step). sigma_2 is a PAT-003A hybrid step with internal convergence:
+    nu_sigma_2 starts at |Tasks| * (max_patch_attempts + 1) and strictly decreases on
+    each qa-evaluation cycle — either a task passes (removed from sum) or patch_count
+    increments (contribution decreases by 1) or budget exhausts (removed from sum). Ax-5
+    bounds patch_count at max_patch_attempts = 2, so each task contributes at most 3
+    evaluation cycles. sigma_2 terminates when nu_sigma_2 = 0, then nu_DIMPL decreases by 1.
+    Total termination guaranteed after at most 5 step executions with sigma_2 internally
+    bounded by |Tasks| * (max_patch_attempts + 1) evaluation cycles.
 
 structural_distinction:
   vs_p1_exec_m2_orch: >
@@ -424,3 +731,70 @@ structural_distinction:
     M2-DIMPL: re-entrant, patch-on-fail with bounded retry, quality gates (A + B).
     M2-DIMPL is the full orchestration extracted from M1-IMPL §11.
     P1-EXEC/M2-ORCH is the simplified universal orchestrator.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: decompose, dispatch, gate-a (quality + patch loop),
+        gate-b (security/architecture), integrate. Who: orchestrator + n impl-sub-agents
+        + qa-sub-agents + sec-arch-sub-agent (four role types). Why: context window burn
+        and serialization waste, plus quality gate enforcement. How: five-step DAG with
+        PAT-003A hybrid at sigma_2. When: >= 3 independent tasks with declarable scopes
+        and quality gate requirements; not for dependent tasks, < 3 tasks, or exploratory
+        decomposition.
+    - gate: G1
+      result: PASS
+      note: >
+        D_DIMPL = (Sigma_DIMPL, Ax_DIMPL). 10 sorts with cardinality (including nat for
+        bounds). 1 declared constant (max_patch_attempts : nat = 2). 5 function symbols
+        with totality (file_scope, assignee, gate_a, compile_exit, patch_count). 10
+        predicates with typed signatures referencing declared sorts (from_phase, independent,
+        task_complete, gate_a_pass, gate_b_pass, patched, dispatched, scope_declared,
+        no_regression, budget_exhausted). 6 closed axioms with rationale — Ax-5 references
+        declared constant max_patch_attempts. Domain boundary stated. Initial and terminal
+        state membership in Mod(D_DIMPL) claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_DIMPL stated as conjunction of four Sigma-predicates (gate_a_pass for all tasks,
+        gate_b_pass, compile_exit = 0, no_regression). Type: terminal. Expressibility claim
+        present — all referenced symbols in Sigma_DIMPL. Progress preorder declared with
+        well-foundedness argument (finite task set, finite patch budget). Three measures
+        (task_gate_coverage, compile_integrity, test_stability) with formulas, ranges,
+        terminal values, and proxy claims. All measure formulas reference only declared
+        Sigma symbols.
+    - gate: G3
+      result: PASS
+      note: >
+        Four role types: orchestrator (coordination authority), impl_sub_agent (scoped
+        execution), qa_sub_agent (quality evaluation), sec_arch_sub_agent (security/
+        architecture evaluation). Each with explicit observation_projection and authorized/
+        not-authorized transitions. Coverage claim: union of projections covers all of
+        Mod(D_DIMPL). Authority claim: union covers all transitions to O_DIMPL. Role
+        partition rationale: four-way split is minimal for distributed implementation with
+        quality gates.
+    - gate: G4
+      result: PASS
+      note: >
+        Five steps in path graph (sigma_2 is PAT-003A hybrid with bounded internal
+        convergence — same pattern as M1-COUNCIL sigma_2). Each step has pre, post,
+        finalized guidance in constraints-first format, typed output_schema with hard/soft
+        invariants. Four composability claims (all edges justified). Terminal condition
+        claim: post_sigma_4 implies O_DIMPL on PASS path. Initial condition claim:
+        pre_sigma_0 satisfied by M1-IMPL Phase A. Contrarian challenge on sigma_2->sigma_3
+        (budget-exhausted tasks in Gate B review context) defended by terminal_failures
+        chain and GAP_DOCUMENTED verdict.
+    - gate: G5
+      result: PASS
+      note: >
+        All five steps have finalized guidance in constraints-first format. Each guidance
+        block covers all required output_schema fields by name. sigma_2 guidance includes
+        PAT-003A termination argument (nu_sigma_2 with strict decrease, Ax-5 bound).
+        Spot-check: sigma_0 names tasks, coverage_verified, deferred_gaps; sigma_2 names
+        gate_a_results, all_gate_a_pass, terminal_failures; sigma_4 names session_log,
+        compile_exit, test_results, outcome. All fields covered.
+    - gate: G6
+      result: PASS
+      note: "This file (P2-SD/M2-DIMPL/M2-DIMPL.yaml). Structurally complete."
