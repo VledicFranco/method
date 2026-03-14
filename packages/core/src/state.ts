@@ -74,3 +74,21 @@ export function createSession(): Session {
     },
   };
 }
+
+export type SessionManager = {
+  getOrCreate(sessionId: string): Session;
+};
+
+export function createSessionManager(): SessionManager {
+  const sessions = new Map<string, Session>();
+  return {
+    getOrCreate(sessionId: string): Session {
+      let session = sessions.get(sessionId);
+      if (!session) {
+        session = createSession();
+        sessions.set(sessionId, session);
+      }
+      return session;
+    },
+  };
+}
