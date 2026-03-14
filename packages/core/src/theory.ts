@@ -81,6 +81,27 @@ function toResult(s: TheorySection): TheoryResult {
   return r;
 }
 
+function normalizeForSearch(text: string): string {
+  const greekMap: [RegExp, string][] = [
+    [/Φ/g, 'Phi'], [/φ/g, 'phi'],
+    [/Σ/g, 'Sigma'], [/σ/g, 'sigma'],
+    [/Γ/g, 'Gamma'], [/γ/g, 'gamma'],
+    [/δ/g, 'delta'],
+    [/μ/g, 'mu'],
+    [/π/g, 'pi'],
+    [/ρ/g, 'rho'],
+    [/ν/g, 'nu'],
+    [/≼/g, 'preceq'],
+    [/→/g, '->'],
+    [/∈/g, 'in'],
+  ];
+  let result = text;
+  for (const [pattern, replacement] of greekMap) {
+    result = result.replace(pattern, replacement);
+  }
+  return result.toLowerCase();
+}
+
 export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
   const files = readdirSync(theoryPath)
     .filter(f => f.endsWith('.md'))
@@ -91,11 +112,11 @@ export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
     allSections.push(...getSections(f));
   }
 
-  const termLower = term.toLowerCase();
+  const normalizedTerm = normalizeForSearch(term);
 
   // Pass 1: definition label match
   const labelMatches = allSections.filter(
-    s => s.label && s.label.toLowerCase().includes(termLower)
+    s => s.label && normalizeForSearch(s.label).includes(normalizedTerm)
   );
   if (labelMatches.length > 0) {
     return labelMatches.map(toResult);
@@ -104,7 +125,7 @@ export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
   // Pass 2: heading match — merge all sub-sections under matching headings
   const headingMatches = new Map<string, TheorySection[]>();
   for (const s of allSections) {
-    if (s.heading.toLowerCase().includes(termLower)) {
+    if (normalizeForSearch(s.heading).includes(normalizedTerm)) {
       const key = `${s.source}::${s.heading}`;
       if (!headingMatches.has(key)) headingMatches.set(key, []);
       headingMatches.get(key)!.push(s);
@@ -125,7 +146,7 @@ export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
 
   // Pass 3: keyword search in body — return smallest enclosing unit, cap at 3
   const keywordMatches = allSections.filter(
-    s => s.content.toLowerCase().includes(termLower)
+    s => normalizeForSearch(s.content).includes(normalizedTerm)
   );
   return keywordMatches.slice(0, 3).map(toResult);
 }
