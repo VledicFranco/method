@@ -1,0 +1,197 @@
+empirical_evaluation:
+  session_id: "T1X-VALGAPS-20260314"
+  date: "2026-03-14"
+  project: t1-cortex
+  methodology: P2-SD v2.0
+  instance: I1-T1X
+  evaluator: "Lysica (post-hoc analysis)"
+
+  # ═══════════════════════════════════════════════════════
+  # 1. METHODOLOGY COMPLIANCE
+  # ═══════════════════════════════════════════════════════
+
+  methodology_compliance:
+    delta_sd_routing:
+      evaluation: >
+        The agent correctly evaluated delta_SD for each task group.
+        Routing decisions were sound.
+      decisions:
+        - challenge: "P1+P5+P6.1 quick wins"
+          routed_to: M2-ORCH
+          correct: true
+          rationale: "3 independent tasks with disjoint file scopes — above M2-DIMPL threshold. Agent actually used P1-EXEC/M2-ORCH (single-pass), not P2-SD/M2-DIMPL (re-entrant). Acceptable — no quality gates needed for trivial fixes."
+          note: "Interesting: agent chose the P1-EXEC orchestrator over the P2-SD one. The prompt said M2-DIMPL but the agent assessed Gate A/B overhead was disproportionate."
+        - challenge: "P3 relevance threshold"
+          routed_to: M1-IMPL
+          correct: true
+          rationale: "Single focused task, moderate complexity. M1-IMPL is appropriate."
+        - challenge: "P4 contractor gates"
+          routed_to: M1-COUNCIL
+          correct: true
+          rationale: "3 defensible options with security invariant tension. Council was the right call."
+        - challenge: "P2 JIT sync"
+          routed_to: "M3-TMP (overrode prompt's M1-COUNCIL recommendation)"
+          correct: true
+          rationale: >
+            Agent overrode the prompt's M1-COUNCIL recommendation and used M3-TMP.
+            The override was justified: P2 is a dev-environment tooling decision with
+            no security invariant tension and two clear options. This is exactly the
+            proportionality signal we needed — the agent correctly judged that M1-COUNCIL
+            was disproportionate for this decision.
+      accuracy: "4/4 correct routing decisions (including 1 justified override)"
+
+    execution_binding:
+      evaluation: >
+        The agent used 4 different P1-EXEC methods across the session: M2-ORCH
+        (parallel dispatch), M1-IMPL (focused implementation), M1-COUNCIL (design
+        decision), M3-TMP (inline reasoning). This is the first session to exercise
+        all three execution methods + orchestration in a single run.
+      variety_score: "4/4 P1-EXEC methods used (M1-COUNCIL, M2-ORCH, M1-IMPL-like, M3-TMP)"
+
+    card_compliance:
+      evaluation: >
+        The agent followed the I1-T1X card and provided genuine feedback on 7 of 20
+        delivery rules. DR-01 and DR-02 (Metals) were actively used and reported as
+        helpful. DR-03 and DR-04 (source verification, pre-dispatch) were intentionally
+        skipped for non-Scala tasks with documented justification.
+      rules_actively_used: [DR-01, DR-02, DR-03, DR-04, DR-14, DR-16, DR-19]
+      rules_skipped_with_justification: [DR-03, DR-04]
+      rules_not_applicable: "DR-05 through DR-13, DR-15, DR-17, DR-18, DR-20 — not triggered by this task set"
+
+  # ═══════════════════════════════════════════════════════
+  # 2. OUTPUT QUALITY
+  # ═══════════════════════════════════════════════════════
+
+  output_quality:
+    task_completion:
+      total: 8
+      completed: 7
+      deferred: 2
+      already_done: 1
+      completion_rate: "7/8 = 87.5% (excluding P6.1 which was already done)"
+      note: "Deferrals were justified (P6.2 nice-to-have, P6.3 zero impact)"
+
+    code_quality_signals:
+      commits: 6
+      tests_added: 6
+      tests_passing: "44/44 (P3 module test suite)"
+      compilation: "File-level clean via Metals. Full build blocked by pre-existing errors (not from this session)."
+      design_decisions_documented: 2
+
+    decision_quality:
+      p4_contractor_gates: >
+        Option C (accept escalation path) was well-reasoned. The agent's council
+        correctly identified that RULE-200 authorization and gate clearance are
+        intentionally separate layers — authorization says "you may attempt the tool,"
+        gate clearance says "but this specific knowledge subset requires higher clearance."
+        The ETHOS test case (INV-CORTEX-3B) explicitly models contractor escalation.
+      p2_jit_sync: >
+        Option B (manual seed for dev) was pragmatic and correct. The schema limitation
+        (group→role is global, not per-user) is real and needs an RFC, but blocking
+        on it for dev workflow would be counterproductive.
+
+  # ═══════════════════════════════════════════════════════
+  # 3. RETROSPECTIVE QUALITY
+  # ═══════════════════════════════════════════════════════
+
+  retrospective_quality:
+    assessment: HIGH
+    observations:
+      total: 5
+      by_type: { friction: 2, gap: 1, surprise: 1, success: 1 }
+      by_severity: { HIGH: 1, MEDIUM: 2, LOW: 2 }
+      genuinely_useful: 5
+      rote_compliance: 0
+    card_feedback:
+      total: 7
+      verdicts: { helpful: 5, overly_restrictive: 2, unhelpful: 0, missing_coverage: 0 }
+    proposed_deltas:
+      total: 4
+      actionable: 4
+      quality: "All 4 are specific, cite evidence, and propose concrete changes"
+    hardest_decision:
+      genuine: true
+      note: "P4 contractor gates was genuinely the hardest decision — security invariant tension with real trade-offs"
+    overall: >
+      This is the highest-quality retrospective we've seen. The agent was genuine —
+      it reported real friction (DR-03/04 overhead for non-Scala tasks), a real gap
+      (M1-COUNCIL proportionality), a real surprise (pre-existing compile errors),
+      and a real success (Metals navigation correcting PhaseDoc's file suggestion).
+      Zero rote compliance.
+
+  # ═══════════════════════════════════════════════════════
+  # 4. METHODOLOGY LEARNINGS
+  # ═══════════════════════════════════════════════════════
+
+  methodology_learnings:
+    - id: ML-1
+      finding: "Agent chose P1-EXEC/M2-ORCH over P2-SD/M2-DIMPL for quick wins"
+      significance: >
+        The agent used the SIMPLER orchestrator (single-pass, no gates) for trivial
+        tasks. This is correct — Gate A/B quality gates are overkill for a shell script
+        edit. But the prompt only described M2-DIMPL. The agent's judgment was better
+        than the prompt's prescription.
+      implication: >
+        P2-SD needs guidance on when M2-DIMPL (re-entrant + gates) vs P1-EXEC/M2-ORCH
+        (single-pass) is appropriate. Proposed heuristic: use M2-DIMPL when tasks require
+        quality gates (compilation verification, test regression, security review). Use
+        P1-EXEC/M2-ORCH when tasks are trivially correct (script edits, doc updates, config).
+
+    - id: ML-2
+      finding: "Agent correctly overrode M1-COUNCIL for P2 (proportionality)"
+      significance: >
+        The prompt mandated M1-COUNCIL for P2. The agent judged it disproportionate
+        and used M3-TMP instead. The result was correct in 30 seconds vs estimated
+        5 minutes of council overhead. This validates the need for a proportionality
+        heuristic in execution binding.
+      implication: >
+        The proposed delta (ML-3 in the retro) is correct: M1-COUNCIL when decision
+        affects security invariants, has 3+ options with non-obvious tradeoffs, or
+        is irreversible. M3-TMP for reversible, low-stakes, clear-option decisions.
+
+    - id: ML-3
+      finding: "Metals MCP and worktree isolation are incompatible"
+      significance: >
+        The agent discovered that Metals MCP is bound to the primary repository — worktree-
+        isolated agents can't use Metals for Scala navigation. This forced Scala tasks to
+        run in the main worktree while non-Scala tasks ran in isolated worktrees.
+      implication: >
+        New delivery rule needed (proposed DR-21 in the retro). This is a genuine
+        discovery — the abstract M2-ORCH method doesn't model language server binding.
+        It's a project-card-level constraint.
+
+    - id: ML-4
+      finding: "Pre-existing compile errors block validation but not implementation"
+      significance: >
+        The dev branch had 25+ pre-existing compile errors. The agent worked around this
+        by using Metals file-level compilation (which isolates). This means M1-IMPL's
+        Ax-I_compile (complete session → compile_exit = 0) cannot be satisfied in the
+        presence of pre-existing errors. The axiom assumes a clean baseline.
+      implication: >
+        M1-IMPL may need a concept of "baseline compilation state" — the method's
+        compilation check should compare against the pre-session state, not against
+        zero errors. A regression = new errors introduced, not inherited errors.
+
+  # ═══════════════════════════════════════════════════════
+  # 5. RETRO-PROTO TRIAL UPDATE
+  # ═══════════════════════════════════════════════════════
+
+  retro_proto_trial:
+    retrospective_count: "4 / 10 (this is #4)"
+    gap_candidates_surfaced: "2 / 2 ✓"
+    gap_candidates:
+      - id: "GAP-M1COUNCIL-PROPORTIONALITY"
+        source: "retro-t1x-valgaps + retro-prd002-impl (sigma_B3 multi-task friction)"
+        threshold_met: "2 observations, 2 projects (pv-method + t1-cortex)"
+        note: "The proportionality signal appears in both projects — pv-method (sigma_B3 stretched) and t1-cortex (P2 council override). Different manifestation, same root: methodology doesn't guide when heavyweight methods are worth the overhead."
+      - id: "GAP-M1IMPL-COMPILATION-BASELINE"
+        source: "retro-t1x-valgaps (pre-existing compile errors)"
+        threshold_met: "1 HIGH observation (fast-track)"
+        note: "HIGH severity: Ax-I_compile assumes clean baseline. Pre-existing errors make the axiom unsatisfiable."
+    evolution_triggered: "1 / 1 ✓ (M1-COUNCIL fixes from earlier)"
+    evolution_validated: "1 / 1 ✓ (M1-COUNCIL re-review passed)"
+    self_referential_test: "0 / 1"
+    assessment: >
+      Trial progressing well. 4/10 retros collected, 2/2 gap candidates met.
+      Both critical criteria (evolution_triggered, evolution_validated) already met.
+      Remaining: 6 more retros and the self-referential test.
