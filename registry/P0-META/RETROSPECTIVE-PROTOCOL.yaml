@@ -1,0 +1,421 @@
+protocol:
+  id: RETRO-PROTO
+  name: "Retrospective Protocol — Methodology Self-Improvement Loop"
+  version: "0.1"
+  status: draft
+  date: "2026-03-14"
+  maturity: draft
+  description: >
+    Universal protocol for methodology self-improvement through agent retrospectives.
+    Every methodology session produces a structured retrospective artifact. Observations
+    accumulate and trigger evolution cycles (M3-MEVO for methods, card revision for
+    project cards). Two-level evolution: abstract methods require cross-project evidence,
+    project cards require single-project evidence.
+
+  promotion_status:
+    current_stage: draft
+    stages:
+      - name: draft
+        description: "Protocol documented. Not yet enforced. Available for voluntary adoption."
+        criteria_to_advance: >
+          Protocol spec is complete with: retrospective schema, enforcement axiom,
+          accumulation thresholds, evolution ledger structure, and maturity criteria.
+          At least one methodology has a ledger file. STATUS: MET (this document).
+      - name: trial
+        description: "Protocol enforced on one methodology (P2-SD). Retrospectives collected. Ledger active."
+        criteria_to_advance:
+          all_required:
+            - metric: "retrospective_count"
+              threshold: ">= 10 retrospectives collected from P2-SD sessions"
+            - metric: "gap_candidates_surfaced"
+              threshold: ">= 2 gap candidates triggered from accumulated observations"
+            - metric: "evolution_triggered"
+              threshold: ">= 1 M3-MEVO or card revision cycle triggered by the protocol"
+            - metric: "evolution_validated"
+              threshold: >
+                >= 1 evolution cycle where post-evolution observations on the target step/rule
+                decreased compared to pre-evolution (the fix actually worked)
+            - metric: "self_referential_test"
+              threshold: >
+                The protocol itself has been improved at least once based on feedback from
+                trial usage (the retrospective protocol produces a retrospective about itself)
+      - name: promoted
+        description: "Protocol required for all methodologies. Ax-RETRO added to every methodology."
+        enforcement: >
+          Every methodology in the registry must have Ax-RETRO in its domain theory.
+          Every methodology must have an EVOLUTION-LEDGER.yaml. Compilation checks (G1)
+          verify Ax-RETRO is present.
+
+motivation:
+  problem: >
+    Methodologies are static after compilation. Execution evidence (what worked, what
+    didn't, where guidance was wrong or missing) is lost after each session. Without a
+    feedback loop, the same gaps persist across sessions and projects. The T1X legacy
+    showed that agent retrospectives can drive real method improvements — but the
+    mechanism was informal and optional.
+  solution: >
+    Make retrospectives mandatory and structural. Define a fixed schema so observations
+    are machine-parseable and accumulate-able. Use severity-based thresholds to trigger
+    evolution cycles. Track evolution outcomes to verify fixes actually work.
+  design_principles:
+    - "Zero-friction for the agent — the retrospective schema is small and the agent has maximum context at session end"
+    - "Evidence-based triggers — single observations are anecdotal, patterns are actionable"
+    - "Two-level evolution — abstract methods need cross-project evidence, cards need single-project evidence"
+    - "Closed loop — the evolution ledger tracks whether fixes actually reduce the gap they targeted"
+
+retrospective_schema:
+  description: >
+    The artifact every methodology session produces. Fixed schema, machine-parseable.
+    The agent fills this out at the end of every session.
+  fields:
+    - name: session_id
+      type: string
+      required: true
+      description: "Unique identifier for this session"
+
+    - name: methodology
+      type: string
+      required: true
+      description: "Which methodology was used (e.g., P2-SD)"
+
+    - name: method
+      type: string
+      required: true
+      description: "Which method was executed (e.g., M1-IMPL)"
+
+    - name: method_version
+      type: string
+      required: true
+      description: "Version of the method at execution time"
+
+    - name: project_card_id
+      type: string
+      required: false
+      description: "Instance card ID if one was used (e.g., I1-T1X)"
+
+    - name: hardest_decision
+      type: object
+      required: true
+      description: >
+        The moment of maximum uncertainty during the session. Forces genuine
+        reflection — the hardest decision often IS the gap.
+      fields:
+        - name: step
+          type: string
+          description: "Which step it occurred in"
+        - name: decision
+          type: string
+          description: "What the agent had to decide"
+        - name: outcome
+          type: string
+          description: "What the agent did and what happened"
+        - name: guidance_gap
+          type: boolean
+          description: "Was the method's guidance silent on this decision?"
+
+    - name: observations
+      type: array
+      min_items: 1
+      required: true
+      description: >
+        Structured observations about the session. At least 1 required — even if
+        it's a success observation. Forces engagement; prevents rote "everything fine."
+      items:
+        fields:
+          - name: step
+            type: string
+            description: "Which method step this observation relates to"
+          - name: type
+            type: enum
+            values: [gap, friction, success, surprise]
+            description: >
+              gap: guidance was wrong or missing.
+              friction: guidance was correct but awkward to follow.
+              success: guidance was particularly helpful.
+              surprise: something unexpected happened.
+          - name: description
+            type: string
+            description: "What happened, concretely"
+          - name: evidence
+            type: string
+            description: "File:line, session artifact reference, or output excerpt"
+          - name: severity
+            type: enum
+            values: [LOW, MEDIUM, HIGH]
+            description: >
+              HIGH: guidance produced wrong output or blocked progress.
+              MEDIUM: guidance was insufficient, agent had to improvise significantly.
+              LOW: minor friction or missing detail.
+          - name: improvement_target
+            type: enum
+            values: [abstract_method, project_card, both, unclear]
+            description: >
+              Where should the fix go? Abstract method (affects all projects),
+              project card (affects this project only), both, or unclear (needs
+              triage during review).
+
+    - name: card_feedback
+      type: array
+      required: false
+      description: "Per-rule feedback on the project card's delivery rules"
+      condition: "Required if a project card was used"
+      items:
+        fields:
+          - name: rule_id
+            type: string
+            description: "Delivery rule ID (e.g., DR-03)"
+          - name: verdict
+            type: enum
+            values: [helpful, unhelpful, missing_coverage, overly_restrictive]
+          - name: note
+            type: string
+            description: "What worked or didn't about this rule"
+
+    - name: proposed_deltas
+      type: array
+      required: false
+      description: >
+        Optional: agent's suggested changes. Valuable when the agent has genuine
+        insight; noisy when forced. Not mandatory.
+      items:
+        fields:
+          - name: target
+            type: enum
+            values: [abstract_method, project_card]
+          - name: location
+            type: string
+            description: "e.g., M1-IMPL sigma_B3 guidance, or DR-03"
+          - name: current
+            type: string
+            description: "What it says now"
+          - name: proposed
+            type: string
+            description: "What it should say"
+          - name: rationale
+            type: string
+            description: "Why this change would help"
+
+enforcement:
+  axiom:
+    id: Ax-RETRO
+    statement: >
+      forall s : Session. completed(s) -> exists r : Retrospective. retrospective_of(r, s)
+      AND |r.observations| >= 1
+      AND r.hardest_decision is non-empty
+    rationale: >
+      A session cannot be marked complete without producing a retrospective with at
+      least one observation and a named hardest decision. This is structural enforcement —
+      the same mechanism as M1-IMPL's Ax-I_record requiring a session log entry.
+    adoption: >
+      During DRAFT stage: voluntary. Agents are encouraged but not required.
+      During TRIAL stage: enforced for the trial methodology (P2-SD) only.
+      During PROMOTED stage: added to every methodology's domain theory.
+
+  where_retrospectives_live:
+    project_level: >
+      Retrospectives are stored in the project repo at:
+        docs/impl/retrospectives/retro-{session_id}.yaml
+      This follows the PROJECT-STRUCTURE.yaml convention. Retrospectives are
+      ephemeral session artifacts (gitignored by default) but can be committed
+      if the team wants persistent records.
+    aggregation: >
+      For accumulation analysis, retrospectives are summarized in the methodology's
+      evolution ledger (not copied — summarized). The ledger tracks observation counts
+      per step, not full retrospective content.
+
+accumulation:
+  description: >
+    How observations accumulate into gap candidates that trigger evolution.
+
+  thresholds:
+    - severity: HIGH
+      count: 1
+      scope: "any (single session sufficient)"
+      action: "Immediate gap candidate → M3-MEVO queue (fast-track)"
+      rationale: "HIGH = guidance produced wrong output or blocked progress. One occurrence is sufficient evidence."
+
+    - severity: MEDIUM
+      count: 3
+      scope: "2+ projects for abstract_method, 1 project for project_card"
+      action: "Gap candidate created with aggregated evidence"
+      rationale: "MEDIUM = agent improvised significantly. Pattern across sessions confirms it's a real gap, not an outlier."
+
+    - severity: LOW
+      count: "no auto-trigger"
+      scope: "accumulated, periodic review"
+      action: "Reviewed during scheduled evolution cycles; never auto-triggers"
+      rationale: "LOW = minor friction. May not warrant a method change. Reviewed in bulk for patterns."
+
+  gap_candidate_schema:
+    fields:
+      - name: id
+        type: string
+        description: "GAP-{methodology}-{NNN}"
+      - name: target_step
+        type: string
+        description: "The step with accumulated observations"
+      - name: observation_count
+        type: integer
+      - name: severity
+        type: enum
+        values: [HIGH, MEDIUM]
+      - name: sessions
+        type: array
+        items: string
+        description: "Session IDs that contributed observations"
+      - name: projects
+        type: array
+        items: string
+        description: "Project IDs (for cross-project threshold check)"
+      - name: summary
+        type: string
+        description: "Aggregated pattern description"
+      - name: proposed_deltas
+        type: array
+        description: "Collected proposed deltas from contributing retrospectives"
+      - name: status
+        type: enum
+        values: [open, in_mevo, resolved, wont_fix]
+
+evolution_ledger:
+  description: >
+    Persistent record tracking methodology evolution driven by retrospectives.
+    One ledger per methodology, lives alongside the methodology YAML.
+  location: "{methodology_dir}/EVOLUTION-LEDGER.yaml"
+  examples:
+    - "registry/P2-SD/EVOLUTION-LEDGER.yaml"
+    - "registry/P1-EXEC/EVOLUTION-LEDGER.yaml"
+
+  structure:
+    header:
+      methodology: "P2-SD"
+      ledger_version: "1"
+      total_retrospectives_processed: 0
+      total_gap_candidates: 0
+      total_evolutions: 0
+
+    gap_candidates:
+      description: "Active and resolved gap candidates"
+      items:
+        - gap_id: "GAP-P2SD-001"
+          target: "M1-IMPL sigma_B3"
+          status: open
+          observation_count: 3
+          first_observed: "2026-03-14"
+          sessions: ["session-001", "session-005", "session-009"]
+          projects: ["t1-cortex", "pv-method"]
+          summary: "sigma_B3 guidance doesn't address undeclared scope exceeding 30 lines in multi-file edits"
+          proposed_deltas: ["add clause about multi-file scope escalation"]
+
+    evolution_history:
+      description: "Record of all M3-MEVO and card revision cycles triggered by retrospectives"
+      items:
+        - evolution_id: "EVO-P2SD-001"
+          gap_id: "GAP-P2SD-001"
+          type: "abstract_method"
+          method: "M1-IMPL"
+          from_version: "3.1"
+          to_version: "3.2"
+          change_summary: "Added multi-file scope escalation clause to sigma_B3 guidance"
+          date: "2026-04-01"
+          pre_evolution_observation_rate: "0.33 (1 in 3 sessions on sigma_B3)"
+          post_evolution_observation_rate: "pending"
+          validated: false
+
+    regression_flags:
+      description: >
+        Entries where post-evolution observation rate INCREASED — the fix may have
+        made things worse. Flagged for human review.
+      items: []
+
+  observation_counts:
+    description: >
+      Per-step observation accumulation. Updated when retrospectives are processed.
+      This is the data source for threshold triggers.
+    format: |
+      {method}.{step}: { HIGH: N, MEDIUM: N, LOW: N, total_sessions: N }
+    example:
+      M1-IMPL.sigma_B3: { HIGH: 0, MEDIUM: 3, LOW: 5, total_sessions: 15 }
+      M2-DIMPL.sigma_2: { HIGH: 1, MEDIUM: 1, LOW: 0, total_sessions: 8 }
+
+card_evolution:
+  description: >
+    How project cards evolve from retrospective feedback. Separate from abstract
+    method evolution — different threshold, different scope, different review.
+  threshold: "3+ observations with improvement_target = project_card within 1 project"
+  process:
+    - "Card feedback accumulates in the project's retrospectives"
+    - "When threshold met: flag the delivery rule for revision"
+    - "Project lead reviews flagged rules and updates the card"
+    - "Card version tracked via git history (no formal version field)"
+  review_gate: >
+    Card changes are reviewed by someone who has run sessions on the project.
+    Delivery rules that are too strict produce friction; rules that are too loose
+    let drift accumulate. The card_feedback verdicts (helpful/unhelpful/missing/overly_restrictive)
+    guide the revision direction.
+
+unforeseen_challenges:
+  - id: UC-1
+    name: "Retrospective quality decay"
+    description: >
+      After many sessions, retrospectives become rote. The hardest_decision field
+      mitigates this (forces genuine reflection), but long-term decay is likely.
+    mitigation: >
+      Periodic review of retrospective quality by human. If retrospectives from a
+      project are consistently low-quality (all LOW, generic descriptions), flag for
+      attention. Consider occasional M1-COUNCIL retrospective sessions for important
+      phases.
+
+  - id: UC-2
+    name: "Version compatibility across many instances"
+    description: >
+      When a methodology upgrades, all project cards need compatibility checks. At
+      scale (50+ projects), this is operationally expensive.
+    mitigation: >
+      Instance tracking (registry/instances/) includes staleness detection.
+      Compatible upgrades (new methods added) are automatic. Incompatible upgrades
+      (methods removed/renamed) produce explicit migration warnings. The MIC schema
+      handles this structurally.
+
+  - id: UC-3
+    name: "Observation attribution ambiguity"
+    description: >
+      An observation may be unclear about whether the gap is in the abstract method
+      or the project card. The improvement_target field has an "unclear" value for this.
+    mitigation: >
+      "unclear" observations are triaged during gap candidate review. The human or
+      M3-MEVO session determines the correct level. Over time, agents learn to
+      attribute more accurately from seeing past evolution outcomes.
+
+  - id: UC-4
+    name: "Evolution latency for MEDIUM observations"
+    description: >
+      3 observations at MEDIUM across 2 projects may take months. Meanwhile the gap
+      persists.
+    mitigation: >
+      HIGH observations fast-track (1 observation sufficient). For persistent MEDIUM
+      gaps, periodic evolution review cycles (monthly or per-quarter) process
+      accumulated observations that haven't reached threshold but show a clear pattern.
+
+  - id: UC-5
+    name: "Contradictory proposed deltas"
+    description: >
+      Two agents propose opposite changes to the same step. One wants more detail,
+      the other wants simplification.
+    mitigation: >
+      Contradictory deltas are information, not bugs. They indicate the step serves
+      different contexts with different needs. Resolution options: (a) the step needs
+      branching guidance for different contexts, (b) the step needs an execution_binding
+      override to M1-COUNCIL when contested, (c) one delta is correct and the other
+      reflects a misunderstanding.
+
+  - id: UC-6
+    name: "Self-improvement loop becomes bureaucratic"
+    description: >
+      The protocol itself becomes overhead that slows delivery without producing
+      proportional improvement.
+    mitigation: >
+      The promotion criteria include a self-referential test: the protocol must have
+      improved at least one method through its own mechanism. If after trial the
+      protocol hasn't produced measurable improvement, it should NOT be promoted.
+      The maturity gate is the escape hatch.
