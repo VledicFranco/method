@@ -9,10 +9,10 @@ method:
     P.X.Y passes all seven acceptance gates (G0–G6) at σ₆ and constitutes an
     independently executable method for the target project. This is the fourth method
     in the meta-methods family (M1-MDES–M.00N).
-  version: "1.1"
+  version: "1.2"
   status: compiled
   compilation_date: "2026-03-10"
-  evolution_date: "2026-03-10"
+  evolution_date: "2026-03-14"
   evolution_cycle: "MINS-MEVO-001"
   compilation_record:
     result: PASS
@@ -34,6 +34,250 @@ method:
       consistency now a compilation FAIL condition. Refinement claim: v1.1 refines_SP v1.0.
   source_document: "P0-META/M4-MINS/M4-MINS.md"
   formal_grounding: "theory/F1-FTH.md §6.3, §1.4, §2"
+
+domain_theory:
+  id: D_MINS
+  reference: "theory/F1-FTH.md §6.3, §1.4, §2"
+  note: >
+    D_MINS is the domain of the method instantiation workspace. World states track the general
+    method being instantiated, the project context providing specialization content, the domain
+    extension D' produced by σ₁, the domain morphism (embed, project) produced by σ₂, the
+    specialized steps and role files produced by σ₃–σ₄, and the version coupling declaration
+    produced by σ₅. Formalized from phase pre/postconditions and step invariants.
+  sorts:
+    - name: Method
+      cardinality: unbounded
+      description: "The general method M.X = (D, Roles, Γ, O, μ⃗) being instantiated"
+    - name: Domain
+      cardinality: unbounded
+      description: "A many-sorted signature+axioms pair D = (Σ, Ax); the general domain of M.X"
+    - name: ExtendedDomain
+      cardinality: unbounded
+      description: "D' = (Σ', Ax') — the project domain extension of D; Σ ⊆ Σ', Ax ⊆ Ax'"
+    - name: TouchedSubspace
+      cardinality: unbounded
+      description: "Σ_T ⊆ Σ — the sorts and predicates referenced by at least one step's pre/post/tools in M.X's Γ"
+    - name: ProjectContext
+      cardinality: unbounded
+      description: "The project context: technology stack, architecture documents, team role structure, constraints"
+    - name: ProjectInstance
+      cardinality: unbounded
+      description: "P.X.Y — the output artifact: domain morphism + specialized steps + role files + version coupling"
+    - name: SpecializedStep
+      cardinality: unbounded
+      description: "A project-specialized version of a step σ ∈ Γ of M.X, expressed in D' sorts with project guidance"
+    - name: AddedStep
+      cardinality: unbounded
+      description: "A step not in M.X's Γ that operates exclusively on sorts outside Σ_T"
+    - name: DomainMorphism
+      cardinality: unbounded
+      description: "The retraction pair (embed: Mod(D) → Mod(D'), project: Mod(D') → Mod(D)) with retraction on Σ_T"
+    - name: RoleFile
+      cardinality: unbounded
+      description: "R.X.Y.Z — a self-contained role document declaring π_ρ', α_ρ', load protocol, and step guidance"
+    - name: VersionCoupling
+      cardinality: unbounded
+      description: "The staleness tracking declaration: current_mx_version, M.X-version-sensitive components, update trigger"
+    - name: SufficiencyDecision
+      cardinality: finite
+      values: [proceed, redirect-mx-uncompiled, redirect-context-gap]
+      description: "σ₀ outcome: whether instantiation proceeds or redirects with a named gap"
+    - name: CompilationResult
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "σ₆ compilation outcome for the project instance P.X.Y"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — step counts, gate counts, component counts in measures"
+
+  function_symbols:
+    - name: general_domain
+      signature: "Method -> Domain"
+      totality: total
+      note: "the domain theory D of the general method M.X; used in conservative extension and morphism checks"
+    - name: step_count
+      signature: "Method -> nat"
+      totality: total
+      note: "the number of steps in M.X's Γ; used in μ₂ coverage measure"
+    - name: role_count
+      signature: "Method -> nat"
+      totality: total
+      note: "the number of roles in M.X's Roles; used in μ₂ coverage measure"
+
+  predicates:
+    - name: compiled
+      signature: "Method"
+      description: "M.X has passed G0–G6 under M1-MDES — prerequisite for instantiation (σ₀ hard invariant)"
+    - name: context_sufficient
+      signature: "ProjectContext"
+      description: "project context provides all four sufficiency dimensions: tech stack, arch docs, team roles, constraints"
+    - name: conservative_extension
+      signature: "Domain x ExtendedDomain"
+      description: "D' conservatively extends D: Σ ⊆ Σ', Ax ⊆ Ax', no existing axiom in Ax is modified in Ax'"
+    - name: retraction_holds
+      signature: "DomainMorphism x TouchedSubspace"
+      description: "project ∘ embed = id on Mod(D) ↾ Σ_T — the retraction condition on the touched subspace"
+    - name: valid_addition
+      signature: "AddedStep x TouchedSubspace"
+      description: "every sort referenced by the added step is outside Σ_T — does not violate retraction condition"
+    - name: covers_general_roles
+      signature: "ProjectInstance x Method"
+      description: "P.X.Y has a RoleFile for every role ρ in M.X's Roles — no role is dropped"
+    - name: covers_general_steps
+      signature: "ProjectInstance x Method"
+      description: "P.X.Y has a SpecializedStep for every step σ in M.X's Γ — no step is dropped"
+    - name: version_coupled
+      signature: "ProjectInstance"
+      description: "P.X.Y has a VersionCoupling declaration with a specific current_mx_version string"
+
+  axioms:
+    - id: Ax-1
+      statement: "forall P M. covers_general_roles(P, M) -> forall rho in Roles(M). exists r in RoleFiles(P). corresponds(r, rho)"
+      rationale: "Role coverage is universal: every general role must have a corresponding role file. The definition of covers_general_roles."
+    - id: Ax-2
+      statement: "forall P M. covers_general_steps(P, M) -> forall sigma in Gamma(M). exists s in SpecializedSteps(P). generalizes(s, sigma)"
+      rationale: "Step coverage is universal: every general step must have a specialized step. The definition of covers_general_steps."
+    - id: Ax-3
+      statement: "forall D D'. conservative_extension(D, D') -> NOT exists ax in Ax(D). modified_in(ax, D')"
+      rationale: "Conservative extension strictly prohibits axiom modification. Any axiom revision routes to M1-MDES, not M4-MINS."
+    - id: Ax-4
+      statement: "forall a T. valid_addition(a, T) <-> (sorts(a) ∩ Sigma_T(T) = empty_set)"
+      rationale: "An added step is valid iff it references no sort in the touched subspace — preserving the retraction condition."
+    - id: Ax-5
+      statement: "forall h T. retraction_holds(h, T) -> forall v in Mod(D). project(embed(v)) = v on T"
+      rationale: "The retraction condition: on the touched subspace, the embed-project round trip is lossless."
+    - id: Ax-6
+      statement: "forall P. version_coupled(P) -> exists v. current_mx_version(P) = v AND v != 'current' AND v != 'latest'"
+      rationale: "Version coupling requires a specific, machine-readable version string — relative references cannot support staleness detection."
+    - id: Ax-7
+      statement: "forall P M. covers_general_roles(P, M) AND covers_general_steps(P, M) AND version_coupled(P) -> compilable(P)"
+      rationale: "A project instance with full coverage and version coupling is in a structurally compilable state — the σ₆ PASS condition."
+
+  initial_state_valid_claim: >
+    A state where M.X is named and compiled, a ProjectContext is declared but not yet assessed
+    for sufficiency, and no D', DomainMorphism, SpecializedSteps, RoleFiles, or VersionCoupling
+    exist satisfies all axioms vacuously: Ax-1 through Ax-7 are vacuously satisfied (no
+    ProjectInstance, no RoleFiles, no SpecializedSteps, no AddedSteps yet). Valid initial state.
+  terminal_state_valid_claim: >
+    A state where conservative_extension(D, D') holds, retraction_holds(h, Σ_T) holds, all
+    AddedSteps satisfy valid_addition, covers_general_roles(P, M) holds, covers_general_steps(P, M)
+    holds, and version_coupled(P) holds satisfies all axioms: Ax-1 (all roles covered), Ax-2
+    (all steps covered), Ax-3 (no axiom revision), Ax-4 (all added steps outside Σ_T), Ax-5
+    (retraction holds on touched sorts), Ax-6 (specific version string), Ax-7 (compilable).
+    Valid terminal state.
+  domain_boundary_note: >
+    Excludes: the content of M.X's steps and roles beyond their structural references (the
+    general method's guidance text, tool lists, and domain-specific semantics); the project
+    artifact content beyond its structural components (source files, test files, deployment
+    configs); the runtime behavior of the instantiated method. D_MINS tracks instantiation
+    structure only — morphism declarations, coverage claims, and version coupling.
+
+step_dag:
+  graph: "linear with branch"
+  steps: [sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6]
+  initial: sigma_0
+  terminal: sigma_6
+  branch:
+    at: sigma_0
+    condition: "sufficiency_decision IN {redirect-mx-uncompiled, redirect-context-gap}"
+    target: "exits M4-MINS — redirect gap documented; method halts"
+  edges:
+    - from: sigma_0
+      to: sigma_1
+      condition: "sufficiency_decision = proceed"
+      composability_claim: >
+        post_{σ₀} (proceed path) produces: general_method_compilation_status = PASS;
+        project_instance_id assigned; project_context_summary with ≥4 entries; mx_components_read
+        containing domain-theory, step-dag, roles; sufficiency_decision = proceed.
+        pre_{σ₁} requires: sufficiency_decision = proceed; M.X compiled; M.X domain theory D
+        has been read; project context sufficient and project_instance_id assigned.
+        post_{σ₀} ⊆ pre_{σ₁}: compiled(M.X) is guaranteed by the hard invariant that proceed
+        requires general_method_compilation_status = PASS; M.X domain theory has been read
+        (mx_components_read contains domain-theory); project context sufficiency is established
+        by the 4-dimension check; project_instance_id is assigned. Holds on the proceed path.
+    - from: sigma_1
+      to: sigma_2
+      composability_claim: >
+        post_{σ₁} produces: D' = (Σ', Ax') declared with all sorts enumerated; Σ_T (TouchedSubspace)
+        identified; conservative_extension(D', D) claimed; domain_boundary_note present.
+        pre_{σ₂} requires: D = (Σ, Ax) known; D' = (Σ', Ax') declared; Σ_T identified;
+        conservative_extension(D', D) claimed.
+        post_{σ₁} ⊆ pre_{σ₂}: all four pre_{σ₂} conditions are hard invariants of σ₁
+        (conservative_extension_claim non-empty is a σ₁ hard invariant; touched_subspace present
+        is a σ₁ hard invariant; project_domain_sorts has ≥1 item is a σ₁ hard invariant).
+        Holds.
+    - from: sigma_2
+      to: sigma_3
+      composability_claim: >
+        post_{σ₂} produces: morphism_table with ≥1 row per sort in Σ_T; embed_declaration;
+        project_declaration; retraction_condition_statement claiming project ∘ embed = id on
+        Mod(D) ↾ Σ_T; morphism_failure_modes_checked with ≥3 entries.
+        pre_{σ₃} requires: M.X step DAG Γ known; DomainMorphism (embed, project) declared;
+        Σ_T known; project_domain_sorts declared.
+        post_{σ₂} ⊆ pre_{σ₃}: morphism_table non-empty with rows for each Σ_T sort satisfies the
+        DomainMorphism declared requirement; embed_declaration and project_declaration non-empty
+        satisfy the (embed, project) declared requirement; Σ_T was carried from σ₁ (unchanged
+        by σ₂). Holds.
+    - from: sigma_3
+      to: sigma_4
+      composability_claim: >
+        post_{σ₃} produces: specialized_steps with ≥1 entry (one per M.X step); contrarian_challenge
+        complete; derived_constraints present.
+        pre_{σ₄} requires: M.X's roles known; specialized steps declared; project domain D' declared;
+        domain morphism declared.
+        post_{σ₃} ⊆ pre_{σ₄}: specialized_steps count equals M.X step count (σ₃ hard invariant);
+        roles are known from σ₀ (M.X read at σ₀); D' declared at σ₁ (unchanged by σ₃); domain
+        morphism declared at σ₂ (unchanged by σ₃). Holds.
+    - from: sigma_4
+      to: sigma_5
+      composability_claim: >
+        post_{σ₄} produces: role_files with ≥1 entry (one per M.X role); role_file_paths;
+        coverage_check = "covers_general_roles: YES"; derived_projections present.
+        pre_{σ₅} requires: domain morphism declared; specialized steps declared; role files
+        produced; P.X.Y fully assembled except version coupling.
+        post_{σ₄} ⊆ pre_{σ₅}: role_files count equals M.X role count (σ₄ hard invariant);
+        coverage_check = "covers_general_roles: YES" is a σ₄ hard invariant; domain morphism
+        and specialized steps are carried from prior steps unchanged. P.X.Y is fully assembled
+        — all components except VersionCoupling are present. Holds.
+    - from: sigma_5
+      to: sigma_6
+      composability_claim: >
+        post_{σ₅} produces: VersionCoupling with mx_version_sensitive ≥1 item;
+        update_trigger_statement covering both M.X-version and project-version events;
+        current_mx_version as a specific version string (not "current" or "latest").
+        pre_{σ₆} requires: P.X.Y fully assembled with domain morphism declaration, specialized
+        steps for all σ ∈ Γ of M.X, role files for all roles in M.X, and version coupling
+        declaration; compiler observes only P.X.Y and F1-FTH.
+        post_{σ₅} ⊆ pre_{σ₆}: VersionCoupling declaration satisfies the version_coupled(P)
+        predicate by Ax-6 (specific version string guaranteed by hard invariant). All P.X.Y
+        components were assembled by σ₁–σ₄; σ₅ adds VersionCoupling as the final component.
+        Full assembly is complete after σ₅. Weakest edge: current_mx_version is self-reported;
+        defense is that G5 at σ₆ independently checks the version string format. Holds.
+  initial_condition_claim: >
+    pre_{σ₀} requires: an intention to instantiate M.X for project P; M.X named; project
+    context materials available and readable. This is satisfied whenever a practitioner has
+    identified a compiled method and a project needing it. The redirect branch at σ₀ handles
+    the case where M.X is not compiled or context is insufficient — termination is guaranteed
+    without entering the instantiation path.
+  terminal_condition_claim: >
+    post_{σ₆}(PASS) implies O_MINS. When σ₆ emits CompilationResult = PASS: (1) G0–G6 all
+    passed → P.X.Y is structurally valid (O_MINS condition 4); (2) G1 checks conservative
+    extension → conservative_extension(D', D) holds (O_MINS condition 3); (3) G2 checks
+    retraction → retraction_holds(h, Σ_T) holds (O_MINS condition 2); (4) G3 checks role
+    coverage → covers_general_roles(P, M) holds; (5) G4 checks step coverage →
+    covers_general_steps(P, M) holds; (6) G5 checks version coupling → version_coupled(P)
+    holds; (7) G6 checks instance independence → P.X.Y is independently executable;
+    (8) registration in methods README is part of σ₆ PASS output (O_MINS condition 5).
+    All five O_MINS conditions covered. Holds.
+  contrarian_challenge: >
+    Claim: σ₄→σ₅ and σ₅→σ₆ are the weakest edges because both rely on self-reported
+    completeness by the instantiator (role file quality, version string accuracy).
+    Defense: G3 at σ₆ independently checks role coverage (covers_general_roles: YES must
+    appear in coverage_check); G5 checks version string is non-empty and not "current" or
+    "latest"; G6 checks role files contain load protocols and specialized steps do not require
+    M.X to execute. The compiler role has no access to the design session — all checks are
+    structural. Self-reported completeness cannot survive structural gate failures.
+    Verdict: edges hold; compiler independence is the structural guarantee.
 
 roles:
   - id: instantiator
@@ -1087,7 +1331,7 @@ family:
       status: active
     - id: M2-MDIS
       description: "Discover whether methodization is warranted"
-      status: future
+      status: proposed
     - id: M3-MEVO
       description: "Evolve an existing method from execution evidence"
       status: active

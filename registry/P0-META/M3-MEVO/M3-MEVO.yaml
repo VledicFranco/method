@@ -13,6 +13,224 @@ method:
   source_document: "P0-META/M3-MEVO/M3-MEVO.md"
   formal_grounding: "theory/F1-FTH.md §8.4, Definition 8.2"
 
+domain_theory:
+  id: D_MEVO
+  reference: "theory/F1-FTH.md §1, §8.4"
+  note: >
+    D_MEVO is the domain of the method evolution workspace. World states track the
+    execution evidence corpus, the gap records crystallized from it, the changes designed
+    against those gaps, and the refinement claims warranting that the evolved method satisfies
+    Definition 8.2 (F1-FTH §8.4). Extracted from G1 compilation record and formalized in v0.2.
+  sorts:
+    - name: Method
+      cardinality: unbounded
+      description: "A compiled method M.X vN — the artifact being evolved"
+    - name: DomainTheory
+      cardinality: unbounded
+      description: "A domain theory D = (Sigma, Ax); the domain of the method under evolution"
+    - name: ExecutionEvidence
+      cardinality: unbounded
+      description: "The complete execution record: session logs, gate failure records, delta trends"
+    - name: SessionLog
+      cardinality: unbounded
+      description: "A single execution session record with step outcomes, gate failures, and delta values"
+    - name: GateFailureRecord
+      cardinality: unbounded
+      description: "A recorded gate failure: step ID, gate ID, session ID, and failure description"
+    - name: GapRecord
+      cardinality: unbounded
+      description: "A crystallized gap: named failure pattern, ≥3 session citations, step and gate IDs"
+    - name: VersionBoundary
+      cardinality: finite
+      values: [evolution, new-method]
+      description: "The sigma_2 determination: whether the gaps require evolution or a new method design"
+    - name: ChangeManifest
+      cardinality: unbounded
+      description: "A structured record mapping GapRecord IDs to ChangeDesign IDs to RefinementClaim IDs"
+    - name: RefinementClaim
+      cardinality: unbounded
+      description: "A structured argument for Definition 8.2: gap_closure_mechanism, initial_state_preservation, composability_integrity"
+    - name: ConservativeExtension
+      cardinality: unbounded
+      description: "A domain extension D' of D that adds vocabulary without modifying any existing axiom"
+    - name: CompilationResult
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "The sigma_5 compilation outcome for the evolved method candidate"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — session counts, gap counts, gate counts"
+
+  function_symbols:
+    - name: session_count
+      signature: "GapRecord -> nat"
+      totality: total
+      note: "Number of distinct session IDs cited in a GapRecord; Ax-1 guarantees this is >= 3"
+    - name: domain_of
+      signature: "Method -> DomainTheory"
+      totality: total
+      note: "The domain theory of the method; used in conservative extension and axiom revision checks"
+
+  predicates:
+    - name: has_sufficient_evidence
+      signature: "GapRecord"
+      description: "Gap cites >= 3 distinct sessions — the evidence threshold (Ax-7)"
+    - name: conservative_extension
+      signature: "DomainTheory x DomainTheory"
+      description: "D' is a conservative extension of D: adds new sorts/predicates/axioms over new vocabulary; no existing axiom modified"
+    - name: axiom_revised
+      signature: "DomainTheory x DomainTheory"
+      description: "D' modifies or removes an existing axiom of D — requires new-method determination"
+    - name: closes_gap
+      signature: "RefinementClaim x GapRecord"
+      description: "The refinement claim addresses the named gap: its gap_closure_mechanism prevents the failure pattern"
+    - name: preserves_initial_states
+      signature: "RefinementClaim"
+      description: "The change does not narrow the set of valid initial states for the evolved method"
+    - name: no_new_composability_failures
+      signature: "RefinementClaim"
+      description: "The change does not break composability at any edge adjacent to the changed step"
+    - name: refines
+      signature: "Method x Method"
+      description: "M' refines M per Definition 8.2 (F1-FTH §8.4): for every run of M from s0, a run of M' from s0 achieves mu_vec >= component-wise"
+
+  axioms:
+    - id: Ax-1
+      statement: "forall g : GapRecord. session_count(g) >= 3"
+      rationale: "GapRecord is constitutively defined by the evidence threshold — only gap candidates meeting >= 3 sessions are crystallized into GapRecords (sigma_1 hard invariant)."
+    - id: Ax-2
+      statement: "forall g : GapRecord. has_sufficient_evidence(g)"
+      rationale: "Every GapRecord satisfies the evidence predicate — direct consequence of Ax-1 and the definition of has_sufficient_evidence."
+    - id: Ax-3
+      statement: "forall D D'. conservative_extension(D, D') -> NOT axiom_revised(D, D')"
+      rationale: "Conservative extension and axiom revision are mutually exclusive by definition — a CE adds only new vocabulary; any modification of existing axioms is by definition an axiom revision."
+    - id: Ax-4
+      statement: "forall clm g. closes_gap(clm, g) -> has_sufficient_evidence(g)"
+      rationale: "A refinement claim can only close an evidenced gap — closing a sub-threshold candidate would violate the evidence principle."
+    - id: Ax-5
+      statement: "forall D D'. conservative_extension(D, D') -> forall s. s in Mod(D) -> s in Mod(D')"
+      rationale: "The defining property of conservative extension: every model of D is also a model of D'. This is what makes CE safe — no existing valid state is invalidated."
+    - id: Ax-6
+      statement: "forall clm. preserves_initial_states(clm) AND no_new_composability_failures(clm) -> refines(M_evolved, M_current)"
+      rationale: "The two structural conditions together constitute the operational warrant for Definition 8.2 refinement: if initial states are preserved and composability is intact, the evolved method can reproduce any run of the current method with equal or better measure."
+    - id: Ax-7
+      statement: "forall g. has_sufficient_evidence(g) <-> session_count(g) >= 3"
+      rationale: "Biconditional definition: has_sufficient_evidence is definitionally equivalent to the session count threshold. Used to formalize the sigma_1 hard invariant."
+    - id: Ax-8
+      statement: "forall M' M M''. refines(M', M) AND refines(M'', M') -> refines(M'', M)"
+      rationale: "Transitivity of refinement — required for the 2-category structure of Meth (F1-FTH §8.5) and to compose multi-cycle evolutions."
+
+  initial_state_valid_claim: >
+    A state with an accessible ExecutionEvidence corpus and a compiled M.X vN but no crystallized
+    GapRecords, no ChangeManifest, and CompilationResult undefined satisfies all axioms:
+    Ax-1 and Ax-2 are vacuously satisfied (no GapRecords yet); Ax-3 through Ax-5 are vacuously
+    satisfied (no CE or AR determinations); Ax-6 vacuously (no RefinementClaims); Ax-7 vacuously;
+    Ax-8 vacuously. Valid initial state.
+  terminal_state_valid_claim: >
+    A state with all GapRecords crystallized (session_count >= 3 each), a ChangeManifest covering
+    all gaps, RefinementClaims for all changed steps (closes_gap, preserves_initial_states,
+    no_new_composability_failures all holding), and CompilationResult = PASS satisfies all axioms:
+    Ax-1 (session_count >= 3 by construction), Ax-2 (has_sufficient_evidence holds), Ax-3 (no CE
+    and AR simultaneously), Ax-4 (closes_gap only for evidenced gaps), Ax-5 (CE preserves models),
+    Ax-6 (both conditions hold -> refines holds), Ax-7 (biconditional), Ax-8 (transitivity preserved).
+    Valid terminal state.
+  domain_boundary_note: >
+    Excludes: the content of the method being evolved beyond its structural properties (domain
+    theory sorts, step pre/postconditions, guidance text); the semantic meaning of execution
+    failures beyond their session citations; external deployment infrastructure. D_MEVO tracks
+    evidence, gaps, changes, and refinement arguments only.
+
+step_dag:
+  graph: "linear with branch"
+  steps: [sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5]
+  initial: sigma_0
+  terminal: sigma_5
+  branch:
+    at: sigma_2
+    condition: "version_boundary_determination = new-method"
+    target: "M1-MDES (exits M3-MEVO; AXIOM_REVISION detected — new method design required)"
+  edges:
+    - from: sigma_0
+      to: sigma_1
+      composability_claim: >
+        post_{σ₀} produces: gap_candidates (unfiltered, with session citations, step IDs, gate IDs),
+        per_step_failure_rates (≥1 entry), evidence_summary, method_version_read.
+        pre_{σ₁} requires: gap_candidates set enumerated from σ₀ with session citations, step IDs,
+        and gate IDs; per_step_failure_rates computed. post_{σ₀} ⊆ pre_{σ₁}: all required fields
+        produced by σ₀ are consumed by σ₁ in the same format (arrays of string entries with
+        step/gate/session citations). The hard invariant that per_step_failure_rates has ≥1 item
+        at σ₀ satisfies the implicit cardinality requirement at σ₁. Holds.
+    - from: sigma_1
+      to: sigma_2
+      composability_claim: >
+        post_{σ₁} produces: gap_records set with ≥1 entry, each citing ≥3 distinct sessions
+        (enforced by Axiom 1 hard invariant), and gap_set_summary.
+        pre_{σ₂} requires: GapRecord set from σ₁ with at least one entry, each citing ≥3
+        sessions; M.X vN accessible. post_{σ₁} ⊆ pre_{σ₂}: gap_records produced by σ₁ satisfies
+        the GapRecord cardinality constraint (≥1 entry) and evidence constraint (≥3 sessions each)
+        by Axiom 1 of D_MEVO, which is a hard invariant enforced at σ₁. M.X vN accessibility
+        is an environmental precondition unchanged since σ₀. Holds.
+    - from: sigma_2
+      to: sigma_3
+      condition: "version_boundary_determination = evolution"
+      composability_claim: >
+        post_{σ₂} (evolution branch only) produces: domain_impact_classifications covering all
+        GapRecords (NO_DOMAIN_CHANGE, CONSERVATIVE_EXTENSION, or AXIOM_REVISION with justifications)
+        and version_boundary_determination = "evolution". pre_{σ₃} requires: GapRecord set with
+        domain impact classifications from σ₂; version_boundary_determination = "evolution".
+        post_{σ₂} ⊆ pre_{σ₃}: domain_impact_classifications covers every GapRecord by the hard
+        invariant that classification count equals gap_records count from σ₁. version_boundary_determination
+        = "evolution" is guaranteed by the hard invariant that AXIOM_REVISION implies new-method —
+        if this edge is reached, no gap was classified AXIOM_REVISION. Holds on the evolution path.
+    - from: sigma_3
+      to: sigma_4
+      composability_claim: >
+        post_{σ₃} produces: change_designs (≥1 entry, each citing a GapRecord), composability_rechecks
+        for all adjacent edges to changed steps, deferred_gap_designs for any unaddressed gaps.
+        pre_{σ₄} requires: change_designs set with composability rechecks from σ₃; GapRecord set
+        from σ₁; all changes designed. post_{σ₃} ⊆ pre_{σ₄}: change_designs satisfies the ≥1
+        cardinality constraint by σ₃ hard invariant; every GapRecord appears in change_designs or
+        deferred_gap_designs by σ₃ hard invariant; composability_rechecks cover all required edges.
+        GapRecord set from σ₁ is carried through unchanged (σ₃ cannot modify gap records). Holds.
+    - from: sigma_4
+      to: sigma_5
+      composability_claim: >
+        post_{σ₄} produces: M.X vN+1 assembled with all five F1-FTH components (D, Roles, Γ, O,
+        μ⃗); assembled_method_confirmation = "assembled"; RefinementClaims for each changed step;
+        ChangeManifest; version_bump. pre_{σ₅} requires: M.X vN+1 candidate assembled with all five
+        components declared; assembled_method_confirmation = "assembled"; compiler has access only
+        to candidate and F1-FTH. post_{σ₄} ⊆ pre_{σ₅}: assembled_method_confirmation = "assembled"
+        is a hard invariant at σ₄ (must equal the enum value "assembled"). All five F1-FTH components
+        are required to be present for the candidate to pass G0 at σ₅, and the σ₄ assembly step
+        explicitly targets this. Weakest edge: assembled_method_confirmation is self-reported by
+        the evolver; defense is that G5 at σ₅ independently catches guidance-schema mismatches and
+        G6 catches structural YAML completeness — a spurious confirmation cannot survive σ₅. Holds.
+  initial_condition_claim: >
+    pre_{σ₀} requires: M.X vN exists as a compiled method document; execution evidence is accessible;
+    at least one session has been completed. This is satisfied by any deployed method with recorded
+    execution history — not trivial (zero-session invocation is excluded) but not restrictive.
+    Any compiled method after at least one real execution satisfies pre_{σ₀}.
+  terminal_condition_claim: >
+    post_{σ₅}(PASS) implies O_MEVO. When σ₅ emits CompilationResult = PASS: (1) G0–G6 all passed
+    → M.X vN+1 is structurally valid per F1-FTH (O_MEVO condition 5); (2) the RefinementClaims
+    enforced at σ₄ establish Definition 8.2 for each changed step (O_MEVO condition 4); (3) the
+    ChangeManifest from σ₄ maps gap records to change designs to claims (O_MEVO condition 3);
+    (4) the GapRecord set from σ₁ has ≥1 entry with ≥3 sessions (O_MEVO condition 1); (5)
+    VersionBoundary = "evolution" was declared at σ₂ (O_MEVO condition 2); (6) registration in
+    the methods registry is part of the σ₅ PASS output (O_MEVO condition 6). All six conditions
+    covered. Holds.
+  contrarian_challenge: >
+    Claim: σ₄→σ₅ is the weakest edge because assembled_method_confirmation is self-reported by
+    the evolver who assembled the method. A structurally incomplete M.X vN+1 could carry a
+    spurious "assembled" flag.
+    Defense: G5 at σ₅ independently checks that every step has finalized guidance and that every
+    required output field has guidance coverage; G6 checks YAML structural completeness including
+    output_schema types and invariant counts. These gates are evaluated by the compiler role, which
+    has no access to the design reasoning or change manifest — epistemic separation prevents the
+    evolver's self-assessment from biasing the compilation check. A spurious assembled_method_confirmation
+    cannot survive G5 or G6.
+    Verdict: the edge holds; compiler independence is the structural guarantee for this claim.
+
 roles:
   - id: analyst
     description: >
@@ -831,16 +1049,16 @@ objective:
 
 output_artifacts:
   - name: evolved_method_document
-    path_pattern: "M.0XN-ACRO/M.0XN-ACRO-{slug}.md"
-    description: "Full M-spec document at version N+1 with change manifest and refinement claims appended as ## Change History"
+    path_pattern: "{PNN-SLUG}/{MNN-SLUG}/{MNN-SLUG}.yaml"
+    description: "Full method YAML at version N+1 with version field bumped and change_history section appended"
   - name: change_manifest
-    path_pattern: "Appended to evolved method document as ## Change History"
+    path_pattern: "Appended to evolved method document under change_history key"
     description: "Structured record mapping gap records to change designs to refinement claims for each evolution"
   - name: gap_records_archive
-    path_pattern: "M.0XN-ACRO/evolution/YYYYMMDD-gap-records.md"
+    path_pattern: "{PNN-SLUG}/{MNN-SLUG}/evolution/YYYYMMDD-gap-records.yaml"
     description: "Optional auditability artifact: crystallized gap records from σ₁"
   - name: registry_entry
-    path_pattern: "methods/README.md"
+    path_pattern: "WIP.md + MEMORY.md"
     description: "Version field updated with version number, date, and one-line change summary"
 
 family:
@@ -857,7 +1075,7 @@ family:
       status: active
     - id: M4-MINS
       description: "Instantiate a general method for a specific project"
-      status: future
+      status: compiled
 
 compilation_record:
   gates:

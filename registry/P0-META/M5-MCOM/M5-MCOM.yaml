@@ -8,9 +8,10 @@ method:
     objective O'', and YAML encoding. M'' is independently loadable, compilable, and
     evolvable. This is the fifth method in the meta-methods family (M1-MDES–M5-MCOM),
     implementing horizontal composition of 1-cells in the 2-category Meth.
-  version: "1.0"
+  version: "1.1"
   status: compiled
   compilation_date: "2026-03-10"
+  evolution_date: "2026-03-14"
   compilation_record:
     result: PASS
     gates:
@@ -181,6 +182,20 @@ domain_theory:
       signature: "CompositeMethod -> Bool"
       description: "M'' passes G0–G6 as an independently executable method"
 
+    - symbol: valid_composite_domain
+      signature: "CompositeDomain x LeftMethod x RightMethod -> Bool"
+      description: >
+        D'' is a legitimately constructed composite domain for M ; M': either identical (D = D'),
+        conservative extension (one subseteq the other), or conservative amalgamation (Robinson
+        joint consistency over Sigma_I). Declared to make Ax-4 non-vacuous.
+
+    - symbol: valid_termination
+      signature: "TerminationComposition x LeftMethod x RightMethod -> Bool"
+      description: >
+        tc is a well-formed termination composition for M ; M': nu''(s) = nu_M(project_left(s))
+        + nu_{M'}(project_right(s)), where nu_M and nu_{M'} are the compiled termination
+        certificates of M and M' respectively. Declared to make Ax-6 non-vacuous.
+
   axioms:
     - id: Ax-1
       name: "Prior compilation required"
@@ -296,6 +311,107 @@ termination_certificate:
     or produces a repair obligation that reduces the gate failure count by at least one when
     addressed. In case of external repair obligation (defect in source method M or M'), this
     method terminates by halting — it does not iterate over M or M''s internal repair.
+
+step_dag:
+  graph: "linear with branch"
+  steps: [sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6]
+  initial: sigma_0
+  terminal: sigma_6
+  branch:
+    at: sigma_0
+    condition: "go_decision = identify-interface-gap"
+    target: "exits M5-MCOM — interface gap documented; composition halted"
+  edges:
+    - from: sigma_0
+      to: sigma_1
+      condition: "go_decision = proceed"
+      composability_claim: >
+        post_{σ₀} (proceed path) produces: compiled(M) and compiled(M') verified (both PASS);
+        interface_candidate_sorts non-empty (at least one sort in both terminal/initial schemas);
+        both methods' domain theories, step DAGs, and role definitions have been read;
+        composition direction recorded; go_decision = proceed.
+        pre_{σ₁} requires: go/proceed decision made; interface candidate sorts identified;
+        both method domain theories read.
+        post_{σ₀} ⊆ pre_{σ₁}: all three pre_{σ₁} conditions are hard invariants enforced at σ₀
+        (go/proceed requires both compilations PASS; interface_candidate_sorts non-empty requires
+        at least one shared sort; domain theories read is explicitly required before proceed).
+        Holds on the proceed path.
+    - from: sigma_1
+      to: sigma_2
+      composability_claim: >
+        post_{σ₁} produces: Sigma_I declared with ≥1 sort; embed_I declared; project_I declared;
+        retraction_condition_claim (project_I ∘ embed_I = id on Mod(D) | Sigma_I) stated with
+        argument; composable_at_seam_claim (C2) stated with specific field references.
+        pre_{σ₂} requires: Sigma_I declared; embed_I and project_I declared; composable_at_seam claimed.
+        post_{σ₁} ⊆ pre_{σ₂}: Sigma_I declared with ≥1 sort (σ₁ hard invariant: interface_signature.sorts
+        min_items=1); embed_I and project_I non-empty (σ₁ hard invariants: min_length=1 on both);
+        composable_at_seam_claim non-empty (σ₁ hard invariant). Holds.
+    - from: sigma_2
+      to: sigma_3
+      composability_claim: >
+        post_{σ₂} produces: D'' declared (composite_domain_declaration non-empty); domain
+        construction case identified (identical/conservative-extension/heterogeneous-amalgamation);
+        conservative_extension_both_claim stated; Mod(D'') non-empty (initial/terminal state claims).
+        pre_{σ₃} requires: D'' declared; Sigma_I, embed_I, project_I declared; composable_at_seam claimed.
+        post_{σ₂} ⊆ pre_{σ₃}: D'' is declared (composite_domain_declaration non-empty by σ₂ constraint);
+        Sigma_I, embed_I, project_I, composable_at_seam are carried from σ₁ unchanged. Holds.
+    - from: sigma_3
+      to: sigma_4
+      composability_claim: >
+        post_{σ₃} produces: Gamma'' assembled (composite_steps with ≥2 entries: all steps from
+        Gamma + composition edge + all steps from Gamma'); composition edge declared with
+        composability claim; dag_acyclicity_claim stated; terminal_condition_claim and
+        initial_condition_claim stated.
+        pre_{σ₄} requires: Gamma'' assembled; D'' declared; roles from M and M' known.
+        post_{σ₃} ⊆ pre_{σ₄}: composite_steps covers all steps from both methods (σ₃ hard invariant:
+        no steps from either source may be dropped); composition_edge_declaration required (σ₃ constraint);
+        D'' carried from σ₂; roles were known from σ₀ (both methods fully read). Holds.
+    - from: sigma_4
+      to: sigma_5
+      composability_claim: >
+        post_{σ₄} produces: Roles'' merged (roles_merged ≥1 entry); all role name collisions resolved
+        (collision_resolutions present for each collision); authority_coverage_claim mapping all Gamma''
+        steps to authorized roles.
+        pre_{σ₅} requires: Gamma'' assembled; Roles'' merged; D'' declared; O_M and O_{M'} available.
+        post_{σ₄} ⊆ pre_{σ₅}: roles_merged non-empty (σ₄ hard invariant: min_items=1); authority_coverage_claim
+        non-empty (σ₄ hard invariant: min_length=1); Gamma'' carried from σ₃; D'' carried from σ₂;
+        O_M and O_{M'} available from source methods read at σ₀. Holds.
+    - from: sigma_5
+      to: sigma_6
+      composability_claim: >
+        post_{σ₅} produces: O'' declared as predicate on Mod(D'') (objective_statement non-empty);
+        objective_expressible_claim; progress_preorder declared; ≥1 measure; termination certificate
+        nu'' = nu_M + nu_{M'} stated; composite_method_assembled = "yes" (all five M'' components present).
+        pre_{σ₆} requires: all five M'' components declared (D'', Roles'', Gamma'', O'', mu_vec'');
+        Gamma'' assembled; guidance for all steps present.
+        post_{σ₅} ⊆ pre_{σ₆}: composite_method_assembled = "yes" is a σ₅ hard invariant (enum value);
+        all five components (D'' from σ₂, Roles'' from σ₄, Gamma'' from σ₃, O'' from σ₅, mu_vec'' from σ₅)
+        are present. Guidance for Gamma'' steps is inherited from M and M' compilations plus the composition
+        edge claim. Weakest edge: composite_method_assembled is self-reported; defense is that G0–G6 at σ₆
+        independently check all five components structurally. Holds.
+  initial_condition_claim: >
+    pre_{σ₀} requires: an intention to compose M and M'; both method documents named and accessible;
+    composition direction known. This is satisfied whenever two compiled methods are identified and
+    a practitioner intends to compose them. The branch at σ₀ handles the case where no interface
+    exists — termination without entering composition.
+  terminal_condition_claim: >
+    post_{σ₆}(PASS) implies O_MCOM. When σ₆ emits CompilationResult = PASS: (1) G0 → M'' is
+    navigable as a standalone composite; (2) G1 → D'' is valid (conservative_extension_both holds);
+    (3) G2 → O'' is Sigma''-expressible; (4) G3 → Roles'' covers Gamma''; (5) G4 → Gamma'' is
+    acyclic with composability claims at every edge including the seam; (6) G5 → guidance adequate;
+    (7) G6 → YAML encodable with M'' YAML produced. composable_at_seam(M, M', Sigma_I) was
+    established at σ₁ (O_MCOM condition 3). conservative_extension_both was established at σ₂
+    (O_MCOM condition 4). Registration is part of σ₆ PASS output (O_MCOM condition 6). Holds.
+  contrarian_challenge: >
+    Claim: the composition edge (sigma_term(M) → sigma_init(M')) is the weakest point in Gamma''.
+    It is the one edge not validated by prior method compilations — it is produced by M5-MCOM
+    itself at σ₃, and its composability claim is the only novel claim in the composite DAG.
+    Defense: G4 at σ₆ specifically requires the composition edge claim to be non-trivial (must
+    reference specific postcondition elements of sigma_term(M) and specific precondition elements
+    of sigma_init(M')). This is enforced by the compiler role with no access to σ₁'s session
+    reasoning — a weak seam claim cannot survive G4. The C2 condition (composable_at_seam_claim
+    from σ₁) provides a prior structural argument; σ₃ must re-express it at the DAG level.
+    Verdict: the edge is the weakest, but the G4 non-triviality requirement is the guarantee.
 
 roles:
   - id: composer
@@ -839,3 +955,38 @@ related_methods:
       F5-MCOM provides the theoretical grounding: Definition 2.1 (interface sub-signature),
       Definition 3.1 (C1/C2 composability conditions), Corollary 3.2 (conditional composition),
       §4 (composite construction), §6 (category structure in Meth).
+
+output_artifacts:
+  - name: composite_method_document
+    path_pattern: "{PNN-SLUG}/{MNN-SLUG}/{MNN-SLUG}.yaml"
+    description: >
+      Full YAML encoding of M'' = M ; M' as a first-class independently compilable method.
+      Named per Option A convention (first-class method IDs). Produced at sigma_6 PASS.
+  - name: registry_entry
+    path_pattern: "WIP.md + MEMORY.md"
+    description: "Row for M'' in the method registry with ID, parent methods M and M', and description"
+
+family:
+  id: meta-methods
+  members:
+    - id: M1-MDES
+      description: "Design a method from established domain knowledge"
+      status: compiled
+    - id: M2-MDIS
+      description: "Discover whether methodization is warranted"
+      status: proposed
+    - id: M3-MEVO
+      description: "Evolve an existing method from execution evidence"
+      status: compiled
+    - id: M4-MINS
+      description: "Instantiate a general method for a specific project"
+      status: compiled
+    - id: M5-MCOM
+      description: "Compose two compiled methods sequentially"
+      status: compiled
+    - id: M6-MAUD
+      description: "Audit a method retroactively for formal compliance"
+      status: operational
+    - id: M7-DTID
+      description: "Derive a software implementation from a domain theory"
+      status: compiled
