@@ -133,12 +133,12 @@ domain_theory:
         this predicate at any time (Ax-8). Encodes the scope parameter as a state component,
         making O_META and nu_META proper predicates over Mod(D_META) with no free parameters.
 
+  defined_predicates_note: >
+    The following are Sigma-definable abbreviations — closed formulas expressible entirely
+    in the primitive predicates of Pi above. They are defined symbols, not primitive
+    predicate symbols; their semantics is fully determined by their definition. They
+    appear in O_META, nu_META, and delta_META conditions as abbreviations only.
   defined_predicates:
-    note: >
-      The following are Sigma-definable abbreviations — closed formulas expressible entirely
-      in the primitive predicates of Pi above. They are defined symbols, not primitive
-      predicate symbols; their semantics is fully determined by their definition. They
-      appear in O_META, nu_META, and delta_META conditions as abbreviations only.
     - name: high_gap
       signature: "Method"
       definition: "exists g. has_gap(m, g) AND severity(g) IN {HIGH, CRITICAL}"
@@ -237,7 +237,7 @@ objective:
       formula: "|{m | in_meta_family(m) AND self_consistent(m)}(s)| / |{m | in_meta_family(m)}(s)|"
       range: "[0, 1]"
       priority: 3
-    note: "Lexicographic priority: mu_1 > mu_2 > mu_3. T resolved via active_registry(T, s)."
+  success_profile_note: "Lexicographic priority: mu_1 > mu_2 > mu_3. T resolved via active_registry(T, s)."
 
 transition_function:
   id: delta_META

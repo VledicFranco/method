@@ -122,21 +122,21 @@ roles:
     not_authorized:
       - "Modify the Challenge after sigma_0 (scope is fixed by decomposition commitment)"
       - "Skip sigma_2 (verification is not optional)"
-  coverage_claim: >
-    The analyst's observation projection is the identity — every sort, predicate, and function
-    symbol in D_TMP is observable. Coverage is trivially total: pi_analyst(Mod(D_TMP)) = Mod(D_TMP).
-    No dimension of the state space is invisible to the analyst.
-  authority_claim: >
-    The analyst is authorized to execute all three steps (sigma_0, sigma_1, sigma_2) and
-    produce all state transitions required to reach O_TMP: decompose (sigma_0), address
-    (sigma_1), check and resolve (sigma_2). No required transition is unauthorized.
-  role_partition_rationale: >
-    One role because the method has no epistemic separation requirement. All steps share
-    the same context (the challenge, the decomposition, the partial response). Adding a
-    second role (e.g., a verifier) would require genuine epistemic isolation — the verifier
-    would need to not see the reasoning that produced the response. In single-agent LLM
-    execution, this isolation is not achievable without a separate invocation. A single-role
-    design is honest about the execution model.
+    coverage_claim: >
+      The analyst's observation projection is the identity — every sort, predicate, and function
+      symbol in D_TMP is observable. Coverage is trivially total: pi_analyst(Mod(D_TMP)) = Mod(D_TMP).
+      No dimension of the state space is invisible to the analyst.
+    authority_claim: >
+      The analyst is authorized to execute all three steps (sigma_0, sigma_1, sigma_2) and
+      produce all state transitions required to reach O_TMP: decompose (sigma_0), address
+      (sigma_1), check and resolve (sigma_2). No required transition is unauthorized.
+    role_partition_rationale: >
+      One role because the method has no epistemic separation requirement. All steps share
+      the same context (the challenge, the decomposition, the partial response). Adding a
+      second role (e.g., a verifier) would require genuine epistemic isolation — the verifier
+      would need to not see the reasoning that produced the response. In single-agent LLM
+      execution, this isolation is not achievable without a separate invocation. A single-role
+      design is honest about the execution model.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 (path graph, trivially acyclic)"

@@ -196,25 +196,25 @@ roles:
       - "Write to orchestrator's session record"
       - "Observe other sub-agents' scopes or results"
       - "Expand own scope without orchestrator authorization"
-  coverage_claim: >
-    pi_orch covers: Challenge, SubTask set, Scope declarations, Result boundary outputs,
-    Integration, VerificationOutcome — all orchestration-level state. pi_sa(t) covers:
-    scope(t) internal state for each sub-task. Union covers all of Mod(D_ORCH): orchestration
-    structure (pi_orch) plus sub-task execution detail (pi_sa). No dimension is invisible
-    to both roles.
-  authority_claim: >
-    Orchestrator authority covers all orchestration transitions: decomposition, dispatch,
-    integration, verification. Sub-agent authority covers sub-task execution: producing
-    Results within scope. Union covers all transitions required to advance from initial
-    state (Challenge presented) to O_ORCH (all complete, integrated, verified). No required
-    transition is unauthorized.
-  role_partition_rationale: >
-    Two roles because the method has a genuine epistemic separation requirement: the
-    orchestrator holds architectural context and coordinates; sub-agents hold execution
-    context scoped to their sub-tasks. The separation prevents context window burn (the
-    motivating problem). A single-role design would defeat the method's purpose. More than
-    two role types would add coordination overhead without benefit — sub-agents are
-    intentionally uniform (same interface, same authority, different scopes).
+    coverage_claim: >
+      pi_orch covers: Challenge, SubTask set, Scope declarations, Result boundary outputs,
+      Integration, VerificationOutcome — all orchestration-level state. pi_sa(t) covers:
+      scope(t) internal state for each sub-task. Union covers all of Mod(D_ORCH): orchestration
+      structure (pi_orch) plus sub-task execution detail (pi_sa). No dimension is invisible
+      to both roles.
+    authority_claim: >
+      Orchestrator authority covers all orchestration transitions: decomposition, dispatch,
+      integration, verification. Sub-agent authority covers sub-task execution: producing
+      Results within scope. Union covers all transitions required to advance from initial
+      state (Challenge presented) to O_ORCH (all complete, integrated, verified). No required
+      transition is unauthorized.
+    role_partition_rationale: >
+      Two roles because the method has a genuine epistemic separation requirement: the
+      orchestrator holds architectural context and coordinates; sub-agents hold execution
+      context scoped to their sub-tasks. The separation prevents context window burn (the
+      motivating problem). A single-role design would defeat the method's purpose. More than
+      two role types would add coordination overhead without benefit — sub-agents are
+      intentionally uniform (same interface, same authority, different scopes).
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (acyclic by construction)"

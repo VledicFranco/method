@@ -252,17 +252,17 @@ roles:
     phases: []
     note: "Sub-agent roles are orchestration artifacts (M_ORCH level). Full specification in M1-IMPL §11."
 
-  coverage_claim: >
-    The union of observation projections across all eight roles covers the full
-    Mod(D_SI) state space relevant to O_SI. No component of Mod(D_SI) —
-    SpecCorpus, SourceCorpus, MutationRecord, InvariantSet, Task completion status —
-    is unobservable across the declared roles.
+    coverage_claim: >
+      The union of observation projections across all eight roles covers the full
+      Mod(D_SI) state space relevant to O_SI. No component of Mod(D_SI) —
+      SpecCorpus, SourceCorpus, MutationRecord, InvariantSet, Task completion status —
+      is unobservable across the declared roles.
 
-  authority_claim: >
-    The union of role authorities covers all transitions required to move from
-    initial state (pre(sigma_A1)) to terminal state (O_SI). No required transition
-    is unauthorized: every state change needed to reach O_SI is within the authority
-    of at least one declared role.
+    authority_claim: >
+      The union of role authorities covers all transitions required to move from
+      initial state (pre(sigma_A1)) to terminal state (O_SI). No required transition
+      is unauthorized: every state change needed to reach O_SI is within the authority
+      of at least one declared role.
 
 phases:
   - id: sigma_A1

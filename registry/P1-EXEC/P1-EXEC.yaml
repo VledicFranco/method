@@ -126,10 +126,10 @@ domain_theory:
     - name: routing_would_repeat
       signature: "State"
       description: "PO post-execution judgment: given the result, the same method would be chosen again. Operationalized as routing feedback."
+  defined_predicates_note: >
+    The following are Sigma-definable abbreviations. They appear in delta_EXEC
+    conditions as shorthands only.
   defined_predicates:
-    note: >
-      The following are Sigma-definable abbreviations. They appear in delta_EXEC
-      conditions as shorthands only.
     - name: adversarial_pressure_beneficial
       definition: "problem_framing_uncertain(c) OR multiple_defensible_positions(c) OR criterion_3_fires(c) OR criterion_4_fires(c)"
     - name: criterion_3_fires
@@ -202,21 +202,21 @@ roles:
     not_authorized:
       - "Override delta_EXEC method selection"
       - "Invoke methods directly (goes through rho_executor)"
-  coverage_claim: >
-    pi_executor is identity over Mod(D_Phi_EXEC) — all state visible. pi_PO covers
-    {challenge, result}. Union covers all of D_Phi_EXEC. No dimension is unobservable
-    across both roles.
-  authority_claim: >
-    rho_executor holds authority over all delta_EXEC transitions (evaluation, selection,
-    dispatch, fallback). rho_PO holds authority over challenge provision and session
-    termination. Union covers all transitions required to advance from initial state
-    to O_Phi_EXEC.
-  role_partition_rationale: >
-    Two roles because the methodology has one automation boundary: the executor
-    automates method selection (delta_EXEC), while the PO provides the input and
-    receives the output. Adding a separate evaluator role would split predicate
-    evaluation from method dispatch — but both require full state visibility and
-    produce no epistemic benefit. One executor role is minimal.
+    coverage_claim: >
+      pi_executor is identity over Mod(D_Phi_EXEC) — all state visible. pi_PO covers
+      {challenge, result}. Union covers all of D_Phi_EXEC. No dimension is unobservable
+      across both roles.
+    authority_claim: >
+      rho_executor holds authority over all delta_EXEC transitions (evaluation, selection,
+      dispatch, fallback). rho_PO holds authority over challenge provision and session
+      termination. Union covers all transitions required to advance from initial state
+      to O_Phi_EXEC.
+    role_partition_rationale: >
+      Two roles because the methodology has one automation boundary: the executor
+      automates method selection (delta_EXEC), while the PO provides the input and
+      receives the output. Adding a separate evaluator role would split predicate
+      evaluation from method dispatch — but both require full state visibility and
+      produce no epistemic benefit. One executor role is minimal.
 
 transition_function:
   id: delta_EXEC
@@ -414,13 +414,13 @@ retraction_pairs:
       definition: "project_ORCH_TMP(t) = { result := ExecutionResult(t.final_response), method_selected := TMP, method_completed := true }"
     retraction_verification: "project_ORCH_TMP(embed_ORCH_TMP(s)).challenge = s.challenge — trivially true (sigma_0 rejected, no ORCH work to preserve)"
     status: verified
-  deferred:
-    - name: COUNCIL_to_TMP
-      status: deferred_to_v2.0
-      reason: "v1.0 is sequential — no mid-execution method switch. Would require M1-COUNCIL failure detection not in current spec."
-    - name: ORCH_to_COUNCIL
-      status: deferred_to_v2.0
-      reason: "v1.0 is sequential — ORCH failure routes to TMP via fallback, not to COUNCIL."
+    deferred:
+      - name: COUNCIL_to_TMP
+        status: deferred_to_v2.0
+        reason: "v1.0 is sequential — no mid-execution method switch. Would require M1-COUNCIL failure detection not in current spec."
+      - name: ORCH_to_COUNCIL
+        status: deferred_to_v2.0
+        reason: "v1.0 is sequential — ORCH failure routes to TMP via fallback, not to COUNCIL."
 
 objective:
   id: O_Phi_EXEC

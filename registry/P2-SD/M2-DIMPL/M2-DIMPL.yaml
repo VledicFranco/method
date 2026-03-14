@@ -253,32 +253,32 @@ roles:
       - "Write source files"
       - "Override Gate A verdicts"
       - "Issue patch dispatches"
-  coverage_claim: >
-    pi_orch covers coordination state: PhaseDoc, Task set, FileScopes, TaskResults
-    (boundary), GateVerdicts, SessionLog. pi_impl(t) covers task execution: source
-    files within scope. pi_qa(t) covers quality evaluation: TaskResult and test state.
-    pi_sec covers security/architecture: all files and architecture docs. Union covers
-    all of Mod(D_DIMPL): orchestration structure (pi_orch), execution detail per task
-    (pi_impl), quality assessment (pi_qa), security/architecture assessment (pi_sec).
-    No dimension is invisible to all four role types.
-  authority_claim: >
-    Orchestrator authority covers: decomposition, dispatch, gate evaluation
-    coordination, patch dispatch, integration. impl_sub_agent authority covers:
-    task execution within scope. qa_sub_agent authority covers: Gate A quality
-    evaluation. sec_arch_sub_agent authority covers: Gate B security/architecture
-    evaluation. Union covers all transitions required to advance from initial state
-    (PhaseDoc presented) to O_DIMPL (all gates pass, SessionLog assembled).
-  role_partition_rationale: >
-    Four role types because the method requires four distinct epistemic and authority
-    positions: (1) architectural coordination without source-level execution
-    (orchestrator), (2) scoped task execution with file-write authority
-    (impl_sub_agent), (3) quality evaluation with read-only assessment authority
-    (qa_sub_agent), (4) security/architecture evaluation with cross-cutting read
-    authority (sec_arch_sub_agent). The orchestrator-impl split prevents context
-    window burn (the motivating problem). The qa/sec-arch split separates per-task
-    quality gates from session-level security review. Merging qa into orchestrator
-    would conflate coordination with evaluation; merging sec-arch into qa would
-    lose the cross-cutting session-level perspective.
+    coverage_claim: >
+      pi_orch covers coordination state: PhaseDoc, Task set, FileScopes, TaskResults
+      (boundary), GateVerdicts, SessionLog. pi_impl(t) covers task execution: source
+      files within scope. pi_qa(t) covers quality evaluation: TaskResult and test state.
+      pi_sec covers security/architecture: all files and architecture docs. Union covers
+      all of Mod(D_DIMPL): orchestration structure (pi_orch), execution detail per task
+      (pi_impl), quality assessment (pi_qa), security/architecture assessment (pi_sec).
+      No dimension is invisible to all four role types.
+    authority_claim: >
+      Orchestrator authority covers: decomposition, dispatch, gate evaluation
+      coordination, patch dispatch, integration. impl_sub_agent authority covers:
+      task execution within scope. qa_sub_agent authority covers: Gate A quality
+      evaluation. sec_arch_sub_agent authority covers: Gate B security/architecture
+      evaluation. Union covers all transitions required to advance from initial state
+      (PhaseDoc presented) to O_DIMPL (all gates pass, SessionLog assembled).
+    role_partition_rationale: >
+      Four role types because the method requires four distinct epistemic and authority
+      positions: (1) architectural coordination without source-level execution
+      (orchestrator), (2) scoped task execution with file-write authority
+      (impl_sub_agent), (3) quality evaluation with read-only assessment authority
+      (qa_sub_agent), (4) security/architecture evaluation with cross-cutting read
+      authority (sec_arch_sub_agent). The orchestrator-impl split prevents context
+      window burn (the motivating problem). The qa/sec-arch split separates per-task
+      quality gates from session-level security review. Merging qa into orchestrator
+      would conflate coordination with evaluation; merging sec-arch into qa would
+      lose the cross-cutting session-level perspective.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (sigma_2 is PAT-003A hybrid with bounded internal convergence)"

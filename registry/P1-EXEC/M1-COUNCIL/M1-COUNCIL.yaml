@@ -268,28 +268,28 @@ roles:
       - "Terminate the session"
     not_authorized:
       - "Speak as a Character (PO is external to the cast)"
-  coverage_claim: >
-    pi_leader covers all debate structure: Turns, Positions, Escalations, CharacterCards.
-    pi_contrarian covers the debate from each expert's epistemic lens: prior Turns, own
-    card, Challenge. pi_po covers the full session. Union covers all of Mod(D_COUNCIL):
-    no dimension is invisible to all three role types. The PO's full visibility ensures
-    no blind spot exists at the authority level.
-  authority_claim: >
-    Leader authority covers debate management: synthesis, impasse identification,
-    escalation, convergence. Contrarian authority covers argumentation: position-holding,
-    counter-arguments, question proposal. PO authority covers decisions: resolving
-    escalations, scope modification, cast approval, termination. Union covers all
-    transitions required to advance from initial state (Challenge presented) to O_COUNCIL
-    (all Questions decided, Artifact produced).
-  role_partition_rationale: >
-    Three role types because the method requires three distinct epistemic and authority
-    positions: (1) neutral synthesis without position-holding (Leader), (2) committed
-    argumentation from bounded expertise (Contrarian), (3) external decision authority
-    (PO). Removing the Leader merges synthesis with argumentation — characters cannot
-    simultaneously hold positions and neutrally mediate. Removing the PO means decisions
-    are made by the cast — but adversarial characters cannot converge without external
-    authority on genuinely contested questions. The three-role structure is minimal for
-    adversarial debate with external arbitration.
+    coverage_claim: >
+      pi_leader covers all debate structure: Turns, Positions, Escalations, CharacterCards.
+      pi_contrarian covers the debate from each expert's epistemic lens: prior Turns, own
+      card, Challenge. pi_po covers the full session. Union covers all of Mod(D_COUNCIL):
+      no dimension is invisible to all three role types. The PO's full visibility ensures
+      no blind spot exists at the authority level.
+    authority_claim: >
+      Leader authority covers debate management: synthesis, impasse identification,
+      escalation, convergence. Contrarian authority covers argumentation: position-holding,
+      counter-arguments, question proposal. PO authority covers decisions: resolving
+      escalations, scope modification, cast approval, termination. Union covers all
+      transitions required to advance from initial state (Challenge presented) to O_COUNCIL
+      (all Questions decided, Artifact produced).
+    role_partition_rationale: >
+      Three role types because the method requires three distinct epistemic and authority
+      positions — (1) neutral synthesis without position-holding (Leader), (2) committed
+      argumentation from bounded expertise (Contrarian), (3) external decision authority
+      (PO). Removing the Leader merges synthesis with argumentation — characters cannot
+      simultaneously hold positions and neutrally mediate. Removing the PO means decisions
+      are made by the cast — but adversarial characters cannot converge without external
+      authority on genuinely contested questions. The three-role structure is minimal for
+      adversarial debate with external arbitration.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"

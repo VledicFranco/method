@@ -152,24 +152,24 @@ roles:
       - "Override PhaseDoc acceptance criteria"
       - "Produce fixes (output is findings only)"
       - "Add acceptance criteria not present in the PhaseDoc"
-  coverage_claim: >
-    The reviewer's observation projection is the identity — every sort, predicate, and
-    function symbol in D_PHRV is observable. Coverage is trivially total:
-    pi_reviewer(Mod(D_PHRV)) = Mod(D_PHRV). No dimension of the state space is invisible
-    to the reviewer. This is a deliberate property: review requires full visibility.
-  authority_claim: >
-    The reviewer is authorized to execute all four steps (sigma_0, sigma_1, sigma_2,
-    sigma_3) and produce all state transitions required to reach O_PHRV: enumerate
-    criteria (sigma_0), evaluate criteria and produce findings (sigma_1), evaluate
-    architecture (sigma_2), assemble report with verdict (sigma_3). No required
-    transition is unauthorized.
-  role_partition_rationale: >
-    One role because review is a single-perspective evaluation with no adversarial
-    or parallel structure. The reviewer sees all artifacts and produces all findings.
-    There is no epistemic separation requirement — unlike M1-IMPL where implementer
-    and reviewer have different visibility, M3-PHRV is a pure review pass where full
-    context is beneficial, not harmful. Adding a second role would require genuine
-    information hiding, which is counterproductive for review.
+    coverage_claim: >
+      The reviewer's observation projection is the identity — every sort, predicate, and
+      function symbol in D_PHRV is observable. Coverage is trivially total:
+      pi_reviewer(Mod(D_PHRV)) = Mod(D_PHRV). No dimension of the state space is invisible
+      to the reviewer. This is a deliberate property: review requires full visibility.
+    authority_claim: >
+      The reviewer is authorized to execute all four steps (sigma_0, sigma_1, sigma_2,
+      sigma_3) and produce all state transitions required to reach O_PHRV: enumerate
+      criteria (sigma_0), evaluate criteria and produce findings (sigma_1), evaluate
+      architecture (sigma_2), assemble report with verdict (sigma_3). No required
+      transition is unauthorized.
+    role_partition_rationale: >
+      One role because review is a single-perspective evaluation with no adversarial
+      or parallel structure. The reviewer sees all artifacts and produces all findings.
+      There is no epistemic separation requirement — unlike M1-IMPL where implementer
+      and reviewer have different visibility, M3-PHRV is a pure review pass where full
+      context is beneficial, not harmful. Adding a second role would require genuine
+      information hiding, which is counterproductive for review.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"

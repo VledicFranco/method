@@ -158,21 +158,21 @@ roles:
       - "Modify source files"
       - "Override phase review verdicts (M3-PHRV)"
       - "Produce fixes (output is diagnosis only)"
-  coverage_claim: >
-    The drift auditor's observation projection covers all N-phase artifacts and architecture
-    docs — full visibility over Mod(D_DDAG). Every sort (AuditWindow, Phase, ArchDoc,
-    Divergence, DriftVector, Remediation, DriftReport, DriftSeverity) is observable. No
-    dimension of the state space is invisible to the auditor.
-  authority_claim: >
-    The drift auditor is authorized to execute all four steps (sigma_0 through sigma_3) and
-    produce all state transitions required to reach O_DDAG: scope definition (sigma_0),
-    divergence collection (sigma_1), drift analysis (sigma_2), report assembly (sigma_3).
-    No required transition is unauthorized.
-  role_partition_rationale: >
-    One role because drift audit is a single-perspective longitudinal analysis with no
-    adversarial structure. The auditor reads all artifacts with uniform access — no epistemic
-    separation is required between steps. Adding a second role (e.g., an independent validator)
-    would require genuine context isolation, which is not achievable in single-agent execution.
+    coverage_claim: >
+      The drift auditor's observation projection covers all N-phase artifacts and architecture
+      docs — full visibility over Mod(D_DDAG). Every sort (AuditWindow, Phase, ArchDoc,
+      Divergence, DriftVector, Remediation, DriftReport, DriftSeverity) is observable. No
+      dimension of the state space is invisible to the auditor.
+    authority_claim: >
+      The drift auditor is authorized to execute all four steps (sigma_0 through sigma_3) and
+      produce all state transitions required to reach O_DDAG: scope definition (sigma_0),
+      divergence collection (sigma_1), drift analysis (sigma_2), report assembly (sigma_3).
+      No required transition is unauthorized.
+    role_partition_rationale: >
+      One role because drift audit is a single-perspective longitudinal analysis with no
+      adversarial structure. The auditor reads all artifacts with uniform access — no epistemic
+      separation is required between steps. Adding a second role (e.g., an independent validator)
+      would require genuine context isolation, which is not achievable in single-agent execution.
 
 step_dag:
   topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"
