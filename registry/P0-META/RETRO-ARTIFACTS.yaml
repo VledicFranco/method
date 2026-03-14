@@ -1,0 +1,326 @@
+specification:
+  id: RETRO-ARTIFACTS
+  name: "Retrospective Artifact Flow — Where Things Live and How They Move"
+  parent: RETRO-PROTO
+  version: "0.1"
+  status: proposed
+  date: "2026-03-14"
+  description: >
+    Defines the artifact structure, storage locations, processing flow, versioning,
+    and changelogs for the retrospective-driven evolution system. Companion to
+    RETRO-PROTO (the protocol) and RETRO-PROTO-PROMOTION (the promotion proposal).
+
+  # ═══════════════════════════════════════════════════════
+  # PART 1 — PROJECT-SIDE ARTIFACTS
+  # ═══════════════════════════════════════════════════════
+
+  project_artifacts:
+    description: >
+      What lives in the project repo. The project is the primary home for retros —
+      the agent writes here at session end, and the project lead processes here.
+
+    directory_structure: |
+      {project}/
+        .method/
+          project-card.yaml           ← the MIC project card (versioned)
+          CHANGELOG.yaml              ← card version history with retro evidence
+          retros/                     ← retrospective archive
+            retro-2026-03-14-001.yaml ← one per method execution per session
+            retro-2026-03-14-002.yaml
+            retro-2026-03-15-001.yaml
+            ...
+          submissions/                ← method-level observations extracted for registry
+            sub-2026-03-14-001.yaml   ← extracted during aggregation, submitted to pv-method
+            ...
+
+    retros_directory:
+      path: ".method/retros/"
+      naming: "retro-YYYY-MM-DD-NNN.yaml"
+      gitignore: false
+      description: >
+        Retrospectives are COMMITTED to the project repo. They are versioned
+        configuration artifacts — the evidence base for card evolution. Unlike
+        session logs (ephemeral), retros are permanent records.
+      horizontal_growth: >
+        One file per method execution per session. A session that runs M5-PLAN +
+        M1-IMPL produces two retro files. Files accumulate horizontally — no file
+        grows unbounded. Old retros are never edited; new observations go in new files.
+
+    card_changelog:
+      path: ".method/CHANGELOG.yaml"
+      description: >
+        Version history for the project card. Each entry records what changed,
+        when, why, and which retros provided the evidence.
+      schema: |
+        changelog:
+          card_id: I1-T1X
+          current_version: "1.1"
+          entries:
+            - version: "1.1"
+              date: "2026-03-14"
+              changes:
+                - "DR-01/DR-02: scoped Metals mandate (features mandatory, bugs recommended)"
+                - "DR-03: scoped to Scala source files only"
+                - "DR-04: added trivial disjointness escape for R9-PDVF"
+                - "DR-21: added Scala 3 for-comprehension indentation rule"
+              evidence:
+                - retro: "retros/retro-2026-03-14-001.yaml"
+                  observations: ["DR-01 unhelpful for bug fix", "DR-03 overly restrictive for shell scripts"]
+                - retro: "retros/retro-2026-03-14-002.yaml"
+                  observations: ["Scala 3 indentation post-merge failure"]
+              gap_candidates: ["GC-P2SD-003"]
+
+            - version: "1.0"
+              date: "2026-03-14"
+              changes: ["Initial card migrated from I1-T1X role files"]
+              evidence: ["pv-method/tmp/I1-T1X-card-analysis.yaml"]
+
+    submissions_directory:
+      path: ".method/submissions/"
+      naming: "sub-YYYY-MM-DD-NNN.yaml"
+      description: >
+        Method-level observations extracted from retros during aggregation, formatted
+        for submission to the method registry. These are the bridge between project-
+        level retro collection and registry-level evolution processing.
+      schema: |
+        submission:
+          id: "sub-2026-03-14-001"
+          source_retro: "retros/retro-2026-03-14-001.yaml"
+          project: t1-cortex
+          card_id: I1-T1X
+          observations:
+            - step: "M1-IMPL.sigma_B3"
+              type: friction
+              severity: MEDIUM
+              description: "sigma_B3 stretched across 7 tasks..."
+              proposed_delta: { target: abstract_method, location: "...", ... }
+          submitted_to: "pv-method/registry/submissions/t1-cortex-2026-03-14-001.yaml"
+          submitted_date: "2026-03-15"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 2 — REGISTRY-SIDE ARTIFACTS
+  # ═══════════════════════════════════════════════════════
+
+  registry_artifacts:
+    description: >
+      What lives in pv-method (the method registry). The registry receives method-
+      level submissions from projects and processes them into evolutions.
+
+    directory_structure: |
+      pv-method/registry/
+        submissions/                  ← incoming method-level observations from projects
+          t1-cortex-2026-03-14-001.yaml
+          pv-method-2026-03-14-001.yaml
+          ...
+        P0-META/
+          EVOLUTION-LEDGER.yaml       ← aggregated counts + gap candidates + evolution history
+          CHANGELOG.yaml              ← methodology version history
+        P1-EXEC/
+          EVOLUTION-LEDGER.yaml
+          CHANGELOG.yaml
+        P2-SD/
+          EVOLUTION-LEDGER.yaml       ← already exists from trial
+          CHANGELOG.yaml
+
+    submissions_directory:
+      path: "registry/submissions/"
+      description: >
+        Incoming method-level observations from projects. Each submission is a
+        filtered extract — only observations with improvement_target = abstract_method.
+        Card-level observations stay in the project repo.
+      processing: >
+        Submissions are processed during aggregation sessions. Processed submissions
+        are moved to a processed/ subdirectory (not deleted — audit trail).
+      structure: |
+        registry/submissions/
+          incoming/                   ← new submissions, not yet processed
+          processed/                  ← processed submissions (audit trail)
+
+    methodology_changelog:
+      path: "registry/{methodology}/CHANGELOG.yaml"
+      description: >
+        Version history for each methodology and its methods. Entries trace to
+        gap candidates and submission evidence.
+      schema: |
+        changelog:
+          methodology_id: P2-SD
+          current_version: "2.0"
+          entries:
+            - version: "2.0"
+              date: "2026-03-14"
+              type: methodology
+              changes:
+                - "Expanded from 5-arm to 7-arm dispatcher (added M6-ARFN, M7-PRDS)"
+                - "Full predicate operationalization"
+                - "Methodology-adapted compilation record"
+
+            - version: "M3-PHRV Ax-1 update"
+              date: "2026-03-14"
+              type: method_patch
+              method: M3-PHRV
+              changes: ["Generalized citation format: file:line for code, file:key-path for YAML"]
+              evidence:
+                gap_candidate: "GC-P2SD-002"
+                submissions: ["pv-method-review-P2SD-001"]
+              evolution_id: "EVO-P2SD-001"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 3 — AGGREGATION PROCEDURE
+  # ═══════════════════════════════════════════════════════
+
+  aggregation:
+    description: >
+      How retrospectives get processed into gap candidates, card revisions, and
+      method evolutions. This is the "engine" that drives the feedback loop.
+
+    what_it_is: >
+      A lightweight procedure — not a full compiled method. It runs as an M3-TMP
+      session (sequential single-agent reasoning) with a fixed checklist. It does
+      not require M1-MDES compilation or a formal 5-tuple.
+
+    who_runs_it:
+      project_level: "Project lead runs aggregation on .method/retros/"
+      registry_level: "Registry maintainer runs aggregation on registry/submissions/"
+
+    cadence:
+      trigger: "Every 5 retros OR weekly, whichever comes first"
+      note: >
+        During active development (multiple sessions per week), the 5-retro
+        trigger fires frequently. During quiet periods, the weekly cadence
+        ensures nothing stales.
+
+    project_level_procedure:
+      name: "Card Aggregation"
+      steps:
+        - step: 1
+          action: "Read all unprocessed retros in .method/retros/"
+          output: "List of new observations"
+
+        - step: 2
+          action: "Split observations by improvement_target"
+          output: "Card-level observations + method-level observations"
+
+        - step: 3
+          action: "For card-level observations: check thresholds"
+          threshold: "3 observations on same rule OR 1 observation with verdict = overly_restrictive/unhelpful from multiple sessions"
+          output: "Card revision candidates"
+
+        - step: 4
+          action: "For card revision candidates: apply changes to project-card.yaml"
+          output: "Updated card + CHANGELOG.yaml entry"
+          versioning: >
+            Increment card version (1.0 → 1.1 → 1.2...). Each changelog entry
+            lists the changes, retro evidence, and gap candidate ID.
+
+        - step: 5
+          action: "For method-level observations: format as submission"
+          output: "Submission YAML in .method/submissions/"
+
+        - step: 6
+          action: "Submit to registry: copy submission to pv-method/registry/submissions/incoming/"
+          mechanism: >
+            If the project maintainer has write access to pv-method: copy directly.
+            If not: open a PR or issue on pv-method with the submission attached.
+            The submission format is self-contained — it includes all evidence.
+
+    registry_level_procedure:
+      name: "Method Aggregation"
+      steps:
+        - step: 1
+          action: "Read all submissions in registry/submissions/incoming/"
+          output: "List of method-level observations from all projects"
+
+        - step: 2
+          action: "Group by method.step"
+          output: "Observation counts per step across projects"
+
+        - step: 3
+          action: "Check thresholds"
+          thresholds:
+            high: "1 HIGH observation → immediate gap candidate"
+            medium: "2 MEDIUM on same step, 2+ projects → gap candidate (calibration period)"
+            low: "Accumulate, never auto-trigger"
+
+        - step: 4
+          action: "For new gap candidates: create entry in EVOLUTION-LEDGER.yaml"
+          output: "Gap candidate with aggregated evidence"
+
+        - step: 5
+          action: "For gap candidates ready for evolution: trigger M3-MEVO"
+          condition: >
+            A gap candidate is ready when: evidence is clear, the fix is known
+            (proposed deltas from retros), and the change is scoped. The registry
+            maintainer decides when to trigger M3-MEVO — not every gap candidate
+            needs immediate evolution.
+          output: "M3-MEVO session → new method version"
+
+        - step: 6
+          action: "Update CHANGELOG.yaml + EVOLUTION-LEDGER.yaml"
+          output: "Methodology changelog entry tracing to gap candidate and submissions"
+
+        - step: 7
+          action: "Move processed submissions to registry/submissions/processed/"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 4 — VERSIONING
+  # ═══════════════════════════════════════════════════════
+
+  versioning:
+    project_cards:
+      scheme: "Semantic: major.minor (1.0, 1.1, 1.2, 2.0...)"
+      major_bump: "Methodology version change that requires card migration"
+      minor_bump: "Delivery rule additions, modifications, or removals"
+      tracked_in: ".method/CHANGELOG.yaml"
+      field_in_card: >
+        Add to project_card schema: `card_version: "1.1"` alongside
+        methodology_version. Card version and methodology version are
+        independent — a card can be at v1.3 targeting methodology v2.0.
+
+    methodologies:
+      scheme: "Semantic: major.minor (2.0, 2.1, 3.0...)"
+      major_bump: "Structural changes: methods added/removed, domain theory revision, axiom changes"
+      minor_bump: "Guidance updates, operationalization refinements, axiom rationale clarification"
+      tracked_in: "registry/{methodology}/CHANGELOG.yaml"
+      note: "Already have version fields. Adding CHANGELOG.yaml is the new piece."
+
+    methods:
+      scheme: "Semantic: major.minor (1.0, 1.1, 2.0...)"
+      major_bump: "Domain theory changes, step DAG restructuring, role changes"
+      minor_bump: "Guidance refinement, output schema updates, axiom rationale clarification"
+      tracked_in: "registry/{methodology}/CHANGELOG.yaml (methodology-level log covers its methods)"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 5 — M3-MEVO INTEGRATION
+  # ═══════════════════════════════════════════════════════
+
+  mevo_integration:
+    description: >
+      How the aggregation procedure connects to M3-MEVO (Method Evolution) for
+      abstract method changes. Card changes don't go through M3-MEVO — they're
+      direct edits by the project lead.
+
+    when_mevo_triggers:
+      - "A gap candidate has clear evidence from 2+ projects"
+      - "A proposed delta exists with specific current/proposed/rationale"
+      - "The registry maintainer decides the change is ready"
+      note: >
+        Not every gap candidate triggers M3-MEVO immediately. Some accumulate
+        more evidence. Some wait for a natural milestone (methodology version bump).
+        The registry maintainer's judgment determines timing.
+
+    mevo_input:
+      - "Gap candidate from EVOLUTION-LEDGER.yaml"
+      - "Submissions from registry/submissions/ with the relevant observations"
+      - "Proposed deltas aggregated from multiple retros"
+      - "The current compiled method YAML"
+
+    mevo_output:
+      - "Updated method YAML (new version)"
+      - "CHANGELOG.yaml entry"
+      - "EVOLUTION-LEDGER.yaml entry (evolution_history)"
+      - "Gap candidate status → resolved"
+
+    what_mevo_does_not_cover:
+      - "Card revisions — these are project-level, handled by the project lead"
+      - "Aggregation — this is a protocol procedure, not a method evolution"
+      - "Threshold calibration — this is a protocol parameter, not a method"
