@@ -1,0 +1,830 @@
+method:
+  id: M1-MDES
+  name: "Method Design from Established Domain Knowledge"
+  description: >
+    Crystallizes established domain knowledge into a formally validated method — the full
+    5-tuple M = (D, Roles, Γ, O, μ⃗). Produces a method document and a YAML encoding
+    ready to load into the method server. The method compiles when it passes all seven
+    acceptance gates (G0–G6) at σ₆.
+  version: "0.2"
+  status: draft
+  source_document: "P0-META/M1-MDES/M1-MDES.md"
+  formal_grounding: "theory/F1-FTH.md"
+
+roles:
+  - id: designer
+    description: >
+      Executes σ₀–σ₅. Has deep knowledge of the target domain. Has access to the domain
+      knowledge corpus and the formal theory (F1-FTH). In a single-agent session the
+      executing LLM plays this role. Observes: domain knowledge corpus, F1-FTH, existing
+      methods as structural exemplars, and the pv-method YAML schema. Authorized to assess
+      domain knowledge sufficiency, declare domain theory, objective, measure, roles, step
+      DAG, and guidance text.
+    phases:
+      - sigma_0
+      - sigma_1
+      - sigma_2
+      - sigma_3
+      - sigma_4
+      - sigma_5
+
+  - id: compiler
+    description: >
+      Executes σ₆. Evaluates the candidate method against the seven acceptance gates.
+      Observes only the completed candidate document and F1-FTH — no domain knowledge
+      context. The role switch at σ₆ is a formal epistemic separation: use a separate agent
+      invocation if context leakage is a concern. Authorized to emit PASS with YAML encoding,
+      or FAIL with specific gate identifiers and repair targets.
+    phases:
+      - sigma_6
+
+phases:
+  - id: sigma_0
+    name: "Orientation"
+    role: designer
+    precondition: >
+      An intention to design a method exists and a target domain has been named.
+    postcondition: >
+      Domain knowledge sufficiency is assessed. A go/proceed or go/redirect decision is
+      recorded — not deferred. If proceed: the domain knowledge corpus has been enumerated
+      and the designer can name at least 3 entity classes and 2 domain invariants from that
+      corpus without fabrication. If redirect: the target method is M2-MDIS and the
+      specific knowledge gap is stated.
+    guidance: |
+      This step answers one question before crystallization begins: is the domain knowledge
+      sufficient to proceed?
+
+      **Constraints (what must be true after this step):**
+      - A go/proceed or go/redirect decision is recorded — not deferred.
+      - If go/proceed: populate domain_corpus_enumeration with at least 1 source, entity_classes_preview
+        with at least 3 entries, and invariants_preview with at least 2 entries. All entries must
+        come from the existing knowledge corpus — not from inference or speculation.
+      - If go/redirect: populate redirect_gap_statement naming which of the four sufficiency
+        questions is unanswerable and what knowledge must exist before M1-MDES can proceed.
+      - Leave fields empty (zero-length arrays or empty strings) for the path not taken.
+
+      **The sufficiency test.** Without consulting any external source, answer:
+      1. What are the primary entity classes in this domain? (Can you name at least 3 distinct typed entities?)
+      2. What must always be true in this domain — the non-negotiable invariants? (Can you name at least 2?)
+      3. What does a successful outcome look like? (Can you state this as a testable condition, not a goal?)
+      4. What are the rough steps an expert takes? (Can you sketch at least 3 meaningful phases?)
+
+      If all four questions have concrete answers from existing knowledge: **go/proceed**.
+      If two or more cannot be answered from existing knowledge: **go/redirect to M2-MDIS**.
+
+      The go/redirect path terminates this method. Document the gap in redirect_gap_statement
+      — which question is unanswerable and what would need to exist to answer it.
+
+      **Output schema reference:**
+      - sufficiency_decision: "proceed" or "redirect"
+      - domain_corpus_enumeration: list of source descriptions (populated if proceed)
+      - entity_classes_preview: list of entity class names with descriptions (at least 3 if proceed)
+      - invariants_preview: list of invariant statements (at least 2 if proceed)
+      - redirect_gap_statement: description of the knowledge gap (populated if redirect)
+    output_schema:
+      fields:
+        - name: sufficiency_decision
+          type: enum
+          values: ["proceed", "redirect"]
+          required: true
+        - name: domain_corpus_enumeration
+          type: array
+          items: string
+          description: "Source: [name] — contains: [what it provides]"
+          min_items: 0
+          required: false
+        - name: entity_classes_preview
+          type: array
+          items: string
+          description: "EntityClass — one-line description"
+          min_items: 0
+          required: false
+        - name: invariants_preview
+          type: array
+          items: string
+          description: "Invariant: [statement]"
+          min_items: 0
+          required: false
+        - name: redirect_gap_statement
+          type: string
+          description: "Which sufficiency question is unanswerable and what knowledge is missing"
+          min_length: 0
+          required: false
+    invariants:
+      hard:
+        - "sufficiency_decision is present and is one of: proceed, redirect"
+        - "if sufficiency_decision == proceed: entity_classes_preview has at least 3 items"
+        - "if sufficiency_decision == proceed: invariants_preview has at least 2 items"
+        - "if sufficiency_decision == redirect: redirect_gap_statement is non-empty"
+      soft:
+        - "if sufficiency_decision == proceed: domain_corpus_enumeration is non-empty and names at least one source"
+        - "entity_classes_preview entries are specific type names, not generic labels like 'Thing' or 'Item'"
+
+  - id: sigma_1
+    name: "Domain Theory Crystallization"
+    role: designer
+    precondition: >
+      Domain knowledge corpus exists and has been read by the executing agent.
+      Sufficiency decision from σ₀ is "proceed".
+    postcondition: >
+      D = (Σ, Ax) is declared following the canonical form in F3-DTC. All relevant entity
+      classes are named as sorts with descriptions and cardinality notes. All domain invariants
+      are stated as closed axioms with natural language glosses. All predicate arguments
+      reference declared sorts. The domain boundary is stated. Initial and terminal state
+      membership in Mod(D) is claimed. well_formed(D) holds.
+    guidance: |
+      You are crystallizing the domain theory for the method being designed. The domain theory
+      bounds what this method operates on — it is not the subject matter the method addresses,
+      but the formal world the method's steps transform.
+
+      **Constraints (what must be true after this step):**
+      - Follow the canonical form specified in F3-DTC (Section 1) for all declarations.
+      - At least one sort is declared in Σ, with a name, description, and cardinality note.
+      - All predicate arguments reference declared sorts (no free sort references).
+      - All axioms are closed sentences — no free variables. Verify each axiom: every variable
+        must be bound by a quantifier (∀ or ∃) whose scope includes that variable.
+      - The domain boundary (explicit exclusions) is stated in domain_boundary_note.
+      - initial_state_valid_claim and terminal_state_valid_claim are both non-empty.
+      - Run the consistency checklist from F3-DTC Section 4 before declaring σ₁ complete.
+
+      **Declare sorts first.** Ask: what are the typed entity classes that exist in this domain?
+      Every noun in the domain's informal description that has distinct structure or identity is
+      a candidate sort. Name them precisely (TaskSpec, TestSuite, ResearchQuestion — not Thing or
+      Item). Prefer narrow, typed sorts over broad generic ones. For each sort, state: Name,
+      Description (1–3 sentences), Cardinality (finite / infinite / unknown).
+
+      **Declare predicates.** What relations hold between sorts? What properties of sorts matter
+      for the method's logic? For each predicate: Name, typed Signature referencing declared sorts,
+      Description of the relation.
+
+      **Declare axioms.** What must always be true in this domain — the constraints constitutive
+      of what the domain is? Each axiom: Ax-N identifier, formal closed sentence, natural language
+      gloss, list of referenced symbols. Axioms that are too permissive admit invalid states.
+      Axioms that are contradictory produce Mod(D) = ∅. Both are failures.
+
+      **Declare the domain boundary.** Name explicitly what is excluded from this domain.
+      Excluded entities prevent scope creep in step design.
+
+      **Verify state membership.** After declaring D, verify that the intended initial state and
+      intended terminal state are both members of Mod(D). If either is not valid, the domain
+      theory is wrong — not the states.
+
+      **Idiom reference (F3-DTC Section 5):**
+      - Horn theory: use when the domain is facts and derived relations; canonical Herbrand model exists.
+      - QF-LIA: use when the domain involves counts, thresholds, or resource bounds; SMT-decidable.
+      - Abstract relational: use when the domain involves roles, permissions, or structural relations
+        without arithmetic.
+
+      **Output schema reference:**
+      - sorts: array of "SortName — description [cardinality: X]" entries, at least 1
+      - predicates: array of "predicate(Sort1, Sort2) — what it means" entries
+      - axioms: array of "Ax-N: gloss; Formal: [sentence]; References: [symbols]" entries, at least 1
+      - domain_boundary_note: what is explicitly excluded from this domain
+      - initial_state_valid_claim: why the intended initial state is a member of Mod(D)
+      - terminal_state_valid_claim: why the intended terminal state is a member of Mod(D)
+    output_schema:
+      fields:
+        - name: sorts
+          type: array
+          items: string
+          description: "SortName — description [cardinality: finite|infinite|unknown]"
+          min_items: 1
+          required: true
+        - name: predicates
+          type: array
+          items: string
+          description: "predicate(Sort1, Sort2) — what it means"
+          min_items: 0
+          required: false
+        - name: axioms
+          type: array
+          items: string
+          description: "Ax-N: [natural language gloss]; Formal: [closed sentence]; References: [symbols]"
+          min_items: 1
+          required: true
+        - name: domain_boundary_note
+          type: string
+          description: "What is explicitly excluded from this domain"
+          min_length: 1
+          required: true
+        - name: initial_state_valid_claim
+          type: string
+          description: "Why the intended initial state is a member of Mod(D)"
+          min_length: 1
+          required: true
+        - name: terminal_state_valid_claim
+          type: string
+          description: "Why the intended terminal state is a member of Mod(D)"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "sorts has at least 1 item"
+        - "axioms has at least 1 item"
+        - "domain_boundary_note is non-empty"
+        - "initial_state_valid_claim is non-empty"
+        - "terminal_state_valid_claim is non-empty"
+      soft:
+        - "each axiom entry contains a natural language gloss and a formal sentence"
+        - "predicate signatures reference only sort names declared in the sorts field"
+        - "no axiom entry has a variable appearing without a binding quantifier"
+        - "sort names are PascalCase and specific (not generic labels like Thing or Item)"
+
+  - id: sigma_2
+    name: "Objective and Measure Declaration"
+    role: designer
+    precondition: >
+      D = (Σ, Ax) is declared and well-formed (σ₁ postcondition satisfied).
+    postcondition: >
+      O is declared as a Σ-predicate over Mod(D). Progress preorder ≼_O is declared, or
+      objective type is fixpoint with the monotone operator named. μ⃗ is a vector of at
+      least one scalar measure. Each measure is an order-homomorphism w.r.t. ≼_O and
+      references only sorts/predicates declared in Σ.
+    guidance: |
+      Declare the objective as a condition on the state space — not a description of process,
+      but a property of the world that is either true or false at any given state.
+
+      **Constraints (what must be true after this step):**
+      - objective_type is one of: terminal, threshold, comparative, fixpoint.
+      - objective_statement is non-empty and states O as a predicate or condition over Mod(D) —
+        not a process description. It must include formal notation or a testable condition.
+      - objective_expressible_claim is non-empty — explains why every sort and predicate
+        referenced in O appears in the declared Σ.
+      - progress_preorder is non-empty — either describes how ≼_O is constructed, or for
+        fixpoint objectives states "fixpoint: [F name]" (P1-C1 from F2-OPR: fixpoint-definable
+        objectives have canonical preorders — use this when applicable).
+      - measures has at least 1 item. Each measure entry states: name, formula, range, and
+        a proxy claim asserting it tracks progress toward O.
+      - Each measure formula references only sorts/predicates declared in Σ.
+
+      **Classify the objective type (F1-FTH §5):**
+      - Terminal: success is reaching a specific target state s*
+      - Threshold: success is μ(s) ≥ k for some measure and threshold k
+      - Comparative: success is improvement over the initial state
+      - Fixpoint: success is membership in lfp(F) for some monotone operator F — if so, use
+        "fixpoint: [F name]" as the progress preorder and get ≼_O canonically (no design burden).
+
+      **Declare the progress preorder ≼_O.** This is a design artifact — the claim that certain
+      states are more advanced toward O than others. It must be reflexive, transitive, and have
+      terminal states (O = true) as maximal elements. A badly designed preorder produces poorly
+      calibrated measures.
+
+      **Declare measures.** Each component of μ⃗ must be:
+      - Observable (computable from the current state)
+      - An order-homomorphism w.r.t. ≼_O (states closer to O get higher values)
+      - Falsifiable as a progress hypothesis (there exists a state where the measure would be
+        shown to be a poor proxy for the objective)
+
+      **Output schema reference:**
+      - objective_type: "terminal", "threshold", "comparative", or "fixpoint"
+      - objective_statement: O in natural language with formal notation
+      - objective_expressible_claim: why O is a Σ-predicate
+      - progress_preorder: how ≼_O is constructed, or "fixpoint: [F name]"
+      - measures: array of "{name}: {formula}, range {[a,b]}, proxy for: {what it tracks}"
+    output_schema:
+      fields:
+        - name: objective_type
+          type: enum
+          values: ["terminal", "threshold", "comparative", "fixpoint"]
+          required: true
+        - name: objective_statement
+          type: string
+          description: "O in natural language and formal notation"
+          min_length: 1
+          required: true
+        - name: objective_expressible_claim
+          type: string
+          description: "Why O is expressible as a Σ-predicate over Mod(D)"
+          min_length: 1
+          required: true
+        - name: progress_preorder
+          type: string
+          description: "How ≼_O is constructed, or 'fixpoint: [F name]' for fixpoint objectives"
+          min_length: 1
+          required: true
+        - name: measures
+          type: array
+          items: string
+          description: "{name}: {formula}, range {[a,b]}, proxy for: {what it tracks}"
+          min_items: 1
+          required: true
+    invariants:
+      hard:
+        - "objective_type is one of: terminal, threshold, comparative, fixpoint"
+        - "objective_statement is non-empty"
+        - "objective_expressible_claim is non-empty"
+        - "progress_preorder is non-empty"
+        - "measures has at least 1 item"
+      soft:
+        - "objective_statement includes a testable condition or formal predicate notation"
+        - "each measure entry names a formula, a range, and a proxy claim"
+        - "measures reference only sort/predicate names from the sorts and predicates fields of σ₁"
+
+  - id: sigma_3
+    name: "Role Design"
+    role: designer
+    precondition: >
+      D and O are declared (σ₁ and σ₂ postconditions satisfied).
+    postcondition: >
+      Team topology {ρ₁, ..., ρₖ} is declared. Each role has an explicit observation projection
+      (non-empty) and authorized transitions. covers(Roles, D) holds. No two roles have identical
+      observation projections AND identical authority sets. Role authorities collectively cover all
+      transitions required to advance from σ_init to O.
+    guidance: |
+      A role is not a job title. It is a lens — a formal specification of what an agent can see
+      and what state-changes it is permitted to make (F1-FTH §2).
+
+      **Constraints (what must be true after this step):**
+      - At least one role is declared.
+      - Each role entry names what it observes (non-empty) and what transitions it is authorized to make.
+      - coverage_claim is non-empty and non-trivial — names what state dimension each role covers;
+        "covers everything" is trivial and fails G3.
+      - authority_claim is non-empty — names what transitions each role is permitted to make.
+      - No two roles have identical observation projections AND identical authority sets (duplicates
+        add no cognitive labor partition).
+      - role_partition_rationale explains why this number of roles — not more, not fewer.
+
+      **Design roles by asking two questions per role:**
+      1. What slice of Mod(D) does this agent need to see? The observation projection π_ρ reduces
+         the full state space to the sub-theory the role requires. Design this restriction deliberately.
+      2. What state-changes is this agent authorized to make? The authorized transitions α_ρ define
+         what the role can do to the world. An agent authorized to change dimensions it cannot observe
+         will produce invalid transitions.
+
+      **Coverage check.** After declaring all roles: does the union of their observation projections
+      cover the dimensions of Mod(D) relevant to achieving O? If some dimension is invisible to all
+      roles, no agent will ever act on it — the method cannot achieve O.
+
+      **Authority check.** Does the union of role authorities cover all transitions required to
+      advance from the initial state to a terminal state? If some required transition is not
+      authorized to any role, the method is incomplete.
+
+      **Minimal topology principle.** Do not add roles for aesthetics. Each role must be justified
+      by either an observation partition or an authority partition. A role whose observation projection
+      equals another role's is a duplicate unless its authority differs.
+
+      **Epistemic separation principle.** Design role boundaries so that audit or compiler roles are
+      structurally prevented from echoing the designer's context. A team where every role sees the
+      same state space cannot produce genuine independent evaluation.
+
+      **Output schema reference:**
+      - roles: array of "RoleName: observes [list], authorized [list]" entries, at least 1
+      - coverage_claim: why ⋃ π_ρ(Mod(D)) covers relevant state dimensions
+      - authority_claim: why role authorities cover all required transitions
+      - role_partition_rationale: why this many roles (not more, not fewer)
+    output_schema:
+      fields:
+        - name: roles
+          type: array
+          items: string
+          description: "RoleName: observes [list], authorized [list]"
+          min_items: 1
+          required: true
+        - name: coverage_claim
+          type: string
+          description: "Why the union of role observation projections covers the relevant state dimensions"
+          min_length: 1
+          required: true
+        - name: authority_claim
+          type: string
+          description: "Why role authorities collectively cover all required transitions"
+          min_length: 1
+          required: true
+        - name: role_partition_rationale
+          type: string
+          description: "Why this number of roles and not more or fewer"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "roles has at least 1 item"
+        - "coverage_claim is non-empty"
+        - "authority_claim is non-empty"
+        - "role_partition_rationale is non-empty"
+      soft:
+        - "coverage_claim names specific state dimensions covered by each role, not a generic 'covers everything'"
+        - "no two role entries have identical 'observes' and identical 'authorized' lists"
+        - "role_partition_rationale references the observation and authority partition structure"
+
+  - id: sigma_4
+    name: "Step DAG Construction"
+    role: designer
+    precondition: >
+      D, Roles, and O are declared (σ₁, σ₂, σ₃ postconditions satisfied).
+    postcondition: >
+      Γ = (V, E, σ_init, σ_term) is declared. For each step σ ∈ V: pre_σ, post_σ, guidance
+      summary, output_schema, and assigned role ∈ Roles are declared. For each edge (σᵢ, σⱼ) ∈ E:
+      composable(σᵢ, σⱼ) is claimed with explicit reasoning. post_{σ_term} ⊆ O is claimed.
+      pre_{σ_init} is satisfiable from the declared initial state. The contrarian challenge
+      sub-step is completed.
+    guidance: |
+      Construct the step DAG by working forward from the initial state and backward from the
+      objective, meeting in the middle.
+
+      **Constraints (what must be true after this step):**
+      - At least two steps are declared (σ_init and σ_term at minimum).
+      - Each step has: pre, post, guidance summary, output_schema fields list, and assigned role.
+      - Each edge in dag_edges has a corresponding composability claim in composability_claims
+        stating why post_{σᵢ} ⊆ pre_{σⱼ}.
+      - terminal_condition_claim is non-empty: why post_{σ_term} ⊆ O.
+      - initial_condition_claim is non-empty: why pre_{σ_init} holds at session start.
+      - contrarian_challenge is complete with weakest_edge, challenge, and defense_or_revision
+        all non-empty. This sub-step is not optional.
+
+      **Forward pass: from initial state to O.** Starting from the declared initial state, ask:
+      what must become true first before anything else can proceed? This is the precondition of
+      σ_init. Then: what does σ_init produce? That post-state is the pre-state of the next step.
+      Continue until you reach a state from which O is satisfiable.
+
+      **Backward pass: from O.** Starting from O, ask: what must be true immediately before the
+      terminal step executes? That is pre_{σ_term}. Continue until you connect to the forward pass.
+
+      **For each step, declare all four components:**
+      - pre_σ: the condition that must hold before this step executes; state it in terms of D's sorts
+        and predicates; vague preconditions produce composability violations
+      - post_σ: the condition that holds after this step completes; this is what the next step's
+        precondition will be checked against; underspecified postconditions allow invalid successor states
+      - guidance_σ: a summary for now (full text goes in σ₅); what does the agent need to know?
+      - output_schema: the typed fields the agent must populate; structural encoding of post_σ
+
+      **Composability claim for each edge.** For every edge (σᵢ, σⱼ): state why the set of states
+      satisfying post_{σᵢ} is a subset of states satisfying pre_{σⱼ}. This is a claim, not a proof —
+      but it must be explicit and non-trivial.
+
+      **DAG or path?** The linear path is the default. Use branching only when two genuinely distinct
+      execution paths are required by the domain logic. Optional steps should be marked as such in
+      their guidance, not as DAG branches.
+
+      **Contrarian Challenge Pass (required sub-step):**
+      1. Survey all composability claims.
+      2. Identify the one you are least confident about — where post_{σᵢ} ⊆ pre_{σⱼ} is most
+         dependent on implicit assumptions or informal reasoning not captured in the axioms.
+      3. State the challenge: "The reason this claim might fail is..."
+      4. Defend or revise: explain why it holds (naming the axiom or postcondition element that
+         guarantees the subset relationship), or revise the step pre/post/schema to strengthen the claim.
+      If the challenge cannot be defended, the DAG must be revised before σ₄ is complete.
+
+      **Output schema reference:**
+      - steps: array of step summaries, at least 2 entries
+      - dag_edges: array of edge strings like "[σᵢ → σⱼ]"
+      - composability_claims: array of claim strings like "[σᵢ → σⱼ]: post_{σᵢ} ⊆ pre_{σⱼ} because ..."
+      - terminal_condition_claim: why post_{σ_term} ⊆ O
+      - initial_condition_claim: why pre_{σ_init} holds at session start
+      - contrarian_challenge: object with weakest_edge, challenge, defense_or_revision
+    output_schema:
+      fields:
+        - name: steps
+          type: array
+          items: string
+          description: "σN — Name (role: R): pre: ..., post: ..., schema: {fields}"
+          min_items: 2
+          required: true
+        - name: dag_edges
+          type: array
+          items: string
+          description: "[σᵢ → σⱼ]"
+          min_items: 1
+          required: true
+        - name: composability_claims
+          type: array
+          items: string
+          description: "[σᵢ → σⱼ]: post_{σᵢ} ⊆ pre_{σⱼ} because ..."
+          min_items: 1
+          required: true
+        - name: terminal_condition_claim
+          type: string
+          description: "Why post_{σ_term} ⊆ O"
+          min_length: 1
+          required: true
+        - name: initial_condition_claim
+          type: string
+          description: "Why pre_{σ_init} holds at the start of a normal session"
+          min_length: 1
+          required: true
+        - name: contrarian_challenge
+          type: object
+          required: true
+          properties:
+            weakest_edge:
+              type: string
+              description: "σᵢ → σⱼ identifier of the least-certain composability claim"
+            challenge:
+              type: string
+              description: "The reason this composability claim might fail"
+            defense_or_revision:
+              type: string
+              description: "Why it holds despite the challenge, or the revised claim"
+    invariants:
+      hard:
+        - "steps has at least 2 items"
+        - "dag_edges has at least 1 item"
+        - "composability_claims has at least 1 item"
+        - "composability_claims count equals dag_edges count"
+        - "terminal_condition_claim is non-empty"
+        - "initial_condition_claim is non-empty"
+        - "contrarian_challenge.weakest_edge is non-empty"
+        - "contrarian_challenge.challenge is non-empty"
+        - "contrarian_challenge.defense_or_revision is non-empty"
+      soft:
+        - "each step entry names the assigned role and references a role declared in σ₃"
+        - "each composability claim names the specific postcondition element or axiom supporting the subset relationship"
+        - "the contrarian challenge defense names a specific axiom or postcondition field, not a general assertion"
+
+  - id: sigma_5
+    name: "Guidance Adequacy Audit"
+    role: designer
+    precondition: >
+      All steps are declared with guidance summaries and output schemas (σ₄ postcondition satisfied).
+    postcondition: >
+      For each step σ: struct_guide(guidance_σ) ⊇ struct_pre(post_σ) has been checked (P2.2,
+      F2-OPR). All INADEQUATE steps have revised guidance. All guidance text follows the
+      constraints-first format. All guidance text is finalized. final_guidance_confirmed is "yes".
+    guidance: |
+      This step implements the operational answer to P2 (F2-OPR): what makes guidance text
+      adequate for a step?
+
+      **Constraints (what must be true after this step):**
+      - Every step in the method has finalized guidance text (not just the summary from σ₄).
+      - adequacy_results contains an entry for every step declared in σ₄.
+      - No step is marked INADEQUATE without a corresponding revised_guidance entry.
+      - format_audit_results contains an entry for every step.
+      - No step is marked FORMAT-FAIL without a corresponding revised_guidance entry.
+      - final_guidance_confirmed is set to "yes".
+
+      **Structural coverage check.** For each step:
+      1. Read the step's output schema. List every required field by name and type.
+      2. Read the guidance text. For each required field, ask:
+         - Does the guidance explicitly mention this field by name?
+         - Does the guidance provide enough context that an agent reading only the guidance
+           could determine what value to produce for this field?
+         - If the answer to either question is no: mark the step INADEQUATE and name the specific
+           field and what the guidance fails to convey.
+
+      INADEQUATE means: an agent reading the guidance would not know what to put in a specific
+      output field. It is a structural gap, not a prose quality judgment.
+
+      For every INADEQUATE step: write revised guidance that covers the gap. Make the minimum
+      addition that closes the coverage gap — do not rewrite wholesale.
+
+      **Constraints-first format (required for every finalized guidance block):**
+      1. Constraints — lead with what must be true after this step: the invariants, the required
+         output fields, the non-negotiable conditions. State these before any procedural content.
+         LLMs process earlier content more reliably; constraints must come first.
+      2. Rationale — explain why these constraints exist and what goes wrong if violated.
+      3. Procedure — the steps, heuristics, and checks the agent should apply.
+      4. Output schema reference — every required field in the output schema must be explicitly
+         named in the guidance. Agents should not infer field names from context.
+
+      Guidance should orient the executing agent — give them context to make the right judgment.
+      It must not prescribe exact field values, which defeats the purpose of the step.
+
+      **Output schema reference:**
+      - adequacy_results: array with one entry per step ("σN: ADEQUATE" or "σN: INADEQUATE — field F: [gap]")
+      - format_audit_results: array with one entry per step ("σN: FORMAT-OK" or "σN: FORMAT-FAIL — [issue]")
+      - revised_guidance: array of revised guidance blocks for each INADEQUATE or FORMAT-FAIL step
+      - final_guidance_confirmed: must be "yes"
+    output_schema:
+      fields:
+        - name: adequacy_results
+          type: array
+          items: string
+          description: "'σN: ADEQUATE' or 'σN: INADEQUATE — field F: [gap description]'"
+          min_items: 1
+          required: true
+        - name: format_audit_results
+          type: array
+          items: string
+          description: "'σN: FORMAT-OK' or 'σN: FORMAT-FAIL — [what is missing or out of order]'"
+          min_items: 1
+          required: true
+        - name: revised_guidance
+          type: array
+          items: string
+          description: "'σN: [full revised guidance text]' — required for each INADEQUATE or FORMAT-FAIL step"
+          min_items: 0
+          required: false
+        - name: final_guidance_confirmed
+          type: enum
+          values: ["yes"]
+          required: true
+    invariants:
+      hard:
+        - "adequacy_results has at least 1 item"
+        - "format_audit_results has at least 1 item"
+        - "adequacy_results count equals the number of steps declared in sigma_4"
+        - "format_audit_results count equals the number of steps declared in sigma_4"
+        - "final_guidance_confirmed equals 'yes'"
+        - "every step marked INADEQUATE in adequacy_results has a corresponding entry in revised_guidance"
+        - "every step marked FORMAT-FAIL in format_audit_results has a corresponding entry in revised_guidance"
+      soft:
+        - "INADEQUATE entries name the specific output field that lacks coverage"
+        - "FORMAT-FAIL entries name whether the failure is a missing constraints section, missing rationale, or missing output schema reference"
+        - "revised_guidance entries follow the constraints-first format"
+
+  - id: sigma_6
+    name: "Compilation Check"
+    role: compiler
+    precondition: >
+      All five M-components are declared (D, Roles, Γ, O, μ⃗). Guidance is finalized with no open
+      INADEQUATE or FORMAT-FAIL items. The complete candidate method document is assembled.
+      The compiler observes only the candidate document and F1-FTH — no domain knowledge context.
+    postcondition: >
+      CompilationResult ∈ {PASS, FAIL}. If PASS: YAML encoding is produced. If FAIL: gate_verdicts
+      contains at least one FAIL verdict, repair_targets names the specific σ step to repair,
+      and overall_verdict is FAIL.
+    guidance: |
+      You are the compiler. Your job is to evaluate the candidate method document against the
+      seven formal theory gates. You have access to the candidate document and F1-FTH. You
+      do not have access to the domain knowledge that produced this candidate — evaluate
+      structure, not content.
+
+      **Constraints (what must be true after this step):**
+      - Run gates in order G0 through G6.
+      - A gate failure terminates evaluation at that gate. Report the failure and repair target.
+        Do not continue to later gates after a failure — a method failing G0 cannot meaningfully
+        be evaluated at G4.
+      - gate_verdicts contains one entry per gate evaluated (G0 through the first failure, or
+        G0 through G6 if all pass).
+      - overall_verdict is PASS only if all seven gates pass.
+      - If PASS: yaml_encoding contains the full YAML text of the method encoding.
+      - If FAIL: repair_targets names the specific step (σN or document section) to repair.
+
+      **G0 — Navigability (What/Who/Why/How/When)**
+      Check that §0 of the candidate method explicitly answers all five questions:
+      - What: what the method produces; what "compiles" or "passes" looks like
+      - Who: what roles use this method; whether LLM or human execution is the target
+      - Why: what problem it solves; what breaks without it
+      - How: a high-level description of the step structure
+      - When: input conditions and boundary conditions (when to use vs. when to route elsewhere)
+      FAIL → repair target: §0 of the candidate method document
+
+      **G1 — Domain Theory Validity**
+      Check: at least one sort declared; all predicates have typed arguments referencing declared
+      sorts; axioms are closed sentences (no free variables); no trivially contradictory axiom pair;
+      initial_state_valid_claim and terminal_state_valid_claim are present.
+      FAIL → repair target: σ₁
+
+      **G2 — Objective Expressibility and Measure Well-formedness**
+      Check: O stated as a predicate over Mod(D) (not a process description); every sort/predicate
+      in O is declared in Σ; progress preorder ≼_O declared or fixpoint objective with monotone
+      operator named; at least one measure with formula, range, and proxy claim; measure formulas
+      reference only declared Σ symbols.
+      FAIL → repair target: σ₂
+
+      **G3 — Role Coverage and Authority**
+      Check: at least one role declared; each role has non-empty observation projection; coverage_claim
+      present and non-trivial (not "covers everything"); authority_claim present; no two roles have
+      identical observation projections AND identical authority sets.
+      FAIL → repair target: σ₃
+
+      **G4 — Step DAG Composability**
+      Check: at least two steps declared; each step has pre, post, guidance, and output_schema;
+      each edge has a composability claim stating why post_{σᵢ} ⊆ pre_{σⱼ}; terminal_condition_claim
+      present; initial_condition_claim present; step graph is acyclic; contrarian_challenge present
+      with all three fields populated.
+      FAIL → repair target: σ₄
+
+      **G5 — Guidance Structural Adequacy**
+      Check: every step has finalized guidance text (not just a summary); adequacy_results has an
+      entry for every step; no INADEQUATE step without a revised_guidance entry; format_audit_results
+      has an entry for every step; no FORMAT-FAIL step without a revised_guidance entry; spot-check
+      2 required output fields per ADEQUATE+FORMAT-OK step against the guidance.
+      FAIL → repair target: σ₅
+
+      **G6 — YAML Encodability**
+      Check: the step DAG can be expressed as a YAML phases array with id, name, role, guidance,
+      output_schema, and invariants fields; each output_schema field has a declared type and applicable
+      constraints; hard invariant count ≥ required field count across all phases; at least one soft
+      invariant per phase with significant content quality requirements; methodology has name,
+      description, and version fields; no phase guidance references undefined {{variables}}.
+      FAIL → repair target: σ₄ (structural failure) or σ₅ (guidance-related failure)
+
+      If all gates pass, produce the complete YAML encoding of the method in yaml_encoding.
+
+      **Output schema reference:**
+      - gate_verdicts: array with one entry per gate evaluated, each with gate id, verdict, and notes
+      - overall_verdict: "PASS" or "FAIL"
+      - repair_targets: array of repair obligations (empty if PASS)
+      - yaml_encoding: full YAML text if PASS; empty string if FAIL
+    output_schema:
+      fields:
+        - name: gate_verdicts
+          type: array
+          items:
+            gate:
+              type: string
+              description: "Gate identifier: G0, G1, G2, G3, G4, G5, or G6"
+            verdict:
+              type: enum
+              values: ["PASS", "FAIL", "PARTIAL", "CONDITIONAL"]
+              description: "Outcome of this gate"
+            notes:
+              type: string
+              description: "Specific items checked, issues found, or conditions for CONDITIONAL"
+          min_items: 1
+          required: true
+        - name: overall_verdict
+          type: enum
+          values: ["PASS", "FAIL"]
+          required: true
+        - name: repair_targets
+          type: array
+          items:
+            gate:
+              type: string
+              description: "The gate that failed"
+            step:
+              type: string
+              description: "The step to repair (σN identifier or document section)"
+            description:
+              type: string
+              description: "What must be added or corrected to pass this gate"
+          min_items: 0
+          required: false
+        - name: yaml_encoding
+          type: string
+          description: "Full YAML text of the compiled method encoding; empty string if FAIL"
+          min_length: 0
+          required: true
+    invariants:
+      hard:
+        - "gate_verdicts has at least 1 item"
+        - "overall_verdict is present and is one of: PASS, FAIL"
+        - "yaml_encoding is present (may be empty string if FAIL)"
+        - "if overall_verdict is PASS: gate_verdicts has exactly 7 items, all with verdict PASS"
+        - "if overall_verdict is FAIL: repair_targets has at least 1 item"
+        - "if overall_verdict is PASS: yaml_encoding is non-empty"
+        - "if overall_verdict is FAIL: yaml_encoding is empty string"
+      soft:
+        - "gate_verdicts entries appear in order G0, G1, G2, G3, G4, G5, G6"
+        - "evaluation stops at the first FAIL gate — later gates are not listed when a prior gate fails"
+        - "repair_targets entries name specific missing fields or structural violations, not general guidance"
+        - "CONDITIONAL verdicts name the specific condition that must hold for the gate to be treated as PASS"
+
+termination_certificate:
+  measure: "7 minus gates_passed_count"
+  formal: "ν(s) = 7 − |{g ∈ {G0,...,G6} | g passes in state s}|"
+  argument: >
+    Each method_advance call at σ₆ either terminates with compilation_result PASS (ν = 0),
+    or produces a repair obligation identifying a specific failed gate. A repair that correctly
+    addresses the named gate failure reduces the failed gate count by at least one per
+    re-execution. Since the gate set is finite (|{G0,...,G6}| = 7), the sequence is bounded
+    below by 0 and strictly decreasing under correct repairs. The certificate is non-trivial
+    only when domain knowledge is genuinely sufficient — the input condition of this method.
+    If the domain is not understood, this method does not converge; use M2-MDIS instead.
+
+success_profile:
+  mu_1:
+    name: "formal_completeness"
+    formula: "declared_components / 5"
+    range: [0.0, 1.0]
+    description: "Fraction of the five M-components (D, Roles, Γ, O, μ⃗) that are fully declared"
+  mu_2:
+    name: "gate_passage_rate"
+    formula: "gates_passed / 7"
+    range: [0.0, 1.0]
+    description: "Fraction of the seven acceptance gates that pass at σ₆; compilation requires μ₂ = 1.0"
+  mu_3:
+    name: "guidance_adequacy_coverage"
+    formula: "adequate_steps / total_steps"
+    range: [0.0, 1.0]
+    description: "Fraction of steps whose guidance is structurally adequate (all output schema fields covered)"
+  session_delta_formula: "(mu_1 + mu_2 + mu_3) / 3"
+  progress_preorder: "lexicographic on (mu_1, mu_2, mu_3)"
+
+objective:
+  statement: >
+    A run of M1-MDES satisfies O_MDES iff: (1) a MethodCandidate document exists with all
+    five components declared in M-spec format; (2) the candidate passes all seven acceptance
+    gates at σ₆ (compilation_result: PASS); (3) a YAML encoding of the candidate loads without
+    schema errors in the method server; (4) the method document is registered in the methods
+    README.md with its ID, directory, and description.
+  type: terminal
+  progress_preorder: "lexicographic on (mu_1, mu_2, mu_3)"
+
+output_artifacts:
+  - name: method_document
+    path_pattern: "M.00N-ACRO/M.00N-ACRO-{slug}.md"
+    description: "Full M-spec document with all five components"
+  - name: yaml_encoding
+    path_pattern: "M.00N-ACRO/M.00N-ACRO.yaml"
+    description: "Machine-executable encoding for pv-method"
+  - name: registry_entry
+    path_pattern: "methods/README.md"
+    description: "Row in the Methods (M) registry table with ID, directory, and description"
+
+family:
+  id: meta-methods
+  members:
+    - id: M1-MDES
+      description: "Design a method from established domain knowledge"
+      status: active
+    - id: M2-MDIS
+      description: "Discover whether methodization is warranted"
+      status: future
+    - id: M3-MEVO
+      description: "Evolve an existing method from execution evidence"
+      status: future
+    - id: M4-MINS
+      description: "Instantiate a general method for a specific project"
+      status: future

@@ -1,0 +1,320 @@
+methodology:
+  id: P0-META
+  name: "Genesis Methodology for the Meta-Method Family"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-12"
+  formal_grounding: "theory/F1-FTH.md §7"
+  source_document: "P0-META/P0-META.md"
+  supersedes: "P0-META/M1-MDES/family-proposals.md"
+
+domain_theory:
+  id: D_META
+  reference: "P0-META/P0-META.md §1"
+  sorts:
+    - name: Method
+      cardinality: unbounded
+      description: "A formal method M = (D, Roles, Gamma, O, mu_vec)"
+    - name: Methodology
+      cardinality: unbounded
+      description: "A formal methodology Phi = (D_Phi, delta_Phi, O_Phi)"
+    - name: MethodID
+      cardinality: infinite
+      description: "Opaque string identifier e.g. P0-META.M1-MDES"
+    - name: Status
+      cardinality: finite
+      values: [proposed, compiled, deprecated]
+      description: "Compilation status of a method"
+    - name: Gap
+      cardinality: unbounded
+      description: "A named execution gap with associated execution evidence"
+    - name: Severity
+      cardinality: finite
+      values: [LOW, MEDIUM, HIGH, CRITICAL]
+      description: "Severity rating of a Gap record"
+    - name: ProjectContext
+      cardinality: unbounded
+      description: "A project deployment context: tech stack, team, constraints"
+    - name: TargetRegistry
+      cardinality: unbounded
+      description: "A finite declared set of MethodIDs bounding one META run"
+    - name: LifecyclePosition
+      cardinality: finite
+      values: [discovery, design, evolution, instantiation, composition, audit, derivation]
+      description: "Which lifecycle stage a meta-method occupies"
+    - name: Domain
+      cardinality: unbounded
+      description: "A many-sorted signature+axioms pair D = (Sigma, Ax)"
+
+  function_symbols:
+    - name: status
+      signature: "Method -> Status"
+      totality: total
+    - name: lifecycle_pos
+      signature: "Method -> LifecyclePosition"
+      totality: total
+    - name: severity
+      signature: "Gap -> Severity"
+      totality: total
+    - name: target_size
+      signature: "TargetRegistry -> nat"
+      totality: total
+      note: "cardinality of the declared target scope; Ax-5 guarantees this is finite"
+
+  predicates:
+    - name: compiled
+      signature: "Method"
+      description: "m has passed G0-G6 under M1-MDES"
+    - name: proposed
+      signature: "Method"
+      description: "m exists as a design proposal, not yet compiled"
+    - name: has_gap
+      signature: "Method x Gap"
+      description: "gap g has been identified in compiled method m from execution evidence"
+    - name: needs_instantiation
+      signature: "Method x ProjectContext"
+      description: "m needs a project instance for ctx"
+    - name: composable_pair
+      signature: "Method x Method"
+      description: "C1/C2 composability holds (F5-MCOM) between m1 and m2"
+    - name: has_impl_target
+      signature: "Method"
+      description: "m's domain theory has a software implementation target for M7-DTID"
+    - name: informal_practice
+      signature: "Domain"
+      description: "domain d has informal practice not yet methodized"
+    - name: domain_sketch_ready
+      signature: "Domain"
+      description: "d has a domain sketch ready for MDES sigma_0 input"
+    - name: in_scope
+      signature: "Method x TargetRegistry"
+      description: "m is declared in target registry T"
+    - name: composition_in_scope
+      signature: "Method x Method x TargetRegistry"
+      description: "the composite of m1;m2 is a declared target in T"
+
+  derived_predicates:
+    - name: high_gap
+      signature: "Method"
+      definition: "exists g. has_gap(m, g) AND severity(g) IN {HIGH, CRITICAL}"
+    - name: compiled_clean
+      signature: "Method x TargetRegistry"
+      definition: "in_scope(m, T) AND compiled(m) AND NOT high_gap(m)"
+
+  axioms:
+    - id: Ax-1
+      statement: "forall m. compiled(m) -> NOT proposed(m)"
+      rationale: "Compilation is a terminal transition from proposed status."
+    - id: Ax-2
+      statement: "forall m g. has_gap(m, g) -> compiled(m)"
+      rationale: "Gaps exist only for compiled methods. Proposed methods have incompleteness, not gaps."
+    - id: Ax-3
+      statement: "forall m1 m2. composable_pair(m1, m2) -> compiled(m1) AND compiled(m2)"
+      rationale: "Only compiled methods form composable pairs."
+    - id: Ax-4
+      statement: "forall m ctx. needs_instantiation(m, ctx) -> compiled(m)"
+      rationale: "Only compiled methods are instantiated."
+    - id: Ax-5
+      statement: "forall T. target_size(T) in nat"
+      rationale: "Target scope is finite — foundational condition for ν_META."
+    - id: Ax-6
+      statement: "forall m in meta_family. compiled(m) -> lifecycle_pos(m) in {design, evolution, instantiation, composition, audit, derivation}"
+      rationale: "Every compiled meta-method occupies a defined lifecycle position."
+
+roles:
+  - id: meta-architect
+    description: >
+      Strategic role that evaluates delta_META, dispatches meta-methods, receives
+      results, and updates registry state. Holds full D_META observability — no
+      information is withheld. The meta-architect does not execute the dispatched
+      method directly; it invokes and records.
+    observation_projection:
+      sub_theory: D_META
+      note: "pi_{meta-arch} = id — full domain visibility required to evaluate delta_META"
+    authorized_transitions:
+      - "Declare a target registry T (scope declaration)"
+      - "Invoke any compiled method in the meta-family repertoire per delta_META"
+      - "Record method completion: mark compiled, close gap records, register instances"
+      - "Extend T when new work is discovered mid-run (with justification)"
+      - "Terminate when O_META satisfied"
+    not_authorized:
+      - "Execute the dispatched meta-method directly"
+      - "Modify gap severity records retroactively"
+      - "Evaluate delta_META without a declared target registry T"
+    coverage_claim: "G3-C1: all D_META predicates used in delta_META are in Sigma_{meta-arch}"
+    authority_claim: "G3-C2: all registry state changes produced by delta_META outputs are in alpha_{meta-arch}"
+
+objective:
+  formal_statement: >
+    O_META(s) ≡
+      (forall m. in_scope(m, T) -> compiled_clean(m, T))
+      AND (forall m in meta_family. compiled(m) -> self_consistent(m))
+  note: >
+    self_consistent(m) is checked operationally by running M1-MDES sigma_6 gate
+    against m. Carry-forward: promote to formal D_META predicate in v2.0.
+
+  progress_preorder:
+    statement: >
+      s1 ≼ s2 iff
+        |compiled_clean(s1, T)| >= |compiled_clean(s2, T)|
+        AND |{m | high_gap(m) AND in_scope(m,T)}|_s1 <= |{m | high_gap(m) AND in_scope(m,T)}|_s2
+    note: "Product preorder — both components must hold. Terminal states are maximal."
+
+  success_profile:
+    - id: mu_1
+      name: registry_completeness
+      formula: "|compiled_clean(s, T)| / target_size(T)"
+      range: "[0, 1]"
+      priority: 1
+    - id: mu_2
+      name: gap_cleanliness
+      formula: "1 - |high_gaps(s, T)| / max(1, |compiled(s,T)|)"
+      range: "[0, 1]"
+      priority: 2
+    - id: mu_3
+      name: meta_family_health
+      formula: "|self_consistent_meta_methods(s)| / |meta_family|"
+      range: "[0, 1]"
+      priority: 3
+    note: "Lexicographic priority: mu_1 > mu_2 > mu_3"
+
+transition_function:
+  id: delta_META
+  evaluation_order: priority_stack
+  note: >
+    Conditions evaluated in strict priority order. First condition that holds
+    determines the selection. If none holds, returns None (terminate).
+  arms:
+    - priority: 1
+      label: gap_severity_first
+      condition: "exists m in T. high_gap(m, s)"
+      selects: M3-MEVO
+      tiebreak: "highest severity gap first; within same severity, earlier lifecycle_pos wins"
+      rationale: >
+        A compiled method with a HIGH/CRITICAL gap is actively degraded.
+        Repair precedes all new work — building on a broken base compounds problems.
+
+    - priority: 2
+      label: lifecycle_design
+      condition: "exists d. domain_sketch_ready(d, s) AND NOT exists m in T. domain(m) = d"
+      selects: M1-MDES
+      rationale: >
+        A domain sketch is ready but no compiled method covers it.
+        Design unblocks instantiation and composition downstream.
+
+    - priority: 3
+      label: lifecycle_instantiation
+      condition: "exists m in T. compiled(m, s) AND exists ctx. needs_instantiation(m, ctx, s)"
+      selects: M4-MINS
+      rationale: >
+        A compiled method has a declared project context needing a specialized instance.
+        Instantiation makes methods practically usable.
+
+    - priority: 4
+      label: structural_composition
+      condition: "exists m1 m2 in T. composable_pair(m1, m2, s) AND composition_in_scope(m1, m2, T)"
+      selects: M5-MCOM
+      rationale: >
+        Two compiled methods are composable and the composite is a declared target.
+        Composition extends the method family's algebraic structure.
+
+    - priority: 5
+      label: structural_audit
+      condition: "exists m in T. NOT compiled(m, s) AND NOT proposed(m, s)"
+      selects: M6-MAUD
+      rationale: >
+        An informal method (no formal record) is in scope. Audit formalizes it
+        before informal practice drifts further from theory.
+
+    - priority: 6
+      label: implementation_derivation
+      condition: "exists m in T. compiled(m, s) AND has_impl_target(m, s)"
+      selects: M7-DTID
+      rationale: >
+        A compiled method has an identified software implementation target.
+        Derivation grounds theory in executable artifacts (addresses P6).
+
+    - priority: 7
+      label: discovery_wip
+      condition: "exists d. informal_practice(d, s) AND NOT domain_sketch_ready(d, s)"
+      selects: M2-MDIS
+      status: WIP
+      callable: false
+      wip_note: >
+        M2-MDIS is proposed, not compiled. When this condition fires, the
+        meta-architect records the domain and produces a minimal domain sketch manually.
+        Arm becomes callable when M2-MDIS compiles.
+
+    - priority: 8
+      label: terminate
+      condition: "O_META(s) OR all_remaining_conditions_blocked_by_wip"
+      selects: None
+
+termination:
+  certificate_id: nu_META
+  formula: >
+    nu_META(s, T) =
+      (target_size(T) - |compiled_clean(s, T)|) * W_method
+      + sum_{m in T} |high_gaps(m, s)| * W_gap
+  weights:
+    W_method: ">> W_gap (completing a method outweighs closing individual gaps)"
+    W_gap: 1
+    note: "Weight values are empirical carry-forwards; calibrate from first META runs"
+  bound: "bounded above by target_size(T) * W_method + max_gaps * W_gap for fixed T"
+  decrease_per_invocation:
+    - arm: M1-MDES
+      effect: "compiles one method → |compiled_clean| increases by >= 1 → first term decreases"
+    - arm: M3-MEVO
+      effect: "closes HIGH gap → second term decreases by >= 1; first term increases by 1 if last gap"
+    - arm: M4-MINS
+      effect: "completes instantiation → pending_instantiation removed from scope contribution"
+    - arm: M5-MCOM
+      effect: "compiles composite → |compiled_clean| increases by 1 → first term decreases"
+    - arm: M6-MAUD
+      effect: "formalizes informal method → method promoted to proposed or compiled"
+    - arm: M7-DTID
+      effect: "completes derivation → has_impl_target(m) satisfied → arm condition no longer fires"
+
+inter_method_coherence:
+  retraction_pairs:
+    - id: RP-1
+      to: M1-MDES
+      embed: "projects domain sketch and existing registry entries into D_MDES"
+      project: "extracts compiled method; updates registry status to compiled"
+    - id: RP-2
+      to: M3-MEVO
+      embed: "projects target method's execution evidence and gap record into D_MEVO"
+      project: "extracts new method version; closes gap record"
+    - id: RP-3
+      to: M4-MINS
+      embed: "projects compiled method and project context into D_MINS"
+      project: "extracts instantiation artifacts; registers project instance"
+    - id: RP-4
+      to: M5-MCOM
+      embed: "projects two target methods and domain interface into D_MCOM"
+      project: "extracts composite method; registers in registry"
+    - id: RP-5
+      to: M6-MAUD
+      embed: "projects informal method artifact into D_MAUD (shares structure with D_MDES sigma_5)"
+      project: "extracts MAUD report; updates method status"
+    - id: RP-6
+      to: M7-DTID
+      embed: "projects compiled method and implementation target spec into D_DTID"
+      project: "extracts IDD; registers against method; updates P6 status"
+    - id: RP-7
+      to: M2-MDIS
+      status: WIP
+      note: "Not declared. Unblocks when M2-MDIS compiles."
+
+known_wip:
+  - id: M2-MDIS
+    status: proposed
+    delta_arm: priority_7
+    workaround: "meta-architect produces minimal domain sketch manually when condition fires"
+  - id: nu_META_weights
+    status: open
+    description: "W_method and W_gap have no calibrated values; first empirical runs will calibrate"
+  - id: self_consistent_predicate
+    status: open
+    description: "self_consistent(m) is operationally defined (run sigma_6) but not formal in D_META"

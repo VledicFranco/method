@@ -1,0 +1,227 @@
+id: M7-DTID
+name: Domain Theory to Implementation Derivation
+version: "1.0"
+status: compiled
+date: "2026-03-10"
+session: SESSION-010
+addresses: P6
+source_document: "P0-META/M7-DTID/M7-DTID.md"
+formal_grounding: "theory/F1-FTH.md"
+
+domain:
+  sorts:
+    - DomainTheory
+    - ΣElement
+    - Axiom
+    - DerivationRule
+    - ForcedChoice
+    - FreeChoice
+    - IDD
+  functions:
+    - name: source
+      signature: "ForcedChoice → ΣElement ∪ Axiom"
+      totality: total
+    - name: rule_applied
+      signature: "ForcedChoice → DerivationRule"
+      totality: total
+    - name: forced_table
+      signature: "IDD → ForcedChoice*"
+      totality: total
+    - name: free_table
+      signature: "IDD → FreeChoice*"
+      totality: total
+  predicates:
+    - name: covers
+      signature: "Axiom × IDD"
+    - name: documented
+      signature: "FreeChoice"
+    - name: faithful
+      signature: "IDD × DomainTheory"
+  axioms:
+    - id: Ax-1
+      gloss: "Every ForcedChoice has exactly one source and one rule_applied"
+    - id: Ax-2
+      gloss: "faithful(idd,D) ↔ ∀ a ∈ Ax(D). covers(a,idd)"
+    - id: Ax-3
+      gloss: "ForcedChoice and FreeChoice are disjoint"
+    - id: Ax-4
+      gloss: "free_table completeness: lists all partial functions, extension notes, and implementation-defined annotations (analyst obligation)"
+
+objective:
+  predicate: "faithful(idd_of(D), D) ∧ ∀ fc ∈ free_table(idd_of(D)). documented(fc)"
+  measures:
+    - id: μ₁
+      expression: "covered_axioms / total_axioms"
+      range: "[0,1]"
+    - id: μ₂
+      expression: "documented_free_choices / total_free_choices"
+      range: "[0,1]"
+  terminal: "μ₁ = 1.0 ∧ μ₂ = 1.0"
+
+roles:
+  - id: ρ_DR
+    name: Domain Reader
+    steps: [σ_A1]
+    authority: enumeration
+  - id: ρ_DA
+    name: Derivation Analyst
+    steps: [σ_A2]
+    authority: forced_choice_production
+  - id: ρ_GA
+    name: Gap Analyst
+    steps: [σ_A3]
+    authority: free_choice_production
+  - id: ρ_IC
+    name: IDD Compiler
+    steps: [σ_A4, σ_A5]
+    authority: faithfulness_certification
+
+step_dag:
+  steps:
+    - id: σ_A1
+      name: Theory Intake
+      role: ρ_DR
+      pre: "domain theory document at stable-draft version (v0.N+)"
+      post: "ΣElements enumerated; Axioms enumerated; [PARTIAL] and [FREE] flags set; version recorded"
+    - id: σ_A2
+      name: Derivation Pass
+      role: ρ_DA
+      pre: "σ_A1 complete; Derivation Taxonomy available"
+      post: "forced_table populated; every ΣElement and Axiom processed; source + rule_applied set"
+    - id: σ_A3
+      name: Gap Pass
+      role: ρ_GA
+      pre: "σ_A1 complete"
+      post: "free_table populated; all [PARTIAL] and [FREE] markers addressed; documented=true"
+    - id: σ_A4
+      name: Faithfulness Check
+      role: ρ_IC
+      pre: "σ_A2 and σ_A3 complete; Ax list from σ_A1"
+      post: "covers verified for all axioms; faithful=true or gap list produced"
+    - id: σ_A5
+      name: IDD Assembly
+      role: ρ_IC
+      pre: "σ_A4 complete"
+      post: "IDD document written: YAML header + two Markdown tables + faithfulness certificate + version coupling"
+  edges:
+    - from: σ_A1
+      to: σ_A2
+      composability: "post_σ_A1 ⊇ pre_σ_A2 (enumerated elements are the input)"
+    - from: σ_A1
+      to: σ_A3
+      composability: "post_σ_A1 ⊇ pre_σ_A3 ([PARTIAL] and [FREE] flags available)"
+    - from: σ_A2
+      to: σ_A4
+      composability: "post_σ_A2 ⊇ pre_σ_A4 (forced_table complete)"
+    - from: σ_A3
+      to: σ_A4
+      composability: "post_σ_A3 ⊇ pre_σ_A4 (free_table complete)"
+    - from: σ_A4
+      to: σ_A5
+      composability: "post_σ_A4 ⊇ pre_σ_A5 (faithfulness verdict available)"
+  parallel_branches:
+    - [σ_A2, σ_A3]
+
+derivation_taxonomy:
+  - construct: sort
+    rule: sort→entity
+    forced_choice_class: entity_type_exists
+    note: DB table, struct, or in-memory map
+  - construct: total_function
+    rule: total-fn→non-null
+    forced_choice_class: non_null_reference
+    note: FK column NOT NULL
+  - construct: partial_function
+    rule: partial-fn→nullable
+    forced_choice_class: nullable_reference
+    note: FK column NULLABLE; null-path handling required; mechanism is FreeChoice
+  - construct: predicate_boolean
+    rule: pred→column
+    forced_choice_class: boolean_or_enum_flag
+    note: Boolean column or role enum value on the entity
+  - construct: predicate_sort_marker
+    rule: pred→role-not-entity
+    forced_choice_class: role_permission_flag
+    note: Enum value or boolean role column on existing entity — not a separate table
+  - construct: axiom_mutual_exclusion
+    rule: excl-ax→enum-check
+    forced_choice_class: status_enum_with_check
+    note: Single enum column + CHECK constraint; not N boolean columns
+  - construct: axiom_total_function_uniqueness
+    rule: uniq-ax→unique-index
+    forced_choice_class: unique_index
+    note: DB UNIQUE constraint on the function's column
+  - construct: axiom_cross_entity_consistency
+    rule: consistency-ax→txn-boundary
+    forced_choice_class: transaction_boundary
+    note: A and B written atomically; identify write path and declare atomic block
+  - construct: axiom_routing
+    rule: routing-ax→subscription
+    forced_choice_class: event_handler_subscription
+    note: Event type + handler registration must exist
+  - construct: axiom_existence_guarantee
+    rule: existence-ax→create-path
+    forced_choice_class: create_insert_path
+    note: Identify the write operation that produces the required entity
+  - construct: axiom_no_structural_implication
+    rule: logic-only
+    forced_choice_class: none
+    note: Record as verified; no IDD entry required
+
+output_schema:
+  format: markdown_with_yaml_header
+  idd_frontmatter:
+    - field: method_id
+      type: string
+      value: "M7-DTID"
+    - field: theory_id
+      type: string
+    - field: theory_version
+      type: string
+    - field: date
+      type: date
+    - field: faithful
+      type: boolean
+    - field: gap_count
+      type: integer
+  forced_table_columns:
+    - name: Source
+      type: string
+      description: "Ax-N label or ΣElement name"
+    - name: Rule
+      type: string
+      description: "Rule name from derivation taxonomy"
+    - name: Decision Class
+      type: string
+      description: "Forced choice class from taxonomy"
+    - name: Implementation Note
+      type: string
+      description: "Concrete implementation decision"
+  free_table_columns:
+    - name: Source
+      type: string
+      description: "Partial function name, note text, or annotation"
+    - name: Open Question
+      type: string
+      description: "The implementation decision left open by the theory"
+    - name: Choice Made
+      type: string
+      description: "Decision taken, or TBD with question explicitly stated"
+    - name: Rationale
+      type: string
+      description: "Engineering rationale; may cite decisions log"
+
+gates:
+  G0: PASS
+  G1: PASS
+  G2: PASS
+  G3: PASS
+  G4: PASS
+  G5: PASS
+  G6: PASS
+
+compilation_record:
+  date: "2026-03-10"
+  session: SESSION-010
+  status: compiled
+  version: "1.0"
