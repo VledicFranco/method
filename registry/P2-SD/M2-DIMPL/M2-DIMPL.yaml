@@ -1,0 +1,31 @@
+method:
+  id: M2-DIMPL
+  parent: P2-SD
+  name: "Distributed Implementation Method"
+  description: >
+    Re-entrant orchestration method for software implementation tasks decomposable
+    into parallel independent sub-tasks. Each sub-task is delegated to an
+    impl-sub-agent. Unlike P1-EXEC/M2-ORCH (single-pass, verification failure is
+    terminal), M2-DIMPL includes a patch-on-fail dispatch loop: failed sub-tasks
+    trigger patching sub-agents and re-evaluation. Dispatched by P2-SD when
+    multi_task_scope = TRUE.
+  version: "0.1"
+  status: stub
+  formerly: "M2-ORCH (renamed to resolve collision with P1-EXEC/M2-ORCH)"
+  source: "Extracted from M1-IMPL §11 (Orchestrator Mode), formerly M.002-SI v3.1"
+  compile_pending: >
+    Requires a full G0-G6 pass via P0-META.M1-MDES.
+
+references:
+  orchestrator_role: "P2-SD/M1-IMPL/I1-T1X/R3-ORCH"
+  source_section: "P2-SD/M1-IMPL §11 Orchestrator Mode"
+
+structural_distinction:
+  vs_p1_exec_m2_orch: >
+    P1-EXEC/M2-ORCH is a single-pass orchestrator: dispatch once, integrate, verify,
+    terminal on failure. M2-DIMPL is re-entrant: dispatch, evaluate, patch failed
+    sub-tasks, re-dispatch, iterate until convergence or budget exhaustion. The
+    MAUD report (2026-03-09) identified this re-entrant structure as methodology-level
+    behavior (delta_SI selects next sub-agent based on gate state). M2-DIMPL
+    formalizes that structure as a standalone method with explicit termination
+    certificate.

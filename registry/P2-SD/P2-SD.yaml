@@ -27,7 +27,7 @@ navigation:
   how: >
     Evaluate task_type(challenge, t) against the operationalization criteria. Apply
     delta_SD (5-arm priority stack). For implement challenges, additionally evaluate
-    multi_task_scope to choose M1-IMPL vs M2-ORCH.
+    multi_task_scope to choose M1-IMPL vs M2-DIMPL.
   when: >
     Any time a software delivery challenge arrives within the niche. Entry point for
     all T1X sessions. Not appropriate for discovery, architecture design, deployment,
@@ -69,7 +69,7 @@ domain_theory:
         The challenge decomposes into n >= 3 independent sub-tasks with fully declarable
         scopes before execution begins. Only evaluated when task_type = implement.
       operationalization: >
-        decomposable_before_execution(c) AND |subtasks(c)| >= 3. If M2-ORCH sigma_0 rejects,
+        decomposable_before_execution(c) AND |subtasks(c)| >= 3. If M2-DIMPL sigma_0 rejects,
         predicate was evaluated incorrectly — re-route to M1-IMPL.
     - name: dispatched
       signature: "Challenge x MethodID -> Bool"
@@ -79,7 +79,7 @@ domain_theory:
       statement: "task_type(c, plan) -> dispatched(c, M5-PLAN)"
       rationale: "Planning challenge — produce a PhaseDoc."
     - id: Ax-2
-      statement: "task_type(c, implement) AND multi_task_scope(c) -> dispatched(c, M2-ORCH)"
+      statement: "task_type(c, implement) AND multi_task_scope(c) -> dispatched(c, M2-DIMPL)"
       rationale: "Multi-task scope detected — parallel orchestration appropriate."
     - id: Ax-3
       statement: "task_type(c, implement) AND NOT multi_task_scope(c) -> dispatched(c, M1-IMPL)"
@@ -120,7 +120,7 @@ objective:
     O_SD(s) = dispatched(c, m) AND O_m(s_final)
     where O_m is the objective of the selected method:
       M1-IMPL: all tasks complete, no unresolved CRITICAL/HIGH discrepancies, all invariants hold
-      M2-ORCH: covers(Integration, Challenge) AND consistent(Integration) AND all sub-tasks complete
+      M2-DIMPL: covers(Integration, Challenge) AND consistent(Integration) AND all sub-tasks complete
       M3-PHRV: reviewReport_produced(s) AND verdict_recorded(s)
       M4-DDAG: driftReport_produced(s)
       M5-PLAN: phaseDoc_produced(s) AND phaseDoc_validates(s, PRDSection)
@@ -140,12 +140,11 @@ transition_function:
       label: plan
       condition: "task_type(challenge, plan) = TRUE"
       selects: M5-PLAN
-      note: "M5-PLAN pending compile — see known_wip."
     - priority: 2
       label: orchestrated
       condition: "task_type(challenge, implement) = TRUE AND multi_task_scope(challenge) = TRUE"
-      selects: M2-ORCH
-      note: "M2-ORCH is currently a stub — see known_wip."
+      selects: M2-DIMPL
+      note: "M2-DIMPL is currently a stub — see known_wip."
     - priority: 3
       label: implement
       condition: "task_type(challenge, implement) = TRUE"
@@ -175,7 +174,7 @@ retraction_pairs:
     retraction_condition: "project_IMPL o embed_IMPL = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
     granularity: type-level
   - id: RP-2
-    to: M2-ORCH
+    to: M2-DIMPL
     status: partial
     embed: >
       embed_ORCH: Challenge -> Mod(D_ORCH). Challenge maps to D_ORCH.Challenge (same sort,
@@ -185,7 +184,7 @@ retraction_pairs:
       O_Phi_SD satisfied; Integration artifact -> auditable output.
     retraction_condition: "project_ORCH o embed_ORCH = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
     granularity: type-level
-    note: "Partial: M2-ORCH is a stub."
+    note: "Partial: M2-DIMPL is a stub."
   - id: RP-3
     to: M3-PHRV
     status: partial
@@ -221,10 +220,10 @@ retraction_pairs:
       O_Phi_SD satisfied; PhaseDoc -> handoff artifact for next implementation invocation.
     retraction_condition: "project_PLAN o embed_PLAN = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
     granularity: type-level
-    note: "Partial: M5-PLAN pending compile."
+    note: "M5-PLAN compiled v1.0. RP-5 upgrade to verified pending formal embed/project check."
 
 known_wip:
-  - id: M2-ORCH
+  - id: M2-DIMPL
     status: stub
     description: "Requires G0–G6 compile pass via M1-MDES. delta_SD arm 2 declared but method not callable in practice."
   - id: M3-PHRV
@@ -234,8 +233,8 @@ known_wip:
     status: pending
     description: "Drift Audit method — design and compile pending. 'drift' predicate needs formal definition in D_DDAG."
   - id: M5-PLAN
-    status: pending
-    description: "Phase Planning method — design and compile pending."
+    status: resolved
+    description: "Phase Planning method — compiled v1.0 (2026-03-13)."
   - id: nu_SD_threshold
     status: open
     description: "n >= 3 sub-task threshold for multi_task_scope is empirical. Calibrate from first orchestration runs."
@@ -248,5 +247,5 @@ known_wip:
   - id: directory_migration
     status: resolved
     description: >
-      M1-IMPL and M2-ORCH copied from P2-SI/ into P2-SD/. P2-SI/ retained as historical
+      M1-IMPL and M2-DIMPL copied from P2-SI/ into P2-SD/. P2-SI/ retained as historical
       record. All internal path references updated to P2-SD/.

@@ -6,7 +6,7 @@ method:
     Takes a PRDSection and produces a PhaseDoc — a scoped, severity-rated, validated task
     list for one delivery phase. Five linear steps: validate inputs, extract tasks from PRD,
     integrate carryover from phase history, scope and rate tasks, write and validate PhaseDoc.
-    Output is the handoff artifact consumed by M1-IMPL or M2-ORCH.
+    Output is the handoff artifact consumed by M1-IMPL or M2-DIMPL.
   version: "1.0"
   status: compiled
   compilation_date: "2026-03-13"
@@ -16,7 +16,7 @@ method:
 navigation:
   what: >
     M5-PLAN takes a PRD section and produces a PhaseDoc — a structured, scoped,
-    severity-rated task list that M1-IMPL or M2-ORCH can execute directly. It does
+    severity-rated task list that M1-IMPL or M2-DIMPL can execute directly. It does
     not implement anything.
   who: >
     The planner role — an agent (human or LLM) who has access to the PRD, the
@@ -59,7 +59,7 @@ domain_theory:
       cardinality: singleton_per_invocation
       description: >
         The output artifact: a structured, scoped, validated task list for one phase.
-        Mirrors D_SI.PhaseDoc — consumed directly by M1-IMPL or M2-ORCH.
+        Mirrors D_SI.PhaseDoc — consumed directly by M1-IMPL or M2-DIMPL.
   predicates:
     - name: loaded
       signature: "ArchDoc -> Bool"
@@ -238,7 +238,7 @@ phases:
       - rated(t) for all t — every task has a severity rating: CRITICAL (compile failure
         risk), HIGH (runtime behavior), MEDIUM (underspecified), LOW (documentation/cleanup).
       - Role assignment is one of: implementor, impl-sub-agent. Orchestration role
-        assignment happens at M2-ORCH dispatch, not here.
+        assignment happens at M2-DIMPL dispatch, not here.
       - ArchDoc constraints restricting scope must be applied: if an ArchDoc prohibits
         touching a file family, tasks must respect that boundary.
 
@@ -250,7 +250,7 @@ phases:
          constraint application.
       4. Assign severity using the CRITICAL/HIGH/MEDIUM/LOW scale.
       5. Assign role: implementor for tasks within one file domain; impl-sub-agent
-         candidate for tasks that may be parallelized at M2-ORCH dispatch.
+         candidate for tasks that may be parallelized at M2-DIMPL dispatch.
     output_schema:
       required_fields:
         - {name: scoped_task_list, type: "list[{task: string, source_files: list[string], severity: string, role: string}]", required: true}
@@ -284,7 +284,7 @@ phases:
       3. For any unmapped requirement from sigma_1: create a covering task now, or record
          as explicit exclusion with rationale.
       4. Set complete(PhaseDoc) = TRUE when coverage check passes.
-      5. Record the PhaseDoc as the handoff artifact for M1-IMPL or M2-ORCH.
+      5. Record the PhaseDoc as the handoff artifact for M1-IMPL or M2-DIMPL.
     output_schema:
       required_fields:
         - {name: phase_doc_ref, type: string, required: true}
