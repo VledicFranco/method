@@ -9,7 +9,7 @@ method:
     a named conviction and blind spot, and must defend or update positions under
     structural pressure. Value over single-agent reasoning: method-attributable insight
     generation through adversarial structure.
-  version: "1.0"
+  version: "1.1"
   status: compiled
   compilation_date: "2026-03-14"
   formal_grounding: "theory/F1-FTH.md"
@@ -128,6 +128,14 @@ domain_theory:
     - name: cast_approved
       signature: "Character"
       description: "The PO has approved this Character as part of the Council"
+    - name: diminishing_returns
+      signature: "State"
+      description: >
+        The Leader has determined that continued debate is producing diminishing returns:
+        recent Turns are not generating new arguments, positions are cycling rather than
+        converging, or the remaining unresolved (Character, Question) pairs are not
+        producing substantive disagreement. This is a Leader judgment call — not formally
+        decidable, but empirically reliable in LLM execution.
   axioms:
     - id: Ax-1
       name: Cast plurality
@@ -162,6 +170,24 @@ domain_theory:
       name: Escalation authority boundary
       statement: "forall l : Character. is_leader(l) -> NOT exists q : Question. decided(q) AND decision_issued_by(l, q)"
       rationale: "The Leader may not issue a Decision — only Escalations or Convergence announcements. Final Decisions are issued by PO or by convergence."
+    - id: Ax-7
+      name: Diminishing returns halt
+      statement: >
+        forall s : State. diminishing_returns(s) AND is_leader(speaker_of_halt) ->
+        sigma_2 terminates with current resolved set as final.
+        Unresolved (Character, Question) pairs are recorded as unresolved in the Artifact.
+      rationale: >
+        The Leader may halt sigma_2 when continued debate is producing diminishing returns.
+        This is a pragmatic termination condition — not formally decidable, but empirically
+        reliable. Without it, new Question proposals can extend nu_sigma_2 indefinitely.
+        The Leader observes all Turns and Positions (pi_leader) and is best positioned to
+        detect cycling, repetition without progress, or exhaustion of genuinely distinct
+        arguments. Unresolved pairs are not silently dropped — they appear in the Artifact
+        as explicitly unresolved items.
+      formal_status: >
+        Ax-7 does not provide a formal halting guarantee. It authorizes early termination
+        based on Leader judgment. The termination certificate nu_sigma_2 remains sound for
+        the resolved pairs; Ax-7 adds an escape hatch for the unresolved remainder.
   domain_boundary_note: >
     Excludes: the content domain of the challenge (D_COUNCIL tracks debate structure, not
     subject matter); tool availability; the internal reasoning process of characters (only
@@ -195,6 +221,7 @@ roles:
       - "Issue Escalation to PO with specific question and named alternatives"
       - "Announce Convergence when contrarians align"
       - "Propose Character swap or addition (PO must approve)"
+      - "Declare diminishing_returns and halt sigma_2 early (Ax-7)"
     not_authorized:
       - "Hold a philosophical position"
       - "Issue a Decision (Ax-6)"
@@ -370,10 +397,12 @@ phases:
     role: "all roles (Leader, Contrarians, PO)"
     precondition: "Council populated; cast approved; at least one open Question exists on the Challenge"
     postcondition: >
-      forall q : Question. derived_from(q, challenge) -> decided(q).
-      forall c : Character, q : Question. derived_from(q, challenge) -> resolved(c, q).
-      All Characters have declared final positions on all Questions. All Escalations
-      resolved. No open Questions remain.
+      EITHER (full resolution): forall q : Question. derived_from(q, challenge) -> decided(q).
+        forall c : Character, q : Question. derived_from(q, challenge) -> resolved(c, q).
+        All Characters have declared final positions on all Questions.
+      OR (diminishing returns halt): diminishing_returns(s) declared by Leader.
+        Decided Questions are recorded as decided. Unresolved (Character, Question) pairs
+        are explicitly recorded as unresolved with Leader's halt rationale.
     guidance: |
       **Constraints (what must be true after this step):**
       - session_transcript is non-empty: the full sequence of Turns.
@@ -408,14 +437,27 @@ phases:
       7. If a character is not contributing or the problem has shifted domains, propose
          a Character swap to PO.
       8. Continue until all Questions are decided and all (Character, Question) pairs
-         are resolved.
+         are resolved — OR the Leader declares diminishing_returns.
+
+      **Diminishing returns detection (Ax-7):**
+      The Leader monitors for diminishing returns and may halt sigma_2 early when:
+      - Recent Turns are restating positions without new arguments
+      - Characters are cycling through the same counter-arguments
+      - Remaining unresolved pairs are not producing substantive disagreement
+      - New Questions being proposed are refinements of already-decided Questions
+      When halting: the Leader states the halt rationale, records which pairs remain
+      unresolved, and proceeds to sigma_3. Unresolved pairs appear in the Artifact
+      as explicitly unresolved items — they are not silently dropped.
 
       **Termination (PAT-003A hybrid step):**
       This step has internal convergence dynamics governed by an embedded measure:
       nu_sigma_2 = |{(c, q) in Characters x Questions | NOT resolved(c, q)}|.
       Ax-5 guarantees each Turn reduces nu_sigma_2 by >= 1. Ax-3 prevents stalling
       (no empty repetition). nu_sigma_2 is bounded above by |Characters| x |Questions|,
-      which is finite. The step terminates when nu_sigma_2 = 0.
+      which is finite. The step terminates when nu_sigma_2 = 0 OR
+      diminishing_returns(s) is declared by the Leader (Ax-7).
+      Note: Ax-7 does not provide a formal halting guarantee — it is a pragmatic
+      escape hatch. The formal measure nu_sigma_2 remains sound for resolved pairs.
 
       **Output schema reference:**
       - session_transcript: array of Turn entries
@@ -445,12 +487,23 @@ phases:
         - name: all_questions_resolved
           type: boolean
           required: true
+        - name: halt_rationale
+          type: string
+          description: "Leader's rationale for halting on diminishing returns (required if all_questions_resolved = false)"
+          required: false
+        - name: unresolved_pairs
+          type: array
+          items: object
+          description: "{character: string, question: string, last_position: string} — pairs not resolved at halt"
+          min_items: 0
+          required: false
     invariants:
       hard:
         - "session_transcript is non-empty"
         - "decisions has at least 1 item (at least one Question must be decided)"
-        - "all_questions_resolved = true"
+        - "all_questions_resolved = true OR halt_rationale is non-empty"
         - "every Turn in session_transcript has a named character and addresses a question"
+        - "if all_questions_resolved = false: unresolved_pairs is non-empty"
       soft:
         - "at least one contrarian's position was updated during the session"
         - "escalations_log is populated if any impasse occurred"
@@ -459,7 +512,7 @@ phases:
   - id: sigma_3
     name: "Output"
     role: rho_leader
-    precondition: "All Questions decided; all (Character, Question) pairs resolved; no open Questions remain"
+    precondition: "sigma_2 complete: all Questions resolved OR diminishing_returns halt declared"
     postcondition: "Artifact exists consolidating Decisions with rationale and minority positions"
     guidance: |
       **Constraints (what must be true after this step):**
@@ -480,8 +533,11 @@ phases:
       1. Consolidate all Decisions from sigma_2 with their rationale.
       2. For each Decision: record the key arguments from each side.
       3. Record minority positions — positions that were argued but not adopted.
-      4. Count how many character positions were updated during the session.
-      5. Compose the Artifact at the fidelity appropriate to the Challenge (decision
+      4. If sigma_2 halted on diminishing returns: include unresolved pairs explicitly
+         in the artifact with the Leader's halt rationale. These are not failures — they
+         are questions where continued debate was not productive.
+      5. Count how many character positions were updated during the session.
+      6. Compose the Artifact at the fidelity appropriate to the Challenge (decision
          memo, architecture proposal, strategy document, etc.).
 
       **Output schema reference:**
@@ -678,8 +734,8 @@ compilation_record:
       result: PASS
       note: >
         D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 9 sorts with cardinality, 3 function symbols
-        with totality, 11 predicates with typed signatures referencing declared sorts, 6 closed
-        axioms with rationale. Domain boundary stated. Initial and terminal state membership
+        with totality, 12 predicates with typed signatures referencing declared sorts, 7 axioms
+        with rationale (Ax-7 diminishing_returns is pragmatic, not formally decidable). Domain boundary stated. Initial and terminal state membership
         in Mod(D_COUNCIL) claimed with axiom-by-axiom verification.
     - gate: G2
       result: PASS

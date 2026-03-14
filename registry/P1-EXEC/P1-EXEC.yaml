@@ -7,7 +7,7 @@ methodology:
     method — M1-COUNCIL, M2-ORCH, or M3-TMP — then runs that method to completion
     and returns the result. Externalizes method-selection logic into a defined
     transition function delta_EXEC rather than leaving selection implicit or ad-hoc.
-  version: "1.0"
+  version: "1.1"
   status: compiled
   compilation_date: "2026-03-14"
   formal_grounding: "theory/F1-FTH.md §7"
@@ -123,6 +123,9 @@ domain_theory:
     - name: assumption_falsity_invalidates_answer
       signature: "Challenge"
       description: "Component of C4: if the unstated assumption is false, the answer is invalid"
+    - name: routing_would_repeat
+      signature: "State"
+      description: "PO post-execution judgment: given the result, the same method would be chosen again. Operationalized as routing feedback."
   defined_predicates:
     note: >
       The following are Sigma-definable abbreviations. They appear in delta_EXEC
@@ -450,25 +453,79 @@ objective:
       proxy_claim: >
         mu_2 = 1 is necessary for O_Phi_EXEC. A completed method that produces no
         result is a method-level failure propagated to methodology level.
+    - id: mu_3
+      name: routing_accuracy
+      formula: "1 if routing_would_repeat(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_3 tracks whether the methodology's routing decision was correct. After
+        method completion, the PO is asked: "Given the result, would you have chosen
+        the same method?" mu_3 = 1 means the routing was appropriate; mu_3 = 0 means
+        a different method would have been better. This is PO judgment (same treatment
+        as addresses). mu_3 does not affect O_Phi_EXEC — the objective is satisfied
+        regardless of routing accuracy — but it calibrates delta_EXEC over time.
+
+routing_feedback:
+  description: >
+    Post-execution routing audit. After the selected method completes and the PO
+    receives the result, the executor solicits routing feedback. This feedback does
+    not affect the current run — it calibrates delta_EXEC predicate evaluation for
+    future runs.
+  feedback_schema:
+    fields:
+      - name: method_used
+        type: enum
+        values: [M1-COUNCIL, M2-ORCH, M3-TMP]
+        description: "The method delta_EXEC selected"
+      - name: routing_would_repeat
+        type: boolean
+        description: "PO judgment: given the result, would you have chosen the same method?"
+      - name: better_alternative
+        type: enum
+        values: [M1-COUNCIL, M2-ORCH, M3-TMP, none]
+        description: "If routing_would_repeat = false: which method would have been better?"
+        required: false
+      - name: predicate_miscalibration
+        type: string
+        description: "If routing was wrong: which driving predicate was misevaluated? (PFU/MDP/C3/C4/decomposable)"
+        required: false
+  operationalization: >
+    The routing feedback step is optional — it fires only when the PO is available for
+    post-execution review. When collected, the feedback is recorded as a routing audit
+    entry. Accumulated entries over multiple runs reveal systematic miscalibration:
+    e.g., if PFU is consistently over-triggered (many challenges routed to COUNCIL
+    that should have been TMP), the PFU True/False criteria need tightening.
+  calibration_note: >
+    No formal learning mechanism exists in v1.1 — delta_EXEC is a fixed function.
+    Routing feedback produces a human-readable calibration signal. A future version
+    could formalize this as a predicate threshold adjustment (e.g., require 2 of 4
+    sub-predicates for adversarial_pressure_beneficial instead of 1 of 4).
 
 known_wip:
   - id: W1
     status: open
     description: >
       Predicate operationalization is heuristic. Two independent executors may disagree
-      on PFU or MDP evaluation for boundary-case challenges. Calibration from empirical
-      runs (tracking routing decisions and outcome quality) would improve agreement.
+      on PFU or MDP evaluation for boundary-case challenges. Routing feedback (mu_3)
+      provides calibration signal over time but no formal learning mechanism exists in v1.1.
   - id: W2
     status: open
     description: >
-      addresses(r, c) is PO judgment — not computable from state. A structural proxy
-      (coverage of challenge dimensions by result content) could supplement but not
-      replace PO evaluation.
+      addresses(r, c) and routing_would_repeat(s) are PO judgment — not computable from
+      state. Structural proxies could supplement but not replace PO evaluation.
   - id: W3
     status: open
     description: >
       COUNCIL_to_TMP and ORCH_to_COUNCIL cross-method transitions deferred to v2.0.
-      v1.0 handles only one cross-method path: ORCH -> TMP via fallback.
+      v1.1 handles only one cross-method path: ORCH -> TMP via fallback.
+  - id: W4
+    status: open
+    description: >
+      Predicate evaluation bias toward COUNCIL: adversarial_pressure_beneficial is a
+      disjunction of four sub-predicates, giving it wide catchment. Routing feedback
+      data may reveal systematic over-routing to COUNCIL, suggesting the disjunction
+      threshold should be raised (e.g., require 2-of-4 instead of 1-of-4).
 
 compilation_record:
   methodology_gate_adaptation: >
@@ -489,8 +546,9 @@ compilation_record:
       result: PASS
       note: >
         D_Phi_EXEC = (Sigma_Phi_EXEC, Ax_Phi_EXEC). 5 sorts with cardinality, 4 function
-        symbols with totality, 15 predicates with typed signatures (all referencing declared
-        sorts), 3 defined predicates with explicit definitions, 3 closed axioms. Domain
+        symbols with totality, 16 predicates with typed signatures (all referencing declared
+        sorts, including routing_would_repeat for feedback), 3 defined predicates with
+        explicit definitions, 3 closed axioms. Domain
         boundary stated. Initial and terminal state membership in Mod(D_Phi_EXEC) claimed
         with axiom-by-axiom verification.
     - gate: G2
@@ -498,7 +556,9 @@ compilation_record:
       note: >
         O_Phi_EXEC stated as conjunction of three Sigma-predicates. Expressibility claim
         present. addresses operationalization documented (PO judgment). Progress preorder
-        declared as 4-state total chain. Two measures with formulas, ranges, and proxy claims.
+        declared as 4-state total chain. Three measures: mu_1 (method completion), mu_2
+        (result existence), mu_3 (routing accuracy — PO feedback). Routing feedback
+        section with schema and calibration note.
     - gate: G3
       result: PASS
       note: >
