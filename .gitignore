@@ -5,3 +5,7 @@ dist/
 # impl plans are volatile scratch — only the README is tracked
 docs/impl/*
 !docs/impl/README.md
+
+# volatile artifacts
+tmp/*
+!tmp/.gitkeep
