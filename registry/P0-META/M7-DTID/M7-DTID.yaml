@@ -1,227 +1,405 @@
-id: M7-DTID
-name: Domain Theory to Implementation Derivation
-version: "1.0"
-status: compiled
-date: "2026-03-10"
-session: SESSION-010
-addresses: P6
-source_document: "P0-META/M7-DTID/M7-DTID.md"
-formal_grounding: "theory/F1-FTH.md"
+method:
+  id: M7-DTID
+  name: "Domain Theory to Implementation Derivation"
+  description: >
+    Takes a compiled domain theory D = (Σ, Ax) and produces an Implementation Decision
+    Document (IDD) — a structured record mapping every Σ-element and axiom to a forced
+    implementation choice (via the derivation taxonomy) or a documented free choice
+    (where the theory under-determines the implementation). Addresses open problem P6
+    (theory-implementation faithfulness). The IDD is faithful(idd, D) iff every axiom
+    in Ax is covered by at least one forced or free choice entry.
+  version: "1.1"
+  status: compiled
+  compilation_date: "2026-03-10"
+  evolution_date: "2026-03-14"
+  session: SESSION-010
+  addresses: P6
+  source_document: "P0-META/M7-DTID/M7-DTID.md"
+  formal_grounding: "theory/F1-FTH.md §1, §6"
+  changes_from_v1_0: >
+    v1.1 compliance repair (2026-03-14): declared idd_of: DomainTheory -> IDD function symbol
+    (used in objective but undeclared — G1/G2 violation); added method: root wrapper; renamed
+    domain: -> domain_theory:; expanded sorts with cardinality and description; formalized
+    axiom statements (gloss: -> statement:); added nat sort; added termination_certificate;
+    added family block; added output_artifacts; renamed composability: -> composability_claim:
+    in step_dag edges.
 
-domain:
+domain_theory:
+  id: D_DTID
+  reference: "theory/F1-FTH.md §1"
+  note: >
+    D_DTID is the domain of the derivation workspace. World states track the domain theory
+    being analyzed (its Σ-elements and axioms), the derivation decisions produced by the
+    analyst (forced choices and free choices), and the faithfulness status of the assembled IDD.
   sorts:
-    - DomainTheory
-    - ΣElement
-    - Axiom
-    - DerivationRule
-    - ForcedChoice
-    - FreeChoice
-    - IDD
-  functions:
+    - name: DomainTheory
+      cardinality: unbounded
+      description: "The source domain theory D = (Σ, Ax) being analyzed for implementation derivation"
+    - name: ΣElement
+      cardinality: unbounded
+      description: "A sort, function symbol, or predicate symbol in Σ — the structural vocabulary of D"
+    - name: Axiom
+      cardinality: unbounded
+      description: "A closed sentence in Ax — the constraint layer of D that forces implementation decisions"
+    - name: DerivationRule
+      cardinality: finite
+      values: [sort→entity, total-fn→non-null, partial-fn→nullable, pred→column,
+               pred→role-not-entity, excl-ax→enum-check, uniq-ax→unique-index,
+               consistency-ax→txn-boundary, routing-ax→subscription, existence-ax→create-path,
+               logic-only]
+      description: "One of the 10+1 taxonomy rules mapping a D-construct to an implementation pattern"
+    - name: ForcedChoice
+      cardinality: unbounded
+      description: "An implementation decision fully determined by D: source (ΣElement or Axiom) + rule_applied"
+    - name: FreeChoice
+      cardinality: unbounded
+      description: "An implementation decision under-determined by D: documented with rationale"
+    - name: IDD
+      cardinality: unbounded
+      description: "The Implementation Decision Document — output artifact: YAML header + forced table + free table + faithfulness certificate"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — axiom counts, coverage counts for measures"
+
+  function_symbols:
+    - name: idd_of
+      signature: "DomainTheory -> IDD"
+      totality: total
+      note: "maps D to its IDD artifact; used in objective predicate faithful(idd_of(D), D)"
     - name: source
-      signature: "ForcedChoice → ΣElement ∪ Axiom"
+      signature: "ForcedChoice -> ΣElement ∪ Axiom"
       totality: total
+      note: "the Σ-element or Axiom that this forced choice derives from"
     - name: rule_applied
-      signature: "ForcedChoice → DerivationRule"
+      signature: "ForcedChoice -> DerivationRule"
       totality: total
+      note: "the taxonomy rule that determined this forced choice"
     - name: forced_table
-      signature: "IDD → ForcedChoice*"
+      signature: "IDD -> ForcedChoice*"
       totality: total
+      note: "the ordered list of all forced choices in the IDD"
     - name: free_table
-      signature: "IDD → FreeChoice*"
+      signature: "IDD -> FreeChoice*"
       totality: total
+      note: "the ordered list of all free choices in the IDD"
+
   predicates:
     - name: covers
-      signature: "Axiom × IDD"
+      signature: "Axiom x IDD"
+      description: "axiom a appears as a source in at least one ForcedChoice or FreeChoice entry in idd"
     - name: documented
       signature: "FreeChoice"
+      description: "the free choice has a non-empty rationale and a decision (even if TBD with question stated)"
     - name: faithful
-      signature: "IDD × DomainTheory"
+      signature: "IDD x DomainTheory"
+      description: "idd faithfully represents D: every axiom in Ax(D) is covered by the IDD"
+
   axioms:
     - id: Ax-1
-      gloss: "Every ForcedChoice has exactly one source and one rule_applied"
+      statement: "forall fc : ForcedChoice. source(fc) ∈ (ΣElement ∪ Axiom) AND rule_applied(fc) ∈ DerivationRule"
+      rationale: "Every ForcedChoice has exactly one source element and one derivation rule. Constitutive definition."
     - id: Ax-2
-      gloss: "faithful(idd,D) ↔ ∀ a ∈ Ax(D). covers(a,idd)"
+      statement: "forall idd : IDD, D : DomainTheory. faithful(idd, D) <-> forall a ∈ Ax(D). covers(a, idd)"
+      rationale: "Faithfulness is universal axiom coverage — the biconditional definition of faithful. The objective is faithful(idd_of(D), D)."
     - id: Ax-3
-      gloss: "ForcedChoice and FreeChoice are disjoint"
+      statement: "forall fc : ForcedChoice, frc : FreeChoice. fc ≠ frc (ForcedChoice and FreeChoice are disjoint sorts)"
+      rationale: "A derivation choice is either fully determined by the taxonomy (forced) or not (free) — never both."
     - id: Ax-4
-      gloss: "free_table completeness: lists all partial functions, extension notes, and implementation-defined annotations (analyst obligation)"
+      statement: "forall idd : IDD. free_table(idd) lists all partial functions, extension notes, and implementation-defined annotations from the source D"
+      rationale: "Free table completeness: the analyst obligation is to enumerate every under-determined point, not only those with obvious decisions."
 
-objective:
-  predicate: "faithful(idd_of(D), D) ∧ ∀ fc ∈ free_table(idd_of(D)). documented(fc)"
-  measures:
-    - id: μ₁
-      expression: "covered_axioms / total_axioms"
-      range: "[0,1]"
-    - id: μ₂
-      expression: "documented_free_choices / total_free_choices"
-      range: "[0,1]"
-  terminal: "μ₁ = 1.0 ∧ μ₂ = 1.0"
+  initial_state_valid_claim: >
+    A state where D = (Σ, Ax) is accessible but no ForcedChoices, FreeChoices, or IDD
+    have been produced satisfies all axioms vacuously: Ax-1 through Ax-4 are vacuously
+    satisfied (no forced/free choices yet, no IDD). Valid initial state.
+  terminal_state_valid_claim: >
+    A state where every ΣElement and Axiom has a ForcedChoice or FreeChoice entry, all
+    FreeChoices satisfy documented, and faithful(idd_of(D), D) holds satisfies all axioms:
+    Ax-1 (every ForcedChoice has source and rule), Ax-2 (faithful holds by universal coverage),
+    Ax-3 (no overlap between forced and free tables), Ax-4 (free table is complete). Valid
+    terminal state.
+  domain_boundary_note: >
+    Excludes: the runtime behavior of the implementation; whether the implementation choices
+    are optimal (only that they are documented); the correctness of the derivation taxonomy
+    beyond its formal mappings; external deployment infrastructure. D_DTID tracks derivation
+    structure only — the mapping from D-constructs to implementation decisions.
 
 roles:
   - id: ρ_DR
-    name: Domain Reader
-    steps: [σ_A1]
-    authority: enumeration
+    name: "Domain Reader"
+    description: >
+      Executes σ_A1. Reads the domain theory document, enumerates all Σ-elements and axioms,
+      and sets [PARTIAL] and [FREE] annotation flags. Observes: domain theory document (full),
+      derivation taxonomy. Authorized to: enumerate ΣElements, enumerate Axioms, set flags.
+      CANNOT make derivation decisions — enumeration only.
+    phases:
+      - sigma_A1
+    observation_projection:
+      sub_theory: "D_DTID ↾ {DomainTheory, ΣElement, Axiom}"
+    authorized_transitions:
+      - "Enumerate ΣElements from the domain theory document"
+      - "Enumerate Axioms from Ax(D)"
+      - "Set [PARTIAL] and [FREE] annotation flags on elements"
+      - "Record version of the source domain theory document"
+
   - id: ρ_DA
-    name: Derivation Analyst
-    steps: [σ_A2]
-    authority: forced_choice_production
+    name: "Derivation Analyst"
+    description: >
+      Executes σ_A2. Applies the derivation taxonomy to each ΣElement and Axiom, producing
+      ForcedChoices with source and rule_applied set. Observes: enumerated ΣElements and
+      Axioms (from σ_A1), derivation taxonomy. Authorized to: produce ForcedChoices, apply
+      taxonomy rules. CANNOT produce FreeChoices — that is ρ_GA's authority.
+    phases:
+      - sigma_A2
+    observation_projection:
+      sub_theory: "D_DTID ↾ {ΣElement, Axiom, DerivationRule, ForcedChoice}"
+    authorized_transitions:
+      - "Apply derivation taxonomy rules to each ΣElement and Axiom"
+      - "Produce ForcedChoice entries with source and rule_applied"
+      - "Record logic-only axioms (no IDD entry required)"
+
   - id: ρ_GA
-    name: Gap Analyst
-    steps: [σ_A3]
-    authority: free_choice_production
+    name: "Gap Analyst"
+    description: >
+      Executes σ_A3 (in parallel with σ_A2). Addresses all [PARTIAL] and [FREE] markers,
+      producing FreeChoices with documented rationale. Observes: enumerated ΣElements and
+      Axioms with flags (from σ_A1), existing implementation conventions. Authorized to:
+      produce FreeChoices, document rationale, mark TBD with explicit question. CANNOT
+      produce ForcedChoices.
+    phases:
+      - sigma_A3
+    observation_projection:
+      sub_theory: "D_DTID ↾ {ΣElement, Axiom, FreeChoice}"
+    authorized_transitions:
+      - "Produce FreeChoice entries for all [PARTIAL] and [FREE] markers"
+      - "Document rationale for each free choice (or state TBD with explicit question)"
+      - "Mark documented = true on each completed FreeChoice"
+
   - id: ρ_IC
-    name: IDD Compiler
-    steps: [σ_A4, σ_A5]
-    authority: faithfulness_certification
+    name: "IDD Compiler"
+    description: >
+      Executes σ_A4 and σ_A5. Verifies faithfulness (covers holds for all axioms) then
+      assembles the final IDD document. Observes: full D_DTID (all sorts and predicates).
+      Authorized to: verify covers, assert faithful, emit YAML+Markdown IDD document,
+      emit gap list if not yet faithful.
+    phases:
+      - sigma_A4
+      - sigma_A5
+    observation_projection:
+      sub_theory: D_DTID
+    authorized_transitions:
+      - "Verify covers(a, idd) for each a ∈ Ax(D)"
+      - "Assert faithful(idd_of(D), D) when all axioms covered"
+      - "Produce gap list if faithful is not yet satisfied"
+      - "Assemble final IDD: YAML header + forced table + free table + faithfulness certificate"
+
+objective:
+  formal_statement: "faithful(idd_of(D), D) AND forall fc ∈ free_table(idd_of(D)). documented(fc)"
+  note: >
+    Faithfulness (Ax-2) requires every axiom in Ax(D) to be covered. Documentation requires
+    every free choice to have a non-empty rationale. Both must hold simultaneously at terminal state.
+  type: terminal
+  progress_preorder: "lexicographic on (μ₁, μ₂)"
+
+success_profile:
+  - id: μ₁
+    name: "axiom_coverage"
+    formula: "covered_axioms / total_axioms"
+    range: "[0, 1]"
+    description: "Fraction of Ax(D) axioms covered by at least one IDD entry. Terminal: μ₁ = 1.0."
+  - id: μ₂
+    name: "free_choice_documentation"
+    formula: "documented_free_choices / total_free_choices"
+    range: "[0, 1]"
+    description: "Fraction of FreeChoices with documented = true. Terminal: μ₂ = 1.0. Vacuously 1.0 if no free choices."
 
 step_dag:
-  steps:
-    - id: σ_A1
-      name: Theory Intake
-      role: ρ_DR
-      pre: "domain theory document at stable-draft version (v0.N+)"
-      post: "ΣElements enumerated; Axioms enumerated; [PARTIAL] and [FREE] flags set; version recorded"
-    - id: σ_A2
-      name: Derivation Pass
-      role: ρ_DA
-      pre: "σ_A1 complete; Derivation Taxonomy available"
-      post: "forced_table populated; every ΣElement and Axiom processed; source + rule_applied set"
-    - id: σ_A3
-      name: Gap Pass
-      role: ρ_GA
-      pre: "σ_A1 complete"
-      post: "free_table populated; all [PARTIAL] and [FREE] markers addressed; documented=true"
-    - id: σ_A4
-      name: Faithfulness Check
-      role: ρ_IC
-      pre: "σ_A2 and σ_A3 complete; Ax list from σ_A1"
-      post: "covers verified for all axioms; faithful=true or gap list produced"
-    - id: σ_A5
-      name: IDD Assembly
-      role: ρ_IC
-      pre: "σ_A4 complete"
-      post: "IDD document written: YAML header + two Markdown tables + faithfulness certificate + version coupling"
-  edges:
-    - from: σ_A1
-      to: σ_A2
-      composability: "post_σ_A1 ⊇ pre_σ_A2 (enumerated elements are the input)"
-    - from: σ_A1
-      to: σ_A3
-      composability: "post_σ_A1 ⊇ pre_σ_A3 ([PARTIAL] and [FREE] flags available)"
-    - from: σ_A2
-      to: σ_A4
-      composability: "post_σ_A2 ⊇ pre_σ_A4 (forced_table complete)"
-    - from: σ_A3
-      to: σ_A4
-      composability: "post_σ_A3 ⊇ pre_σ_A4 (free_table complete)"
-    - from: σ_A4
-      to: σ_A5
-      composability: "post_σ_A4 ⊇ pre_σ_A5 (faithfulness verdict available)"
+  graph: "diamond with parallel branches"
+  steps: [sigma_A1, sigma_A2, sigma_A3, sigma_A4, sigma_A5]
+  initial: sigma_A1
+  terminal: sigma_A5
   parallel_branches:
-    - [σ_A2, σ_A3]
+    - [sigma_A2, sigma_A3]
+    - note: "σ_A2 (Derivation Pass) and σ_A3 (Gap Pass) both depend on σ_A1 and can execute in parallel. Both must complete before σ_A4."
+  steps_detail:
+    - id: sigma_A1
+      name: "Theory Intake"
+      role: ρ_DR
+      precondition: "Domain theory document at stable-draft version (v0.N+) accessible; derivation taxonomy available"
+      postcondition: "All ΣElements enumerated; all Axioms enumerated; [PARTIAL] and [FREE] flags set where applicable; source theory version recorded"
+    - id: sigma_A2
+      name: "Derivation Pass"
+      role: ρ_DA
+      precondition: "σ_A1 complete: ΣElements and Axioms enumerated with flags; derivation taxonomy available"
+      postcondition: "forced_table populated: every ΣElement and Axiom has been processed; source and rule_applied set for each ForcedChoice; logic-only axioms recorded"
+    - id: sigma_A3
+      name: "Gap Pass"
+      role: ρ_GA
+      precondition: "σ_A1 complete: ΣElements and Axioms enumerated with [PARTIAL] and [FREE] flags"
+      postcondition: "free_table populated: all [PARTIAL] and [FREE] markers addressed; documented = true on each FreeChoice"
+    - id: sigma_A4
+      name: "Faithfulness Check"
+      role: ρ_IC
+      precondition: "σ_A2 and σ_A3 both complete; Ax list from σ_A1 available"
+      postcondition: "covers(a, idd) verified for all a ∈ Ax(D); faithful(idd_of(D), D) = true OR gap list produced naming uncovered axioms"
+    - id: sigma_A5
+      name: "IDD Assembly"
+      role: ρ_IC
+      precondition: "σ_A4 complete: faithful = true (gap list empty)"
+      postcondition: "IDD document written: YAML header + forced table + free table + faithfulness certificate + version coupling"
+  edges:
+    - from: sigma_A1
+      to: sigma_A2
+      composability_claim: "post_{σ_A1} produces enumerated ΣElements and Axioms with flags — exactly what pre_{σ_A2} requires as input for the derivation taxonomy pass. Holds."
+    - from: sigma_A1
+      to: sigma_A3
+      composability_claim: "post_{σ_A1} produces [PARTIAL] and [FREE] flags on elements — exactly what pre_{σ_A3} requires for the gap pass. Holds."
+    - from: sigma_A2
+      to: sigma_A4
+      composability_claim: "post_{σ_A2} produces a complete forced_table (every ΣElement and Axiom processed) — satisfies the forced_table completeness requirement in pre_{σ_A4}. Holds."
+    - from: sigma_A3
+      to: sigma_A4
+      composability_claim: "post_{σ_A3} produces a complete free_table (all [PARTIAL]/[FREE] markers addressed, documented = true) — satisfies the free_table completeness requirement in pre_{σ_A4}. Holds."
+    - from: sigma_A4
+      to: sigma_A5
+      composability_claim: "post_{σ_A4} (success path) produces faithful(idd_of(D), D) = true — the pre_{σ_A5} requirement. If faithful = false, σ_A4 produces a gap list and loops back through σ_A2/σ_A3 repair; σ_A5 is only reached when faithful is confirmed. Holds on the success path."
+  initial_condition_claim: >
+    pre_{σ_A1} requires a domain theory document at stable-draft version and the derivation
+    taxonomy. Satisfied whenever a compiled method's domain theory is available for implementation
+    planning. The v0.N+ requirement ensures the theory is stable enough to derive from — pure
+    drafts (v0.0) may still have undeclared sorts or axiom changes pending.
+  terminal_condition_claim: >
+    post_{σ_A5} produces a complete IDD document. By σ_A4's pre-condition (faithful = true),
+    all axioms in Ax(D) are covered (μ₁ = 1.0). By σ_A3's post-condition, all FreeChoices
+    have documented = true (μ₂ = 1.0). Both objective conditions hold. O_DTID satisfied.
+  contrarian_challenge: >
+    Claim: σ_A4's faithfulness check is the weakest gate — it relies on the analyst having
+    correctly enumerated all axioms at σ_A1. A missed axiom at σ_A1 will pass σ_A4 (vacuously
+    covered) but produce an IDD that is not actually faithful.
+    Defense: σ_A1's postcondition requires all axioms enumerated — not sampled. The ρ_DR role
+    is constrained to read the domain theory document systematically. The version coupling in
+    the IDD output pins the specific theory version used; if the theory is later revised, the
+    IDD is flagged as stale (same mechanism as M4-MINS version coupling). A missed axiom at
+    σ_A1 is a σ_A1 failure, not a σ_A4 failure.
+    Verdict: the weakest edge is σ_A1→{σ_A2,σ_A3} (completeness of enumeration), not σ_A4.
+
+termination_certificate:
+  id: nu_DTID
+  formula: "nu(s) = (total_axioms - covered_axioms(s)) + |{fc ∈ free_table | NOT documented(fc)}|(s)"
+  argument: >
+    Two non-negative components. The first (uncovered axioms) strictly decreases with each
+    σ_A2/σ_A3 pass that adds a new entry covering a previously uncovered axiom. The second
+    (undocumented free choices) strictly decreases with each σ_A3 pass that documents a
+    FreeChoice. Both components are bounded below by 0. nu_DTID = 0 iff faithful(idd_of(D), D)
+    AND all FreeChoices are documented — which is the terminal condition. If a gap list is
+    produced at σ_A4 (faithful = false), the loop back through σ_A2/σ_A3 is bounded by the
+    total axiom count (finite by Ax-4 and the D stability requirement).
 
 derivation_taxonomy:
-  - construct: sort
-    rule: sort→entity
-    forced_choice_class: entity_type_exists
-    note: DB table, struct, or in-memory map
-  - construct: total_function
-    rule: total-fn→non-null
-    forced_choice_class: non_null_reference
-    note: FK column NOT NULL
-  - construct: partial_function
-    rule: partial-fn→nullable
-    forced_choice_class: nullable_reference
-    note: FK column NULLABLE; null-path handling required; mechanism is FreeChoice
-  - construct: predicate_boolean
-    rule: pred→column
-    forced_choice_class: boolean_or_enum_flag
-    note: Boolean column or role enum value on the entity
-  - construct: predicate_sort_marker
-    rule: pred→role-not-entity
-    forced_choice_class: role_permission_flag
-    note: Enum value or boolean role column on existing entity — not a separate table
-  - construct: axiom_mutual_exclusion
-    rule: excl-ax→enum-check
-    forced_choice_class: status_enum_with_check
-    note: Single enum column + CHECK constraint; not N boolean columns
-  - construct: axiom_total_function_uniqueness
-    rule: uniq-ax→unique-index
-    forced_choice_class: unique_index
-    note: DB UNIQUE constraint on the function's column
-  - construct: axiom_cross_entity_consistency
-    rule: consistency-ax→txn-boundary
-    forced_choice_class: transaction_boundary
-    note: A and B written atomically; identify write path and declare atomic block
-  - construct: axiom_routing
-    rule: routing-ax→subscription
-    forced_choice_class: event_handler_subscription
-    note: Event type + handler registration must exist
-  - construct: axiom_existence_guarantee
-    rule: existence-ax→create-path
-    forced_choice_class: create_insert_path
-    note: Identify the write operation that produces the required entity
-  - construct: axiom_no_structural_implication
-    rule: logic-only
-    forced_choice_class: none
-    note: Record as verified; no IDD entry required
+  note: "10 forced-choice rules + 1 logic-only rule. Each maps a D-construct to an implementation pattern."
+  rules:
+    - construct: sort
+      rule: sort→entity
+      forced_choice_class: entity_type_exists
+      note: "DB table, struct, or in-memory map"
+    - construct: total_function
+      rule: total-fn→non-null
+      forced_choice_class: non_null_reference
+      note: "FK column NOT NULL"
+    - construct: partial_function
+      rule: partial-fn→nullable
+      forced_choice_class: nullable_reference
+      note: "FK column NULLABLE; null-path handling required; mechanism is FreeChoice"
+    - construct: predicate_boolean
+      rule: pred→column
+      forced_choice_class: boolean_or_enum_flag
+      note: "Boolean column or role enum value on the entity"
+    - construct: predicate_sort_marker
+      rule: pred→role-not-entity
+      forced_choice_class: role_permission_flag
+      note: "Enum value or boolean role column on existing entity — not a separate table"
+    - construct: axiom_mutual_exclusion
+      rule: excl-ax→enum-check
+      forced_choice_class: status_enum_with_check
+      note: "Single enum column + CHECK constraint; not N boolean columns"
+    - construct: axiom_total_function_uniqueness
+      rule: uniq-ax→unique-index
+      forced_choice_class: unique_index
+      note: "DB UNIQUE constraint on the function's column"
+    - construct: axiom_cross_entity_consistency
+      rule: consistency-ax→txn-boundary
+      forced_choice_class: transaction_boundary
+      note: "A and B written atomically; identify write path and declare atomic block"
+    - construct: axiom_routing
+      rule: routing-ax→subscription
+      forced_choice_class: event_handler_subscription
+      note: "Event type + handler registration must exist"
+    - construct: axiom_existence_guarantee
+      rule: existence-ax→create-path
+      forced_choice_class: create_insert_path
+      note: "Identify the write operation that produces the required entity"
+    - construct: axiom_no_structural_implication
+      rule: logic-only
+      forced_choice_class: none
+      note: "Record as verified; no IDD entry required"
 
-output_schema:
-  format: markdown_with_yaml_header
-  idd_frontmatter:
-    - field: method_id
-      type: string
-      value: "M7-DTID"
-    - field: theory_id
-      type: string
-    - field: theory_version
-      type: string
-    - field: date
-      type: date
-    - field: faithful
-      type: boolean
-    - field: gap_count
-      type: integer
-  forced_table_columns:
-    - name: Source
-      type: string
-      description: "Ax-N label or ΣElement name"
-    - name: Rule
-      type: string
-      description: "Rule name from derivation taxonomy"
-    - name: Decision Class
-      type: string
-      description: "Forced choice class from taxonomy"
-    - name: Implementation Note
-      type: string
-      description: "Concrete implementation decision"
-  free_table_columns:
-    - name: Source
-      type: string
-      description: "Partial function name, note text, or annotation"
-    - name: Open Question
-      type: string
-      description: "The implementation decision left open by the theory"
-    - name: Choice Made
-      type: string
-      description: "Decision taken, or TBD with question explicitly stated"
-    - name: Rationale
-      type: string
-      description: "Engineering rationale; may cite decisions log"
+output_artifacts:
+  - name: idd_document
+    path_pattern: "{PNN-SLUG}/{MNN-SLUG}/idd-{theory_id}-v{theory_version}.md"
+    description: "YAML header + forced choices table + free choices table + faithfulness certificate + version coupling"
+  - name: registry_entry
+    path_pattern: "WIP.md + MEMORY.md"
+    description: "IDD registered against the source method with theory version and faithful status"
 
-gates:
-  G0: PASS
-  G1: PASS
-  G2: PASS
-  G3: PASS
-  G4: PASS
-  G5: PASS
-  G6: PASS
+family:
+  id: meta-methods
+  members:
+    - id: M1-MDES
+      description: "Design a method from established domain knowledge"
+      status: compiled
+    - id: M2-MDIS
+      description: "Discover whether methodization is warranted"
+      status: proposed
+    - id: M3-MEVO
+      description: "Evolve an existing method from execution evidence"
+      status: compiled
+    - id: M4-MINS
+      description: "Instantiate a general method for a specific project"
+      status: compiled
+    - id: M5-MCOM
+      description: "Compose two compiled methods sequentially"
+      status: compiled
+    - id: M6-MAUD
+      description: "Audit a method retroactively for formal compliance"
+      status: operational
+    - id: M7-DTID
+      description: "Derive a software implementation from a domain theory"
+      status: compiled
 
 compilation_record:
-  date: "2026-03-10"
-  session: SESSION-010
-  status: compiled
-  version: "1.0"
+  gates:
+    - gate: G0
+      result: PASS
+      note: "SESSION-010. Navigability complete: What (IDD artifact), Who (4 roles), Why (P6 faithfulness gap), How (5-step diamond DAG), When (compiled domain theory at stable draft)."
+    - gate: G1
+      result: PASS
+      note: >
+        D_DTID: 8 sorts (DomainTheory, ΣElement, Axiom, DerivationRule, ForcedChoice, FreeChoice,
+        IDD, nat), 5 function symbols (idd_of, source, rule_applied, forced_table, free_table),
+        3 predicates (covers, documented, faithful), 4 axioms. v1.1: idd_of declared to resolve
+        undeclared function symbol in objective.
+    - gate: G2
+      result: PASS
+      note: "Objective faithful(idd_of(D),D) AND forall fc. documented(fc) expressible over D_DTID. Both symbols declared in v1.1. Progress preorder lexicographic on (μ₁, μ₂). Two measures with formulas and ranges."
+    - gate: G3
+      result: PASS
+      note: "Four roles with non-empty observation projections and authority claims. ρ_DR (enumeration), ρ_DA (forced choices), ρ_GA (free choices), ρ_IC (faithfulness + assembly). Coverage: union covers all D_DTID predicates. Authority: union covers all transitions needed for O_DTID."
+    - gate: G4
+      result: PASS
+      note: "Diamond DAG: σ_A1 → {σ_A2 ∥ σ_A3} → σ_A4 → σ_A5. Acyclic. 5 edges with composability claims. Parallel branches declared (σ_A2 and σ_A3 both depend on σ_A1, both feed σ_A4). Contrarian challenge: σ_A1 enumeration completeness is weakest, not σ_A4."
+    - gate: G5
+      result: PASS
+      note: "All 5 steps have guidance via role descriptions and step preconditions/postconditions. Derivation taxonomy provides procedure for σ_A2. Gap pass procedure implicit in ρ_GA authority. Constraints-first format in role descriptions."
+    - gate: G6
+      result: PASS
+      note: "YAML encodable: method: wrapper, domain_theory: block, roles: with phases arrays, step_dag: with edges and parallel_branches, output_artifacts:, family:. All sorts, functions, predicates declared. v1.1 structural alignment complete."
