@@ -1,0 +1,452 @@
+##############################################################################
+# Consolidated Retrospective Analysis — PRD 003 Implementation
+# Generated: 2026-03-14
+# Source retros: 5
+#   - prd003-p1-m6-arfn  (P2-SD / M6-ARFN v1.0)
+#   - prd003-p1-m1-impl  (P2-SD / M1-IMPL v3.1)
+#   - prd003-p2-m1-impl  (P2-SD / M1-IMPL v3.1)
+#   - prd003-p3-m1-impl  (P2-SD / M1-IMPL v3.1)
+#   - prd003-p4-m1-mdes  (P0-META / M1-MDES v1.0)
+##############################################################################
+
+sessions:
+  - session_id: prd003-p1-m6-arfn
+    methodology: P2-SD
+    method: M6-ARFN
+    method_version: "1.0"
+    hardest_decision:
+      step: architecture_spec
+      decision: "Whether getMethodologyRouting should merge formal predicates with operationalization predicates, and how to handle name mismatch (formal base names vs compound operationalization names)."
+      outcome: "Join on exact name match; compound names get null trueWhen/falseWhen. Pragmatic tradeoff — perfect merge would require parsing compound names."
+      guidance_gap: true
+
+  - session_id: prd003-p1-m1-impl
+    methodology: P2-SD
+    method: M1-IMPL
+    method_version: "3.1"
+    hardest_decision:
+      step: sigma_B3
+      decision: "Whether to fix P2-SD.yaml indentation issue (coverage_claim, authority_claim, role_partition_rationale at wrong nesting level) as part of implementation, or flag and leave."
+      outcome: "Fixed it. Indentation caused js-yaml parse issues affecting routing extraction tests. Fix was semantically correct. All tests pass."
+      guidance_gap: false
+
+  - session_id: prd003-p2-m1-impl
+    methodology: P2-SD
+    method: M1-IMPL
+    method_version: "3.1"
+    hardest_decision:
+      step: sigma_B1
+      decision: "How to structure parser tests given pty-session and pool require a running Claude Code installation. SC-4 can't be validated in CI."
+      outcome: "Focused tests on parser (pure function, 15 tests). Deferred integration testing to Phase 5. PTY session management and pool logic untested until then."
+      guidance_gap: true
+
+  - session_id: prd003-p3-m1-impl
+    methodology: P2-SD
+    method: M1-IMPL
+    method_version: "3.1"
+    hardest_decision:
+      step: sigma_B3
+      decision: "How to implement postcondition validation — keyword matching vs structured analysis vs always pass."
+      outcome: "Keyword extraction with 50% threshold. Intentionally loose. Escalates on failure rather than retrying."
+      guidance_gap: true
+
+  - session_id: prd003-p4-m1-mdes
+    methodology: P0-META
+    method: M1-MDES
+    method_version: "1.0"
+    hardest_decision:
+      step: sigma_4
+      decision: "How to structure step DAGs for dispatch methods that execute another methodology's steps in a loop."
+      outcome: "Linear DAG with explicit loop-back edges. Loop semantics in guidance text. 5-6 steps per method."
+      guidance_gap: true
+
+# ============================================================================
+# OBSERVATION INVENTORY
+# ============================================================================
+
+observations_all:
+  # --- prd003-p1-m6-arfn ---
+  - session: prd003-p1-m6-arfn
+    step: architecture_spec
+    type: gap
+    severity: MEDIUM
+    description: "Predicate name mismatch between predicate_operationalization (compound names like 'task_type = section') and domain_theory.predicates (base names like 'task_type'). No methodology guidance for merge strategy."
+    improvement_target: project_card
+
+  - session: prd003-p1-m6-arfn
+    step: architecture_spec
+    type: success
+    severity: LOW
+    description: "Horizontal documentation pattern (DR-12) worked well. Creating routing.md as separate concern was natural."
+    improvement_target: project_card
+
+  # --- prd003-p1-m1-impl ---
+  - session: prd003-p1-m1-impl
+    step: sigma_B3
+    type: surprise
+    severity: MEDIUM
+    description: "P2-SD.yaml had indentation bug (coverage_claim, authority_claim, role_partition_rationale at wrong nesting level). Invalid YAML that js-yaml handled differently than expected."
+    improvement_target: project_card
+
+  - session: prd003-p1-m1-impl
+    step: sigma_B1
+    type: success
+    severity: LOW
+    description: "Architecture docs (routing.md, state-model.md) provided clear specs. Minimal improvisation needed."
+    improvement_target: unclear
+
+  - session: prd003-p1-m1-impl
+    step: sigma_B3
+    type: friction
+    severity: LOW
+    description: "readYaml helper duplicated between loader.ts and routing.ts. Duplication chosen for simplicity but will accumulate."
+    improvement_target: project_card
+
+  # --- prd003-p2-m1-impl ---
+  - session: prd003-p2-m1-impl
+    step: sigma_B3
+    type: success
+    severity: LOW
+    description: "PRD's Component 2 section was detailed enough to serve as both architecture spec and implementation guide. Well-written PRDs can reduce need for separate M6-ARFN on greenfield packages."
+    improvement_target: unclear
+
+  - session: prd003-p2-m1-impl
+    step: sigma_B3
+    type: friction
+    severity: LOW
+    description: "node-pty native dependency requires compilation. CI/CD complexity. PRD's claim of 'prebuilt binaries, no compilation needed' not always true."
+    improvement_target: project_card
+
+  # --- prd003-p3-m1-impl ---
+  - session: prd003-p3-m1-impl
+    step: sigma_B3
+    type: gap
+    severity: MEDIUM
+    description: "PRD says step_validate should do 'heuristic keyword/structural check' but doesn't operationalize it. Implementation had to invent keyword extraction + 50% threshold. Different agents will implement differently."
+    improvement_target: both
+
+  - session: prd003-p3-m1-impl
+    step: sigma_B3
+    type: friction
+    severity: LOW
+    description: "output_schema format varies across registry methods (structured with required_fields vs flat key-value). Validator had to handle both, adding unexpected complexity."
+    improvement_target: project_card
+
+  - session: prd003-p3-m1-impl
+    step: sigma_B3
+    type: surprise
+    severity: MEDIUM
+    description: "Sub-agent committed unrelated file (orchestrator-prompt-t1x-bugs.md) — picked up unstaged changes from working directory. Non-worktree isolation lets sub-agents see unrelated changes."
+    improvement_target: project_card
+
+  # --- prd003-p4-m1-mdes ---
+  - session: prd003-p4-m1-mdes
+    step: sigma_4
+    type: gap
+    severity: MEDIUM
+    description: "M1-MDES step DAG definition assumes acyclic graphs. P3-DISPATCH methods have inherent loops. Had to use informal 'loop_structure' annotations instead of formal DAG encoding."
+    improvement_target: abstract_method
+
+  - session: prd003-p4-m1-mdes
+    step: sigma_5
+    type: success
+    severity: LOW
+    description: "PRD Component 1 provided complete methodology design. Translation to YAML was mostly mechanical. Well-structured PRDs substitute for knowledge corpus in M1-MDES sigma_1."
+    improvement_target: unclear
+
+  - session: prd003-p4-m1-mdes
+    step: sigma_6
+    type: friction
+    severity: LOW
+    description: "Compilation gates are self-assessed by compiling agent. No external verification. Could produce false PASSes for complex designs."
+    improvement_target: abstract_method
+
+# ============================================================================
+# OBSERVATION COUNTS
+# ============================================================================
+
+observation_counts:
+  total: 13
+
+  by_type:
+    gap: 3
+    friction: 4
+    success: 4
+    surprise: 2
+
+  by_severity:
+    HIGH: 0
+    MEDIUM: 5
+    LOW: 8
+
+  by_type_and_severity:
+    gap_HIGH: 0
+    gap_MEDIUM: 3
+    gap_LOW: 0
+    friction_HIGH: 0
+    friction_MEDIUM: 0
+    friction_LOW: 4
+    success_HIGH: 0
+    success_MEDIUM: 0
+    success_LOW: 4
+    surprise_HIGH: 0
+    surprise_MEDIUM: 2
+    surprise_LOW: 0
+
+# ============================================================================
+# CARD FEEDBACK SUMMARY
+# ============================================================================
+
+card_feedback_all:
+  - { session: prd003-p1-m6-arfn, rule_id: DR-12, verdict: helpful }
+  - { session: prd003-p1-m6-arfn, rule_id: DR-04, verdict: helpful }
+  - { session: prd003-p1-m1-impl, rule_id: DR-03, verdict: helpful }
+  - { session: prd003-p1-m1-impl, rule_id: DR-04, verdict: helpful }
+  - { session: prd003-p1-m1-impl, rule_id: DR-09, verdict: helpful }
+  - { session: prd003-p1-m1-impl, rule_id: DR-01, verdict: missing_coverage }
+  - { session: prd003-p2-m1-impl, rule_id: DR-03, verdict: helpful }
+  - { session: prd003-p2-m1-impl, rule_id: DR-12, verdict: helpful }
+  - { session: prd003-p3-m1-impl, rule_id: DR-04, verdict: helpful }
+  - { session: prd003-p3-m1-impl, rule_id: DR-09, verdict: helpful }
+  - { session: prd003-p4-m1-mdes, rule_id: DR-01, verdict: helpful }
+  - { session: prd003-p4-m1-mdes, rule_id: DR-02, verdict: helpful }
+
+card_feedback_summary:
+  total_entries: 12
+
+  rules_tested:
+    - rule_id: DR-01
+      times_tested: 2
+      verdicts: [helpful, missing_coverage]
+    - rule_id: DR-02
+      times_tested: 1
+      verdicts: [helpful]
+    - rule_id: DR-03
+      times_tested: 2
+      verdicts: [helpful, helpful]
+    - rule_id: DR-04
+      times_tested: 3
+      verdicts: [helpful, helpful, helpful]
+    - rule_id: DR-09
+      times_tested: 2
+      verdicts: [helpful, helpful]
+    - rule_id: DR-12
+      times_tested: 2
+      verdicts: [helpful, helpful]
+
+  verdict_distribution:
+    helpful: 11
+    missing_coverage: 1
+    harmful: 0
+    unclear: 0
+
+  notes:
+    - rule: DR-01
+      issue: "missing_coverage — doesn't address fixing pre-existing YAML structural issues discovered during implementation."
+    - rule: DR-04
+      highlight: "Tested 3 times across phases, consistently helpful. Thin wrapper pattern works well for MCP handlers."
+    - rule: DR-09
+      highlight: "Real YAML fixtures caught bugs that mocks would have hidden (indentation bug, output_schema variation)."
+
+# ============================================================================
+# CROSS-RETRO PATTERNS
+# ============================================================================
+
+cross_retro_patterns:
+  - pattern_id: CRP-01
+    label: "sigma_B3 is the friction hotspot"
+    sessions: [prd003-p1-m1-impl, prd003-p2-m1-impl, prd003-p3-m1-impl, prd003-p4-m1-mdes]
+    description: >
+      sigma_B3 (or its equivalent in M1-MDES: sigma_4/sigma_6) is where 9 of 13
+      observations cluster. This is the core build step where implementation
+      decisions are forced. Gaps, surprises, and frictions all concentrate here
+      because this is where abstract specs meet concrete code.
+    observation_count: 9
+
+  - pattern_id: CRP-02
+    label: "YAML schema inconsistencies across registry"
+    sessions: [prd003-p1-m6-arfn, prd003-p1-m1-impl, prd003-p3-m1-impl]
+    description: >
+      Three observations relate to YAML structural issues: predicate name
+      mismatch (p1-arfn), indentation bug (p1-impl), output_schema format
+      variation (p3-impl). Registry YAML lacks a single enforced schema, so
+      each consumer discovers inconsistencies at implementation time.
+    observation_ids:
+      - "p1-arfn: predicate name mismatch (MEDIUM gap)"
+      - "p1-impl: indentation bug (MEDIUM surprise)"
+      - "p3-impl: output_schema format variation (LOW friction)"
+
+  - pattern_id: CRP-03
+    label: "Well-written PRDs reduce architecture overhead"
+    sessions: [prd003-p2-m1-impl, prd003-p4-m1-mdes]
+    description: >
+      Two sessions noted that detailed PRD sections served as effective
+      architecture/design documents, reducing the need for separate M6-ARFN
+      or M1-MDES domain retraction phases. Pattern suggests PRD quality
+      directly reduces per-phase method overhead.
+
+  - pattern_id: CRP-04
+    label: "DR-04 thin wrapper pattern consistently effective"
+    sessions: [prd003-p1-m6-arfn, prd003-p1-m1-impl, prd003-p3-m1-impl]
+    description: >
+      DR-04 was tested 3 times and rated helpful every time. The thin-wrapper
+      MCP handler pattern produces trivial handler implementations and clear
+      separation between core logic and transport.
+
+  - pattern_id: CRP-05
+    label: "DR-09 real fixtures catch real bugs"
+    sessions: [prd003-p1-m1-impl, prd003-p3-m1-impl]
+    description: >
+      Using real registry YAML as test fixtures (DR-09) caught the P2-SD.yaml
+      indentation bug and output_schema format variation. Both would have been
+      hidden by minimal mocks. Pattern validates the design rule.
+
+  - pattern_id: CRP-06
+    label: "Hardest decisions cluster where specs are under-operationalized"
+    sessions: [prd003-p1-m6-arfn, prd003-p2-m1-impl, prd003-p3-m1-impl, prd003-p4-m1-mdes]
+    description: >
+      4 of 5 hardest decisions had guidance_gap: true. The gaps are consistently
+      at the boundary between abstract specification and concrete implementation:
+      merge strategies (p1-arfn), test strategies for non-testable components
+      (p2-impl), heuristic operationalization (p3-impl), and loop representation
+      in DAGs (p4-mdes).
+
+# ============================================================================
+# GAP CANDIDATE ASSESSMENT
+# ============================================================================
+# Threshold: 3 MEDIUM observations at the same step, OR 1 HIGH observation.
+
+gap_candidates:
+  - candidate_id: GC-01
+    status: MEETS_THRESHOLD
+    threshold_met: "3 MEDIUM at sigma_B3"
+    step: sigma_B3
+    matching_observations:
+      - { session: prd003-p1-m1-impl, type: surprise, severity: MEDIUM, summary: "P2-SD.yaml indentation bug" }
+      - { session: prd003-p3-m1-impl, type: gap, severity: MEDIUM, summary: "Postcondition validation heuristic not operationalized" }
+      - { session: prd003-p3-m1-impl, type: surprise, severity: MEDIUM, summary: "Sub-agent committed unrelated file from working directory" }
+    assessment: >
+      sigma_B3 has 3 MEDIUM-severity observations across 2 sessions. However,
+      the observations are thematically diverse (YAML defects, heuristic gaps,
+      sub-agent isolation). This suggests sigma_B3 is a broad friction point
+      rather than a single addressable gap. Recommend splitting into:
+      (a) registry YAML consistency gap — addressable via schema enforcement,
+      (b) heuristic operationalization gap — addressable via PRD spec standards,
+      (c) sub-agent isolation gap — addressable via project card commit rules.
+
+  - candidate_id: GC-02
+    status: BELOW_THRESHOLD_BUT_NOTABLE
+    threshold_met: "none — 1 MEDIUM at sigma_4"
+    step: sigma_4
+    matching_observations:
+      - { session: prd003-p4-m1-mdes, type: gap, severity: MEDIUM, summary: "Step DAG assumes acyclic; loops need informal annotations" }
+    assessment: >
+      Only 1 observation but it has a concrete proposed delta (allow labeled
+      back-edges in DAGs). If P3-DISPATCH is used frequently, this gap will
+      recur. Worth tracking but does not meet formal threshold.
+
+  - candidate_id: GC-03
+    status: BELOW_THRESHOLD_BUT_NOTABLE
+    threshold_met: "none — cross-step YAML inconsistency pattern (CRP-02)"
+    step: "(cross-step)"
+    matching_observations:
+      - { session: prd003-p1-m6-arfn, type: gap, severity: MEDIUM, summary: "Predicate name mismatch" }
+      - { session: prd003-p1-m1-impl, type: surprise, severity: MEDIUM, summary: "YAML indentation bug" }
+      - { session: prd003-p3-m1-impl, type: friction, severity: LOW, summary: "output_schema format variation" }
+    assessment: >
+      3 observations across different steps but all related to YAML schema
+      inconsistency. Does not meet the formal "same step" threshold, but the
+      cross-step pattern suggests a systemic issue. Consider whether the gap
+      threshold should account for cross-step thematic clustering.
+
+# ============================================================================
+# PROPOSED DELTAS (ranked by frequency/impact)
+# ============================================================================
+
+proposed_deltas_all:
+  - delta_id: PD-01
+    source_session: prd003-p4-m1-mdes
+    target: abstract_method
+    location: "M1-MDES sigma_4 guidance"
+    current: "Step DAG as acyclic directed graph"
+    proposed: >
+      Step DAG as directed graph, optionally with labeled back-edges for loop
+      structures. Loop edges must specify termination conditions. Methods with
+      loops must have a termination certificate that addresses loop termination,
+      not just DAG exhaustion.
+    rationale: >
+      P3-DISPATCH methods iterate over steps of another methodology — inherent
+      loops. DAG restriction forces informal encoding in guidance text.
+    impact: HIGH
+    frequency: 1
+    rank: 1
+    rank_rationale: >
+      Highest impact: changes the abstract method definition, affects all future
+      methodology designs that involve iteration. Without this, every looping
+      methodology will re-encounter the same gap.
+
+  - delta_id: PD-02
+    source_session: prd003-p1-m1-impl
+    target: project_card
+    location: "DR-01"
+    current: >
+      Any change to a method YAML must preserve compilation status — do not
+      introduce changes that would cause a compiled method to fail G0-G6 gates.
+    proposed: >
+      Any change to a method YAML must preserve compilation status — do not
+      introduce changes that would cause a compiled method to fail G0-G6 gates.
+      If a structural defect is discovered in a registry YAML during
+      implementation, fix it and document the fix in the commit message.
+      Registry defects that block implementation are implementation scope.
+    rationale: >
+      P2-SD.yaml indentation bug discovered during Phase 1 implementation.
+      Without guidance, agent had to decide if fixing it was in scope.
+    impact: MEDIUM
+    frequency: 1
+    rank: 2
+    rank_rationale: >
+      Medium impact but directly addresses the DR-01 missing_coverage verdict.
+      Low risk — adds permission to fix, doesn't change existing constraints.
+
+  - delta_id: PD-03
+    source_session: prd003-p3-m1-impl
+    target: project_card
+    location: "role_notes.impl_sub_agent"
+    current: "Both require care but in different ways."
+    proposed: >
+      Both require care but in different ways. When committing, only stage files
+      directly related to the implementation task. Do not commit unstaged changes
+      from other work.
+    rationale: >
+      Sub-agent included unrelated files in commit because it staged all changes
+      rather than specific files.
+    impact: LOW
+    frequency: 1
+    rank: 3
+    rank_rationale: >
+      Low impact — addresses a specific sub-agent hygiene issue. But easy to
+      implement and prevents accidental pollution of commits.
+
+proposed_deltas_summary:
+  total: 3
+  by_target:
+    project_card: 2
+    abstract_method: 1
+  by_impact:
+    HIGH: 1
+    MEDIUM: 1
+    LOW: 1
+  sessions_with_no_deltas: [prd003-p1-m6-arfn, prd003-p2-m1-impl]
+
+# ============================================================================
+# KEY FINDINGS
+# ============================================================================
+
+key_findings:
+  - finding: "No HIGH-severity observations across all 5 retros. The methodology held up — issues were MEDIUM friction/gaps, not blockers."
+  - finding: "4 of 5 hardest decisions had guidance_gap: true, indicating under-operationalization at the spec-to-code boundary is the primary improvement vector."
+  - finding: "sigma_B3 is the dominant friction step (9 of 13 observations). This is structural — it's where specs meet implementation — not a defect."
+  - finding: "YAML schema inconsistency is a systemic cross-step pattern (3 observations, 3 sessions). Does not meet the formal same-step threshold but warrants a registry-level improvement."
+  - finding: "DR-04 (thin wrappers) and DR-09 (real fixtures) are the strongest design rules — consistently helpful, with DR-09 catching bugs that mocks would miss."
+  - finding: "DR-01 has a coverage gap for pre-existing registry defects. Proposed delta PD-02 addresses this directly."
+  - finding: "The most impactful proposed delta is PD-01 (DAG loop support in M1-MDES), because it affects the abstract method definition and will recur for any iterative methodology."

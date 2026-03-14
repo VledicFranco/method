@@ -1,0 +1,82 @@
+retrospective:
+  session_id: "prd003-p3-m1-impl"
+  methodology: P2-SD
+  method: M1-IMPL
+  method_version: "3.1"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "sigma_B3"
+    decision: >
+      How to implement postcondition validation. Postconditions are natural
+      language strings like "Spec confidence >= 0.85 achieved." There is no
+      formal specification of what "met" means. Had to decide between:
+      (a) simple keyword matching, (b) structured analysis, (c) always pass.
+    outcome: >
+      Chose keyword extraction with 50% threshold — extract words > 3 chars
+      from postcondition, check if >= 50% appear in the JSON-stringified
+      output. This is intentionally loose but catches obvious mismatches
+      (e.g., output missing key concepts from the postcondition). The
+      recommendation escalates on postcondition failure rather than retrying,
+      since postcondition issues likely need human judgment.
+    guidance_gap: true
+
+  observations:
+    - step: "sigma_B3"
+      type: gap
+      description: >
+        The PRD says step_validate should do "heuristic — keyword/structural
+        check, not formal verification" but doesn't operationalize what that
+        means. The implementation had to invent the keyword extraction + 50%
+        threshold approach. This is a genuine design gap — different agents
+        will implement different heuristics with different false positive/
+        negative rates.
+      evidence: "docs/prds/003-dispatch.md:319"
+      severity: MEDIUM
+      improvement_target: both
+    - step: "sigma_B3"
+      type: friction
+      description: >
+        The output_schema format varies across registry methods. Some use
+        a structured format with required_fields array, others use a flat
+        key-value mapping. The validator had to handle both formats, making
+        the schema validation logic more complex than expected.
+      evidence: "packages/core/src/validate.ts:22-78"
+      severity: LOW
+      improvement_target: project_card
+    - step: "sigma_B3"
+      type: surprise
+      description: >
+        The sub-agent used the wrong commit message and included an
+        unrelated file (orchestrator-prompt-t1x-bugs.md). This shows
+        that sub-agents working in non-worktree isolation can pick up
+        unstaged changes from the working directory. The orchestrator
+        should consider using worktree isolation for implementation
+        sub-agents to avoid this.
+      evidence: "git log e023bd7"
+      severity: MEDIUM
+      improvement_target: project_card
+
+  card_feedback:
+    - rule_id: DR-04
+      verdict: helpful
+      note: >
+        Thin wrapper pattern made MCP handler implementation trivial again.
+        selectMethodology and validateStepOutput are pure core functions.
+    - rule_id: DR-09
+      verdict: helpful
+      note: >
+        Real YAML fixtures caught the output_schema format variation that
+        mocks would have hidden.
+
+  proposed_deltas:
+    - target: project_card
+      location: "role_notes.impl_sub_agent"
+      current: "Both require care but in different ways."
+      proposed: >
+        Both require care but in different ways. When committing, only
+        stage files directly related to the implementation task. Do not
+        commit unstaged changes from other work.
+      rationale: >
+        Sub-agent included unrelated files in commit because it staged
+        all changes rather than specific files.

@@ -1,0 +1,75 @@
+retrospective:
+  session_id: "T1X-BUG-47-20260314"
+  methodology: P2-SD
+  method: "M1-IMPL"
+  method_version: "3.1"
+  project_card_id: I1-T1X
+
+  hardest_decision:
+    step: "sigma_A2"
+    decision: "Which of three fix options for the TOCTOU race condition: atomic mutation (A), optimistic concurrency (B), or accept the window (C)"
+    outcome: "Chose A+B hybrid: remove route pre-check (atomic mutation) AND add SQL status guards (optimistic concurrency). This was the correct choice for a security-first system with INV-ESC-4 mandating audit correctness."
+    guidance_gap: false
+
+  observations:
+    - step: "sigma_A1"
+      type: surprise
+      description: "Investigation revealed TWO bugs, not one. Beyond the TOCTOU race, the SQL UPDATEs had no status guard — approve could overwrite a denied escalation, violating the state machine invariants. The GitHub issue only mentioned the race condition."
+      evidence: "EscalationRepo.scala:152-164 — UPDATE WHERE id = $id with no AND status = 'pending'"
+      severity: MEDIUM
+      improvement_target: project_card
+
+    - step: "sigma_B2"
+      type: friction
+      description: "Sub-agent produced code with Scala 3 significant-indentation errors. The if/else expression inside a for-comprehension required explicit braces to work. This is a known Scala 3 gotcha that the orchestrator had to fix post-merge."
+      evidence: "AccessEscalationManager.scala:377, EscalationAdminRoutes.scala:127 — 'else' at invalid indentation width"
+      severity: LOW
+      improvement_target: project_card
+
+    - step: "sigma_B1"
+      type: success
+      description: "Parallel dispatch worked well. Both bugs were fully disjoint (zero file overlap). Sub-agent B (#46 test) completed in ~54s while sub-agent A (#47 race fix) took ~448s. No merge conflicts."
+      evidence: "git merge output: 0 conflicts for both branches"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_A2"
+      type: gap
+      description: "The return type change from F[Unit] to F[Boolean] on EscalationRepo and AccessEscalationManager required updating 9 files including callers in DocumentClassificationService, EscalationTerminationScheduler, Main.scala, and ManagerEscalationRoute. The blast radius of a trait change was underestimated in initial scoping."
+      evidence: "git diff --stat: 9 files changed, 259 insertions(+), 205 deletions(-)"
+      severity: MEDIUM
+      improvement_target: abstract_method
+
+  card_feedback:
+    - rule_id: DR-01
+      verdict: unhelpful
+      note: "DR-01 mandates Metals MCP for Scala navigation. Metals was not connected in this session. For a bug fix targeting specific known files, grep/glob was sufficient. DR-01 is designed for exploration-heavy feature work, not surgical bug fixes."
+
+    - rule_id: DR-02
+      verdict: unhelpful
+      note: "DR-02 requires a Metals orientation gate before writing code. For this bug fix, the orchestrator's manual code review of 4 files provided full context. Metals would have added latency without value."
+
+    - rule_id: DR-09
+      verdict: helpful
+      note: "DR-09 (authenticate -> checkAuthorization -> domain logic) was useful as a checklist item. The fix preserved the auth-first pattern — permAuth.requirePermission is still the first call in each handler."
+
+    - rule_id: DR-14
+      verdict: helpful
+      note: "DR-14 (impl self-review gate) caught the Scala 3 indentation issue. The compilation step in the orchestrator's validation phase (Step 2) identified the problem before it reached the repo. However, the sub-agent should have caught this — it was instructed to verify compilation."
+
+    - rule_id: DR-19
+      verdict: helpful
+      note: "DR-19 (no destructive git operations) was followed. Used fast-forward merge and clean branch strategy throughout."
+
+  proposed_deltas:
+    - target: project_card
+      location: "DR-01 / DR-02"
+      current: "Metals MCP mandatory for Scala navigation. Metals orientation gate before writing code."
+      proposed: "Metals MCP recommended for Scala navigation in feature work. For targeted bug fixes with known file scope, grep/glob is acceptable. Metals orientation gate required for feature implementation; optional for bug fixes with <5 files."
+      rationale: "Bug fixes often target a small, known set of files. Mandating Metals adds setup friction without proportional value. The rules were designed for feature implementation, not surgical fixes."
+
+    - target: project_card
+      location: "New rule"
+      current: "No Scala 3 indentation guidance"
+      proposed: "DR-21: Scala 3 significant indentation — always wrap if/else expressions in braces when they appear as the RHS of a for-comprehension binding (e.g., _ <- { if cond then ... else ... }). Bare if/else causes indentation parser errors."
+      rationale: "This is a recurring Scala 3 gotcha that caused a compilation failure post-merge. A card rule prevents it."

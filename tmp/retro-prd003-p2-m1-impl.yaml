@@ -1,0 +1,58 @@
+retrospective:
+  session_id: "prd003-p2-m1-impl"
+  methodology: P2-SD
+  method: M1-IMPL
+  method_version: "3.1"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "sigma_B1"
+    decision: >
+      How to structure the parser tests given that pty-session and pool
+      require a running Claude Code installation to test. The PRD's SC-4
+      ("bridge can spawn 3 concurrent sessions") can't be validated in
+      a CI-like environment.
+    outcome: >
+      Focused test effort on the parser (pure function, 15 tests).
+      Deferred integration testing to Phase 5 where an actual Claude
+      installation will be available. This is pragmatic but means the
+      PTY session management and pool logic are untested until then.
+    guidance_gap: true
+
+  observations:
+    - step: "sigma_B3"
+      type: success
+      description: >
+        The PRD's Component 2 section was detailed enough to serve as
+        both architecture spec and implementation guide. The architecture
+        doc (bridge.md) added value primarily for type definitions and
+        error handling patterns, but the PRD carried most of the load.
+        This suggests well-written PRDs can reduce the need for separate
+        M6-ARFN runs on greenfield packages.
+      evidence: "docs/prds/003-dispatch.md:132-241"
+      severity: LOW
+      improvement_target: unclear
+    - step: "sigma_B3"
+      type: friction
+      description: >
+        node-pty is a native dependency that requires compilation. While
+        it worked on this Windows system, it adds CI/CD complexity and
+        may fail on systems without build tools. The PRD notes "prebuilt
+        binaries, no compilation needed" but this is not always true.
+      evidence: "packages/bridge/package.json"
+      severity: LOW
+      improvement_target: project_card
+
+  card_feedback:
+    - rule_id: DR-03
+      verdict: helpful
+      note: >
+        Clear separation: bridge has transport deps, core does not.
+        No confusion about where fastify/node-pty belong.
+    - rule_id: DR-12
+      verdict: helpful
+      note: >
+        Created bridge.md as a separate concern file. Pattern scales
+        well to new packages.
+
+  proposed_deltas: []
