@@ -7,7 +7,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
-  createSession,
+  createSessionManager,
   listMethodologies,
   loadMethodology,
   lookupTheory,
@@ -18,18 +18,32 @@ const ROOT = process.env.METHOD_ROOT ?? process.cwd();
 const REGISTRY = resolve(ROOT, "registry");
 const THEORY = resolve(ROOT, "theory");
 
-// Session singleton
-const session = createSession();
+// Session manager — isolates state by session_id
+const sessions = createSessionManager();
 
 // Input schemas
 const loadInput = z.object({
   methodology_id: z.string().describe("Methodology ID (e.g., P0-META)"),
   method_id: z.string().describe("Method ID (e.g., M1-MDES)"),
+  session_id: z.string().optional().describe("Session ID for multi-agent isolation"),
+});
+
+const sessionInput = z.object({
+  session_id: z.string().optional().describe("Session ID for multi-agent isolation"),
 });
 
 const theoryInput = z.object({
   term: z.string().describe("Term or concept to search for"),
+  session_id: z.string().optional().describe("Session ID for multi-agent isolation"),
 });
+
+// session_id property shared across all tool input schemas
+const sessionIdProperty = {
+  session_id: {
+    type: "string",
+    description: "Session ID for multi-agent isolation. Omit for default shared session.",
+  },
+};
 
 // Server
 const server = new Server(
@@ -43,7 +57,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: "methodology_list",
       description:
         "List all available methodologies and methods in the registry with their descriptions.",
-      inputSchema: { type: "object" as const, properties: {} },
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          ...sessionIdProperty,
+        },
+      },
     },
     {
       name: "methodology_load",
@@ -60,6 +79,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "Method ID (e.g., M1-MDES)",
           },
+          ...sessionIdProperty,
         },
         required: ["methodology_id", "method_id"],
       },
@@ -68,19 +88,34 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: "methodology_status",
       description:
         "Show what method is loaded, the current step, and progress.",
-      inputSchema: { type: "object" as const, properties: {} },
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          ...sessionIdProperty,
+        },
+      },
     },
     {
       name: "step_current",
       description:
         "Get the full record for the current step: guidance, preconditions, output schema.",
-      inputSchema: { type: "object" as const, properties: {} },
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          ...sessionIdProperty,
+        },
+      },
     },
     {
       name: "step_advance",
       description:
         "Mark the current step complete and advance to the next step.",
-      inputSchema: { type: "object" as const, properties: {} },
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          ...sessionIdProperty,
+        },
+      },
     },
     {
       name: "theory_lookup",
@@ -93,6 +128,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "Term or concept to search for",
           },
+          ...sessionIdProperty,
         },
         required: ["term"],
       },
@@ -119,7 +155,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "methodology_load": {
-        const { methodology_id, method_id } = loadInput.parse(args);
+        const { methodology_id, method_id, session_id } = loadInput.parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
         const method = loadMethodology(REGISTRY, methodology_id, method_id);
         session.load(method);
         const response = {
@@ -135,16 +172,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "methodology_status": {
+        const { session_id } = sessionInput.parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
         const st = session.status();
         return ok(JSON.stringify(st, null, 2));
       }
 
       case "step_current": {
+        const { session_id } = sessionInput.parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
         const step = session.current();
         return ok(JSON.stringify(step, null, 2));
       }
 
       case "step_advance": {
+        const { session_id } = sessionInput.parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
         const result = session.advance();
         return ok(JSON.stringify(result, null, 2));
       }
