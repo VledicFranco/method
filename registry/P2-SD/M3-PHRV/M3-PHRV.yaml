@@ -90,7 +90,7 @@ domain_theory:
       description: "The phase artifacts conform to the architecture document"
     - name: finding_cited
       signature: "Finding -> Bool"
-      description: "The finding has a specific file:line citation"
+      description: "The finding has a specific citation: file:line for source code, file:key-path for YAML/config"
     - name: report_complete
       signature: "ReviewReport -> Bool"
       description: "The report covers all acceptance criteria and architecture checks"
@@ -98,7 +98,13 @@ domain_theory:
     - id: Ax-1
       name: Finding citation required
       statement: "forall f : Finding. finding_cited(f)"
-      rationale: "Every finding must have a specific file:line citation. Uncited findings are opinions, not review results."
+      rationale: >
+        Every finding must have a specific citation. For source code review: file:line
+        citation. For YAML/config review: file:key-path citation (e.g.,
+        M7-PRDS.yaml -> domain_theory -> axioms -> Ax-5 -> statement). For mixed
+        reviews: use whichever form is more stable and useful for the artifact type.
+        Uncited findings are opinions, not review results.
+      evolution_source: "retro-review-P2-SD.yaml — MEDIUM friction: file:line citations awkward for YAML review, key-path is more stable"
     - id: Ax-2
       name: Criterion traceability
       statement: "forall ac : AcceptanceCriterion. criterion_met(ac) OR exists f : Finding. criterion_gap(ac, f)"

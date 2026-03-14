@@ -4,19 +4,81 @@ evolution_ledger:
   protocol: RETRO-PROTO
   protocol_stage: trial
   created: "2026-03-14"
+  last_updated: "2026-03-14"
 
   summary:
-    total_retrospectives_processed: 0
-    total_gap_candidates: 0
-    total_evolutions: 0
-    total_card_revisions: 0
+    total_retrospectives_processed: 11
+    total_gap_candidates: 4
+    total_evolutions: 2
+    total_card_revisions: 4
 
-  gap_candidates: []
+  gap_candidates:
+    - gap_id: "GC-P2SD-001"
+      target: "M1-IMPL sigma_B3"
+      status: open
+      observation_count: 3
+      first_observed: "2026-03-14"
+      sessions: ["PRD002-IMPL", "prd003-p1-m1-impl", "prd003-p3-m1-impl"]
+      projects: ["pv-method"]
+      summary: "sigma_B3 stretched across multi-task phases with internal parallelism not modeled by step DAG"
 
-  evolution_history: []
+    - gap_id: "GC-P2SD-002"
+      target: "M3-PHRV Ax-1 citation format"
+      status: resolved
+      observation_count: 2
+      first_observed: "2026-03-14"
+      sessions: ["review-P2-SD-20260314", "prd003-p1-m1-impl"]
+      projects: ["pv-method"]
+      summary: "file:line citations awkward for YAML review — generalized to file:line OR file:key-path"
+      resolution: "EVO-P2SD-001"
+
+    - gap_id: "GC-P2SD-003"
+      target: "I1-T1X DR-01/DR-02 Metals mandate"
+      status: resolved
+      observation_count: 3
+      first_observed: "2026-03-14"
+      sessions: ["T1X-VALGAPS-20260314", "T1X-BUG-47-20260314", "T1X-BUG-46-20260314"]
+      projects: ["t1-cortex"]
+      summary: "Metals mandatory adds friction for targeted bug fixes with known file scope"
+      resolution: "Card revision — DR-01/02 scoped: mandatory for features, recommended for bugs"
+
+    - gap_id: "GC-P2SD-004"
+      target: "P1-EXEC M1-COUNCIL proportionality"
+      status: open
+      observation_count: 2
+      first_observed: "2026-03-14"
+      sessions: ["PRD002-IMPL-20260314", "T1X-VALGAPS-20260314"]
+      projects: ["pv-method", "t1-cortex"]
+      summary: "No guidance on when M1-COUNCIL overhead is proportionate vs M3-TMP suffices"
+
+  evolution_history:
+    - evolution_id: "EVO-P2SD-001"
+      gap_id: "GC-P2SD-002"
+      type: "abstract_method"
+      method: "M3-PHRV"
+      from_version: "1.0"
+      to_version: "1.0 (Ax-1 rationale updated)"
+      change_summary: "Generalized Ax-1 citation requirement: file:line for source code, file:key-path for YAML/config. Finding predicate description updated."
+      date: "2026-03-14"
+      pre_evolution_observation_rate: "1 in 2 PHRV sessions"
+      post_evolution_observation_rate: "pending (next PHRV session will validate)"
+      validated: false
+      note: "SELF-REFERENTIAL TEST: this evolution was triggered by the Retrospective Protocol processing its own feedback. M3-PHRV (abstract method) improved from retro evidence collected through RETRO-PROTO."
+
+    - evolution_id: "EVO-P2SD-CARD-001"
+      gap_id: "GC-P2SD-003"
+      type: "project_card"
+      card: "I1-T1X"
+      change_summary: "DR-01/02 scoped (features mandatory, bugs recommended), DR-03 scoped to Scala, DR-04 trivial disjointness escape, DR-21 added (Scala 3 indentation)"
+      date: "2026-03-14"
+      pre_evolution_observation_rate: "3 in 3 T1X sessions"
+      post_evolution_observation_rate: "pending"
+      validated: false
 
   regression_flags: []
 
-  observation_counts: {}
-  # Populated as retrospectives are processed. Format:
-  # {method}.{step}: { HIGH: N, MEDIUM: N, LOW: N, total_sessions: N }
+  observation_counts:
+    M1-IMPL.sigma_B3: { HIGH: 0, MEDIUM: 3, LOW: 2, total_sessions: 5 }
+    M3-PHRV.sigma_1: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 2 }
+    M6-ARFN.architecture_spec: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 1 }
+    M1-MDES.sigma_4: { HIGH: 0, MEDIUM: 1, LOW: 0, total_sessions: 1 }

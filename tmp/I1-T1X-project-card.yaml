@@ -1,0 +1,293 @@
+# Method Instance Card — t1-cortex
+# This is the Layer 1 input to M4-MINS. A project author writes this.
+# The instance (Layer 2) is derived from this card + P2-SD v2.0.
+
+project_card:
+  id: I1-T1X
+  project: t1-cortex
+  description: >
+    MCP-native AI governance gateway for enterprise Claude deployments.
+    Scala 3 codebase, sbt build, PostgreSQL + OpenSearch backends.
+    Four-domain architecture: Identity, Authorization, Knowledge, Audit.
+  methodology: P2-SD
+  methodology_version: "2.0"
+
+  context:
+    language: "Scala 3"
+    package_root: "com.t1.cortex"
+    build_command: "./scripts/sbt-safe.sh compile"
+    test_command: "./scripts/sbt-safe.sh test"
+    test_scoped_command: "./scripts/sbt-safe.sh \"testOnly {package}.*\""
+    lint_command: "scalafmt --check"
+    language_server: "Metals"
+    language_server_protocol: "MCP"
+    additional_tools:
+      - name: "compile-module"
+        purpose: "Fast inline Scala compilation via Metals (zero subprocess, zero orphan risk)"
+        protocol: MCP
+        module: root
+      - name: "organon verify"
+        purpose: "Domain invariant validator against ETHOS.md invariants"
+        protocol: CLI
+    platform_notes:
+      - "Windows environment: never call sbt or sbt --client directly — orphaned JVM processes accumulate"
+      - "Always use ./scripts/sbt-safe.sh which traps SIGTERM/SIGINT/SIGHUP and kills sbt child"
+
+  architecture:
+    docs_root: "docs/"
+    architecture_path: "docs/architecture/"
+    prd_path: "docs/prds/"
+    gaps_path: "docs/architecture/gaps.md"
+    implementation_path: "docs/implementation/"
+    session_log_path: "sessions/"
+    organon_path: "organon/"
+    invariants_path: "organon/ETHOS.md"
+    domain_invariants_pattern: "organon/domains/*/ETHOS.md"
+    rfcs_path: "docs/rfcs/"
+
+  source_layout:
+    main: "src/main/scala/com/t1/cortex/"
+    test: "src/test/"
+    phase_docs: "docs/implementation/phase-*.md"
+    session_naming: "sessions/session-NNN-<slug>.md"
+
+  delivery_rules:
+    # --- Tool protocol rules ---
+    - id: DR-01
+      rule: >
+        Scala symbol navigation MUST use Metals MCP tools (typed-glob-search,
+        get-usages, inspect, compile-file) for feature implementation and exploration
+        work. For targeted bug fixes with known file scope (<5 files), Metals is
+        recommended but not mandatory — grep/glob is acceptable when the file set is
+        fully known from the issue description. Metals-derived facts are ground truth;
+        Read-derived findings must be marked [Read-derived: unconfirmed].
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent, qa_sub_agent, reviewer, drift_auditor, sec_arch_sub_agent]
+      protocol: metals_mcp_mandatory
+      evolution_source: "retro-t1x-bug-47, retro-t1x-bug-46, retro-t1x-valgaps — Metals adds friction for small/known-scope work"
+
+    - id: DR-02
+      rule: >
+        Before writing ANY code in feature implementation, run Metals orientation gate:
+        typed-glob-search for every type to create/reference/modify, get-usages for
+        every method signature that will change (including indirect callers). For
+        targeted bug fixes with <5 known files, the orientation gate is optional —
+        the orchestrator's manual code review of the affected files is sufficient.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+      protocol: metals_orientation_gate
+      evolution_source: "retro-t1x-bug-47, retro-t1x-bug-46 — orientation gate adds latency without value for surgical fixes"
+
+    # --- Pre-dispatch rules ---
+    - id: DR-03
+      rule: >
+        Source Verification Worksheet required before dispatch plan for tasks touching
+        Scala source files. Four steps: (1) typed-glob-search for every symbol,
+        (2) derive symbol list (methods, classes, traits, constructors, config keys),
+        (3) verify against current source (actual name, package, signature), (4) write
+        plan only after verification complete. Non-Scala tasks (scripts, config, docs)
+        are exempt — there are no symbols to verify.
+      applies_to: [M2-DIMPL]
+      affects_roles: [orchestrator]
+      artifact: source_verification_worksheet
+      protocol: pre_dispatch_verification
+      evolution_source: "retro-t1x-valgaps — overly restrictive for non-Scala tasks (P5.1 shell script, P6.1 build.sbt)"
+
+    - id: DR-04
+      rule: >
+        Pre-dispatch plan verifier (R9-PDVF) dispatched BEFORE Batch 1 when tasks
+        share modules or have non-obvious file dependencies. Checks: parallel
+        file-scope disjointness, Main.scala ownership, "What Already Exists"
+        coverage, actual file state vs plan assumptions, dependency order, AC coverage,
+        source verification worksheet presence. Returns PLAN: SAFE | CONFLICT.
+        Trivially disjoint tasks (different modules, different file types, e.g., shell
+        script + build.sbt + Scala in separate module) may skip R9-PDVF with
+        orchestrator justification recorded in the session log.
+      applies_to: [M2-DIMPL]
+      affects_roles: [orchestrator]
+      protocol: pre_dispatch_plan_verification
+      evolution_source: "retro-t1x-valgaps — overly restrictive for trivially disjoint tasks"
+
+    # --- QA protocol rules ---
+    - id: DR-05
+      rule: >
+        QA review must follow structural dissent protocol: form own assessment BEFORE
+        reading impl agent's self-review findings. Assume implementation has >= 2
+        significant problems and >= 1 better approach exists. Post DISSENT ANALYSIS
+        before running checklist.
+      applies_to: [M2-DIMPL, M3-PHRV]
+      affects_roles: [qa_sub_agent, reviewer]
+      protocol: structural_dissent
+
+    - id: DR-06
+      rule: >
+        QA checklist (9 items): (1) error paths use typed exceptions/Left, (2) auth
+        invariant authenticate->checkAuthorization->domain, (3) shared validation
+        replication, (4) single timestamp propagation, (5) external API post-conditions,
+        (6) dead code detection, (7) serialization completeness (every field write+read),
+        (8) superseded impl handling, (9) AC test coverage.
+      applies_to: [M2-DIMPL]
+      affects_roles: [qa_sub_agent]
+
+    - id: DR-07
+      rule: >
+        Test coverage audit (R8-TCAG) runs in parallel with QA. Checks: happy-path
+        coverage, failure-path coverage, serialization round-trip, mock permissiveness,
+        authorization test completeness, deprecated path testing.
+      applies_to: [M2-DIMPL]
+      affects_roles: [qa_sub_agent]
+      protocol: test_coverage_audit
+
+    # --- Security rules ---
+    - id: DR-08
+      rule: >
+        Security review (Gate B) scopes FULL MCP handler surface, not just files
+        changed in current phase. Security bypasses accumulate across phases — sweep
+        every handler every phase. Structural stance: assume something is wrong.
+      applies_to: [M2-DIMPL]
+      affects_roles: [sec_arch_sub_agent]
+      protocol: full_surface_security
+
+    - id: DR-09
+      rule: >
+        Security chain: authenticate -> checkAuthorization -> domain logic for EVERY
+        handler. Layer enforcement: security guards in DOMAIN SERVICE, not only route
+        handler. Test: "If I call service.method(args) directly, bypassing route
+        handler, does invariant still hold?"
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent, sec_arch_sub_agent]
+
+    - id: DR-10
+      rule: >
+        Security filter placement: at SQL layer (WHERE classification >= $clearance),
+        not application-layer post-query filter. Verify for all query methods.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent, sec_arch_sub_agent]
+
+    # --- Code quality rules ---
+    - id: DR-11
+      rule: >
+        Scala catch blocks must name specific exception type. Never use
+        case _ => or case _: Throwable =>. Use e.g. case _: java.security.GeneralSecurityException =>.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    - id: DR-12
+      rule: >
+        Layer-boundary naming: distinct names for domain vs infra types. Do not use
+        the same name (e.g., "Unavailable") in both domain and infrastructure layers.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    - id: DR-13
+      rule: >
+        Wide migration rule: if task scope > 5 files or > 1 package, decompose into
+        sub-tasks by package (e.g., authorization.*, knowledge.*, e2e.*). Record
+        breakdown in session file before starting.
+      applies_to: [M1-IMPL]
+      affects_roles: [impl_sub_agent]
+      trigger: "file_count > 5 OR package_count > 1"
+
+    # --- Impl self-review ---
+    - id: DR-14
+      rule: >
+        Impl self-review gate (9 checks before returning result): (a) new handler
+        has auth layer, (b) error paths surface correctly, (c) external API post-conditions,
+        (d) validation parity with siblings, (e) dead code, (f) unhappy paths named for
+        each new method, (g) superseded impl handled, (h) literal-change comment accuracy,
+        (i) layer-enforcement check.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+      protocol: impl_self_review
+
+    # --- Governance rules ---
+    - id: DR-15
+      rule: "Drift audit runs every 3 phases"
+      applies_to: [M4-DDAG]
+      trigger: "phase_count % 3 == 0"
+
+    - id: DR-16
+      rule: >
+        Orchestrator mode is the DEFAULT for all multi-task phases. Single-agent
+        mode (R1-IMPL) reserved for trivial hotfixes only.
+      applies_to: [M2-DIMPL, M1-IMPL]
+      affects_roles: [orchestrator]
+
+    - id: DR-17
+      rule: >
+        Session log ownership: ONLY orchestrator writes to sessions/ directory.
+        Sub-agents return results; orchestrator assembles the session record.
+      applies_to: [M2-DIMPL]
+      affects_roles: [orchestrator, impl_sub_agent]
+
+    - id: DR-18
+      rule: >
+        Carry-forward phase docs (.cN) created when deferred items remain after Gate D.
+        Naming: phase-[current]-c1. Mandatory "What This Phase Does NOT Fix" table
+        with Rationale column.
+      applies_to: [M2-DIMPL]
+      affects_roles: [orchestrator]
+      artifact: carry_forward_phase_doc
+
+    - id: DR-19
+      rule: >
+        Never run destructive git operations (git restore, git reset --hard,
+        git checkout -- .). Working-tree changes may represent multi-session
+        in-progress work.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+
+    # --- Drift audit specifics ---
+    - id: DR-20
+      rule: >
+        Drift audit checklist (7 items): (1) four-domain sequential flow, (2) security
+        filter placement at SQL layer, (3) authorization completeness for every handler,
+        (4) audit event completeness to PostgreSQL, (5) constraint system coherence
+        (Constraint 9-case vs AccessConstraint 4-case), (6) no undocumented parallel
+        implementations, (7) phase completion accuracy (sample 2-3 AC criteria).
+      applies_to: [M4-DDAG]
+      affects_roles: [drift_auditor]
+
+    # --- Scala 3 specifics ---
+    - id: DR-21
+      rule: >
+        Scala 3 significant indentation: always wrap if/else expressions in braces
+        when they appear as the RHS of a for-comprehension binding (e.g.,
+        _ <- { if cond then ... else ... }). Bare if/else inside for-comprehensions
+        causes indentation parser errors that only surface at compilation, not in the
+        editor. This is a known Scala 3 gotcha.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+      evolution_source: "retro-t1x-bug-47 — post-merge compilation failure from bare if/else in for-comprehension"
+
+  role_notes:
+    orchestrator:
+      default_mode: true
+      note: >
+        Orchestrator mode is default for all multi-task phases. Source Verification
+        Worksheet required before dispatch. Pre-existing gap pre-population from
+        docs/architecture/gaps.md. R6-AXSA retired (v2.3) — R10-SCAG is sole Gate B agent.
+    reviewer:
+      note: >
+        Structural dissent protocol: form independent assessment from source before
+        reading any acceptance criteria claims. Every finding must cite file:line.
+        Read-derived findings marked [Read-derived: unconfirmed] until Metals confirms.
+    impl_sub_agent:
+      note: >
+        Metals MCP mandatory for all symbol navigation. Use compile-module for fast
+        inline diagnostics. Use sbt-safe.sh for tests (never bare sbt). Self-review
+        gate (9 checks) required before returning result.
+    qa_sub_agent:
+      note: >
+        Structural dissent protocol: assess BEFORE reading self-review. 9-item
+        checklist. Test coverage audit (R8-TCAG items) runs in parallel.
+    sec_arch_sub_agent:
+      note: >
+        Full MCP handler surface scope every phase. Security checklist (6 checks) +
+        architecture alignment (4 questions). Handler surface reporting mandatory —
+        every handler listed as COMPLIANT or finding.
+    drift_auditor:
+      note: >
+        7-item t1-cortex-specific checklist. Pre-triage filter: check if finding
+        already resolved in post-snapshot sessions. Citation format:
+        [SEVERITY] — [arch-doc:section] → [impl-file:line]
