@@ -5,6 +5,7 @@ dist/
 # impl plans are volatile scratch — only the README is tracked
 docs/impl/*
 !docs/impl/README.md
+!docs/impl/prompt-*.md
 
 # volatile artifacts
 tmp/*
