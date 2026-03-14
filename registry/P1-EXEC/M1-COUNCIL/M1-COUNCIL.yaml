@@ -66,6 +66,9 @@ domain_theory:
     - name: Character
       cardinality: "finite, k + 1"
       description: "A synthetic expert agent instantiated from a CharacterCard"
+    - name: Council
+      cardinality: singleton_per_execution
+      description: "The active ensemble: a Leader plus k Contrarians operating on a Challenge"
     - name: Position
       cardinality: unbounded
       description: "A character's stance on a Question — evolves during debate"
@@ -671,7 +674,8 @@ objective:
       AND (exists c : Character. exists q : Question. position_updated(c, q))
       AND (exists a : Artifact. a in s)
       AND (forall c : Character, q : Question. position_updated(c, q) ->
-           exists t : Turn. speaker(t) != c AND topic(t) = q AND responds_to(t_update, t))
+           exists t_counter : Turn, t_update : Turn. speaker(t_counter) != c AND topic(t_counter) = q
+           AND speaker(t_update) = c AND responds_to(t_update, t_counter))
   type: terminal
   expressible_claim: >
     O_COUNCIL references decided (predicate over Question), position_updated (predicate
@@ -773,7 +777,7 @@ compilation_record:
     - gate: G1
       result: PASS
       note: >
-        D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 9 sorts with cardinality, 3 function symbols
+        D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 10 sorts with cardinality, 3 function symbols
         with totality, 16 predicates with typed signatures referencing declared sorts
         (v1.1 fix: added decision_issued_by, specific_question, precedes, sigma_2_terminates;
         fixed diminishing_returns signature from State to Council), 7 closed axioms with

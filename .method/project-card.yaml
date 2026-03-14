@@ -80,9 +80,13 @@ project_card:
       rule: >
         MCP package (@method/mcp) is a thin wrapper over core. MCP tool handlers
         should be minimal: parse input, call core function, format output. Business
-        logic in MCP handlers is a violation — move it to core.
+        logic in MCP handlers is a violation — move it to core. Boundary: response
+        envelope construction from core return types is formatting (acceptable in
+        MCP). Conditional logic, state mutation, or decisions that change behavior
+        based on input content are business logic (must be in core).
       applies_to: [M1-IMPL, M2-DIMPL]
       affects_roles: [impl_sub_agent]
+      evolution_source: "retro-prd002-impl.yaml — D-12/D-13 gap, formatting/logic boundary ambiguous"
 
     # --- YAML handling ---
     - id: DR-05
