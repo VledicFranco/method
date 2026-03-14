@@ -62,3 +62,48 @@ export type TheoryResult = {
   label?: string;
   content: string;
 };
+
+export type RoutingPredicate = {
+  name: string;
+  description: string | null;
+  trueWhen: string | null;
+  falseWhen: string | null;
+};
+
+export type RoutingArm = {
+  priority: number;
+  label: string;
+  condition: string;
+  selects: string | null;  // method ID extracted from "Some(M7-PRDS)"; null for "None"
+  rationale: string | null;
+};
+
+export type RoutingInfo = {
+  methodologyId: string;
+  name: string;
+  predicates: RoutingPredicate[];
+  arms: RoutingArm[];
+  evaluationOrder: string;
+};
+
+export type PriorStepOutput = {
+  stepId: string;
+  summary: string;
+};
+
+export type StepContext = {
+  methodology: {
+    id: string;
+    name: string;
+    progress: string;  // e.g., "3 / 7"
+  };
+  method: {
+    id: string;
+    name: string;
+    objective: string | null;
+  };
+  step: Step;
+  stepIndex: number;
+  totalSteps: number;
+  priorStepOutputs: PriorStepOutput[];
+};

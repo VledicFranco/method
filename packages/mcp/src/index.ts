@@ -10,6 +10,7 @@ import {
   createSessionManager,
   listMethodologies,
   loadMethodology,
+  getMethodologyRouting,
   lookupTheory,
 } from "@method/core";
 
@@ -133,6 +134,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["term"],
       },
     },
+    {
+      name: "methodology_get_routing",
+      description:
+        "Get the transition function and routing predicates for a methodology. Returns the conditions an agent evaluates to select the right method.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          methodology_id: {
+            type: "string",
+            description: "Methodology ID (e.g., P2-SD)",
+          },
+          ...sessionIdProperty,
+        },
+        required: ["methodology_id"],
+      },
+    },
+    {
+      name: "step_context",
+      description:
+        "Get enriched context for the current step — methodology, method, step details, and prior outputs. Designed for prompt composition.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          ...sessionIdProperty,
+        },
+      },
+    },
   ],
 }));
 
@@ -199,6 +227,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return err(`No matches found for "${term}"`);
         }
         return ok(JSON.stringify(results, null, 2));
+      }
+
+      case "methodology_get_routing": {
+        const { methodology_id } = z.object({
+          methodology_id: z.string(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const result = getMethodologyRouting(REGISTRY, methodology_id);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "step_context": {
+        const { session_id } = sessionInput.parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
+        const ctx = session.context();
+        return ok(JSON.stringify(ctx, null, 2));
       }
 
       default:

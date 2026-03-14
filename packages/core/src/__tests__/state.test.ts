@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resolve } from 'path';
 import { loadMethodology, createSession, createSessionManager } from '../index.js';
-import type { AdvanceResult, CurrentStepResult } from '../index.js';
+import type { AdvanceResult, CurrentStepResult, StepContext } from '../index.js';
 
 const REGISTRY = resolve(import.meta.dirname, '..', '..', '..', '..', 'registry');
 
@@ -181,5 +181,77 @@ describe('P3 — Default session', () => {
     // Verify it's different from a named session
     const namedSession = mgr.getOrCreate('named');
     assert.notStrictEqual(defaultSession, namedSession);
+  });
+});
+
+// ---------- PRD 003 — Step Context ----------
+
+describe('PRD 003 — context()', () => {
+  it('returns StepContext with all fields', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    const ctx: StepContext = session.context();
+
+    // methodology block
+    assert.equal(ctx.methodology.id, 'P0-META');
+    assert.ok(typeof ctx.methodology.name === 'string');
+    assert.ok(typeof ctx.methodology.progress === 'string');
+
+    // method block
+    assert.equal(ctx.method.id, 'M1-MDES');
+    assert.ok(typeof ctx.method.name === 'string');
+    assert.ok('objective' in ctx.method);
+
+    // step
+    assert.equal(ctx.step.id, 'sigma_0');
+    assert.equal(ctx.step.name, 'Orientation');
+
+    // position
+    assert.equal(ctx.stepIndex, 0);
+    assert.equal(ctx.totalSteps, 7);
+
+    // priorStepOutputs
+    assert.ok(Array.isArray(ctx.priorStepOutputs));
+  });
+
+  it('progress string is correct at start', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    const ctx = session.context();
+    assert.equal(ctx.methodology.progress, '1 / 7');
+  });
+
+  it('priorStepOutputs is empty array in Phase 1', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    const ctx = session.context();
+    assert.deepStrictEqual(ctx.priorStepOutputs, []);
+  });
+
+  it('throws when no method loaded', () => {
+    const session = createSession();
+    assert.throws(
+      () => session.context(),
+      { message: 'No methodology loaded' },
+    );
+  });
+
+  it('updates after advance', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    session.advance();
+    const ctx = session.context();
+
+    assert.equal(ctx.stepIndex, 1);
+    assert.equal(ctx.methodology.progress, '2 / 7');
+    assert.equal(ctx.step.id, 'sigma_1');
   });
 });

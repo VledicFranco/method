@@ -1,10 +1,11 @@
-import type { LoadedMethod, SessionStatus, AdvanceResult, CurrentStepResult } from './types.js';
+import type { LoadedMethod, SessionStatus, AdvanceResult, CurrentStepResult, StepContext } from './types.js';
 
 export type Session = {
   load(method: LoadedMethod): void;
   current(): CurrentStepResult;
   advance(): AdvanceResult;
   status(): SessionStatus;
+  context(): StepContext;
   isLoaded(): boolean;
 };
 
@@ -66,6 +67,31 @@ export function createSession(): Session {
         currentStepName: m.steps[currentIndex].name,
         stepIndex: currentIndex,
         totalSteps: m.steps.length,
+      };
+    },
+
+    context(): StepContext {
+      const m = assertLoaded();
+      return {
+        methodology: {
+          id: m.methodologyId,
+          // Phase 1 limitation: LoadedMethod only stores the method name, not
+          // the methodology name separately. Using method name for both until
+          // methodology-level metadata is added to LoadedMethod.
+          name: m.name,
+          progress: `${currentIndex + 1} / ${m.steps.length}`,
+        },
+        method: {
+          id: m.methodId,
+          name: m.name,
+          objective: m.objective,
+        },
+        step: m.steps[currentIndex],
+        stepIndex: currentIndex,
+        totalSteps: m.steps.length,
+        // Phase 1: empty array — session does not yet track step outputs.
+        // Phase 3's step_validate will add output recording.
+        priorStepOutputs: [],
       };
     },
 

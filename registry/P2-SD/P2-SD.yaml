@@ -169,21 +169,21 @@ roles:
       - "Execute delivery work directly (method's own roles handle execution)"
       - "Modify the routing decision after the selected method has begun"
       - "Override the selected method's domain theory or step structure"
-  coverage_claim: >
-    pi_dispatcher is identity over Mod(D_Phi_SD) — all routing state visible.
-    No dimension of the routing domain is unobservable. The dispatcher sees
-    Challenge, TaskType classification, MethodID selection, and ExecutionResult.
-  authority_claim: >
-    The dispatcher holds authority over all delta_SD transitions: classification,
-    routing, dispatch, and result reception. No required routing transition is
-    unauthorized. The selected method's internal transitions are authorized by
-    the method's own roles, not by the dispatcher.
-  role_partition_rationale: >
-    One role because the methodology is a pure routing function. The dispatcher
-    classifies and dispatches — it does not execute. Adding a second role (e.g.,
-    a separate classifier) would split classification from dispatch, but both
-    require the same state visibility and produce no epistemic benefit. One role
-    is minimal for a routing methodology.
+    coverage_claim: >
+      pi_dispatcher is identity over Mod(D_Phi_SD) — all routing state visible.
+      No dimension of the routing domain is unobservable. The dispatcher sees
+      Challenge, TaskType classification, MethodID selection, and ExecutionResult.
+    authority_claim: >
+      The dispatcher holds authority over all delta_SD transitions: classification,
+      routing, dispatch, and result reception. No required routing transition is
+      unauthorized. The selected method's internal transitions are authorized by
+      the method's own roles, not by the dispatcher.
+    role_partition_rationale: >
+      One role because the methodology is a pure routing function. The dispatcher
+      classifies and dispatches — it does not execute. Adding a second role (e.g.,
+      a separate classifier) would split classification from dispatch, but both
+      require the same state visibility and produce no epistemic benefit. One role
+      is minimal for a routing methodology.
 
 predicate_operationalization:
   note: >
