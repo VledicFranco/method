@@ -1,0 +1,211 @@
+prototype:
+  name: "Execution Binding Prototype — M1-MDES"
+  description: >
+    Demonstrates execution_binding applied to P0-META/M1-MDES (Method Design).
+    Each of M1-MDES's 7 steps is annotated with a default execution method,
+    override permission, and rationale. This is an analysis artifact — it does not
+    modify M1-MDES.yaml. If the binding spec is adopted, these annotations would be
+    added to M1-MDES's phases array.
+
+bindings:
+  - step: sigma_0
+    name: "Orientation"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: false
+      rationale: >
+        Sufficiency assessment is a single-agent evaluation of existing knowledge.
+        The designer reads the corpus and answers four questions. No adversarial
+        pressure needed — the questions have factual answers (can you name 3 entities?
+        can you name 2 invariants?). No parallelism applicable. Always M3-TMP.
+    analysis:
+      override_scenarios: "None identified. The sufficiency test is deterministic."
+      risk_of_wrong_binding: "Low. Misclassifying corpus sufficiency is a content error, not an execution mode error."
+
+  - step: sigma_1
+    name: "Domain Theory Crystallization"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: true
+      rationale: >
+        Most domain crystallizations are single-agent sequential work: enumerate sorts,
+        declare predicates, write axioms. Override to M1-COUNCIL when the domain has
+        contested ontologies — e.g., when multiple valid sort decompositions exist and
+        the designer must choose between them.
+    analysis:
+      override_scenarios:
+        - trigger: "multiple_defensible_positions = true on sort structure"
+          example: >
+            Designing a method for code review: should the primary sort be File, Function,
+            or ChangeSet? Each leads to a different domain theory. M1-COUNCIL would have
+            contrarians argue for each ontology.
+        - trigger: "problem_framing_uncertain = true on domain boundary"
+          example: >
+            Designing a method for incident response: the domain boundary (what's included
+            vs excluded) is genuinely contested. Include recovery? Include post-mortem?
+      risk_of_wrong_binding: >
+        Medium. Using M3-TMP on a contested domain produces a domain theory that reflects
+        the designer's bias without adversarial testing. The domain theory compiles but may
+        have blind spots — sorts or axioms that an opposing perspective would challenge.
+
+  - step: sigma_2
+    name: "Objective and Measure Declaration"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: true
+      rationale: >
+        Objective declaration is typically single-agent — the designer states what
+        success means. Override to M1-COUNCIL when the objective itself is contested:
+        should the method optimize for speed or correctness? thoroughness or efficiency?
+    analysis:
+      override_scenarios:
+        - trigger: "multiple_defensible_positions = true on objective type"
+          example: >
+            Designing a deployment method: is the objective "zero downtime" (terminal)
+            or "downtime below threshold" (threshold)? Contrarians could argue for each.
+      risk_of_wrong_binding: >
+        Medium. A poorly chosen objective propagates through the entire method — measures,
+        progress preorder, and termination all derive from it. M1-COUNCIL catch rate for
+        bad objectives is empirically higher (EXP-001c).
+
+  - step: sigma_3
+    name: "Role Design"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: true
+      rationale: >
+        Role design is usually single-agent — the designer partitions observation and
+        authority. Override to M1-COUNCIL when the role structure has genuine trade-offs:
+        should there be two roles or three? Should the auditor see the designer's context?
+    analysis:
+      override_scenarios:
+        - trigger: "multiple_defensible_positions = true on epistemic separation"
+          example: >
+            Designing a security audit method: should the auditor have access to the
+            developer's intent (context-rich but bias-prone) or only the artifact
+            (context-free but may miss design rationale)?
+      risk_of_wrong_binding: "Low-medium. Role structure errors are caught at G3 but may not surface until execution."
+
+  - step: sigma_4
+    name: "Step DAG Construction"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: true
+      rationale: >
+        Step DAG construction is the structural backbone. Default M3-TMP for
+        straightforward methods. Override to M1-COUNCIL when the DAG topology is
+        genuinely contested — should this step precede or follow that one? Should the
+        method be 3 steps or 5?
+    analysis:
+      override_scenarios:
+        - trigger: "multiple_defensible_positions = true on step ordering"
+          example: >
+            Designing an onboarding method: should role assignment (sigma_2) come before
+            or after environment setup (sigma_3)? Both orderings have defensible arguments.
+            M1-COUNCIL would surface the trade-offs.
+        - trigger: "criterion_3_fires = true on composability"
+          example: >
+            A step DAG with a weak composability edge (post_sigma_i ⊆ pre_sigma_{i+1} is
+            not obviously true). The contrarian challenge sub-step already exists in M1-MDES
+            but could benefit from actual adversarial pressure via M1-COUNCIL.
+      risk_of_wrong_binding: >
+        Medium-high. Step DAG errors are the most expensive to fix post-compilation — they
+        require reworking guidance, output_schemas, and composability claims. Adversarial
+        testing at this step has high ROI.
+
+  - step: sigma_5
+    name: "Guidance Adequacy Audit"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: false
+      rationale: >
+        Guidance adequacy is a structural coverage check: does the guidance text cover
+        all output_schema fields? This is a deterministic evaluation — the auditor reads
+        guidance and schema, checks coverage, marks ADEQUATE or INADEQUATE. No adversarial
+        benefit. No parallelism. Always M3-TMP.
+    analysis:
+      override_scenarios: "None identified. Guidance coverage is a structural check, not a judgment call."
+      risk_of_wrong_binding: "Low. Coverage checks are deterministic."
+
+  - step: sigma_6
+    name: "Compilation Check"
+    execution_binding:
+      default: M3-TMP
+      override_permitted: false
+      rationale: >
+        Gate evaluation is the compiler's job. The compiler reads the candidate and
+        evaluates G0-G6 against F1-FTH. This is a structured checklist with PASS/FAIL
+        outcomes. No adversarial benefit — the gates are defined, not debatable. No
+        parallelism applicable (gates are sequential, later gates depend on earlier).
+        Always M3-TMP.
+    analysis:
+      override_scenarios: "None identified. Gate criteria are defined by F1-FTH."
+      risk_of_wrong_binding: "Low. Compilation is deterministic."
+
+summary:
+  total_steps: 7
+  static_bindings: 3
+  override_permitted: 4
+  default_distribution:
+    M3-TMP: 7
+    M1-COUNCIL: 0
+    M2-ORCH: 0
+  override_distribution:
+    M1-COUNCIL: 4
+    M2-ORCH: 0
+    M3-TMP: 0
+
+analysis:
+  pattern_1_default_is_always_tmp:
+    observation: >
+      Every step defaults to M3-TMP. This makes sense: M1-MDES is a sequential
+      single-agent method. Each step is addressed by one designer in one pass.
+      The adversarial override fires only when the step's sub-challenge has genuine
+      value pluralism — which is a property of the challenge, not the method.
+    implication: >
+      For sequential single-agent methods, M3-TMP is the universal default. The
+      execution_binding field's value is in the override_permitted flag and rationale,
+      not in the default selection. The question "which steps might benefit from
+      M1-COUNCIL?" is the interesting design decision.
+
+  pattern_2_council_overrides_cluster_on_design_decisions:
+    observation: >
+      The four override-permitted steps (sigma_1 through sigma_4) are all design
+      decision steps — the designer makes choices about sorts, objectives, roles,
+      and step structure. The three static-binding steps (sigma_0, sigma_5, sigma_6)
+      are evaluation steps — the agent checks conditions, not makes choices.
+    implication: >
+      Execution binding override correlates with decision content, not complexity.
+      A complex evaluation step (sigma_6 has 7 gates) is still M3-TMP because it's
+      a checklist, not a decision. A simple design step (sigma_3 has one role to
+      design) may need M1-COUNCIL because the design has genuine alternatives.
+    heuristic: >
+      Rule of thumb for method designers setting execution_binding:
+      - Step produces a decision with alternatives → override_permitted: true
+      - Step evaluates a condition or checks a property → override_permitted: false
+
+  pattern_3_orch_never_fires:
+    observation: >
+      No step in M1-MDES benefits from M2-ORCH. This is because M1-MDES steps are
+      inherently sequential — each step depends on the previous step's output. You
+      cannot parallelize sigma_1 and sigma_2 because sigma_2 requires D from sigma_1.
+    implication: >
+      M2-ORCH override is relevant for methods with genuinely independent parallel
+      sub-steps — e.g., a testing method where test suites can run in parallel, or a
+      documentation method where chapters can be written concurrently. Sequential
+      methods never benefit from M2-ORCH.
+    counter_example: >
+      P2-SD's M1-IMPL DOES benefit from M2-ORCH — its sub-agent dispatch step is
+      explicitly an orchestration step. When M1-IMPL is updated with execution_binding,
+      the dispatch step would bind to M2-ORCH with override_permitted: false.
+
+  overall_assessment: >
+    The execution binding model works well for M1-MDES. Key findings:
+    (1) M3-TMP is the correct default for all steps in a sequential single-agent method.
+    (2) Override permission correlates with decision content, not step complexity.
+    (3) The rationale field is the most valuable part — it forces the designer to think
+    about when a step's execution mode matters.
+    (4) M2-ORCH override is irrelevant for sequential methods but important for methods
+    with parallel structure (P2-SD).
+    (5) The static/dynamic distinction (override_permitted true/false) maps cleanly to
+    the decision/evaluation distinction in step types.

@@ -1,0 +1,121 @@
+specification:
+  id: EXEC-BIND
+  name: "Execution Binding Specification"
+  parent: P1-EXEC
+  version: "0.1"
+  status: proposed
+  date: "2026-03-14"
+  description: >
+    Defines how method steps bind to P1-EXEC execution methods (M1-COUNCIL, M2-ORCH,
+    M3-TMP). Every method step must declare an execution_binding with a default method.
+    The executor may override at runtime by evaluating delta_EXEC on the step's
+    sub-challenge. Step output_schemas are invariant across execution methods.
+
+motivation:
+  problem: >
+    Every method step is executed by an agent, but the execution mode is currently
+    implicit. In practice, agents default to M3-TMP (orient-execute-verify) without
+    declaring it. This means: (1) steps that would benefit from adversarial debate
+    (M1-COUNCIL) or parallel dispatch (M2-ORCH) never get them, (2) method designers
+    can't communicate their intent about how a step should be executed, (3) the
+    execution mode is invisible to static analysis and compilation checks.
+  solution: >
+    Make execution binding explicit. Every step declares a default execution method.
+    The executor may override at runtime. The binding is a recommendation backed by
+    the designer's domain knowledge — not a constraint that prevents adaptation.
+
+schema:
+  field_name: execution_binding
+  required: true
+  location: "Each phase/step entry in a method's phases array"
+  format:
+    default:
+      type: enum
+      values: [M1-COUNCIL, M2-ORCH, M3-TMP]
+      required: true
+      description: "The designer's recommended execution method for this step"
+    override_permitted:
+      type: boolean
+      default: true
+      description: "Whether the executor may override the default via delta_EXEC evaluation"
+    rationale:
+      type: string
+      required: false
+      description: "Why this default was chosen — helps the executor decide whether to override"
+  example: |
+    - id: sigma_1
+      name: "Domain Theory Crystallization"
+      role: designer
+      execution_binding:
+        default: M3-TMP
+        override_permitted: true
+        rationale: >
+          Most domain crystallizations are single-agent sequential work. Override to
+          M1-COUNCIL when the domain has contested ontologies or stakeholder disagreement.
+
+design_decisions:
+  output_invariance:
+    claim: >
+      Execution method affects process quality and internal dynamics, not output type.
+      A domain theory produced by M3-TMP and one produced by M1-COUNCIL have the same
+      type signature — both are D = (Sigma, Ax). The step's output_schema does not
+      change based on execution method. This invariance is what makes the default +
+      override model compositionally sound: G4 composability checks remain valid
+      regardless of which execution method is used at runtime.
+    consequence: >
+      Step output_schemas must be defined at the abstraction level compatible with all
+      execution methods. Do not put execution-method-specific fields in step output_schemas.
+      If M1-COUNCIL produces minority_positions, that is M1-COUNCIL's internal output —
+      the step's output_schema captures only the domain-level result.
+
+  override_mechanism:
+    description: >
+      When the executor encounters a step with override_permitted = true, it evaluates
+      delta_EXEC's driving predicates against the step's sub-challenge:
+        sub_challenge = guidance(sigma_i) + pre(sigma_i) + context
+      If adversarial_pressure_beneficial(sub_challenge) = true → override to M1-COUNCIL.
+      If decomposable_before_execution(sub_challenge) = true → override to M2-ORCH.
+      Otherwise → use the declared default.
+    cost: >
+      Per-step delta_EXEC evaluation adds routing overhead. For methods with many steps,
+      this may be expensive. The override_permitted = false option exists for steps where
+      the designer is confident the default is always correct (e.g., a pure parsing step
+      that is always M3-TMP).
+
+  static_binding_case:
+    description: >
+      When override_permitted = false, the binding is static — the execution method is
+      fixed at design time. Use this for steps where:
+      - The step's structure makes only one execution method applicable
+      - The step is a leaf operation with no decision content (always M3-TMP)
+      - The method designer has strong evidence that runtime override adds no value
+    example: "Compilation check steps (M1-MDES sigma_6) are always M3-TMP — the compiler reads and evaluates, no debate needed."
+
+integration_with_methods:
+  p0_meta:
+    note: >
+      P0-META's methods (M1-MDES, M3-MEVO, etc.) can declare execution_binding per step.
+      Example: M1-MDES sigma_4 (Step DAG Construction) default M3-TMP with override to
+      M1-COUNCIL when the DAG has genuinely contested design alternatives.
+  p2_sd:
+    note: >
+      P2-SD's M1-IMPL sub-agents execute via P1-EXEC. Each sub-agent evaluates delta_EXEC
+      on its scoped sub-task. This creates compositional nesting:
+      P2-SD → M1-IMPL → sub-agent → P1-EXEC → M3-TMP/M1-COUNCIL/M2-ORCH.
+      M1-IMPL's orchestrator step (dispatch) should declare execution_binding: M2-ORCH
+      with override_permitted: false (orchestration is the step's purpose).
+  p1_exec_methods:
+    note: >
+      P1-EXEC's own sub-methods (M1-COUNCIL, M2-ORCH, M3-TMP) do not need execution_binding
+      on their steps — they ARE the execution methods. Execution binding applies to methods
+      that USE P1-EXEC methods, not to the execution methods themselves.
+
+compilation_gate_impact:
+  g4_check: >
+    G4 (Step DAG Composability) should verify that execution_binding is present for every
+    step. The binding does not affect composability verification — output_schemas are
+    invariant — but its presence is a structural completeness check.
+  g5_check: >
+    G5 (Guidance Adequacy) should verify that the execution_binding rationale is consistent
+    with the step's guidance. A step whose guidance says "evaluate multiple architectural
+    options" but binds to M3-TMP with override_permitted = false is a potential mismatch.
