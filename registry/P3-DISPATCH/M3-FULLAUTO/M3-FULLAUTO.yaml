@@ -1,0 +1,653 @@
+method:
+  id: M3-FULLAUTO
+  parent: P3-DISPATCH
+  name: "Unattended Dispatch Method"
+  description: >
+    Fully autonomous dispatch method where the agent has full decision authority. The human
+    is notified on completion or hard failure but is not consulted during execution. The agent
+    routes, executes, validates, retries (up to a budget), and advances autonomously.
+    Appropriate for well-understood pipelines, batch processing, or when the human is
+    unavailable.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  source: "PRD 003 Component 1 — M3-FULLAUTO design"
+
+navigation:
+  what: >
+    M3-FULLAUTO manages methodology execution with full agent autonomy. The agent selects
+    methods, executes steps, validates outputs, retries failures (up to N times), and
+    advances — all without human consultation. The human receives a completion notification
+    (with results) or a failure notification (with abort log) when the method finishes.
+  who: >
+    Two roles: rho_executor (agent — full authority over all decisions) and rho_observer
+    (human — notified, not consulted; can emergency-abort only). The agent owns the entire
+    execution lifecycle.
+  why: >
+    Well-understood pipelines with predictable step outcomes do not benefit from human
+    oversight. Blocking on human input adds latency without value. M3-FULLAUTO maximizes
+    throughput by delegating all decisions to the agent, bounded by a retry budget that
+    prevents unbounded failure loops. The human is protected by the budget — if the agent
+    cannot succeed within N retries, it aborts and notifies rather than persisting.
+  how: >
+    Six-step loop: load and route autonomously -> initialize -> execute step -> validate
+    and retry (up to N times) -> budget check -> loop or complete. The agent never blocks
+    on human input. Termination is guaranteed by the retry budget.
+  when_to_use:
+    - "Well-understood pipeline with predictable outcomes"
+    - "Batch processing with many independent runs"
+    - "Human is unavailable during execution"
+    - "The methodology has been run many times and failure modes are well-characterized"
+  when_not_to_use:
+    - "First-time methodology execution — use INTERACTIVE"
+    - "Work where human judgment adds value at intermediate steps — use SEMIAUTO"
+    - "High-stakes changes where silent failure would be costly — use INTERACTIVE or SEMIAUTO"
+    - "Exploratory work where the next step depends on intermediate findings"
+
+domain_theory:
+  id: D_FULLAUTO
+  inherits: D_Phi_DISPATCH
+  sorts:
+    - name: FailureLog
+      cardinality: singleton_per_execution
+      description: "Cumulative log of failures across all retry attempts"
+    - name: RetryContext
+      cardinality: unbounded
+      description: "Enriched context for a retry attempt, including prior failure information"
+  additional_predicates:
+    - name: retries_exhausted
+      signature: "AgentSession -> Bool"
+      description: "The agent session has used all retry attempts: retry_count >= max_retries"
+    - name: abort_triggered
+      signature: "State -> Bool"
+      description: "The agent has aborted due to retry exhaustion"
+  additional_axioms:
+    - id: Ax-F1
+      name: Full autonomy
+      statement: "forall d : DecisionPoint, s : State. autonomy_mode(s) = FULLAUTO -> requires_human(d) = false"
+      rationale: "Inherits from Ax-D2. No decision requires human consultation."
+    - id: Ax-F2
+      name: Budget enforcement
+      statement: "forall a : AgentSession. retry_count(a) > max_retries(FULLAUTO) -> abort_triggered(state)"
+      rationale: "Exceeding the retry budget triggers mandatory abort. No infinite retry loops."
+    - id: Ax-F3
+      name: Cumulative failure context
+      statement: >
+        forall a : AgentSession, n : Nat. retry_count(a) = n ->
+        retry_context(a, n) includes failure_info(a, 0..n-1)
+      rationale: "Each retry includes all prior failure information, enabling the agent to learn from previous attempts."
+  domain_boundary_note: >
+    Inherits D_Phi_DISPATCH boundary. Additionally excludes: the notification channel
+    implementation (M3-FULLAUTO declares what to notify, not how); the human's response
+    to failure notifications (the method terminates on abort, post-abort actions are
+    outside scope).
+
+roles:
+  - id: rho_executor
+    description: >
+      The dispatch agent in full-auto mode. Has full authority over all decisions: routing,
+      step advancement, retry, and abort. The agent never blocks on human input. Bounded
+      by the retry budget — if retries are exhausted, the agent must abort.
+    observation_projection: >
+      pi_executor = id : Mod(D_FULLAUTO) -> Mod(D_FULLAUTO) — full visibility over
+      all dispatch state, validation results, retry counts, and failure logs.
+    authorized_transitions:
+      - "Route autonomously — evaluate predicates and select method (sigma_F1)"
+      - "Initialize method session (sigma_F2)"
+      - "Spawn sub-agent and collect output (sigma_F3)"
+      - "Validate and auto-advance on PASS (sigma_F4)"
+      - "Retry up to N times on validation FAIL with cumulative failure context (sigma_F4)"
+      - "Abort on retry budget exhaustion (sigma_F5)"
+      - "Notify human on completion or abort (sigma_F6)"
+    not_authorized:
+      - "Exceed retry budget (Ax-F2)"
+      - "Continue after retry budget is exhausted without aborting"
+      - "Suppress failure notifications"
+  - id: rho_observer
+    description: >
+      The human in full-auto mode. Receives completion notifications and failure logs.
+      Not consulted during execution. Can trigger emergency abort but cannot make
+      mid-execution decisions.
+    observation_projection: >
+      pi_observer : Mod(D_FULLAUTO) -> {completion_status, failure_log} — reduced
+      visibility. The observer sees only the terminal state, not intermediate step outputs.
+    authorized_transitions:
+      - "Emergency abort (terminates session immediately)"
+    not_authorized:
+      - "Make mid-execution decisions"
+      - "Override step validation results"
+      - "Modify retry budget during execution"
+      - "Review or approve intermediate step outputs"
+
+step_dag:
+  topology: "sigma_F1 -> sigma_F2 -> sigma_F3 -> sigma_F4 -> sigma_F5 -> sigma_F6 (with sigma_F6 -> sigma_F3 loop)"
+  formal: >
+    Gamma_FULLAUTO = ({sigma_F1, sigma_F2, sigma_F3, sigma_F4, sigma_F5, sigma_F6},
+    {(sigma_F1, sigma_F2), (sigma_F2, sigma_F3), (sigma_F3, sigma_F4), (sigma_F4, sigma_F5),
+    (sigma_F5, sigma_F6), (sigma_F6, sigma_F3)}, sigma_F1, sigma_F6)
+
+loop_structure:
+  name: Step execution loop
+  loop_edge: "sigma_F6 -> sigma_F3"
+  condition: "method is not complete (more steps remain) AND budget not exhausted"
+  termination_certificate:
+    name: nu_F
+    definition: "|{steps in target method | not yet completed}|"
+    type: non-negative integer
+    decrease_witness: >
+      Each loop iteration either advances (reducing nu_F by 1) or exhausts the retry
+      budget and aborts (terminating the loop). Retries for a single step are bounded
+      by max_retries (default 3) — after max_retries failures, sigma_F5 triggers abort.
+      The compound bound is: at most |steps| * (1 + max_retries) sub-agent spawns before
+      termination.
+    termination_condition: "nu_F = 0 (all steps complete) OR abort_triggered"
+
+objective:
+  id: O_FULLAUTO
+  formal: >
+    O_FULLAUTO(s) =
+      target_objective_met(s)
+      OR (abort_triggered(s) AND failure_log_sent(s))
+  type: terminal
+  expressible_claim: >
+    O_FULLAUTO references target_objective_met, abort_triggered, failure_log_sent — all
+    declared in D_Phi_DISPATCH or D_FULLAUTO. Expressible as a closed sentence.
+  note: >
+    Unlike M1-INTERACTIVE and M2-SEMIAUTO, M3-FULLAUTO explicitly includes failure
+    notification as part of a successful method execution. An aborted session with a
+    properly delivered failure log is a valid terminal state — the method succeeded at
+    its dispatch responsibility even though the target methodology did not complete.
+  progress_preorder:
+    definition: >
+      s1 <= s2 iff |{steps completed in s1}| <= |{steps completed in s2}|.
+      Aborted states with failure_log_sent = true are maximal.
+    well_founded: "Finite step set plus bounded retries. Well-founded."
+  success_profile:
+    - id: mu_steps_completed
+      name: autonomous_progress
+      formula: "|{steps completed}| / |total_steps|"
+      range: "[0, 1]"
+      terminal: "1.0 (or abort with failure log)"
+      proxy_claim: "Tracks progress through the target method's step sequence."
+    - id: mu_retry_usage
+      name: retry_budget_consumption
+      formula: "sum(retry_count per step) / (|total_steps| * max_retries)"
+      range: "[0, 1]"
+      terminal: "any — observational measure"
+      proxy_claim: >
+        mu_retry_usage near 0 indicates smooth execution. Near 1 indicates the pipeline
+        is at its autonomy limit — consider SEMIAUTO for future runs.
+
+phases:
+  - id: sigma_F1
+    name: "Load and Route"
+    role: rho_executor
+    precondition: "Target methodology identified; autonomy_mode = FULLAUTO"
+    postcondition: "Target methodology routing loaded; method selected autonomously"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - routing_options is non-empty: at least one method retrieved
+      - selected_method is set: agent has autonomously selected the method
+      - No escalation — agent evaluates predicates and selects without human consultation (Ax-F1)
+      - If predicates are ambiguous, agent makes best-effort selection and logs the ambiguity
+      - status = PASS when method is selected
+      - status = BLOCKED if methodology routing fails to load
+
+      **Rationale.** In full-auto mode, the agent has full routing authority. Even ambiguous
+      routing decisions are made by the agent — there is no escalation channel. The agent
+      logs ambiguity for post-execution review but does not block on it.
+
+      **Procedure.**
+      1. Call `methodology_get_routing` with the target methodology ID
+      2. Evaluate the target methodology's transition function predicates against the current challenge
+      3. Select the method:
+         a. If predicates clearly select one method: set selected_method
+         b. If predicates are ambiguous: select the best-fit method, log the ambiguity reason
+      4. Record the routing decision
+
+      **Output schema reference:**
+      - routing_options: list of available methods
+      - selected_method: the autonomously selected method
+      - ambiguity_noted: boolean (true if predicates were ambiguous)
+      - ambiguity_reason: string (set only if ambiguity_noted = true)
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: routing_options
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: selected_method
+          type: string
+          required: true
+        - name: ambiguity_noted
+          type: boolean
+          required: true
+        - name: ambiguity_reason
+          type: string
+          required: false
+          description: "Set only when ambiguity_noted = true"
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "selected_method is set before proceeding"
+        - "no escalation occurs — agent decides autonomously"
+
+  - id: sigma_F2
+    name: "Initialize"
+    role: rho_executor
+    precondition: "sigma_F1 complete; selected_method is set"
+    postcondition: "Method session initialized; step sequence loaded"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - session_id is set: a method session has been created
+      - step_sequence is loaded: the method's steps are available
+      - current_step points to the first step
+      - retry_budget is initialized: max_retries set (default 3)
+      - status = PASS when session is ready
+      - status = BLOCKED if initialization fails
+
+      **Rationale.** Mechanical step. The agent creates the execution context and initializes
+      the retry budget that will bound sigma_F4's retry behavior.
+
+      **Procedure.**
+      1. Call `methodology_select` with the selected method from sigma_F1
+      2. Load the method's step sequence
+      3. Set current_step to the first step
+      4. Initialize retry budget: max_retries = 3 (default)
+      5. Initialize failure_log as empty
+
+      **Output schema reference:**
+      - session_id: identifier for the session
+      - method_id: the method being executed
+      - step_sequence: ordered list of step IDs
+      - current_step: ID of the first step
+      - max_retries: retry budget (default 3)
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: session_id
+          type: string
+          required: true
+        - name: method_id
+          type: string
+          required: true
+        - name: step_sequence
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: current_step
+          type: string
+          required: true
+        - name: max_retries
+          type: integer
+          min_value: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_sequence is non-empty"
+        - "current_step is the first element of step_sequence"
+        - "max_retries >= 1"
+
+  - id: sigma_F3
+    name: "Execute Step"
+    role: rho_executor
+    precondition: "Session initialized (sigma_F2 PASS) or loop re-entry from sigma_F6; current_step is set"
+    postcondition: "Sub-agent spawned, step executed, output collected"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - step_context has been retrieved for the current step
+      - sub_agent_prompt composed with step guidance, preconditions, and retry context if applicable
+      - step_output is non-null: the sub-agent has produced a result
+      - If this is a retry: prompt includes cumulative failure context from all prior attempts (Ax-F3)
+      - status = PASS when output is collected
+      - status = BLOCKED if sub-agent fails to produce output
+
+      **Rationale.** Same execution model as M1-INTERACTIVE and M2-SEMIAUTO, but with
+      enriched retry context. On retry, the prompt includes all prior failure information
+      so the sub-agent can learn from previous attempts rather than repeating the same
+      mistakes.
+
+      **Procedure.**
+      1. Call `step_current` to get the current step's context
+      2. Compose a sub-agent prompt including:
+         a. Step guidance text
+         b. Precondition and postcondition
+         c. Input context from previous steps
+         d. If retry: cumulative failure context from all prior attempts for this step
+            - Include: each attempt's output, each validation failure reason
+            - Structure as a learning prompt: "Previous attempts failed because X. Avoid Y."
+      3. Spawn a Claude Code sub-agent with the composed prompt
+      4. Collect the sub-agent's output
+
+      **Output schema reference:**
+      - current_step: ID of the step executed
+      - step_output: complete sub-agent output
+      - is_retry: boolean indicating whether this is a retry
+      - retry_count: number of retries for this step so far
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: current_step
+          type: string
+          required: true
+        - name: step_output
+          type: object
+          required: true
+        - name: is_retry
+          type: boolean
+          required: true
+        - name: retry_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_output is non-null"
+        - "if is_retry: prompt included cumulative failure context"
+
+  - id: sigma_F4
+    name: "Validate and Retry"
+    role: rho_executor
+    precondition: "sigma_F3 complete; step_output available"
+    postcondition: "Validation result produced; auto-advanced if PASS; retried with cumulative context if FAIL and within budget; budget_exhausted flag set if retries spent"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - validation_result is set: PASS or FAIL from step_validate
+      - If validation_result = PASS: action = ADVANCE; step will be advanced
+      - If validation_result = FAIL AND retry_count < max_retries: action = RETRY;
+        step will be retried with cumulative failure context
+      - If validation_result = FAIL AND retry_count >= max_retries: action = BUDGET_EXHAUSTED;
+        failure will be checked in sigma_F5
+      - failure_log is updated with this attempt's details if FAIL
+      - No human consultation — all decisions are autonomous (Ax-F1)
+      - status = PASS when action is determined
+
+      **Rationale.** The retry-with-cumulative-context strategy gives the agent multiple
+      chances to succeed, each with more information about what went wrong. The budget
+      bound (Ax-F2) prevents infinite retry loops. Each retry prompt includes all prior
+      failure information, not just the most recent — the agent accumulates understanding
+      across attempts.
+
+      **Procedure.**
+      1. Call `step_validate` with the step output and current step ID
+      2. If PASS:
+         a. Set action = ADVANCE
+         b. Call `step_advance`
+      3. If FAIL and retry_count < max_retries:
+         a. Set action = RETRY
+         b. Append to failure_log: step ID, attempt number, output summary, validation failure reason
+         c. Compose cumulative retry context: all prior failures for this step
+         d. sigma_F3 will re-execute with enriched context
+      4. If FAIL and retry_count >= max_retries:
+         a. Set action = BUDGET_EXHAUSTED
+         b. Append final failure to failure_log
+         c. sigma_F5 will handle the abort
+
+      **Output schema reference:**
+      - validation_result: PASS or FAIL
+      - action: ADVANCE, RETRY, or BUDGET_EXHAUSTED
+      - retry_count: current retry count for this step
+      - failure_context: cumulative failure description (set only if FAIL)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: validation_result
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: action
+          type: enum
+          values: [ADVANCE, RETRY, BUDGET_EXHAUSTED]
+          required: true
+        - name: retry_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: failure_context
+          type: string
+          required: false
+          description: "Cumulative failure description — set when validation_result = FAIL"
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "action = ADVANCE requires validation_result = PASS"
+        - "action = RETRY requires retry_count < max_retries"
+        - "action = BUDGET_EXHAUSTED requires retry_count >= max_retries"
+        - "no human consultation occurs"
+
+  - id: sigma_F5
+    name: "Budget Check"
+    role: rho_executor
+    precondition: "sigma_F4 complete"
+    postcondition: "If budget exhausted: abort triggered, failure log finalized, human notified with failure report. If within budget: proceed to sigma_F6."
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - If action from sigma_F4 = BUDGET_EXHAUSTED: abort_triggered = true
+      - If abort_triggered: failure_log is finalized with all retry attempts and their outcomes
+      - If abort_triggered: human is notified asynchronously with the complete failure log
+      - If action from sigma_F4 = ADVANCE or RETRY: abort_triggered = false, proceed to sigma_F6
+      - status = ABORT if budget exhausted; status = CONTINUE otherwise
+
+      **Rationale.** The budget check is the safety valve for full-auto mode. When the agent
+      cannot succeed within its retry budget, it stops trying and reports the failure
+      honestly. The human receives enough context to diagnose the problem: what step failed,
+      how many attempts were made, what each attempt produced, and why each validation failed.
+      This prevents the agent from persisting on an unsolvable step.
+
+      **Procedure.**
+      1. Read action from sigma_F4
+      2. If BUDGET_EXHAUSTED:
+         a. Set abort_triggered = true
+         b. Finalize the failure_log: include for each retry attempt:
+            - Step ID
+            - Attempt number
+            - Output summary
+            - Validation failure reason
+         c. Compose a failure notification for the human:
+            - Which step failed
+            - How many retries were attempted (and the max)
+            - Summary of failure patterns across retries
+            - The complete failure_log
+         d. Send notification to human via configured escalation channel
+         e. Set status = ABORT
+      3. If ADVANCE or RETRY:
+         a. Set abort_triggered = false
+         b. Set status = CONTINUE
+
+      **Output schema reference:**
+      - abort_triggered: boolean
+      - failure_log: finalized log (if abort_triggered)
+      - notification_sent: boolean (if abort_triggered)
+      - status: ABORT or CONTINUE
+    output_schema:
+      fields:
+        - name: abort_triggered
+          type: boolean
+          required: true
+        - name: failure_log
+          type: object
+          required: false
+          description: "Complete failure log — set when abort_triggered = true"
+        - name: notification_sent
+          type: boolean
+          required: false
+          description: "True when human has been notified of failure — set when abort_triggered = true"
+        - name: status
+          type: enum
+          values: [ABORT, CONTINUE]
+          required: true
+      hard_invariants:
+        - "abort_triggered = true requires failure_log and notification_sent to be set"
+        - "abort_triggered = true requires notification_sent = true"
+        - "status = ABORT iff abort_triggered = true"
+
+  - id: sigma_F6
+    name: "Loop or Complete"
+    role: rho_executor
+    precondition: "sigma_F5 complete with status = CONTINUE"
+    postcondition: "Either: next step loaded and loop re-enters sigma_F3; or method complete and human notified asynchronously"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - If action from sigma_F4 = ADVANCE AND more steps remain: current_step updated, status = CONTINUE
+      - If action from sigma_F4 = ADVANCE AND no more steps remain: method_complete = true,
+        human notified asynchronously with final results
+      - If action from sigma_F4 = RETRY: current_step unchanged, status = CONTINUE
+      - status = COMPLETE when method finishes (success)
+      - status = CONTINUE when looping back to sigma_F3
+
+      **Rationale.** Loop control step. In full-auto mode, completion triggers an asynchronous
+      notification to the human with the full execution results. The human was not involved
+      during execution — the completion notification is their first visibility into results.
+
+      **Procedure.**
+      1. Read action from sigma_F4:
+         a. ADVANCE: check if more steps remain
+            - If yes: update current_step to next step, set status = CONTINUE
+            - If no: set method_complete = true, compose completion notification:
+              * Summary of all steps executed
+              * Validation results per step
+              * Any retries that occurred and their outcomes
+              * Total execution time / step count
+            - Send notification to human via configured channel
+            - Set status = COMPLETE
+         b. RETRY: keep current_step unchanged, set status = CONTINUE
+
+      **Output schema reference:**
+      - method_complete: boolean
+      - current_step: updated step ID (if CONTINUE)
+      - notification_sent: boolean (if method_complete)
+      - execution_summary: summary of all steps and results (if method_complete)
+      - status: COMPLETE or CONTINUE
+    output_schema:
+      fields:
+        - name: method_complete
+          type: boolean
+          required: true
+        - name: current_step
+          type: string
+          required: false
+          description: "Set when status = CONTINUE"
+        - name: notification_sent
+          type: boolean
+          required: false
+          description: "True when human notified of completion — set when method_complete = true"
+        - name: execution_summary
+          type: object
+          required: false
+          description: "Summary of all steps and results — set when method_complete = true"
+        - name: status
+          type: enum
+          values: [COMPLETE, CONTINUE]
+          required: true
+      hard_invariants:
+        - "method_complete = true requires notification_sent = true"
+        - "status = CONTINUE requires current_step to be set"
+        - "status = COMPLETE requires method_complete = true"
+
+composability:
+  claims:
+    - edge: "sigma_F1 -> sigma_F2"
+      claim: >
+        post_sigma_F1: selected_method is set. pre_sigma_F2: selected_method is set.
+        Identity inclusion — direct compositional.
+    - edge: "sigma_F2 -> sigma_F3"
+      claim: >
+        post_sigma_F2: session initialized, step_sequence loaded, current_step set,
+        max_retries initialized. pre_sigma_F3: session initialized, current_step set.
+        Post provides superset of pre.
+    - edge: "sigma_F3 -> sigma_F4"
+      claim: >
+        post_sigma_F3: step_output collected. pre_sigma_F4: step_output available.
+        Identity inclusion.
+    - edge: "sigma_F4 -> sigma_F5"
+      claim: >
+        post_sigma_F4: action determined (ADVANCE, RETRY, BUDGET_EXHAUSTED).
+        pre_sigma_F5: sigma_F4 complete. Identity inclusion.
+    - edge: "sigma_F5 -> sigma_F6"
+      claim: >
+        post_sigma_F5 when status = CONTINUE: abort_triggered = false.
+        pre_sigma_F6: sigma_F5 complete with status = CONTINUE. Identity inclusion.
+        Note: when status = ABORT, sigma_F6 is not reached — session terminates at sigma_F5.
+    - edge: "sigma_F6 -> sigma_F3 (LOOP)"
+      claim: >
+        post_sigma_F6 when status = CONTINUE: current_step set (same or next).
+        pre_sigma_F3: current_step set. Identity inclusion. Loop bounded by nu_F
+        and retry budget (compound bound: |steps| * (1 + max_retries)).
+  terminal_condition_claim: >
+    Terminal states are: (1) sigma_F6 with method_complete = true (target objective met,
+    human notified), or (2) sigma_F5 with abort_triggered = true (budget exhausted, human
+    notified with failure log). Both satisfy O_FULLAUTO.
+  initial_condition_claim: >
+    pre_sigma_F1 requires target methodology identified and autonomy_mode = FULLAUTO.
+    This holds at P3-DISPATCH initialization.
+  contrarian_challenge:
+    weakest_edge: "sigma_F4 -> sigma_F5"
+    challenge: >
+      The retry-with-cumulative-context strategy assumes that additional context improves
+      the sub-agent's output. But some failures are structural (e.g., the step's
+      postcondition is unsatisfiable given the current state) — no amount of retry context
+      will help. The agent spends max_retries attempts on an impossible step before aborting.
+    defense_or_revision: >
+      This is accepted as a cost of full autonomy. The retry budget bounds the waste:
+      at most max_retries wasted attempts per step. The failure log captures the pattern,
+      enabling the human to identify structural failures post-hoc. A future evolution could
+      add failure-pattern detection (e.g., if retry N produces the same validation failure
+      as retry N-1, abort early) to reduce wasted attempts.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: unattended dispatch with full agent autonomy. Who:
+        executor (agent, full authority) and observer (human, notified only). Why:
+        maximizes throughput for well-understood pipelines. How: six-step loop with
+        autonomous validation, retry, and abort. When: well-understood pipelines, batch
+        processing, human unavailable.
+    - gate: G1
+      result: PASS
+      note: >
+        D_FULLAUTO inherits D_Phi_DISPATCH. 2 additional sorts (FailureLog, RetryContext).
+        2 additional predicates (retries_exhausted, abort_triggered). 3 additional axioms
+        (Ax-F1 through Ax-F3).
+    - gate: G2
+      result: PASS
+      note: >
+        O_FULLAUTO stated. Progress preorder over completed steps with abort as maximal.
+        Two measures (mu_steps_completed, mu_retry_usage) with formulas, ranges, proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles (rho_executor, rho_observer) with observation projections and explicit
+        authorized/not-authorized. Coverage and authority claims present. Observer has
+        reduced visibility (terminal state only).
+    - gate: G4
+      result: PASS
+      note: >
+        Six steps (sigma_F1-sigma_F6) with loop edge sigma_F6 -> sigma_F3. Termination
+        certificate nu_F with compound bound (|steps| * (1 + max_retries)). Six
+        composability claims. Contrarian challenge on sigma_F4->sigma_F5 edge (structural
+        failures waste retry budget). Terminal and initial condition claims present.
+    - gate: G5
+      result: PASS
+      note: >
+        All six steps have finalized guidance in constraints-first format. Each guidance
+        block references MCP tools and specifies autonomous behavior. Output schemas with
+        typed fields and hard invariants. No escalation in any step.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-DISPATCH/M3-FULLAUTO/M3-FULLAUTO.yaml). Structurally complete."

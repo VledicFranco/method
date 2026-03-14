@@ -1,0 +1,648 @@
+method:
+  id: M2-SEMIAUTO
+  parent: P3-DISPATCH
+  name: "Selective Escalation Dispatch Method"
+  description: >
+    Semi-autonomous dispatch method where the agent handles clear decisions autonomously
+    and escalates ambiguous or failed decisions to the human. Appropriate for familiar
+    methodologies where most steps are routine but some require judgment. Balances
+    throughput (no blocking on clear cases) with safety (escalation on uncertainty).
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  source: "PRD 003 Component 1 — M2-SEMIAUTO design"
+
+navigation:
+  what: >
+    M2-SEMIAUTO manages methodology execution with conditional autonomy. The agent selects
+    methods, advances steps, and retries failures autonomously when the situation is clear.
+    When predicates are borderline, validation fails twice, or scope changes exceed
+    thresholds, the agent escalates to the human. The human is consulted selectively, not
+    at every decision point.
+  who: >
+    Two roles: rho_executor (agent — conditional authority, decides on clear cases) and
+    rho_PO (human — escalation authority, decides on ambiguous cases). Authority boundary
+    is defined by escalation triggers.
+  why: >
+    Most methodology steps are routine — the routing is clear, the output satisfies
+    postconditions, and advancement is mechanical. Blocking on human confirmation for
+    these cases wastes human attention without adding value. M2-SEMIAUTO reserves human
+    attention for cases that genuinely need it: ambiguous routing, validation failures,
+    and scope changes.
+  how: >
+    Six-step loop: load and route (with conditional escalation) -> initialize -> execute
+    step -> validate (with auto-advance or escalation) -> scope check -> loop or complete.
+    The agent auto-advances on clear PASS, retries once on failure, and escalates on
+    second failure or ambiguity.
+  when_to_use:
+    - "Familiar methodology where most steps are routine"
+    - "Human wants to be consulted on edge cases but not on every step"
+    - "Moderate-risk work where full autonomy is too aggressive but full control is too slow"
+  when_not_to_use:
+    - "First-time methodology execution — use INTERACTIVE"
+    - "High-stakes changes requiring step-by-step human review — use INTERACTIVE"
+    - "Well-understood pipeline where no escalation is needed — use FULLAUTO"
+    - "Human is unavailable during execution — use FULLAUTO"
+
+domain_theory:
+  id: D_SEMIAUTO
+  inherits: D_Phi_DISPATCH
+  sorts:
+    - name: EscalationTrigger
+      cardinality: finite
+      values: [BORDERLINE_ROUTING, VALIDATION_DOUBLE_FAIL, SCOPE_CHANGE_MAJOR]
+      description: "Conditions that trigger escalation to the human"
+    - name: ScopeChange
+      cardinality: unbounded
+      description: "A detected scope change during step execution"
+    - name: ScopeSize
+      cardinality: finite
+      values: [MINOR, MAJOR]
+      description: "MINOR: < 30 lines. MAJOR: >= 30 lines or touches files not in scope."
+  additional_predicates:
+    - name: routing_clear
+      signature: "State -> Bool"
+      description: "The target methodology's predicates unambiguously select one method"
+    - name: scope_change_detected
+      signature: "StepOutput -> Bool"
+      description: "The step output includes changes outside the expected scope"
+    - name: scope_minor
+      signature: "ScopeChange -> Bool"
+      description: "The scope change is minor (< 30 lines, within authorized files)"
+    - name: escalation_needed
+      signature: "State -> Bool"
+      description: "An escalation trigger has fired — human consultation required"
+  additional_axioms:
+    - id: Ax-S1
+      name: Clear routing is autonomous
+      statement: "forall s : State. routing_clear(s) -> NOT escalation_needed(s) for routing"
+      rationale: "When predicates clearly select one method, the agent routes autonomously."
+    - id: Ax-S2
+      name: Borderline routing escalates
+      statement: "forall s : State. NOT routing_clear(s) -> escalation_needed(s) for routing"
+      rationale: "When predicates are borderline, the agent escalates routing to the human."
+    - id: Ax-S3
+      name: Single retry before escalation
+      statement: >
+        forall o : StepOutput, st : Step.
+        NOT validated(o, st) AND retry_count < 1 -> auto_retry(st).
+        NOT validated(o, st) AND retry_count >= 1 -> escalation_needed(s)
+      rationale: "One automatic retry with failure context. Second failure escalates to human."
+    - id: Ax-S4
+      name: Scope threshold
+      statement: >
+        forall sc : ScopeChange.
+        scope_minor(sc) -> record_and_continue.
+        NOT scope_minor(sc) -> escalation_needed(s)
+      rationale: "Minor scope changes (< 30 lines) are recorded and continued. Major scope changes escalate."
+  domain_boundary_note: >
+    Inherits D_Phi_DISPATCH boundary. Additionally excludes: the decision-making process
+    during escalation (the method blocks on human input, it does not model how the human
+    decides); the definition of "borderline" routing (operationalized as: predicates do not
+    clearly satisfy any single arm of the target's delta_Phi).
+
+roles:
+  - id: rho_executor
+    description: >
+      The dispatch agent in semi-auto mode. Has conditional authority: decides autonomously
+      when situations are clear, escalates when they are ambiguous or failed. Clear cases:
+      unambiguous routing, validation PASS, minor scope changes. Escalation triggers:
+      borderline routing, double validation failure, major scope changes.
+    observation_projection: >
+      pi_executor = id : Mod(D_SEMIAUTO) -> Mod(D_SEMIAUTO) — full visibility over
+      all dispatch state, validation results, scope changes, and escalation triggers.
+    authorized_transitions:
+      - "Route autonomously when routing_clear (sigma_S1)"
+      - "Initialize method session (sigma_S2)"
+      - "Spawn sub-agent and collect output (sigma_S3)"
+      - "Auto-advance on validation PASS (sigma_S4)"
+      - "Auto-retry once on validation FAIL (sigma_S4)"
+      - "Record minor scope changes and continue (sigma_S5)"
+      - "Escalate to human on escalation triggers"
+    not_authorized:
+      - "Route when predicates are borderline (must escalate)"
+      - "Retry more than once without escalation"
+      - "Continue on major scope changes without escalation"
+      - "Override escalation triggers"
+  - id: rho_PO
+    description: >
+      The human escalation authority. Consulted only when escalation triggers fire:
+      borderline routing, double validation failure, major scope changes. Not consulted
+      on clear cases. When consulted, has full decision authority.
+    observation_projection: >
+      pi_PO = id : Mod(D_SEMIAUTO) -> Mod(D_SEMIAUTO) — full visibility when consulted.
+      The human sees the full context of the escalated decision.
+    authorized_transitions:
+      - "Resolve borderline routing decisions"
+      - "Decide advance/retry/abort after double validation failure"
+      - "Approve or reject major scope changes"
+      - "Terminate session at any point"
+    not_authorized:
+      - "Modify the target methodology's domain theory"
+      - "Change the escalation thresholds mid-execution"
+
+step_dag:
+  topology: "sigma_S1 -> sigma_S2 -> sigma_S3 -> sigma_S4 -> sigma_S5 -> sigma_S6 (with sigma_S6 -> sigma_S3 loop)"
+  formal: >
+    Gamma_SEMIAUTO = ({sigma_S1, sigma_S2, sigma_S3, sigma_S4, sigma_S5, sigma_S6},
+    {(sigma_S1, sigma_S2), (sigma_S2, sigma_S3), (sigma_S3, sigma_S4), (sigma_S4, sigma_S5),
+    (sigma_S5, sigma_S6), (sigma_S6, sigma_S3)}, sigma_S1, sigma_S6)
+
+loop_structure:
+  name: Step execution loop
+  loop_edge: "sigma_S6 -> sigma_S3"
+  condition: "method is not complete (more steps remain)"
+  termination_certificate:
+    name: nu_S
+    definition: "|{steps in target method | not yet completed}|"
+    type: non-negative integer
+    decrease_witness: >
+      Each loop iteration executes a step (sigma_S3) and validates (sigma_S4). On PASS,
+      auto-advance reduces nu_S by 1. On FAIL with retry, the same step is re-executed
+      (nu_S unchanged but retry_count increases, bounded by Ax-S3). On escalation, the
+      human decides — advancement reduces nu_S, abort terminates. The loop terminates
+      when nu_S = 0 or session is aborted.
+    termination_condition: "nu_S = 0 (all steps complete) OR session_aborted"
+
+objective:
+  id: O_SEMIAUTO
+  formal: >
+    O_SEMIAUTO(s) =
+      target_objective_met(s)
+      OR session_aborted(s)
+  type: terminal
+  expressible_claim: >
+    O_SEMIAUTO references target_objective_met and session_aborted — both declared in
+    D_Phi_DISPATCH. Expressible as a closed sentence.
+  progress_preorder:
+    definition: >
+      s1 <= s2 iff |{steps completed in s1}| <= |{steps completed in s2}|.
+      Aborted states are maximal.
+    well_founded: "Finite step set. Each completion strictly increases the count. Well-founded."
+  success_profile:
+    - id: mu_steps_completed
+      name: autonomous_progress
+      formula: "|{steps completed}| / |total_steps|"
+      range: "[0, 1]"
+      terminal: "1.0 (or abort)"
+      proxy_claim: "Tracks progress through the target method's step sequence."
+    - id: mu_escalation_rate
+      name: escalation_rate
+      formula: "|{escalations triggered}| / |{decision points encountered}|"
+      range: "[0, 1]"
+      terminal: "any — this is an observational measure, not a target"
+      proxy_claim: >
+        mu_escalation_rate is not part of O_SEMIAUTO but tracks the method's autonomy
+        effectiveness. A rate of 0 suggests FULLAUTO would be appropriate. A rate near 1
+        suggests INTERACTIVE would be more honest.
+
+phases:
+  - id: sigma_S1
+    name: "Load and Route"
+    role: rho_executor
+    precondition: "Target methodology identified; autonomy_mode = SEMIAUTO"
+    postcondition: "Target methodology routing loaded; method selected (autonomously if clear, via escalation if borderline)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - routing_options is non-empty: at least one method option has been retrieved
+      - routing_clear is evaluated: true if predicates unambiguously select one method, false if borderline
+      - If routing_clear = true: selected_method is set autonomously; no escalation
+      - If routing_clear = false: escalation triggered; human consulted; selected_method set from human's decision
+      - selected_method is set before proceeding to sigma_S2
+      - status = PASS when method is selected (by agent or human)
+      - status = BLOCKED if methodology routing fails to load
+
+      **Rationale.** The agent evaluates the target methodology's transition function
+      predicates. If one method is clearly indicated, the agent selects it without human
+      input (Ax-S1). If predicates are borderline (multiple methods could apply, or no
+      method clearly applies), the agent escalates (Ax-S2). This is the first autonomy
+      boundary — the agent must honestly assess whether the routing is clear.
+
+      **Procedure.**
+      1. Call `methodology_get_routing` with the target methodology ID
+      2. Evaluate the target methodology's transition function predicates against the current challenge
+      3. Assess routing clarity:
+         a. If exactly one arm's predicates are clearly satisfied: routing_clear = true, set selected_method
+         b. If multiple arms could apply, or assessment is uncertain: routing_clear = false
+      4. If routing_clear = false:
+         a. Present the routing ambiguity to the human via the escalation channel
+         b. Include: which predicates are borderline, which methods are candidates, agent's best guess
+         c. Wait for human's routing decision
+         d. Set selected_method from human's response
+      5. Record the routing decision and whether it was autonomous or escalated
+
+      **Output schema reference:**
+      - routing_options: list of available methods
+      - routing_clear: boolean indicating whether routing was unambiguous
+      - selected_method: the method selected (by agent or human)
+      - escalated: boolean indicating whether human was consulted
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: routing_options
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: routing_clear
+          type: boolean
+          required: true
+        - name: selected_method
+          type: string
+          required: true
+        - name: escalated
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "selected_method is set before proceeding"
+        - "escalated = true iff routing_clear = false"
+
+  - id: sigma_S2
+    name: "Initialize"
+    role: rho_executor
+    precondition: "sigma_S1 complete; selected_method is set"
+    postcondition: "Method session initialized; step sequence loaded"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - session_id is set: a method session has been created
+      - step_sequence is loaded: the method's steps are available
+      - current_step points to the first step
+      - status = PASS when session is ready
+      - status = BLOCKED if initialization fails
+
+      **Rationale.** Mechanical step — no autonomy decision required. The agent creates
+      the execution context for the selected method.
+
+      **Procedure.**
+      1. Call `methodology_select` with the selected method from sigma_S1
+      2. Load the method's step sequence
+      3. Set current_step to the first step
+      4. Confirm session readiness
+
+      **Output schema reference:**
+      - session_id: identifier for the session
+      - method_id: the method being executed
+      - step_sequence: ordered list of step IDs
+      - current_step: ID of the first step
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: session_id
+          type: string
+          required: true
+        - name: method_id
+          type: string
+          required: true
+        - name: step_sequence
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: current_step
+          type: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_sequence is non-empty"
+        - "current_step is the first element of step_sequence"
+
+  - id: sigma_S3
+    name: "Execute Step"
+    role: rho_executor
+    precondition: "Session initialized (sigma_S2 PASS) or loop re-entry from sigma_S6; current_step is set"
+    postcondition: "Sub-agent spawned, step executed, output collected"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - step_context has been retrieved for the current step
+      - sub_agent_prompt composed with step guidance, preconditions, input context
+      - step_output is non-null: the sub-agent has produced a result
+      - status = PASS when output is collected
+      - status = BLOCKED if sub-agent fails to produce output
+
+      **Rationale.** Identical execution model to M1-INTERACTIVE sigma_I3, but without
+      the requirement to present output to the human before proceeding. The agent collects
+      output and passes it directly to validation (sigma_S4).
+
+      **Procedure.**
+      1. Call `step_current` to get the current step's context
+      2. Compose a sub-agent prompt including:
+         a. Step guidance text
+         b. Precondition and postcondition
+         c. Input context from previous steps
+         d. If this is a retry: include the previous failure context and validation feedback
+      3. Spawn a Claude Code sub-agent with the composed prompt
+      4. Collect the sub-agent's output
+
+      **Output schema reference:**
+      - current_step: ID of the step executed
+      - step_output: complete sub-agent output
+      - is_retry: boolean indicating whether this is a retry attempt
+      - retry_count: number of retries for this step so far
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: current_step
+          type: string
+          required: true
+        - name: step_output
+          type: object
+          required: true
+        - name: is_retry
+          type: boolean
+          required: true
+        - name: retry_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_output is non-null"
+        - "retry_count matches actual retry attempts for this step"
+
+  - id: sigma_S4
+    name: "Validate"
+    role: rho_executor
+    precondition: "sigma_S3 complete; step_output available"
+    postcondition: "Validation result produced; auto-advanced if PASS, auto-retried once if FAIL, escalated on second FAIL"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - validation_result is set: PASS or FAIL from step_validate
+      - If validation_result = PASS: action = AUTO_ADVANCE; step will be advanced automatically
+      - If validation_result = FAIL AND retry_count < 1: action = AUTO_RETRY; step will be retried with failure context
+      - If validation_result = FAIL AND retry_count >= 1: action = ESCALATE; human will be consulted
+      - If action = ESCALATE: human_decision is set (ADVANCE, RETRY, ABORT)
+      - status = PASS when action is determined
+
+      **Rationale.** This is the core autonomy boundary for SEMIAUTO. Clear passes advance
+      without human input — no value in human confirming obvious success. First failures
+      retry automatically with enriched context — many failures are transient or benefit
+      from a second attempt. Second failures escalate — the agent has exhausted its
+      autonomous authority and the human must decide (Ax-S3).
+
+      **Procedure.**
+      1. Call `step_validate` with the step output and current step ID
+      2. If PASS:
+         a. Set action = AUTO_ADVANCE
+         b. No escalation needed
+      3. If FAIL and retry_count < 1:
+         a. Set action = AUTO_RETRY
+         b. Compose retry context: include the failure reason from validation
+         c. sigma_S3 will re-execute with this context
+      4. If FAIL and retry_count >= 1:
+         a. Set action = ESCALATE
+         b. Present to human: step output, validation failure (both attempts), failure analysis
+         c. Wait for human decision: ADVANCE (accept despite failure), RETRY (one more try), ABORT
+         d. Record human_decision
+
+      **Output schema reference:**
+      - validation_result: PASS or FAIL
+      - action: AUTO_ADVANCE, AUTO_RETRY, or ESCALATE
+      - human_decision: set only if action = ESCALATE (ADVANCE, RETRY, ABORT)
+      - failure_context: description of failure (set only if FAIL)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: validation_result
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: action
+          type: enum
+          values: [AUTO_ADVANCE, AUTO_RETRY, ESCALATE]
+          required: true
+        - name: human_decision
+          type: enum
+          values: [ADVANCE, RETRY, ABORT]
+          required: false
+          description: "Set only when action = ESCALATE"
+        - name: failure_context
+          type: string
+          required: false
+          description: "Set only when validation_result = FAIL"
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "action = ESCALATE requires human_decision to be set"
+        - "action = AUTO_RETRY requires retry_count < 1"
+        - "action = AUTO_ADVANCE requires validation_result = PASS"
+
+  - id: sigma_S5
+    name: "Scope Check"
+    role: rho_executor
+    precondition: "sigma_S4 complete; action != ABORT"
+    postcondition: "Scope change evaluated; minor changes recorded and continued; major changes escalated"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - scope_change_detected is evaluated: true or false
+      - If no scope change: proceed to sigma_S6 directly
+      - If scope_change_detected AND scope_minor (< 30 lines, within authorized files):
+        record the change and continue
+      - If scope_change_detected AND NOT scope_minor (>= 30 lines or touches unauthorized files):
+        escalate to human; human decides continue or abort
+      - scope_changes is a list of detected scope changes (may be empty)
+      - status = PASS when scope check is resolved (autonomously or via escalation)
+
+      **Rationale.** Scope creep is a primary failure mode in methodology execution. Minor
+      scope changes (< 30 lines within authorized files) are expected and acceptable —
+      recording them maintains auditability without blocking throughput. Major scope changes
+      indicate the step may have drifted from the methodology's intent and require human
+      judgment (Ax-S4).
+
+      **Procedure.**
+      1. Analyze the step output from sigma_S3 for scope changes:
+         a. Compare files modified against expected scope from the step context
+         b. Measure the size of any out-of-scope changes
+      2. If no scope changes detected: set scope_change_detected = false, proceed
+      3. If scope changes detected:
+         a. Classify each as MINOR (< 30 lines, within authorized files) or MAJOR
+         b. If all MINOR: record changes, set scope_change_detected = true, proceed
+         c. If any MAJOR: escalate to human
+            - Present: which files, how many lines, why the change was made
+            - Wait for human decision: CONTINUE or ABORT
+      4. Record all scope changes in scope_changes list
+
+      **Output schema reference:**
+      - scope_change_detected: boolean
+      - scope_changes: list of detected scope changes with classification
+      - escalated: boolean indicating whether human was consulted
+      - human_decision: CONTINUE or ABORT (only if escalated)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: scope_change_detected
+          type: boolean
+          required: true
+        - name: scope_changes
+          type: array
+          items: object
+          description: "{description: string, size: MINOR|MAJOR, files: array}"
+          required: true
+        - name: escalated
+          type: boolean
+          required: true
+        - name: human_decision
+          type: enum
+          values: [CONTINUE, ABORT]
+          required: false
+          description: "Set only when escalated = true"
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "escalated = true iff any scope change is MAJOR"
+        - "human_decision is set iff escalated = true"
+
+  - id: sigma_S6
+    name: "Loop or Complete"
+    role: rho_executor
+    precondition: "sigma_S5 complete; no abort decision"
+    postcondition: "Either: next step loaded and loop re-enters sigma_S3; or method complete and human notified"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - If action was AUTO_ADVANCE or human decided ADVANCE: call step_advance, update current_step
+      - If action was AUTO_RETRY or human decided RETRY: keep current_step, re-enter sigma_S3
+      - If more steps remain after advance: status = CONTINUE, re-enter sigma_S3
+      - If no more steps remain: method_complete = true, notify human, status = COMPLETE
+      - If session was aborted at any point: session_aborted = true, status = COMPLETE
+
+      **Rationale.** Loop control step, similar to M1-INTERACTIVE sigma_I5 but executes
+      the action determined by sigma_S4 (which may have been autonomous or escalated).
+
+      **Procedure.**
+      1. Read the action from sigma_S4:
+         a. AUTO_ADVANCE or ADVANCE: call `step_advance`, update current_step
+         b. AUTO_RETRY or RETRY: keep current_step unchanged
+         c. ABORT: set session_aborted = true
+      2. If advancing and more steps remain: set status = CONTINUE, re-enter sigma_S3
+      3. If advancing and no more steps: set method_complete = true, notify human asynchronously
+      4. If retrying: set status = CONTINUE, re-enter sigma_S3
+      5. If aborting: set status = COMPLETE
+
+      **Output schema reference:**
+      - method_complete: boolean
+      - session_aborted: boolean
+      - current_step: updated step ID (if applicable)
+      - status: COMPLETE or CONTINUE
+    output_schema:
+      fields:
+        - name: method_complete
+          type: boolean
+          required: true
+        - name: session_aborted
+          type: boolean
+          required: true
+        - name: current_step
+          type: string
+          required: false
+          description: "Set when status = CONTINUE"
+        - name: status
+          type: enum
+          values: [COMPLETE, CONTINUE]
+          required: true
+      hard_invariants:
+        - "method_complete and session_aborted are mutually exclusive"
+        - "status = CONTINUE requires current_step to be set"
+        - "status = COMPLETE requires method_complete = true OR session_aborted = true"
+
+composability:
+  claims:
+    - edge: "sigma_S1 -> sigma_S2"
+      claim: >
+        post_sigma_S1: selected_method is set. pre_sigma_S2: selected_method is set.
+        Identity inclusion — direct compositional.
+    - edge: "sigma_S2 -> sigma_S3"
+      claim: >
+        post_sigma_S2: session initialized, step_sequence loaded, current_step set.
+        pre_sigma_S3: session initialized, current_step set. Post provides superset of pre.
+    - edge: "sigma_S3 -> sigma_S4"
+      claim: >
+        post_sigma_S3: step_output collected. pre_sigma_S4: step_output available.
+        Identity inclusion.
+    - edge: "sigma_S4 -> sigma_S5"
+      claim: >
+        post_sigma_S4: action determined (AUTO_ADVANCE, AUTO_RETRY, or ESCALATE with
+        human_decision). pre_sigma_S5: sigma_S4 complete, action != ABORT. Conditional
+        on non-abort — if ABORT, sigma_S5 is skipped and session terminates.
+    - edge: "sigma_S5 -> sigma_S6"
+      claim: >
+        post_sigma_S5: scope check resolved. pre_sigma_S6: sigma_S5 complete, no abort.
+        Identity inclusion.
+    - edge: "sigma_S6 -> sigma_S3 (LOOP)"
+      claim: >
+        post_sigma_S6 when status = CONTINUE: current_step set (same or next).
+        pre_sigma_S3: current_step set. Identity inclusion. Loop bounded by nu_S.
+  terminal_condition_claim: >
+    post_sigma_S6 when status = COMPLETE: method_complete = true OR session_aborted = true.
+    This matches O_SEMIAUTO. Terminal states are O_SEMIAUTO-satisfying.
+  initial_condition_claim: >
+    pre_sigma_S1 requires target methodology identified and autonomy_mode = SEMIAUTO.
+    This holds at P3-DISPATCH initialization.
+  contrarian_challenge:
+    weakest_edge: "sigma_S4 -> sigma_S5"
+    challenge: >
+      The agent judges "routing_clear" and "scope_minor" — both are subjective
+      assessments. An agent that rates everything "clear" and "minor" effectively operates
+      as FULLAUTO despite being in SEMIAUTO mode. The escalation boundary depends on the
+      agent's honest self-assessment of clarity.
+    defense_or_revision: >
+      This is a known limitation inherent to SEMIAUTO. Two mitigations: (1) the escalation
+      thresholds are partially objective (< 30 lines for scope, retry_count for validation),
+      reducing the subjective surface; (2) the session log records escalation decisions,
+      making the agent's assessment auditable post-hoc. A future evolution could add
+      mandatory escalation checkpoints (e.g., escalate every Nth step regardless of clarity)
+      to bound the subjective gap.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: selective escalation dispatch with conditional autonomy.
+        Who: executor (agent, conditional) and PO (human, escalation). Why: reserves human
+        attention for cases that genuinely need it. How: six-step loop with auto-advance
+        on clear, escalation on ambiguity/failure. When: familiar methodology, moderate risk.
+    - gate: G1
+      result: PASS
+      note: >
+        D_SEMIAUTO inherits D_Phi_DISPATCH. 3 additional sorts (EscalationTrigger,
+        ScopeChange, ScopeSize). 4 additional predicates. 4 additional axioms (Ax-S1
+        through Ax-S4).
+    - gate: G2
+      result: PASS
+      note: >
+        O_SEMIAUTO stated. Progress preorder over completed steps. Two measures
+        (mu_steps_completed, mu_escalation_rate) with formulas, ranges, proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles (rho_executor, rho_PO) with observation projections and explicit
+        authorized/not-authorized. Coverage and authority claims present.
+    - gate: G4
+      result: PASS
+      note: >
+        Six steps (sigma_S1-sigma_S6) with loop edge sigma_S6 -> sigma_S3. Termination
+        certificate nu_S. Six composability claims. Contrarian challenge on sigma_S4->sigma_S5
+        edge (subjective clarity assessment). Terminal and initial condition claims present.
+    - gate: G5
+      result: PASS
+      note: >
+        All six steps have finalized guidance in constraints-first format. Each guidance
+        block references MCP tools and specifies escalation triggers. Output schemas with
+        typed fields and hard invariants.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-DISPATCH/M2-SEMIAUTO/M2-SEMIAUTO.yaml). Structurally complete."

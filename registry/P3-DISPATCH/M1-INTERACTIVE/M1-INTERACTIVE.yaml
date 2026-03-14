@@ -1,0 +1,495 @@
+method:
+  id: M1-INTERACTIVE
+  parent: P3-DISPATCH
+  name: "Human-in-the-Loop Dispatch Method"
+  description: >
+    Interactive dispatch method where the human confirms every decision point. The agent
+    executes methodology steps by spawning sub-agents but defers all routing, approval,
+    and failure-handling decisions to the human. Appropriate for first-time methodology
+    execution, unfamiliar codebases, or high-stakes changes.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  source: "PRD 003 Component 1 — M1-INTERACTIVE design"
+
+navigation:
+  what: >
+    M1-INTERACTIVE manages methodology execution with full human oversight. For every
+    step: load context, spawn a sub-agent, collect output, present to human, and wait
+    for human decision (advance, retry, or abort). The agent is an executor — it performs
+    mechanical work but makes no judgment calls.
+  who: >
+    Two roles: rho_executor (agent — executes but does not decide) and rho_PO (human —
+    decides everything). The agent presents options and results; the human makes all
+    choices.
+  why: >
+    First-time methodology execution or high-stakes work requires human confirmation at
+    every decision point. Without explicit gating, agents make routing or advancement
+    decisions that the human would have overridden. M1-INTERACTIVE makes every decision
+    point visible and blocks on human input.
+  how: >
+    Five-step loop: load target routing -> initialize method session -> execute step ->
+    validate and decide -> loop or complete. The human confirms routing (sigma_I1), reviews
+    every step output (sigma_I3), and decides advance/retry/abort (sigma_I4).
+  when_to_use:
+    - "First time executing a given methodology"
+    - "Unfamiliar codebase or domain"
+    - "High-stakes changes where every step needs human review"
+    - "Debugging methodology execution (step-through mode)"
+  when_not_to_use:
+    - "Well-understood pipeline where human review adds no value — use SEMIAUTO or FULLAUTO"
+    - "Human is unavailable during execution — use FULLAUTO"
+    - "Batch processing with many independent runs — use FULLAUTO"
+
+domain_theory:
+  id: D_INTERACTIVE
+  inherits: D_Phi_DISPATCH
+  sorts:
+    - name: HumanDecision
+      cardinality: finite
+      values: [ADVANCE, RETRY, ABORT]
+      description: "The human's decision after reviewing a step output"
+    - name: RoutingConfirmation
+      cardinality: finite
+      values: [CONFIRMED, OVERRIDE]
+      description: "Human confirms or overrides the suggested method routing"
+  additional_predicates:
+    - name: human_confirmed
+      signature: "Step -> Bool"
+      description: "The human has confirmed the step output and decided to advance"
+    - name: routing_confirmed
+      signature: "TargetMethod -> Bool"
+      description: "The human has confirmed the method routing"
+  additional_axioms:
+    - id: Ax-I1
+      name: All decisions require human
+      statement: "forall s : Step. NOT step_advance(s) UNTIL human_confirmed(s)"
+      rationale: "Inherits from Ax-D1. No step advances without explicit human confirmation."
+    - id: Ax-I2
+      name: Routing requires confirmation
+      statement: "forall m : TargetMethod. NOT methodology_select(m) UNTIL routing_confirmed(m)"
+      rationale: "The human must confirm which method to use before initialization."
+  domain_boundary_note: >
+    Inherits D_Phi_DISPATCH boundary. Additionally excludes: the content of human decisions
+    (M1-INTERACTIVE blocks on the decision, it does not model the human's reasoning process);
+    escalation channel implementation; sub-agent internal execution.
+
+roles:
+  - id: rho_executor
+    description: >
+      The dispatch agent in interactive mode. Executes mechanical work: loads routing,
+      spawns sub-agents, collects outputs, presents results to human. Makes no decisions.
+      All routing, advancement, and failure-handling decisions are deferred to rho_PO.
+    observation_projection: >
+      pi_executor = id : Mod(D_INTERACTIVE) -> Mod(D_INTERACTIVE) — full visibility over
+      target methodology state, current step, outputs, validation results. The agent sees
+      everything but decides nothing.
+    authorized_transitions:
+      - "Load methodology routing (sigma_I1)"
+      - "Initialize method session after human confirmation (sigma_I2)"
+      - "Spawn sub-agent and collect output (sigma_I3)"
+      - "Run step validation (sigma_I4)"
+      - "Present results and options to human"
+    not_authorized:
+      - "Advance steps without human confirmation"
+      - "Select method routing without human confirmation"
+      - "Retry steps without human decision"
+      - "Abort session without human decision"
+  - id: rho_PO
+    description: >
+      The human decision-maker. Consulted at every decision point: routing confirmation,
+      step output review, advance/retry/abort decisions. Has full visibility and full
+      decision authority.
+    observation_projection: >
+      pi_PO = id : Mod(D_INTERACTIVE) -> Mod(D_INTERACTIVE) — full visibility. The human
+      sees all outputs, validation results, and state.
+    authorized_transitions:
+      - "Confirm or override method routing"
+      - "Decide ADVANCE, RETRY, or ABORT after step output review"
+      - "Terminate session at any point"
+    not_authorized:
+      - "Modify the target methodology's domain theory"
+      - "Execute steps directly (the agent executes, the human decides)"
+
+step_dag:
+  topology: "sigma_I1 -> sigma_I2 -> sigma_I3 -> sigma_I4 -> sigma_I5 (with sigma_I5 -> sigma_I3 loop)"
+  formal: >
+    Gamma_INTERACTIVE = ({sigma_I1, sigma_I2, sigma_I3, sigma_I4, sigma_I5},
+    {(sigma_I1, sigma_I2), (sigma_I2, sigma_I3), (sigma_I3, sigma_I4), (sigma_I4, sigma_I5),
+    (sigma_I5, sigma_I3)}, sigma_I1, sigma_I5)
+
+loop_structure:
+  name: Step execution loop
+  loop_edge: "sigma_I5 -> sigma_I3"
+  condition: "method is not complete (more steps remain)"
+  termination_certificate:
+    name: nu_I
+    definition: "|{steps in target method | not yet executed}|"
+    type: non-negative integer
+    decrease_witness: >
+      Each loop iteration executes at least one step (sigma_I3) and advances if human
+      confirms (sigma_I4 -> ADVANCE). Each advance reduces nu_I by 1. Retries do not
+      increase nu_I (same step re-executed). The loop terminates when nu_I = 0 (all
+      steps executed) or when the human aborts.
+    termination_condition: "nu_I = 0 (all steps complete) OR human decides ABORT"
+
+objective:
+  id: O_INTERACTIVE
+  formal: >
+    O_INTERACTIVE(s) =
+      (target_objective_met(s) AND forall step. human_confirmed(step))
+      OR session_aborted(s)
+  type: terminal
+  expressible_claim: >
+    O_INTERACTIVE references target_objective_met, human_confirmed, session_aborted — all
+    declared in D_Phi_DISPATCH or D_INTERACTIVE. Expressible as a closed sentence.
+  progress_preorder:
+    definition: >
+      s1 <= s2 iff |{steps confirmed by human in s1}| <= |{steps confirmed by human in s2}|.
+      Aborted states are maximal.
+    well_founded: "Finite step set. Each confirmation strictly increases the count. Well-founded."
+  success_profile:
+    - id: mu_steps_confirmed
+      name: human_confirmed_steps
+      formula: "|{steps | human_confirmed(step)}| / |total_steps|"
+      range: "[0, 1]"
+      terminal: "1.0 (or abort)"
+      proxy_claim: "Tracks progress through the target method's step sequence."
+
+phases:
+  - id: sigma_I1
+    name: "Load Target Methodology"
+    role: rho_executor
+    precondition: "Target methodology identified; autonomy_mode = INTERACTIVE"
+    postcondition: "Target methodology routing loaded; routing options presented to human; human has confirmed method selection"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - routing_options is non-empty: at least one method option has been retrieved from the target methodology
+      - human_choice is set: the human has selected which method to use
+      - If the target methodology's delta_Phi returns a single unambiguous method, present it to the human for confirmation anyway (Ax-I2)
+      - status = PASS only after human confirmation received
+      - status = BLOCKED if methodology routing fails to load
+
+      **Rationale.** In interactive mode, even unambiguous routing decisions require human
+      confirmation. The agent presents the routing result; the human confirms or overrides.
+      This prevents the agent from silently making a routing decision the human would have
+      changed.
+
+      **Procedure.**
+      1. Call `methodology_get_routing` with the target methodology ID to retrieve routing options
+      2. Evaluate the target methodology's transition function predicates against the current challenge
+      3. Present the routing result to the human: which method was selected and why
+      4. Wait for human confirmation: CONFIRMED (proceed with suggested method) or OVERRIDE (human specifies different method)
+      5. Record the human's choice as human_choice
+
+      **Output schema reference:**
+      - routing_options: list of available methods from the target methodology
+      - suggested_method: the method suggested by delta_Phi evaluation
+      - human_choice: the method confirmed by the human
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: routing_options
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: suggested_method
+          type: string
+          required: true
+        - name: human_choice
+          type: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "human_choice is set before proceeding to sigma_I2"
+        - "routing_options is non-empty"
+
+  - id: sigma_I2
+    name: "Initialize Method Session"
+    role: rho_executor
+    precondition: "sigma_I1 complete; human_choice is set"
+    postcondition: "Method session initialized; target method loaded with step sequence available"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - session_id is set: a method session has been created for the selected method
+      - step_sequence is loaded: the method's phases/steps are available for execution
+      - current_step points to the first step in the sequence
+      - status = PASS when session is ready for step execution
+      - status = BLOCKED if method initialization fails
+
+      **Rationale.** Session initialization is a mechanical step — no human decision required
+      beyond the routing confirmation from sigma_I1. The agent creates the execution context
+      for the selected method.
+
+      **Procedure.**
+      1. Call `methodology_select` with the human's confirmed method choice from sigma_I1
+      2. Load the selected method's step sequence (phases array from the method YAML)
+      3. Set current_step to the first step in the sequence
+      4. Confirm the session is ready: method loaded, steps enumerated, context available
+
+      **Output schema reference:**
+      - session_id: identifier for the created method session
+      - method_id: the method being executed
+      - step_sequence: ordered list of step IDs
+      - current_step: ID of the first step
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: session_id
+          type: string
+          required: true
+        - name: method_id
+          type: string
+          required: true
+        - name: step_sequence
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: current_step
+          type: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_sequence is non-empty"
+        - "current_step is the first element of step_sequence"
+
+  - id: sigma_I3
+    name: "Execute Step"
+    role: rho_executor
+    precondition: "Session initialized (sigma_I2 PASS) or loop re-entry from sigma_I5; current_step is set"
+    postcondition: "Sub-agent spawned, step executed, output collected and presented to human"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - step_context has been retrieved for the current step (via step_current or equivalent)
+      - sub_agent_prompt has been composed: includes step guidance, preconditions, input context
+      - step_output is non-null: the sub-agent has produced a result
+      - output_presented = true: the human has been shown the step output
+      - status = PASS when output is collected and presented
+      - status = BLOCKED if sub-agent fails to produce output
+
+      **Rationale.** The agent's role is purely mechanical here: retrieve context, compose
+      the prompt, spawn the sub-agent, collect output, and present it. No filtering,
+      summarizing, or interpretation of the output — the human sees everything.
+
+      **Procedure.**
+      1. Call `step_current` to get the current step's context: guidance, preconditions, postconditions
+      2. Compose a sub-agent prompt that includes:
+         a. The step's guidance text (from the method YAML)
+         b. The step's precondition and postcondition
+         c. Any input context from previous steps
+         d. The target methodology's domain theory context relevant to this step
+      3. Spawn a Claude Code sub-agent with the composed prompt
+      4. Collect the sub-agent's output
+      5. Present the complete output to the human — do not filter or summarize
+
+      **Output schema reference:**
+      - current_step: ID of the step that was executed
+      - step_output: the sub-agent's complete output
+      - output_presented: boolean indicating the human has been shown the output
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: current_step
+          type: string
+          required: true
+        - name: step_output
+          type: object
+          description: "Complete sub-agent output for the executed step"
+          required: true
+        - name: output_presented
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "step_output is non-null"
+        - "output_presented = true before proceeding to sigma_I4"
+
+  - id: sigma_I4
+    name: "Validate and Decide"
+    role: rho_PO
+    precondition: "sigma_I3 complete; step_output presented to human"
+    postcondition: "Validation result produced; human decision recorded: ADVANCE, RETRY, or ABORT"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - validation_result is set: step_validate has been called on the step output
+      - validation_result is one of PASS or FAIL
+      - human_decision is set: the human has decided ADVANCE, RETRY, or ABORT
+      - If human_decision = ADVANCE: step will be advanced (step_advance called in sigma_I5)
+      - If human_decision = RETRY: sigma_I3 will be re-executed for the same step
+      - If human_decision = ABORT: session will be terminated
+      - status = PASS when human decision is recorded
+
+      **Rationale.** The validation result gives the human structured information (did the
+      output satisfy postconditions?) but the human makes the final call. A PASS validation
+      does not automatically advance — the human may still want to retry for better output.
+      A FAIL validation does not automatically retry — the human may want to abort.
+
+      **Procedure.**
+      1. Call `step_validate` with the step output and current step ID
+      2. Present the validation result to the human alongside the step output
+      3. Present decision options to the human:
+         a. ADVANCE — accept output and move to next step
+         b. RETRY — re-execute the same step (sigma_I3 again)
+         c. ABORT — terminate the session
+      4. Wait for and record the human's decision
+
+      **Output schema reference:**
+      - validation_result: PASS or FAIL from step_validate
+      - human_decision: ADVANCE, RETRY, or ABORT
+      - status: PASS
+    output_schema:
+      fields:
+        - name: validation_result
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: human_decision
+          type: enum
+          values: [ADVANCE, RETRY, ABORT]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "human_decision is set before proceeding"
+        - "validation_result is produced by step_validate, not by the agent's judgment"
+
+  - id: sigma_I5
+    name: "Loop or Complete"
+    role: rho_executor
+    precondition: "sigma_I4 complete; human_decision recorded"
+    postcondition: "Either: next step loaded and loop re-enters sigma_I3; or method complete and result presented to human; or session aborted"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - If human_decision = ADVANCE AND more steps remain: step_advance called, current_step updated, loop re-enters sigma_I3
+      - If human_decision = ADVANCE AND no more steps remain: method_complete = true, final result presented to human
+      - If human_decision = RETRY: current_step unchanged, loop re-enters sigma_I3
+      - If human_decision = ABORT: session_aborted = true, termination recorded
+      - status = COMPLETE when method finishes or session aborts
+      - status = CONTINUE when looping back to sigma_I3
+
+      **Rationale.** This is the loop control step. It translates the human's decision into
+      the appropriate control flow: advance to next step, retry current step, or terminate.
+      The agent does not make control flow decisions — it executes the human's choice.
+
+      **Procedure.**
+      1. Read human_decision from sigma_I4
+      2. If ADVANCE:
+         a. Call `step_advance` to move to the next step
+         b. If more steps remain: update current_step, set status = CONTINUE, re-enter sigma_I3
+         c. If no more steps: set method_complete = true, present final result to human, set status = COMPLETE
+      3. If RETRY:
+         a. Keep current_step unchanged
+         b. Set status = CONTINUE, re-enter sigma_I3
+      4. If ABORT:
+         a. Set session_aborted = true
+         b. Record reason for abort
+         c. Set status = COMPLETE
+
+      **Output schema reference:**
+      - method_complete: boolean indicating all steps finished
+      - session_aborted: boolean indicating human aborted
+      - current_step: updated step ID (if advancing) or same (if retrying)
+      - status: COMPLETE or CONTINUE
+    output_schema:
+      fields:
+        - name: method_complete
+          type: boolean
+          required: true
+        - name: session_aborted
+          type: boolean
+          required: true
+        - name: current_step
+          type: string
+          required: false
+          description: "Set when status = CONTINUE"
+        - name: status
+          type: enum
+          values: [COMPLETE, CONTINUE]
+          required: true
+      hard_invariants:
+        - "method_complete and session_aborted are mutually exclusive"
+        - "status = CONTINUE requires current_step to be set"
+        - "status = COMPLETE requires method_complete = true OR session_aborted = true"
+
+composability:
+  claims:
+    - edge: "sigma_I1 -> sigma_I2"
+      claim: >
+        post_sigma_I1: human_choice is set. pre_sigma_I2: human_choice is set.
+        Identity inclusion — direct compositional.
+    - edge: "sigma_I2 -> sigma_I3"
+      claim: >
+        post_sigma_I2: session initialized, step_sequence loaded, current_step set.
+        pre_sigma_I3: session initialized, current_step set. Post provides superset of pre.
+    - edge: "sigma_I3 -> sigma_I4"
+      claim: >
+        post_sigma_I3: step_output collected and presented. pre_sigma_I4: step_output
+        presented to human. Identity inclusion.
+    - edge: "sigma_I4 -> sigma_I5"
+      claim: >
+        post_sigma_I4: validation_result and human_decision set. pre_sigma_I5: human_decision
+        recorded. Post provides superset of pre.
+    - edge: "sigma_I5 -> sigma_I3 (LOOP)"
+      claim: >
+        post_sigma_I5 when status = CONTINUE: current_step set (same or next).
+        pre_sigma_I3: current_step set. Identity inclusion. Loop bounded by nu_I.
+  terminal_condition_claim: >
+    post_sigma_I5 when status = COMPLETE: method_complete = true OR session_aborted = true.
+    This matches O_INTERACTIVE. Terminal states are O_INTERACTIVE-satisfying.
+  initial_condition_claim: >
+    pre_sigma_I1 requires target methodology identified and autonomy_mode = INTERACTIVE.
+    This holds at P3-DISPATCH initialization.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: human-in-the-loop dispatch with full oversight. Who:
+        executor (agent) and PO (human). Why: first-time or high-stakes execution needs
+        human confirmation at every step. How: five-step loop with human gating. When:
+        first methodology execution, unfamiliar codebase, high-stakes changes.
+    - gate: G1
+      result: PASS
+      note: >
+        D_INTERACTIVE inherits D_Phi_DISPATCH. 2 additional sorts (HumanDecision,
+        RoutingConfirmation). 2 additional predicates. 2 additional axioms (Ax-I1, Ax-I2).
+    - gate: G2
+      result: PASS
+      note: >
+        O_INTERACTIVE stated. Progress preorder over confirmed steps. One measure
+        (mu_steps_confirmed) with formula, range, terminal value, proxy claim.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles (rho_executor, rho_PO) with observation projections and explicit
+        authorized/not-authorized. Coverage and authority claims present.
+    - gate: G4
+      result: PASS
+      note: >
+        Five steps (sigma_I1-sigma_I5) with loop edge sigma_I5 -> sigma_I3. Termination
+        certificate nu_I over remaining steps. Five composability claims. Terminal and
+        initial condition claims present.
+    - gate: G5
+      result: PASS
+      note: >
+        All five steps have finalized guidance in constraints-first format. Each guidance
+        block references MCP tools (methodology_get_routing, methodology_select, step_current,
+        step_validate, step_advance). Output schemas with typed fields and hard invariants.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-DISPATCH/M1-INTERACTIVE/M1-INTERACTIVE.yaml). Structurally complete."

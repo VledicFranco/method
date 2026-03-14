@@ -1,0 +1,385 @@
+methodology:
+  id: P3-DISPATCH
+  name: "Dispatch Methodology"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  niche: >
+    Autonomy-aware orchestration of methodology execution. Given a target methodology
+    (e.g., P2-SD) and a human-specified autonomy mode, P3-DISPATCH manages the execution
+    lifecycle: routing, step execution via sub-agents, validation, retry, and escalation.
+    Three autonomy modes cover the spectrum from full human control (INTERACTIVE) through
+    selective escalation (SEMIAUTO) to unattended execution (FULLAUTO). Excludes: methodology
+    design, method compilation, domain theory authoring, and the internal logic of the target
+    methodology's methods.
+
+navigation:
+  what: >
+    P3-DISPATCH receives a target methodology, evaluates the requested autonomy mode,
+    and routes to the appropriate dispatch method. It does not execute the target
+    methodology's steps directly — it manages the orchestration lifecycle around them.
+    Three autonomy modes map to three methods covering the full autonomy spectrum:
+    human-in-the-loop, selective escalation, and unattended execution.
+  who: >
+    The dispatch agent — an LLM agent that orchestrates methodology execution by spawning
+    sub-agents for individual steps, collecting outputs, validating postconditions, and
+    managing the human interaction boundary according to the selected autonomy mode.
+  why: >
+    Methodology execution requires different human-agent interaction patterns depending on
+    context: exploratory work needs tight human control, well-understood pipelines benefit
+    from autonomous execution, and most work falls between. Without explicit autonomy
+    routing, agents either over-consult (blocking on every decision) or under-consult
+    (making decisions outside their authority). delta_DISPATCH externalizes the autonomy
+    decision into an auditable routing function.
+  how: >
+    Evaluate autonomy_mode(s) at initialization. Apply delta_DISPATCH (3-arm direct map).
+    The selected method then manages the target methodology's execution lifecycle with the
+    appropriate level of human interaction.
+  when_to_use:
+    - "A methodology needs to be executed and the human has specified an autonomy preference"
+    - "The executor needs to manage sub-agent spawning, validation, and retry logic"
+    - "The human wants explicit control over how much authority the agent has during execution"
+  when_not_to_use:
+    - "The target methodology is being designed or compiled — use M1-MDES"
+    - "The human wants to execute a method directly without orchestration"
+    - "No target methodology exists — P3-DISPATCH dispatches execution, not design"
+    - "The autonomy mode is already known and the method can be invoked directly"
+
+domain_theory:
+  id: D_Phi_DISPATCH
+  sorts:
+    - name: TargetMethodology
+      cardinality: singleton_per_invocation
+      description: "The methodology being executed (e.g., P2-SD)"
+    - name: TargetMethod
+      cardinality: singleton_per_invocation
+      description: "The method selected by delta_Phi of the target (e.g., M1-IMPL)"
+    - name: AutonomyMode
+      cardinality: finite
+      values: [INTERACTIVE, SEMIAUTO, FULLAUTO]
+      description: "The autonomy level governing human-agent interaction during execution"
+    - name: DecisionPoint
+      cardinality: unbounded
+      description: "A point during execution requiring human or agent judgment"
+    - name: EscalationChannel
+      cardinality: finite
+      values: [TERMINAL, SLACK, ASYNC_REVIEW]
+      description: "How to reach the human when escalation is needed"
+    - name: AgentSession
+      cardinality: unbounded
+      description: "A spawned Claude Code agent executing a method step"
+    - name: StepOutput
+      cardinality: unbounded
+      description: "The result produced by an agent for a step"
+    - name: ValidationResult
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "Result of postcondition checking on a StepOutput"
+  function_symbols:
+    - name: autonomy_mode
+      signature: "State -> AutonomyMode"
+      totality: total
+      description: "Returns the autonomy mode set at initialization"
+    - name: retry_count
+      signature: "AgentSession -> Nat"
+      totality: total
+      description: "Number of retries attempted for this session's current step"
+    - name: max_retries
+      signature: "AutonomyMode -> Nat"
+      totality: total
+      description: "Maximum retry budget for the given autonomy mode"
+      note: "INTERACTIVE: 0 (human decides), SEMIAUTO: 1, FULLAUTO: 3 (default)"
+    - name: step_validate
+      signature: "StepOutput x Step -> ValidationResult"
+      totality: total
+      description: "Validates a step's output against its postconditions"
+  predicates:
+    - name: requires_human
+      signature: "DecisionPoint -> Bool"
+      description: "This decision exceeds the agent's authority in the current autonomy mode"
+    - name: within_budget
+      signature: "AgentSession -> Bool"
+      description: "The agent session has retries remaining: retry_count(s) < max_retries(mode)"
+    - name: validated
+      signature: "StepOutput x Step -> Bool"
+      description: "The output satisfies the step's postconditions: step_validate(o, s).valid = true"
+    - name: target_objective_met
+      signature: "State -> Bool"
+      description: "The target methodology's objective O_Phi is satisfied"
+    - name: budget_exhausted
+      signature: "AgentSession -> Bool"
+      description: "The agent session has exhausted its retry budget"
+    - name: session_aborted
+      signature: "State -> Bool"
+      description: "The dispatch session was aborted (by human or by budget exhaustion)"
+  axioms:
+    - id: Ax-D1
+      name: Interactive requires human for all decisions
+      statement: "forall d : DecisionPoint, s : State. autonomy_mode(s) = INTERACTIVE -> requires_human(d) = true"
+      rationale: "In interactive mode, every decision point requires human confirmation. The agent executes but does not decide."
+    - id: Ax-D2
+      name: Full auto requires human for no decisions
+      statement: "forall d : DecisionPoint, s : State. autonomy_mode(s) = FULLAUTO -> requires_human(d) = false"
+      rationale: "In full auto mode, the agent has full authority. The human is notified, not consulted."
+    - id: Ax-D3
+      name: Budget bound
+      statement: "forall a : AgentSession, s : State. within_budget(a) <-> retry_count(a) < max_retries(autonomy_mode(s))"
+      rationale: "An agent session is within budget iff its retry count has not reached the mode's maximum."
+    - id: Ax-D4
+      name: Validation soundness
+      statement: "forall o : StepOutput, st : Step. validated(o, st) <-> step_validate(o, st) = PASS"
+      rationale: "Validation is structural — it checks postconditions, not semantic quality."
+  domain_boundary_note: >
+    Excludes: internal execution logic of the target methodology's methods (P3-DISPATCH
+    sees step inputs and outputs, not internal method state); methodology design and
+    compilation; the content domain of the work being done; escalation channel
+    implementation details (P3-DISPATCH declares which channel, not how to send).
+  initial_state_valid_claim: >
+    A state with TargetMethodology identified, AutonomyMode set, no TargetMethod selected,
+    no AgentSessions spawned, no StepOutputs produced satisfies all axioms: Ax-D1/Ax-D2
+    (vacuously true — no DecisionPoints exist yet), Ax-D3 (vacuously true — no
+    AgentSessions), Ax-D4 (vacuously true — no StepOutputs). Valid.
+  terminal_state_valid_claim: >
+    A state with target_objective_met(s) = true OR session_aborted(s) = true satisfies
+    all axioms: Ax-D1/Ax-D2 (mode unchanged — holds throughout), Ax-D3 (budget checked
+    at each retry), Ax-D4 (every produced output was validated). Valid.
+
+roles:
+  - id: rho_executor
+    description: >
+      The dispatch agent. Spawns sub-agents to execute target methodology steps, collects
+      outputs, validates postconditions, manages retry logic, and handles escalation.
+      Authority varies by autonomy mode: minimal in INTERACTIVE (executes but all decisions
+      deferred to human), conditional in SEMIAUTO (decides on clear cases, escalates
+      ambiguous ones), full in FULLAUTO (decides everything, notifies on completion/failure).
+    observation_projection: >
+      pi_executor = id : Mod(D_Phi_DISPATCH) -> Mod(D_Phi_DISPATCH) — full visibility
+      over dispatch state: target methodology, selected method, current step, all outputs,
+      all validation results, retry counts, autonomy mode.
+    authorized_transitions:
+      - "Load target methodology routing via methodology_get_routing"
+      - "Select target method via methodology_select"
+      - "Execute steps by spawning sub-agents"
+      - "Validate step outputs via step_validate"
+      - "Advance steps via step_advance (subject to autonomy mode constraints)"
+      - "Retry failed steps (subject to budget constraints)"
+      - "Escalate to human (SEMIAUTO: on ambiguity; INTERACTIVE: on every decision)"
+      - "Abort execution (FULLAUTO: on budget exhaustion)"
+    not_authorized:
+      - "Change autonomy mode mid-execution"
+      - "Override the target methodology's domain theory or transition function"
+      - "Skip validation of step outputs"
+      - "Exceed retry budget"
+  - id: rho_PO
+    description: >
+      The human in INTERACTIVE and SEMIAUTO modes. Makes routing decisions, step go/no-go
+      calls, and failure handling decisions. In INTERACTIVE: consulted at every decision
+      point. In SEMIAUTO: consulted only on escalated (ambiguous or failed) decisions.
+    observation_projection: >
+      pi_PO = id : Mod(D_Phi_DISPATCH) -> Mod(D_Phi_DISPATCH) — full visibility over
+      all dispatch state. The human sees everything the agent sees, presented via the
+      escalation channel (terminal or async).
+    authorized_transitions:
+      - "Confirm or override method routing decisions"
+      - "Approve or reject step outputs"
+      - "Decide retry vs abort on step failure"
+      - "Terminate the session"
+    not_authorized:
+      - "Modify the target methodology's domain theory"
+      - "Change the autonomy mode mid-execution (must restart with new mode)"
+  - id: rho_observer
+    description: >
+      The human in FULLAUTO mode. Receives completion notifications and failure logs.
+      Not consulted during execution — the agent has full authority. The observer can
+      abort execution but cannot make mid-execution decisions.
+    observation_projection: >
+      pi_observer : Mod(D_Phi_DISPATCH) -> {completion_status, failure_log} — reduced
+      visibility. The observer sees only terminal state and failure information, not
+      intermediate step outputs or validation results.
+    authorized_transitions:
+      - "Abort execution (emergency stop)"
+    not_authorized:
+      - "Make mid-execution decisions"
+      - "Override step validation results"
+      - "Change retry budgets during execution"
+    coverage_claim: >
+      The union of pi_executor and pi_PO (or pi_observer in FULLAUTO) covers the full
+      Mod(D_Phi_DISPATCH) state space. pi_executor alone is the identity — full coverage.
+      The human roles add authority over decision points that the agent cannot (INTERACTIVE)
+      or may not (SEMIAUTO) resolve autonomously.
+    authority_claim: >
+      The union of role authorities covers all transitions required to move from initial
+      state (target methodology loaded, mode set) to terminal state (objective met or
+      session aborted). In INTERACTIVE: rho_executor + rho_PO cover all transitions. In
+      SEMIAUTO: rho_executor handles clear decisions, rho_PO handles escalated ones. In
+      FULLAUTO: rho_executor alone covers all transitions; rho_observer can only abort.
+    role_partition_rationale: >
+      Three roles because autonomy modes create genuinely different authority boundaries.
+      rho_executor is always present. rho_PO provides decision authority in INTERACTIVE
+      and SEMIAUTO. rho_observer replaces rho_PO in FULLAUTO with reduced authority and
+      visibility — the epistemic separation (observer sees less than PO) is a deliberate
+      design choice reflecting the trust boundary of unattended execution.
+
+predicate_operationalization:
+  note: >
+    The autonomy mode is set at initialization and does not change mid-execution.
+    The following criteria provide concrete True/False conditions for mode selection.
+  predicates:
+    - name: "autonomy_mode = INTERACTIVE"
+      true_when: >
+        Human wants to confirm every decision point: routing confirmation, step output
+        review, retry/abort decisions. Appropriate for first-time methodology execution,
+        unfamiliar codebases, or high-stakes changes where every step needs human review.
+      false_when: >
+        Human trusts the agent for some or all decisions. The human does not want to be
+        consulted at every step.
+    - name: "autonomy_mode = SEMIAUTO"
+      true_when: >
+        Human wants to be consulted on ambiguous decisions but trusts the agent for clear
+        ones. Appropriate for familiar methodologies where most steps are routine but some
+        require judgment.
+      false_when: >
+        Human wants full control (INTERACTIVE) or full delegation (FULLAUTO).
+    - name: "autonomy_mode = FULLAUTO"
+      true_when: >
+        Human wants unattended execution with notification on completion or hard failure.
+        Appropriate for well-understood pipelines, batch processing, or when the human is
+        unavailable during execution.
+      false_when: >
+        Human needs to be consulted during execution. The work is exploratory or the
+        methodology is being used for the first time.
+
+transition_function:
+  id: delta_DISPATCH
+  formal_type: "delta_DISPATCH : Mod(D_Phi_DISPATCH) -> Option(Method)"
+  evaluation_order: direct_map
+  note: >
+    Autonomy mode is set at initialization and determines the method directly.
+    No priority ordering needed — the three modes are mutually exclusive and exhaustive.
+    delta_DISPATCH fires exactly once per invocation.
+  arms:
+    - priority: 1
+      label: interactive
+      condition: "autonomy_mode(s) = INTERACTIVE"
+      returns: "Some(M1-INTERACTIVE)"
+      rationale: "Human wants full control over every decision point."
+    - priority: 2
+      label: semiauto
+      condition: "autonomy_mode(s) = SEMIAUTO"
+      returns: "Some(M2-SEMIAUTO)"
+      rationale: "Human wants selective escalation — clear decisions delegated, ambiguous ones escalated."
+    - priority: 3
+      label: fullauto
+      condition: "autonomy_mode(s) = FULLAUTO"
+      returns: "Some(M3-FULLAUTO)"
+      rationale: "Human wants unattended execution — agent has full authority."
+
+termination_certificate:
+  id: nu_DISPATCH
+  definition: "nu_DISPATCH(s) = nu_target(s) — wraps the target methodology's own termination certificate"
+  note: >
+    P3-DISPATCH terminates when the target methodology terminates (objective met) or when
+    the dispatch session is aborted (budget exhaustion in FULLAUTO, or human termination in
+    INTERACTIVE/SEMIAUTO). Each dispatch method carries its own loop termination logic:
+    M1-INTERACTIVE and M2-SEMIAUTO terminate on human decision or target completion;
+    M3-FULLAUTO terminates on target completion or budget exhaustion. The wrapping
+    relationship means P3-DISPATCH does not need an independent termination proof — it
+    inherits from the target.
+  certificate: "nu_DISPATCH = nu_target (target methodology's certificate)"
+
+objective:
+  id: O_Phi_DISPATCH
+  formal: >
+    O_Phi_DISPATCH(s) =
+      target_objective_met(s)
+      OR session_aborted(s)
+  type: terminal
+  expressible_claim: >
+    O_Phi_DISPATCH references target_objective_met (declared predicate over State) and
+    session_aborted (declared predicate over State). Both symbols are in Sigma_Phi_DISPATCH.
+    O_Phi_DISPATCH is expressible as a closed sentence over Mod(D_Phi_DISPATCH).
+  note: >
+    O_Phi_DISPATCH is satisfied when either the target methodology's objective is met
+    (successful execution) or the session is aborted (budget exhaustion or human
+    termination). Both are valid terminal states. The dispatch methodology succeeds by
+    faithfully executing the target — its own objective is a pass-through.
+  progress_preorder:
+    name: "leq_Phi_DISPATCH"
+    definition: >
+      States are ordered by target methodology progress: s1 <= s2 iff the target
+      methodology's own progress preorder ranks s1 <= s2. Additionally, aborted states
+      are terminal (maximal under the preorder regardless of target progress).
+    well_founded: >
+      Inherits well-foundedness from the target methodology's progress preorder. The
+      target methodology has a finite step set and a well-founded preorder. Abort adds
+      a maximal element, preserving well-foundedness.
+  success_profile:
+    - id: mu_1
+      name: target_progress
+      formula: "target methodology's own progress measure (inherited)"
+      range: "inherited from target"
+      terminal: "inherited from target"
+      proxy_claim: >
+        mu_1 tracks progress toward the target methodology's objective. It is an
+        order-homomorphism w.r.t. leq_Phi_DISPATCH because it inherits from the
+        target's own preorder.
+    - id: mu_2
+      name: dispatch_completion
+      formula: "1 if target_objective_met(s) OR session_aborted(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_2 = 1 is necessary and sufficient for O_Phi_DISPATCH. Binary measure that
+        transitions from 0 to 1 only at terminal state.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: 3-arm autonomy routing for methodology execution.
+        Who: dispatch agent + human (PO or observer depending on mode). Why: wrong
+        autonomy level degrades either quality (over-delegation) or throughput
+        (over-consultation). How: evaluate autonomy_mode -> apply delta_DISPATCH ->
+        dispatch. When: methodology execution with specified autonomy preference.
+    - gate: G1
+      result: PASS
+      note: >
+        D_Phi_DISPATCH = (Sigma_Phi_DISPATCH, Ax_Phi_DISPATCH). 8 sorts with cardinality
+        (TargetMethodology, TargetMethod, AutonomyMode with 3 values, DecisionPoint,
+        EscalationChannel with 3 values, AgentSession, StepOutput, ValidationResult with
+        2 values). 4 function symbols with totality. 6 predicates with typed signatures
+        referencing declared sorts. 4 closed axioms (Ax-D1 through Ax-D4) with rationale.
+        Domain boundary stated. Initial and terminal state membership claimed with
+        axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_Phi_DISPATCH stated as disjunction of two Sigma-predicates (target_objective_met,
+        session_aborted). Type: terminal. Expressibility claim present. Progress preorder
+        inherits from target methodology. Two measures (mu_1, mu_2) with formulas, ranges,
+        terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Three roles (rho_executor, rho_PO, rho_observer) with observation projections and
+        explicit authorized/not-authorized transitions. Coverage claim: pi_executor is
+        identity (full coverage). Authority claim: union of role authorities covers all
+        required transitions across all three autonomy modes. Role partition rationale:
+        three roles because autonomy modes create genuinely different authority boundaries.
+    - gate: G4
+      result: PASS
+      note: >
+        delta_DISPATCH declared as 3-arm direct map (INTERACTIVE, SEMIAUTO, FULLAUTO).
+        Totality: three modes are mutually exclusive and exhaustive. Termination certificate
+        nu_DISPATCH wraps nu_target — inherits from target methodology.
+    - gate: G5
+      result: PASS
+      note: >
+        Three autonomy_mode values operationalized with True/False conditions and concrete
+        criteria. INTERACTIVE: confirm every decision. SEMIAUTO: consult on ambiguous
+        decisions. FULLAUTO: unattended with notification.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-DISPATCH/P3-DISPATCH.yaml). Structurally complete."
