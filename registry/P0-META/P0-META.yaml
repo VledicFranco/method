@@ -2,12 +2,18 @@ methodology:
   id: P0-META
   name: "Genesis Methodology for the Meta-Method Family"
   formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
-  version: "1.1"
+  version: "1.2"
   status: compiled
   compilation_date: "2026-03-14"
   formal_grounding: "theory/F1-FTH.md §7"
   source_document: "P0-META/P0-META.md"
   supersedes: "P0-META/M1-MDES/family-proposals.md"
+  changes_from_v1_2: >
+    Tier-1 compliance fixes (2026-03-14): declared domain: Method -> Domain function symbol
+    (used in arm 2 but previously undeclared — G1 violation); corrected progress preorder
+    direction (both inequalities were inverted — terminal states were not maximal under v1.1
+    definition). Tier-2 fixes: unified high_gap/high_gaps notation (Boolean predicate vs
+    set comprehension now explicit); corrected arm 8 expansion note to use declared arm labels.
   changes_from_v1_0: >
     Tier-1 compliance fixes (2026-03-14): declared nat sort; added in_meta_family,
     deprecated, self_consistent predicates to Pi; added active_registry predicate (Tier-2);
@@ -72,6 +78,10 @@ domain_theory:
       signature: "TargetRegistry -> nat"
       totality: total
       note: "cardinality of the declared target scope; Ax-5 guarantees this is finite"
+    - name: domain
+      signature: "Method -> Domain"
+      totality: total
+      note: "the domain theory of a method; used in arm 2 to test whether a domain sketch is already covered by an in-scope method"
 
   predicates:
     - name: compiled
@@ -203,19 +213,23 @@ objective:
     statement: >
       s1 ≼ s2 iff
         (let T1 = unique T s.t. active_registry(T, s1); T2 = unique T s.t. active_registry(T, s2)):
-        |compiled_clean(s1, T1)| >= |compiled_clean(s2, T2)|
-        AND |{m | high_gap(m) AND in_scope(m, T1)}|_s1 <= |{m | high_gap(m) AND in_scope(m, T2)}|_s2
-    note: "Product preorder — both components must hold. Terminal states are maximal. T read from state via active_registry."
+        |{m | compiled_clean(m, T1)}|_s1 <= |{m | compiled_clean(m, T2)}|_s2
+        AND |{m | high_gap(m) AND in_scope(m, T1)}|_s1 >= |{m | high_gap(m) AND in_scope(m, T2)}|_s2
+    note: >
+      Product preorder — both components must hold. s1 ≼ s2 means s2 has made at least as much
+      progress toward O_META as s1: s2 has >= compiled_clean methods and <= high-gap methods.
+      Terminal states are maximal (all in-scope methods are compiled_clean, zero high_gap methods).
+      T read from state via active_registry. Corrected from v1.1 (direction was inverted).
 
   success_profile:
     - id: mu_1
       name: registry_completeness
-      formula: "|compiled_clean(s, T)| / target_size(T)"
+      formula: "|{m | compiled_clean(m, T)}|_s / target_size(T)"
       range: "[0, 1]"
       priority: 1
     - id: mu_2
       name: gap_cleanliness
-      formula: "1 - |high_gaps(s, T)| / max(1, |compiled(s,T)|)"
+      formula: "1 - |{m | in_scope(m, T) AND high_gap(m)}|_s / max(1, |{m | in_scope(m, T) AND compiled(m)}|_s)"
       range: "[0, 1]"
       priority: 2
     - id: mu_3
@@ -298,18 +312,18 @@ transition_function:
       condition: "O_META(s) OR (arms 1-7 all evaluate false)"
       selects: None
       note: >
-        Formal expansion: NOT(exists m in T. high_gap(m)) AND NOT(domain_sketch_ready fires)
-        AND NOT(needs_instantiation fires) AND NOT(composable_pair fires)
-        AND NOT(informal_unrecorded fires) AND NOT(has_impl_target fires)
-        AND NOT(informal_no_sketch fires). Informal shorthand retained for readability.
+        Formal expansion: NOT(gap_severity_first fires) AND NOT(lifecycle_design fires)
+        AND NOT(lifecycle_instantiation fires) AND NOT(structural_composition fires)
+        AND NOT(structural_audit fires) AND NOT(implementation_derivation fires)
+        AND NOT(discovery_wip fires). Informal shorthand retained for readability.
 
 termination:
   certificate_id: nu_META
   formula: >
     nu_META(s) =
       let T = unique TargetRegistry s.t. active_registry(T, s) in
-      (target_size(T) - |compiled_clean(s, T)|) * W_method
-      + sum_{m in T} |high_gaps(m, s)| * W_gap
+      (target_size(T) - |{m | compiled_clean(m, T)}|_s) * W_method
+      + sum_{m in T} |{g | has_gap(m, g) AND severity(g) IN {HIGH, CRITICAL}}|_s * W_gap
   weights:
     W_method: ">> W_gap (completing a method outweighs closing individual gaps)"
     W_gap: 1
