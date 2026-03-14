@@ -13,6 +13,7 @@ Evolving architecture documentation for `pv-method`.
 | [routing.md](routing.md) | Transition function extraction, predicate merge, `getMethodologyRouting` design |
 | [mcp-layer.md](mcp-layer.md) | Thin MCP adapter design, 8 tools, error handling, response formatting |
 | [dependencies.md](dependencies.md) | Package dependencies and principles |
+| [bridge.md](bridge.md) | PTY bridge HTTP server — session pool, output parser, API routes |
 
 ## Conventions
 
