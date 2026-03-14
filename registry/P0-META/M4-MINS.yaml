@@ -1,0 +1,1340 @@
+method:
+  id: M4-MINS
+  name: "Method for Instantiating a General Method into a Project Instance"
+  description: >
+    Takes a validated (compiled) general method M.X and a specific project context and
+    produces a project instance P.X.Y — specialized step guidance, role files with
+    project-specific observation projections, and a formal domain morphism declaration
+    grounded in the domain retraction of F1-FTH §6.3. The method compiles when
+    P.X.Y passes all seven acceptance gates (G0–G6) at σ₆ and constitutes an
+    independently executable method for the target project. This is the fourth method
+    in the meta-methods family (M1-MDES–M.00N).
+  version: "1.2"
+  status: compiled
+  compilation_date: "2026-03-10"
+  evolution_date: "2026-03-14"
+  evolution_cycle: "MINS-MEVO-001"
+  compilation_record:
+    result: PASS
+    gates:
+      G0: PASS
+      G1: PASS
+      G2: PASS
+      G3: PASS
+      G4: "PASS (v1.1: σ₃.0 sub-step added; σ₄ decomposed into σ₄.0+σ₄.1; DAG acyclicity preserved)"
+      G5: "PASS (post-repair: constraints-first format applied to σ₀–σ₅, 2026-03-10; v1.1: σ₃.0 and σ₄.0 guidance blocks also constraints-first)"
+      G6: "PASS (v1.1: YAML updated with derived_constraints and derived_projections output schemas)"
+    notes: >
+      G5 repair applied 2026-03-10 (SESSION-006): moved Constraints blocks to open each
+      guidance section in σ₀–σ₅. G2-morphism gate in σ₆ is novel but formally grounded
+      in F1-FTH §6.3 (domain retraction); not a gap in MINS compilation under MDES.
+      v1.1 evolution (MINS-MEVO-001, 2026-03-10, SESSION-009): σ₃.0 (Constraint Derivation,
+      mechanical) added to σ₃; σ₄ decomposed into σ₄.0 (Observation Projection Derivation,
+      mechanical) + σ₄.1 (Role File Rendering, judgment). G2 gate strengthened: derived_projections
+      consistency now a compilation FAIL condition. Refinement claim: v1.1 refines_SP v1.0.
+  source_document: "P0-META/M4-MINS/M4-MINS.md"
+  formal_grounding: "theory/F1-FTH.md §6.3, §1.4, §2"
+
+domain_theory:
+  id: D_MINS
+  reference: "theory/F1-FTH.md §6.3, §1.4, §2"
+  note: >
+    D_MINS is the domain of the method instantiation workspace. World states track the general
+    method being instantiated, the project context providing specialization content, the domain
+    extension D' produced by σ₁, the domain morphism (embed, project) produced by σ₂, the
+    specialized steps and role files produced by σ₃–σ₄, and the version coupling declaration
+    produced by σ₅. Formalized from phase pre/postconditions and step invariants.
+  sorts:
+    - name: Method
+      cardinality: unbounded
+      description: "The general method M.X = (D, Roles, Γ, O, μ⃗) being instantiated"
+    - name: Domain
+      cardinality: unbounded
+      description: "A many-sorted signature+axioms pair D = (Σ, Ax); the general domain of M.X"
+    - name: ExtendedDomain
+      cardinality: unbounded
+      description: "D' = (Σ', Ax') — the project domain extension of D; Σ ⊆ Σ', Ax ⊆ Ax'"
+    - name: TouchedSubspace
+      cardinality: unbounded
+      description: "Σ_T ⊆ Σ — the sorts and predicates referenced by at least one step's pre/post/tools in M.X's Γ"
+    - name: ProjectContext
+      cardinality: unbounded
+      description: "The project context: technology stack, architecture documents, team role structure, constraints"
+    - name: ProjectInstance
+      cardinality: unbounded
+      description: "P.X.Y — the output artifact: domain morphism + specialized steps + role files + version coupling"
+    - name: SpecializedStep
+      cardinality: unbounded
+      description: "A project-specialized version of a step σ ∈ Γ of M.X, expressed in D' sorts with project guidance"
+    - name: AddedStep
+      cardinality: unbounded
+      description: "A step not in M.X's Γ that operates exclusively on sorts outside Σ_T"
+    - name: DomainMorphism
+      cardinality: unbounded
+      description: "The retraction pair (embed: Mod(D) → Mod(D'), project: Mod(D') → Mod(D)) with retraction on Σ_T"
+    - name: RoleFile
+      cardinality: unbounded
+      description: "R.X.Y.Z — a self-contained role document declaring π_ρ', α_ρ', load protocol, and step guidance"
+    - name: VersionCoupling
+      cardinality: unbounded
+      description: "The staleness tracking declaration: current_mx_version, M.X-version-sensitive components, update trigger"
+    - name: SufficiencyDecision
+      cardinality: finite
+      values: [proceed, redirect-mx-uncompiled, redirect-context-gap]
+      description: "σ₀ outcome: whether instantiation proceeds or redirects with a named gap"
+    - name: CompilationResult
+      cardinality: finite
+      values: [PASS, FAIL]
+      description: "σ₆ compilation outcome for the project instance P.X.Y"
+    - name: nat
+      cardinality: infinite
+      description: "Natural numbers — step counts, gate counts, component counts in measures"
+
+  function_symbols:
+    - name: general_domain
+      signature: "Method -> Domain"
+      totality: total
+      note: "the domain theory D of the general method M.X; used in conservative extension and morphism checks"
+    - name: step_count
+      signature: "Method -> nat"
+      totality: total
+      note: "the number of steps in M.X's Γ; used in μ₂ coverage measure"
+    - name: role_count
+      signature: "Method -> nat"
+      totality: total
+      note: "the number of roles in M.X's Roles; used in μ₂ coverage measure"
+
+  predicates:
+    - name: compiled
+      signature: "Method"
+      description: "M.X has passed G0–G6 under M1-MDES — prerequisite for instantiation (σ₀ hard invariant)"
+    - name: context_sufficient
+      signature: "ProjectContext"
+      description: "project context provides all four sufficiency dimensions: tech stack, arch docs, team roles, constraints"
+    - name: conservative_extension
+      signature: "Domain x ExtendedDomain"
+      description: "D' conservatively extends D: Σ ⊆ Σ', Ax ⊆ Ax', no existing axiom in Ax is modified in Ax'"
+    - name: retraction_holds
+      signature: "DomainMorphism x TouchedSubspace"
+      description: "project ∘ embed = id on Mod(D) ↾ Σ_T — the retraction condition on the touched subspace"
+    - name: valid_addition
+      signature: "AddedStep x TouchedSubspace"
+      description: "every sort referenced by the added step is outside Σ_T — does not violate retraction condition"
+    - name: covers_general_roles
+      signature: "ProjectInstance x Method"
+      description: "P.X.Y has a RoleFile for every role ρ in M.X's Roles — no role is dropped"
+    - name: covers_general_steps
+      signature: "ProjectInstance x Method"
+      description: "P.X.Y has a SpecializedStep for every step σ in M.X's Γ — no step is dropped"
+    - name: version_coupled
+      signature: "ProjectInstance"
+      description: "P.X.Y has a VersionCoupling declaration with a specific current_mx_version string"
+
+  axioms:
+    - id: Ax-1
+      statement: "forall P M. covers_general_roles(P, M) -> forall rho in Roles(M). exists r in RoleFiles(P). corresponds(r, rho)"
+      rationale: "Role coverage is universal: every general role must have a corresponding role file. The definition of covers_general_roles."
+    - id: Ax-2
+      statement: "forall P M. covers_general_steps(P, M) -> forall sigma in Gamma(M). exists s in SpecializedSteps(P). generalizes(s, sigma)"
+      rationale: "Step coverage is universal: every general step must have a specialized step. The definition of covers_general_steps."
+    - id: Ax-3
+      statement: "forall D D'. conservative_extension(D, D') -> NOT exists ax in Ax(D). modified_in(ax, D')"
+      rationale: "Conservative extension strictly prohibits axiom modification. Any axiom revision routes to M1-MDES, not M4-MINS."
+    - id: Ax-4
+      statement: "forall a T. valid_addition(a, T) <-> (sorts(a) ∩ Sigma_T(T) = empty_set)"
+      rationale: "An added step is valid iff it references no sort in the touched subspace — preserving the retraction condition."
+    - id: Ax-5
+      statement: "forall h T. retraction_holds(h, T) -> forall v in Mod(D). project(embed(v)) = v on T"
+      rationale: "The retraction condition: on the touched subspace, the embed-project round trip is lossless."
+    - id: Ax-6
+      statement: "forall P. version_coupled(P) -> exists v. current_mx_version(P) = v AND v != 'current' AND v != 'latest'"
+      rationale: "Version coupling requires a specific, machine-readable version string — relative references cannot support staleness detection."
+    - id: Ax-7
+      statement: "forall P M. covers_general_roles(P, M) AND covers_general_steps(P, M) AND version_coupled(P) -> compilable(P)"
+      rationale: "A project instance with full coverage and version coupling is in a structurally compilable state — the σ₆ PASS condition."
+
+  initial_state_valid_claim: >
+    A state where M.X is named and compiled, a ProjectContext is declared but not yet assessed
+    for sufficiency, and no D', DomainMorphism, SpecializedSteps, RoleFiles, or VersionCoupling
+    exist satisfies all axioms vacuously: Ax-1 through Ax-7 are vacuously satisfied (no
+    ProjectInstance, no RoleFiles, no SpecializedSteps, no AddedSteps yet). Valid initial state.
+  terminal_state_valid_claim: >
+    A state where conservative_extension(D, D') holds, retraction_holds(h, Σ_T) holds, all
+    AddedSteps satisfy valid_addition, covers_general_roles(P, M) holds, covers_general_steps(P, M)
+    holds, and version_coupled(P) holds satisfies all axioms: Ax-1 (all roles covered), Ax-2
+    (all steps covered), Ax-3 (no axiom revision), Ax-4 (all added steps outside Σ_T), Ax-5
+    (retraction holds on touched sorts), Ax-6 (specific version string), Ax-7 (compilable).
+    Valid terminal state.
+  domain_boundary_note: >
+    Excludes: the content of M.X's steps and roles beyond their structural references (the
+    general method's guidance text, tool lists, and domain-specific semantics); the project
+    artifact content beyond its structural components (source files, test files, deployment
+    configs); the runtime behavior of the instantiated method. D_MINS tracks instantiation
+    structure only — morphism declarations, coverage claims, and version coupling.
+
+step_dag:
+  graph: "linear with branch"
+  steps: [sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6]
+  initial: sigma_0
+  terminal: sigma_6
+  branch:
+    at: sigma_0
+    condition: "sufficiency_decision IN {redirect-mx-uncompiled, redirect-context-gap}"
+    target: "exits M4-MINS — redirect gap documented; method halts"
+  edges:
+    - from: sigma_0
+      to: sigma_1
+      condition: "sufficiency_decision = proceed"
+      composability_claim: >
+        post_{σ₀} (proceed path) produces: general_method_compilation_status = PASS;
+        project_instance_id assigned; project_context_summary with ≥4 entries; mx_components_read
+        containing domain-theory, step-dag, roles; sufficiency_decision = proceed.
+        pre_{σ₁} requires: sufficiency_decision = proceed; M.X compiled; M.X domain theory D
+        has been read; project context sufficient and project_instance_id assigned.
+        post_{σ₀} ⊆ pre_{σ₁}: compiled(M.X) is guaranteed by the hard invariant that proceed
+        requires general_method_compilation_status = PASS; M.X domain theory has been read
+        (mx_components_read contains domain-theory); project context sufficiency is established
+        by the 4-dimension check; project_instance_id is assigned. Holds on the proceed path.
+    - from: sigma_1
+      to: sigma_2
+      composability_claim: >
+        post_{σ₁} produces: D' = (Σ', Ax') declared with all sorts enumerated; Σ_T (TouchedSubspace)
+        identified; conservative_extension(D', D) claimed; domain_boundary_note present.
+        pre_{σ₂} requires: D = (Σ, Ax) known; D' = (Σ', Ax') declared; Σ_T identified;
+        conservative_extension(D', D) claimed.
+        post_{σ₁} ⊆ pre_{σ₂}: all four pre_{σ₂} conditions are hard invariants of σ₁
+        (conservative_extension_claim non-empty is a σ₁ hard invariant; touched_subspace present
+        is a σ₁ hard invariant; project_domain_sorts has ≥1 item is a σ₁ hard invariant).
+        Holds.
+    - from: sigma_2
+      to: sigma_3
+      composability_claim: >
+        post_{σ₂} produces: morphism_table with ≥1 row per sort in Σ_T; embed_declaration;
+        project_declaration; retraction_condition_statement claiming project ∘ embed = id on
+        Mod(D) ↾ Σ_T; morphism_failure_modes_checked with ≥3 entries.
+        pre_{σ₃} requires: M.X step DAG Γ known; DomainMorphism (embed, project) declared;
+        Σ_T known; project_domain_sorts declared.
+        post_{σ₂} ⊆ pre_{σ₃}: morphism_table non-empty with rows for each Σ_T sort satisfies the
+        DomainMorphism declared requirement; embed_declaration and project_declaration non-empty
+        satisfy the (embed, project) declared requirement; Σ_T was carried from σ₁ (unchanged
+        by σ₂). Holds.
+    - from: sigma_3
+      to: sigma_4
+      composability_claim: >
+        post_{σ₃} produces: specialized_steps with ≥1 entry (one per M.X step); contrarian_challenge
+        complete; derived_constraints present.
+        pre_{σ₄} requires: M.X's roles known; specialized steps declared; project domain D' declared;
+        domain morphism declared.
+        post_{σ₃} ⊆ pre_{σ₄}: specialized_steps count equals M.X step count (σ₃ hard invariant);
+        roles are known from σ₀ (M.X read at σ₀); D' declared at σ₁ (unchanged by σ₃); domain
+        morphism declared at σ₂ (unchanged by σ₃). Holds.
+    - from: sigma_4
+      to: sigma_5
+      composability_claim: >
+        post_{σ₄} produces: role_files with ≥1 entry (one per M.X role); role_file_paths;
+        coverage_check = "covers_general_roles: YES"; derived_projections present.
+        pre_{σ₅} requires: domain morphism declared; specialized steps declared; role files
+        produced; P.X.Y fully assembled except version coupling.
+        post_{σ₄} ⊆ pre_{σ₅}: role_files count equals M.X role count (σ₄ hard invariant);
+        coverage_check = "covers_general_roles: YES" is a σ₄ hard invariant; domain morphism
+        and specialized steps are carried from prior steps unchanged. P.X.Y is fully assembled
+        — all components except VersionCoupling are present. Holds.
+    - from: sigma_5
+      to: sigma_6
+      composability_claim: >
+        post_{σ₅} produces: VersionCoupling with mx_version_sensitive ≥1 item;
+        update_trigger_statement covering both M.X-version and project-version events;
+        current_mx_version as a specific version string (not "current" or "latest").
+        pre_{σ₆} requires: P.X.Y fully assembled with domain morphism declaration, specialized
+        steps for all σ ∈ Γ of M.X, role files for all roles in M.X, and version coupling
+        declaration; compiler observes only P.X.Y and F1-FTH.
+        post_{σ₅} ⊆ pre_{σ₆}: VersionCoupling declaration satisfies the version_coupled(P)
+        predicate by Ax-6 (specific version string guaranteed by hard invariant). All P.X.Y
+        components were assembled by σ₁–σ₄; σ₅ adds VersionCoupling as the final component.
+        Full assembly is complete after σ₅. Weakest edge: current_mx_version is self-reported;
+        defense is that G5 at σ₆ independently checks the version string format. Holds.
+  initial_condition_claim: >
+    pre_{σ₀} requires: an intention to instantiate M.X for project P; M.X named; project
+    context materials available and readable. This is satisfied whenever a practitioner has
+    identified a compiled method and a project needing it. The redirect branch at σ₀ handles
+    the case where M.X is not compiled or context is insufficient — termination is guaranteed
+    without entering the instantiation path.
+  terminal_condition_claim: >
+    post_{σ₆}(PASS) implies O_MINS. When σ₆ emits CompilationResult = PASS: (1) G0–G6 all
+    passed → P.X.Y is structurally valid (O_MINS condition 4); (2) G1 checks conservative
+    extension → conservative_extension(D', D) holds (O_MINS condition 3); (3) G2 checks
+    retraction → retraction_holds(h, Σ_T) holds (O_MINS condition 2); (4) G3 checks role
+    coverage → covers_general_roles(P, M) holds; (5) G4 checks step coverage →
+    covers_general_steps(P, M) holds; (6) G5 checks version coupling → version_coupled(P)
+    holds; (7) G6 checks instance independence → P.X.Y is independently executable;
+    (8) registration in methods README is part of σ₆ PASS output (O_MINS condition 5).
+    All five O_MINS conditions covered. Holds.
+  contrarian_challenge: >
+    Claim: σ₄→σ₅ and σ₅→σ₆ are the weakest edges because both rely on self-reported
+    completeness by the instantiator (role file quality, version string accuracy).
+    Defense: G3 at σ₆ independently checks role coverage (covers_general_roles: YES must
+    appear in coverage_check); G5 checks version string is non-empty and not "current" or
+    "latest"; G6 checks role files contain load protocols and specialized steps do not require
+    M.X to execute. The compiler role has no access to the design session — all checks are
+    structural. Self-reported completeness cannot survive structural gate failures.
+    Verdict: edges hold; compiler independence is the structural guarantee.
+
+roles:
+  - id: instantiator
+    description: >
+      Executes σ₀–σ₅. Has dual knowledge: the general method M.X (its formal structure,
+      step DAG, domain theory, and role definitions) and the target project's context
+      (its tech stack, tooling, architectural documents, team conventions). In a
+      single-agent session the executing LLM plays this role. Observes: M.X document
+      (full), project context docs (arch docs, PRDs, tooling docs), F1-FTH §6.3
+      (domain retraction), existing project instances as exemplars. Authorized to:
+      assess context sufficiency; declare project domain extension; declare domain
+      morphism (embed/project retraction pair); write specialized steps; produce role
+      files; declare version coupling. CANNOT evaluate P.X.Y structurally — evaluation
+      is reserved for the compiler role at σ₆.
+    phases:
+      - sigma_0
+      - sigma_1
+      - sigma_2
+      - sigma_3
+      - sigma_4
+      - sigma_5
+
+  - id: compiler
+    description: >
+      Executes σ₆. Evaluates P.X.Y against the acceptance gates independently. Sees
+      only the completed instance document and F1-FTH — no access to M.X, the
+      project context, or the session reasoning that produced this instance. Same
+      epistemic constraint as M1-MDES σ₆: evaluate structure, not intent. Authorized
+      to: emit PASS with validation summary naming all seven gates, or FAIL with gate
+      identifier and repair target mapped to the specific M4-MINS step to repair.
+    phases:
+      - sigma_6
+
+phases:
+  - id: sigma_0
+    name: "Orientation"
+    role: instantiator
+    precondition: >
+      An intention to instantiate M.X for project P exists. M.X is named. Project
+      context materials (tech stack docs, arch docs, team structure docs) are available
+      and readable by the instantiating agent.
+    postcondition: >
+      M.X compilation status is verified. Project context sufficiency is assessed.
+      A go/proceed or go/redirect decision is recorded — not deferred. If proceed: M.X's
+      domain theory (§1), step DAG (§4), and role definitions (§2) have been read; the
+      project instance identifier P.X.Y is assigned; project_context_summary is populated
+      with at least 4 entries. If redirect: the gap in M.X validity or project context is
+      named explicitly in redirect_gap_statement.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - A go/proceed or go/redirect decision is recorded — not deferred.
+      - If go/proceed: general_method_compilation_status is "PASS"; mx_components_read contains
+        at minimum ["domain-theory", "step-dag", "roles"]; project_instance_id is assigned
+        (format IN-SLUG — e.g., "I1-T1X"); project_context_summary has at least 4 entries
+        (one per sufficiency dimension).
+      - If go/redirect-mx-uncompiled: redirect_gap_statement names which gates M.X fails and
+        what repair is needed before instantiation can proceed.
+      - If go/redirect-context-gap: redirect_gap_statement names which context dimension is
+        missing and what document or information would supply it.
+      - sufficiency_decision is present and is one of the three enum values.
+      - The go/redirect paths terminate this method — document the gap and halt rather than
+        proceeding to σ₁ without a proceed decision.
+
+      **Rationale.** Instantiating an uncompiled method inherits its structural defects —
+      composability failures in M.X propagate into P.X.Y where they are harder to diagnose.
+      Instantiating with insufficient project context produces specialized guidance that is
+      vague or wrong. Both conditions must be verified before any formal work begins.
+
+      **Procedure.**
+      1. Check M.X compilation status: locate M.X's σ₆ output. Is compilation_result "PASS"?
+         If not: redirect-mx-uncompiled. Name the failed gates.
+      2. Apply the project context sufficiency test. Without consulting external sources beyond
+         what is already available, answer all four sufficiency questions:
+         (a) Technology stack: can you name the languages, build system, key runtime and test
+             frameworks at the precision needed to write tool lists?
+         (b) Architectural documents: is at least one doc describing the project's module
+             structure, key types, or invariants readable?
+         (c) Team roles: can you map each role in M.X to a project-specific agent or human
+             with a concrete description of their context?
+         (d) Project constraints: can you name at least one non-trivial constraint (tech
+             exclusion, approach mandate, tooling restriction)?
+         If all four: go/proceed. If two or more cannot be answered: go/redirect-context-gap.
+      3. If proceed: read M.X's domain theory (§1), step DAG (§4), and role definitions (§2)
+         before producing any output. These are the reference frame for all subsequent steps.
+      4. Assign the project instance identifier P.X.Y — use the next available suffix Y for
+         method M.X in the methods registry. Document this in project_instance_id.
+
+      **Output schema reference:**
+      - general_method_id: the M.X identifier being instantiated (e.g., "M1-IMPL")
+      - general_method_compilation_status: "PASS", "UNVERIFIED", or "FAIL"
+      - project_instance_id: assigned identifier (e.g., "I1-T1X")
+      - sufficiency_decision: "proceed", "redirect-mx-uncompiled", or "redirect-context-gap"
+      - project_context_summary: array of at least 4 entries if proceed; format
+        "Dimension: [tech-stack|arch-docs|team-roles|constraints] — [content]"
+      - redirect_gap_statement: description of the specific gap and what would close it
+        (populated if redirect; empty string if proceed)
+      - mx_components_read: list of M.X sections read (populated if proceed)
+
+    output_schema:
+      fields:
+        - name: general_method_id
+          type: string
+          description: "M.X identifier being instantiated (e.g., 'M1-IMPL')"
+          min_length: 1
+          required: true
+        - name: general_method_compilation_status
+          type: enum
+          values: ["PASS", "UNVERIFIED", "FAIL"]
+          required: true
+        - name: project_instance_id
+          type: string
+          description: "Assigned project instance identifier (e.g., 'I1-T1X')"
+          min_length: 0
+          required: true
+        - name: sufficiency_decision
+          type: enum
+          values: ["proceed", "redirect-mx-uncompiled", "redirect-context-gap"]
+          required: true
+        - name: project_context_summary
+          type: array
+          items: string
+          description: "Dimension: [tech-stack|arch-docs|team-roles|constraints] — [content]"
+          min_items: 0
+          required: false
+        - name: redirect_gap_statement
+          type: string
+          description: "The specific gap and what information would close it; empty string if proceed"
+          min_length: 0
+          required: false
+        - name: mx_components_read
+          type: array
+          items: string
+          description: "M.X sections read before this step completes; at minimum domain-theory, step-dag, roles"
+          min_items: 0
+          required: false
+    invariants:
+      hard:
+        - "general_method_id is non-empty"
+        - "general_method_compilation_status is one of: PASS, UNVERIFIED, FAIL"
+        - "sufficiency_decision is present and is one of: proceed, redirect-mx-uncompiled, redirect-context-gap"
+        - "if sufficiency_decision is proceed: general_method_compilation_status is PASS"
+        - "if sufficiency_decision is proceed: project_instance_id is non-empty"
+        - "if sufficiency_decision is proceed: project_context_summary has at least 4 items"
+        - "if sufficiency_decision is proceed: mx_components_read contains domain-theory, step-dag, and roles"
+        - "if sufficiency_decision is redirect-mx-uncompiled or redirect-context-gap: redirect_gap_statement is non-empty"
+      soft:
+        - "project_context_summary entries follow the format Dimension: [type] — [content] and cover all four sufficiency dimensions"
+        - "project_instance_id follows the format IN-SLUG where N is the instance number"
+        - "redirect_gap_statement names the specific unanswered sufficiency question and the document or source that would answer it"
+        - "mx_components_read lists specific section references, not a generic assertion that M.X was read"
+
+  - id: sigma_1
+    name: "Domain Extension"
+    role: instantiator
+    precondition: >
+      sufficiency_decision is "proceed" from σ₀. M.X compiled. M.X domain theory
+      D = (Σ, Ax) has been read. Project context sufficient and project_instance_id assigned.
+    postcondition: >
+      D' = (Σ', Ax') is declared. conservative_extension(D', D) is claimed explicitly —
+      Σ ⊆ Σ', Ax' ⊇ Ax, no existing axiom in Ax is revised in Ax'. TouchedSubspace Σ_T ⊆ Σ
+      is identified: all sorts and predicates that appear in the pre- or postconditions,
+      guidance, or tool contracts of at least one step in M.X's Γ. Every new sort in Σ' \ Σ
+      is categorized as touched or outside-touched-subspace. domain_boundary_note is present.
+
+      METHODOLOGY INVARIANT (when parent is a methodology Φ = (D_Φ, δ_Φ, O_Φ)): the embed/project
+      retraction pair declared at σ₂ must commute with the transition function δ_Φ. This
+      commutativity condition is established here by verifying that the TouchedSubspace Σ_T
+      covers every sort referenced by δ_Φ-transitions. If Σ_T does not cover δ_Φ's domain,
+      σ₂ cannot satisfy the commutativity invariant.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - D' is declared with all sorts in Σ' enumerated and one-line descriptions provided.
+      - general_domain_sorts lists all sorts from Σ (inherited into Σ').
+      - touched_subspace is declared: every sort or predicate in Σ that appears in at least
+        one step's pre_σ, post_σ, or tools_σ in M.X's Γ. The reference for membership is
+        M.X's step specifications — not the instantiator's judgment of importance.
+      - project_domain_sorts lists all sorts in Σ', each tagged [inherited | refinement of X | new]
+        and [touched | outside] with respect to Σ_T.
+      - conservative_extension_claim is non-empty: explicitly asserts Σ ⊆ Σ', Ax' ⊇ Ax,
+        and names any new axioms in Ax' \ Ax and confirms they apply only to new sorts.
+      - domain_boundary_note is non-empty: states what is excluded from D'.
+      - If the parent M.X is a methodology (has a transition function δ_Φ): verify that every
+        sort referenced by δ_Φ-transitions is in Σ_T. Document this in the conservative_extension_claim.
+
+      **Rationale.** The TouchedSubspace Σ_T is the scope of the retraction condition declared
+      at σ₂. An incorrectly narrow Σ_T will produce a retraction condition that fails on sorts
+      M.X actually reads — a defect that the compiler discovers at G2. An incorrectly broad Σ_T
+      is conservative (it will not break G2) but makes σ₂ harder. Read each step's pre/post/tools
+      systematically rather than relying on intuition.
+
+      **Conservative extension check.** Adding a new sort to Σ' is conservative unless an
+      existing axiom in Ax universally quantifies over "all sorts." Adding a new predicate
+      over new vocabulary is conservative. Modifying any existing axiom in Ax is never
+      conservative — it is an AXIOM_REVISION that routes to M1-MDES, not M4-MINS.
+
+      **Procedure.**
+      1. Read each step σ ∈ Γ of M.X sequentially: for each, record all sort names and predicate
+         names appearing in pre_σ, post_σ, and tools_σ. Union across all steps to produce Σ_T.
+      2. List all sorts in Σ (general domain). Tag each as [touched | outside-touched].
+      3. Identify project-specific sorts: for each sort in the project domain that has no
+         counterpart in Σ, declare it in Σ' \ Σ. For each: state whether it refines an existing
+         sort in Σ (subtype relationship) or is entirely new.
+      4. Declare any new axioms in Ax' \ Ax. Each must apply only to sorts in Σ' \ Σ or add
+         sub-constraints on Σ sorts that strengthen (do not revise) existing axioms.
+      5. Write the conservative_extension_claim: state Σ ⊆ Σ' explicitly, confirm no Ax revision.
+
+      **Output schema reference:**
+      - general_domain_sorts: all sorts from Σ; format "SortName — description"
+      - touched_subspace: sorts and predicates in Σ_T; format "SortName — referenced in: [σN.pre | σN.post | σN.tools]"
+      - project_domain_sorts: all sorts in Σ' (inherited + new); format "SortName — [inherited | refinement of X | new] — [touched | outside]"
+      - new_sorts: Σ' \ Σ only; format "SortName — [refinement of X | new] — [touched | outside] — rationale"
+      - new_axioms: Ax' \ Ax; format "Ax-N: [axiom text] — applies to: [SortName] — does not revise [existing axiom]"
+      - conservative_extension_claim: explicit assertion (non-empty string)
+      - domain_boundary_note: what is excluded from D' (non-empty string)
+
+    output_schema:
+      fields:
+        - name: general_domain_sorts
+          type: array
+          items: string
+          description: "SortName — description"
+          min_items: 1
+          required: true
+        - name: touched_subspace
+          type: array
+          items: string
+          description: "SortName — referenced in: [σN.pre | σN.post | σN.tools]"
+          min_items: 0
+          required: true
+        - name: project_domain_sorts
+          type: array
+          items: string
+          description: "SortName — [inherited | refinement of X | new] — [touched | outside]"
+          min_items: 1
+          required: true
+        - name: new_sorts
+          type: array
+          items: string
+          description: "SortName — [refinement of X | new] — [touched | outside] — rationale"
+          min_items: 0
+          required: false
+        - name: new_axioms
+          type: array
+          items: string
+          description: "Ax-N: [axiom text] — applies to: [SortName] — does not revise [existing axiom]"
+          min_items: 0
+          required: false
+        - name: conservative_extension_claim
+          type: string
+          description: "Explicit assertion that Σ ⊆ Σ', Ax' ⊇ Ax, and no existing axiom is revised"
+          min_length: 1
+          required: true
+        - name: domain_boundary_note
+          type: string
+          description: "What is explicitly excluded from D'"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "general_domain_sorts has at least 1 item"
+        - "project_domain_sorts has at least 1 item"
+        - "conservative_extension_claim is non-empty"
+        - "domain_boundary_note is non-empty"
+        - "every sort in general_domain_sorts appears in project_domain_sorts tagged as inherited or refinement"
+        - "no new_axioms entry states that an existing axiom in Ax is modified or removed"
+        - "touched_subspace is present (may be empty only if no step in M.X's Γ references any sort — which is a defect in M.X)"
+        - "if parent M.X is a methodology with transition function δ_Φ: conservative_extension_claim references δ_Φ coverage in Σ_T"
+      soft:
+        - "touched_subspace entries name the specific step and field (pre/post/tools) where the sort appears — not a generic membership claim"
+        - "new_sorts entries state whether the sort refines an existing Σ sort or is entirely new"
+        - "new_axioms entries name the existing axiom they are most related to and confirm they do not revise its text"
+        - "project_domain_sorts entries use [touched | outside] categorization consistently with the touched_subspace list"
+
+  - id: sigma_2
+    name: "Domain Morphism Declaration"
+    role: instantiator
+    precondition: >
+      D = (Σ, Ax) known. D' = (Σ', Ax') declared (σ₁ postcondition satisfied).
+      TouchedSubspace Σ_T ⊆ Σ identified. conservative_extension(D', D) claimed.
+    postcondition: >
+      The retraction pair (embed, project) is declared. retraction_holds(DomainMorphism, Σ_T)
+      is stated: project ∘ embed = id on Mod(D) ↾ Σ_T. Each sort in Σ_T has a row in the
+      morphism table stating its embed and project mappings. Each sort in Σ' \ Σ has a
+      new_sort_justification stating whether it is touched or outside-touched. The three
+      common failure modes have been checked. morphism_failure_modes_checked has at least
+      3 items.
+
+      METHODOLOGY INVARIANT (G2 note — gate unique to M4-MINS): When the parent M.X is
+      a methodology Φ = (D_Φ, δ_Φ, O_Φ), the retraction pair must commute with δ_Φ: for
+      all states s in the instantiation domain, project(δ_Φ(embed(s))) = δ_P(s). This
+      commutativity condition is the sequential case; parallel execution is blocked on
+      F2-OPR P4. The retraction_condition_statement must address this invariant explicitly
+      when M.X is a methodology.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - morphism_table is present with at least one row per sort in Σ_T (one row per touched sort).
+      - embed_declaration is non-empty: describes how D-model values for each touched sort are
+        expanded into D'-model values.
+      - project_declaration is non-empty: describes how D'-model values for each touched sort
+        are reduced back to D-model values.
+      - retraction_condition_statement is non-empty: explicitly claims project ∘ embed = id on
+        Mod(D) ↾ Σ_T, with a per-sort claim for each sort in Σ_T.
+      - new_sort_justifications has one entry per sort in Σ' \ Σ: states whether the sort is
+        touched or outside-touched and why project correctly ignores it (for outside-touched sorts).
+      - morphism_failure_modes_checked has at least 3 items covering: (a) revised-sort-semantics,
+        (b) touched-sort-without-morphism-row, (c) added-step-in-touched-subspace.
+      - HARD INVARIANT — METHODOLOGY COMMUTATIVITY: if M.X is a methodology with transition
+        function δ_Φ, retraction_condition_statement must include: "project(δ_Φ(embed(s))) = δ_P(s)
+        for all s in the instantiation domain" — stated as a claim per touched sort dimension.
+        Sequential case only; parallel execution blocked on F2-OPR P4. This condition is not
+        required when M.X is a plain method (no δ_Φ).
+
+      **Rationale.** The domain morphism declaration is the artifact that makes a project instance
+      formally traceable to its general method. Without it, P.X.Y is an informal overlay with no
+      mechanism for detecting staleness when M.X evolves. The retraction condition on Σ_T is the
+      precise statement that M.X's steps, operating on the touched subspace, see a lossless
+      round-trip through the project domain.
+
+      **The embed function.** For each sort s ∈ Σ_T: state how a D-model value for s is expanded
+      into a D'-model value. For refined sorts (e.g., ScalaFile refines SourceFile): embed maps
+      SourceFile instances to ScalaFile instances by adding project-specific fields. For non-refined
+      sorts inherited unchanged: embed is identity. For sorts in Σ' \ Σ: embed populates the new
+      sort from project-specific data (no D-counterpart).
+
+      **The project function.** For each sort s ∈ Σ_T: state how a D'-model value is reduced back
+      to a D-model value. For refined sorts: project discards the project-specific fields, returning
+      the parent sort value. For sorts in Σ' \ Σ (outside touched subspace): project ignores them —
+      no step in Γ reads or writes them, so discarding them causes no loss.
+
+      **Retraction condition per sort.** For each s ∈ Σ_T, write: "project(embed(v)) = v for sort
+      [s] because [embed maps s-values to D'-values that project reduces losslessly back to s-values
+      by discarding the project-specific extension fields]."
+
+      **Morphism table format:**
+      "D-sort (Σ) | D'-sort (Σ') | embed | project | Status [Touched — retraction holds | Outside touched subspace]"
+
+      **Common failure modes to check:**
+      (a) revised-sort-semantics: does any sort in Σ have different axioms in D' (revision, not
+          extension)? If yes: conservative_extension fails — route to M1-MDES.
+      (b) touched-sort-without-morphism-row: is every sort in Σ_T represented in the table? If not:
+          retraction condition cannot be verified — add the missing row.
+      (c) added-step-in-touched-subspace: does any AddedStep (not in M.X's Γ) reference a sort in
+          Σ_T? If yes: valid_addition fails — remove the step or convert it to a specialized step.
+
+      **Output schema reference:**
+      - morphism_table: one row per sort in Σ_T; format "D-sort | D'-sort | embed | project | Status"
+      - embed_declaration: prose description of embed across all touched sorts
+      - project_declaration: prose description of project across all touched sorts
+      - retraction_condition_statement: claims project ∘ embed = id on Mod(D) ↾ Σ_T with per-sort
+        claims; if M.X is a methodology, includes the δ_Φ commutativity claim
+      - new_sort_justifications: one entry per sort in Σ' \ Σ; format "SortName: [touched|outside] — justification"
+      - morphism_failure_modes_checked: at least 3 entries covering revised-sort-semantics,
+        touched-sort-without-morphism-row, added-step-in-touched-subspace
+
+    output_schema:
+      fields:
+        - name: morphism_table
+          type: array
+          items: string
+          description: "D-sort | D'-sort | embed | project | Status"
+          min_items: 1
+          required: true
+        - name: embed_declaration
+          type: string
+          description: "Prose description of embed for all touched sorts"
+          min_length: 1
+          required: true
+        - name: project_declaration
+          type: string
+          description: "Prose description of project for all touched sorts"
+          min_length: 1
+          required: true
+        - name: retraction_condition_statement
+          type: string
+          description: "Claim that project ∘ embed = id on Mod(D) ↾ Σ_T with per-sort claims; includes δ_Φ commutativity if M.X is a methodology"
+          min_length: 1
+          required: true
+        - name: new_sort_justifications
+          type: array
+          items: string
+          description: "SortName: [touched|outside] — justification"
+          min_items: 0
+          required: false
+        - name: morphism_failure_modes_checked
+          type: array
+          items: string
+          description: "'revised-sort-semantics: [none found | found at X]', 'touched-sort-without-morphism-row: [none | X missing]', 'added-step-in-touched-subspace: [none | X found]'"
+          min_items: 3
+          required: true
+    invariants:
+      hard:
+        - "morphism_table has at least 1 item"
+        - "embed_declaration is non-empty"
+        - "project_declaration is non-empty"
+        - "retraction_condition_statement is non-empty"
+        - "morphism_failure_modes_checked has at least 3 items"
+        - "morphism_table contains one row for every sort declared in touched_subspace at sigma_1"
+        - "retraction_condition_statement includes a per-sort claim for each sort in Σ_T"
+        - "if M.X is a methodology with transition function δ_Φ: retraction_condition_statement includes the commutativity claim project(δ_Φ(embed(s))) = δ_P(s) (sequential case)"
+        - "morphism_failure_modes_checked covers revised-sort-semantics, touched-sort-without-morphism-row, and added-step-in-touched-subspace"
+      soft:
+        - "morphism_table rows follow the format D-sort | D'-sort | embed | project | Status"
+        - "new_sort_justifications has one entry per sort in Σ' \\ Σ — not just outside-touched sorts"
+        - "embed_declaration distinguishes refined sorts (subtype mapping) from identity-mapped sorts"
+        - "retraction_condition_statement per-sort claims name the mechanism by which discarding project-specific fields causes no loss on M.X-relevant dimensions"
+        - "G2-morphism note: this gate is unique to M4-MINS — not part of the standard G0–G6 vocabulary of M1-MDES; it represents a P4 sub-problem when the parent is a methodology"
+
+  - id: sigma_3
+    name: "Step Specialization"
+    role: instantiator
+    precondition: >
+      M.X's step DAG Γ known. Domain morphism (embed, project) declared. TouchedSubspace Σ_T
+      known. project_domain_sorts declared. (σ₂ postcondition satisfied.)
+    postcondition: >
+      [v1.1] σ₃.0 (mechanical): For each step σ_i in Γ_X, a derived constraints set
+      Constraints(σ_i) is produced by axiom enumeration over Ax_{D'} — the mechanically-derivable
+      portion of σ_i's G5 constraints block. These are stored in derived_constraints.
+      σ₃.1+ (judgment): A SpecializedStep exists for every step σ ∈ Γ of M.X. Each SpecializedStep
+      retains the general step's pre and post structure (expressed in D' sorts); project-specific
+      preconditions are additional, not replacements. Each SpecializedStep has a project_tools
+      list. Any AddedStep is declared with a valid_addition_justification naming all sorts and
+      confirming they are all outside Σ_T. No specialized step removes a constraint from the
+      general step's postcondition. The contrarian_challenge is complete.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - specialized_steps has one entry for every step σ in M.X's Γ — no step may be dropped.
+      - Each SpecializedStep entry contains: (a) the general step reference "σN of M.X — [name]",
+        (b) the retained formal structure (pre and post from M.X expressed in D' sorts), (c)
+        project-specific preconditions (additional, not replacements), (d) project-specific
+        guidance narrative, (e) project_tools list.
+      - added_steps entries each have a valid_addition_justification naming every sort the step
+        references and confirming all are outside Σ_T. An AddedStep referencing any sort in Σ_T
+        fails the valid_addition predicate.
+      - No SpecializedStep has a postcondition weaker than the corresponding M.X step's
+        postcondition on the touched subspace. Project-specific preconditions strengthen, they
+        do not remove, composability conditions.
+      - contrarian_challenge is complete: weakest_specialization, challenge, and
+        defense_or_revision are all non-empty.
+
+      **Rationale.** This step produces execution-ready content. The formal structure (pre/post)
+      must remain grounded in the general method so that P.X.Y remains traceable to M.X and
+      the domain morphism retraction condition is preserved at runtime. Project-specific content
+      (guidance, tools, extra preconditions) layers on top of the formal structure — it cannot
+      replace it.
+
+      **For each step σ ∈ Γ, write:**
+      1. General step reference: "σN of M.X — [step name]" — traceability link.
+      2. Retained formal structure: the pre and post conditions from M.X, with Σ sorts replaced
+         by their Σ' counterparts from the morphism table (e.g., SourceFile → ScalaFile). Do not
+         abbreviate or omit — these are the formal anchor of the specialized step.
+      3. Project-specific preconditions: additional conditions that must hold given the project
+         context (e.g., "Metals MCP connectivity confirmed"). These gate the general step's pre_σ
+         from below — they add conditions, they do not replace M.X's conditions.
+      4. Project-specific guidance: rewrite M.X's guidance using project-specific entity names,
+         tool names, and conventions. Every reference to a general sort should become a reference
+         to its Σ' counterpart. Project conventions are guidance constraints.
+      5. Project tools (project_tools): the specific tools authorized during this step in the
+         project context. This is the project-specific tools_σ.
+
+      **Evaluating added steps.** For each AddedStep not in M.X's Γ:
+      1. List every sort appearing in the step's pre, post, and tools.
+      2. Check each against Σ_T from σ₁.
+      3. If any sort is in Σ_T: the step cannot be added — it potentially violates the retraction
+         condition. Convert it to a specialized step of an existing M.X step or remove it.
+      4. If all sorts are outside Σ_T: write the valid_addition_justification.
+
+      **Contrarian challenge.** Before declaring σ₃ complete: identify the specialized step whose
+      project-specific guidance departs furthest from the general guidance. State why the departure
+      is a specialization (same formal structure, project-specific content) rather than a revision
+      (changed formal structure). If the departure cannot be defended, revise the specialized step.
+
+      **Output schema reference:**
+      - specialized_steps: one entry per step in M.X's Γ; include all five components listed above
+      - added_steps: one entry per added step; format "AddedStep name: sorts=[...]; outside-touched=[yes/no]; justification=[...]"
+      - contrarian_challenge: object with weakest_specialization, challenge, and defense_or_revision
+
+    output_schema:
+      fields:
+        - name: specialized_steps
+          type: array
+          items: string
+          description: "One entry per M.X step; includes general-step reference, retained structure, project preconditions, project guidance summary, project_tools"
+          min_items: 1
+          required: true
+        - name: added_steps
+          type: array
+          items: string
+          description: "AddedStep name: sorts=[...]; outside-touched=[yes/no]; justification=[...]"
+          min_items: 0
+          required: false
+        - name: contrarian_challenge
+          type: object
+          required: true
+          properties:
+            weakest_specialization:
+              type: string
+              description: "σN specialized step — [what departs from general guidance]"
+            challenge:
+              type: string
+              description: "The reason this departure might be a revision rather than a specialization"
+            defense_or_revision:
+              type: string
+              description: "It is a specialization because... OR: Revised: [strengthened specialized guidance]"
+        - name: derived_constraints
+          type: array
+          required: true
+          description: "Mechanically-derived constraint sets from σ₃.0 — one entry per step in Γ_X"
+          items:
+            step_id:
+              type: string
+              description: "σ_i identifier"
+            axiom_id:
+              type: string
+              description: "Ax-N identifier from Ax_{D'}"
+            active_sorts:
+              type: array
+              items: string
+              description: "sorts in A(σ_i) that triggered this axiom"
+            procedural_form:
+              type: string
+              description: "the rewritten constraint text"
+    invariants:
+      hard:
+        - "specialized_steps has at least 1 item"
+        - "specialized_steps count equals the number of steps in M.X's Γ"
+        - "every specialized_steps entry contains a general step reference in the format 'σN of M.X — [name]'"
+        - "every specialized_steps entry retains the general step's pre and post structure"
+        - "contrarian_challenge.weakest_specialization is non-empty"
+        - "contrarian_challenge.challenge is non-empty"
+        - "contrarian_challenge.defense_or_revision is non-empty"
+        - "every added_steps entry has an outside-touched claim of 'yes' — entries where outside-touched is 'no' are invalid and must be removed or converted"
+      soft:
+        - "specialized_steps entries include all five components: general-step reference, retained formal structure, project preconditions, project guidance, project_tools"
+        - "project-specific preconditions in specialized_steps are marked as additional conditions, not replacements for general pre_σ"
+        - "added_steps entries enumerate every sort the step references — not just the ones that are clearly outside Σ_T"
+        - "contrarian_challenge names the specific formal structure element that is preserved despite the departure"
+
+  - id: sigma_4
+    name: "Role File Production"
+    role: instantiator
+    precondition: >
+      M.X's roles known. Specialized steps declared (σ₃ postcondition satisfied).
+      Project domain D' declared. domain morphism declared.
+    postcondition: >
+      [v1.1] σ₄.0 (mechanical): For each role ρ ∈ Roles_X, a formal projection specification
+      π_ρ'_spec is produced — the list of sorts and predicates in Σ' that ρ observes, derived
+      mechanically from h and Γ_X via T-MINS-1 (h ∘ π_ρ |_{Σ_T}). These are stored in
+      derived_projections.
+      σ₄.1 (judgment): One RoleFile R.X.Y.Z exists for every role ρ in M.X's Roles.
+      covers_general_roles holds — no role from M.X is dropped; roles are only refined
+      (narrower projection, same or narrower authority). Each RoleFile declares: role identity,
+      corresponding M.X role, observation projection π_ρ' consistent with π_ρ'_spec as a
+      reduct of D' to a sub-signature Σ_ρ' ⊆ Σ', authorized transitions α_ρ', project-specific
+      tool set, project-specific step guidance for each step the role executes, and a load
+      protocol.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - role_files has one entry per role in M.X's Roles — no role may be dropped.
+      - role_file_paths names the file for each role file (format R.X.Y.Z-ACRO-rolename.md).
+      - coverage_check is non-empty and states "covers_general_roles: YES — [which M.X roles are covered]"
+        or "covers_general_roles: NO — [which role is missing]". A NO result blocks σ₆ G3.
+      - Each RoleFile entry declares: (a) role identity and corresponding M.X role, (b) π_ρ':
+        the observation projection as a concrete list of what the role can read (document types,
+        tool outputs, file paths), (c) α_ρ': the authorized transitions as a concrete list of
+        what the role may write or execute, (d) the project-specific tool set, (e) project-specific
+        step guidance for each step this role executes, (f) a load protocol.
+      - No RoleFile has α_ρ' strictly broader than the corresponding α_ρ in M.X — roles may only
+        be narrowed (more specific, fewer authorized types), not expanded.
+      - π_ρ' is a reduct of D' to a sub-signature Σ_ρ' ⊆ Σ': the role sees a sub-theory of D'.
+
+      **Rationale.** A role file is the artifact an agent loads to understand what they can see
+      and what they are authorized to do in the project context. It must be self-contained: an
+      agent loading only R.X.Y.Z should have all they need to execute their assigned steps.
+      The load protocol is the most immediately actionable section — it tells the agent what to
+      read before touching anything.
+
+      **For each role ρ in M.X, write R.X.Y.Z containing:**
+
+      Header: "# R.X.Y.Z — [RoleName] — [ProjectName] instance of M.X\nGeneral role: ρ in M.X\nProject: P.X.Y — [project name]"
+
+      Observation projection π_ρ': a concrete list of what this role sees — specific document
+      types, tool outputs, file paths. Where M.X says "observes: source files, test files, arch
+      docs", the role file says "Observes: Scala source files at src/main/scala/..., test files
+      at src/test/scala/..., Metals MCP tool output."
+
+      Authorized transitions α_ρ': a concrete list of what this role may write or execute.
+      Where M.X says "authorized: write source files, run tests", the role file says specific
+      commands, specific directories, specific tool invocations. Include explicit NOT authorized
+      entries for common out-of-scope actions.
+
+      Project-specific step guidance: include the SpecializedStep guidance from σ₃ for each
+      step this role executes. The role file must be self-contained.
+
+      Load protocol: an ordered list of documents the agent reads at session start before
+      touching anything. This is project-specific.
+
+      **Output schema reference:**
+      - role_files: one entry per M.X role; format "R.X.Y.Z — [RoleName]: π_ρ' covers [...]; α_ρ' includes [...]"
+      - role_file_paths: file name for each role file; format "R.X.Y.Z-ACRO-rolename.md"
+      - coverage_check: "covers_general_roles: YES — [roles covered]" or "NO — [missing role]"
+
+    output_schema:
+      fields:
+        - name: role_files
+          type: array
+          items: string
+          description: "R.X.Y.Z — [RoleName]: π_ρ' covers [...]; α_ρ' includes [...]"
+          min_items: 1
+          required: true
+        - name: role_file_paths
+          type: array
+          items: string
+          description: "R.X.Y.Z-ACRO-rolename.md — one file name per role file"
+          min_items: 1
+          required: true
+        - name: coverage_check
+          type: string
+          description: "'covers_general_roles: YES — [which M.X roles are covered]' or 'NO — [which role is missing]'"
+          min_length: 1
+          required: true
+        - name: derived_projections
+          type: array
+          required: true
+          description: "Mechanically-derived observation projection specs from σ₄.0 — one entry per role in Roles_X"
+          items:
+            role_id:
+              type: string
+              description: "role identifier"
+            projected_sorts:
+              type: array
+              items: string
+              description: "S_ρ' — sorts in D' that ρ observes"
+            projected_predicates:
+              type: array
+              items: string
+              description: "Π_ρ' — predicates in D' that ρ observes"
+            authorized_steps:
+              type: array
+              items: string
+              description: "steps in Γ_X assigned to ρ"
+            derivation_basis:
+              type: string
+              description: "T-MINS-1: h ∘ π_ρ |_{Σ_T} (proved 2026-03-10)"
+    invariants:
+      hard:
+        - "role_files has at least 1 item"
+        - "role_file_paths has at least 1 item"
+        - "role_files count equals role_file_paths count"
+        - "role_files count equals the number of roles in M.X's Roles"
+        - "coverage_check is non-empty"
+        - "coverage_check contains 'covers_general_roles: YES' — a NO result must be resolved before sigma_5"
+        - "every role_files entry declares a π_ρ' (observation projection) and α_ρ' (authorized transitions)"
+      soft:
+        - "role_files entries include load protocols — ordered list of documents to read at session start"
+        - "α_ρ' entries include explicit NOT authorized clauses for common out-of-scope actions"
+        - "π_ρ' is stated in project-specific terms (specific paths, tool names) not by reference to M.X abstractions"
+        - "each role_files entry includes step guidance for every step that role executes in M.X's Γ"
+
+  - id: sigma_5
+    name: "Version Coupling Declaration"
+    role: instantiator
+    precondition: >
+      Domain morphism declared. Specialized steps declared. Role files produced.
+      (σ₄ postcondition satisfied.) P.X.Y is fully assembled except for the version
+      coupling declaration.
+    postcondition: >
+      VersionCoupling declaration exists with three sections populated: mx_version_sensitive
+      (at least 1 item), project_version_sensitive (may be empty), and update_trigger_statement
+      (non-empty). Every component of P.X.Y is assigned to at least one sensitivity category.
+      current_mx_version names the specific version of M.X this instance was built against
+      (not a relative reference like "current").
+
+      HARD INVARIANT — VERSION COUPLING: The instantiation declares current_mx_version at this
+      step. If M.X is subsequently evolved via M3-MEVO to a new version, this instantiation
+      becomes stale. The stale detection mechanism is: compare the current_mx_version declared
+      here against the version of M.X registered in the methods README. If they differ, this
+      instance must be re-run at σ₃ (step specialization gap analysis) to check whether the
+      MEVO evolution is a conservative extension of the touched subspace Σ_T. This invariant
+      is enforced by the version coupling declaration itself — it must be machine-readable
+      (specific version string, not prose).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - mx_version_sensitive has at least 1 item: at minimum the domain morphism table and the
+        version coupling declaration itself are always M.X-version-sensitive.
+      - update_trigger_statement is non-empty and names the specific actions required when M.X
+        advances to vN+1 and when the project context changes.
+      - current_mx_version names a specific version string (e.g., "M1-IMPL v2.1") — "current"
+        or "latest" are not acceptable; they prevent machine-readable staleness detection.
+      - Every component of P.X.Y is assigned to mx_version_sensitive or project_version_sensitive
+        (or both, for dual-sensitive components).
+
+      **HARD INVARIANT — VERSION COUPLING.** current_mx_version declared here is the staleness
+      anchor. When M3-MEVO produces M.X vN+1, it must enumerate all P.X.Y instances whose
+      current_mx_version differs from vN+1. Those instances are stale and require a MINS update
+      run starting at σ₃ (gap analysis between the MEVO change manifest and the touched subspace).
+      This invariant is why "current" is not acceptable as a version value: it cannot be
+      compared against a specific version number.
+
+      **Rationale.** Without the version coupling declaration, there is no mechanism to detect
+      staleness when M.X evolves. Role files continue referencing outdated step names, obsolete
+      guidance, or superseded role definitions without any flag. The coupling declaration is
+      the formal link between M4-MINS runs — it is what makes the project instance family
+      maintainable across M.X evolution cycles.
+
+      **Standard sensitivity assignment:**
+      M.X-version-sensitive (review when M.X's D, Γ, or Roles change):
+      - Domain morphism table (new Σ sorts require new rows; new steps may change Σ_T)
+      - TouchedSubspace declaration (new steps may reference new sorts)
+      - Conservative extension claim (new M.X axioms require re-checking Ax ⊆ Ax')
+      - Specialized steps (general structure layer)
+      - Role files π_ρ' and α_ρ' (authority and observation scope layer)
+      - Version coupling declaration itself
+
+      Project-version-sensitive (review when tech stack, arch docs, or team structure changes):
+      - Load protocols in role files (specific to project file structure)
+      - Project-specific guidance narratives in specialized steps
+      - Project-specific tool lists (project_tools per step)
+      - Role file paths and naming
+
+      Dual-sensitive components are listed in both categories.
+
+      **The update trigger statement** must cover two events explicitly:
+      (1) "When M.X advances from vN to vN+1 (as produced by M3-MEVO): review [list of
+          M.X-version-sensitive components] for changes. Re-run at σ₃ to check whether the
+          MEVO evolution is a conservative extension of the touched subspace."
+      (2) "When project context changes (tech stack update, new arch doc, team change): review
+          [list of project-version-sensitive components]."
+
+      **Output schema reference:**
+      - mx_version_sensitive: array of component names with rationale; at least 1 item
+      - project_version_sensitive: array of component names with rationale; may be empty
+      - update_trigger_statement: covers both M.X-version and project-version events
+      - current_mx_version: specific version string (e.g., "M1-IMPL v2.1")
+
+    output_schema:
+      fields:
+        - name: mx_version_sensitive
+          type: array
+          items: string
+          description: "ComponentName — [why M.X version changes affect it]"
+          min_items: 1
+          required: true
+        - name: project_version_sensitive
+          type: array
+          items: string
+          description: "ComponentName — [why project context changes affect it]"
+          min_items: 0
+          required: false
+        - name: update_trigger_statement
+          type: string
+          description: "When M.X advances to vN+1: review [...]; When project context changes: review [...]"
+          min_length: 1
+          required: true
+        - name: current_mx_version
+          type: string
+          description: "Specific version of M.X this instance was built against (e.g., 'M1-IMPL v2.1')"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "mx_version_sensitive has at least 1 item"
+        - "update_trigger_statement is non-empty"
+        - "current_mx_version is non-empty"
+        - "current_mx_version does not equal 'current' or 'latest' — must be a specific version identifier"
+        - "mx_version_sensitive includes at minimum the domain morphism table and the version coupling declaration"
+        - "update_trigger_statement covers the M.X-version-advance event and the project-context-change event"
+        - "HARD-INVARIANT-VERSION-COUPLING: if M.X advances to vN+1 via M3-MEVO and current_mx_version != vN+1, this instance is stale and must be re-run at sigma_3"
+      soft:
+        - "every component of P.X.Y (domain morphism, touched subspace, conservative extension claim, specialized steps, role files, version coupling) appears in either mx_version_sensitive or project_version_sensitive"
+        - "dual-sensitive components appear in both lists with distinct rationales"
+        - "update_trigger_statement names the specific σ (sigma_3) where re-run must begin for M.X-version-advance events"
+        - "current_mx_version follows the format [method-id] v[version-number] for machine-readability"
+
+  - id: sigma_6
+    name: "Compilation Check"
+    role: compiler
+    precondition: >
+      P.X.Y fully assembled with all required components: domain morphism declaration,
+      specialized steps for all σ ∈ Γ of M.X, role files for all roles in M.X, and
+      version coupling declaration. The compiler observes only the P.X.Y document and
+      F1-FTH — no M.X context, no project context, no session reasoning.
+    postcondition: >
+      CompilationResult ∈ {PASS, FAIL}. If PASS: gate_verdicts has exactly 7 items all
+      PASS, overall_verdict is PASS, and validation_summary is non-empty. If FAIL:
+      gate_verdicts contains at least one FAIL verdict, overall_verdict is FAIL, and
+      repair_targets names the specific M4-MINS step to repair (not a component of
+      P.X.Y itself).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Run gates in order G0 through G6.
+      - A gate failure terminates evaluation at that gate. Report the failure and repair target.
+        Do not continue to later gates after a failure — a P.X.Y failing G0 cannot meaningfully
+        be evaluated at G4.
+      - gate_verdicts contains one entry per gate evaluated (G0 through the first failure, or
+        G0 through G6 if all pass).
+      - overall_verdict is PASS only if all seven gates pass.
+      - If PASS: validation_summary is non-empty, naming all seven gates and their pass conditions.
+      - If FAIL: repair_targets names the specific M4-MINS step to repair (σN identifier).
+
+      **Rationale.** You are the compiler. You have access to P.X.Y and F1-FTH only. No
+      access to M.X, the project context, or the session reasoning. Evaluate structure, not
+      content. The epistemic separation is the defining constraint of this role.
+
+      **G0 — Navigability (What/Who/Why/How/When)**
+      Check that P.X.Y's introduction explicitly answers:
+      - What: what the instance produces; what a successful run delivers to the project.
+      - Who: which roles use this instance; LLM or human execution target.
+      - Why: what project-specific problem this instance solves; why M.X alone is insufficient.
+      - How: the step structure of P.X.Y (which steps were added; what is specialized).
+      - When: which projects, stacks, or conditions this instance is valid for.
+      FAIL → repair target: sigma_0 (introduction must be revised in a new instance assembly run)
+
+      **G1 — Domain Extension Validity**
+      Check:
+      - D' = (Σ', Ax') is declared with at least all sorts from Σ (conservative extension claim present).
+      - conservative_extension_claim is present and non-trivial.
+      - No existing axiom from Ax is stated as revised in Ax'.
+      - All new axioms in Ax' \ Ax apply only to sorts in Σ' \ Σ or are strict strengthenings.
+      - domain_boundary_note is present.
+      FAIL → repair target: sigma_1
+
+      **G2 — Domain Morphism Validity**
+      NOTE: G2-morphism is a gate unique to M4-MINS — not part of the standard G0–G6
+      vocabulary of M1-MDES or M3-MEVO. It represents a P4 sub-problem: when M.X is
+      a methodology Φ = (D_Φ, δ_Φ, O_Φ), the retraction pair must commute with δ_Φ (sequential
+      case only; parallel execution blocked on F2-OPR P4).
+      Check:
+      - morphism_table is present with at least one row per sort in Σ_T.
+      - embed_declaration is present and describes a function from Mod(D) to Mod(D').
+      - project_declaration is present and describes a function from Mod(D') to Mod(D).
+      - retraction_condition_statement is present and claims project ∘ embed = id on Mod(D) ↾ Σ_T.
+      - Each new sort in Σ' \ Σ has an entry in new_sort_justifications.
+      - Sorts marked outside-touched-subspace do not appear in any SpecializedStep's retained formal structure.
+      - If M.X is a methodology: retraction_condition_statement includes the δ_Φ commutativity claim.
+      - [v1.1] derived_projections from σ₄.0 are present for all roles; each RoleFile's observation
+        projection is consistent with the corresponding π_ρ'_spec — inconsistency is a compilation
+        FAIL, not a warning.
+      FAIL → repair target: sigma_2
+
+      **G3 — Role Coverage**
+      Check:
+      - At least one RoleFile is present.
+      - coverage_check states covers_general_roles: YES — every role in M.X has a R.X.Y.Z.
+      - Each RoleFile has a non-empty observation projection π_ρ'.
+      - Each RoleFile has a non-empty authorized transitions α_ρ'.
+      - No RoleFile has α_ρ' strictly broader than the corresponding α_ρ in M.X.
+      FAIL → repair target: sigma_4
+
+      **G4 — Specialized Step Composability**
+      Check:
+      - A SpecializedStep exists for every step σ ∈ Γ of M.X.
+      - Each SpecializedStep references its general step ("σN of M.X — [name]").
+      - Each SpecializedStep retains the general step's pre and post structure in D' sorts.
+      - For each AddedStep: valid_addition_justification is present, names all sorts, and
+        confirms all are outside Σ_T.
+      - contrarian_challenge is present with all three fields non-empty.
+      - Specialized step composability is not weaker than general method composability on the
+        touched subspace.
+      FAIL → repair target: sigma_3
+
+      **G5 — Version Coupling Presence**
+      Check:
+      - VersionCoupling declaration is present.
+      - mx_version_sensitive is non-empty (at least domain morphism table and version coupling
+        declaration itself).
+      - update_trigger_statement is present and non-trivial (covers both M.X-version and
+        project-version events).
+      - current_mx_version names a specific version (not "current" or "latest").
+      FAIL → repair target: sigma_5
+
+      **G6 — Instance Independence**
+      Check that P.X.Y is independently executable without reading M.X:
+      - Each RoleFile contains a load protocol.
+      - Each RoleFile's π_ρ' and α_ρ' are stated in project-specific terms, not by reference
+        to M.X abstractions.
+      - Specialized step guidance does not require the executing agent to have read M.X to
+        understand what to do (traceability references are acceptable; execution-content
+        dependencies on M.X are not).
+      - current_mx_version names a specific version, not a relative reference.
+      FAIL → repair target: sigma_4 (role files) or sigma_3 (specialized steps)
+
+      If all gates pass, produce the validation_summary naming each gate and its pass condition.
+
+      **Output schema reference:**
+      - gate_verdicts: one entry per gate evaluated; each with gate id, verdict, and notes
+      - overall_verdict: "PASS" or "FAIL"
+      - repair_targets: one entry per failed gate; names the M4-MINS step to repair; empty if PASS
+      - validation_summary: brief summary naming all seven gates if PASS; empty string if FAIL
+
+    output_schema:
+      fields:
+        - name: gate_verdicts
+          type: array
+          items:
+            gate:
+              type: string
+              description: "Gate identifier: G0, G1, G2, G3, G4, G5, or G6"
+            verdict:
+              type: enum
+              values: ["PASS", "FAIL", "PARTIAL", "CONDITIONAL"]
+              description: "Outcome of this gate"
+            notes:
+              type: string
+              description: "Specific items checked, issues found, or conditions for CONDITIONAL"
+          min_items: 1
+          required: true
+        - name: overall_verdict
+          type: enum
+          values: ["PASS", "FAIL"]
+          required: true
+        - name: repair_targets
+          type: array
+          items:
+            gate:
+              type: string
+              description: "The gate that failed"
+            mins_step:
+              type: string
+              description: "The M4-MINS step to repair (σN identifier)"
+            description:
+              type: string
+              description: "What must be added or corrected in the named MINS step to pass this gate"
+          min_items: 0
+          required: false
+        - name: validation_summary
+          type: string
+          description: "Brief summary naming all seven gates and their pass conditions if PASS; empty string if FAIL"
+          min_length: 0
+          required: true
+    invariants:
+      hard:
+        - "gate_verdicts has at least 1 item"
+        - "overall_verdict is present and is one of: PASS, FAIL"
+        - "validation_summary is present (may be empty string if FAIL)"
+        - "if overall_verdict is PASS: gate_verdicts has exactly 7 items, all with verdict PASS"
+        - "if overall_verdict is FAIL: repair_targets has at least 1 item"
+        - "if overall_verdict is PASS: validation_summary is non-empty"
+        - "if overall_verdict is FAIL: validation_summary is empty string"
+        - "repair_targets entries name M4-MINS steps (sigma_0 through sigma_5), not components of P.X.Y"
+        - "G2-morphism: gate_verdicts entry for G2 checks retraction_condition_statement for δ_Φ commutativity when M.X is a methodology"
+        - "gate_verdicts entry for G5 checks that current_mx_version is a specific version string and not 'current' or 'latest'"
+        - "gate_verdicts entry for G6 checks that role files contain load protocols and that specialized steps do not require M.X to execute"
+      soft:
+        - "gate_verdicts entries appear in order G0, G1, G2, G3, G4, G5, G6"
+        - "evaluation stops at the first FAIL gate — later gates are not listed when a prior gate fails"
+        - "repair_targets entries name specific missing fields or structural violations, not general guidance"
+        - "CONDITIONAL verdicts name the specific condition that must hold for the gate to be treated as PASS"
+        - "G2 notes indicate whether M.X is a methodology and, if so, whether the δ_Φ commutativity claim was found"
+
+termination_certificate:
+  measure: "ν_MINS = (unmapped_sorts_count) + (unapplied_gates_count)"
+  formal: >
+    ν(s) = |{t ∈ Σ_T | t has no row in morphism_table in state s}|
+           + |{g ∈ {G0,...,G6} | g does not pass in state s}|
+  argument: >
+    The termination measure ν_MINS sums two non-negative components. The first component,
+    (unmapped_sorts_count), counts sorts in the touched subspace Σ_T that have not yet
+    been given a morphism table row. This component strictly decreases with each σ₂ advance
+    that adds a morphism row for a previously unmapped sort. Base case: reaches 0 when every
+    sort in Σ_T has a declared (embed, project) mapping — which is the postcondition of σ₂.
+
+    The second component, (unapplied_gates_count), counts acceptance gates not yet passing.
+    Each method_advance call at σ₆ either terminates (compilation_result: PASS, this component
+    reaches 0) or produces a repair obligation identifying a specific failed gate. A repair that
+    correctly addresses the named gate failure reduces the failed gate count by at least one per
+    re-execution. Since the gate set is finite (|{G0,...,G6}| = 7), this component is bounded
+    below by 0 and strictly decreasing under correct repairs.
+
+    The overall measure ν_MINS is bounded below by 0, non-increasing under each step advance,
+    and strictly decreasing under correct repairs at σ₂ and σ₆. It reaches 0 when all Σ_T sorts
+    are mapped and all seven gates pass — triggering σ₆ PASS. The certificate is non-trivial only
+    when M.X genuinely compiles and the project context is sufficient — conditions verified at σ₀.
+    If M.X does not compile or the project context is insufficient, termination of the instantiation
+    path is guaranteed by the redirect branch at σ₀ rather than by this measure.
+
+success_profile:
+  mu_1:
+    name: "morphism_declaration_completeness"
+    formula: "(embed_declared + project_declared + touched_subspace_present + retraction_condition_stated + conservative_extension_claimed) / 5"
+    range: [0.0, 1.0]
+    description: >
+      Fraction of the five required morphism components that are present: embed declaration,
+      project declaration, touched subspace table, retraction condition statement, and
+      conservative extension claim. Computed as the count of present components divided by 5.
+      A complete domain morphism has μ₁ = 1.0.
+  mu_2:
+    name: "specialization_coverage"
+    formula: "(specialized_steps_count + role_files_count) / (|Γ| + |Roles|)"
+    range: [0.0, 1.0]
+    description: >
+      Fraction of M.X's steps and roles that have corresponding specialized steps and role
+      files in P.X.Y. Computed as (specialized_steps_count + role_files_count) / (|Γ| + |Roles|).
+      Full coverage requires μ₂ = 1.0.
+  mu_3:
+    name: "compilation_gate_passage_rate"
+    formula: "gates_passed / 7"
+    range: [0.0, 1.0]
+    description: >
+      Fraction of G0–G6 gates that pass at σ₆. Computed as gates_passed / 7.
+      Compilation requires μ₃ = 1.0.
+  session_delta_formula: "(mu_1 + mu_2 + mu_3) / 3"
+  progress_preorder: "lexicographic on (mu_1, mu_2, mu_3)"
+  preorder_rationale: >
+    μ₁ (morphism declaration completeness) is primary: the domain morphism is the primary
+    value-add of M4-MINS over informal instantiation. A P.X.Y without a complete
+    morphism declaration lacks formal traceability regardless of how good its specialized
+    steps are. μ₂ (specialization coverage) is secondary: a complete morphism with missing
+    specialized steps or role files is not yet executable. μ₃ (compilation gate passage) is
+    tertiary: all preceding steps may be structurally complete but fail formal gate checks
+    for structural reasons addressable at σ₃–σ₅.
+
+objective:
+  statement: >
+    A run of M4-MINS satisfies O_MINS iff: (1) a ProjectInstance document P.X.Y exists
+    with all required components — domain morphism declaration (morphism table, embed, project,
+    retraction condition), specialized steps for all σ ∈ Γ of M.X, role files for all roles
+    in M.X, and a version coupling declaration; (2) the domain morphism declaration contains a
+    valid retraction pair (embed, project) with a TouchedSubspace table and retraction condition
+    statement claiming project ∘ embed = id on Mod(D) ↾ Σ_T; (3) conservative_extension(D', D)
+    is claimed and justified; (4) P.X.Y passes G0–G6 at σ₆ as an independently executable
+    method (compilation_result: PASS); (5) the instance P.X.Y is registered in the methods
+    README with its ID, parent method, and project description.
+  type: terminal
+  progress_preorder: "lexicographic on (mu_1, mu_2, mu_3)"
+
+output_artifacts:
+  - name: domain_morphism_declaration
+    path_pattern: "PN-SLUG/MN-SLUG/IN-SLUG/domain-morphism.md"
+    description: "Morphism table, embed/project declarations, retraction condition, new sort justifications"
+  - name: specialized_steps
+    path_pattern: "PN-SLUG/MN-SLUG/IN-SLUG/specialized-steps.md"
+    description: "All steps with project-specific guidance, retained formal structure, project preconditions, and project_tools"
+  - name: role_files
+    path_pattern: "PN-SLUG/MN-SLUG/IN-SLUG/RN-ROLE.md"
+    description: "One self-contained role document per M.X role, with π_ρ', α_ρ', load protocol, and step guidance"
+  - name: version_coupling
+    path_pattern: "PN-SLUG/MN-SLUG/IN-SLUG/version-coupling.md"
+    description: "M.X-version-sensitive and project-version-sensitive component lists; update trigger statement; current_mx_version"
+  - name: instance_readme
+    path_pattern: "PN-SLUG/MN-SLUG/IN-SLUG/README.md"
+    description: "Index of role files, when to use each, and entry conditions for the instantiation"
+  - name: registry_entry
+    path_pattern: "methods/README.md"
+    description: "Row in the Project Instances (P) registry table with ID, parent method, project, and description"
+
+family:
+  id: meta-methods
+  members:
+    - id: M1-MDES
+      description: "Design a method from established domain knowledge"
+      status: active
+    - id: M2-MDIS
+      description: "Discover whether methodization is warranted"
+      status: proposed
+    - id: M3-MEVO
+      description: "Evolve an existing method from execution evidence"
+      status: active
+    - id: M4-MINS
+      description: "Instantiate a general method for a specific project"
+      status: active
