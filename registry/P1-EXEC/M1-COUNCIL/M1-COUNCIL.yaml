@@ -1,0 +1,716 @@
+method:
+  id: M1-COUNCIL
+  parent: P1-EXEC
+  name: "Synthetic Agents Method"
+  description: >
+    Structured multi-character debate where a cast of synthetic expert agents argue
+    a challenge and produce a decision or artifact, with the user as final authority.
+    Forces genuine position-holding through character construction: each character has
+    a named conviction and blind spot, and must defend or update positions under
+    structural pressure. Value over single-agent reasoning: method-attributable insight
+    generation through adversarial structure.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  derived_from: ".claude/skills/council-team/SKILL.md"
+
+navigation:
+  what: >
+    M1-COUNCIL takes a challenge with multiple defensible positions, constructs a cast
+    of synthetic expert characters with opposing philosophies, runs a structured debate,
+    and produces an Artifact consolidating decisions with rationale and minority positions.
+    Output satisfies O_COUNCIL: all Questions resolved, at least one Position updated,
+    Artifact exists, adversarial integrity maintained.
+  who: >
+    Three role types: Leader (1, neutral mediator), Contrarian (k >= 2, opposing-philosophy
+    experts), Product Owner (the human, final decision authority). In single-LLM execution,
+    the model plays Leader and Contrarians; the human plays PO.
+  why: >
+    Many design, strategy, and architectural problems benefit from adversarial expert debate
+    but no human team is available. A single LLM agent producing multiple perspectives risks
+    the hedged consensus failure mode — everything weighed, nothing committed to. M1-COUNCIL
+    forces genuine position-holding through character construction: each character has a named
+    conviction and a named blind spot, producing structurally different perspectives that a
+    single-agent method cannot generate. Evidence: EXP-001c showed 1.8-2.5x quality improvement
+    on design decisions with 3-agent adversarial structure vs neutral collaborative pattern.
+  how: >
+    Four linear steps: setup (confirm challenge) -> cast design (construct and approve
+    characters) -> debate & resolve (structured multi-turn debate with escalations and
+    decisions until all questions resolved) -> output (consolidate into artifact).
+  when_to_use:
+    - "The problem has at least two defensible solution philosophies leading to different decisions"
+    - "The task benefits from surfacing risks, minority views, or unconsidered perspectives"
+    - "A decision must be made and the user wants structured input rather than a single recommendation"
+    - "The problem space is bounded enough for 3-6 expert characters to credibly cover"
+    - "Multi-turn interaction is affordable"
+  when_not_to_use:
+    - "Execution tasks where the answer is known — use M3-TMP or M2-ORCH"
+    - "Purely informational queries needing a fact or summary, not a decision"
+    - "Tasks requiring continuous external state (API calls, iterative builds)"
+    - "Problem space so narrow that contrarians cannot hold genuinely different positions"
+    - "User needs single-response speed — multi-turn debate is overhead they cannot pay"
+
+domain_theory:
+  id: D_COUNCIL
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_execution
+      description: "The problem, decision, or design question posed by the Product Owner"
+    - name: Question
+      cardinality: "finite, >= 1 derived from Challenge"
+      description: "A sub-question or decision point derived from the Challenge during debate"
+    - name: CharacterCard
+      cardinality: "finite, k + 1 (Leader + Contrarians)"
+      description: "A specification constituting a Character: name, expertise, conviction, blind spot, voice"
+    - name: Character
+      cardinality: "finite, k + 1"
+      description: "A synthetic expert agent instantiated from a CharacterCard"
+    - name: Position
+      cardinality: unbounded
+      description: "A character's stance on a Question — evolves during debate"
+    - name: Turn
+      cardinality: unbounded
+      description: "A single character's contribution in the debate; references prior Turns via responds_to"
+    - name: Escalation
+      cardinality: unbounded
+      description: "A Leader-to-PO query: a specific decision point requiring external authority"
+    - name: Decision
+      cardinality: unbounded
+      description: "A resolved Question, ratified by PO response or by convergence"
+    - name: Artifact
+      cardinality: singleton_per_execution
+      description: "Terminal output: consolidated decisions with rationale and minority positions"
+  function_symbols:
+    - name: card_of
+      signature: "Character -> CharacterCard"
+      totality: total
+      description: "The CharacterCard that constitutes a Character"
+    - name: speaker
+      signature: "Turn -> Character"
+      totality: total
+      description: "The Character who issued a Turn"
+    - name: topic
+      signature: "Turn -> Question"
+      totality: total
+      description: "The Question a Turn addresses"
+  predicates:
+    - name: constituted_by
+      signature: "Character x CharacterCard"
+      description: "Character is instantiated from this CharacterCard"
+    - name: is_leader
+      signature: "Character"
+      description: "Character occupies the Leader role (exactly one per Council)"
+    - name: is_contrarian
+      signature: "Character"
+      description: "Character occupies a Contrarian role"
+    - name: holds
+      signature: "Character x Position x Question"
+      description: "Character holds this Position on this Question"
+    - name: resolved
+      signature: "Character x Question"
+      description: "Character has declared a final position on this Question"
+    - name: responds_to
+      signature: "Turn x Turn"
+      description: "A Turn directly responds to a prior Turn (DAG over session transcript)"
+    - name: escalated
+      signature: "Question"
+      description: "The Leader has issued an Escalation to PO on this Question"
+    - name: decided
+      signature: "Question"
+      description: "A Decision has been issued for this Question"
+    - name: derived_from
+      signature: "Question x Challenge"
+      description: "Question was derived from the Challenge during debate"
+    - name: position_updated
+      signature: "Character x Question"
+      description: "Character changed their Position on this Question during the session"
+    - name: cast_approved
+      signature: "Character"
+      description: "The PO has approved this Character as part of the Council"
+  axioms:
+    - id: Ax-1
+      name: Cast plurality
+      statement: "exists c1 c2 : Character. is_contrarian(c1) AND is_contrarian(c2) AND c1 != c2"
+      rationale: "A council with fewer than two contrarians cannot produce adversarial debate; it degenerates into a single perspective with a moderator."
+    - id: Ax-2
+      name: Leader uniqueness
+      statement: "exists! l : Character. is_leader(l)"
+      rationale: "Exactly one Leader per Council. The Leader is structurally neutral — giving two Leaders conflicting synthesis authority would corrupt the escalation mechanism."
+    - id: Ax-3
+      name: Position non-repetition
+      statement: >
+        forall c : Character, q : Question, t1 t2 : Turn.
+        speaker(t1) = c AND speaker(t2) = c AND topic(t1) = q AND topic(t2) = q AND t1 != t2
+        -> responds_to(t2, t_counter) for some t_counter where speaker(t_counter) != c
+      rationale: "A character may not re-state a position on the same question without responding to a counter-argument. Empty repetition is a violation; defended repetition requires a responds_to edge to a different character's turn."
+    - id: Ax-4
+      name: Conviction stability
+      statement: >
+        forall c : Character, q : Question.
+        position_updated(c, q) -> exists t : Turn. speaker(t) != c AND topic(t) = q AND responds_to(t_update, t)
+        where speaker(t_update) = c
+      rationale: "A character may update a Position only when a counter-argument has been received and acknowledged. Characters do not update positions to avoid friction. Source: EXP-001c anti-capitulation finding."
+    - id: Ax-5
+      name: Turn progress
+      statement: >
+        forall t : Turn. exists c : Character, q : Question.
+        speaker(t) = c AND topic(t) = q AND
+        (resolved(c, q) after t AND NOT resolved(c, q) before t)
+      rationale: "Each turn must produce at least one newly resolved (Character, Question) pair. Combined with Ax-3, gives the termination certificate strict-decrease guarantee. Source: EXP-003 C-009."
+    - id: Ax-6
+      name: Escalation authority boundary
+      statement: "forall l : Character. is_leader(l) -> NOT exists q : Question. decided(q) AND decision_issued_by(l, q)"
+      rationale: "The Leader may not issue a Decision — only Escalations or Convergence announcements. Final Decisions are issued by PO or by convergence."
+  domain_boundary_note: >
+    Excludes: the content domain of the challenge (D_COUNCIL tracks debate structure, not
+    subject matter); tool availability; the internal reasoning process of characters (only
+    their Turns and Positions are observable); execution history across sessions; sub-agent
+    spawning mechanics (deferred to future version).
+  initial_state_valid_claim: >
+    A state with Challenge present, no Characters, no Questions, no Turns, no Positions,
+    no Decisions, no Artifact satisfies all axioms: Ax-1 through Ax-6 have false antecedents
+    (no Characters or Turns exist) — all vacuously true. Valid.
+  terminal_state_valid_claim: >
+    A state with k+1 Characters (1 Leader, k >= 2 Contrarians), all Questions decided,
+    all (Character, Question) pairs resolved, at least one position_updated, Artifact
+    produced satisfies all axioms: Ax-1 (two contrarians exist), Ax-2 (one leader),
+    Ax-3 (all repeated positions have responds_to edges — enforced during sigma_2),
+    Ax-4 (all updates have counter-argument triggers), Ax-5 (each turn resolved at least
+    one pair), Ax-6 (leader issued no decisions). Valid.
+
+roles:
+  - id: rho_leader
+    description: >
+      Neutral mediator. One per Council. Synthesizes debate state, identifies impasse,
+      issues Escalations to PO, announces Convergence. Has no philosophical position —
+      structural neutrality is constitutive of the role.
+    observation_projection: >
+      pi_leader : Mod(D_COUNCIL) -> Mod(D_COUNCIL_leader) — sees all Turns, all Positions,
+      all Escalations, Challenge, all CharacterCards. Does not see PO's reasons for
+      external decisions (PO may provide these but is not required to).
+    authorized_transitions:
+      - "Summarize state of debate (synthesis Turn, not a Decision)"
+      - "Identify impasse between contrarians"
+      - "Issue Escalation to PO with specific question and named alternatives"
+      - "Announce Convergence when contrarians align"
+      - "Propose Character swap or addition (PO must approve)"
+    not_authorized:
+      - "Hold a philosophical position"
+      - "Issue a Decision (Ax-6)"
+      - "Update a Position"
+  - id: rho_contrarian
+    count: "k >= 2 (Ax-1)"
+    description: >
+      Expert with bounded knowledge base defined by CharacterCard. Reasons from own
+      expertise domain — epistemic constraint, not just role flavor. Each contrarian
+      holds positions and must defend or update them under structural pressure.
+    observation_projection: >
+      pi_contrarian : Mod(D_COUNCIL) -> Mod(D_COUNCIL_contrarian) — sees all prior Turns,
+      own CharacterCard, Challenge definition. Epistemic boundary: reasons from own
+      grounding, not omniscient view.
+    authorized_transitions:
+      - "Issue a Turn (argument, counter-argument, or synthesis proposal)"
+      - "Update a Position with acknowledged counter-argument as cause (Ax-4)"
+      - "Propose new Question or sub-challenge to the Council"
+    not_authorized:
+      - "Issue Decisions or Escalations (Leader territory)"
+      - "Speak outside own expertise domain without flagging"
+  - id: rho_product_owner
+    description: >
+      The human user. Final decision authority. Sees full session. No obligation to
+      explain Decisions — they are authoritative by role definition.
+    observation_projection: >
+      pi_po : Mod(D_COUNCIL) -> Mod(D_COUNCIL) — full session visibility. The PO has
+      the broadest view: all Turns, all Characters, all Escalations, all Decisions.
+    authorized_transitions:
+      - "Issue a Decision in response to an Escalation"
+      - "Modify Challenge scope"
+      - "Approve or veto Character swaps and additions"
+      - "Terminate the session"
+    not_authorized:
+      - "Speak as a Character (PO is external to the cast)"
+  coverage_claim: >
+    pi_leader covers all debate structure: Turns, Positions, Escalations, CharacterCards.
+    pi_contrarian covers the debate from each expert's epistemic lens: prior Turns, own
+    card, Challenge. pi_po covers the full session. Union covers all of Mod(D_COUNCIL):
+    no dimension is invisible to all three role types. The PO's full visibility ensures
+    no blind spot exists at the authority level.
+  authority_claim: >
+    Leader authority covers debate management: synthesis, impasse identification,
+    escalation, convergence. Contrarian authority covers argumentation: position-holding,
+    counter-arguments, question proposal. PO authority covers decisions: resolving
+    escalations, scope modification, cast approval, termination. Union covers all
+    transitions required to advance from initial state (Challenge presented) to O_COUNCIL
+    (all Questions decided, Artifact produced).
+  role_partition_rationale: >
+    Three role types because the method requires three distinct epistemic and authority
+    positions: (1) neutral synthesis without position-holding (Leader), (2) committed
+    argumentation from bounded expertise (Contrarian), (3) external decision authority
+    (PO). Removing the Leader merges synthesis with argumentation — characters cannot
+    simultaneously hold positions and neutrally mediate. Removing the PO means decisions
+    are made by the cast — but adversarial characters cannot converge without external
+    authority on genuinely contested questions. The three-role structure is minimal for
+    adversarial debate with external arbitration.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (path graph, trivially acyclic)"
+  formal: >
+    Gamma_COUNCIL = ({sigma_0, sigma_1, sigma_2, sigma_3},
+    {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3)},
+    sigma_0, sigma_3)
+
+phases:
+  - id: sigma_0
+    name: "Setup"
+    role: rho_leader
+    precondition: "Challenge exists (provided by PO or solicited); no Council yet instantiated"
+    postcondition: "Challenge stated precisely; PO has confirmed scope"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - challenge_statement is non-empty: one precise sentence stating the challenge.
+      - scope_confirmed = true: the PO has accepted the restatement.
+      - Do not proceed to sigma_1 without scope confirmation.
+
+      **Rationale:**
+      Scope confirmation prevents character design being wasted on the wrong problem.
+      If the challenge is ambiguous, characters will be designed for the wrong domain
+      and the debate will not produce useful decisions.
+
+      **Procedure:**
+      1. If challenge text was provided, use it directly.
+      2. Otherwise ask: "What should the council solve?"
+      3. Restate the challenge in one sentence.
+      4. Confirm with the PO before proceeding.
+
+      **Output schema reference:**
+      - challenge_statement: one precise sentence
+      - scope_confirmed: boolean (must be true)
+    output_schema:
+      fields:
+        - name: challenge_statement
+          type: string
+          description: "One precise sentence stating the challenge"
+          min_length: 1
+          required: true
+        - name: scope_confirmed
+          type: boolean
+          required: true
+    invariants:
+      hard:
+        - "challenge_statement is non-empty"
+        - "scope_confirmed = true"
+      soft:
+        - "challenge_statement is a single sentence, not a paragraph"
+
+  - id: sigma_1
+    name: "Cast Design"
+    role: rho_leader
+    precondition: "Challenge confirmed; Council empty"
+    postcondition: >
+      Council has Leader (1) + Contrarians (k >= 2) with complete CharacterCards;
+      PO has approved the cast (cast_approved for all Characters)
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - leader is non-empty: one CharacterCard for the Leader role.
+      - contrarians has at least 2 entries (Ax-1): each a complete CharacterCard.
+      - Each CharacterCard has: name, expertise, conviction, blind_spot, voice.
+      - Contrarians must have opposing philosophical positions — not just different
+        expertise, but different answers to "how should this be solved?"
+      - cast_approved = true: PO has reviewed and approved (or modified) the cast.
+
+      **Rationale:**
+      Character design is the method's core mechanism. Each character's conviction is
+      the sentence they defend under pressure; the blind spot is what they systematically
+      underweight. Opposing convictions produce the adversarial structure that generates
+      method-attributable insights. If characters merely have different expertise but
+      the same philosophy, the debate degenerates into complementary monologues.
+
+      **Procedure:**
+      1. Design characters tailored to the Challenge domain.
+      2. For each Contrarian: name, expertise domain, core conviction (one sentence
+         they would defend under pressure), blind spot (what they systematically
+         underweight), voice descriptor (2-3 words).
+      3. Ensure contrarians hold opposing positions on the challenge — not just different
+         knowledge, but different prescriptions.
+      4. Present the cast to PO. Ask: "Any changes to the lineup before we begin?"
+      5. Apply PO modifications if any. Set cast_approved = true.
+
+      **Output schema reference:**
+      - leader: CharacterCard object
+      - contrarians: array of CharacterCard objects (>= 2)
+      - cast_approved: boolean (must be true)
+    output_schema:
+      fields:
+        - name: leader
+          type: object
+          description: "{name, expertise, voice} — Leader has no conviction or blind_spot (structurally neutral)"
+          required: true
+        - name: contrarians
+          type: array
+          items: object
+          description: "{name, expertise, conviction, blind_spot, voice}"
+          min_items: 2
+          required: true
+        - name: cast_approved
+          type: boolean
+          required: true
+    invariants:
+      hard:
+        - "leader is non-empty with name and expertise"
+        - "contrarians has at least 2 items"
+        - "each contrarian has name, expertise, conviction, blind_spot, voice"
+        - "cast_approved = true"
+      soft:
+        - "contrarian convictions are opposing (not merely complementary)"
+        - "blind_spots are distinct across contrarians"
+
+  - id: sigma_2
+    name: "Debate & Resolve"
+    role: "all roles (Leader, Contrarians, PO)"
+    precondition: "Council populated; cast approved; at least one open Question exists on the Challenge"
+    postcondition: >
+      forall q : Question. derived_from(q, challenge) -> decided(q).
+      forall c : Character, q : Question. derived_from(q, challenge) -> resolved(c, q).
+      All Characters have declared final positions on all Questions. All Escalations
+      resolved. No open Questions remain.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - session_transcript is non-empty: the full sequence of Turns.
+      - decisions contains one entry per Question, each with rationale.
+      - escalations_log contains all Escalations with PO responses.
+      - all_questions_resolved = true: no open Questions remain.
+      - Each Turn must advance the challenge — vague or decorative turns violate Ax-5.
+      - No character re-states a position without responding to a counter-argument (Ax-3).
+      - No character updates a position without acknowledging the counter-argument (Ax-4).
+      - The Leader does not issue Decisions — only Escalations and Convergence (Ax-6).
+
+      **Rationale:**
+      This is the structural core of the method. The debate produces method-attributable
+      insights: perspectives that a single-agent approach would not generate because they
+      arise from the adversarial structure, not from the agent's general capability.
+      The axioms (Ax-3 through Ax-6) are the enforcement mechanism — without them,
+      characters converge with agreeableness scores of 75-92% (EXP-001c), defeating the
+      adversarial structure.
+
+      **Procedure — debate loop (internal to this step):**
+      1. Characters speak in turn, labeled by name. Stay in voice.
+      2. Each Turn must: (a) respond to a prior Turn or introduce a new argument,
+         (b) explicitly state or update a Position on a Question, (c) resolve at least
+         one (Character, Question) pair (Ax-5).
+      3. Leader periodically summarizes the state of debate.
+      4. When contrarians reach impasse, Leader identifies the exact dividing question
+         and issues an Escalation: "[Leader] to Product Owner: [specific question].
+         The contrarians are split on X because Y. What should we prioritize?"
+      5. PO responds to Escalation with a Decision.
+      6. After a Decision: Leader states it with one-sentence rationale. Each Character
+         acknowledges how it changes their position. Move to next open Question.
+      7. If a character is not contributing or the problem has shifted domains, propose
+         a Character swap to PO.
+      8. Continue until all Questions are decided and all (Character, Question) pairs
+         are resolved.
+
+      **Termination (PAT-003A hybrid step):**
+      This step has internal convergence dynamics governed by an embedded measure:
+      nu_sigma_2 = |{(c, q) in Characters x Questions | NOT resolved(c, q)}|.
+      Ax-5 guarantees each Turn reduces nu_sigma_2 by >= 1. Ax-3 prevents stalling
+      (no empty repetition). nu_sigma_2 is bounded above by |Characters| x |Questions|,
+      which is finite. The step terminates when nu_sigma_2 = 0.
+
+      **Output schema reference:**
+      - session_transcript: array of Turn entries
+      - decisions: array of {question, decision, rationale} entries
+      - escalations_log: array of {question, escalation, po_response} entries
+      - all_questions_resolved: boolean (must be true)
+    output_schema:
+      fields:
+        - name: session_transcript
+          type: array
+          items: object
+          description: "{character: string, turn_content: string, question: string, position_action: update|maintain|new}"
+          min_items: 1
+          required: true
+        - name: decisions
+          type: array
+          items: object
+          description: "{question: string, decision: string, rationale: string}"
+          min_items: 1
+          required: true
+        - name: escalations_log
+          type: array
+          items: object
+          description: "{question: string, escalation: string, po_response: string}"
+          min_items: 0
+          required: false
+        - name: all_questions_resolved
+          type: boolean
+          required: true
+    invariants:
+      hard:
+        - "session_transcript is non-empty"
+        - "decisions has at least 1 item (at least one Question must be decided)"
+        - "all_questions_resolved = true"
+        - "every Turn in session_transcript has a named character and addresses a question"
+      soft:
+        - "at least one contrarian's position was updated during the session"
+        - "escalations_log is populated if any impasse occurred"
+        - "no two consecutive turns by the same character on the same question without a responds_to edge"
+
+  - id: sigma_3
+    name: "Output"
+    role: rho_leader
+    precondition: "All Questions decided; all (Character, Question) pairs resolved; no open Questions remain"
+    postcondition: "Artifact exists consolidating Decisions with rationale and minority positions"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - artifact is non-empty: the consolidated output.
+      - The artifact must include: decisions made, key arguments that drove each,
+        and minority positions that were noted but not adopted.
+      - Minority positions are part of the output — they represent knowledge surfaced
+        by the adversarial structure that a single-perspective method would not produce.
+      - positions_updated_count >= 1: at least one position was updated during the
+        session (if zero, the council added no value over a single recommendation).
+
+      **Rationale:**
+      The Artifact is the method's terminal output. Minority positions are explicitly
+      included because they are the adversarial method's unique contribution — the
+      perspectives a single-agent approach would not have surfaced.
+
+      **Procedure:**
+      1. Consolidate all Decisions from sigma_2 with their rationale.
+      2. For each Decision: record the key arguments from each side.
+      3. Record minority positions — positions that were argued but not adopted.
+      4. Count how many character positions were updated during the session.
+      5. Compose the Artifact at the fidelity appropriate to the Challenge (decision
+         memo, architecture proposal, strategy document, etc.).
+
+      **Output schema reference:**
+      - artifact: the consolidated output document
+      - decisions_summary: array of decision entries with rationale and key arguments
+      - minority_positions: array of positions argued but not adopted
+      - positions_updated_count: integer >= 0
+    output_schema:
+      fields:
+        - name: artifact
+          type: string
+          description: "The consolidated output document"
+          min_length: 1
+          required: true
+        - name: decisions_summary
+          type: array
+          items: object
+          description: "{question: string, decision: string, key_arguments: string, dissenting_view: string}"
+          min_items: 1
+          required: true
+        - name: minority_positions
+          type: array
+          items: string
+          description: "Positions argued but not adopted — the adversarial method's unique output"
+          min_items: 0
+          required: false
+        - name: positions_updated_count
+          type: integer
+          description: "Number of character positions updated during the session"
+          required: true
+    invariants:
+      hard:
+        - "artifact is non-empty"
+        - "decisions_summary has at least 1 item"
+        - "positions_updated_count is present"
+      soft:
+        - "positions_updated_count >= 1 (if 0, council added no value)"
+        - "minority_positions is populated if any positions were argued but not adopted"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 establishes Challenge stated precisely with scope_confirmed = true.
+        pre_sigma_1 requires Challenge confirmed and Council empty. post_sigma_0 is a
+        superset (additionally establishes scope confirmation). Council is empty because
+        sigma_0 does not create Characters.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 establishes Council with Leader + Contrarians (k >= 2), all
+        CharacterCards complete, cast_approved = true. pre_sigma_2 requires Council
+        populated, cast approved, at least one open Question. The Challenge itself
+        constitutes at least one Question (the top-level question). post_sigma_1
+        satisfies pre_sigma_2.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 establishes all Questions decided, all (Character, Question) pairs
+        resolved, all_questions_resolved = true. pre_sigma_3 requires all Questions
+        decided, no open Questions. Identity inclusion.
+  terminal_condition_claim: >
+    post_sigma_3 produces Artifact with decisions, rationale, minority positions, and
+    positions_updated_count. O_COUNCIL requires: all Questions decided (from sigma_2
+    postcondition, carried through), at least one position updated (checked at sigma_3),
+    Artifact exists (produced at sigma_3), all Characters maintained conviction or
+    updated for named reason (Ax-4 enforced throughout sigma_2). post_sigma_3 implies
+    O_COUNCIL.
+  initial_condition_claim: >
+    pre_sigma_0 requires Challenge exists. This holds at method invocation: P1-EXEC's
+    delta_EXEC passes the Challenge to M1-COUNCIL via embed_COUNCIL.
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      pre_sigma_2 requires "at least one open Question exists on the Challenge." But
+      sigma_1's postcondition says nothing about Questions — it establishes the Council
+      cast. The Challenge itself is a Question, but this derivation is implicit. If the
+      Challenge is not automatically a Question (e.g., a vague directive), sigma_2's
+      precondition may not be met.
+    defense_or_revision: >
+      The Challenge always constitutes at least one Question: the top-level question
+      "what should we do about [challenge_statement]?" is derived_from(q, challenge)
+      by construction. sigma_0 ensures the challenge is stated precisely and scope is
+      confirmed, which guarantees it is well-formed as a Question. This derivation is
+      implicit but reliable — a confirmed, precise challenge statement is always a
+      decidable question. The composability holds because sigma_0's postcondition
+      (precise statement, confirmed scope) guarantees the Challenge is Question-formable.
+
+objective:
+  id: O_COUNCIL
+  formal: >
+    O_COUNCIL(s) =
+      (forall q : Question. derived_from(q, challenge) -> decided(q))
+      AND (exists c : Character. exists q : Question. position_updated(c, q))
+      AND (exists a : Artifact. a in s)
+      AND (forall c : Character, q : Question. position_updated(c, q) ->
+           exists t : Turn. speaker(t) != c AND topic(t) = q AND responds_to(t_update, t))
+  type: terminal
+  expressible_claim: >
+    O_COUNCIL references decided (predicate over Question), position_updated (predicate
+    over Character x Question), derived_from (predicate over Question x Challenge),
+    Artifact (declared sort), responds_to (predicate over Turn x Turn), speaker and topic
+    (function symbols). All are in Sigma_COUNCIL. O_COUNCIL is expressible as a closed
+    sentence over Mod(D_COUNCIL).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{q : Question | decided(q) in s1}| <= |{q : Question | decided(q) in s2}|.
+      States with more decided Questions are further toward O_COUNCIL. Terminal states
+      (all Questions decided, Artifact exists) are maximal.
+    well_founded: >
+      Question set is finite (derived from a finite Challenge with finite sub-questions
+      surfaced during debate — new Questions may be proposed but the debate terminates
+      when all proposed Questions are decided, and Ax-5 ensures progress on each turn).
+  success_profile:
+    - id: mu_1
+      name: question_resolution
+      formula: "|{q : Question | decided(q)}| / |{q : Question | derived_from(q, challenge)}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks the first conjunct of O_COUNCIL. Order-homomorphism w.r.t. <=_O by
+        definition. mu_1 = 1.0 is necessary but not sufficient (Artifact and position
+        update still required).
+    - id: mu_2
+      name: adversarial_integrity
+      formula: "|{t : Turn | responds_to(t, t') for some t'}| / |{t : Turn}|"
+      range: "[0, 1]"
+      threshold: ">= 0.8"
+      proxy_claim: >
+        Fraction of Turns that are specific responses to counter-arguments vs vague
+        or decorative statements. Tracks Ax-3 compliance. Low mu_2 signals characters
+        are agreeing to avoid friction. Evidence: EXP-001c agreeableness 75-92% without
+        anti-capitulation instructions.
+    - id: mu_3
+      name: escalation_precision
+      formula: "|{e : Escalation | specific_question(e)}| / |{e : Escalation}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        Every Escalation must be a specific question with named alternatives. Imprecise
+        escalations ("we need your input") place illegitimate cognitive burden on the PO.
+        mu_3 = 1.0 means every escalation was actionable.
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3} | sigma has not executed in s}|"
+  initial: 4
+  final: 0
+  decrease_witness: >
+    Steps sigma_0, sigma_1, sigma_3 each execute once (trivial decrease). sigma_2 is a
+    hybrid step (PAT-003A) with internal convergence governed by
+    nu_sigma_2 = |{(c, q) in Characters x Questions | NOT resolved(c, q)}|.
+    Ax-5 guarantees each Turn reduces nu_sigma_2 by >= 1. Ax-3 prevents stalling. nu_sigma_2
+    is bounded above by |Characters| x |Questions| (both finite). sigma_2 terminates when
+    nu_sigma_2 = 0, then nu decreases by 1 (sigma_2 done). Total termination guaranteed.
+
+selection_profile:
+  positive_indicators:
+    - property: "Multiple defensible positions exist (>= 2 solution philosophies)"
+    - property: "Output is a decision, not an implementation"
+    - property: "User benefits from minority views being surfaced"
+    - property: "Multi-turn interaction is affordable"
+    - property: "Problem bounded enough for 3-6 expert characters"
+  evidence: "EXP-001c: 1.8-2.5x quality improvement on design decisions with 3-agent adversarial structure"
+  principal_failure_mode: >
+    Characters converge too quickly because the executing LLM cannot maintain genuine
+    epistemic separation between characters it is simultaneously playing. Mitigation:
+    Ax-3 and Ax-4 enforce structural anti-capitulation, and mu_2 measures compliance.
+    Residual risk: characters may produce superficially different but structurally
+    identical arguments. Detectable by PO but not by the method itself.
+
+known_wip:
+  - id: W1
+    status: open
+    description: >
+      Sub-agent spawning within sigma_2 (character does individual research while
+      debate continues). Requires concurrent branches not in current theory.
+      Deferred to v2.0.
+  - id: W2
+    status: open
+    description: >
+      Position identity for Ax-3 enforcement. When are two Position statements
+      "the same"? Currently operationalized as Leader judgment. Formal definition
+      requires semantic similarity model or explicit tagging.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: structured adversarial debate producing decisions and
+        artifact. Who: Leader + Contrarians + PO (three role types). Why: method-attributable
+        insight generation through adversarial structure (EXP-001c evidence). How: four-step
+        linear DAG. When: problems with multiple defensible positions; not for execution tasks
+        or single-answer queries.
+    - gate: G1
+      result: PASS
+      note: >
+        D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 9 sorts with cardinality, 3 function symbols
+        with totality, 11 predicates with typed signatures referencing declared sorts, 6 closed
+        axioms with rationale. Domain boundary stated. Initial and terminal state membership
+        in Mod(D_COUNCIL) claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_COUNCIL stated as conjunction of four Sigma-predicates. Expressibility claim present.
+        Progress preorder declared with well-foundedness argument. Three measures with formulas,
+        ranges, and proxy claims. All measure formulas reference only declared Sigma symbols.
+    - gate: G3
+      result: PASS
+      note: >
+        Three role types: Leader (neutral synthesis), Contrarian (committed argumentation),
+        PO (external authority). Each with explicit observation projection and authorized/
+        not-authorized transitions. Coverage claim: union covers all of Mod(D_COUNCIL).
+        Authority claim: union covers all transitions to O_COUNCIL. Role partition rationale:
+        minimal for adversarial debate with external arbitration.
+    - gate: G4
+      result: PASS
+      note: >
+        Four steps in path graph (sigma_2/sigma_3 flattened per Option A — PAT-003A hybrid
+        step for sigma_2). Each step has pre, post, finalized guidance, typed output_schema
+        with hard/soft invariants. Three composability claims. Terminal and initial condition
+        claims present. Contrarian challenge on sigma_1->sigma_2 (Question derivation from
+        Challenge) defended by sigma_0 scope confirmation. DAG trivially acyclic.
+    - gate: G5
+      result: PASS
+      note: >
+        All four steps have finalized guidance in constraints-first format. Each guidance block
+        covers all required output_schema fields by name. sigma_2 guidance includes PAT-003A
+        termination argument (nu_sigma_2 = |unresolved pairs|, Ax-5 strict decrease). Spot-check:
+        sigma_1 names leader, contrarians, cast_approved; sigma_3 names artifact,
+        decisions_summary, minority_positions, positions_updated_count. All fields covered.
+    - gate: G6
+      result: PASS
+      note: "This file (P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml). Structurally complete."

@@ -1,0 +1,328 @@
+method:
+  id: M5-PLAN
+  parent: P2-SD
+  name: "Phase Planning Method"
+  description: >
+    Takes a PRDSection and produces a PhaseDoc — a scoped, severity-rated, validated task
+    list for one delivery phase. Five linear steps: validate inputs, extract tasks from PRD,
+    integrate carryover from phase history, scope and rate tasks, write and validate PhaseDoc.
+    Output is the handoff artifact consumed by M1-IMPL or M2-ORCH.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-13"
+  compilation_result: PASS
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M5-PLAN takes a PRD section and produces a PhaseDoc — a structured, scoped,
+    severity-rated task list that M1-IMPL or M2-ORCH can execute directly. It does
+    not implement anything.
+  who: >
+    The planner role — an agent (human or LLM) who has access to the PRD, the
+    architecture documents, and the history of previous phases.
+  why: >
+    Unplanned phases drift. Without an explicit PhaseDoc, the implementing agent must
+    infer scope from PRD text — a lossy operation that produces unscoped tasks, missed
+    acceptance criteria, and unresolved carryover. M5-PLAN makes the planning act
+    explicit and auditable.
+  how: >
+    Five linear steps: validate inputs → extract tasks from PRD → integrate carryover
+    from phase history → scope and rate each task → write and validate the PhaseDoc.
+  when: >
+    At the start of a new phase when no current PhaseDoc exists. Also when an existing
+    PhaseDoc is rejected or requires a full replan. Dispatched by P2-SD when
+    task_type(c, plan).
+
+loop_structure:
+  name: none
+  note: "Linear DAG. No back edges. Termination certificate nu_PLAN = 1."
+
+domain_theory:
+  id: D_PLAN
+  sorts:
+    - name: PRDSection
+      cardinality: singleton_per_invocation
+      description: "The bounded PRD section being planned"
+    - name: PhaseHistory
+      cardinality: singleton_per_invocation
+      description: "Record of all previous phases: completed, deferred, and carryover tasks"
+    - name: ArchDoc
+      cardinality: finite
+      description: "An architecture document in scope for this phase"
+    - name: Task
+      cardinality: finite
+      description: >
+        An implementation task with acceptance criteria, scope, severity, and role
+        assignment. Mirrors D_SI.Task at the retraction boundary.
+    - name: PhaseDoc
+      cardinality: singleton_per_invocation
+      description: >
+        The output artifact: a structured, scoped, validated task list for one phase.
+        Mirrors D_SI.PhaseDoc — consumed directly by M1-IMPL or M2-ORCH.
+  predicates:
+    - name: loaded
+      signature: "ArchDoc -> Bool"
+      description: "The ArchDoc is readable and in scope"
+    - name: has_carryover
+      signature: "PhaseHistory -> Bool"
+      description: "PhaseHistory contains at least one unresolved or deferred task"
+    - name: extracted
+      signature: "Task -> Bool"
+      description: "The task was derived from the PRDSection"
+    - name: carryover
+      signature: "Task -> Bool"
+      description: "The task was inherited from PhaseHistory"
+    - name: scoped
+      signature: "Task -> Bool"
+      description: "The task has declared source file boundaries"
+    - name: rated
+      signature: "Task -> Bool"
+      description: "The task has a severity rating (CRITICAL/HIGH/MEDIUM/LOW)"
+    - name: covers
+      signature: "PhaseDoc x PRDSection -> Bool"
+      description: "Every requirement in PRDSection is traceable to at least one task in PhaseDoc"
+    - name: complete
+      signature: "PhaseDoc -> Bool"
+      description: "The PhaseDoc is fully written and validated"
+  axioms:
+    - id: Ax-1
+      statement: "complete(pd) -> covers(pd, prd)"
+      rationale: "Completeness implies coverage."
+    - id: Ax-2
+      statement: "complete(pd) -> forall t in tasks(pd). scoped(t) AND rated(t)"
+      rationale: "Completeness requires all tasks scoped and rated."
+    - id: Ax-3
+      statement: "has_carryover(ph) -> exists t in tasks(pd). carryover(t)"
+      rationale: "Unresolved PhaseHistory items must appear in the PhaseDoc."
+    - id: Ax-4
+      statement: "forall t in tasks(pd). extracted(t) OR carryover(t)"
+      rationale: "Task provenance: every task derives from PRDSection or PhaseHistory."
+
+roles:
+  - id: planner
+    description: >
+      The agent who executes M5-PLAN and produces the PhaseDoc. Reads PRDSection,
+      PhaseHistory, and ArchDocs. Does not write or modify source code.
+    observation_projection:
+      sub_theory: D_PLAN
+      note: "pi_planner = id — full visibility required over all D_PLAN sorts"
+    authorized_transitions:
+      - "Read PRDSection and enumerate requirements"
+      - "Read PhaseHistory and identify carryover items"
+      - "Read ArchDocs to determine scope boundaries and architectural constraints"
+      - "Write the PhaseDoc"
+    not_authorized:
+      - "Write or modify source code"
+      - "Modify PRDSection or ArchDocs"
+    coverage_claim: >
+      G3-C1: all D_PLAN predicates observable by planner.
+      G3-C2: the single state transition (complete(PhaseDoc) = TRUE) is within planner authority.
+
+objective:
+  id: O_PLAN
+  formal_statement: >
+    O_PLAN(s) = complete(phaseDoc(s)) AND covers(phaseDoc(s), PRDSection)
+  progress_preorder: >
+    preceq_PLAN: s' preceq s iff requirements_covered(s') >= requirements_covered(s).
+    Bounded above by |requirements(PRDSection)|. Well-founded.
+  termination:
+    certificate_id: nu_PLAN
+    formula: "nu_PLAN = 1"
+    rationale: "Linear DAG, no back edges. Each sigma fires exactly once."
+
+phases:
+  - id: sigma_0
+    name: "Validate Inputs"
+    role: planner
+    precondition: "M5-PLAN invoked; PRDSection reference provided"
+    postcondition: "PRDSection boundary confirmed; all ArchDocs loaded; PhaseHistory accessible"
+    guidance: |
+      **Constraints:**
+      - prd_boundary_defined — the PRDSection has a declared start and end (section number,
+        heading, or line range). Planning without a defined boundary is not permitted.
+      - archdocs_loaded — every ArchDoc in scope confirmed readable. A missing ArchDoc
+        is status = BLOCKED.
+      - phase_history_accessible — PhaseHistory is readable. If no prior phases exist,
+        phase_history_accessible = TRUE with has_carryover = FALSE.
+      - status = BLOCKED if PRDSection boundary is undefined or any required ArchDoc is
+        inaccessible.
+
+      **Procedure:**
+      1. Confirm the PRDSection reference: identify the section heading or range being planned.
+      2. List all ArchDocs that govern the domain covered by this PRDSection.
+      3. Confirm each ArchDoc is readable; flag any that are inaccessible.
+      4. Load PhaseHistory; check for DEFERRED or IN_PROGRESS tasks from prior phases.
+    output_schema:
+      required_fields:
+        - {name: prd_section_ref, type: string, required: true}
+        - {name: archdocs_in_scope, type: "list[string]", required: true}
+        - {name: has_carryover, type: boolean, required: true}
+        - {name: status, type: "PASS | BLOCKED", required: true}
+      hard_invariants:
+        - "status = BLOCKED iff PRDSection boundary undefined or required ArchDoc inaccessible"
+        - "has_carryover = TRUE requires at least one DEFERRED or IN_PROGRESS item in PhaseHistory"
+
+  - id: sigma_1
+    name: "Extract Tasks"
+    role: planner
+    precondition: "sigma_0 status = PASS"
+    postcondition: "raw task list extracted from PRDSection; each task has description and acceptance criteria"
+    guidance: |
+      **Constraints:**
+      - tasks_extracted >= 1 — a PRDSection with zero extractable tasks indicates a
+        misidentified section boundary; return to sigma_0.
+      - Every task has: a description and at least one acceptance criterion.
+      - Tasks at this stage are unscoped and unrated — scoping happens in sigma_3.
+        Do not assign source files here.
+      - coverage_map_started — each PRD requirement maps to at least one task.
+        Requirements with no mapping are flagged as unmapped.
+
+      **Procedure:**
+      1. Read the PRDSection in full.
+      2. For each stated requirement: derive one or more tasks corresponding to a coherent
+         unit of implementation work.
+      3. For each task: write a description and at least one acceptance criterion.
+      4. For each PRD requirement: confirm it maps to at least one task. List any unmapped
+         requirements explicitly.
+    output_schema:
+      required_fields:
+        - {name: tasks_extracted, type: "integer >= 1", required: true}
+        - {name: raw_task_list, type: "list[{description: string, acceptance_criteria: list[string]}]", required: true}
+        - {name: unmapped_requirements, type: "list[string]", required: true}
+        - {name: status, type: PASS, required: true}
+      hard_invariants:
+        - "tasks_extracted = len(raw_task_list)"
+        - "unmapped_requirements is explicit — empty list only after active check, not by default"
+
+  - id: sigma_2
+    name: "Integrate Carryover"
+    role: planner
+    precondition: "sigma_1 status = PASS"
+    postcondition: "carryover tasks merged into task list; merged list is complete"
+    guidance: |
+      **Constraints:**
+      - If has_carryover = FALSE (from sigma_0): this step is a pass-through.
+        carryover_tasks_merged = 0. Do not skip — record explicitly.
+      - If has_carryover = TRUE: every DEFERRED or IN_PROGRESS item from PhaseHistory
+        is either merged as a task or explicitly excluded with a rationale.
+      - Excluded carryover items must be recorded; silent exclusion violates Ax-3.
+      - Merged carryover tasks inherit their prior acceptance criteria unless explicitly
+        revised.
+
+      **Procedure:**
+      1. If has_carryover = FALSE: record carryover_tasks_merged = 0; proceed to sigma_3.
+      2. Read all DEFERRED and IN_PROGRESS items from PhaseHistory.
+      3. For each item: decide — merge (inherit into task list) or exclude (with rationale).
+      4. For merged items: preserve original acceptance criteria; note if scope has changed.
+      5. Record merged count and any exclusions.
+    output_schema:
+      required_fields:
+        - {name: carryover_tasks_merged, type: "integer >= 0", required: true}
+        - {name: carryover_tasks_excluded, type: "list[{task: string, rationale: string}]", required: true}
+        - {name: merged_task_list, type: "list[task]", required: true}
+        - {name: status, type: PASS, required: true}
+      hard_invariants:
+        - "carryover_tasks_excluded entries each have a non-empty rationale"
+        - "len(merged_task_list) = tasks_extracted + carryover_tasks_merged"
+
+  - id: sigma_3
+    name: "Scope and Rate"
+    role: planner
+    precondition: "sigma_2 status = PASS"
+    postcondition: "every task has declared source file scope, severity rating, and role assignment"
+    guidance: |
+      **Constraints:**
+      - scoped(t) for all t — every task declares the source files it is authorized to
+        touch. "All files" is not a valid scope declaration.
+      - rated(t) for all t — every task has a severity rating: CRITICAL (compile failure
+        risk), HIGH (runtime behavior), MEDIUM (underspecified), LOW (documentation/cleanup).
+      - Role assignment is one of: implementor, impl-sub-agent. Orchestration role
+        assignment happens at M2-ORCH dispatch, not here.
+      - ArchDoc constraints restricting scope must be applied: if an ArchDoc prohibits
+        touching a file family, tasks must respect that boundary.
+
+      **Procedure:**
+      1. For each task: read the relevant ArchDocs to identify which source files the
+         task will require.
+      2. Declare the source file scope explicitly — list files or file patterns.
+      3. Apply ArchDoc constraints: remove out-of-bounds files from scope; note any
+         constraint application.
+      4. Assign severity using the CRITICAL/HIGH/MEDIUM/LOW scale.
+      5. Assign role: implementor for tasks within one file domain; impl-sub-agent
+         candidate for tasks that may be parallelized at M2-ORCH dispatch.
+    output_schema:
+      required_fields:
+        - {name: scoped_task_list, type: "list[{task: string, source_files: list[string], severity: string, role: string}]", required: true}
+        - {name: arch_constraints_applied, type: "list[string]", required: true}
+        - {name: status, type: PASS, required: true}
+      hard_invariants:
+        - "forall t in scoped_task_list: len(t.source_files) >= 1"
+        - "forall t in scoped_task_list: t.severity in {CRITICAL, HIGH, MEDIUM, LOW}"
+        - "forall t in scoped_task_list: t.role in {implementor, impl-sub-agent}"
+
+  - id: sigma_4
+    name: "Write and Validate PhaseDoc"
+    role: planner
+    precondition: "sigma_3 status = PASS"
+    postcondition: "PhaseDoc written; covers(PhaseDoc, PRDSection); complete(PhaseDoc)"
+    guidance: |
+      **Constraints:**
+      - covers(PhaseDoc, PRDSection) — confirmed by tracing every PRD requirement to at
+        least one task. Unmapped requirements from sigma_1 must be resolved here or
+        explicitly deferred with rationale.
+      - PhaseDoc canonical sections: (1) PRD section reference, (2) ArchDocs in scope,
+        (3) task list with AC/scope/severity/role, (4) carryover summary,
+        (5) known exclusions.
+      - complete(PhaseDoc) = TRUE only after coverage check passes.
+      - status = BLOCKED if coverage check fails and unmapped requirements cannot be
+        resolved without additional PRD input.
+
+      **Procedure:**
+      1. Write the PhaseDoc with the five canonical sections.
+      2. Coverage check: for each PRD requirement, confirm at least one task covers it.
+      3. For any unmapped requirement from sigma_1: create a covering task now, or record
+         as explicit exclusion with rationale.
+      4. Set complete(PhaseDoc) = TRUE when coverage check passes.
+      5. Record the PhaseDoc as the handoff artifact for M1-IMPL or M2-ORCH.
+    output_schema:
+      required_fields:
+        - {name: phase_doc_ref, type: string, required: true}
+        - {name: coverage_check, type: "PASS | BLOCKED", required: true}
+        - {name: unmapped_resolved, type: "integer >= 0", required: true}
+        - {name: unmapped_deferred, type: "list[{requirement: string, rationale: string}]", required: true}
+        - {name: complete, type: boolean, required: true}
+        - {name: status, type: "PASS | BLOCKED", required: true}
+      hard_invariants:
+        - "complete = TRUE requires coverage_check = PASS"
+        - "status = PASS requires complete = TRUE"
+
+composability_claims:
+  - edge: "sigma_0 -> sigma_1"
+    claim: "post(sigma_0): PRDSection boundary defined AND ArchDocs loaded satisfies pre(sigma_1)"
+    status: trivially_compositional
+  - edge: "sigma_1 -> sigma_2"
+    claim: "post(sigma_1): raw_task_list non-empty satisfies pre(sigma_2)"
+    status: trivially_compositional
+  - edge: "sigma_2 -> sigma_3"
+    claim: "post(sigma_2): merged_task_list complete satisfies pre(sigma_3)"
+    status: trivially_compositional
+  - edge: "sigma_3 -> sigma_4"
+    claim: >
+      post(sigma_3): all tasks scoped AND rated satisfies pre(sigma_4).
+      Conditional on hard invariant: source_files(t) non-empty for all t.
+    status: conditional_on_hard_invariant
+  - edge: "sigma_4 -> O_PLAN"
+    claim: "post(sigma_4): complete(PhaseDoc) AND covers(PhaseDoc, PRDSection) = O_PLAN by definition"
+    status: terminal
+
+compilation_record:
+  result: PASS
+  gates:
+    G0: PASS
+    G1: "PASS — D_PLAN: 5 sorts, 8 predicates, 4 axioms. All Horn clauses, non-recursive (Type B-i)."
+    G2: "PASS — O_PLAN: complete(phaseDoc) AND covers(phaseDoc, PRDSection). Progress preorder well-founded. nu_PLAN = 1."
+    G3: "PASS — Single role: planner. pi_planner = id. G3-C1 and G3-C2 hold."
+    G4: "PASS — Linear DAG sigma_0–sigma_4. 5 composability claims. nu_PLAN = 1."
+    G5: "PASS — All 5 steps: constraints-first, procedure explicit, output schema with hard invariants."
+    G6: "PASS — This file is the canonical YAML artifact."

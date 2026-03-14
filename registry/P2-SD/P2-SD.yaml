@@ -1,0 +1,252 @@
+methodology:
+  id: P2-SD
+  name: "Software Delivery Methodology"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-13"
+  supersedes: "P2-SI v1.0"
+  niche: >
+    LLM-assisted, gate-controlled delivery of typed-language software against
+    pre-existing PRD and architecture artifacts, organized in discrete sessions.
+    Excludes: product discovery, architecture design, deployment/ops, free-form research.
+
+navigation:
+  what: >
+    P2-SD receives a software delivery challenge and routes it to the appropriate
+    execution method. It classifies the challenge by task type and delegates — it does
+    not deliver anything directly.
+  who: >
+    The dispatcher role — any agent (human or LLM) who receives a software delivery
+    challenge and must decide which method to invoke.
+  why: >
+    Five structurally different delivery activities exist: planning, single-agent
+    implementation, parallel implementation, phase review, and drift audit. Each has a
+    distinct input/output signature and execution model. Routing must happen once,
+    cleanly, before delivery work begins.
+  how: >
+    Evaluate task_type(challenge, t) against the operationalization criteria. Apply
+    delta_SD (5-arm priority stack). For implement challenges, additionally evaluate
+    multi_task_scope to choose M1-IMPL vs M2-ORCH.
+  when: >
+    Any time a software delivery challenge arrives within the niche. Entry point for
+    all T1X sessions. Not appropriate for discovery, architecture design, deployment,
+    or pure research tasks.
+
+  compilation_record:
+    result: PASS
+    gates:
+      G0: PASS
+      G1: PASS
+      G2: PASS
+      G3: PASS
+      G4: "PASS (RP-2/3/4/5 partially grounded; acceptable given known_wip)"
+      G5: PASS
+      G6: PASS
+
+domain_theory:
+  id: D_Phi_SD
+  reference: "P2-SD/P2-SD.md §1"
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_invocation
+      description: "The software delivery task presented to the methodology"
+    - name: TaskType
+      cardinality: finite_enum
+      values: [plan, implement, review, audit]
+      description: "The category of delivery work being requested"
+    - name: MethodID
+      cardinality: finite
+      description: "Opaque identifier for the selected method"
+  predicates:
+    - name: task_type
+      signature: "Challenge x TaskType -> Bool"
+      description: "The challenge is of the given task type"
+      operationalization: "See P2-SD.md §1 — four-case operationalization (plan/implement/review/audit)"
+    - name: multi_task_scope
+      signature: "Challenge -> Bool"
+      description: >
+        The challenge decomposes into n >= 3 independent sub-tasks with fully declarable
+        scopes before execution begins. Only evaluated when task_type = implement.
+      operationalization: >
+        decomposable_before_execution(c) AND |subtasks(c)| >= 3. If M2-ORCH sigma_0 rejects,
+        predicate was evaluated incorrectly — re-route to M1-IMPL.
+    - name: dispatched
+      signature: "Challenge x MethodID -> Bool"
+      description: "The challenge was routed to the named method"
+  axioms:
+    - id: Ax-1
+      statement: "task_type(c, plan) -> dispatched(c, M5-PLAN)"
+      rationale: "Planning challenge — produce a PhaseDoc."
+    - id: Ax-2
+      statement: "task_type(c, implement) AND multi_task_scope(c) -> dispatched(c, M2-ORCH)"
+      rationale: "Multi-task scope detected — parallel orchestration appropriate."
+    - id: Ax-3
+      statement: "task_type(c, implement) AND NOT multi_task_scope(c) -> dispatched(c, M1-IMPL)"
+      rationale: "Single-agent sequential execution is the default for implement challenges."
+    - id: Ax-4
+      statement: "task_type(c, review) -> dispatched(c, M3-PHRV)"
+      rationale: "Review challenge — evaluate phase against PRD and architecture."
+    - id: Ax-5
+      statement: "task_type(c, audit) -> dispatched(c, M4-DDAG)"
+      rationale: "Audit challenge — cross-phase drift analysis."
+    - id: Ax-6
+      statement: "forall c. exists! m. dispatched(c, m)"
+      rationale: "Routing uniqueness — exactly one method selected per challenge."
+    - id: Ax-7
+      statement: "forall c. exists! t. task_type(c, t)"
+      rationale: "Task-type uniqueness — each challenge has exactly one type."
+
+roles:
+  - id: dispatcher
+    description: >
+      The agent (human or LLM) who evaluates delta_SD and invokes the selected method.
+      Holds full D_Phi_SD observability — appropriate given the domain is minimal.
+    observation_projection:
+      sub_theory: D_Phi_SD
+      note: "pi_dispatcher = id — full visibility over the minimal three-sort domain"
+    authorized_transitions:
+      - "Evaluate task_type(challenge, t) using §1 operationalization criteria"
+      - "Evaluate multi_task_scope(challenge) when task_type = implement"
+      - "Invoke the selected method per delta_SD"
+      - "Record dispatched(challenge, method) before the selected method begins"
+    not_authorized:
+      - "Execute delivery work directly"
+      - "Modify the routing decision after the selected method has begun"
+    coverage_claim: "G3-C1: all D_Phi_SD predicates in Sigma_dispatcher; G3-C2: all routing state changes in alpha_dispatcher"
+
+objective:
+  formal_statement: >
+    O_SD(s) = dispatched(c, m) AND O_m(s_final)
+    where O_m is the objective of the selected method:
+      M1-IMPL: all tasks complete, no unresolved CRITICAL/HIGH discrepancies, all invariants hold
+      M2-ORCH: covers(Integration, Challenge) AND consistent(Integration) AND all sub-tasks complete
+      M3-PHRV: reviewReport_produced(s) AND verdict_recorded(s)
+      M4-DDAG: driftReport_produced(s)
+      M5-PLAN: phaseDoc_produced(s) AND phaseDoc_validates(s, PRDSection)
+  note: "P2-SD does not carry delivery state — satisfaction is delegated to the selected method."
+  termination:
+    certificate_id: nu_SD
+    formula: "nu_SD = 1"
+    rationale: >
+      delta_SD fires exactly once per challenge. No re-entry loop at the methodology level.
+      Each selected method carries its own termination certificate.
+
+transition_function:
+  id: delta_SD
+  evaluation_order: priority_stack
+  arms:
+    - priority: 1
+      label: plan
+      condition: "task_type(challenge, plan) = TRUE"
+      selects: M5-PLAN
+      note: "M5-PLAN pending compile — see known_wip."
+    - priority: 2
+      label: orchestrated
+      condition: "task_type(challenge, implement) = TRUE AND multi_task_scope(challenge) = TRUE"
+      selects: M2-ORCH
+      note: "M2-ORCH is currently a stub — see known_wip."
+    - priority: 3
+      label: implement
+      condition: "task_type(challenge, implement) = TRUE"
+      selects: M1-IMPL
+    - priority: 4
+      label: review
+      condition: "task_type(challenge, review) = TRUE"
+      selects: M3-PHRV
+      note: "M3-PHRV pending compile — see known_wip."
+    - priority: 5
+      label: audit
+      condition: "task_type(challenge, audit) = TRUE"
+      selects: M4-DDAG
+      note: "M4-DDAG pending compile — see known_wip."
+
+retraction_pairs:
+  - id: RP-1
+    to: M1-IMPL
+    status: grounded
+    embed: >
+      embed_IMPL: Challenge -> Mod(D_SI). Challenge statement -> initial PhaseDoc + Task set;
+      challenge scope -> authorized SourceFile and ArchDoc sets; challenge constraints ->
+      OrgDoc invariants in scope.
+    project: >
+      project_IMPL: Mod(D_SI)_final -> Mod(D_Phi_SD). O_SI_IMPL(s_final) -> O_Phi_SD satisfied;
+      MutationRecord -> auditable record of work.
+    retraction_condition: "project_IMPL o embed_IMPL = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
+    granularity: type-level
+  - id: RP-2
+    to: M2-ORCH
+    status: partial
+    embed: >
+      embed_ORCH: Challenge -> Mod(D_ORCH). Challenge maps to D_ORCH.Challenge (same sort,
+      different domain); challenge scope -> initial SubTask decomposition at sigma_1.
+    project: >
+      project_ORCH: Mod(D_ORCH)_final -> Mod(D_Phi_SD). VerificationOutcome = PASS ->
+      O_Phi_SD satisfied; Integration artifact -> auditable output.
+    retraction_condition: "project_ORCH o embed_ORCH = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
+    granularity: type-level
+    note: "Partial: M2-ORCH is a stub."
+  - id: RP-3
+    to: M3-PHRV
+    status: partial
+    embed: >
+      embed_PHRV: Challenge -> Mod(D_PHRV). Challenge (review type) -> PhaseResult + ArchDocs
+      input model; review scope -> authorized artifact sets.
+    project: >
+      project_PHRV: Mod(D_PHRV)_final -> Mod(D_Phi_SD). ReviewReport produced ->
+      O_Phi_SD satisfied; Verdict recorded -> auditable output.
+    retraction_condition: "project_PHRV o embed_PHRV = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
+    granularity: type-level
+    note: "Partial: M3-PHRV pending compile."
+  - id: RP-4
+    to: M4-DDAG
+    status: partial
+    embed: >
+      embed_DDAG: Challenge -> Mod(D_DDAG). Challenge (audit type) -> SessionHistory(N) model;
+      audit scope -> N most recent sessions.
+    project: >
+      project_DDAG: Mod(D_DDAG)_final -> Mod(D_Phi_SD). DriftReport produced ->
+      O_Phi_SD satisfied; DriftReport -> auditable output.
+    retraction_condition: "project_DDAG o embed_DDAG = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
+    granularity: type-level
+    note: "Partial: M4-DDAG pending compile."
+  - id: RP-5
+    to: M5-PLAN
+    status: partial
+    embed: >
+      embed_PLAN: Challenge -> Mod(D_PLAN). Challenge (plan type) -> PRDSection +
+      PhaseHistory + ArchDocs model; planning scope -> PRD section boundaries.
+    project: >
+      project_PLAN: Mod(D_PLAN)_final -> Mod(D_Phi_SD). PhaseDoc produced and validated ->
+      O_Phi_SD satisfied; PhaseDoc -> handoff artifact for next implementation invocation.
+    retraction_condition: "project_PLAN o embed_PLAN = id on Mod(D_Phi_SD) restricted to Sigma_{Challenge}"
+    granularity: type-level
+    note: "Partial: M5-PLAN pending compile."
+
+known_wip:
+  - id: M2-ORCH
+    status: stub
+    description: "Requires G0–G6 compile pass via M1-MDES. delta_SD arm 2 declared but method not callable in practice."
+  - id: M3-PHRV
+    status: pending
+    description: "Phase Review method — design and compile pending."
+  - id: M4-DDAG
+    status: pending
+    description: "Drift Audit method — design and compile pending. 'drift' predicate needs formal definition in D_DDAG."
+  - id: M5-PLAN
+    status: pending
+    description: "Phase Planning method — design and compile pending."
+  - id: nu_SD_threshold
+    status: open
+    description: "n >= 3 sub-task threshold for multi_task_scope is empirical. Calibrate from first orchestration runs."
+  - id: D_T1X_morphism
+    status: open
+    description: >
+      P2-SD/M1-IMPL/I1-T1X/D_T1X-extension-proposal.md at proposal stage. Three implicit
+      sorts need explicit §1 declarations; retraction pairs not yet declared. Blocks formal
+      M4-MINS compliance; does not block T1X execution.
+  - id: directory_migration
+    status: resolved
+    description: >
+      M1-IMPL and M2-ORCH copied from P2-SI/ into P2-SD/. P2-SI/ retained as historical
+      record. All internal path references updated to P2-SD/.

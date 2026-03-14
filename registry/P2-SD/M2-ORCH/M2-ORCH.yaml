@@ -1,0 +1,17 @@
+method:
+  id: M2-ORCH
+  parent: P2-SD
+  name: "Software Implementation Orchestration Method"
+  description: >
+    Handles software implementation tasks that are decomposable into parallel
+    independent sub-tasks, each delegated to an impl-sub-agent. Dispatched by
+    P2-SD when multi_task_scope = TRUE.
+  version: "0.1"
+  status: stub
+  source: "Extracted from M1-IMPL §11 (Orchestrator Mode), formerly M.002-SI v3.1"
+  compile_pending: >
+    Requires a full G0-G6 pass via P0-META.M1-MDES.
+
+references:
+  orchestrator_role: "P2-SD/M1-IMPL/I1-T1X/R3-ORCH"
+  source_section: "P2-SD/M1-IMPL §11 Orchestrator Mode"

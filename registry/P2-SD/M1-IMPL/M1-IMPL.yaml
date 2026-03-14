@@ -1,0 +1,923 @@
+method:
+  id: M1-IMPL
+  name: "Method for Implementing Software from Architecture and PRDs"
+  description: >
+    General method for LLM-assisted implementation of software systems where architecture
+    documents and PRDs precede code. Grounded in Voss–Solarić methodology theory. Two-phase
+    structure: Phase A raises implementation confidence to a threshold by auditing the spec
+    corpus against source; Phase B executes implementation tasks under validated specs. The
+    method compiles when all nine steps are composable to O_SI and all seven acceptance gates
+    pass. Project-level instantiation produced via M4-MINS.
+  version: "3.1"
+  status: compiled
+  compilation_date: "2026-03-09"
+  evolution_date: "2026-03-12"
+  evolution_note: "v3.1: serialization completeness rule added to σ_B3; R8-TCAG, R9-PDVF, R10-SCAG indexed in §8"
+  compilation_result: PASS
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M1-IMPL is the core implementation method: it takes an active PhaseDoc and produces
+    a completed phase — all tasks implemented, build clean, tests passing, session log
+    recorded. Two-phase structure: Phase A raises confidence in the spec corpus before
+    any code is written; Phase B executes implementation tasks under validated specs.
+  who: >
+    Two roles in sequence: auditor (Phase A — reads spec corpus, identifies and fixes
+    discrepancies, produces confidence score) and implementor (Phase B — writes production
+    code, validates, records). LLM agents are the primary execution target.
+  why: >
+    Implementation docs drift from architecture. Phase A catches discrepancies before
+    they become runtime bugs. Without the confidence-raising pass, agents implement
+    against stale or contradictory specs — compounding errors across phases.
+  how: >
+    Nine-step DAG: sigma_A1–sigma_A4 (Phase A, with re-entry loop bounded by nu_A)
+    then sigma_B1–sigma_B5 (Phase B, one pass per task). Phase A exit requires
+    confidence >= threshold AND nu_A = 0. Phase B exit requires O_SI.
+  when: >
+    Before writing any net-new production code against a PhaseDoc. Also before resuming
+    implementation after a long gap — specs drift. Dispatched by P2-SD when
+    task_type(c, implement) AND NOT multi_task_scope(c).
+
+loop_structure:
+    name: Phase A re-entry loop
+    loop_edge: sigma_A4 -> sigma_A1
+    condition: "go_no_go_decision = FALSE"
+    termination_certificate:
+      name: nu_A
+      definition: "|{ d in DiscrepancyCatalog : severity(d) in {CRITICAL, HIGH} and not resolved(d) }|"
+      type: non-negative integer
+      decrease_witness: >
+        sigma_A3 strictly decreases nu_A by at least 1 per fix applied to a
+        CRITICAL or HIGH discrepancy. Each re-entry executes sigma_A3 at least once.
+      termination_condition: "nu_A = 0 AND confidence_score >= threshold"
+      acyclicity_note: >
+        The sigma_A4 -> sigma_A1 edge creates a cycle in the naive graph. The cycle is
+        bounded by nu_A: finite, non-negative, strictly decreasing per loop iteration.
+        The loop terminates in at most |DiscrepancyCatalog| iterations.
+
+domain_theory:
+  id: D_SI
+  reference: "P2-SD/M1-IMPL/history/METHOD-v3.0.md §Formal Grounding — Domain Theory"
+  sorts:
+    - name: PhaseDoc
+      cardinality: finite
+    - name: SourceFile
+      cardinality: finite
+    - name: TestFile
+      cardinality: finite
+    - name: ArchDoc
+      cardinality: finite
+    - name: OrgDoc
+      cardinality: finite
+    - name: MutationRecord
+      cardinality: finite
+    - name: Task
+      cardinality: finite
+    - name: Session
+      cardinality: finite
+    - name: Finding
+      cardinality: finite
+    - name: Divergence
+      cardinality: finite
+  function_symbols:
+    - name: compile_exit
+      signature: "compile_exit : Session -> {0, nonzero}"
+      totality: total
+    - name: linter_verify
+      signature: "linter_verify : Session -> {PASS, FAIL, TOOL_UNAVAILABLE}"
+      totality: total
+  predicates:
+    - name: in_scope
+      signature: "SourceFile x Task"
+    - name: satisfies
+      signature: "Task x PhaseDoc"
+    - name: validates
+      signature: "Finding x OrgDoc"
+    - name: records
+      signature: "MutationRecord x Session"
+    - name: supersedes
+      signature: "PhaseDoc x PhaseDoc"
+    - name: complete
+      signature: "Session"
+    - name: no_regression
+      signature: "Session"
+    - name: in_session
+      signature: "SourceFile x Session"
+    - name: task_source
+      signature: "SourceFile x Task"
+    - name: divergence
+      signature: "Divergence x Session"
+    - name: recorded
+      signature: "Divergence x Session"
+    - name: count_drops
+      signature: "Session"
+    - name: regression_classified
+      signature: "Session"
+  axioms:
+    - id: Ax-I_compile
+      formal: "forall s : Session. complete(s) -> compile_exit(s) = 0"
+    - id: Ax-I_test
+      formal: "forall s : Session. complete(s) -> no_regression(s)"
+    - id: Ax-I_scope
+      formal: >
+        forall f : SourceFile. forall s : Session. in_session(f, s) ->
+        exists t : Task. task_source(f, t) AND in_scope(f, t)
+    - id: Ax-I_record
+      formal: >
+        forall div : Divergence. forall s : Session.
+        divergence(div, s) -> recorded(div, s)
+    - id: Ax-I_lint
+      formal: >
+        forall s : Session. complete(s) ->
+        linter_verify(s) = PASS OR TOOL_UNAVAILABLE(s)
+    - id: Ax-I_delta
+      formal: >
+        forall s : Session. count_drops(s) -> regression_classified(s)
+
+objective:
+  id: O_SI
+  formal: >
+    A session s satisfies O_SI iff:
+    (1) all tasks assigned in the current phase have gate_a_pass(t) = true,
+    (2) compile_exit(s) = 0,
+    (3) no_regression(s),
+    (4) exists r : MutationRecord such that records(r, s),
+    (5) all invariants I_compile through I_lint hold at session end
+  initial_condition_claim: >
+    enabled(sigma_A1) iff: exists p : PhaseDoc such that current_phase(p),
+    AND |SpecCorpus| >= 1, AND method_loaded
+  terminal_condition_claim: >
+    terminal(s) iff O_SI(s) holds. First satisfiable after all sigma_B5 records
+    in current phase show status = PASS AND Gate C checklist complete.
+
+measures:
+  - id: mu_1
+    name: compile_integrity
+    formula: "1 if compile_exit = 0; 0 otherwise"
+    range: "{0, 1}"
+    threshold: "mu_1 = 1 required for Gate A"
+    proxy: "absence of Ax-I_compile violations in session log"
+  - id: mu_2
+    name: test_stability
+    formula: "(baseline_pass_count - regressions) / baseline_pass_count"
+    range: "[0, 1]"
+    threshold: "mu_2 = 1.0 required for Gate A"
+    proxy: "Ax-I_test and Ax-I_delta session log entries"
+  - id: mu_3
+    name: scope_discipline
+    formula: "|tasks with declared task source| / |tasks executed|"
+    range: "[0, 1]"
+    threshold: "mu_3 = 1.0 required for Gate B"
+    proxy: "Ax-I_scope divergence entries in session log"
+  - id: mu_4
+    name: architectural_fidelity
+    formula: "1 if Gate B PASS; 0.5 if GAP documented; 0 if undocumented gap"
+    range: "{0, 0.5, 1}"
+    threshold: "mu_4 >= 0.5 for Gate B (undocumented gaps block)"
+    proxy: "M010 Gate B agent result"
+
+progress_preorder:
+  name: "preceq_SI"
+  definition: "s' preceq s iff tasks_complete(s') >= tasks_complete(s)"
+  strict_form: "s prec s' iff tasks_complete(s') > tasks_complete(s)"
+  well_founded: >
+    tasks_complete is bounded above by the finite count of tasks in the current phase.
+    No infinite ascending chains exist.
+
+roles:
+  - id: auditor
+    description: >
+      Pre-implementation. Reads spec corpus and existing source; produces a confidence
+      score per area; identifies and fixes discrepancies in implementation docs. Does not
+      write production source code. Observation projection: all spec corpus + existing
+      source (read-only on source). Authority: edit implementation docs, record findings.
+    phases: [sigma_A1, sigma_A2, sigma_A3, sigma_A4]
+
+  - id: implementor
+    description: >
+      Writes production code. Works against verified spec (confidence >= threshold).
+      Reads source before writing. Records divergences. Never skips validation.
+      Observation projection: all spec corpus + source corpus (read + write on source).
+      Authority: edit source files, run build and tests, append to session log.
+    phases: [sigma_B1, sigma_B2, sigma_B3, sigma_B4, sigma_B5]
+
+  - id: orchestrator
+    description: >
+      Manages multi-agent execution. Holds method context across a phase. Dispatches
+      sub-agents. Does not write source files. Assembles the session log from sub-agent
+      results. Observation projection: arch docs, implementation docs, session log
+      (read + write on session log only). Authority: dispatch sub-agents, assemble log,
+      run full test suite.
+    phases: []
+    note: "Orchestrator role is methodology-level (Phi_EXEC / M_ORCH) — not part of M_SI formal DAG. Documented in M1-IMPL §11."
+
+  - id: reviewer
+    description: >
+      Post-implementation phase auditor. Reads one completed phase's source files, phase
+      doc, and architecture docs. Produces findings with file:line citations and a verdict.
+      Does not write code. Read-only on all files.
+    phases: []
+    note: "Reviewer operates outside M_SI's formal DAG — invoked by Phi_EXEC after Phase B completes."
+
+  - id: drift-auditor
+    description: >
+      Periodic global reviewer. Runs after every ~3 phases to detect cross-phase
+      architectural drift. Read-only on all files. Creates retrospective entries.
+    phases: []
+    note: "Drift-auditor operates outside M_SI's formal DAG — invoked by Phi_EXEC on a schedule."
+
+  - id: impl-sub-agent
+    description: >
+      Scoped implementation delegate. Dispatched by orchestrator to execute one task
+      within a bounded file scope. Observation projection: task-scoped source and test
+      files (read + write within authorized scope). Authority: edit authorized files,
+      run build and task-scoped tests, return compact result block. Does not write
+      session log.
+    phases: []
+    note: "Sub-agent roles are orchestration artifacts (M_ORCH level). Full specification in M1-IMPL §11."
+
+  - id: qa-sub-agent
+    description: >
+      Gate A quality reviewer. Dispatched by orchestrator after each impl-sub-agent
+      completes. Read-only on all files. Returns GATE_A: PASS | FAIL with findings.
+    phases: []
+    note: "Sub-agent roles are orchestration artifacts (M_ORCH level). Full specification in M1-IMPL §11."
+
+  - id: sec-arch-sub-agent
+    description: >
+      Gate B security and architecture verifier (M010). Covers security chain
+      verification (Checks 1-6) and architecture alignment (Questions A-D). Read-only
+      on all files. Returns GATE_B_SEC: PASS | FAIL with findings.
+    phases: []
+    note: "Sub-agent roles are orchestration artifacts (M_ORCH level). Full specification in M1-IMPL §11."
+
+  coverage_claim: >
+    The union of observation projections across all eight roles covers the full
+    Mod(D_SI) state space relevant to O_SI. No component of Mod(D_SI) —
+    SpecCorpus, SourceCorpus, MutationRecord, InvariantSet, Task completion status —
+    is unobservable across the declared roles.
+
+  authority_claim: >
+    The union of role authorities covers all transitions required to move from
+    initial state (pre(sigma_A1)) to terminal state (O_SI). No required transition
+    is unauthorized: every state change needed to reach O_SI is within the authority
+    of at least one declared role.
+
+phases:
+  - id: sigma_A1
+    name: "Inventory"
+    role: auditor
+    precondition: "spec corpus identified"
+    postcondition: >
+      source-of-truth corpus fully read; existing source read for each area;
+      inventory is written as an explicit artifact
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - spec_corpus_items >= 1: at least one spec claim has been enumerated from the corpus
+      - source_files_read >= 1: at least one source file has been identified for verification
+      - The inventory is written — a list of spec claims and source files exists as an artifact
+      - status = PASS only when corpus fully enumerated; status = BLOCKED if required document inaccessible
+
+      **Rationale.** The auditor cannot detect discrepancies that are not in scope. An incomplete
+      inventory produces false confidence by concealing unknown territory.
+
+      **Procedure.**
+      1. Identify the SpecCorpus for the current phase: OrgDoc (top tier), ArchDocs, phase doc, existing source
+      2. For each spec document: list every claim relevant to the current phase as an inventory entry
+      3. For each claim: identify the source file(s) that must be examined to verify it
+      4. Write the inventory explicitly — not mentally
+
+      **Output schema reference:**
+      - spec_corpus_items: total count of spec claims enumerated
+      - source_files_read: total count of distinct source files identified
+      - status: PASS or BLOCKED
+
+    output_schema:
+      type: psi_A
+      required_fields:
+        - name: spec_corpus_items
+          type: integer
+          min_value: 0
+          required: true
+        - name: source_files_read
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "spec_corpus_items >= 0 (zero is valid for empty phase; PASS still requires written inventory)"
+        - "status = BLOCKED iff a required document is inaccessible"
+
+  - id: sigma_A2
+    name: "Cross-Reference"
+    role: auditor
+    precondition: "inventory complete (sigma_A1 status = PASS)"
+    postcondition: >
+      discrepancy catalog exists with severity, location, and correct value for
+      every conflict found; severity breakdown complete
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - discrepancy_catalog_ref is non-null: the catalog exists as a written artifact
+      - discrepancy_count = total catalog entries (zero is valid — accurate spec produces empty catalog)
+      - discrepancy_by_severity breakdown is complete: CRITICAL/HIGH/MEDIUM/LOW counts sum to discrepancy_count
+      - Every catalog entry has: location, claim, correct value, severity
+      - No discrepancy goes unclassified
+
+      **Rationale.** Unclassified discrepancies escape nu_A and allow Phase B to proceed on
+      uncorrected information. Every conflict must be classified using the severity table
+      before sigma_A3 can reduce nu_A to zero.
+
+      **Procedure.**
+      1. For each claim in the inventory: read the corresponding source-of-truth document at its tier
+      2. Compare claim against source-of-truth; note every conflict
+      3. For each conflict: record location, claim, correct value
+      4. Classify severity: CRITICAL (compile failure), HIGH (runtime behavior), MEDIUM (underspecified), LOW (documentation gap)
+      5. Write the catalog — not as mental state
+
+      **Output schema reference:**
+      - discrepancy_catalog_ref: path or inline reference to the written catalog
+      - discrepancy_count: total entries
+      - discrepancy_by_severity.CRITICAL, .HIGH, .MEDIUM, .LOW: per-severity counts
+      - status: PASS
+
+    output_schema:
+      type: psi_A
+      required_fields:
+        - name: discrepancy_catalog_ref
+          type: string
+          required: true
+        - name: discrepancy_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: discrepancy_by_severity
+          type: object
+          required: true
+          fields:
+            - name: CRITICAL
+              type: integer
+              min_value: 0
+            - name: HIGH
+              type: integer
+              min_value: 0
+            - name: MEDIUM
+              type: integer
+              min_value: 0
+            - name: LOW
+              type: integer
+              min_value: 0
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "discrepancy_by_severity.CRITICAL + .HIGH + .MEDIUM + .LOW = discrepancy_count"
+        - "discrepancy_catalog_ref is non-null (empty catalog has ref pointing to empty list)"
+
+  - id: sigma_A3
+    name: "Fix"
+    role: auditor
+    precondition: "catalog complete (sigma_A2 status = PASS)"
+    postcondition: >
+      all HIGH/CRITICAL discrepancies fixed in implementation docs;
+      severity of LOW/MEDIUM entries confirmed or reclassified;
+      severity_rechecked = TRUE
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All CRITICAL and HIGH catalog entries have been fixed in the implementation docs
+      - severity_rechecked = TRUE: every LOW/MEDIUM entry re-examined for CRITICAL/HIGH potential
+      - unresolved_critical = 0: no CRITICAL entries remain unresolved
+      - unresolved_high = 0: no HIGH entries remain (if nonzero, step is not complete)
+      - fixes_applied = count of documentation edits made
+      - status = PASS requires unresolved_critical = 0 AND unresolved_high = 0 AND severity_rechecked = TRUE
+
+      **Rationale.** The go/no-go gate at sigma_A4 hard-blocks on nu_A > 0. Severity misclassification
+      (MEDIUM when should be HIGH) silently inflates confidence — failure mode 23 in M1-IMPL §10.
+      The severity recheck is the structural guard.
+
+      **Procedure.**
+      1. For each CRITICAL/HIGH entry: make the smallest edit to the implementation doc that makes it accurate; re-read to confirm
+      2. Severity calibration second-pass: for each LOW/MEDIUM entry, ask — could this produce a compile error or wrong runtime behavior? If yes: reclassify; record rationale
+      3. After recheck is complete: set severity_rechecked = TRUE
+
+      **Output schema reference:**
+      - fixes_applied: count of documentation edits made
+      - severity_rechecked: TRUE after second-pass complete
+      - unresolved_critical: count of remaining CRITICAL entries (must be 0 for PASS)
+      - unresolved_high: count of remaining HIGH entries (must be 0 for PASS)
+      - status: PASS when unresolved_critical = 0 AND unresolved_high = 0 AND severity_rechecked = TRUE
+
+    output_schema:
+      type: psi_A
+      required_fields:
+        - name: fixes_applied
+          type: integer
+          min_value: 0
+          required: true
+        - name: severity_rechecked
+          type: boolean
+          required: true
+        - name: unresolved_critical
+          type: integer
+          min_value: 0
+          required: true
+        - name: unresolved_high
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "status = PASS requires unresolved_critical = 0 AND unresolved_high = 0 AND severity_rechecked = TRUE"
+        - "severity_rechecked = TRUE is a precondition for composability into sigma_A4"
+
+  - id: sigma_A4
+    name: "Verify and Decide"
+    role: auditor
+    precondition: "fixes applied; severity_rechecked = TRUE (sigma_A3 status = PASS)"
+    postcondition: >
+      confidence score updated per area; go_no_go_decision made and recorded
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - confidence_score stated in [0.0, 1.0] for the overall phase
+      - go_no_go_decision = TRUE requires: confidence_score >= threshold (default 0.85)
+        AND unresolved_critical = 0 AND unresolved_high = 0 (re-confirmed here, not assumed)
+      - go_no_go_decision = FALSE triggers Phase A re-entry (sigma_A4 -> sigma_A1)
+      - remaining_unknowns is an explicit list; "none" only after active verification
+      - go_no_go_decision and confidence_score recorded in session log before Phase B begins
+
+      **Rationale.** The transition from Phase A to Phase B cannot be cheaply undone. The confidence
+      score must be earned by evidence from sigma_A1–sigma_A3. Re-confirmation of unresolved counts
+      prevents relying on sigma_A3 memory that may be stale.
+
+      **Procedure.**
+      1. Grep for known-bad strings in implementation docs (stale field names, wrong types, removed APIs)
+      2. Re-read all sections fixed in sigma_A3 to confirm correctness
+      3. Score each implementation area on [0.0, 1.0]; record basis; compute overall
+      4. Re-read unresolved_critical and unresolved_high from sigma_A3 output — confirm both are 0
+      5. Name remaining unknowns explicitly
+      6. Set go_no_go_decision based on three conditions; record in session log
+
+      **Output schema reference:**
+      - confidence_score: overall score in [0.0, 1.0]
+      - go_no_go_decision: TRUE (proceed to Phase B) or FALSE (re-enter Phase A)
+      - remaining_unknowns: list of items still uncertain after Phase A
+      - unresolved_critical: re-confirmed count (must be 0 for go_no_go_decision = TRUE)
+      - unresolved_high: re-confirmed count (must be 0 for go_no_go_decision = TRUE)
+      - status: PASS
+
+    output_schema:
+      type: psi_A
+      required_fields:
+        - name: confidence_score
+          type: number
+          min_value: 0.0
+          max_value: 1.0
+          required: true
+        - name: go_no_go_decision
+          type: boolean
+          required: true
+        - name: remaining_unknowns
+          type: array
+          items: string
+          required: true
+        - name: unresolved_critical
+          type: integer
+          min_value: 0
+          required: true
+        - name: unresolved_high
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "go_no_go_decision = TRUE requires confidence_score >= 0.85 AND unresolved_critical = 0 AND unresolved_high = 0"
+        - "go_no_go_decision is present only in sigma_A4 output (not sigma_A1–sigma_A3)"
+        - "nu_A = unresolved_critical + unresolved_high; loop re-enters sigma_A1 iff go_no_go_decision = FALSE"
+
+  - id: sigma_B1
+    name: "Orient"
+    role: implementor
+    precondition: >
+      task preconditions met per phase doc;
+      go_no_go_decision = TRUE from most recent sigma_A4
+    postcondition: "all files named in task read and understood"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - task_ref is set: the executing agent has identified the task being executed
+      - Every file in the task's "What Already Exists" table has been read
+      - Every file in the task's "References" table has been read (normative specs — not optional)
+      - A pre-flight naming check has been performed before any new type name is finalized
+      - If task spans >5 files or >1 package: written sub-task breakdown exists before any code
+      - Language-server navigation used for any typed symbol lookup (not text search)
+      - status = BLOCKED if any required file is inaccessible
+
+      **Rationale.** Phase docs drift from architecture. Real field names, types, and logic must
+      be read from source before implementing. The References table contains normative specs the
+      What Already Exists table does not repeat — skipping it implements from incomplete context.
+
+      **Procedure.**
+      1. Read the task section in the current phase doc; record task_ref
+      2. Read every file in "What Already Exists" before forming any plan
+      3. Read every file in "References" — algorithm sequences, API contracts, invariant definitions
+      4. Read every trait or interface the new implementation must satisfy
+      5. Pre-flight naming check: symbol search for the new type name in adjacent packages
+      6. If task spans >5 files or >1 package: decompose; write the breakdown
+      7. Dependency audit: if task introduces a new library, confirm it is in the build manifest
+
+      **Output schema reference:**
+      - task_ref: identifier of the task being oriented to
+      - status: PASS or BLOCKED
+
+    output_schema:
+      type: psi_B
+      required_fields:
+        - name: task_ref
+          type: string
+          min_length: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "task_ref must be set before any source file is modified"
+
+  - id: sigma_B2
+    name: "Diff"
+    role: implementor
+    precondition: "orientation complete (sigma_B1 status = PASS)"
+    postcondition: "exact change list written (not mental — explicit)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - files_changed is a written, explicit list — not mental
+      - Every entry names a specific file, method, or field with the transformation
+      - If files_changed cannot be stated specifically: return to sigma_B1 and orient more
+      - status = PASS only when the diff is written and specific
+
+      **Rationale.** An implicit diff produces scope creep and unexpected side effects.
+      Writing explicitly forces acknowledgment of uncertainty before implementing.
+
+      **Procedure.**
+      1. Enumerate every file that must change from orientation
+      2. For each file: list every method, field, or statement with the specific transformation
+      3. If the change cannot be stated specifically: orient more (return to sigma_B1)
+      4. Write the list — do not hold it in context
+
+      **Output schema reference:**
+      - task_ref: (carried from sigma_B1)
+      - files_changed: written list of files and planned changes
+      - status: PASS
+
+    output_schema:
+      type: psi_B
+      required_fields:
+        - name: task_ref
+          type: string
+          required: true
+        - name: files_changed
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "files_changed is explicitly written before any implementation begins"
+
+  - id: sigma_B3
+    name: "Implement"
+    role: implementor
+    precondition: "diff is specific (sigma_B2 status = PASS)"
+    postcondition: "code written; no unrelated changes made"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Only files in files_changed have been modified — no undeclared files
+      - Every divergence from the phase doc is in divergences before proceeding to sigma_B4
+      - Every undeclared-scope change is in decisions before it is implemented
+      - If undeclared scope exceeds 30 lines or touches >1 file not in phase doc: status = BLOCKED until human responds
+      - status = PASS when code is written and all recording obligations are met
+
+      **Rationale.** Undeclared changes make the session log dishonest and phase docs unauditable.
+      Recording decisions in real time is the only mechanism for reconstructing session choices.
+
+      **Procedure.**
+      1. Make the smallest change satisfying the task postcondition
+      2. When source contradicts phase doc: stop; check source-of-truth hierarchy; record as divergence; implement what hierarchy says
+      3. When making a change not in the phase doc: record as decision before implementing
+      4. After any batch edit across >2 files: grep immediately for unintended matches
+      5. After each pipeline stage: enumerate failure modes before moving on
+
+      **Output schema reference:**
+      - task_ref: (carried from sigma_B1)
+      - files_changed: updated with actual changes made
+      - divergences: list of divergences (empty list if none)
+      - decisions: list of undeclared-scope choices (empty list if none)
+      - status: PASS or BLOCKED
+
+    output_schema:
+      type: psi_B
+      required_fields:
+        - name: task_ref
+          type: string
+          required: true
+        - name: files_changed
+          type: array
+          items: string
+          required: true
+        - name: divergences
+          type: array
+          items: string
+          required: true
+        - name: decisions
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "all files in files_changed satisfy in_scope(f, task) — Ax-I_scope"
+        - "divergences list is append-only across sigma_B2 -> sigma_B3 -> sigma_B5"
+        - "status = BLOCKED iff undeclared scope exceeds threshold and human has not responded"
+
+  - id: sigma_B4
+    name: "Validate"
+    role: implementor
+    precondition: "code written (sigma_B3 status = PASS)"
+    postcondition: "build clean; affected tests pass (or failures classified)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - compile_gate declared: PASS, FAIL, or NOT_RUN — never left unset
+      - test_pass_count, test_fail_count, test_ignore_count, test_pending_count recorded from actual run
+      - test_delta stated when any count differs from session baseline
+      - Every failing test classified per taxonomy (§4) before status can be PASS
+      - status = PASS requires compile_gate = PASS AND test_fail_count = 0 (or all failures classified)
+      - status = BLOCKED if compile_gate = FAIL and failure not yet diagnosed
+
+      **Rationale.** An unclassified failure is worse than a known failure — it treats the symptom
+      instead of the cause. test_ignore_count and test_pending_count are required because unexpected
+      changes indicate environment changes that must be investigated.
+
+      **Procedure.**
+      1. Run test-compile first (surfaces broken test files as compile errors before test execution)
+      2. Run testOnly for affected package
+      3. If failures appear: group by root cause before fixing; fix cause once; verify group clears
+      4. Classify remaining failures: REGRESSION, DIVERGED, INFRA, FLAKY, EXPECTED
+      5. Record all four test counts and delta from session baseline
+
+      **Output schema reference:**
+      - compile_gate: PASS | FAIL | NOT_RUN
+      - test_pass_count, test_fail_count, test_ignore_count, test_pending_count: from actual test run
+      - test_delta: description of changes from session baseline (empty string if no change)
+      - status: PASS or BLOCKED
+
+    output_schema:
+      type: psi_B
+      required_fields:
+        - name: compile_gate
+          type: enum
+          values: [PASS, FAIL, NOT_RUN]
+          required: true
+        - name: test_pass_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_fail_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_ignore_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_pending_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_delta
+          type: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "status = PASS requires compile_gate = PASS AND test_fail_count = 0 (or all failures explicitly classified)"
+        - "compile_gate must be declared — NOT_RUN is a valid value but must be explicit"
+
+  - id: sigma_B5
+    name: "Record"
+    role: implementor
+    precondition: "validation passed (sigma_B4 status = PASS) or failure explicitly classified"
+    postcondition: "session log updated; records(r, s) holds for current session"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - A session log entry exists for this session (records predicate holds — Ax-I_record)
+      - Entry follows §5 format: all required fields populated
+      - If status = PASS: entry is complete with all validation results from sigma_B4
+      - If status = IN_PROGRESS: mid-task state block written with Do NOT re-do populated
+      - Entry is appended — never edited after writing; never overwrites prior entries
+
+      **Rationale.** A session without a record is invisible to future sessions. The mid-task
+      state block is the only mechanism that allows a resuming agent to distinguish completed
+      from incomplete when context is exhausted mid-task.
+
+      **Procedure.**
+      1. Write the session log entry following §5 format
+      2. Fill in: tasks completed/in-progress/deferred; files modified; divergences; decisions; deferred; validation
+      3. If context is running low: write partial entry with status = IN_PROGRESS and mid-task state block
+      4. Append to the session file — do not edit prior content
+
+      **Output schema reference:**
+      - task_ref, files_changed, divergences, decisions: (finalized from sigma_B3)
+      - compile_gate, test_pass_count, test_fail_count, test_ignore_count, test_pending_count, test_delta: (from sigma_B4)
+      - deferred: list of items noted for future phases (empty list if none)
+      - status: PASS (complete entry) or IN_PROGRESS (partial with mid-task state)
+
+    output_schema:
+      type: psi_B
+      required_fields:
+        - name: task_ref
+          type: string
+          required: true
+        - name: files_changed
+          type: array
+          items: string
+          required: true
+        - name: divergences
+          type: array
+          items: string
+          required: true
+        - name: decisions
+          type: array
+          items: string
+          required: true
+        - name: compile_gate
+          type: enum
+          values: [PASS, FAIL, NOT_RUN]
+          required: true
+        - name: test_pass_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_fail_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_ignore_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_pending_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: test_delta
+          type: string
+          required: true
+        - name: deferred
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, IN_PROGRESS]
+          required: true
+      hard_invariants:
+        - "status = PASS requires records(r, session) — Ax-I_record"
+        - "status = IN_PROGRESS requires mid_task_state block with do_not_redo field populated"
+        - "entry is append-only — never edited after writing"
+
+composability_claims:
+  - edge: "sigma_A1 -> sigma_A2"
+    claim: >
+      post(sigma_A1): spec_corpus_items >= 1 AND source_files_read >= 1 satisfies
+      pre(sigma_A2): "inventory complete". A non-empty written inventory is sufficient
+      for cross-referencing.
+    status: trivially_compositional
+
+  - edge: "sigma_A2 -> sigma_A3"
+    claim: >
+      post(sigma_A2): discrepancy_catalog_ref non-null satisfies
+      pre(sigma_A3): "catalog complete". An empty catalog (zero discrepancies) is valid.
+    status: trivially_compositional
+
+  - edge: "sigma_A3 -> sigma_A4"
+    claim: >
+      post(sigma_A3): severity_rechecked = TRUE is a required precondition.
+      Without severity_rechecked = TRUE, the composability claim does not hold —
+      a misclassified MEDIUM-as-HIGH would allow sigma_A4 to report false ν_A = 0.
+    status: conditional_on_severity_rechecked
+
+  - edge: "sigma_A4 -> sigma_B1 (GO)"
+    claim: >
+      post(sigma_A4) when go_no_go_decision = TRUE: confidence_score >= threshold
+      AND unresolved_critical = 0 AND unresolved_high = 0 satisfies
+      pre(sigma_B1): "task preconditions met per phase doc AND go_no_go_decision = TRUE".
+    status: conditional_on_go_no_go
+
+  - edge: "sigma_A4 -> sigma_A1 (RE-ENTRY)"
+    claim: >
+      Fires when go_no_go_decision = FALSE. Bounded by nu_A (termination certificate).
+    status: conditional_re_entry_bounded_by_nu_A
+
+  - edge: "sigma_B1 -> sigma_B2"
+    claim: >
+      post(sigma_B1): all required files read satisfies pre(sigma_B2): "orientation complete".
+    status: trivially_compositional
+
+  - edge: "sigma_B2 -> sigma_B3"
+    claim: >
+      post(sigma_B2): files_changed is explicitly written satisfies pre(sigma_B3): "diff is specific".
+      An implicit diff does NOT satisfy the precondition — the list must exist as a written artifact.
+    status: conditional_on_written_artifact
+
+  - edge: "sigma_B3 -> sigma_B4"
+    claim: >
+      post(sigma_B3): code written AND divergences/decisions recorded satisfies
+      pre(sigma_B4): "code written". Recording obligation is part of the postcondition.
+    status: trivially_compositional
+
+  - edge: "sigma_B4 -> sigma_B5"
+    claim: >
+      post(sigma_B4): compile_gate declared AND failure classified satisfies
+      pre(sigma_B5): "validation passed OR failure explicitly classified". Both PASS
+      and classified-FAIL paths are compositional.
+    status: compositional_under_both_pass_and_classified_fail
+
+  - edge: "sigma_B5 -> sigma_B1 (NEXT TASK)"
+    claim: >
+      post(sigma_B5): session log entry exists (records predicate holds) satisfies
+      pre(sigma_B1, next task): "task preconditions met per phase doc".
+    status: trivially_compositional
+
+  - edge: "sigma_B5_final -> O_SI (TERMINAL)"
+    claim: >
+      When all tasks' sigma_B5 records show status = PASS AND Gate C conditions hold:
+      O_SI(s) holds. Chain: all sigma_B5 PASS -> Gate B -> Gate C -> O_SI.
+    status: terminal_conditional_on_all_pass
+
+guidance_adequacy:
+  adequacy_results:
+    - "sigma_A1: ADEQUATE"
+    - "sigma_A2: ADEQUATE (revised — severity classification obligation added to constraints)"
+    - "sigma_A3: ADEQUATE"
+    - "sigma_A4: ADEQUATE (revised — unresolved_critical and unresolved_high re-confirmation added)"
+    - "sigma_B1: ADEQUATE"
+    - "sigma_B2: ADEQUATE"
+    - "sigma_B3: ADEQUATE"
+    - "sigma_B4: ADEQUATE (revised — test_ignore_count, test_pending_count, test_delta added)"
+    - "sigma_B5: ADEQUATE"
+  format_audit_results:
+    - "sigma_A1: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_A2: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_A3: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_A4: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_B1: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_B2: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_B3: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_B4: FORMAT-OK (constraints-first guidance above)"
+    - "sigma_B5: FORMAT-OK (constraints-first guidance above)"
+  final_guidance_confirmed: "yes"
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        What/Who/Why/How/When all present. What: LLM-assisted software implementation from
+        architecture docs. Who: auditor (Phase A), implementor (Phase B); LLM execution target.
+        Why: informal knowledge drifts; Phase A catches spec drift before implementation.
+        How: two-phase (confidence raising -> implementation), 9-step DAG.
+        When: before writing net-new production code; before resuming after a long gap.
+    - gate: G1
+      result: PASS
+      note: "D_SI = (Sigma_SI, Ax_SI) declared with 10 sorts, 2 function symbols, 13 predicates, 6 closed axioms"
+    - gate: G2
+      result: PASS
+      note: "O_SI expressible over Sigma_SI; measures mu_1–mu_4 with formulas, ranges, proxy claims; preorder preceq_SI well-founded"
+    - gate: G3
+      result: PASS
+      note: "8 roles declared; coverage_claim and authority_claim present; union of observation projections covers full Mod(D_SI)"
+    - gate: G4
+      result: PASS
+      note: "9 steps; 11 composability claims including re-entry edge; initial_condition_claim and terminal_condition_claim declared; termination certificate nu_A; contrarian_challenge (weakest edge sigma_A4->sigma_B1, severity calibration revision)"
+    - gate: G5
+      result: PASS
+      note: "All 9 steps ADEQUATE and FORMAT-OK; 3 revised (sigma_A2, sigma_A4, sigma_B4); all constraints-first"
+    - gate: G6
+      result: PASS
+      note: "This file. Structurally complete: 9 phases, output schemas with typed fields and hard_invariants, loop_structure with termination certificate, composability claims, guidance adequacy record"

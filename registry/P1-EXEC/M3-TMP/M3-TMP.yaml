@@ -1,0 +1,479 @@
+method:
+  id: M3-TMP
+  parent: P1-EXEC
+  name: "Traditional Meta-Prompting Method"
+  description: >
+    Single-agent, sequential, structured reasoning. The agent orients against the
+    challenge, executes through explicit decomposition, and verifies its own output.
+    No constructed characters, no parallel sub-agents, no adversarial pressure.
+    Value over raw prompting is precisely located: explicit decomposition (sigma_0)
+    and explicit verification (sigma_2).
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M3-TMP takes a user challenge, decomposes it into sub-questions, addresses each
+    sequentially, and verifies the composed response for completeness and consistency.
+    Output is a Response satisfying O_TMP: all sub-questions addressed, no internal
+    contradictions.
+  who: >
+    One role — the analyst. The executing agent (human or LLM) occupies this role
+    directly. No constructed characters, no role-switching.
+  why: >
+    The fastest path from challenge to response with lowest structural overhead. Without
+    the explicit decomposition step, agents skip scope commitment — they cannot be held
+    accountable to a declared sub-question list. Without the explicit verification step,
+    dropped sub-questions and accumulated contradictions go undetected.
+  how: >
+    Three linear steps: orient (decompose challenge into sub-questions), execute (address
+    each sub-question sequentially), verify (confirm completeness and consistency).
+    Path graph — no branching, no loops.
+  when_to_use:
+    - "Well-scoped challenges with a deterministic or near-deterministic correct answer"
+    - "Tasks where a single expert's perspective is sufficient"
+    - "Challenge complexity fits within one sequential reasoning chain"
+    - "Time or context-window constraints make M1-COUNCIL or M2-ORCH disproportionate"
+    - "Compilation and formal analysis tasks (EXP-002: traditional wins on compilation)"
+  when_not_to_use:
+    - "Creative or exploratory challenges where non-obvious framings have value — route to M1-COUNCIL"
+    - "Tasks requiring parallel independent workstreams — route to M2-ORCH"
+    - "Challenges with irreducible value pluralism requiring adversarial pressure — route to M1-COUNCIL"
+    - "Tasks requiring method-attributable insight reproducibility — route to M1-COUNCIL"
+
+domain_theory:
+  id: D_TMP
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_execution
+      description: "The user's input: a question, task, or request"
+    - name: SubQuestion
+      cardinality: "finite, >= 1 per Ax-2"
+      description: "An atomic component of Challenge, identified in sigma_0"
+    - name: Answer
+      cardinality: "one per SubQuestion"
+      description: "A response to a SubQuestion"
+    - name: Response
+      cardinality: singleton_per_execution
+      description: "The composed output: a sequence of Answers"
+    - name: VerifyCheck
+      cardinality: "one per SubQuestion"
+      description: "A verification record: (SubQuestion, Answer, satisfied : Bool)"
+  function_symbols:
+    - name: decompose
+      signature: "Challenge -> List(SubQuestion)"
+      totality: total
+    - name: address
+      signature: "SubQuestion -> Answer"
+      totality: total
+    - name: compose
+      signature: "List(Answer) -> Response"
+      totality: total
+    - name: check
+      signature: "SubQuestion x Answer -> VerifyCheck"
+      totality: total
+  predicates:
+    - name: complete
+      signature: "Response x List(SubQuestion)"
+      description: "All SubQuestions covered in Response"
+    - name: consistent
+      signature: "Response"
+      description: "No contradictions within Response"
+    - name: addressed
+      signature: "SubQuestion x Response"
+      description: "SubQuestion has a corresponding Answer in Response"
+  axioms:
+    - id: Ax-1
+      statement: "forall r : Response, qs : List(SubQuestion). complete(r, qs) <-> forall sq in qs. addressed(sq, r)"
+      rationale: "Completeness is definitionally equivalent to all sub-questions being addressed."
+    - id: Ax-2
+      statement: "forall c : Challenge. |decompose(c)| >= 1"
+      rationale: "Every challenge has at least one sub-question; single-atom challenges are the degenerate case."
+    - id: Ax-3
+      statement: "forall vc : VerifyCheck. vc.satisfied = true -> addressed(vc.subquestion, final_response)"
+      rationale: "A passing verify check implies the sub-question is addressed in the final response."
+  domain_boundary_note: >
+    Excludes: the content domain of the challenge (D_TMP tracks decomposition and verification
+    structure, not subject matter); tool availability and selection; execution history across
+    sessions; the identity of the executing agent.
+  initial_state_valid_claim: >
+    A state with challenge present, decomposition = empty, no Answers, no Response, no VerifyChecks
+    satisfies all axioms: Ax-1 (vacuously true — no Response to test), Ax-2 (not yet applied —
+    decompose has not been called), Ax-3 (vacuously true — no VerifyChecks exist). Valid.
+  terminal_state_valid_claim: >
+    A state with decomposition = List(sq_1..sq_n) where n >= 1, each sq_i addressed in Response,
+    complete(Response, decomposition) = true, consistent(Response) = true satisfies all axioms:
+    Ax-1 (complete <-> all addressed: holds by construction), Ax-2 (|decompose(c)| >= 1: holds),
+    Ax-3 (all VerifyChecks satisfied -> addressed: holds). Valid.
+
+roles:
+  - id: analyst
+    description: >
+      The single role. The executing agent occupies analyst throughout all three steps.
+      Identity observation projection — sees the full domain. This is a feature of the
+      method's simplicity: one role means no information hiding question arises.
+    observation_projection: "pi_analyst = id : Mod(D_TMP) -> Mod(D_TMP) — full domain visibility"
+    authorized_transitions:
+      - "Execute sigma_0: produce decomposition from Challenge"
+      - "Execute sigma_1: produce Answers for each SubQuestion"
+      - "Execute sigma_2: produce VerifyChecks, resolve gaps and contradictions"
+    not_authorized:
+      - "Modify the Challenge after sigma_0 (scope is fixed by decomposition commitment)"
+      - "Skip sigma_2 (verification is not optional)"
+  coverage_claim: >
+    The analyst's observation projection is the identity — every sort, predicate, and function
+    symbol in D_TMP is observable. Coverage is trivially total: pi_analyst(Mod(D_TMP)) = Mod(D_TMP).
+    No dimension of the state space is invisible to the analyst.
+  authority_claim: >
+    The analyst is authorized to execute all three steps (sigma_0, sigma_1, sigma_2) and
+    produce all state transitions required to reach O_TMP: decompose (sigma_0), address
+    (sigma_1), check and resolve (sigma_2). No required transition is unauthorized.
+  role_partition_rationale: >
+    One role because the method has no epistemic separation requirement. All steps share
+    the same context (the challenge, the decomposition, the partial response). Adding a
+    second role (e.g., a verifier) would require genuine epistemic isolation — the verifier
+    would need to not see the reasoning that produced the response. In single-agent LLM
+    execution, this isolation is not achievable without a separate invocation. A single-role
+    design is honest about the execution model.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 (path graph, trivially acyclic)"
+  formal: "Gamma_TMP = ({sigma_0, sigma_1, sigma_2}, {(sigma_0, sigma_1), (sigma_1, sigma_2)}, sigma_0, sigma_2)"
+
+phases:
+  - id: sigma_0
+    name: "Orient"
+    role: analyst
+    precondition: "challenge in state (the challenge has been received)"
+    postcondition: "decomposition in state AND |decomposition| >= 1"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - sub_questions is non-empty and contains at least 1 item (Ax-2).
+      - Each sub-question is a concrete, answerable question — not a topic label.
+        "What is the time complexity of algorithm X?" not "Understand algorithm X."
+      - scope_note is non-empty: one sentence stating the boundary of what a complete
+        response requires.
+      - No answering yet. sigma_0 produces the decomposition only.
+
+      **Rationale:**
+      The explicit decomposition creates an accountability structure. The agent commits to
+      a sub-question list before producing any answers. This prevents retroactive scope
+      expansion or contraction — the sub-questions are fixed before the first answer is written.
+
+      **Procedure:**
+      1. Read the full challenge.
+      2. Ask: what must a complete response cover? Name each dimension as a concrete sub-question.
+      3. If the challenge is atomic (a single well-formed question), the decomposition is a
+         one-element list — that is not a failure, it is an accurate representation.
+      4. Record the sub-questions and the scope note.
+
+      **Output schema reference:**
+      - sub_questions: list of concrete sub-question strings (at least 1)
+      - scope_note: one sentence bounding what a complete response requires
+    output_schema:
+      fields:
+        - name: sub_questions
+          type: array
+          items: string
+          description: "Concrete, answerable sub-questions decomposed from the challenge"
+          min_items: 1
+          required: true
+        - name: scope_note
+          type: string
+          description: "One sentence stating what a complete response must cover"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "sub_questions has at least 1 item"
+        - "scope_note is non-empty"
+        - "each sub_question is a question (answerable), not a topic label"
+      soft:
+        - "sub_questions are ordered by logical dependency (earlier questions inform later ones)"
+        - "no two sub_questions are identical or trivially equivalent"
+
+  - id: sigma_1
+    name: "Execute"
+    role: analyst
+    precondition: "decomposition in state AND |decomposition| >= 1"
+    postcondition: "forall sq in decomposition. addressed(sq, partial_response)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - answers contains exactly one entry per sub-question from sigma_0.
+      - Each answer entry names the sub-question it addresses.
+      - No sub-question is skipped. If two sub-questions are merged, the merge is noted
+        explicitly with justification.
+      - If addressing a sub-question reveals the decomposition was wrong, the revision
+        is noted in decomposition_revisions — not silently absorbed.
+
+      **Rationale:**
+      Sequential addressing exploits cross-sub-question context: the answer to sq_1 informs
+      the answer to sq_2. Making reasoning visible creates a verifiable artifact — sigma_2
+      can check each answer against its sub-question.
+
+      **Procedure:**
+      1. Address each sub-question from sigma_0 in order.
+      2. For each: reason explicitly, then produce the answer.
+      3. If a sub-question reveals that the decomposition was wrong (missing a sub-question,
+         wrong level of abstraction), note the revision rather than silently reshaping.
+      4. Use whatever tools are appropriate to the challenge domain.
+
+      **Output schema reference:**
+      - answers: array of {sub_question, answer} entries (one per sub-question)
+      - decomposition_revisions: array of revision notes (empty if no revisions)
+    output_schema:
+      fields:
+        - name: answers
+          type: array
+          items: object
+          description: "{sub_question: string, answer: string} — one per sub-question from sigma_0"
+          min_items: 1
+          required: true
+        - name: decomposition_revisions
+          type: array
+          items: string
+          description: "Explicit notes on any decomposition changes discovered during execution"
+          min_items: 0
+          required: false
+    invariants:
+      hard:
+        - "answers has exactly |sub_questions| entries"
+        - "each answer entry names the sub-question it addresses"
+        - "no sub-question from sigma_0 is unaddressed"
+      soft:
+        - "answers are ordered matching sigma_0 sub-question order"
+        - "decomposition_revisions is populated if any sub-question was revised, merged, or split"
+
+  - id: sigma_2
+    name: "Verify"
+    role: analyst
+    precondition: "forall sq in decomposition. addressed(sq, partial_response)"
+    postcondition: "complete(response, decomposition) AND consistent(response)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - verify_checks contains exactly one entry per sub-question from sigma_0.
+      - Each verify_check has: sub_question, satisfied (bool), and note.
+      - If any satisfied = false: the gap is resolved in this step (address the sub-question
+        now or note why it cannot be addressed).
+      - consistency_check is non-empty: states whether contradictions were found and how
+        they were resolved.
+      - final_response is non-empty: the composed, verified response.
+
+      **Rationale:**
+      The verify step is the second structural addition over raw prompting. It forces a re-read
+      of the response against the decomposition, surfacing two classes of defect: dropped
+      sub-questions (scope creep in reverse) and accumulated contradictions (claims made in
+      early sub-answers that conflict with later reasoning). An agent that never finds anything
+      to fix in sigma_2 is probably not running sigma_2 seriously.
+
+      **Procedure:**
+      1. For each sub-question from sigma_0: confirm it has been addressed in sigma_1.
+         Record the verify_check with satisfied = true or false.
+      2. Check the response for internal contradictions: a claim made in answering sq_1
+         should not be negated by a claim in answering sq_2.
+      3. If a sub-question is unaddressed (satisfied = false): address it now.
+      4. If a contradiction is found: resolve it now and note the resolution.
+      5. Compose the final response.
+      6. No new tool calls — this is review only. Do not expand scope.
+
+      **Output schema reference:**
+      - verify_checks: array of {sub_question, satisfied, note} entries
+      - consistency_check: string describing contradiction check result
+      - final_response: the composed, verified response
+    output_schema:
+      fields:
+        - name: verify_checks
+          type: array
+          items: object
+          description: "{sub_question: string, satisfied: bool, note: string}"
+          min_items: 1
+          required: true
+        - name: consistency_check
+          type: string
+          description: "Whether contradictions were found and how they were resolved"
+          min_length: 1
+          required: true
+        - name: final_response
+          type: string
+          description: "The composed, verified response"
+          min_length: 1
+          required: true
+    invariants:
+      hard:
+        - "verify_checks has exactly |sub_questions| entries"
+        - "consistency_check is non-empty"
+        - "final_response is non-empty"
+        - "if any verify_check.satisfied = false, the gap is resolved in this step"
+      soft:
+        - "verify_checks are ordered matching sigma_0 sub-question order"
+        - "consistency_check names specific contradictions if found, not just 'none found'"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: post_sigma_0 establishes decomposition in state
+        with |decomposition| >= 1. pre_sigma_1 requires exactly this. Identity inclusion.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: post_sigma_1 establishes forall sq in decomposition.
+        addressed(sq, partial_response). pre_sigma_2 requires exactly this. Identity inclusion.
+  terminal_condition_claim: >
+    post_sigma_2 = complete(response, decomposition) AND consistent(response) = O_TMP(s).
+    The terminal postcondition is identical to the objective. Terminal states are O_TMP-satisfying.
+  initial_condition_claim: >
+    pre_sigma_0 requires challenge in state. This holds at session start: the user provides
+    a challenge, which populates the state. No prior method execution is required.
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      post_sigma_1 claims forall sq in decomposition. addressed(sq, partial_response). But
+      "addressed" is a semantic predicate — an agent may believe it has addressed a sub-question
+      when the answer is incomplete, off-topic, or at the wrong level of abstraction. The
+      postcondition is satisfied syntactically (an answer exists for each sub-question) but
+      not necessarily semantically (the answer actually addresses the sub-question).
+    defense_or_revision: >
+      This is precisely the gap that sigma_2 exists to catch. The verify step re-reads each
+      answer against its sub-question and checks satisfied : Bool. If the agent discovers that
+      an answer does not actually address the sub-question, sigma_2's guidance requires it to
+      address the gap in-step. The composability holds structurally (an answer entry exists for
+      each sub-question); semantic adequacy is the responsibility of sigma_2's verification
+      procedure. The method is honest about this: O_TMP requires both complete AND consistent,
+      and sigma_2 is the step that enforces the semantic dimension.
+
+objective:
+  id: O_TMP
+  formal: "O_TMP(s) = complete(response_s, decomposition_s) AND consistent(response_s)"
+  type: terminal
+  expressible_claim: >
+    O_TMP references complete (declared predicate over Response x List(SubQuestion)) and
+    consistent (declared predicate over Response). Both are in Sigma_TMP. O_TMP is a
+    conjunction of two Sigma-predicates — expressible as a closed sentence over Mod(D_TMP).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{sq in decomposition | addressed(sq, response_s1)}| <=
+      |{sq in decomposition | addressed(sq, response_s2)}|. States with more addressed
+      sub-questions are further toward O_TMP. Terminal states (all addressed, consistent)
+      are maximal.
+    well_founded: "Finite sub-question set (Ax-2 guarantees >= 1; decomposition is finite). The measure is bounded above by |decomposition|."
+  success_profile:
+    - id: mu_coverage
+      name: sub_question_coverage
+      formula: "|{sq in decomposition | addressed(sq, response)}| / |decomposition|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_coverage is an order-homomorphism w.r.t. <=_O by definition: states with more
+        addressed sub-questions have higher mu_coverage. mu_coverage = 1.0 is necessary
+        but not sufficient for O_TMP (consistency still required).
+    - id: mu_consistency
+      name: internal_consistency
+      formula: "1 if consistent(response) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_consistency = 0 is a terminal FAIL — the response cannot satisfy O_TMP while
+        inconsistent. mu_consistency = 1 is necessary for O_TMP. Binary measure; no
+        intermediate values.
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2} | sigma has not executed in s}|"
+  initial: 3
+  final: 0
+  decrease_witness: >
+    Each step execution reduces nu by exactly 1. The DAG is a path graph with no cycles —
+    each step executes exactly once. nu is bounded below by 0 and strictly decreases at
+    each step. Termination is guaranteed after at most 3 step executions.
+
+selection_profile:
+  positive_indicators:
+    - property: "Challenge is specific and well-scoped"
+    - property: "Single correct or best answer exists"
+    - property: "Sub-problems are sequential, not parallel"
+    - property: "Time-sensitive or token-budget-limited"
+    - property: "Task is formal compilation or analysis"
+      evidence: "EXP-002: traditional wins on compilation (17 vs 15)"
+    - property: "Sub-questions are interrelated (sequential addressing exploits cross-context)"
+  negative_indicators:
+    - property: "Creative divergence or exploration of non-obvious framings"
+      route_to: M1-COUNCIL
+    - property: "Benefits from adversarial pressure to surface blind spots"
+      route_to: M1-COUNCIL
+    - property: "Genuinely parallel independent workstreams"
+      route_to: M2-ORCH
+    - property: "Insight reproducibility across agent variation required"
+      route_to: M1-COUNCIL
+  principal_failure_mode: >
+    Apparently well-scoped but actually exploratory challenge. Agent produces complete,
+    consistent response to the wrong question. Verify step cannot catch this because
+    verification checks against sigma_0 decomposition, which may itself be wrong.
+
+retraction:
+  note: >
+    M_TMP can serve as a step inside M_ORCH (as a dispatched sub-agent) via retraction
+    pair: embed projects parent task's scope into Challenge, project lifts Response
+    back into orchestrator's result. Standard fractal property (F1-FTH §6.3).
+
+known_wip:
+  - id: Q1
+    status: open
+    description: >
+      Decomposition quality as predictor of method success. Is there a formal
+      characterization of adequate decomposition checkable at sigma_0?
+      Connects to P2 (semantic validation of guidance) from F1-FTH §10.
+  - id: Q2
+    status: open
+    description: >
+      When does sigma_2 find nothing? Consistent zero-correction rate may flag
+      cosmetic verification. Can correction rate be used as integrity measure?
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: decompose, address, verify. Who: single analyst role.
+        Why: accountability via explicit decomposition and verification. How: three-step
+        linear path. When: well-scoped sequential challenges; not for creative/parallel tasks.
+    - gate: G1
+      result: PASS
+      note: >
+        D_TMP = (Sigma_TMP, Ax_TMP). 5 sorts with cardinality, 4 total function symbols,
+        3 predicates with typed signatures referencing declared sorts, 3 closed axioms.
+        Domain boundary stated. Initial and terminal state membership in Mod(D_TMP) claimed
+        with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_TMP stated as conjunction of two Sigma-predicates (complete, consistent).
+        Expressibility claim present. Progress preorder declared with well-foundedness
+        argument. Two measures with formulas, ranges, terminal values, and proxy claims.
+        All measure formulas reference only declared Sigma symbols.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (analyst) with identity observation projection and explicit authorized
+        transitions. Coverage claim: trivially total (identity projection). Authority
+        claim: all three steps authorized. Role partition rationale: one role because no
+        epistemic separation requirement exists in single-agent execution.
+    - gate: G4
+      result: PASS
+      note: >
+        Three steps (sigma_0, sigma_1, sigma_2) in path graph. Each step has pre, post,
+        finalized guidance, and typed output_schema with invariants. Two composability
+        claims (both identity inclusion). Terminal and initial condition claims present.
+        Contrarian challenge on sigma_1->sigma_2 edge: semantic vs syntactic adequacy of
+        "addressed" predicate; defended by sigma_2's verification procedure.
+    - gate: G5
+      result: PASS
+      note: >
+        All three steps have finalized guidance in constraints-first format. Each guidance
+        block covers all required output_schema fields by name. Adequacy spot-check:
+        sigma_0 guidance names sub_questions and scope_note; sigma_1 guidance names answers
+        and decomposition_revisions; sigma_2 guidance names verify_checks, consistency_check,
+        and final_response. All fields covered.
+    - gate: G6
+      result: PASS
+      note: "This file (P1-EXEC/M3-TMP/M3-TMP.yaml). Structurally complete."

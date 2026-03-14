@@ -1,0 +1,530 @@
+methodology:
+  id: P1-EXEC
+  name: "Execution Methodology"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  description: >
+    Methodology that receives a user challenge and selects the appropriate execution
+    method — M1-COUNCIL, M2-ORCH, or M3-TMP — then runs that method to completion
+    and returns the result. Externalizes method-selection logic into a defined
+    transition function delta_EXEC rather than leaving selection implicit or ad-hoc.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md §7"
+
+navigation:
+  what: >
+    P1-EXEC receives a user challenge and routes it to the appropriate execution
+    method. It does not execute the challenge directly — it evaluates driving
+    predicates, selects M1-COUNCIL, M2-ORCH, or M3-TMP via delta_EXEC, runs the
+    selected method, and returns the result. Output satisfies O_Phi_EXEC when the
+    selected method completes and its result addresses the challenge.
+  who: >
+    Two roles: rho_executor (the agent invoking Phi_EXEC — evaluates predicates,
+    applies delta_EXEC, dispatches the selected method) and rho_PO (the human —
+    provides the challenge, receives the result).
+  why: >
+    Wrong method selection degrades quality or wastes overhead. M1-COUNCIL on a
+    well-scoped single-answer task adds multi-turn debate with no benefit. M3-TMP on
+    a problem with genuine value pluralism misses structurally different perspectives.
+    M2-ORCH on a non-decomposable challenge produces a FAIL at sigma_0. Externalizing
+    selection into delta_EXEC makes the routing decision explicit, auditable, and
+    improvable.
+  how: >
+    Evaluate two driving predicates on the challenge: adversarial_pressure_beneficial
+    (should we debate?) and decomposable_before_execution (can we parallelize?).
+    Apply delta_EXEC: if adversarial -> M1-COUNCIL; else if decomposable -> M2-ORCH;
+    else -> M3-TMP. Run the selected method. If M2-ORCH rejects at sigma_0 (not
+    decomposable), fallback to M3-TMP. Return result.
+  when_to_invoke:
+    - "A new challenge arrives and execution structure is not obvious"
+    - "The executor is unsure whether to debate, orchestrate, or reason sequentially"
+  when_not_to_invoke:
+    - "The task is running a specific method already identified — invoke directly"
+    - "A method is already in progress — complete it before re-evaluating"
+
+domain_theory:
+  id: D_Phi_EXEC
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_execution
+      description: "The user's input: a question, task, or request, exactly as presented"
+    - name: ChallengeProperties
+      cardinality: singleton_per_execution
+      description: "Evaluated properties of a Challenge relevant to method selection"
+    - name: MethodChoice
+      cardinality: finite
+      values: [COUNCIL, ORCH, TMP]
+      description: "The selected execution method"
+    - name: ExecutionResult
+      cardinality: singleton_per_execution
+      description: "Terminal output produced by the selected method"
+    - name: State
+      cardinality: singleton_per_execution
+      description: "Full execution state: { challenge, properties, method_selected, result }"
+  function_symbols:
+    - name: evaluate_properties
+      signature: "Challenge -> ChallengeProperties"
+      totality: total
+    - name: select_method
+      signature: "ChallengeProperties -> MethodChoice"
+      totality: total
+    - name: method_selected
+      signature: "State -> Option(MethodChoice)"
+      totality: total
+      note: "None before selection; Some(M) after delta_EXEC returns"
+    - name: result_of
+      signature: "State -> Option(ExecutionResult)"
+      totality: total
+      note: "None until selected method completes"
+  predicates:
+    - name: adversarial_pressure_beneficial
+      signature: "Challenge"
+      description: "The challenge would benefit from structured multi-perspective debate"
+    - name: decomposable_before_execution
+      signature: "Challenge"
+      description: "The challenge decomposes into >= 3 independent sub-tasks with declarable scopes before any execution"
+    - name: problem_framing_uncertain
+      signature: "Challenge"
+      description: "PFU — the correct framing of the problem is itself contested or unclear"
+    - name: multiple_defensible_positions
+      signature: "Challenge"
+      description: "MDP — at least two solution philosophies lead to meaningfully different decisions"
+    - name: is_method_selected
+      signature: "State"
+      description: "method_selected(s) != None"
+    - name: method_completed
+      signature: "State"
+      description: "The selected method has terminated and produced an ExecutionResult"
+    - name: orch_sigma_0_rejected
+      signature: "State"
+      description: "M2-ORCH sigma_0 set parallel_decomposable = false — challenge not orchestratable"
+    - name: addresses
+      signature: "ExecutionResult x Challenge"
+      description: "Result adequately addresses the challenge; operationalized as PO judgment"
+    - name: criterion_3_fires
+      signature: "Challenge"
+      description: "Stakes-driven precondition surfacing — high stakes warrant adversarial review"
+    - name: criterion_4_fires
+      signature: "Challenge"
+      description: "Silent assumption detection — framing depends on unstated assumptions"
+    - name: irreversible_commitment
+      signature: "Challenge"
+      description: "Component of C3: the challenge involves a commitment that cannot be undone"
+    - name: failure_consequence_nonlocal
+      signature: "Challenge"
+      description: "Component of C3: failure affects systems or people beyond the immediate scope"
+    - name: precondition_space_understated
+      signature: "Challenge"
+      description: "Component of C3: the conditions required for success are not fully surfaced"
+    - name: framing_structurally_dependent_on_unstated_assumption
+      signature: "Challenge"
+      description: "Component of C4: the way the challenge is framed assumes something not stated"
+    - name: assumption_falsity_invalidates_answer
+      signature: "Challenge"
+      description: "Component of C4: if the unstated assumption is false, the answer is invalid"
+  defined_predicates:
+    note: >
+      The following are Sigma-definable abbreviations. They appear in delta_EXEC
+      conditions as shorthands only.
+    - name: adversarial_pressure_beneficial
+      definition: "problem_framing_uncertain(c) OR multiple_defensible_positions(c) OR criterion_3_fires(c) OR criterion_4_fires(c)"
+    - name: criterion_3_fires
+      definition: "(irreversible_commitment(c) OR failure_consequence_nonlocal(c)) AND precondition_space_understated(c)"
+    - name: criterion_4_fires
+      definition: "framing_structurally_dependent_on_unstated_assumption(c) AND assumption_falsity_invalidates_answer(c)"
+  axioms:
+    - id: Ax-1
+      name: Totality of delta_EXEC
+      formal: >
+        forall c : Challenge, p : ChallengeProperties. p = evaluate_properties(c) ->
+          (adversarial_pressure_beneficial(c) -> select_method(p) = COUNCIL)
+          AND (NOT adversarial_pressure_beneficial(c) AND decomposable_before_execution(c) -> select_method(p) = ORCH)
+          AND (NOT adversarial_pressure_beneficial(c) AND NOT decomposable_before_execution(c) -> select_method(p) = TMP)
+      rationale: "Every challenge maps to exactly one method. The three arms are mutually exclusive and exhaustive."
+    - id: Ax-2
+      name: Bounded invocation count
+      formal: >
+        forall s : State. |{s' : State | is_method_selected(s') AND s' is a successor of s_init}| <= 2
+      rationale: >
+        delta_EXEC fires at most twice per run: once for initial selection, once for the
+        ORCH-to-TMP fallback. No unbounded re-evaluation of method choice.
+    - id: Ax-3
+      name: Selection before completion
+      formal: "forall s : State. method_completed(s) -> is_method_selected(s)"
+      rationale: "A method cannot complete without having been selected. Selection is the precondition for execution."
+  domain_boundary_note: >
+    Excludes: the internal execution of the selected method (Phi_EXEC sees only the
+    terminal result, not intermediate states); the content domain of the challenge;
+    the identity of the executing agent; tool availability; execution history across
+    sessions. D_Phi_EXEC tracks routing state only.
+  initial_state_valid_claim: >
+    A state with Challenge present, method_selected = None, result_of = None,
+    method_completed = false satisfies all axioms: Ax-1 (not yet evaluated — antecedent
+    not triggered), Ax-2 (zero invocations <= 2), Ax-3 (method_completed false —
+    antecedent false, vacuously true). Valid.
+  terminal_state_valid_claim: >
+    A state with method_selected = Some(M), method_completed = true, result_of =
+    Some(r), addresses(r, challenge) = true satisfies all axioms: Ax-1 (selection
+    was made per the routing rules), Ax-2 (1 or 2 invocations <= 2), Ax-3
+    (method_completed -> is_method_selected: holds). Valid.
+
+roles:
+  - id: rho_executor
+    description: >
+      The agent invoking Phi_EXEC. Evaluates driving predicates, applies delta_EXEC,
+      invokes the selected method, applies delta_EXEC_fallback on orch_sigma_0_rejected.
+    observation_projection: >
+      pi_executor = id : Mod(D_Phi_EXEC) -> Mod(D_Phi_EXEC) — full methodology state
+      visibility. Required to evaluate all driving predicates and apply delta_EXEC.
+    authorized_transitions:
+      - "Evaluate challenge properties (evaluate_properties)"
+      - "Apply delta_EXEC to select a method"
+      - "Invoke the selected method via retraction pair (embed + project)"
+      - "Apply delta_EXEC_fallback on orch_sigma_0_rejected"
+    not_authorized:
+      - "Execute the selected method directly (method runs under its own roles)"
+      - "Override method selection after method execution has begun"
+      - "Modify the challenge after delta_EXEC has been applied"
+  - id: rho_PO
+    description: >
+      Product Owner (human). Provides the challenge; receives the terminal result.
+    observation_projection: >
+      pi_PO : Mod(D_Phi_EXEC) -> {challenge, result} — restricted to challenge input
+      and terminal output. The PO does not observe method selection or routing logic.
+    authorized_transitions:
+      - "Provide challenge (creates initial state)"
+      - "Receive result (reads terminal state)"
+      - "Terminate session"
+    not_authorized:
+      - "Override delta_EXEC method selection"
+      - "Invoke methods directly (goes through rho_executor)"
+  coverage_claim: >
+    pi_executor is identity over Mod(D_Phi_EXEC) — all state visible. pi_PO covers
+    {challenge, result}. Union covers all of D_Phi_EXEC. No dimension is unobservable
+    across both roles.
+  authority_claim: >
+    rho_executor holds authority over all delta_EXEC transitions (evaluation, selection,
+    dispatch, fallback). rho_PO holds authority over challenge provision and session
+    termination. Union covers all transitions required to advance from initial state
+    to O_Phi_EXEC.
+  role_partition_rationale: >
+    Two roles because the methodology has one automation boundary: the executor
+    automates method selection (delta_EXEC), while the PO provides the input and
+    receives the output. Adding a separate evaluator role would split predicate
+    evaluation from method dispatch — but both require full state visibility and
+    produce no epistemic benefit. One executor role is minimal.
+
+transition_function:
+  id: delta_EXEC
+  formal_type: "delta_EXEC : Mod(D_Phi_EXEC) -> Option(Method)"
+  evaluation_order: priority_stack
+  note: >
+    Conditions evaluated in strict priority order. First condition that holds
+    determines the selection. If none holds, returns None (terminate).
+  arms:
+    - priority: 1
+      label: adversarial_dispatch
+      condition: "NOT is_method_selected(s) AND adversarial_pressure_beneficial(s.challenge)"
+      returns: "Some(M1-COUNCIL)"
+      rationale: >
+        Adversarial pressure is beneficial: the challenge has uncertain framing, multiple
+        defensible positions, high-stakes preconditions, or silent assumption risk. Route
+        to structured multi-perspective debate.
+    - priority: 2
+      label: orchestration_dispatch
+      condition: "NOT is_method_selected(s) AND NOT adversarial_pressure_beneficial(s.challenge) AND decomposable_before_execution(s.challenge)"
+      returns: "Some(M2-ORCH)"
+      rationale: >
+        No adversarial need, but the challenge decomposes into independent parallel
+        sub-tasks. Route to parallel orchestration.
+    - priority: 3
+      label: sequential_dispatch
+      condition: "NOT is_method_selected(s) AND NOT adversarial_pressure_beneficial(s.challenge) AND NOT decomposable_before_execution(s.challenge)"
+      returns: "Some(M3-TMP)"
+      rationale: >
+        No adversarial need, not decomposable. Default: single-agent sequential
+        reasoning. M3-TMP is the zero-overhead baseline.
+    - priority: 4
+      label: terminate
+      condition: "is_method_selected(s) AND method_completed(s)"
+      returns: "None"
+    - priority: 5
+      label: executing
+      condition: "is_method_selected(s) AND NOT method_completed(s)"
+      returns: "None"
+      note: "Method is running — no re-evaluation until completion."
+  fallback:
+    id: delta_EXEC_fallback
+    condition: "method_selected(s) = ORCH AND orch_sigma_0_rejected(s)"
+    returns: "Some(M3-TMP)"
+    rationale: >
+      M2-ORCH sigma_0 determined the challenge is not decomposable. Fall back to M3-TMP.
+      Single additional invocation — not a loop. This is the only cross-method transition
+      in v1.0.
+    note: "FM-3 fix from v0.2. nu increases from 1 to 2 to accommodate this path."
+
+predicate_operationalization:
+  note: >
+    Each driving predicate must be evaluable by the executor at runtime. The following
+    operationalization criteria provide True/False conditions for each predicate. These
+    are heuristic — not formal decision procedures — but they must be specific enough
+    that two independent executors evaluating the same challenge would agree in the
+    majority of cases.
+  predicates:
+    - name: problem_framing_uncertain
+      abbreviation: PFU
+      true_when: >
+        The challenge can be legitimately reframed in a way that would change the
+        answer. The executor can name at least two valid framings that lead to
+        different approaches. Example: "Should we build a cache?" can be framed as
+        a performance problem, a cost problem, or an architecture problem — each
+        framing leads to different decisions.
+      false_when: >
+        The challenge has one obvious framing and alternative framings would be
+        contrived. "Implement the login endpoint per this spec" has one framing.
+      boundary: >
+        When in doubt, evaluate MDP first. If MDP is true, PFU is often also true
+        but adds no additional routing signal (both trigger COUNCIL).
+    - name: multiple_defensible_positions
+      abbreviation: MDP
+      true_when: >
+        The executor can name at least two experts who would disagree on the answer
+        and both be defensible. The disagreement is about approach/philosophy, not
+        about facts. Example: "Should we use microservices or a monolith?" —
+        defensible positions exist on both sides.
+      false_when: >
+        The answer is deterministic or near-deterministic. "What is the time
+        complexity of binary search?" has one correct answer.
+    - name: criterion_3_fires
+      abbreviation: C3
+      true_when: >
+        (irreversible_commitment OR failure_consequence_nonlocal) AND
+        precondition_space_understated. The challenge involves high stakes AND
+        the conditions required for success are not fully surfaced. Example:
+        "Should we migrate the database this weekend?" — irreversible commitment
+        (migration is hard to undo), nonlocal consequences (all services affected),
+        and the precondition space (rollback plan, data validation, service
+        dependencies) may be understated.
+      false_when: >
+        The challenge is low-stakes or the precondition space is fully surfaced.
+        A well-specified, reversible, locally-scoped task does not fire C3.
+    - name: criterion_4_fires
+      abbreviation: C4
+      true_when: >
+        framing_structurally_dependent_on_unstated_assumption AND
+        assumption_falsity_invalidates_answer. The way the challenge is framed
+        assumes something that is not stated, and if that assumption is wrong, the
+        answer would be invalid. Example: "How do we scale the API to 10x traffic?"
+        assumes the current architecture can scale horizontally — if it can't, the
+        entire framing is wrong.
+      false_when: >
+        The challenge's framing does not depend on unstated assumptions, or the
+        assumptions are robust to falsification.
+    - name: decomposable_before_execution
+      true_when: >
+        The executor can draw n >= 3 independent sub-task boundaries right now, with
+        explicit scopes, without running anything. Sub-tasks have disjoint file/data
+        scopes and no execution dependencies.
+      false_when: >
+        Sub-tasks share state, have fewer than 3 components, or decomposition requires
+        exploratory execution (scope cannot be declared before running anything).
+      boundary: >
+        If exactly 2 sub-tasks exist, single-agent execution is more efficient.
+        Orchestration overhead is justified at n >= 3.
+  evaluation_order: >
+    1. Evaluate adversarial_pressure_beneficial first (PFU, MDP, C3, C4 — any true
+       means COUNCIL). If true, stop — route to M1-COUNCIL.
+    2. If false, evaluate decomposable_before_execution. If true, route to M2-ORCH.
+    3. If false, route to M3-TMP (default).
+
+termination_certificate:
+  id: nu_EXEC
+  definition: "nu(s) = 2 - |{delta_EXEC invocations in this run}|"
+  initial_value: 2
+  final_value: 0
+  decrease_witness: >
+    delta_EXEC fires at most twice per run: once for initial selection (arms 1-3),
+    and at most once for the ORCH-to-TMP fallback. The fallback fires only on
+    orch_sigma_0_rejected — not triggered by COUNCIL or TMP paths. Each invocation
+    reduces nu by exactly 1. nu is bounded below by 0. After at most 2 invocations,
+    a method is executing or complete, and delta_EXEC returns None.
+  note: "v0.1 had nu = 1 (no fallback). v0.2/v1.0 increased to nu = 2 for FM-3 fallback."
+
+retraction_pairs:
+  - id: RP-1
+    name: Phi_EXEC_to_COUNCIL
+    trigger: "arm 1 fires: adversarial_pressure_beneficial(s.challenge)"
+    embed:
+      signature: "embed_COUNCIL : Mod(D_Phi_EXEC)[pre-dispatch] -> Mod(D_COUNCIL)"
+      definition: "embed_COUNCIL(s) = { challenge := s.challenge }"
+    project:
+      signature: "project_COUNCIL : Mod(D_COUNCIL)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
+      definition: "project_COUNCIL(t) = { result := ExecutionResult(t.artifact), method_completed := true }"
+    retraction_verification: "project_COUNCIL(embed_COUNCIL(s)).challenge = s.challenge — trivially true"
+    status: verified
+  - id: RP-2
+    name: Phi_EXEC_to_ORCH
+    trigger: "arm 2 fires: NOT adversarial AND decomposable_before_execution"
+    embed:
+      signature: "embed_ORCH : Mod(D_Phi_EXEC)[pre-dispatch] -> Mod(D_ORCH)"
+      definition: "embed_ORCH(s) = { challenge := s.challenge }"
+    project:
+      signature: "project_ORCH : Mod(D_ORCH)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
+      definition: "project_ORCH(t) = { result := ExecutionResult(t.integration), method_completed := true }"
+    retraction_verification: "project_ORCH(embed_ORCH(s)).challenge = s.challenge — trivially true"
+    status: verified
+  - id: RP-3
+    name: Phi_EXEC_to_TMP
+    trigger: "arm 3 fires: NOT adversarial AND NOT decomposable (default)"
+    embed:
+      signature: "embed_TMP : Mod(D_Phi_EXEC)[pre-dispatch] -> Mod(D_TMP)"
+      definition: "embed_TMP(s) = { challenge := s.challenge }"
+    project:
+      signature: "project_TMP : Mod(D_TMP)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
+      definition: "project_TMP(t) = { result := ExecutionResult(t.final_response), method_completed := true }"
+    retraction_verification: "project_TMP(embed_TMP(s)).challenge = s.challenge — trivially true"
+    status: verified
+  - id: RP-4
+    name: ORCH_rejected_to_TMP
+    trigger: "fallback fires: method_selected = ORCH AND orch_sigma_0_rejected"
+    embed:
+      signature: "embed_ORCH_TMP : Mod(D_ORCH)[sigma_0-rejected] -> Mod(D_TMP)"
+      definition: "embed_ORCH_TMP(s) = { challenge := s.challenge }"
+      note: "sigma_0 rejection produces no ORCH state worth preserving"
+    project:
+      signature: "project_ORCH_TMP : Mod(D_TMP)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
+      definition: "project_ORCH_TMP(t) = { result := ExecutionResult(t.final_response), method_selected := TMP, method_completed := true }"
+    retraction_verification: "project_ORCH_TMP(embed_ORCH_TMP(s)).challenge = s.challenge — trivially true (sigma_0 rejected, no ORCH work to preserve)"
+    status: verified
+  deferred:
+    - name: COUNCIL_to_TMP
+      status: deferred_to_v2.0
+      reason: "v1.0 is sequential — no mid-execution method switch. Would require M1-COUNCIL failure detection not in current spec."
+    - name: ORCH_to_COUNCIL
+      status: deferred_to_v2.0
+      reason: "v1.0 is sequential — ORCH failure routes to TMP via fallback, not to COUNCIL."
+
+objective:
+  id: O_Phi_EXEC
+  formal: >
+    O_Phi_EXEC(s) =
+      method_completed(s)
+      AND result_of(s) != None
+      AND addresses(result_of(s), s.challenge)
+  type: terminal
+  expressible_claim: >
+    O_Phi_EXEC references method_completed (declared predicate over State), result_of
+    (declared function symbol State -> Option(ExecutionResult)), addresses (declared
+    predicate over ExecutionResult x Challenge). All symbols are in Sigma_Phi_EXEC.
+    O_Phi_EXEC is expressible as a closed sentence over Mod(D_Phi_EXEC).
+  addresses_operationalization: >
+    addresses(r, c) is a primitive predicate operationalized as PO judgment: the PO
+    determines whether the result adequately addresses the challenge. This is not
+    computable from methodology state alone — it requires human evaluation. Same
+    treatment as M1-COUNCIL's PO-judgment predicates. Future: a structural proxy
+    (e.g., coverage of challenge sub-questions by result content) may supplement PO
+    judgment but cannot replace it.
+  progress_preorder:
+    name: "leq_Phi_EXEC"
+    definition: >
+      Total chain over four canonical states:
+        s_0 (unaddressed challenge) < s_1 (method selected) < s_2 (method executing)
+        < s_3 (challenge addressed, O_Phi_EXEC = true).
+      Well-founded: four states, strict total order, s_3 is maximal.
+  success_profile:
+    - id: mu_1
+      name: method_completion
+      formula: "1 if method_completed(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_1 = 1 is necessary for O_Phi_EXEC. Tracks whether delta_EXEC successfully
+        dispatched a method and it terminated. mu_1 = 0 means routing failed or
+        method is still executing.
+    - id: mu_2
+      name: result_existence
+      formula: "1 if result_of(s) != None else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_2 = 1 is necessary for O_Phi_EXEC. A completed method that produces no
+        result is a method-level failure propagated to methodology level.
+
+known_wip:
+  - id: W1
+    status: open
+    description: >
+      Predicate operationalization is heuristic. Two independent executors may disagree
+      on PFU or MDP evaluation for boundary-case challenges. Calibration from empirical
+      runs (tracking routing decisions and outcome quality) would improve agreement.
+  - id: W2
+    status: open
+    description: >
+      addresses(r, c) is PO judgment — not computable from state. A structural proxy
+      (coverage of challenge dimensions by result content) could supplement but not
+      replace PO evaluation.
+  - id: W3
+    status: open
+    description: >
+      COUNCIL_to_TMP and ORCH_to_COUNCIL cross-method transitions deferred to v2.0.
+      v1.0 handles only one cross-method path: ORCH -> TMP via fallback.
+
+compilation_record:
+  methodology_gate_adaptation: >
+    P1-EXEC is a methodology Phi = (D_Phi, delta_Phi, O_Phi), not a method M = (D, Roles,
+    Gamma, O, mu_vec). M1-MDES gates are designed for methods. The following adaptation
+    is applied: G4 checks delta_EXEC (transition function), retraction pairs, and
+    termination certificate instead of step DAG composability. G5 checks predicate
+    operationalization instead of step guidance adequacy. All other gates apply as-is.
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: methodology routing challenges to COUNCIL/ORCH/TMP.
+        Who: rho_executor + rho_PO. Why: wrong method selection degrades quality or wastes
+        overhead. How: evaluate driving predicates -> apply delta_EXEC -> run selected method.
+        When: every non-trivial challenge where execution structure is not obvious.
+    - gate: G1
+      result: PASS
+      note: >
+        D_Phi_EXEC = (Sigma_Phi_EXEC, Ax_Phi_EXEC). 5 sorts with cardinality, 4 function
+        symbols with totality, 15 predicates with typed signatures (all referencing declared
+        sorts), 3 defined predicates with explicit definitions, 3 closed axioms. Domain
+        boundary stated. Initial and terminal state membership in Mod(D_Phi_EXEC) claimed
+        with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_Phi_EXEC stated as conjunction of three Sigma-predicates. Expressibility claim
+        present. addresses operationalization documented (PO judgment). Progress preorder
+        declared as 4-state total chain. Two measures with formulas, ranges, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles: rho_executor (identity projection, full delta_EXEC authority) and rho_PO
+        (restricted projection, challenge provision authority). Coverage claim: union covers
+        all of D_Phi_EXEC. Authority claim: union covers all transitions to O_Phi_EXEC.
+        Role partition rationale: one automation boundary, minimal.
+    - gate: G4
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks delta_EXEC + retraction pairs + termination certificate (not step DAG)"
+      note: >
+        delta_EXEC declared as priority stack with 5 arms + 1 fallback. Totality: Ax-1
+        guarantees every challenge maps to exactly one method. Termination certificate
+        nu <= 2 with strict decrease witness. Four retraction pairs formally declared and
+        verified (project o embed = id on touched subspace). Inter-method coherence: Ax-2
+        bounds invocation count. Deferred pairs documented with rationale.
+    - gate: G5
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks predicate operationalization (not step guidance)"
+      note: >
+        Five driving predicates operationalized with explicit True/False conditions,
+        evaluation order, and boundary notes: PFU (problem framing uncertain), MDP (multiple
+        defensible positions), C3 (stakes-driven precondition surfacing), C4 (silent
+        assumption detection), decomposable_before_execution. Each predicate has concrete
+        examples for True and False cases. Evaluation order specified: adversarial predicates
+        first, then decomposability.
+    - gate: G6
+      result: PASS
+      note: "This file (P1-EXEC/P1-EXEC.yaml). Structurally complete."

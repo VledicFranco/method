@@ -1,0 +1,679 @@
+method:
+  id: M2-ORCH
+  parent: P1-EXEC
+  name: "Orchestrator Execution Method"
+  description: >
+    Single-pass orchestration execution method. Given a challenge decomposable into
+    n independent sub-tasks, dispatches parallel sub-agents and integrates outputs.
+    Fixed DAG: orient -> decompose -> dispatch -> integrate -> verify. No loops,
+    no re-evaluation. Verification failure is terminal — caller handles re-dispatch.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  source_audit: "M1-IMPL v3.1 §11; MAUD-report.md G4 finding"
+
+navigation:
+  what: >
+    M2-ORCH takes a challenge that decomposes into n independent sub-tasks, dispatches
+    parallel sub-agents to execute them, integrates all results, and verifies the
+    integration for completeness and consistency. Output is an Integration satisfying
+    O_ORCH. Verification failure is terminal — the caller decides what to do next.
+  who: >
+    Two roles — orchestrator (one) and sub-agent (n, determined at sigma_1). The
+    orchestrator holds architectural context and coordinates; sub-agents execute scoped
+    work in isolation from each other.
+  why: >
+    Two failure modes motivate this method. (1) Context window burn: a single agent
+    executing a large multi-part challenge accumulates source-level detail until
+    architectural context is crowded out. (2) Serialization waste: genuinely parallel
+    sub-problems executed sequentially waste time when parallel dispatch is available.
+    M2-ORCH separates architectural context (orchestrator) from sub-task execution
+    context (sub-agents).
+  how: >
+    Five linear steps: orient (assess decomposability) -> decompose (produce SubTask set
+    with Scopes) -> dispatch (parallel sub-agents) -> integrate (assemble Results) ->
+    verify (check completeness and consistency). Acyclic by construction — no re-dispatch.
+  when_to_use:
+    - "Challenge has >= 3 sub-tasks with non-overlapping scopes"
+    - "Sub-task boundaries can be fully declared before execution begins"
+    - "Sub-tasks are independent: completing sub-task i does not change inputs for sub-task j"
+    - "Integration cost is substantially lower than execution cost"
+  when_not_to_use:
+    - "Sub-tasks share state or have execution dependencies — use sequential method or M1-IMPL"
+    - "Fewer than 3 sub-tasks — single-agent execution is more efficient"
+    - "Decomposition requires exploratory execution — scope cannot be declared before running"
+    - "Creative generation requiring cross-pollination between sub-problems"
+    - "Verification failure requires re-dispatch — use M1-IMPL §11 or future M2-ORCH v2.0"
+
+domain_theory:
+  id: D_ORCH
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_execution
+      description: "The top-level task presented to the orchestrator"
+    - name: SubTask
+      cardinality: "finite, n >= 1 determined at sigma_1"
+      description: "A scoped unit of work decomposed from a Challenge"
+    - name: Scope
+      cardinality: "one per SubTask"
+      description: "The authorized context for a SubTask — files, documents, or data a SubAgent may observe and act on"
+    - name: SubAgent
+      cardinality: "one per SubTask (one-to-one)"
+      description: "An agent assigned to execute one SubTask within its Scope"
+    - name: Result
+      cardinality: "one per SubAgent"
+      description: "Output produced by a SubAgent for its SubTask"
+    - name: Integration
+      cardinality: singleton_per_execution
+      description: "Combined output assembled from all Results by the orchestrator"
+    - name: VerificationOutcome
+      cardinality: finite
+      values: [PASS, FAIL_INCOMPLETE, FAIL_INCONSISTENT]
+      description: "The result of checking Integration for completeness and consistency"
+  function_symbols:
+    - name: scope
+      signature: "SubTask -> Scope"
+      totality: total
+    - name: assignee
+      signature: "SubTask -> SubAgent"
+      totality: total
+    - name: result
+      signature: "SubAgent -> Option(Result)"
+      totality: total
+      note: "None until sub-agent completes"
+    - name: integrate
+      signature: "List(Result) -> Integration"
+      totality: total
+    - name: verify
+      signature: "Integration x Challenge -> VerificationOutcome"
+      totality: total
+  predicates:
+    - name: decomposedFrom
+      signature: "SubTask x Challenge"
+      description: "SubTask was produced by decomposing Challenge"
+    - name: independent
+      signature: "SubTask x SubTask"
+      description: "Two SubTasks have disjoint Scopes and no data dependency"
+    - name: complete
+      signature: "SubTask"
+      description: "Sub-agent has returned a Result for this SubTask"
+    - name: consistent
+      signature: "Integration"
+      description: "No contradictions between integrated Results"
+    - name: covers
+      signature: "Integration x Challenge"
+      description: "Integration addresses all dimensions of Challenge"
+    - name: dispatched
+      signature: "SubTask"
+      description: "SubTask has been assigned to a SubAgent and dispatch has occurred"
+    - name: scope_declared
+      signature: "SubTask"
+      description: "SubTask has a fully declared, finite Scope before dispatch"
+  axioms:
+    - id: Ax-1
+      name: Finite decomposition
+      statement: "forall c : Challenge. |{t : SubTask | decomposedFrom(t, c)}| >= 1 AND |{t : SubTask | decomposedFrom(t, c)}| < infinity"
+      rationale: "Decomposition produces a finite, non-empty set of sub-tasks."
+    - id: Ax-2
+      name: Scope declaration before dispatch
+      statement: "forall t : SubTask. dispatched(t) -> scope_declared(t)"
+      rationale: "Every sub-task must have a fully declared scope before dispatch. Scope discovery during execution is a method violation."
+    - id: Ax-3
+      name: Independence for parallel dispatch
+      statement: "forall t1 t2 : SubTask. dispatched(t1) AND dispatched(t2) AND t1 != t2 -> independent(t1, t2)"
+      rationale: >
+        All dispatched sub-tasks are pairwise independent. In this method (single-pass,
+        all parallel), dispatch implies independence. Dependent sub-tasks cannot use this method.
+    - id: Ax-4
+      name: Single-pass completeness
+      statement: "forall t : SubTask. decomposedFrom(t, c) -> (complete(t) OR NOT complete(t)) AND |{s : State | dispatched(t, s)}| <= 1"
+      rationale: "Each sub-task is dispatched at most once. No re-dispatch — this is the defining constraint separating M2-ORCH from M1-IMPL §11."
+      note: "The tautological first conjunct encodes that complete is decidable for every sub-task; the second conjunct is the real constraint."
+    - id: Ax-5
+      name: Integration completeness obligation
+      statement: "forall c : Challenge, t : SubTask. decomposedFrom(t, c) AND complete(t) -> result(assignee(t)) != None"
+      rationale: "Every completed sub-task has a Result. Integration must receive all Results — partial integration is a failure mode, not a valid terminal state."
+  domain_boundary_note: >
+    Excludes: the internal execution of sub-tasks (orchestrator sees only Result boundary
+    outputs); the content domain of the challenge (D_ORCH tracks orchestration structure,
+    not subject matter); tool availability; execution history across sessions; the identity
+    of orchestrator or sub-agents.
+  initial_state_valid_claim: >
+    A state with Challenge present, no SubTasks, no Scopes, no SubAgents, no Results, no
+    Integration satisfies all axioms: Ax-1 through Ax-5 have false antecedents (no SubTasks
+    exist) — all vacuously true. Valid.
+  terminal_state_valid_claim: >
+    A state with n SubTasks all decomposedFrom(t, c), all scope_declared, all dispatched,
+    all complete, all result(assignee(t)) != None, Integration = integrate(results),
+    VerificationOutcome determined satisfies all axioms: Ax-1 (n >= 1, finite), Ax-2
+    (dispatched -> scope_declared: holds), Ax-3 (all independent: holds by sigma_1 verification),
+    Ax-4 (each dispatched once), Ax-5 (complete -> result != None: holds). Valid.
+
+roles:
+  - id: orchestrator
+    description: >
+      Observes full Challenge, decomposition plan, all Scopes as declared, all Results
+      returned by sub-agents, and the Integration. Does NOT observe internal execution
+      of sub-tasks — sees only Result boundary outputs.
+    observation_projection: >
+      pi_orch : Mod(D_ORCH) -> Mod(D_ORCH_orch) — projects out sub-agent internal
+      execution state. Orchestrator sees: Challenge, SubTask set, Scope declarations,
+      Result boundary outputs, Integration, VerificationOutcome.
+    authorized_transitions:
+      - "Produce decomposition: create SubTask set with Scopes (sigma_1)"
+      - "Dispatch sub-agents: assign SubAgents to SubTasks (sigma_2)"
+      - "Produce Integration from Results (sigma_3)"
+      - "Produce VerificationOutcome (sigma_4)"
+      - "Assess decomposability and redirect if inappropriate (sigma_0)"
+    not_authorized:
+      - "Produce Results (sub-agent territory)"
+      - "Write to sub-agent work artifacts"
+      - "Re-dispatch after verification failure (single-pass constraint)"
+  - id: sub_agent
+    count: "n (determined at sigma_1)"
+    description: >
+      Each sub-agent observes only scope(t) for its assigned SubTask. Epistemically
+      isolated from other sub-agents. Produces a single bounded Result in the declared
+      return format.
+    observation_projection: >
+      pi_sa(t) : Mod(D_ORCH) -> Mod(D_ORCH_sa) — restricted to scope(t). Sub-agent
+      sees only its assigned SubTask description, Scope, and return format specification.
+    authorized_transitions:
+      - "Observe and act within scope(t) as declared"
+      - "Produce result(assignee(t))"
+    not_authorized:
+      - "Write to orchestrator's session record"
+      - "Observe other sub-agents' scopes or results"
+      - "Expand own scope without orchestrator authorization"
+  coverage_claim: >
+    pi_orch covers: Challenge, SubTask set, Scope declarations, Result boundary outputs,
+    Integration, VerificationOutcome — all orchestration-level state. pi_sa(t) covers:
+    scope(t) internal state for each sub-task. Union covers all of Mod(D_ORCH): orchestration
+    structure (pi_orch) plus sub-task execution detail (pi_sa). No dimension is invisible
+    to both roles.
+  authority_claim: >
+    Orchestrator authority covers all orchestration transitions: decomposition, dispatch,
+    integration, verification. Sub-agent authority covers sub-task execution: producing
+    Results within scope. Union covers all transitions required to advance from initial
+    state (Challenge presented) to O_ORCH (all complete, integrated, verified). No required
+    transition is unauthorized.
+  role_partition_rationale: >
+    Two roles because the method has a genuine epistemic separation requirement: the
+    orchestrator holds architectural context and coordinates; sub-agents hold execution
+    context scoped to their sub-tasks. The separation prevents context window burn (the
+    motivating problem). A single-role design would defeat the method's purpose. More than
+    two role types would add coordination overhead without benefit — sub-agents are
+    intentionally uniform (same interface, same authority, different scopes).
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (acyclic by construction)"
+  formal: >
+    Gamma_ORCH = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4},
+    {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_3, sigma_4)},
+    sigma_0, sigma_4)
+
+phases:
+  - id: sigma_0
+    name: "Orient"
+    role: orchestrator
+    precondition: "Challenge presented and unambiguous; orchestrator has access to full statement"
+    postcondition: >
+      Decomposability assessed. If parallel_decomposable = true: proceed to sigma_1.
+      If false: method terminates with redirect (challenge is not appropriate for M2-ORCH).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - parallel_decomposable is determined (true or false).
+      - If false: redirect_reason is non-empty, naming why M2-ORCH is inappropriate.
+      - If true: estimated_n >= 3 (or explicit justification if fewer).
+      - challenge_summary is non-empty: one sentence restating the challenge.
+
+      **Rationale:**
+      sigma_0 is a hard gate. Proceeding with a non-decomposable challenge wastes all
+      subsequent steps and produces a FAIL_INCOMPLETE at sigma_4. The cost of a false
+      negative (redirecting a decomposable challenge) is one method re-routing. The cost
+      of a false positive (proceeding with a non-decomposable challenge) is a full
+      five-step execution ending in failure.
+
+      **Procedure:**
+      1. Read the full Challenge statement. Identify the top-level deliverable.
+      2. Ask: "Can I draw n >= 3 independent sub-task boundaries right now, with explicit
+         scopes, without running anything?" If no — set parallel_decomposable = false.
+      3. Ask: "Are any two sub-tasks dependent — does completing one change the inputs for
+         another?" If yes — those sub-tasks cannot be dispatched in parallel.
+      4. Ask: "Is the integration step non-trivial in a way that requires cross-sub-task
+         negotiation?" If yes — the integration assumption is violated.
+
+      **Output schema reference:**
+      - challenge_summary: one sentence restating the challenge
+      - parallel_decomposable: true or false
+      - estimated_n: expected sub-task count (if decomposable)
+      - redirect_reason: why M2-ORCH is inappropriate (if not decomposable)
+    output_schema:
+      fields:
+        - name: challenge_summary
+          type: string
+          description: "One sentence restating the challenge"
+          min_length: 1
+          required: true
+        - name: parallel_decomposable
+          type: boolean
+          required: true
+        - name: estimated_n
+          type: integer
+          description: "Expected sub-task count"
+          required: false
+        - name: redirect_reason
+          type: string
+          description: "Why M2-ORCH is inappropriate (required if parallel_decomposable = false)"
+          required: false
+    invariants:
+      hard:
+        - "challenge_summary is non-empty"
+        - "parallel_decomposable is true or false"
+        - "if parallel_decomposable = false: redirect_reason is non-empty"
+      soft:
+        - "if parallel_decomposable = true: estimated_n >= 3"
+        - "redirect_reason names a specific structural reason, not a vague concern"
+
+  - id: sigma_1
+    name: "Decompose"
+    role: orchestrator
+    precondition: "sigma_0 complete; parallel_decomposable = true; challenge structure understood"
+    postcondition: >
+      SubTask set produced with |SubTasks| = n >= 1. Each SubTask has an explicit Scope.
+      Independence verified for all pairs. Coverage verified: every acceptance criterion
+      traced to at least one SubTask.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - sub_tasks is non-empty with at least 1 entry.
+      - Each sub_task entry has: id, description, scope (authorized inputs and outputs),
+        return_format, and parallel_with list.
+      - For each pair of sub-tasks listed as parallel_with: independence is verified
+        (disjoint scopes, no data dependency). Ax-3 requires this.
+      - coverage_verified = true: every acceptance criterion in the Challenge is traced
+        to at least one sub-task. An uncovered criterion surfaces as a missing result at
+        sigma_3.
+      - deferred_gaps lists any known gaps not in scope for this execution.
+
+      **Rationale:**
+      Scope declaration before dispatch (Ax-2) is the method's central constraint. A sub-task
+      dispatched without a fully declared scope produces unpredictable results — the sub-agent
+      may observe or act on state outside its authorized context. Independence verification
+      (Ax-3) prevents parallel dispatch of dependent sub-tasks, which produces race conditions
+      or inconsistent results.
+
+      **Procedure:**
+      1. List every deliverable dimension of the Challenge.
+      2. Cluster deliverables into independent groups — each group becomes one SubTask.
+      3. For each SubTask: declare its Scope (complete, bounded set of inputs/outputs).
+      4. For each pair of parallel SubTasks: verify independent(t1, t2) — disjoint scopes,
+         no data dependency.
+      5. Trace every acceptance criterion to at least one SubTask.
+      6. Domain-adjacent sweep: enumerate files adjacent to scope. Files not assigned to
+         any SubTask but potentially activated must be explicitly accounted for.
+      7. If n >= 2 parallel sub-tasks produce artifacts requiring shared wiring, add a
+         sequential wiring sub-task after the parallel batch.
+      8. Record pre-existing gaps in deferred_gaps.
+
+      **Output schema reference:**
+      - sub_tasks: array of sub-task declarations
+      - coverage_verified: boolean
+      - deferred_gaps: array of known out-of-scope gaps
+    output_schema:
+      fields:
+        - name: sub_tasks
+          type: array
+          items: object
+          description: "{id, description, scope: {authorized_inputs, authorized_outputs}, return_format, parallel_with}"
+          min_items: 1
+          required: true
+        - name: coverage_verified
+          type: boolean
+          required: true
+        - name: deferred_gaps
+          type: array
+          items: string
+          description: "Known gaps not in scope for this execution"
+          min_items: 0
+          required: false
+    invariants:
+      hard:
+        - "sub_tasks has at least 1 item"
+        - "each sub_task has id, description, scope, and return_format"
+        - "coverage_verified = true"
+        - "for each parallel pair: scopes are disjoint"
+      soft:
+        - "sub_tasks count >= 3 (orchestration overhead justified)"
+        - "deferred_gaps is populated if any known gaps exist"
+
+  - id: sigma_2
+    name: "Dispatch"
+    role: orchestrator
+    precondition: "sigma_1 complete; decomposition finalized; independence verified for all parallel pairs"
+    postcondition: "All sub-agents dispatched; each received scoped context and return format; all Results received"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - dispatch_log contains one entry per sub-task with agent_id, dispatch_mode, and
+        result_status.
+      - all_results_received = true before proceeding to sigma_3 (Ax-5).
+      - Each sub-agent received only its own SubTask description, Scope, and return format.
+      - Orchestrator did not write to sub-agent work artifacts.
+
+      **Rationale:**
+      Single-pass dispatch (Ax-4) means each sub-task is dispatched exactly once. There is
+      no re-dispatch in this method. If a sub-agent fails, the failure propagates to sigma_4
+      as FAIL_INCOMPLETE. Wait for ALL results — partial integration is not valid.
+
+      **Procedure:**
+      1. For each independent cluster of SubTasks: dispatch all in parallel.
+      2. For any dependent SubTasks identified in sigma_1: dispatch sequentially.
+      3. Provide each sub-agent: (a) SubTask description, (b) Scope declaration, (c) return
+         format, (d) hard constraints.
+      4. Wait for all Results before proceeding.
+      5. If a sub-agent reports concurrent-agent editing conflicts, record as expected
+         (not a regression).
+
+      **Output schema reference:**
+      - dispatch_log: array of dispatch entries
+      - all_results_received: boolean
+    output_schema:
+      fields:
+        - name: dispatch_log
+          type: array
+          items: object
+          description: "{sub_task_id, agent_id, dispatch_mode: parallel|sequential, result_status: received|failed}"
+          min_items: 1
+          required: true
+        - name: all_results_received
+          type: boolean
+          required: true
+    invariants:
+      hard:
+        - "dispatch_log has exactly |sub_tasks| entries"
+        - "all_results_received = true"
+        - "each dispatch_log entry has sub_task_id and result_status"
+      soft:
+        - "dispatch_mode = parallel for all independent sub-tasks"
+
+  - id: sigma_3
+    name: "Integrate"
+    role: orchestrator
+    precondition: "sigma_2 complete; all Results received (all_results_received = true)"
+    postcondition: "Integration produced; all Results combined; no output omitted"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - integration is non-empty: the assembled output.
+      - sub_task_coverage contains one entry per sub-task with included = true/false.
+      - Every sub-task must be included. Silent omission of a Result is a method violation (Ax-5).
+      - Sub-agent errors or partial outcomes must be represented in the Integration with
+        flagged_failures entries — they cannot be silently dropped.
+      - Orchestrator integrates from Results only — not by re-reading sub-task artifacts.
+
+      **Rationale:**
+      Integration must include all Results because partial integration masks failures.
+      A FAIL_INCOMPLETE verdict at sigma_4 with an explicit cause is more useful than a
+      quietly degraded PASS.
+
+      **Procedure:**
+      1. Collect all Results in order of sub-task declaration.
+      2. Merge outputs: combine, reconcile, or compose as the Challenge deliverable requires.
+      3. For any Result that reports partial outcome or error: mark in flagged_failures.
+      4. Verify that the Integration addresses all deliverable dimensions from sigma_1.
+      5. Record the Integration artifact.
+
+      **Output schema reference:**
+      - integration: the assembled output (structure is challenge-specific)
+      - sub_task_coverage: array of {sub_task_id, included, notes} entries
+      - flagged_failures: array of sub_task_ids where Results were errors or partial
+    output_schema:
+      fields:
+        - name: integration
+          type: object
+          description: "The assembled output — structure is challenge-specific"
+          required: true
+        - name: sub_task_coverage
+          type: array
+          items: object
+          description: "{sub_task_id: string, included: bool, notes: string}"
+          min_items: 1
+          required: true
+        - name: flagged_failures
+          type: array
+          items: string
+          description: "Sub-task IDs where Results were errors or partial"
+          min_items: 0
+          required: false
+    invariants:
+      hard:
+        - "integration is non-empty"
+        - "sub_task_coverage has exactly |sub_tasks| entries"
+        - "all sub_task_coverage entries have included = true (or failure is flagged)"
+      soft:
+        - "flagged_failures is populated if any sub-agent reported errors"
+        - "integration addresses all deliverable dimensions from sigma_1"
+
+  - id: sigma_4
+    name: "Verify"
+    role: orchestrator
+    precondition: "sigma_3 complete; Integration produced"
+    postcondition: "VerificationOutcome determined; Integration confirmed or failure declared with cause"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - outcome is one of: PASS, FAIL_INCOMPLETE, FAIL_INCONSISTENT.
+      - completeness_notes is non-empty: states whether covers(Integration, Challenge) holds.
+      - consistency_notes is non-empty: states whether consistent(Integration) holds.
+      - If outcome != PASS: failure_cause is non-empty.
+      - Verification failure is TERMINAL. No re-dispatch loop. The caller decides what to
+        do with a failed Integration.
+
+      **Rationale:**
+      Do not obscure failures. A FAIL verdict with an explicit cause is more useful than a
+      quietly degraded PASS. This method's single-pass constraint (Ax-4) means verification
+      failure cannot trigger re-dispatch — that capability belongs to M1-IMPL §11 or a
+      future re-entrant version.
+
+      **Procedure:**
+      1. Completeness check — covers(Integration, Challenge): does the Integration address
+         all dimensions of the Challenge? Cross-reference against sigma_1 decomposition.
+         Uncovered dimension = FAIL_INCOMPLETE.
+      2. Consistency check — consistent(Integration): are there contradictions between
+         sub-task outputs as integrated? Contradictions = FAIL_INCONSISTENT.
+      3. If both pass: outcome = PASS.
+      4. Record the VerificationOutcome with explicit notes.
+
+      **Output schema reference:**
+      - outcome: PASS, FAIL_INCOMPLETE, or FAIL_INCONSISTENT
+      - completeness_notes: string
+      - consistency_notes: string
+      - failure_cause: string (required if outcome != PASS)
+    output_schema:
+      fields:
+        - name: outcome
+          type: enum
+          values: ["PASS", "FAIL_INCOMPLETE", "FAIL_INCONSISTENT"]
+          required: true
+        - name: completeness_notes
+          type: string
+          description: "Whether Integration covers all Challenge dimensions"
+          min_length: 1
+          required: true
+        - name: consistency_notes
+          type: string
+          description: "Whether contradictions exist between integrated Results"
+          min_length: 1
+          required: true
+        - name: failure_cause
+          type: string
+          description: "Required if outcome != PASS"
+          required: false
+    invariants:
+      hard:
+        - "outcome is one of PASS, FAIL_INCOMPLETE, FAIL_INCONSISTENT"
+        - "completeness_notes is non-empty"
+        - "consistency_notes is non-empty"
+        - "if outcome != PASS: failure_cause is non-empty"
+      soft:
+        - "completeness_notes names specific uncovered dimensions if FAIL_INCOMPLETE"
+        - "consistency_notes names specific contradictions if FAIL_INCONSISTENT"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 establishes parallel_decomposable = true and challenge structure
+        understood. pre_sigma_1 requires sigma_0 complete and parallel_decomposable = true.
+        The proceed path of sigma_0 satisfies sigma_1's precondition. The redirect path
+        terminates the method — sigma_1 is never reached.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 establishes SubTask set with declared Scopes and verified independence.
+        pre_sigma_2 requires decomposition finalized and independence verified. post_sigma_1
+        is a superset of pre_sigma_2 (additionally establishes coverage_verified).
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 establishes all Results received (all_results_received = true).
+        pre_sigma_3 requires sigma_2 complete and all Results received. Identity inclusion.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 establishes Integration produced. pre_sigma_4 requires sigma_3
+        complete and Integration produced. Identity inclusion.
+  terminal_condition_claim: >
+    post_sigma_4 determines VerificationOutcome. If PASS: covers(Integration, Challenge)
+    AND consistent(Integration) AND all SubTasks complete — this is O_ORCH. If FAIL:
+    the method terminates with an explicit failure cause. Both outcomes are terminal states.
+  initial_condition_claim: >
+    pre_sigma_0 requires Challenge presented and unambiguous. This holds at method
+    invocation: P1-EXEC's delta_EXEC passes the Challenge to M2-ORCH via embed_ORCH.
+  contrarian_challenge:
+    weakest_edge: "sigma_2 -> sigma_3"
+    challenge: >
+      post_sigma_2 claims all_results_received = true. But sub-agents may time out, return
+      errors, or produce malformed Results. The dispatch step waits for all Results, but
+      "received" is not "valid." A sub-agent that returns an error has technically completed
+      (result_status = failed), but the Result may not be usable for integration. The
+      postcondition conflates "received" with "usable."
+    defense_or_revision: >
+      This is by design. Ax-5 requires all Results before Integration. sigma_2's dispatch_log
+      records result_status per sub-task, distinguishing "received" from "failed." sigma_3's
+      guidance explicitly requires that sub-agent errors be represented in the Integration
+      via flagged_failures — not silently dropped. sigma_4 then classifies an Integration
+      with flagged failures as FAIL_INCOMPLETE. The chain is: sub-agent failure -> dispatch_log
+      records it -> Integration flags it -> sigma_4 verdicts FAIL_INCOMPLETE with cause. The
+      composability holds because sigma_3 does not require *valid* Results — it requires *all*
+      Results, with failures explicitly flagged.
+
+objective:
+  id: O_ORCH
+  formal: >
+    O_ORCH(s) = covers(Integration(s), Challenge(s))
+    AND consistent(Integration(s))
+    AND forall t : SubTask. decomposedFrom(t, Challenge(s)) -> complete(t)
+  type: terminal
+  expressible_claim: >
+    O_ORCH references covers (declared predicate over Integration x Challenge), consistent
+    (declared predicate over Integration), complete (declared predicate over SubTask), and
+    decomposedFrom (declared predicate over SubTask x Challenge). All symbols are in
+    Sigma_ORCH. O_ORCH is a conjunction of Sigma-predicates — expressible as a closed
+    sentence over Mod(D_ORCH).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{t | complete(t) in s1}| <= |{t | complete(t) in s2}|.
+      States with more completed sub-tasks are further toward O_ORCH. Terminal states
+      (all complete, covers, consistent) are maximal.
+    well_founded: "Finite sub-task set (Ax-1). Bounded above by n = |SubTasks|."
+  success_profile:
+    - id: mu_1
+      name: task_coverage
+      formula: "|{t : SubTask | complete(t)}| / |{t : SubTask | decomposedFrom(t, Challenge)}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 is an order-homomorphism w.r.t. <=_O by definition. mu_1 = 1.0 is necessary
+        but not sufficient for O_ORCH (integration consistency still required).
+    - id: mu_2
+      name: integration_coherence
+      formula: "1 if consistent(Integration) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_2 = 0 is a terminal FAIL — Integration cannot satisfy O_ORCH while inconsistent.
+        mu_2 = 1 is necessary for O_ORCH.
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0,..,sigma_4} | sigma has not executed in s}|"
+  initial: 5
+  final: 0
+  decrease_witness: >
+    Each step execution reduces nu by exactly 1. The DAG is a path graph with no cycles —
+    each step executes exactly once. nu is bounded below by 0 and strictly decreases at
+    each step. Termination is guaranteed after at most 5 step executions.
+
+relationship_to_m1_impl:
+  distinction: >
+    M2-ORCH is the single-pass core extracted from M1-IMPL §11 (Orchestrator Mode).
+    M1-IMPL §11 is a methodology (delta_SI selects next sub-agent based on gate state,
+    includes Patch on FAIL loop). M2-ORCH omits re-entrant dispatch deliberately —
+    FAIL at sigma_4 requires the caller to decide what to do.
+  source: "MAUD report G4 finding (2026-03-09)"
+
+known_wip:
+  - id: Q1
+    status: open
+    description: >
+      Domain retraction pairs for sub-agent scoping (embed_SA/project_SA) required by
+      F1-FTH §6.3 but not formally declared. The retraction is implicit in the scope
+      assignment at sigma_2.
+  - id: Q2
+    status: open
+    description: >
+      Parallel dispatch assumes scope-disjointness implies domain-theory-disjointness.
+      This is plausible for file-scoped sub-tasks but unverified formally. Blocked on
+      P4 (parallel retraction coherence) from F2-OPR.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: decompose, dispatch, integrate, verify. Who: orchestrator
+        + n sub-agents. Why: context window burn and serialization waste. How: five-step
+        linear DAG. When: >= 3 independent sub-tasks with declarable scopes; not for
+        dependent sub-tasks, creative generation, or re-dispatch scenarios.
+    - gate: G1
+      result: PASS
+      note: >
+        D_ORCH = (Sigma_ORCH, Ax_ORCH). 7 sorts with cardinality, 5 total function symbols,
+        7 predicates with typed signatures referencing declared sorts, 5 closed axioms with
+        rationale. Domain boundary stated. Initial and terminal state membership in Mod(D_ORCH)
+        claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_ORCH stated as conjunction of three Sigma-predicates (covers, consistent, complete).
+        Expressibility claim present. Progress preorder declared with well-foundedness
+        argument. Two measures with formulas, ranges, terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles: orchestrator (architectural context, full orchestration authority) and
+        sub_agent (scoped execution, Result production). Coverage claim: union of projections
+        covers all of Mod(D_ORCH). Authority claim: union covers all required transitions.
+        Role partition rationale: epistemic separation is the method's core mechanism.
+    - gate: G4
+      result: PASS
+      note: >
+        Five steps in path graph. Each step has pre, post, finalized guidance, typed
+        output_schema with hard/soft invariants. Four composability claims (all justified).
+        Terminal and initial condition claims present. Contrarian challenge on sigma_2->sigma_3
+        edge (received vs usable Results) defended by flagged_failures chain.
+    - gate: G5
+      result: PASS
+      note: >
+        All five steps have finalized guidance in constraints-first format. Each guidance
+        block covers all required output_schema fields by name. Spot-check: sigma_1 names
+        sub_tasks, coverage_verified, deferred_gaps; sigma_4 names outcome, completeness_notes,
+        consistency_notes, failure_cause. All fields covered.
+    - gate: G6
+      result: PASS
+      note: "This file (P1-EXEC/M2-ORCH/M2-ORCH.yaml). Structurally complete."
