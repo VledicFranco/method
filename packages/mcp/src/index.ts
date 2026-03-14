@@ -12,6 +12,8 @@ import {
   loadMethodology,
   getMethodologyRouting,
   lookupTheory,
+  selectMethodology,
+  validateStepOutput,
 } from "@method/core";
 
 // Path resolution
@@ -48,7 +50,7 @@ const sessionIdProperty = {
 
 // Server
 const server = new Server(
-  { name: "method", version: "0.2.0" },
+  { name: "method", version: "0.3.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -161,6 +163,46 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "methodology_select",
+      description:
+        "Record a routing decision and initialize a methodology-level session. Loads the selected method and tracks the methodology context.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          methodology_id: {
+            type: "string",
+            description: "Methodology ID (e.g., P2-SD)",
+          },
+          selected_method_id: {
+            type: "string",
+            description: "Method ID selected by routing (e.g., M1-IMPL)",
+          },
+          ...sessionIdProperty,
+        },
+        required: ["methodology_id", "selected_method_id"],
+      },
+    },
+    {
+      name: "step_validate",
+      description:
+        "Validate a sub-agent's output against the current step's output schema and postconditions. Records the output for step_context's prior_step_outputs.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          step_id: {
+            type: "string",
+            description: "ID of the step being validated (must match current step)",
+          },
+          output: {
+            type: "object",
+            description: "The output object to validate against the step's schema",
+          },
+          ...sessionIdProperty,
+        },
+        required: ["step_id", "output"],
+      },
+    },
   ],
 }));
 
@@ -243,6 +285,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const session = sessions.getOrCreate(session_id ?? '__default__');
         const ctx = session.context();
         return ok(JSON.stringify(ctx, null, 2));
+      }
+
+      case "methodology_select": {
+        const { methodology_id, selected_method_id, session_id } = z.object({
+          methodology_id: z.string(),
+          selected_method_id: z.string(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const sid = session_id ?? '__default__';
+        const session = sessions.getOrCreate(sid);
+        const result = selectMethodology(REGISTRY, methodology_id, selected_method_id, session, sid);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "step_validate": {
+        const { step_id, output, session_id } = z.object({
+          step_id: z.string(),
+          output: z.record(z.unknown()),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const session = sessions.getOrCreate(session_id ?? '__default__');
+        const result = validateStepOutput(session, step_id, output);
+        return ok(JSON.stringify(result, null, 2));
       }
 
       default:

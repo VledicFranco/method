@@ -225,13 +225,31 @@ describe('PRD 003 — context()', () => {
     assert.equal(ctx.methodology.progress, '1 / 7');
   });
 
-  it('priorStepOutputs is empty array in Phase 1', () => {
+  it('priorStepOutputs is empty when no outputs recorded', () => {
     const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
     const session = createSession();
     session.load(method);
 
     const ctx = session.context();
     assert.deepStrictEqual(ctx.priorStepOutputs, []);
+  });
+
+  it('priorStepOutputs populated after recording and advancing', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    // Record output for step 0
+    session.recordStepOutput('sigma_0', { result: 'oriented', files: 3 });
+    // Still at step 0 — priorStepOutputs should be empty (no steps before current)
+    assert.deepStrictEqual(session.context().priorStepOutputs, []);
+
+    // Advance to step 1
+    session.advance();
+    const ctx = session.context();
+    assert.equal(ctx.priorStepOutputs.length, 1);
+    assert.equal(ctx.priorStepOutputs[0].stepId, 'sigma_0');
+    assert.ok(ctx.priorStepOutputs[0].summary.includes('oriented'));
   });
 
   it('throws when no method loaded', () => {
@@ -253,5 +271,47 @@ describe('PRD 003 — context()', () => {
     assert.equal(ctx.stepIndex, 1);
     assert.equal(ctx.methodology.progress, '2 / 7');
     assert.equal(ctx.step.id, 'sigma_1');
+  });
+
+  it('setMethodologyContext updates context().methodology.name', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    // Before setting context — falls back to method name
+    const ctxBefore = session.context();
+    assert.equal(ctxBefore.methodology.name, method.name);
+
+    // Set methodology context
+    session.setMethodologyContext('P0-META', 'Meta-Methodology');
+    const ctxAfter = session.context();
+    assert.equal(ctxAfter.methodology.id, 'P0-META');
+    assert.equal(ctxAfter.methodology.name, 'Meta-Methodology');
+    // method name should be unchanged
+    assert.equal(ctxAfter.method.name, method.name);
+  });
+
+  it('methodology context persists across load() calls', () => {
+    const session = createSession();
+    session.setMethodologyContext('P2-SD', 'Software Delivery');
+
+    const method = loadMethodology(REGISTRY, 'P2-SD', 'M1-IMPL');
+    session.load(method);
+
+    const ctx = session.context();
+    assert.equal(ctx.methodology.name, 'Software Delivery');
+  });
+
+  it('load() clears step outputs', () => {
+    const method = loadMethodology(REGISTRY, 'P0-META', 'M1-MDES');
+    const session = createSession();
+    session.load(method);
+
+    session.recordStepOutput('sigma_0', { result: 'test' });
+    assert.equal(session.getStepOutputs().length, 1);
+
+    // Reload — outputs should be cleared
+    session.load(method);
+    assert.equal(session.getStepOutputs().length, 0);
   });
 });

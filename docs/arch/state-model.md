@@ -152,11 +152,35 @@ type PriorStepOutput = {
 | `method.objective` | `LoadedMethod.objective` | Not included |
 | `priorStepOutputs` | Session output history | Not included |
 
-### `priorStepOutputs` — Phase 1 Limitation
+### `priorStepOutputs` — Phase 3 Enabled
 
-In Phase 1, `priorStepOutputs` always returns an empty array (`[]`). The session does not currently track step outputs — there is no mechanism to record what an agent produced at each step.
+`priorStepOutputs` is populated by the `step_validate` tool (Phase 3). When `validateStepOutput()` is called, it records the output in the session via `session.recordStepOutput(stepId, output)`. The `context()` method then returns entries for all steps before the current step index that have recorded outputs, each with `{ stepId, summary }` where `summary` is the first 200 characters of the JSON-stringified output.
 
-Phase 3's `step_validate` tool will add output recording to the session. Once outputs are recorded, `context()` will return them as prior step summaries. The `StepContext` type includes `priorStepOutputs` from the start so the response shape is stable across phases — consumers never see a field appear or disappear.
+Step outputs are cleared when `load()` is called (new method load) but are preserved across `advance()` calls within the same method.
+
+### Methodology Context Tracking (Phase 3)
+
+The session tracks methodology-level context separately from the loaded method. This solves the Phase 1 limitation where `context().methodology.name` returned the method name instead of the methodology name.
+
+#### `setMethodologyContext(methodologyId: string, methodologyName: string): void`
+
+Sets the methodology context for this session. Called by `selectMethodology()` after loading a method. The methodology context persists across `load()` calls — if the same methodology loads a different method, the methodology name is retained.
+
+When methodology context is set:
+- `context().methodology.id` returns the methodology ID from context (not from `LoadedMethod`)
+- `context().methodology.name` returns the methodology name from context (not the method name)
+
+When methodology context is not set (backward compatibility):
+- `context().methodology.id` falls back to `LoadedMethod.methodologyId`
+- `context().methodology.name` falls back to `LoadedMethod.name`
+
+#### `recordStepOutput(stepId: string, output: Record<string, unknown>): void`
+
+Records a step's output in the session. Called by `validateStepOutput()` — always records, even when validation fails. Outputs are stored in a `Map<string, Record<string, unknown>>` keyed by step ID.
+
+#### `getStepOutputs(): Array<{ stepId: string; output: Record<string, unknown> }>`
+
+Returns all recorded step outputs as an array.
 
 ### Error Cases
 

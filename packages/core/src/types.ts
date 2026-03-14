@@ -91,6 +91,30 @@ export type PriorStepOutput = {
   summary: string;
 };
 
+export type MethodologySelectResult = {
+  methodologySessionId: string;
+  selectedMethod: {
+    methodId: string;
+    name: string;
+    stepCount: number;
+    firstStep: { id: string; name: string };
+  };
+  message: string;
+};
+
+export type ValidationFinding = {
+  field: string;
+  issue: string;
+  severity: 'error' | 'warning' | 'info';
+};
+
+export type ValidationResult = {
+  valid: boolean;
+  findings: ValidationFinding[];
+  postconditionMet: boolean;
+  recommendation: 'advance' | 'retry' | 'escalate';
+};
+
 export type StepContext = {
   methodology: {
     id: string;

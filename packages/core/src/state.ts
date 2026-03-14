@@ -7,11 +7,16 @@ export type Session = {
   status(): SessionStatus;
   context(): StepContext;
   isLoaded(): boolean;
+  setMethodologyContext(methodologyId: string, methodologyName: string): void;
+  recordStepOutput(stepId: string, output: Record<string, unknown>): void;
+  getStepOutputs(): Array<{ stepId: string; output: Record<string, unknown> }>;
 };
 
 export function createSession(): Session {
   let method: LoadedMethod | null = null;
   let currentIndex = 0;
+  let methodologyContext: { id: string; name: string } | null = null;
+  const stepOutputs = new Map<string, Record<string, unknown>>();
 
   function assertLoaded(): LoadedMethod {
     if (method === null) {
@@ -24,6 +29,9 @@ export function createSession(): Session {
     load(m: LoadedMethod): void {
       method = m;
       currentIndex = 0;
+      stepOutputs.clear();
+      // methodologyContext is preserved across loads — it is set by selectMethodology
+      // and should persist when the same methodology loads different methods
     },
 
     current(): CurrentStepResult {
@@ -72,13 +80,23 @@ export function createSession(): Session {
 
     context(): StepContext {
       const m = assertLoaded();
+
+      // Build priorStepOutputs from recorded outputs for steps before currentIndex
+      const priorOutputs: Array<{ stepId: string; summary: string }> = [];
+      for (let i = 0; i < currentIndex; i++) {
+        const stepId = m.steps[i].id;
+        const output = stepOutputs.get(stepId);
+        if (output) {
+          const full = JSON.stringify(output);
+          const summary = full.length > 200 ? full.slice(0, 200) + '...' : full;
+          priorOutputs.push({ stepId, summary });
+        }
+      }
+
       return {
         methodology: {
-          id: m.methodologyId,
-          // Phase 1 limitation: LoadedMethod only stores the method name, not
-          // the methodology name separately. Using method name for both until
-          // methodology-level metadata is added to LoadedMethod.
-          name: m.name,
+          id: methodologyContext?.id ?? m.methodologyId,
+          name: methodologyContext?.name ?? m.name,
           progress: `${currentIndex + 1} / ${m.steps.length}`,
         },
         method: {
@@ -89,14 +107,24 @@ export function createSession(): Session {
         step: m.steps[currentIndex],
         stepIndex: currentIndex,
         totalSteps: m.steps.length,
-        // Phase 1: empty array — session does not yet track step outputs.
-        // Phase 3's step_validate will add output recording.
-        priorStepOutputs: [],
+        priorStepOutputs: priorOutputs,
       };
     },
 
     isLoaded(): boolean {
       return method !== null;
+    },
+
+    setMethodologyContext(methodologyId: string, methodologyName: string): void {
+      methodologyContext = { id: methodologyId, name: methodologyName };
+    },
+
+    recordStepOutput(stepId: string, output: Record<string, unknown>): void {
+      stepOutputs.set(stepId, output);
+    },
+
+    getStepOutputs(): Array<{ stepId: string; output: Record<string, unknown> }> {
+      return Array.from(stepOutputs.entries()).map(([stepId, output]) => ({ stepId, output }));
     },
   };
 }

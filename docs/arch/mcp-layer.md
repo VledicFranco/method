@@ -6,7 +6,7 @@
 
 1. Resolves filesystem paths (see [path-resolution.md](path-resolution.md))
 2. Creates one session instance via `createSession()`
-3. Defines 8 MCP tools with Zod input schemas
+3. Defines 10 MCP tools with Zod input schemas
 4. Maps each tool call to a core function
 5. Formats responses and catches errors
 
@@ -24,6 +24,8 @@
 | `theory_lookup` | `{ term: string, session_id?: string }` | `lookupTheory(THEORY, term)` | |
 | `methodology_get_routing` | `{ methodology_id: string, session_id?: string }` | `getMethodologyRouting(REGISTRY, mid)` | PRD 003 Phase 1 |
 | `step_context` | `{ session_id?: string }` | `session.context()` | PRD 003 Phase 1 |
+| `methodology_select` | `{ methodology_id: string, selected_method_id: string, session_id?: string }` | `selectMethodology(REGISTRY, mid, methid, session, sid)` | PRD 003 Phase 3 |
+| `step_validate` | `{ step_id: string, output: object, session_id?: string }` | `validateStepOutput(session, stepId, output)` | PRD 003 Phase 3 |
 
 `session_id` is optional on all tools (P3). When omitted, the MCP layer passes `"__default__"` to the SessionManager. See [state-model.md](state-model.md) for SessionManager design.
 
@@ -167,7 +169,41 @@ Enriched context envelope for prompt composition — a superset of `step_current
 }
 ```
 
-`priorStepOutputs` is always `[]` in Phase 1. See [state-model.md](state-model.md) for the Phase 3 plan.
+`priorStepOutputs` is populated by `step_validate` (Phase 3). Returns recorded outputs for steps before the current step index.
+
+### `methodology_select`
+
+Records a routing decision and initializes a methodology-level session:
+
+```json
+{
+  "methodologySessionId": "my-session",
+  "selectedMethod": {
+    "methodId": "M1-IMPL",
+    "name": "Method for Implementing Software from Architecture and PRDs",
+    "stepCount": 9,
+    "firstStep": { "id": "sigma_A1", "name": "Inventory" }
+  },
+  "message": "Selected M1-IMPL — Method for Implementing Software... (9 steps) under Software Delivery Methodology. Call step_context to get the first step's context."
+}
+```
+
+Sets the methodology context so `step_context` returns the correct methodology name (not the method name).
+
+### `step_validate`
+
+Validates sub-agent output against the current step's output schema and postconditions:
+
+```json
+{
+  "valid": true,
+  "findings": [],
+  "postconditionMet": true,
+  "recommendation": "advance"
+}
+```
+
+Recommendation values: `"advance"` (all clear), `"retry"` (schema errors), `"escalate"` (postcondition not met). Output is always recorded in the session regardless of validation result — `step_context` returns it in `priorStepOutputs` for subsequent steps.
 
 ### Design Note
 
@@ -185,3 +221,5 @@ Tool descriptions are what the agent reads to decide which tool to call. They mu
 - `theory_lookup`: "Search the formal theory (F1-FTH, F4-PHI) for a term or definition."
 - `methodology_get_routing`: "Get the routing criteria for a methodology — predicates and transition function arms for agent-side evaluation."
 - `step_context`: "Get enriched context for the current step: methodology progress, method objective, step record, and prior outputs."
+- `methodology_select`: "Record a routing decision and initialize a methodology-level session. Loads the selected method and tracks the methodology context."
+- `step_validate`: "Validate a sub-agent's output against the current step's output schema and postconditions. Records the output for step_context's prior_step_outputs."
