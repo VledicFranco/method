@@ -1,0 +1,262 @@
+method:
+  id: M7-PRDS
+  parent: P2-SD
+  name: "PRD Sectioning Method"
+  description: >
+    Takes a full PRD and decomposes it into plannable PRDSections — scoped, ordered
+    units that M5-PLAN can consume individually. Identifies dependencies between
+    sections, proposes a delivery ordering, and produces a SectionMap that serves
+    as the roadmap for iterative plan-implement-review cycles.
+  version: "0.1"
+  status: draft
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M7-PRDS takes a full PRD document and produces a SectionMap: a list of PRDSections
+    with dependency edges and a proposed delivery ordering. Each PRDSection is a scoped,
+    self-contained unit that M5-PLAN can turn into a PhaseDoc. Output satisfies O_PRDS:
+    all PRD content is covered, dependencies are explicit, and ordering respects
+    dependencies.
+  who: >
+    One role — the sectioner. Reads the PRD and existing architecture docs. Produces
+    the decomposition. Does not plan or implement — only sections.
+  why: >
+    M5-PLAN takes a PRDSection as input, but PRDs are typically monolithic documents
+    covering multiple features, domains, and delivery phases. Without explicit
+    sectioning, the boundary-drawing happens implicitly during planning — producing
+    inconsistent scope, missed features, and cross-section dependencies that surface
+    mid-implementation. M7-PRDS makes the decomposition explicit and auditable.
+  how: >
+    Three linear steps: analyze (read PRD, identify feature clusters) -> decompose
+    (produce PRDSections with boundaries, dependencies, acceptance criteria per section)
+    -> order (topological sort on dependency graph, produce delivery sequence).
+  when_to_use:
+    - "A full PRD exists and needs to be broken into plannable phases"
+    - "The PRD covers multiple features or domains that should be delivered incrementally"
+    - "The delivery team needs a roadmap before invoking M5-PLAN"
+  when_not_to_use:
+    - "The PRD is already a single section — pass directly to M5-PLAN"
+    - "The task is to write the PRD — that is product discovery, outside P2-SD niche"
+    - "The task is to plan a single section — use M5-PLAN directly"
+
+domain_theory:
+  id: D_PRDS
+  sorts:
+    - name: PRD
+      cardinality: singleton_per_execution
+      description: "The full product requirements document"
+    - name: FeatureCluster
+      cardinality: finite
+      description: "A group of related requirements that form a coherent delivery unit"
+    - name: PRDSection
+      cardinality: "finite, >= 1"
+      description: "A scoped, self-contained unit of the PRD that M5-PLAN can consume"
+    - name: Dependency
+      cardinality: finite
+      description: "A directed edge: PRDSection A must be delivered before PRDSection B"
+    - name: SectionMap
+      cardinality: singleton_per_execution
+      description: "The terminal output: ordered list of PRDSections with dependency graph"
+    - name: ArchDoc
+      cardinality: finite
+      description: "Architecture documents informing how the PRD maps to system structure"
+  function_symbols:
+    - name: section_count
+      signature: "SectionMap -> nat"
+      totality: total
+    - name: depends_on
+      signature: "PRDSection x PRDSection -> Bool"
+      totality: total
+      description: "True if the first section depends on the second being delivered first"
+  predicates:
+    - name: covers
+      signature: "SectionMap x PRD"
+      description: "Every requirement in the PRD is assigned to at least one PRDSection"
+    - name: scoped
+      signature: "PRDSection"
+      description: "The section has explicit boundaries — what is in scope and what is not"
+    - name: has_acceptance_criteria
+      signature: "PRDSection"
+      description: "The section has at least one concrete, verifiable acceptance criterion"
+    - name: dependency_acyclic
+      signature: "SectionMap"
+      description: "The dependency graph over PRDSections has no cycles"
+    - name: ordering_valid
+      signature: "SectionMap"
+      description: "The proposed delivery ordering respects all dependency edges"
+    - name: section_of
+      signature: "PRDSection x SectionMap"
+      description: "This PRDSection is part of this SectionMap"
+  axioms:
+    - id: Ax-1
+      name: Coverage
+      statement: "forall sm : SectionMap, prd : PRD. covers(sm, prd)"
+      rationale: "Every requirement in the PRD must be assigned to at least one section. Uncovered requirements are lost."
+    - id: Ax-2
+      name: Section scoping
+      statement: "forall s : PRDSection, sm : SectionMap. section_of(s, sm) -> scoped(s) AND has_acceptance_criteria(s)"
+      rationale: "Every section must have explicit boundaries and at least one verifiable acceptance criterion."
+    - id: Ax-3
+      name: Dependency acyclicity
+      statement: "forall sm : SectionMap. dependency_acyclic(sm)"
+      rationale: "Cyclic dependencies make delivery ordering impossible. The dependency graph must be a DAG."
+    - id: Ax-4
+      name: Ordering validity
+      statement: "forall sm : SectionMap. ordering_valid(sm) -> forall s1 s2 : PRDSection. depends_on(s1, s2) -> order(s2) < order(s1)"
+      rationale: "The delivery ordering must respect all dependency edges — a section's dependencies are delivered before it."
+  domain_boundary_note: >
+    Excludes: writing the PRD (product discovery is outside P2-SD niche); planning
+    individual sections (M5-PLAN); architecture design (M6-ARFN); implementation;
+    the content domain of the product being built.
+  initial_state_valid_claim: >
+    PRD present, no FeatureClusters, no PRDSections, no SectionMap. All axioms
+    vacuously true (no SectionMap exists). Valid.
+  terminal_state_valid_claim: >
+    SectionMap produced with >= 1 PRDSections, all scoped with acceptance criteria
+    (Ax-2), coverage verified (Ax-1), dependency graph acyclic (Ax-3), ordering
+    valid (Ax-4). Valid.
+
+roles:
+  - id: sectioner
+    description: >
+      Reads the full PRD and architecture docs. Identifies feature clusters,
+      draws section boundaries, determines dependencies, proposes delivery ordering.
+      Does not plan, implement, or design architecture.
+    observation_projection: "pi_sectioner = id — full visibility over PRD and ArchDocs"
+    authorized_transitions:
+      - "Analyze PRD and identify feature clusters (sigma_0)"
+      - "Produce PRDSections with boundaries and acceptance criteria (sigma_1)"
+      - "Determine dependencies and produce delivery ordering (sigma_2)"
+    not_authorized:
+      - "Modify the PRD"
+      - "Plan individual sections (M5-PLAN territory)"
+      - "Design or modify architecture (M6-ARFN territory)"
+  coverage_claim: "Sectioner sees full PRD and ArchDocs — full visibility over Mod(D_PRDS)."
+  authority_claim: "Sectioner authority covers all three steps. No transition unauthorized."
+  role_partition_rationale: "One role — PRD sectioning is single-perspective analytical work. No adversarial or parallel structure needed."
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 (path graph, trivially acyclic)"
+
+phases:
+  - id: sigma_0
+    name: "Analyze"
+    role: sectioner
+    precondition: "PRD document available; architecture docs accessible"
+    postcondition: "Feature clusters identified; PRD structure understood"
+    guidance: |
+      **Constraints:**
+      - feature_clusters is non-empty.
+      - Each cluster names the PRD requirements it groups and the rationale for grouping.
+      - architecture_context identifies which architecture components are relevant.
+
+      **Procedure:**
+      1. Read the full PRD. Identify distinct feature areas or user stories.
+      2. Group requirements into feature clusters — each cluster should be deliverable
+         as a coherent unit (all-or-nothing, not partial).
+      3. Read architecture docs to understand how features map to system components.
+    output_schema:
+      fields:
+        - name: feature_clusters
+          type: array
+          items: object
+          description: "{name, requirements: [string], rationale: string}"
+          min_items: 1
+          required: true
+        - name: architecture_context
+          type: array
+          items: string
+          description: "Architecture components relevant to this PRD"
+          required: true
+
+  - id: sigma_1
+    name: "Decompose"
+    role: sectioner
+    precondition: "sigma_0 complete; feature clusters identified"
+    postcondition: "PRDSections produced; each scoped with acceptance criteria; coverage verified"
+    guidance: |
+      **Constraints:**
+      - sections has >= 1 entry.
+      - Each section has: id, name, scope_boundary, acceptance_criteria (>= 1), requirements_covered.
+      - coverage_verified = true: every PRD requirement traced to at least one section (Ax-1).
+      - No requirement appears only in deferred_requirements without justification.
+
+      **Procedure:**
+      1. Convert each feature cluster into one or more PRDSections.
+      2. For each section: declare explicit scope boundary (what's in, what's out).
+      3. For each section: extract at least one concrete acceptance criterion.
+      4. Verify full PRD coverage — every requirement must appear in at least one section.
+      5. Record any intentionally deferred requirements with justification.
+    output_schema:
+      fields:
+        - name: sections
+          type: array
+          items: object
+          description: "{id, name, scope_boundary, acceptance_criteria: [string], requirements_covered: [string]}"
+          min_items: 1
+          required: true
+        - name: coverage_verified
+          type: boolean
+          required: true
+        - name: deferred_requirements
+          type: array
+          items: string
+          required: false
+
+  - id: sigma_2
+    name: "Order"
+    role: sectioner
+    precondition: "sigma_1 complete; PRDSections produced"
+    postcondition: "Dependencies identified; ordering valid; SectionMap produced"
+    guidance: |
+      **Constraints:**
+      - dependencies is present (empty if no cross-section dependencies).
+      - dependency_graph is acyclic (Ax-3) — if a cycle is detected, revise sections.
+      - delivery_order is a valid topological sort of the dependency graph (Ax-4).
+      - section_map is non-empty.
+
+      **Procedure:**
+      1. For each pair of sections: determine if a dependency exists (section A requires
+         artifacts from section B to be delivered first).
+      2. Build the dependency graph. Check for cycles — if found, merge or split sections.
+      3. Topologically sort the dependency graph to produce delivery_order.
+      4. Assemble the SectionMap.
+    output_schema:
+      fields:
+        - name: dependencies
+          type: array
+          items: object
+          description: "{from: section_id, to: section_id, reason: string}"
+          min_items: 0
+          required: true
+        - name: delivery_order
+          type: array
+          items: string
+          description: "Section IDs in delivery order (respects dependencies)"
+          min_items: 1
+          required: true
+        - name: section_map
+          type: object
+          description: "Complete SectionMap: sections + dependencies + ordering"
+          required: true
+
+objective:
+  id: O_PRDS
+  formal: >
+    O_PRDS(s) = covers(sectionMap, prd) AND dependency_acyclic(sectionMap)
+    AND ordering_valid(sectionMap) AND forall s : PRDSection. section_of(s, sectionMap)
+    -> scoped(s) AND has_acceptance_criteria(s)
+  type: terminal
+  success_profile:
+    - id: mu_1
+      name: prd_coverage
+      formula: "|{req | assigned_to_section(req)}| / |{req | in_prd(req)}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2} | NOT executed}|"
+  initial: 3
+  final: 0
+  note: "Linear DAG, no loops. Trivially terminating."

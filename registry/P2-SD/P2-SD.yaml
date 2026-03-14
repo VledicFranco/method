@@ -20,13 +20,13 @@ navigation:
     The dispatcher role — any agent (human or LLM) who receives a software delivery
     challenge and must decide which method to invoke.
   why: >
-    Five structurally different delivery activities exist: planning, single-agent
-    implementation, parallel implementation, phase review, and drift audit. Each has a
-    distinct input/output signature and execution model. Routing must happen once,
-    cleanly, before delivery work begins.
+    Seven structurally different delivery activities exist: PRD sectioning, architecture
+    refinement, planning, single-agent implementation, parallel implementation, phase
+    review, and drift audit. Each has a distinct input/output signature and execution
+    model. Routing must happen once, cleanly, before delivery work begins.
   how: >
     Evaluate task_type(challenge, t) against the operationalization criteria. Apply
-    delta_SD (5-arm priority stack). For implement challenges, additionally evaluate
+    delta_SD (7-arm priority stack). For implement challenges, additionally evaluate
     multi_task_scope to choose M1-IMPL vs M2-DIMPL.
   when: >
     Any time a software delivery challenge arrives within the niche. Entry point for
@@ -53,7 +53,7 @@ domain_theory:
       description: "The software delivery task presented to the methodology"
     - name: TaskType
       cardinality: finite_enum
-      values: [plan, implement, review, audit]
+      values: [section, architecture, plan, implement, review, audit]
       description: "The category of delivery work being requested"
     - name: MethodID
       cardinality: finite
@@ -75,6 +75,12 @@ domain_theory:
       signature: "Challenge x MethodID -> Bool"
       description: "The challenge was routed to the named method"
   axioms:
+    - id: Ax-0a
+      statement: "task_type(c, section) -> dispatched(c, M7-PRDS)"
+      rationale: "PRD sectioning challenge — decompose full PRD into plannable PRDSections."
+    - id: Ax-0b
+      statement: "task_type(c, architecture) -> dispatched(c, M6-ARFN)"
+      rationale: "Architecture refinement challenge — update ArchDoc to accommodate new requirements."
     - id: Ax-1
       statement: "task_type(c, plan) -> dispatched(c, M5-PLAN)"
       rationale: "Planning challenge — produce a PhaseDoc."
@@ -137,28 +143,35 @@ transition_function:
   evaluation_order: priority_stack
   arms:
     - priority: 1
+      label: section
+      condition: "task_type(challenge, section) = TRUE"
+      selects: M7-PRDS
+      note: "Full PRD needs sectioning before planning. M7-PRDS produces SectionMap."
+    - priority: 2
+      label: architecture
+      condition: "task_type(challenge, architecture) = TRUE"
+      selects: M6-ARFN
+      note: "Architecture refinement needed before planning. M6-ARFN produces/updates ArchDoc."
+    - priority: 3
       label: plan
       condition: "task_type(challenge, plan) = TRUE"
       selects: M5-PLAN
-    - priority: 2
+    - priority: 4
       label: orchestrated
       condition: "task_type(challenge, implement) = TRUE AND multi_task_scope(challenge) = TRUE"
       selects: M2-DIMPL
-      note: "M2-DIMPL is currently a stub — see known_wip."
-    - priority: 3
+    - priority: 5
       label: implement
       condition: "task_type(challenge, implement) = TRUE"
       selects: M1-IMPL
-    - priority: 4
+    - priority: 6
       label: review
       condition: "task_type(challenge, review) = TRUE"
       selects: M3-PHRV
-      note: "M3-PHRV pending compile — see known_wip."
-    - priority: 5
+    - priority: 7
       label: audit
       condition: "task_type(challenge, audit) = TRUE"
       selects: M4-DDAG
-      note: "M4-DDAG pending compile — see known_wip."
 
 retraction_pairs:
   - id: RP-1
@@ -224,20 +237,24 @@ retraction_pairs:
 
 known_wip:
   - id: M2-DIMPL
-    status: draft_v0.2
-    description: >
-      Distributed Implementation method drafted with domain theory, 4 roles, 5-step DAG,
-      Gate A/B quality gates, bounded patch loop. Needs G0-G6 compile pass.
+    status: compiled_v1.0
+    description: "Distributed Implementation method compiled 2026-03-14."
   - id: M3-PHRV
-    status: draft_v0.1
-    description: >
-      Phase Review method drafted with domain theory, 1 role, 4-step linear DAG,
-      severity-classified findings with file:line citations, 3-way verdict. Needs G0-G6 compile pass.
+    status: compiled_v1.0
+    description: "Phase Review method compiled 2026-03-14."
   - id: M4-DDAG
+    status: compiled_v1.0
+    description: "Drift Audit method compiled 2026-03-14."
+  - id: M6-ARFN
     status: draft_v0.1
     description: >
-      Drift Audit method drafted with domain theory, 1 role, 4-step linear DAG,
-      cross-phase divergence analysis, drift vectors with severity. Needs G0-G6 compile pass.
+      Architecture Refinement method drafted. PRD + existing architecture -> updated
+      ArchDoc (horizontal spec files). Needs G0-G6 compile pass.
+  - id: M7-PRDS
+    status: draft_v0.1
+    description: >
+      PRD Sectioning method drafted. Full PRD -> SectionMap with dependencies and
+      delivery ordering. Needs G0-G6 compile pass.
   - id: M5-PLAN
     status: resolved
     description: "Phase Planning method — compiled v1.0 (2026-03-13)."

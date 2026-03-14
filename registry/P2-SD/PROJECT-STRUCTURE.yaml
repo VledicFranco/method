@@ -1,0 +1,192 @@
+specification:
+  id: P2-SD-PROJECT-STRUCTURE
+  name: "Project Directory Structure for P2-SD Delivery"
+  version: "0.1"
+  status: proposed
+  description: >
+    Defines the standard docs/ directory layout for projects using P2-SD methodology.
+    Follows the horizontal documentation pattern: many focused files, each independently
+    evolvable, linked via README.md indexes. Derived from t1-cortex conventions.
+
+principle: >
+  Documentation evolves horizontally (width — many focused files) not vertically
+  (depth — monolithic documents). Each file covers one concern, is 3-12 KB, and
+  is independently Git-trackable. Cross-references create a graph, not a tree.
+
+directory_structure:
+  docs:
+    description: "Top-level documentation directory. All non-code project knowledge lives here."
+    children:
+      prds:
+        description: "Product Requirements Documents. Numbered. One per product initiative."
+        readme: true
+        naming: "PRD-NNN-short-name.md"
+        examples:
+          - "PRD-001-core-product.md"
+          - "PRD-002-knowledge-query.md"
+        method_producer: "External (product discovery — outside P2-SD niche)"
+        method_consumer: "M7-PRDS (sections PRD into PRDSections)"
+        gitignore: false
+        notes: "PRDs are committed. They are the source of truth for what the product does."
+
+      arch:
+        description: >
+          Architecture specifications. Multiple focused files per concern.
+          NOT one monolithic ARCHITECTURE.md. Each file covers one architectural
+          dimension and evolves independently.
+        readme: true
+        naming: "kebab-case-topic.md"
+        standard_files:
+          - path: "README.md"
+            purpose: "Index linking all spec files. Navigation hub, not a summary."
+          - path: "system-context.md"
+            purpose: "System diagram, external services, deployment topology"
+          - path: "interfaces.md"
+            purpose: "API surfaces, transport protocols, contract definitions"
+          - path: "domains.md"
+            purpose: "Domain model, entity relationships, bounded contexts"
+          - path: "data-flows.md"
+            purpose: "End-to-end data flows: happy path, error, edge cases"
+          - path: "dependencies.md"
+            purpose: "Dependency graph, version constraints, upgrade strategy"
+          - path: "observability.md"
+            purpose: "Logging, metrics, tracing, alerting"
+          - path: "deployment.md"
+            purpose: "Deployment topology, infrastructure, scaling"
+          - path: "gaps.md"
+            purpose: "Known architectural gaps, prioritized P0-P3"
+          - path: "open-questions.md"
+            purpose: "Unresolved design decisions awaiting input"
+        method_producer: "M6-ARFN"
+        method_consumer: "M5-PLAN, M1-IMPL, M2-DIMPL, M3-PHRV, M4-DDAG"
+        gitignore: false
+        notes: >
+          Architecture specs are committed and versioned. When a spec is superseded,
+          move the old version to docs/archive/ — do not delete.
+
+      impl:
+        description: >
+          Implementation documentation. Phased delivery roadmap, session logs,
+          progress tracking. Most content here is ephemeral — produced per session
+          and not committed.
+        readme: true
+        children:
+          phases:
+            description: "PhaseDoc files — one per delivery phase. Produced by M5-PLAN."
+            naming: "phase-N-short-name.md"
+            examples:
+              - "phase-1-schema-and-ingest.md"
+              - "phase-2-retrieval.md"
+            method_producer: "M5-PLAN"
+            method_consumer: "M1-IMPL, M2-DIMPL"
+            gitignore: true
+            notes: "PhaseDoc files are ephemeral — produced per planning session. Committed only if the team wants a persistent roadmap."
+          sessions:
+            description: "Per-session execution logs. Produced by M1-IMPL sigma_B5."
+            naming: "session-YYYYMMDD-NNN.md"
+            gitignore: true
+            notes: "Never committed. Session logs are disposable per-agent artifacts."
+          audits:
+            description: "Quality gate reviews (Gate A, Gate B). Produced by M2-DIMPL sub-agents."
+            gitignore: true
+          reviews:
+            description: "Phase review reports. Produced by M3-PHRV."
+            naming: "review-phase-N.md"
+            method_producer: "M3-PHRV"
+            gitignore: true
+            notes: "Ephemeral unless the team wants persistent review records."
+          retrospectives:
+            description: "Post-phase analysis and drift reports. Produced by M4-DDAG."
+            naming: "drift-audit-YYYYMMDD.md"
+            method_producer: "M4-DDAG"
+            gitignore: true
+
+      rfcs:
+        description: >
+          Request-for-comments. Design proposals for significant changes.
+          Numbered. One RFC per design decision. RFCs are committed and versioned.
+        readme: true
+        naming: "NNN-short-name.md"
+        examples:
+          - "001-mvp-architecture.md"
+          - "002-identity-layer.md"
+        gitignore: false
+        notes: >
+          RFCs are the bridge between PRDs and architecture. A PRD says "what";
+          an RFC proposes "how." Architecture specs are the resolved form of RFCs.
+
+      archive:
+        description: "Superseded documents. Moved here when a spec is replaced, not deleted."
+        readme: true
+        gitignore: false
+        notes: >
+          Archive README should say: these documents are historical. Do not use as
+          reference. The current versions are in their original directories.
+
+  gitignore_template: |
+    # P2-SD project documentation gitignore
+    # Committed: PRDs, architecture, RFCs, archive
+    # Ignored: implementation ephemera (sessions, phases, audits, reviews, retrospectives)
+
+    # Implementation session artifacts (ephemeral per-agent)
+    docs/impl/sessions/
+    docs/impl/phases/
+    docs/impl/audits/
+    docs/impl/reviews/
+    docs/impl/retrospectives/
+
+    # Temporary artifacts
+    tmp/
+
+readme_conventions:
+  every_directory_has_readme: true
+  readme_purpose: >
+    Navigation hub — links to files in the directory with one-line descriptions.
+    Not a summary of the content. Not a table of contents. A map.
+  readme_structure:
+    - "## What this directory contains (1-2 sentences)"
+    - "## Files (table: name | purpose | status | last updated)"
+    - "## Related directories (links to adjacent doc directories)"
+  readme_max_length: "50 lines. If longer, the directory has too many files — split."
+
+file_conventions:
+  frontmatter: |
+    ---
+    type: prd | rfc | architecture | phase-doc | review | audit
+    scope: product | domain | system
+    version: "1.0"
+    summary: one sentence
+    related_files:
+      - ../arch/interfaces.md
+      - ../prds/PRD-001.md
+    ---
+  max_file_size: "12 KB (if larger, split into focused sub-files)"
+  cross_references: "Use relative markdown links, not absolute paths"
+  naming: "kebab-case for files. PascalCase for directories only when matching method IDs."
+
+method_to_directory_mapping:
+  note: >
+    Each P2-SD method produces artifacts in a specific docs/ subdirectory. This
+    mapping ensures documentation evolves consistently with the delivery process.
+  mapping:
+    - method: M7-PRDS
+      reads: "docs/prds/"
+      produces: "SectionMap (returned to delta_SD, not filed in docs/)"
+    - method: M6-ARFN
+      reads: "docs/prds/, docs/arch/"
+      produces: "docs/arch/ (creates/updates focused spec files)"
+    - method: M5-PLAN
+      reads: "docs/prds/, docs/arch/"
+      produces: "docs/impl/phases/ (PhaseDoc per section)"
+    - method: M1-IMPL
+      reads: "docs/impl/phases/, docs/arch/"
+      produces: "docs/impl/sessions/ (session logs)"
+    - method: M2-DIMPL
+      reads: "docs/impl/phases/, docs/arch/"
+      produces: "docs/impl/sessions/, docs/impl/audits/"
+    - method: M3-PHRV
+      reads: "docs/impl/phases/, docs/arch/, source code"
+      produces: "docs/impl/reviews/"
+    - method: M4-DDAG
+      reads: "docs/impl/sessions/, docs/arch/, docs/impl/reviews/"
+      produces: "docs/impl/retrospectives/"
