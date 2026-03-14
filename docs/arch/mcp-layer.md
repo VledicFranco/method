@@ -14,14 +14,16 @@
 
 ## Tool Definitions
 
-| Tool | Input Schema | Core Function |
-|------|-------------|---------------|
-| `methodology_list` | `{}` | `listMethodologies(REGISTRY)` |
-| `methodology_load` | `{ methodology_id: string, method_id: string }` | `loadMethodology(REGISTRY, mid, methid)` → `session.load(result)` |
-| `methodology_status` | `{}` | `session.status()` |
-| `step_current` | `{}` | `session.current()` |
-| `step_advance` | `{}` | `session.advance()` |
-| `theory_lookup` | `{ term: string }` | `lookupTheory(THEORY, term)` |
+| Tool | Input Schema | Core Function | Notes |
+|------|-------------|---------------|-------|
+| `methodology_list` | `{ session_id?: string }` | `listMethodologies(REGISTRY)` | |
+| `methodology_load` | `{ methodology_id: string, method_id: string, session_id?: string }` | `loadMethodology(REGISTRY, mid, methid)` → `session.load(result)` | Returns enriched response from core |
+| `methodology_status` | `{ session_id?: string }` | `session.status()` | |
+| `step_current` | `{ session_id?: string }` | `session.current()` | Returns context envelope from core |
+| `step_advance` | `{ session_id?: string }` | `session.advance()` | Returns enriched response from core |
+| `theory_lookup` | `{ term: string, session_id?: string }` | `lookupTheory(THEORY, term)` | |
+
+`session_id` is optional on all tools (P3). When omitted, the MCP layer passes `"__default__"` to the SessionManager. See [state-model.md](state-model.md) for SessionManager design.
 
 ## Error Handling
 
@@ -40,14 +42,64 @@ No error codes, no error taxonomies. The message is the interface. The agent rea
 
 ## Response Formatting
 
-Tool responses are JSON-stringified core return values, with one exception: `methodology_load` appends a next-action hint:
+Tool responses are JSON-stringified core return values. The MCP layer does not construct or enrich response payloads — enrichment logic lives in core (DR-04). MCP serializes whatever core returns.
 
-```
-Loaded M1-MDES — Method Design from Established Domain Knowledge (7 steps).
-Call step_current to see the first step.
+## Response Formats (P1 — Enriched Responses)
+
+### `methodology_load`
+
+```json
+{
+  "methodologyId": "M1-MDES",
+  "methodId": "M1-MDES",
+  "methodName": "Method Design from Established Domain Knowledge",
+  "stepCount": 7,
+  "objective": "Design a validated methodology...",
+  "firstStep": { "id": "S1", "name": "Domain Retraction" },
+  "message": "Loaded M1-MDES — Method Design from Established Domain Knowledge (7 steps). Call step_current to see the first step."
+}
 ```
 
-`step_current` returns the step record as structured JSON — the guidance text is the primary content the agent needs.
+### `step_current`
+
+Context envelope — gives the agent its position within the method alongside the step record:
+
+```json
+{
+  "methodologyId": "M1-MDES",
+  "methodId": "M1-MDES",
+  "stepIndex": 0,
+  "totalSteps": 7,
+  "step": {
+    "id": "S1",
+    "name": "Domain Retraction",
+    "guidance": "...",
+    "preconditions": ["..."],
+    "output_schema": { "...": "..." }
+  }
+}
+```
+
+### `step_advance`
+
+Enriched with navigation context — previous/next step identifiers and position:
+
+```json
+{
+  "methodologyId": "M1-MDES",
+  "methodId": "M1-MDES",
+  "previousStep": { "id": "S1", "name": "Domain Retraction" },
+  "nextStep": { "id": "S2", "name": "Morphism Framing" },
+  "stepIndex": 1,
+  "totalSteps": 7
+}
+```
+
+When advancing to the terminal step, `nextStep` is `null` to signal method completion.
+
+### Design Note
+
+All enrichment is computed by core functions. The MCP layer's only job is `JSON.stringify(result, null, 2)`. This keeps MCP as a thin wrapper (DR-04) and ensures core has zero transport dependencies (DR-03).
 
 ## Tool Descriptions
 

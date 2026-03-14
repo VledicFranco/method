@@ -56,6 +56,42 @@ export function lookupTheory(theoryPath: string, term: string): TheoryResult[]
 
 Returns empty array if no matches — the MCP layer converts this to an error response.
 
+## Unicode Normalization (P2)
+
+### `normalizeForSearch(text: string): string`
+
+A helper function applied to both the search term and the indexed content before all three search passes (label match, heading match, keyword search). Original content is preserved in results — normalization only affects matching.
+
+### Character Map
+
+Greek letters are replaced with their ASCII names:
+
+| Unicode | Replacement |
+|---------|------------|
+| `Φ`, `φ` | `Phi` |
+| `Σ`, `σ` | `Sigma` |
+| `Γ`, `γ` | `Gamma` |
+| `δ` | `delta` |
+| `μ` | `mu` |
+| `π` | `pi` |
+| `ρ` | `rho` |
+| `ν` | `nu` |
+
+Mathematical symbols are replaced with text equivalents:
+
+| Unicode | Replacement |
+|---------|------------|
+| `≼` | `preceq` |
+| `→` | `->` |
+| `∈` | `in` |
+
+### Behavior
+
+- The function applies all replacements, then lowercases the result
+- Both the indexed theory content and the incoming search term pass through `normalizeForSearch` before comparison
+- Results return the original (un-normalized) content so the agent sees the proper symbols
+- The normalization is invisible to callers of `lookupTheory` — it is an internal search optimization
+
 ## Caching
 
 The parsed section/definition structure is cached in a module-level `Map<string, TheorySection[]>` keyed by file path. Parsed once on first `lookupTheory` call, reused for all subsequent calls. No cache invalidation — theory files don't change during a server session.
@@ -64,4 +100,4 @@ The parsed section/definition structure is cached in a module-level `Map<string,
 
 - **Smallest enclosing unit**: definition-level granularity when possible avoids dumping 100-line sections when the agent asked for one definition. Section-level fallback for broad queries.
 - **Cache on first access**: avoids parsing 800+ lines on server startup if theory lookup is never called.
-- **No fuzzy matching**: the theory files use consistent labeling. Exact match on labels and substring match on headings covers the realistic query space. If this proves insufficient, fuzzy matching can be added later.
+- **No fuzzy matching**: the theory files use consistent labeling. Exact match on labels and substring match on headings covers the realistic query space. Unicode normalization (P2) addresses the gap identified in EXP-001-I1 — agents searching for Greek symbols or mathematical notation by ASCII name now get matches without requiring fuzzy logic. If further gaps emerge beyond Unicode, fuzzy matching can be added later.
