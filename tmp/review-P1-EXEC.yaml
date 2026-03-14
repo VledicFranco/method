@@ -1,0 +1,347 @@
+review_report:
+  id: PHRV-P1EXEC-001
+  method_used: M3-PHRV
+  scope:
+    - registry/P1-EXEC/P1-EXEC.yaml
+    - registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml
+    - registry/P1-EXEC/M2-ORCH/M2-ORCH.yaml
+    - registry/P1-EXEC/M3-TMP/M3-TMP.yaml
+  date: "2026-03-14"
+  reviewer: "Lysica (M3-PHRV execution)"
+
+# ═══════════════════════════════════════════════════════════════════════
+# sigma_0: Orient
+# ═══════════════════════════════════════════════════════════════════════
+
+sigma_0:
+  acceptance_criteria:
+    - id: AC-1
+      statement: >
+        Every method that claims "compiled" actually passes G0-G6: all predicates
+        reference declared sorts, all axioms are closed sentences, composability
+        claims are present.
+    - id: AC-2
+      statement: >
+        Cross-references are valid: P1-EXEC retraction pairs reference correct
+        field names from sub-methods.
+    - id: AC-3
+      statement: >
+        Structural consistency: all 4 files follow the same YAML structure pattern
+        (method header, navigation, domain_theory, roles, step_dag/transition_function,
+        phases/arms, composability, objective, termination, compilation_record).
+    - id: AC-4
+      statement: >
+        No stale references: no old P4-EXEC references, no undeclared sorts used
+        in predicates or axioms.
+
+  architecture_docs:
+    - "theory/F1-FTH.md (formal grounding, referenced by all 4 files)"
+    - "M3-PHRV spec (this review method)"
+
+  files_in_scope:
+    - registry/P1-EXEC/P1-EXEC.yaml
+    - registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml
+    - registry/P1-EXEC/M2-ORCH/M2-ORCH.yaml
+    - registry/P1-EXEC/M3-TMP/M3-TMP.yaml
+
+# ═══════════════════════════════════════════════════════════════════════
+# sigma_1: Criteria Audit
+# ═══════════════════════════════════════════════════════════════════════
+
+sigma_1:
+  criteria_results:
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-1
+        location: "M1-COUNCIL.yaml:182 (Ax-6 statement)"
+        expected: >
+          All symbols used in axiom statements are declared in the domain_theory
+          predicates or function_symbols sections. Ax-6 uses decision_issued_by(l, q)
+          which must be a declared predicate or function symbol.
+        actual: >
+          decision_issued_by is used in Ax-6 statement but is NOT declared in
+          M1-COUNCIL's predicates list (lines 97-138) or function_symbols list
+          (lines 84-96). The predicate section declares 12 predicates; decision_issued_by
+          is not among them.
+        severity: MEDIUM
+        note: >
+          The intent is clear (leader cannot issue decisions), and the axiom could be
+          rewritten using only declared predicates (e.g., "NOT decided(q) OR
+          NOT is_leader(speaker(t_decision))"). But as written, the axiom references
+          an undeclared symbol, which means G1 ("all predicates reference declared sorts")
+          is not strictly met for M1-COUNCIL.
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-2
+        location: "M1-COUNCIL.yaml:187 (Ax-7 statement)"
+        expected: >
+          All symbols in axiom statements are declared or quantifier-bound.
+          speaker_of_halt must be either a declared function symbol or a bound variable.
+        actual: >
+          speaker_of_halt is used as a free variable in Ax-7's statement
+          ("is_leader(speaker_of_halt)") but is neither declared in function_symbols
+          nor bound by a quantifier. The axiom is not a closed sentence.
+        severity: MEDIUM
+        note: >
+          The intent is that the Leader is the one who declares the halt. Could be
+          rewritten as "exists l : Character. is_leader(l) AND diminishing_returns(s)
+          -> sigma_2 terminates...". The formal_status note on Ax-7 already acknowledges
+          it is not a formal halting guarantee, which partially mitigates this.
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-3
+        location: "M1-COUNCIL.yaml:132 (diminishing_returns predicate signature)"
+        expected: >
+          All predicate signatures reference declared sorts.
+          diminishing_returns has signature "State", so State must be a declared sort.
+        actual: >
+          M1-COUNCIL's sorts section (lines 57-83) declares 9 sorts: Challenge,
+          Question, CharacterCard, Character, Position, Turn, Escalation, Decision,
+          Artifact. "State" is NOT among them. The diminishing_returns predicate
+          references an undeclared sort.
+        severity: MEDIUM
+        note: >
+          P1-EXEC.yaml declares a State sort in its domain theory, but M1-COUNCIL
+          is a standalone method with its own domain theory D_COUNCIL, which does not
+          include State. Either State should be added to D_COUNCIL's sorts, or
+          diminishing_returns should use a different signature (e.g., a conjunction
+          of declared sorts representing the debate state).
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-4
+        location: "M1-COUNCIL.yaml:170 (Ax-4 statement) and M1-COUNCIL.yaml:650 (O_COUNCIL formal)"
+        expected: >
+          Axioms must be closed sentences (all variables quantifier-bound). The
+          compilation record G1 claims "7 axioms with rationale" and "closed axioms."
+        actual: >
+          Ax-4 uses t_update as a free variable: "responds_to(t_update, t) where
+          speaker(t_update) = c". The variable t_update is not bound by any
+          quantifier (forall or exists). The same pattern appears in O_COUNCIL
+          line 650. These are not properly closed sentences.
+        severity: MEDIUM
+        note: >
+          The intended meaning is clear: "exists t_update : Turn. speaker(t_update) = c
+          AND responds_to(t_update, t)". The "where" clause is a prose shorthand, not
+          a formal quantifier. Rewriting with explicit existential quantification over
+          t_update would resolve this.
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-5
+        location: "M1-COUNCIL.yaml:689 (mu_3 formula)"
+        expected: >
+          Success profile measure formulas should reference only declared Sigma symbols.
+          specific_question(e) must be a declared predicate.
+        actual: >
+          mu_3 (escalation_precision) formula uses specific_question(e) which is NOT
+          declared in M1-COUNCIL's predicates section. The compilation record G2 note
+          claims "All measure formulas reference only declared Sigma symbols" — this
+          claim is incorrect for mu_3.
+        severity: LOW
+        note: >
+          specific_question could be added as a predicate over Escalation, or the
+          measure could be reformulated. The measure's intent (every escalation should
+          be a specific question with named alternatives) is clearly stated in the
+          proxy_claim. The gap is formal, not semantic.
+
+    - criterion: AC-1
+      result: GAP
+      finding:
+        id: F-6
+        location: "M1-COUNCIL.yaml:175-178 (Ax-5 statement)"
+        expected: >
+          Axioms are stated in terms of declared domain theory symbols only.
+        actual: >
+          Ax-5 uses temporal operators "after" and "before" which are not part of the
+          declared signature Sigma_COUNCIL. The statement "resolved(c, q) after t AND
+          NOT resolved(c, q) before t" presumes a temporal ordering on states that is
+          not formalized in the domain theory.
+        severity: LOW
+        note: >
+          Could be rewritten using a sequence ordering on Turns (which is implicit in
+          the debate transcript). The intent is clear but uses informal temporal language
+          within what is claimed to be a formal axiom.
+
+    - criterion: AC-2
+      result: MET
+      finding: null
+      note: >
+        All retraction pair cross-references verified:
+        - RP-1 (P1-EXEC:369-372) references t.artifact, t.decisions_summary,
+          t.minority_positions, t.positions_updated_count — all match M1-COUNCIL
+          sigma_3 output_schema fields (lines 565, 570, 576, 582).
+        - RP-2 (P1-EXEC:391) references t.integration — matches M2-ORCH sigma_3
+          output_schema field (line 441).
+        - RP-3 (P1-EXEC:402) references t.final_response — matches M3-TMP sigma_2
+          output_schema field (line 298).
+        - RP-4 (P1-EXEC:414) references t.final_response — same M3-TMP field (line 298).
+        All field names are exact matches.
+
+    - criterion: AC-3
+      result: MET
+      finding: null
+      note: >
+        Structural consistency verified. All 3 sub-methods share the pattern:
+        method header (id, parent, name, description, version, status,
+        compilation_date, formal_grounding) -> navigation (what, who, why, how,
+        when_to_use, when_not_to_use) -> domain_theory (sorts, function_symbols,
+        predicates, axioms, domain_boundary_note, initial/terminal state claims) ->
+        roles -> step_dag -> phases -> composability -> objective -> termination ->
+        compilation_record (G0-G6).
+        P1-EXEC follows the methodology variant: methodology header -> navigation ->
+        domain_theory -> roles -> transition_function -> predicate_operationalization
+        -> termination_certificate -> retraction_pairs -> objective -> routing_feedback
+        -> known_wip -> compilation_record. The structural divergence is appropriate
+        (methodology vs method) and documented in P1-EXEC's compilation_record
+        methodology_gate_adaptation note.
+
+    - criterion: AC-4
+      result: GAP
+      finding:
+        id: F-7
+        location: "M1-COUNCIL.yaml:132 (diminishing_returns), M1-COUNCIL.yaml:182 (Ax-6), M1-COUNCIL.yaml:187 (Ax-7), M1-COUNCIL.yaml:689 (mu_3)"
+        expected: "No undeclared sorts or symbols used in predicates, axioms, or measures."
+        actual: >
+          Four undeclared symbols found in M1-COUNCIL:
+          (a) State sort — used in diminishing_returns signature but not in D_COUNCIL sorts.
+          (b) decision_issued_by — used in Ax-6 but not in predicates.
+          (c) speaker_of_halt — used in Ax-7 but not quantifier-bound or declared.
+          (d) specific_question — used in mu_3 formula but not in predicates.
+          No stale P4-EXEC references found (grep returned zero matches across all 4 files).
+        severity: MEDIUM
+        note: >
+          All undeclared symbols are concentrated in M1-COUNCIL. P1-EXEC, M2-ORCH,
+          and M3-TMP have no undeclared symbol issues. This suggests M1-COUNCIL's
+          compilation was less rigorous on the symbol-declaration check than the other files.
+
+# ═══════════════════════════════════════════════════════════════════════
+# sigma_2: Architecture Assessment
+# ═══════════════════════════════════════════════════════════════════════
+
+sigma_2:
+  architecture_findings:
+    - id: AF-1
+      check: "Cross-file interface contract: retraction pair embed/project signatures"
+      location: "P1-EXEC.yaml:362-416 (retraction_pairs section)"
+      expected: >
+        Retraction pair embed functions should map to the initial state of the target
+        method's domain theory. Project functions should map from the terminal state
+        back to the source methodology state.
+      actual: >
+        All 4 retraction pairs (RP-1 through RP-4) follow the correct pattern:
+        embed maps {challenge} into the target method's initial state, project maps
+        the terminal output fields back into ExecutionResult. RP-1 is the most
+        detailed (projects 4 fields from M1-COUNCIL sigma_3); RP-2, RP-3, RP-4
+        project single fields. All verified against actual sub-method output schemas.
+      severity: null
+      note: "No violation found. Retraction pair architecture is sound."
+
+    - id: AF-2
+      check: "Naming convention consistency across methods"
+      location: "All 4 files"
+      expected: >
+        Consistent naming: sorts use PascalCase, predicates use snake_case,
+        axioms use Ax-N format, steps use sigma_N format.
+      actual: >
+        All 4 files follow the same conventions consistently. No naming violations.
+      severity: null
+      note: "No violation found."
+
+    - id: AF-3
+      check: "Domain theory isolation: sub-methods do not reference parent methodology sorts"
+      location: "M1-COUNCIL.yaml:132"
+      expected: >
+        Sub-method domain theories are self-contained. M1-COUNCIL's D_COUNCIL should
+        reference only its own declared sorts, not P1-EXEC's D_Phi_EXEC sorts.
+      actual: >
+        M1-COUNCIL's diminishing_returns predicate uses "State" as its sort, which
+        is declared in P1-EXEC's D_Phi_EXEC but not in D_COUNCIL. This is a domain
+        theory isolation violation — sub-methods should be independently compilable.
+      severity: MEDIUM
+      note: >
+        This is a restatement of F-3 from sigma_1, but from the architecture angle.
+        The fix is the same: either add State to D_COUNCIL or rephrase the predicate.
+
+  architecture_aligned: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# sigma_3: Report
+# ═══════════════════════════════════════════════════════════════════════
+
+sigma_3:
+  verdict: CONDITIONAL
+  finding_count: 7
+  severity_breakdown:
+    CRITICAL: 0
+    HIGH: 0
+    MEDIUM: 5
+    LOW: 2
+
+  summary: >
+    P1-EXEC methodology compilation is structurally sound. Cross-references between the
+    parent methodology and its three sub-methods are correct — all retraction pair field
+    names match actual sub-method output schemas. Structural consistency across all 4
+    files is good. No stale references (P4-EXEC or otherwise) exist.
+
+    The findings are concentrated in M1-COUNCIL, which has 4 undeclared symbols used
+    in axioms, predicate signatures, and success measures: (1) State sort in
+    diminishing_returns signature, (2) decision_issued_by in Ax-6, (3) speaker_of_halt
+    in Ax-7, (4) specific_question in mu_3. Additionally, Ax-4 and O_COUNCIL use
+    t_update as a free variable (not properly closed sentences), and Ax-5 uses informal
+    temporal operators.
+
+    P1-EXEC.yaml, M2-ORCH.yaml, and M3-TMP.yaml pass all acceptance criteria cleanly.
+    M1-COUNCIL requires a cleanup pass to declare the missing symbols and close the
+    axiom sentences. None of these findings indicate semantic errors — the intended
+    meanings are clear in every case. The gaps are formal/syntactic, not conceptual.
+
+  verdict_rationale: >
+    Per M3-PHRV Ax-3: CONDITIONAL requires all criteria met or gaps at MEDIUM/LOW only.
+    AC-1 has 6 GAP findings (5 MEDIUM, 1 LOW concentrated in M1-COUNCIL formal declarations).
+    AC-2 is fully MET. AC-3 is fully MET. AC-4 has 1 GAP finding (MEDIUM, summarizing the
+    undeclared symbols). No CRITICAL or HIGH findings exist. All gaps are formally correctable
+    without architectural changes. Verdict: CONDITIONAL.
+
+  per_file_summary:
+    - file: P1-EXEC.yaml
+      status: PASS
+      findings: 0
+      note: >
+        Clean. Domain theory is self-consistent. Retraction pairs verified. Transition
+        function arms are complete and mutually exclusive. Termination certificate sound.
+        Predicate operationalization present for all driving predicates. G0-G6 all pass.
+
+    - file: M1-COUNCIL.yaml
+      status: CONDITIONAL
+      findings: 7
+      note: >
+        6 formal gaps in domain theory declarations (undeclared symbols, unclosed axioms,
+        informal temporal operators). All findings are MEDIUM or LOW severity. The method's
+        semantic content is sound — the debate structure, axioms' intent, composability
+        claims, and termination argument are all correct. Requires a cleanup pass to bring
+        formal declarations into alignment with actual symbol usage.
+
+    - file: M2-ORCH.yaml
+      status: PASS
+      findings: 0
+      note: >
+        Clean. 7 sorts, 5 function symbols, 7 predicates — all internally consistent.
+        5 axioms are properly closed. Composability claims well-justified. The consistent()
+        predicate has explicit operationalization (lines 104-113). G0-G6 all pass.
+
+    - file: M3-TMP.yaml
+      status: PASS
+      findings: 0
+      note: >
+        Clean and minimal. 5 sorts, 4 function symbols, 3 predicates, 3 axioms — all
+        properly declared and closed. The simplest of the three sub-methods, and
+        correspondingly the most formally tight. G0-G6 all pass.
