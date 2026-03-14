@@ -128,8 +128,20 @@ domain_theory:
     - name: cast_approved
       signature: "Character"
       description: "The PO has approved this Character as part of the Council"
+    - name: decision_issued_by
+      signature: "Character x Question"
+      description: "Character issued the Decision that resolved this Question"
+    - name: specific_question
+      signature: "Escalation"
+      description: "The Escalation names a specific question with named alternatives (not a vague request for input)"
+    - name: precedes
+      signature: "Turn x Turn"
+      description: "t1 precedes t2 in session sequence — derivable from the Turn DAG (responds_to edges and issue order)"
+    - name: sigma_2_terminates
+      signature: "Council"
+      description: "sigma_2 (Debate & Resolve) terminates for this Council — operational predicate for Ax-7 diminishing returns halt"
     - name: diminishing_returns
-      signature: "State"
+      signature: "Council"
       description: >
         The Leader has determined that continued debate is producing diminishing returns:
         recent Turns are not generating new arguments, positions are cycling rather than
@@ -167,26 +179,38 @@ domain_theory:
       name: Conviction stability
       statement: >
         forall c : Character, q : Question.
-        position_updated(c, q) -> exists t : Turn. speaker(t) != c AND topic(t) = q AND responds_to(t_update, t)
-        where speaker(t_update) = c
+        position_updated(c, q) -> exists t_counter : Turn, t_update : Turn.
+        speaker(t_counter) != c AND topic(t_counter) = q
+        AND speaker(t_update) = c AND responds_to(t_update, t_counter)
       rationale: "A character may update a Position only when a counter-argument has been received and acknowledged. Characters do not update positions to avoid friction. Source: EXP-001c anti-capitulation finding."
     - id: Ax-5
       name: Turn progress
       statement: >
         forall t : Turn. exists c : Character, q : Question.
-        speaker(t) = c AND topic(t) = q AND
-        (resolved(c, q) after t AND NOT resolved(c, q) before t)
-      rationale: "Each turn must produce at least one newly resolved (Character, Question) pair. Combined with Ax-3, gives the termination certificate strict-decrease guarantee. Source: EXP-003 C-009."
+        speaker(t) = c AND topic(t) = q AND resolved(c, q)
+        AND NOT exists t_prior : Turn. speaker(t_prior) = c AND topic(t_prior) = q
+        AND resolved(c, q) AND precedes(t_prior, t)
+      rationale: >
+        Each turn must produce at least one newly resolved (Character, Question) pair —
+        a pair that was not resolved by any prior turn from the same character on the same
+        question. Combined with Ax-3, gives the termination certificate strict-decrease
+        guarantee. Source: EXP-003 C-009.
+      note: "precedes(t1, t2) is the natural ordering on Turns by session sequence — derivable from the Turn DAG (responds_to edges)."
     - id: Ax-6
       name: Escalation authority boundary
-      statement: "forall l : Character. is_leader(l) -> NOT exists q : Question. decided(q) AND decision_issued_by(l, q)"
+      statement: "forall l : Character, q : Question. is_leader(l) AND decided(q) -> NOT decision_issued_by(l, q)"
       rationale: "The Leader may not issue a Decision — only Escalations or Convergence announcements. Final Decisions are issued by PO or by convergence."
     - id: Ax-7
       name: Diminishing returns halt
       statement: >
-        forall s : State. diminishing_returns(s) AND is_leader(speaker_of_halt) ->
-        sigma_2 terminates with current resolved set as final.
-        Unresolved (Character, Question) pairs are recorded as unresolved in the Artifact.
+        exists l : Character, council : Council. is_leader(l) AND diminishing_returns(council) ->
+        sigma_2_terminates(council)
+      formal_status: >
+        Ax-7 is a pragmatic axiom — diminishing_returns is a Leader judgment predicate,
+        not formally decidable. sigma_2_terminates is an operational predicate meaning the
+        debate step ends with current resolved set as final. Unresolved (Character, Question)
+        pairs are carried to sigma_3 as explicitly unresolved items. This axiom authorizes
+        early termination but does not provide a formal halting guarantee.
       rationale: >
         The Leader may halt sigma_2 when continued debate is producing diminishing returns.
         This is a pragmatic termination condition — not formally decidable, but empirically
@@ -750,8 +774,12 @@ compilation_record:
       result: PASS
       note: >
         D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 9 sorts with cardinality, 3 function symbols
-        with totality, 12 predicates with typed signatures referencing declared sorts, 7 axioms
-        with rationale (Ax-7 diminishing_returns is pragmatic, not formally decidable). Domain boundary stated. Initial and terminal state membership
+        with totality, 16 predicates with typed signatures referencing declared sorts
+        (v1.1 fix: added decision_issued_by, specific_question, precedes, sigma_2_terminates;
+        fixed diminishing_returns signature from State to Council), 7 closed axioms with
+        rationale (Ax-4/5 free variables bound; Ax-5 temporal operators replaced with
+        precedes predicate; Ax-6 rewritten with declared predicates; Ax-7 is pragmatic,
+        not formally decidable). Domain boundary stated. Initial and terminal state membership
         in Mod(D_COUNCIL) claimed with axiom-by-axiom verification.
     - gate: G2
       result: PASS

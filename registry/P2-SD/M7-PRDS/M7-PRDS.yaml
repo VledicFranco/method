@@ -73,6 +73,10 @@ domain_theory:
       signature: "PRDSection x PRDSection -> Bool"
       totality: total
       description: "True if the first section depends on the second being delivered first"
+    - name: order
+      signature: "PRDSection -> nat"
+      totality: total
+      description: "The delivery position of this section in the SectionMap's ordering (1-indexed)"
   predicates:
     - name: covers
       signature: "SectionMap x PRD"
@@ -524,7 +528,8 @@ compilation_record:
       result: PASS
       note: >
         D_PRDS = (Sigma_PRDS, Ax_PRDS). 6 sorts with cardinality (PRD, FeatureCluster,
-        PRDSection, Dependency, SectionMap, ArchDoc). 2 function symbols with totality
+        PRDSection, Dependency, SectionMap, ArchDoc). 3 function symbols with totality
+        (section_count, depends_on, order — order added to close Ax-5 reference).
         (section_count: total, depends_on: total). 7 predicates with typed signatures
         referencing ONLY declared sorts: covers(SectionMap x PRD), scoped(PRDSection),
         has_acceptance_criteria(PRDSection), dependency_acyclic(SectionMap),
