@@ -101,6 +101,16 @@ domain_theory:
     - name: consistent
       signature: "Integration"
       description: "No contradictions between integrated Results"
+      operationalization: >
+        consistent(Integration) holds when: (a) no two sub-task Results assign conflicting
+        values to the same output field, artifact, or shared identifier; (b) no two Results
+        make contradictory claims over the same domain element (e.g., one Result says
+        service A depends on B, another says A is independent of B); (c) structural
+        integration constraints are met (e.g., if Results produce code, the integrated
+        code compiles; if Results produce documents, cross-references are valid).
+        The orchestrator evaluates (a) and (b) by comparing Result content at sigma_4.
+        Check (c) is challenge-specific — for code, run compilation; for documents,
+        verify cross-references. If any check fails: FAIL_INCONSISTENT.
     - name: covers
       signature: "Integration x Challenge"
       description: "Integration addresses all dimensions of Challenge"
@@ -477,8 +487,12 @@ phases:
       1. Completeness check — covers(Integration, Challenge): does the Integration address
          all dimensions of the Challenge? Cross-reference against sigma_1 decomposition.
          Uncovered dimension = FAIL_INCOMPLETE.
-      2. Consistency check — consistent(Integration): are there contradictions between
-         sub-task outputs as integrated? Contradictions = FAIL_INCONSISTENT.
+      2. Consistency check — consistent(Integration): apply three checks:
+         (a) No two Results assign conflicting values to the same output field or identifier.
+         (b) No two Results make contradictory claims over the same domain element.
+         (c) Structural integration constraints met (e.g., integrated code compiles,
+             cross-references valid).
+         Any check failure = FAIL_INCONSISTENT. Name the specific conflict in consistency_notes.
       3. If both pass: outcome = PASS.
       4. Record the VerificationOutcome with explicit notes.
 

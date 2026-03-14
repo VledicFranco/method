@@ -152,6 +152,17 @@ domain_theory:
         speaker(t1) = c AND speaker(t2) = c AND topic(t1) = q AND topic(t2) = q AND t1 != t2
         -> responds_to(t2, t_counter) for some t_counter where speaker(t_counter) != c
       rationale: "A character may not re-state a position on the same question without responding to a counter-argument. Empty repetition is a violation; defended repetition requires a responds_to edge to a different character's turn."
+      operationalization: >
+        Position identity is determined by Leader tagging. The Leader monitors the debate
+        and flags when a Character restates a position on the same Question without
+        introducing new argument content. "Same position" means: the Character's
+        prescription (what should be done) and core justification (why) are unchanged
+        from a prior Turn on the same Question. Surface-level rephrasing counts as
+        repetition. A genuinely new argument — citing a different principle, evidence,
+        or consequence — is not repetition even if the conclusion is the same. When
+        the Leader flags repetition, the flagged Character must either (a) produce a
+        responds_to edge to a counter-argument they have not yet addressed, or (b)
+        yield the floor on that Question (declaring their position final).
     - id: Ax-4
       name: Conviction stability
       statement: >
@@ -434,7 +445,11 @@ phases:
       5. PO responds to Escalation with a Decision.
       6. After a Decision: Leader states it with one-sentence rationale. Each Character
          acknowledges how it changes their position. Move to next open Question.
-      7. If a character is not contributing or the problem has shifted domains, propose
+      7. Leader monitors for position repetition (Ax-3): if a Character restates a
+         position without new argument content, Leader flags it. The flagged Character
+         must either respond to an unaddressed counter-argument or declare their position
+         final on that Question.
+      8. If a character is not contributing or the problem has shifted domains, propose
          a Character swap to PO.
       8. Continue until all Questions are decided and all (Character, Question) pairs
          are resolved — OR the Leader declares diminishing_returns.
@@ -714,11 +729,12 @@ known_wip:
       debate continues). Requires concurrent branches not in current theory.
       Deferred to v2.0.
   - id: W2
-    status: open
+    status: resolved_v1.1
     description: >
-      Position identity for Ax-3 enforcement. When are two Position statements
-      "the same"? Currently operationalized as Leader judgment. Formal definition
-      requires semantic similarity model or explicit tagging.
+      Position identity for Ax-3 enforcement operationalized as Leader tagging (v1.1).
+      The Leader flags repetition based on unchanged prescription + justification.
+      Formal definition (semantic similarity model) remains open for future versions
+      but the pragmatic operationalization is sufficient for LLM execution.
 
 compilation_record:
   gates:

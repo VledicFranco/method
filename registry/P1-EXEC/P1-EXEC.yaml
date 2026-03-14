@@ -363,8 +363,22 @@ retraction_pairs:
       definition: "embed_COUNCIL(s) = { challenge := s.challenge }"
     project:
       signature: "project_COUNCIL : Mod(D_COUNCIL)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
-      definition: "project_COUNCIL(t) = { result := ExecutionResult(t.artifact), method_completed := true }"
-    retraction_verification: "project_COUNCIL(embed_COUNCIL(s)).challenge = s.challenge — trivially true"
+      definition: >
+        project_COUNCIL(t) = {
+          result := ExecutionResult({
+            artifact: t.artifact,
+            decisions_summary: t.decisions_summary,
+            minority_positions: t.minority_positions,
+            positions_updated_count: t.positions_updated_count
+          }),
+          method_completed := true
+        }
+      note: >
+        Projects full sigma_3 output — not just artifact. decisions_summary and
+        minority_positions preserve the adversarial method's unique contribution.
+        positions_updated_count enables routing feedback: if 0, the council added
+        no value over a single recommendation (signals potential routing miscalibration).
+    retraction_verification: "project_COUNCIL(embed_COUNCIL(s)).challenge = s.challenge — trivially true; additional fields are appended, not substituted"
     status: verified
   - id: RP-2
     name: Phi_EXEC_to_ORCH
