@@ -1,0 +1,61 @@
+retrospective:
+  session_id: "prd005-phase2-2026-03-14"
+  methodology: P2-SD
+  method: "M1-IMPL"
+  method_version: "1.0"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "token_tracker_project_hash"
+    decision: "How to derive Claude Code's project directory hash from workdir path"
+    outcome: "Implemented path-to-dash replacement with fallback directory scanning. Defensive — returns null if can't find the project dir. Untested against real Claude Code sessions because the algorithm may differ across versions."
+    guidance_gap: true
+
+  observations:
+    - step: "dashboard_rendering"
+      type: gap
+      description: "First implementation had 5 rendering bugs: wrong type annotation on renderSessionRows, workdir showing as dash, promptCount showing queueDepth, missing 2 columns, hardcoded maxSessions. All fixable but required a review pass to catch."
+      evidence: "packages/bridge/src/dashboard-route.ts — renderSessionRows function"
+      severity: MEDIUM
+      improvement_target: project_card
+
+    - step: "template_design"
+      type: success
+      description: "HTML template correctly preserved the Vidtecci OS design system from the mockup — colors, fonts, layout, status badges, meter bars all match. The placeholder-based template rendering works well without a template engine dependency."
+      evidence: "packages/bridge/src/dashboard.html"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "graceful_degradation"
+      type: success
+      description: "All three data sources degrade independently: no OAuth token → no subscription panel, no session logs → token columns show dash, network error → retries on next interval. The dashboard always renders even with zero data."
+      evidence: "packages/bridge/src/usage-poller.ts:42-49, token-tracker.ts:54-62"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "integration_wiring"
+      type: success
+      description: "Token tracker integration is clean: registerSession in POST /sessions handler, refreshUsage after each POST /sessions/:id/prompt. Usage poller starts after app.listen(). Dashboard route registered before listen."
+      evidence: "packages/bridge/src/index.ts:39-43, 73, 106"
+      severity: LOW
+      improvement_target: abstract_method
+
+  card_feedback:
+    - rule_id: DR-03
+      verdict: helpful
+      note: "Bridge continues to have zero dependency on core. All new modules (usage-poller, token-tracker, dashboard-route) are bridge-internal."
+
+    - rule_id: DR-09
+      verdict: missing_coverage
+      note: "No tests written for usage-poller, token-tracker, or dashboard-route. The existing pool tests pass but Phase 2 modules have no test coverage. DR-09 focuses on YAML fixtures in core — needs extension for bridge modules."
+
+    - rule_id: DR-12
+      verdict: helpful
+      note: "Architecture doc updated with 4 new files, new endpoint, new config vars. One file per concern pattern made it obvious where to add the docs."
+
+  proposed_deltas:
+    - target: project_card
+      location: "DR-09"
+      current: "Tests with real YAML fixtures for core functions"
+      proposed: "Tests with real fixtures for core functions AND bridge modules. Bridge modules should have unit tests with realistic mocked HTTP responses (usage-poller) and JSONL fixtures (token-tracker)."
+      rationale: "Phase 2 added 3 modules with zero test coverage. The rendering bugs would have been caught by tests. DR-09 currently only addresses core YAML testing."

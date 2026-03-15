@@ -1,0 +1,65 @@
+retrospective:
+  session_id: "prd005-phase1-2026-03-14"
+  methodology: P2-SD
+  method: "M2-DIMPL"
+  method_version: "1.0"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "routing"
+    decision: "Whether to use M2-DIMPL (parallel) vs M1-IMPL (sequential) for Phase 1"
+    outcome: "Used M2-DIMPL with 2 parallel sub-agents (bridge + MCP). Clean merge with no conflicts — disjoint file scopes confirmed."
+    guidance_gap: false
+
+  observations:
+    - step: "architecture"
+      type: success
+      description: "M6-ARFN sub-agent updated both docs correctly on first pass. Horizontal doc pattern (DR-12) made the scope clear — one file per concern, no ambiguity about what to update."
+      evidence: "docs/arch/bridge.md, docs/arch/mcp-layer.md"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "parallel_implementation"
+      type: success
+      description: "Three worktree-isolated sub-agents (arch + 2 impl) merged cleanly into master. No conflicts. M2-DIMPL's disjoint-file-scope criterion correctly predicted merge safety."
+      evidence: "git merge of 3 branches, 0 conflicts"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "bridge_list_capacity"
+      type: gap
+      description: "bridge_list MCP tool cannot report accurate pool max_sessions because GET /sessions doesn't expose pool capacity. The proxy approximates with session count, which is wrong. The pool.poolStats() method exists but isn't wired to any HTTP endpoint."
+      evidence: "packages/mcp/src/index.ts:668 — capacity.max uses bridgeSessions.length"
+      severity: LOW
+      improvement_target: project_card
+
+    - step: "pre_existing_type_errors"
+      type: friction
+      description: "MCP proxy sub-agent reported 5 pre-existing TypeScript errors in packages/mcp/src/index.ts. These exist on master before PRD 005. The sub-agent correctly identified they were pre-existing and introduced zero new errors, but this noise made verification harder."
+      evidence: "packages/mcp/src/index.ts — pre-existing errors from PRD 004"
+      severity: MEDIUM
+      improvement_target: project_card
+
+  card_feedback:
+    - rule_id: DR-03
+      verdict: helpful
+      note: "Clear boundary — sub-agents never attempted to import core in bridge or add transport deps to core."
+
+    - rule_id: DR-04
+      verdict: helpful
+      note: "Extended naturally to proxy tools. The pattern (parse → call → format) maps to (parse → fetch → format) without ambiguity. The auto-correlation of session_id into metadata is borderline formatting/logic but acceptable."
+
+    - rule_id: DR-09
+      verdict: helpful
+      note: "Sub-agent created 14 pool tests with session stubs. Realistic enough to catch metadata/tracking bugs without needing PTY processes."
+
+    - rule_id: DR-12
+      verdict: helpful
+      note: "Architecture sub-agent knew exactly which files to update. One concern per file eliminated merge conflicts between arch and impl sub-agents."
+
+  proposed_deltas:
+    - target: project_card
+      location: "delivery_rules (new)"
+      current: "No rule about bridge HTTP API surface"
+      proposed: "Add DR-13: Bridge HTTP API endpoints that expose pool-level aggregate data (capacity, stats) should be added alongside the per-session endpoints. MCP proxy tools that need pool metadata should be able to source it from the HTTP API."
+      rationale: "bridge_list needs max_sessions from the pool but GET /sessions only returns per-session data. This gap will recur for any MCP tool that needs pool-level info."

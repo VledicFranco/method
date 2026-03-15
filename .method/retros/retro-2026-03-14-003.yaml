@@ -1,0 +1,45 @@
+retrospective:
+  session_id: "prd005-phase3-2026-03-14"
+  methodology: P2-SD
+  method: "M1-IMPL"
+  method_version: "1.0"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "scope"
+    decision: "Whether to implement permission prompt detection (item 4) or respect the PRD's deferral"
+    outcome: "Respected the PRD's explicit 'future fallback' designation and skipped item 4. spawn_args provides the primary mechanism for permission bypass."
+    guidance_gap: false
+
+  observations:
+    - step: "implementation"
+      type: success
+      description: "All 4 non-deferred items implemented cleanly in a single sub-agent pass. The bridge's modular structure (pool, pty-session, index) made it easy to add each item without interference."
+      evidence: "packages/bridge/src/index.ts, pool.ts, pty-session.ts"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "dead_session_cleanup"
+      type: success
+      description: "removeDead() correctly cleans up both the session map and the auxiliary maps (metadata, workdirs). 4 new tests verify the TTL behavior."
+      evidence: "packages/bridge/src/__tests__/pool.test.ts — removeDead tests"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "settle_delay_override"
+      type: success
+      description: "Per-prompt settle_delay_ms passes cleanly through the index→pool→pty-session chain. The optional parameter pattern preserves backward compatibility — existing callers don't need to change."
+      evidence: "packages/bridge/src/pty-session.ts sendPrompt signature"
+      severity: LOW
+      improvement_target: abstract_method
+
+  card_feedback:
+    - rule_id: DR-03
+      verdict: helpful
+      note: "No temptation to violate — Phase 3 items are all bridge-internal."
+
+    - rule_id: DR-09
+      verdict: helpful
+      note: "4 new tests added for removeDead. Better coverage than Phase 2."
+
+  proposed_deltas: []
