@@ -1,6 +1,6 @@
 # PRD — P3-DISPATCH: Methodology-Driven Agent Orchestration
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-14
 **Scope:** Orchestration methodology + PTY bridge package + methodology-level MCP tools
 **Depends on:** 001-mvp (completed), 002-post-mvp (P1 richer responses, P3 session isolation)

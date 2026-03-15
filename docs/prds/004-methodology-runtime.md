@@ -1,6 +1,6 @@
 # PRD — Runtime Methodology Execution: Live δ_Φ Sessions
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-14
 **Scope:** Methodology-level session management + live δ_Φ evaluation + method composition within sessions
 **Depends on:** 003-dispatch (completed — provides routing, validation, step_context tools)

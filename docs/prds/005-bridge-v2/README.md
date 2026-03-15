@@ -1,6 +1,6 @@
 # PRD 005 — Bridge v2: MCP Integration and Human Observability
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-14
 **Scope:** Bridge MCP proxy tools + permission handling + human observability dashboard + token usage tracking
 **Depends on:** 003-dispatch (bridge implementation), 004-methodology-runtime (methodology session tools)

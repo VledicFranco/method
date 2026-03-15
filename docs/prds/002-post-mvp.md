@@ -1,6 +1,6 @@
 # PRD — Post-MVP Hardening
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-14
 **Scope:** Fixes and enhancements surfaced by EXP-001 MVP validation
 **Depends on:** 001-mvp (completed)
