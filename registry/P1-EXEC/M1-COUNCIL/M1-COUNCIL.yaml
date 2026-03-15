@@ -222,10 +222,6 @@ domain_theory:
         detect cycling, repetition without progress, or exhaustion of genuinely distinct
         arguments. Unresolved pairs are not silently dropped — they appear in the Artifact
         as explicitly unresolved items.
-      formal_status: >
-        Ax-7 does not provide a formal halting guarantee. It authorizes early termination
-        based on Leader judgment. The termination certificate nu_sigma_2 remains sound for
-        the resolved pairs; Ax-7 adds an escape hatch for the unresolved remainder.
   domain_boundary_note: >
     Excludes: the content domain of the challenge (D_COUNCIL tracks debate structure, not
     subject matter); tool availability; the internal reasoning process of characters (only

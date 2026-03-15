@@ -183,10 +183,13 @@ project_card:
     impl_sub_agent:
       note: >
         This project has two distinct artifact types: TypeScript source code
-        (packages/) and methodology YAML specifications (registry/). Both require
-        care but in different ways. Code changes follow standard TypeScript practices.
-        Registry changes must preserve method compilation status and structural
-        completeness. When in doubt about a registry change, check the method's
+        (packages/) and methodology YAML specifications (registry/). Sub-agents
+        MUST NOT modify registry YAML files unless the task explicitly requires
+        registry changes. If a registry file has a parsing error, REPORT it to
+        the orchestrator — do not fix it. Also do not modify .method/project-card.yaml
+        or any schema files. Code changes follow standard TypeScript practices.
+        Registry changes (when explicitly authorized) must preserve method compilation
+        status and structural completeness. When in doubt about a registry change, check the method's
         compilation_record to understand what gates it passed.
     reviewer:
       note: >

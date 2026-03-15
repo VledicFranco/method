@@ -7,8 +7,8 @@ evolution_ledger:
   last_updated: "2026-03-14"
 
   summary:
-    total_retrospectives_processed: 11
-    total_gap_candidates: 4
+    total_retrospectives_processed: 12
+    total_gap_candidates: 5
     total_evolutions: 2
     total_card_revisions: 4
 
