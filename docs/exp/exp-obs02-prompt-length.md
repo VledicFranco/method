@@ -51,6 +51,28 @@ if (initialPrompt.length > SPLIT_THRESHOLD) {
 }
 ```
 
-## Next Experiment
+## EXP-OBS02-B: Split Delivery Validation
 
-**EXP-OBS02-B:** Test split prompt delivery with commission-length prompts. Does sending a short init + follow-up full commission produce reliable completion?
+**Date:** 2026-03-15
+**Status:** PASS — split delivery fixes the stalling problem
+
+### Method
+
+Implemented split prompt delivery in pool.ts: prompts >500 chars are split into a short activation ("You will receive your full task instructions in the next message") + follow-up with full commission 3s later.
+
+Tested with a ~1500 token commission prompt (same length as T4 which stalled).
+
+### Result
+
+| Metric | T4 (monolithic) | EXP-OBS02-B (split) |
+|--------|-----------------|---------------------|
+| Auto-activated | YES (briefly) | YES |
+| Tool calls | 0 | 21+ |
+| Completed | NO — stalled | YES — full health report |
+| Time | stalled indefinitely | ~4 minutes |
+
+### Conclusion
+
+**Split delivery solves OBS-02.** The root cause was long initial prompts causing Claude Code to treat the instruction as context rather than action. Short activation prompt reliably triggers action mode, then the full commission arrives as a normal interactive prompt which Claude Code handles correctly.
+
+**Implementation:** `pool.ts` splits at 500 chars. Short init activates agent, full commission queued as follow-up via p-queue with 3s delay. No agent changes needed — purely bridge-side.
