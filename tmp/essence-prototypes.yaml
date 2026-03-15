@@ -1,0 +1,170 @@
+# Essence Section Prototypes — 3 Projects
+# Testing whether purpose + invariant + optimize_for adds value
+
+prototypes:
+
+  # ═══════════════════════════════════════════════════════
+  # I1-T1X — t1-cortex
+  # ═══════════════════════════════════════════════════════
+
+  t1_cortex:
+    current_description: >
+      MCP-native AI governance gateway for enterprise Claude deployments.
+      Scala 3 codebase, sbt build, PostgreSQL + OpenSearch backends.
+      Four-domain architecture: Identity, Authorization, Knowledge, Audit.
+
+    proposed_essence:
+      purpose: >
+        AI governance gateway that enforces identity, authorization, and knowledge
+        access policies on enterprise Claude deployments. Enterprises deploy Claude
+        internally but need to control what each agent can access based on user
+        identity, security clearance, and organizational rules. t1-cortex is the
+        enforcement layer between Claude and the organization's knowledge base.
+      invariant: >
+        No unauthorized access to knowledge. The security model is the product —
+        every request must pass identity verification, authorization rules, and
+        knowledge gate clearance before any data is returned. Deny by default,
+        authorize explicitly.
+      optimize_for:
+        - "Security: never weaken access controls for developer convenience"
+        - "Correctness: prefer explicit authorization over implicit trust, verbose error messages over opaque failures"
+        - "Auditability: every significant action produces a traceable event in the audit trail"
+        - "Type safety: the Scala 3 type system encodes domain invariants — if it compiles, the invariants hold"
+
+    analysis:
+      what_changes_for_agents: >
+        An agent implementing a knowledge query feature now knows WHY the gate
+        system exists (not just that DR-09 says "authenticate → checkAuthorization →
+        domain logic"). It knows the invariant: deny by default. It knows when facing
+        a tradeoff: security wins over convenience. This context shaped the T1X-BUG-47
+        race condition fix — the agent chose the A+B hybrid (atomic mutation + SQL
+        status guards) BECAUSE it understood the security-first invariant. Without
+        essence, it might have chosen Option C (accept the TOCTOU window).
+
+  # ═══════════════════════════════════════════════════════
+  # I2-METHOD — pv-method
+  # ═══════════════════════════════════════════════════════
+
+  pv_method:
+    current_description: >
+      Method MCP server — loads formal methodology YAML specs and exposes them to
+      LLM agents via MCP tools. TypeScript monorepo (core + mcp packages). The
+      registry/ directory IS the product: compiled methodology and method YAMLs
+      that the server loads and serves. Dual nature: this project both USES P2-SD
+      for its own development AND IS the runtime for P2-SD methods.
+
+    proposed_essence:
+      purpose: >
+        The runtime that makes formal methodologies executable by LLM agents. Loads
+        compiled methodology YAML specifications from the registry, exposes them via
+        MCP tools, and enables agents to follow step-by-step method guidance with
+        structured output validation. The registry of methods IS the product — the
+        server is the delivery mechanism.
+      invariant: >
+        Theory is the source of truth. When implementation and formal theory diverge,
+        the implementation must be revised — never the theory. The registry's compiled
+        methods have passed G0-G6 gates; the server must faithfully represent them
+        without distortion.
+      optimize_for:
+        - "Faithfulness: the server's behavior must match the methodology specs it serves — no silent interpretation"
+        - "Simplicity: core has zero transport deps, MCP is a thin wrapper, factory pattern for state"
+        - "Registry integrity: method YAMLs are production artifacts — preserve compilation status"
+
+    analysis:
+      what_changes_for_agents: >
+        An agent implementing a new MCP tool now knows the invariant: the server
+        SERVES the theory, it doesn't INTERPRET it. When the PRD 003 agent built
+        step_validate, it had to decide how aggressively to validate postconditions.
+        With essence, the answer is clear: be faithful to the spec (keyword matching),
+        don't add intelligence the spec doesn't warrant. The optimize_for "faithfulness"
+        directly answers the D-12/D-13 gap about where response envelope construction
+        belongs.
+
+  # ═══════════════════════════════════════════════════════
+  # I3-AGI — pv-agi
+  # ═══════════════════════════════════════════════════════
+
+  pv_agi:
+    current_description: >
+      AGI research project — tests the hypothesis that general intelligence
+      emerges from formal orchestration of specialized cognitive agents under
+      metacognitive control. Flagship project of Vidtecci.
+
+    proposed_essence:
+      purpose: >
+        Test the hypothesis that general intelligence emerges from formal
+        orchestration of specialized cognitive agents under metacognitive control.
+        Not building AGI directly — building the theoretical framework that would
+        make AGI architecturally principled rather than emergent-by-accident. The
+        method system (pv-method) is both the tool and the first test subject:
+        can formal methods govern their own evolution?
+      invariant: >
+        Epistemic integrity over hypothesis confirmation. Disconfirming evidence
+        for the core hypotheses (F1-F3) must be logged immediately, never explained
+        away. The commitment is to truth, not to the hypothesis. Bold claims require
+        explicit falsification criteria before adoption.
+      optimize_for:
+        - "Rigor: every architecture claim maps to both cognitive science reference AND formal method equivalent"
+        - "Falsifiability: bold hypotheses are valued, but only with explicit criteria for what would disprove them"
+        - "Human agency: never build systems that reduce human decision-making authority"
+        - "Structural correspondence: analogies are starting points, not conclusions — prove the correspondence formally"
+
+    analysis:
+      what_changes_for_agents: >
+        An agent running a research council session now knows the META-PURPOSE:
+        this isn't just "research about AI" — it's specifically testing whether
+        formal orchestration produces general intelligence. Every council decision,
+        every experiment design, every architecture fragment serves this hypothesis.
+        The invariant ("epistemic integrity over confirmation") prevents the council
+        from becoming a confirmation-bias machine. The optimize_for "falsifiability"
+        means bold ideas (Orion-type) are welcome but MUST come with "here's how you'd
+        prove me wrong." This is the difference between research and ideology.
+
+  # ═══════════════════════════════════════════════════════
+  # CROSS-PROJECT ANALYSIS
+  # ═══════════════════════════════════════════════════════
+
+  cross_project_analysis:
+    pattern_1_invariant_shapes_every_decision:
+      observation: >
+        Each project's invariant is genuinely different and genuinely load-bearing:
+        - t1-cortex: "no unauthorized access" → every feature must pass gate clearance
+        - pv-method: "theory is source of truth" → implementation follows spec, not vice versa
+        - pv-agi: "epistemic integrity over confirmation" → log disconfirming evidence
+      implication: >
+        The invariant field is the single highest-value addition. Without it, agents
+        default to generic good practices. With it, they default to the PROJECT'S
+        specific non-negotiable. This is the "metaconsciousness" the user wants:
+        the agent knows WHY it's doing its current task.
+
+    pattern_2_optimize_for_resolves_tradeoffs:
+      observation: >
+        The ranked priority list gives agents a decision procedure for ambiguous cases:
+        - t1-cortex: security > correctness > auditability > type safety
+        - pv-method: faithfulness > simplicity > registry integrity
+        - pv-agi: rigor > falsifiability > human agency > structural correspondence
+      implication: >
+        This is a lightweight decision framework that doesn't require delivery rules
+        for every edge case. Instead of DR-N for each scenario, the agent applies the
+        priority stack. "Should I add extra validation to this MCP response?" →
+        check optimize_for → "faithfulness" says match the spec, don't add intelligence.
+
+    pattern_3_purpose_prevents_scope_drift:
+      observation: >
+        Each purpose statement bounds what the project IS and ISN'T:
+        - t1-cortex: "enforcement layer between Claude and knowledge base" — not a chatbot, not a search engine
+        - pv-method: "runtime that makes methodologies executable" — not a method design tool, not a documentation system
+        - pv-agi: "testing whether formal orchestration produces general intelligence" — not building AGI, building the framework
+      implication: >
+        Agents that know the boundary don't propose out-of-scope changes. The PRD 003
+        agent wouldn't propose adding a chatbot interface because it knows pv-method
+        is "the runtime for methodologies, not a user-facing product."
+
+    verdict: >
+      The essence section is unambiguously valuable across all three projects. The
+      invariant field alone justifies the addition — it's the highest-leverage context
+      an agent can receive. The purpose prevents scope drift. The optimize_for resolves
+      ambiguous tradeoffs without needing per-case delivery rules.
+
+      Recommendation: add essence as a REQUIRED section in the MIC schema and apply
+      to all three live cards.

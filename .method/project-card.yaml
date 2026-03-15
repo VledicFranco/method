@@ -4,14 +4,26 @@
 project_card:
   id: I2-METHOD
   project: pv-method
-  description: >
-    Method MCP server — loads formal methodology YAML specs and exposes them to
-    LLM agents via MCP tools. TypeScript monorepo (core + mcp packages). The
-    registry/ directory IS the product: compiled methodology and method YAMLs
-    that the server loads and serves. Dual nature: this project both USES P2-SD
-    for its own development AND IS the runtime for P2-SD methods.
+  card_version: "1.1"
   methodology: P2-SD
   methodology_version: "2.0"
+
+  essence:
+    purpose: >
+      The runtime that makes formal methodologies executable by LLM agents. Loads
+      compiled methodology YAML specifications from the registry, exposes them via
+      MCP tools, and enables agents to follow step-by-step method guidance with
+      structured output validation. The registry of methods IS the product — the
+      server is the delivery mechanism.
+    invariant: >
+      Theory is the source of truth. When implementation and formal theory diverge,
+      the implementation must be revised — never the theory. The registry's compiled
+      methods have passed G0-G6 gates; the server must faithfully represent them
+      without distortion.
+    optimize_for:
+      - "Faithfulness: the server's behavior must match the methodology specs it serves — no silent interpretation"
+      - "Simplicity: core has zero transport deps, MCP is a thin wrapper, factory pattern for state"
+      - "Registry integrity: method YAMLs are production artifacts — preserve compilation status"
 
   context:
     language: "TypeScript 5.7"
