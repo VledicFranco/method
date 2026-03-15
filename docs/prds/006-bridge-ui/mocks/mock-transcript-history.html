@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@method/bridge — Session Transcripts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+:root {
+  --void:       #050910;
+  --abyssal:    #0e2030;
+  --abyss:      #0b1c2b;
+  --ocean:      #0c2a3c;
+  --bio:        #00d4b0;
+  --bio-bright: #00f0d0;
+  --bio-dim:    rgba(0,212,176,.10);
+  --solar:      #eeaa62;
+  --solar-dim:  rgba(238,170,98,.08);
+  --stellar:    #f4f8fc;
+  --dim:        #c0d0de;
+  --dim2:       #7a90a2;
+  --nebular:    #9b7fd4;
+  --muted:      #4a5c6a;
+  --red:        #e05a5a;
+  --font-d: 'Space Grotesk', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', 'Consolas', monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--stellar);
+  font-family: var(--font-b);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 260px 1fr;
+  overflow: hidden;
+}
+
+/* grain */
+body::after {
+  content: ''; position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999; opacity: .04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 300px;
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes staggerReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes expandDown {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 500px; opacity: 1; }
+}
+
+/* ── TOP BAR ────────────────────────────────────────── */
+.top-bar {
+  grid-column: 1 / -1;
+  background: rgba(8,18,32,.98);
+  border-bottom: 1px solid rgba(0,212,176,.07);
+  padding: .65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  animation: fadeInUp .4s var(--ease-out);
+}
+
+.tb-back {
+  font-family: var(--font-m);
+  font-size: .7rem;
+  color: var(--dim2);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  transition: color .15s;
+  cursor: pointer;
+}
+.tb-back:hover { color: var(--bio); }
+
+.tb-title {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+.tb-title em { font-style: normal; color: var(--bio); }
+
+.tb-spacer { flex: 1; }
+
+.tb-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  animation: fadeIn .5s var(--ease-out) .3s both;
+}
+
+.tb-meta-item {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim2);
+}
+.tb-meta-item strong { color: var(--dim); font-weight: 500; }
+.tb-meta-item .val { color: var(--bio); }
+
+.mock-tag {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--nebular);
+  opacity: .6;
+  padding: .15rem .5rem;
+  background: rgba(155,127,212,.06);
+  border-radius: 1px;
+}
+
+/* ── SESSION SIDEBAR ────────────────────────────────── */
+.session-sidebar {
+  background: rgba(8,18,32,.97);
+  border-right: 1px solid rgba(0,212,176,.07);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.session-sidebar::-webkit-scrollbar { width: 4px; }
+.session-sidebar::-webkit-scrollbar-track { background: transparent; }
+.session-sidebar::-webkit-scrollbar-thumb { background: rgba(0,212,176,.12); border-radius: 2px; }
+
+.sb-header {
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: 1px solid rgba(0,212,176,.05);
+}
+
+.sb-title {
+  font-family: var(--font-d);
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--stellar);
+  margin-bottom: .15rem;
+}
+
+.sb-count {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--dim2);
+}
+
+.sb-search {
+  margin: .75rem 1rem;
+  background: rgba(2,5,10,.5);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 1px;
+  padding: .4rem .65rem;
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--stellar);
+  width: calc(100% - 2rem);
+  outline: none;
+  transition: border-color .15s;
+}
+.sb-search::placeholder { color: var(--muted); }
+.sb-search:focus { border-color: rgba(0,212,176,.2); }
+
+.date-group {
+  padding: .5rem 0;
+}
+
+.date-label {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  padding: .35rem 1.25rem;
+  opacity: .7;
+}
+
+.session-entry {
+  display: block;
+  padding: .55rem 1.25rem .55rem 1rem;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  opacity: 0;
+  animation: slideInRight .3s var(--ease-out) both;
+}
+.session-entry:nth-child(2) { animation-delay: .05s; }
+.session-entry:nth-child(3) { animation-delay: .1s; }
+.session-entry:nth-child(4) { animation-delay: .15s; }
+.session-entry:nth-child(5) { animation-delay: .2s; }
+.session-entry:nth-child(6) { animation-delay: .25s; }
+
+.session-entry:hover { background: rgba(0,212,176,.03); }
+.session-entry.active {
+  border-left-color: var(--bio);
+  background: rgba(0,212,176,.04);
+}
+
+.se-row1 {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .15rem;
+}
+
+.se-id {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--stellar);
+}
+.session-entry.active .se-id { color: var(--bio); }
+
+.se-status {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.se-status-ready { background: var(--bio); }
+.se-status-dead  { background: var(--red); opacity: .5; }
+
+.se-workdir {
+  font-family: var(--font-m);
+  font-size: .65rem;
+  color: var(--dim2);
+  margin-left: auto;
+}
+
+.se-row2 {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--muted);
+}
+
+/* ── TRANSCRIPT MAIN ────────────────────────────────── */
+.transcript-main {
+  overflow-y: auto;
+  padding: 1.5rem 2.5rem 3rem;
+  scroll-behavior: smooth;
+}
+
+.transcript-main::-webkit-scrollbar { width: 6px; }
+.transcript-main::-webkit-scrollbar-track { background: transparent; }
+.transcript-main::-webkit-scrollbar-thumb { background: rgba(0,212,176,.12); border-radius: 3px; }
+
+/* session metadata bar */
+.session-meta {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(0,212,176,.06);
+  flex-wrap: wrap;
+}
+
+.sm-item {
+  opacity: 0;
+  animation: staggerReveal .35s var(--ease-out) both;
+}
+.sm-item:nth-child(1) { animation-delay: .1s; }
+.sm-item:nth-child(2) { animation-delay: .15s; }
+.sm-item:nth-child(3) { animation-delay: .2s; }
+.sm-item:nth-child(4) { animation-delay: .25s; }
+.sm-item:nth-child(5) { animation-delay: .3s; }
+.sm-item:nth-child(6) { animation-delay: .35s; }
+
+.sm-label {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  margin-bottom: .15rem;
+}
+
+.sm-value {
+  font-family: var(--font-m);
+  font-size: .75rem;
+  color: var(--dim);
+}
+.sm-value.bio { color: var(--bio); }
+.sm-value.mono { font-weight: 500; color: var(--stellar); }
+
+/* conversation turns */
+.turn {
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeInUp .4s var(--ease-out) both;
+}
+.turn:nth-child(1) { animation-delay: .4s; }
+.turn:nth-child(2) { animation-delay: .55s; }
+.turn:nth-child(3) { animation-delay: .7s; }
+.turn:nth-child(4) { animation-delay: .85s; }
+
+/* user turn */
+.turn-user {
+  border-left: 2px solid rgba(238,170,98,.35);
+  background: rgba(238,170,98,.03);
+  border-radius: 1px;
+  padding: .9rem 1.15rem;
+}
+
+.turn-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+
+.turn-role {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.turn-role-user { color: var(--solar); }
+.turn-role-assistant { color: var(--bio); }
+
+.turn-time {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--muted);
+}
+
+.turn-tokens {
+  margin-left: auto;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  color: var(--dim2);
+}
+
+.turn-body {
+  font-family: var(--font-m);
+  font-size: .82rem;
+  color: var(--stellar);
+  line-height: 1.75;
+}
+
+/* assistant turn */
+.turn-assistant {
+  border-left: 2px solid rgba(0,212,176,.2);
+  background: rgba(11,28,43,.4);
+  border-radius: 1px;
+  padding: .9rem 1.15rem;
+}
+
+.turn-assistant .turn-body {
+  color: var(--dim);
+}
+.turn-assistant .turn-body strong { color: var(--stellar); font-weight: 500; }
+.turn-assistant .turn-body code {
+  background: rgba(0,212,176,.06);
+  color: var(--bio);
+  padding: .1rem .3rem;
+  border-radius: 1px;
+  font-size: .78rem;
+}
+
+/* tool use block inside assistant turn */
+.tool-block {
+  border-left: 2px solid rgba(155,127,212,.25);
+  background: rgba(155,127,212,.03);
+  border-radius: 1px;
+  margin: .75rem 0;
+  overflow: hidden;
+}
+
+.tool-block-header {
+  padding: .45rem .75rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.tool-block-header:hover { background: rgba(155,127,212,.06); }
+
+.tool-block-icon {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--nebular);
+  transition: transform .25s var(--ease-out);
+}
+.tool-block.expanded .tool-block-icon { transform: rotate(90deg); }
+
+.tool-block-name {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--nebular);
+}
+
+.tool-block-dur {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--dim2);
+  margin-left: auto;
+}
+
+.tool-block-content {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height .35s var(--ease-out), opacity .25s, padding .25s;
+}
+.tool-block.expanded .tool-block-content {
+  max-height: 600px;
+  opacity: 1;
+  overflow-y: auto;
+}
+
+.tool-block-inner {
+  background: rgba(2,5,10,.5);
+  border: 1px solid rgba(255,255,255,.04);
+  margin: 0 .75rem .75rem;
+  padding: .65rem .9rem;
+  font-family: var(--font-m);
+  font-size: .7rem;
+  color: var(--dim);
+  line-height: 1.75;
+  border-radius: 1px;
+  white-space: pre-wrap;
+}
+
+/* response table inside turn */
+.response-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .78rem;
+  margin: .75rem 0;
+}
+.response-table th {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bio);
+  text-align: left;
+  padding: .4rem .6rem;
+  border-bottom: 1px solid rgba(0,212,176,.1);
+  opacity: .75;
+}
+.response-table td {
+  font-family: var(--font-m);
+  padding: .45rem .6rem;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  color: var(--dim);
+}
+.response-table tr:hover td { background: rgba(0,212,176,.02); }
+
+/* end-of-session summary */
+.session-summary {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: rgba(0,212,176,.03);
+  border-left: 2px solid rgba(0,212,176,.2);
+  border-radius: 1px;
+  opacity: 0;
+  animation: fadeInUp .4s var(--ease-out) 1.1s both;
+}
+
+.summary-title {
+  font-family: var(--font-d);
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--stellar);
+  margin-bottom: .5rem;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.summary-stat {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim2);
+}
+.summary-stat strong {
+  color: var(--dim);
+  font-weight: 500;
+}
+.summary-stat .bio { color: var(--bio); }
+
+  </style>
+</head>
+<body>
+
+  <!-- ── TOP BAR ─────────────────────────────────────── -->
+  <header class="top-bar">
+    <a class="tb-back">&larr; dashboard</a>
+    <h1 class="tb-title">Session <em>Transcripts</em></h1>
+    <span class="tb-spacer"></span>
+    <div class="tb-meta">
+      <span class="tb-meta-item"><strong>ID</strong> <span class="val">d9dea613-572e-4d16-a4ec-179d5c0846cf</span></span>
+      <span class="tb-meta-item"><strong>Tokens</strong> 68.4k</span>
+      <span class="tb-meta-item"><strong>Cache</strong> <span class="val">78%</span></span>
+      <span class="tb-meta-item"><strong>Duration</strong> 12m 34s</span>
+    </div>
+    <span class="mock-tag">PRD-005 Mock</span>
+  </header>
+
+  <!-- ── SESSION SIDEBAR ─────────────────────────────── -->
+  <aside class="session-sidebar">
+    <div class="sb-header">
+      <div class="sb-title">Sessions</div>
+      <div class="sb-count">12 sessions &middot; 3 active</div>
+    </div>
+    <input class="sb-search" type="text" placeholder="Filter sessions..." />
+
+    <div class="date-group">
+      <div class="date-label">Today &middot; Mar 14</div>
+      <div class="session-entry active">
+        <div class="se-row1">
+          <span class="se-status se-status-ready"></span>
+          <span class="se-id">d9dea613</span>
+          <span class="se-workdir">pv-method</span>
+        </div>
+        <div class="se-row2">
+          <span>14:32</span>
+          <span>&middot;</span>
+          <span>68.4k tokens</span>
+          <span>&middot;</span>
+          <span>council-run-1</span>
+        </div>
+      </div>
+      <div class="session-entry">
+        <div class="se-row1">
+          <span class="se-status se-status-ready"></span>
+          <span class="se-id">64cf42b0</span>
+          <span class="se-workdir">pv-method</span>
+        </div>
+        <div class="se-row2">
+          <span>14:28</span>
+          <span>&middot;</span>
+          <span>51.2k tokens</span>
+          <span>&middot;</span>
+          <span>impl-phase2</span>
+        </div>
+      </div>
+      <div class="session-entry">
+        <div class="se-row1">
+          <span class="se-status se-status-dead"></span>
+          <span class="se-id">a3f7bc01</span>
+          <span class="se-workdir">pv-agi</span>
+        </div>
+        <div class="se-row2">
+          <span>13:45</span>
+          <span>&middot;</span>
+          <span>23.1k tokens</span>
+          <span>&middot;</span>
+          <span>council-run-1</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="date-group">
+      <div class="date-label">Yesterday &middot; Mar 13</div>
+      <div class="session-entry">
+        <div class="se-row1">
+          <span class="se-status se-status-dead"></span>
+          <span class="se-id">7f2e9a14</span>
+          <span class="se-workdir">pv-method</span>
+        </div>
+        <div class="se-row2">
+          <span>22:14</span>
+          <span>&middot;</span>
+          <span>142.8k tokens</span>
+          <span>&middot;</span>
+          <span>impl-prd004</span>
+        </div>
+      </div>
+      <div class="session-entry">
+        <div class="se-row1">
+          <span class="se-status se-status-dead"></span>
+          <span class="se-id">3bc51d88</span>
+          <span class="se-workdir">pv-agi</span>
+        </div>
+        <div class="se-row2">
+          <span>19:30</span>
+          <span>&middot;</span>
+          <span>89.3k tokens</span>
+          <span>&middot;</span>
+          <span>acceptance-test</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── TRANSCRIPT MAIN ─────────────────────────────── -->
+  <main class="transcript-main">
+
+    <!-- session metadata -->
+    <div class="session-meta">
+      <div class="sm-item">
+        <div class="sm-label">Session ID</div>
+        <div class="sm-value mono">d9dea613</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Workdir</div>
+        <div class="sm-value">/pv-method</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Started</div>
+        <div class="sm-value">14:32:07</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Total Tokens</div>
+        <div class="sm-value bio">68,441</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Cache Rate</div>
+        <div class="sm-value bio">78%</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Duration</div>
+        <div class="sm-value">12m 34s</div>
+      </div>
+    </div>
+
+    <!-- Turn 1: User -->
+    <div class="turn turn-user">
+      <div class="turn-header">
+        <span class="turn-role turn-role-user">you</span>
+        <span class="turn-time">14:32:07</span>
+        <span class="turn-tokens">124 tokens</span>
+      </div>
+      <div class="turn-body">
+        List all methodologies in the registry.
+      </div>
+    </div>
+
+    <!-- Turn 2: Assistant -->
+    <div class="turn turn-assistant">
+      <div class="turn-header">
+        <span class="turn-role turn-role-assistant">agent</span>
+        <span class="turn-time">14:32:09</span>
+        <span class="turn-tokens">13,847 tokens &middot; cache: 11.2k</span>
+      </div>
+
+      <!-- Tool call -->
+      <div class="tool-block expanded" onclick="this.classList.toggle('expanded')">
+        <div class="tool-block-header">
+          <span class="tool-block-icon">&rsaquo;</span>
+          <span class="tool-block-name">methodology_list</span>
+          <span class="tool-block-dur">312ms</span>
+        </div>
+        <div class="tool-block-content">
+          <div class="tool-block-inner">[
+  { "id": "P0-META", "name": "Genesis Methodology", "methods": 5 },
+  { "id": "P1-EXEC", "name": "Execution Methodology", "methods": 3 },
+  { "id": "P2-SD",   "name": "Software Delivery",     "methods": 7 },
+  { "id": "P3-DISPATCH", "name": "Dispatch Methodology", "methods": 3 }
+]</div>
+        </div>
+      </div>
+
+      <div class="turn-body">
+        The registry contains <strong>4 methodologies</strong> with <strong>18 methods</strong>:
+
+        <table class="response-table">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Methods</th><th>Steps</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="color:var(--bio)">P0-META</td><td>Genesis Methodology</td><td>5</td><td>27</td></tr>
+            <tr><td style="color:var(--bio)">P1-EXEC</td><td>Execution Methodology</td><td>3</td><td>12</td></tr>
+            <tr><td style="color:var(--bio)">P2-SD</td><td>Software Delivery</td><td>7</td><td>34</td></tr>
+            <tr><td style="color:var(--bio)">P3-DISPATCH</td><td>Dispatch Methodology</td><td>3</td><td>17</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Turn 3: User -->
+    <div class="turn turn-user">
+      <div class="turn-header">
+        <span class="turn-role turn-role-user">you</span>
+        <span class="turn-time">14:34:22</span>
+        <span class="turn-tokens">89 tokens</span>
+      </div>
+      <div class="turn-body">
+        Load P2-SD and show me the transition function. I want to understand how tasks are routed to methods.
+      </div>
+    </div>
+
+    <!-- Turn 4: Assistant -->
+    <div class="turn turn-assistant">
+      <div class="turn-header">
+        <span class="turn-role turn-role-assistant">agent</span>
+        <span class="turn-time">14:34:25</span>
+        <span class="turn-tokens">42,381 tokens &middot; cache: 29.4k</span>
+      </div>
+
+      <!-- Tool call 1 -->
+      <div class="tool-block" onclick="this.classList.toggle('expanded')">
+        <div class="tool-block-header">
+          <span class="tool-block-icon">&rsaquo;</span>
+          <span class="tool-block-name">methodology_start</span>
+          <span class="tool-block-dur">89ms</span>
+        </div>
+        <div class="tool-block-content">
+          <div class="tool-block-inner">{
+  "methodologySessionId": "d9dea613",
+  "methodology": {
+    "id": "P2-SD",
+    "name": "Software Delivery Methodology",
+    "methodCount": 7
+  },
+  "status": "initialized"
+}</div>
+        </div>
+      </div>
+
+      <!-- Tool call 2 -->
+      <div class="tool-block" onclick="this.classList.toggle('expanded')">
+        <div class="tool-block-header">
+          <span class="tool-block-icon">&rsaquo;</span>
+          <span class="tool-block-name">methodology_get_routing</span>
+          <span class="tool-block-dur">124ms</span>
+        </div>
+        <div class="tool-block-content">
+          <div class="tool-block-inner">{
+  "methodologyId": "P2-SD",
+  "predicates": [
+    { "name": "task_type", "description": "The challenge type" },
+    { "name": "multi_task_scope", "description": ">=3 independent tasks" }
+  ],
+  "arms": [
+    { "priority": 1, "label": "section", "selects": "M7-PRDS" },
+    { "priority": 2, "label": "architecture", "selects": "M6-ARFN" },
+    { "priority": 3, "label": "plan", "selects": "M5-PLAN" },
+    ...
+  ]
+}</div>
+        </div>
+      </div>
+
+      <div class="turn-body">
+        <strong>P2-SD's transition function &delta;_SD</strong> routes software delivery challenges to 7 methods using a priority-stack evaluation:
+
+        <table class="response-table">
+          <thead>
+            <tr><th>Priority</th><th>Task Type</th><th>Method</th><th>When</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td style="color:var(--solar)">section</td><td><code>M7-PRDS</code></td><td>Full PRD needs decomposition</td></tr>
+            <tr><td>2</td><td style="color:var(--solar)">architecture</td><td><code>M6-ARFN</code></td><td>Architecture needs updating</td></tr>
+            <tr><td>3</td><td style="color:var(--solar)">plan</td><td><code>M5-PLAN</code></td><td>Section ready for phased planning</td></tr>
+            <tr><td>4</td><td style="color:var(--solar)">implement (parallel)</td><td><code>M2-DIMPL</code></td><td>&ge;3 independent tasks, disjoint files</td></tr>
+            <tr><td>5</td><td style="color:var(--solar)">implement</td><td><code>M1-IMPL</code></td><td>Sequential implementation</td></tr>
+            <tr><td>6</td><td style="color:var(--solar)">review</td><td><code>M3-PHRV</code></td><td>Phase completed, needs evaluation</td></tr>
+            <tr><td>7</td><td style="color:var(--solar)">audit</td><td><code>M4-DDAG</code></td><td>3+ phases since last drift audit</td></tr>
+          </tbody>
+        </table>
+
+        The function evaluates predicates top-down. The first arm whose condition is satisfied wins. This is Markovian &mdash; only the current state <code>s</code> determines the next method. The orchestrator evaluates <code>&delta;_SD(s)</code> by checking each predicate against the challenge and selecting the highest-priority match.
+      </div>
+    </div>
+
+    <!-- session summary -->
+    <div class="session-summary">
+      <div class="summary-title">Session Complete</div>
+      <div class="summary-stats">
+        <span class="summary-stat"><strong>Turns:</strong> 4</span>
+        <span class="summary-stat"><strong>Tools called:</strong> 3</span>
+        <span class="summary-stat"><strong>Total tokens:</strong> <span class="bio">68,441</span></span>
+        <span class="summary-stat"><strong>Cache rate:</strong> <span class="bio">78%</span></span>
+        <span class="summary-stat"><strong>Duration:</strong> 12m 34s</span>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@method/bridge — Live Agent Output</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+:root {
+  --void:       #050910;
+  --abyssal:    #0e2030;
+  --abyss:      #0b1c2b;
+  --ocean:      #0c2a3c;
+  --bio:        #00d4b0;
+  --bio-bright: #00f0d0;
+  --bio-dim:    rgba(0,212,176,.10);
+  --solar:      #eeaa62;
+  --solar-dim:  rgba(238,170,98,.08);
+  --stellar:    #f4f8fc;
+  --dim:        #c0d0de;
+  --dim2:       #7a90a2;
+  --nebular:    #9b7fd4;
+  --muted:      #4a5c6a;
+  --red:        #e05a5a;
+  --red-dim:    rgba(224,90,90,.10);
+  --font-d: 'Space Grotesk', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', 'Consolas', monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--void);
+  color: var(--stellar);
+  font-family: var(--font-b);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr 220px;
+  overflow: hidden;
+}
+
+/* grain */
+body::after {
+  content: ''; position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999; opacity: .04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 300px;
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideInLine {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes expandIn {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 600px; }
+}
+
+@keyframes countPulse {
+  0% { color: var(--bio-bright); transform: scale(1.08); }
+  100% { color: var(--bio); transform: scale(1); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(0,212,176,.15); }
+  50% { box-shadow: 0 0 14px rgba(0,212,176,.3); }
+}
+
+/* ── HEADER BAR ─────────────────────────────────────── */
+.header-bar {
+  grid-column: 1 / -1;
+  background: rgba(8,18,32,.98);
+  padding: .65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 1px solid rgba(0,212,176,.07);
+  animation: fadeInUp .4s var(--ease-out);
+}
+
+.hb-back {
+  font-family: var(--font-m);
+  font-size: .7rem;
+  color: var(--dim2);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  transition: color .15s;
+  cursor: pointer;
+}
+.hb-back:hover { color: var(--bio); }
+
+.hb-id {
+  font-family: var(--font-m);
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--stellar);
+  letter-spacing: .02em;
+}
+
+.hb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-m);
+  font-size: .68rem;
+  font-weight: 500;
+  padding: .15rem .55rem;
+  border-radius: 2px;
+}
+
+.hb-status::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hb-status-working { color: var(--solar); background: var(--solar-dim); }
+.hb-status-working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
+
+.hb-status-ready { color: var(--bio); background: var(--bio-dim); }
+.hb-status-ready::before { background: var(--bio); }
+
+.hb-meta {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim2);
+}
+.hb-meta strong { color: var(--dim); font-weight: 500; }
+
+.hb-spacer { flex: 1; }
+
+.hb-dashboard {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  text-decoration: none;
+  transition: color .15s;
+  cursor: pointer;
+}
+.hb-dashboard:hover { color: var(--bio); }
+
+/* ── TERMINAL OUTPUT ────────────────────────────────── */
+.terminal {
+  background: rgba(2,5,10,.98);
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  scroll-behavior: smooth;
+}
+
+.terminal::-webkit-scrollbar { width: 6px; }
+.terminal::-webkit-scrollbar-track { background: transparent; }
+.terminal::-webkit-scrollbar-thumb { background: rgba(0,212,176,.15); border-radius: 3px; }
+.terminal::-webkit-scrollbar-thumb:hover { background: rgba(0,212,176,.25); }
+
+/* output blocks */
+.output-block {
+  margin-bottom: 1.25rem;
+  animation: slideInLine .3s var(--ease-out) both;
+}
+.output-block:nth-child(1) { animation-delay: .1s; }
+.output-block:nth-child(2) { animation-delay: .3s; }
+.output-block:nth-child(3) { animation-delay: .6s; }
+.output-block:nth-child(4) { animation-delay: .9s; }
+.output-block:nth-child(5) { animation-delay: 1.2s; }
+
+/* prompt marker */
+.prompt-marker {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--solar);
+  opacity: .65;
+  margin-bottom: .35rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.prompt-marker .dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--solar);
+}
+
+.prompt-text {
+  font-family: var(--font-m);
+  font-size: .82rem;
+  color: var(--stellar);
+  padding: .65rem .9rem;
+  background: rgba(238,170,98,.04);
+  border-left: 2px solid rgba(238,170,98,.35);
+  border-radius: 1px;
+  line-height: 1.7;
+  margin-bottom: .75rem;
+}
+
+/* response marker */
+.response-marker {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .65;
+  margin-bottom: .35rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.response-marker .dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--bio);
+}
+
+/* thinking block — collapsed */
+.thinking-block {
+  border-left: 2px solid rgba(155,127,212,.3);
+  background: rgba(155,127,212,.03);
+  border-radius: 1px;
+  margin-bottom: .75rem;
+  overflow: hidden;
+}
+
+.thinking-header {
+  padding: .5rem .9rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.thinking-header:hover { background: rgba(155,127,212,.06); }
+
+.thinking-icon {
+  font-family: var(--font-m);
+  font-size: .65rem;
+  color: var(--nebular);
+  transition: transform .25s var(--ease-out);
+}
+.thinking-block.expanded .thinking-icon { transform: rotate(90deg); }
+
+.thinking-label {
+  font-family: var(--font-m);
+  font-size: .7rem;
+  color: var(--nebular);
+  opacity: .8;
+}
+
+.thinking-duration {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--dim2);
+  margin-left: auto;
+}
+
+.thinking-content {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 .9rem;
+  font-family: var(--font-m);
+  font-size: .75rem;
+  color: var(--dim);
+  line-height: 1.8;
+  transition: max-height .35s var(--ease-out), opacity .25s, padding .25s;
+  overflow: hidden;
+}
+.thinking-block.expanded .thinking-content {
+  max-height: 400px;
+  opacity: 1;
+  padding: .5rem .9rem .75rem;
+  overflow-y: auto;
+}
+
+/* tool call block */
+.tool-call {
+  border-left: 2px solid rgba(0,212,176,.25);
+  background: rgba(0,212,176,.02);
+  border-radius: 1px;
+  margin-bottom: .75rem;
+  overflow: hidden;
+}
+
+.tool-header {
+  padding: .5rem .9rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.tool-header:hover { background: rgba(0,212,176,.05); }
+
+.tool-icon {
+  font-family: var(--font-m);
+  font-size: .65rem;
+  color: var(--bio);
+  transition: transform .25s var(--ease-out);
+}
+.tool-call.expanded .tool-icon { transform: rotate(90deg); }
+
+.tool-name {
+  font-family: var(--font-m);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--bio);
+}
+
+.tool-args {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim2);
+}
+
+.tool-duration {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--dim2);
+  margin-left: auto;
+}
+
+.tool-result {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 .9rem;
+  transition: max-height .35s var(--ease-out), opacity .25s, padding .25s;
+  overflow: hidden;
+}
+.tool-call.expanded .tool-result {
+  max-height: 500px;
+  opacity: 1;
+  padding: .5rem .9rem .75rem;
+  overflow-y: auto;
+}
+
+.tool-result-content {
+  background: rgba(2,5,10,.6);
+  border: 1px solid rgba(255,255,255,.04);
+  padding: .75rem 1rem;
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--dim);
+  line-height: 1.75;
+  border-radius: 1px;
+  white-space: pre-wrap;
+}
+
+/* response text */
+.response-text {
+  font-family: var(--font-m);
+  font-size: .82rem;
+  color: var(--dim);
+  line-height: 1.8;
+  padding: .65rem .9rem;
+  background: rgba(8,18,32,.5);
+  border-left: 2px solid rgba(0,212,176,.15);
+  border-radius: 1px;
+}
+.response-text strong { color: var(--stellar); font-weight: 500; }
+.response-text code {
+  background: rgba(0,212,176,.06);
+  color: var(--bio);
+  padding: .1rem .35rem;
+  border-radius: 1px;
+  font-size: .78rem;
+}
+
+/* cursor */
+.terminal-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--bio);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 1s step-end infinite;
+}
+
+/* auto-scroll indicator */
+.scroll-indicator {
+  position: sticky;
+  bottom: 0;
+  left: 0; right: 0;
+  padding: .4rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  font-family: var(--font-m);
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  background: linear-gradient(transparent, rgba(2,5,10,.95) 40%);
+  cursor: pointer;
+  user-select: none;
+  transition: color .15s;
+}
+.scroll-indicator:hover { color: var(--bio); }
+.scroll-indicator .scroll-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--bio);
+  animation: pulse 2s ease-in-out infinite;
+}
+.scroll-indicator.paused .scroll-dot {
+  background: var(--dim2);
+  animation: none;
+}
+.scroll-indicator.paused { color: var(--muted); }
+
+/* ── SIDEBAR STATS ──────────────────────────────────── */
+.stats-sidebar {
+  background: rgba(8,18,32,.97);
+  border-left: 1px solid rgba(0,212,176,.07);
+  padding: 1.25rem;
+  overflow-y: auto;
+  animation: fadeInUp .5s var(--ease-out) .2s both;
+}
+
+.stats-section-label {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .7;
+  margin-bottom: .75rem;
+}
+.stats-section-label:not(:first-child) { margin-top: 1.75rem; }
+
+.stat-card {
+  margin-bottom: .9rem;
+}
+
+.stat-label {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  margin-bottom: .2rem;
+}
+
+.stat-value {
+  font-family: var(--font-d);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1;
+  color: var(--bio);
+}
+.stat-value.dim { color: var(--dim); }
+.stat-value.solar { color: var(--solar); }
+
+.stat-detail {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--muted);
+  margin-top: .15rem;
+}
+
+/* token breakdown */
+.token-row {
+  display: flex;
+  justify-content: space-between;
+  padding: .25rem 0;
+  font-family: var(--font-m);
+  font-size: .68rem;
+}
+.token-row-label { color: var(--dim2); }
+.token-row-value { color: var(--dim); }
+.token-row-value.bio { color: var(--bio); }
+
+/* cache bar */
+.cache-bar {
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  margin-top: .5rem;
+  overflow: hidden;
+}
+.cache-fill {
+  height: 100%;
+  background: var(--bio);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(0,212,176,.25);
+  transition: width .6s var(--ease-out);
+}
+
+/* ── INPUT BAR ──────────────────────────────────────── */
+.input-bar {
+  grid-column: 1 / -1;
+  background: rgba(6,14,26,.98);
+  border-top: 1px solid rgba(0,212,176,.07);
+  padding: .65rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  animation: fadeInUp .4s var(--ease-out) .3s both;
+}
+
+.input-label {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .5;
+  flex-shrink: 0;
+}
+
+.input-field {
+  flex: 1;
+  background: rgba(8,18,32,.99);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 1px;
+  padding: .5rem .75rem;
+  font-family: var(--font-m);
+  font-size: .8rem;
+  color: var(--stellar);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.input-field::placeholder { color: var(--muted); }
+.input-field:focus {
+  border-color: rgba(0,212,176,.25);
+  box-shadow: 0 0 12px rgba(0,212,176,.08);
+}
+
+.send-btn {
+  background: rgba(0,212,176,.12);
+  border: 1px solid rgba(0,212,176,.2);
+  border-radius: 1px;
+  padding: .45rem 1rem;
+  font-family: var(--font-m);
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--bio);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.send-btn:hover {
+  background: rgba(0,212,176,.18);
+  border-color: rgba(0,212,176,.35);
+  box-shadow: 0 0 12px rgba(0,212,176,.15);
+}
+
+/* ── MOCK BANNER ────────────────────────────────────── */
+.mock-tag {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--nebular);
+  opacity: .6;
+  padding: .15rem .5rem;
+  background: rgba(155,127,212,.06);
+  border-radius: 1px;
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- ── HEADER BAR ──────────────────────────────────── -->
+  <header class="header-bar">
+    <a class="hb-back">&larr; dashboard</a>
+    <span class="hb-id">d9dea613</span>
+    <span class="hb-status hb-status-working">working</span>
+    <span class="hb-meta"><strong>workdir</strong> /pv-method</span>
+    <span class="hb-meta"><strong>session</strong> council-run-1</span>
+    <span class="hb-spacer"></span>
+    <span class="mock-tag">PRD-005 Mock</span>
+  </header>
+
+  <!-- ── TERMINAL OUTPUT ─────────────────────────────── -->
+  <div class="terminal" id="terminal">
+
+    <!-- Prompt 1 -->
+    <div class="output-block">
+      <div class="prompt-marker"><span class="dot"></span> prompt 1 &middot; 14:32:07</div>
+      <div class="prompt-text">Use the methodology_list MCP tool to list all available methodologies, then analyze the registry structure and report any issues you find.</div>
+    </div>
+
+    <!-- Response 1 -->
+    <div class="output-block">
+      <div class="response-marker"><span class="dot"></span> response &middot; 14:32:09</div>
+
+      <!-- Thinking block (collapsed) -->
+      <div class="thinking-block" onclick="this.classList.toggle('expanded')">
+        <div class="thinking-header">
+          <span class="thinking-icon">&rsaquo;</span>
+          <span class="thinking-label">thinking</span>
+          <span class="thinking-duration">2.4s &middot; 1,847 tokens</span>
+        </div>
+        <div class="thinking-content">The user wants me to list all methodologies using the MCP tool, then analyze the registry structure. Let me start by calling methodology_list to get the full registry contents. After that I'll inspect the file structure to check for any structural issues — missing compilation records, orphaned methods, or broken cross-references between methodologies.
+
+I should pay attention to:
+1. Whether all methods referenced in transition functions actually exist
+2. Whether compilation_record gates are all marked as passed
+3. Whether instance cards reference valid parent methodologies</div>
+      </div>
+
+      <!-- Tool call: methodology_list -->
+      <div class="tool-call expanded" onclick="this.classList.toggle('expanded')">
+        <div class="tool-header">
+          <span class="tool-icon">&rsaquo;</span>
+          <span class="tool-name">methodology_list</span>
+          <span class="tool-args">{ }</span>
+          <span class="tool-duration">312ms</span>
+        </div>
+        <div class="tool-result">
+          <div class="tool-result-content">[
+  {
+    "id": "P0-META",
+    "name": "Genesis Methodology for the Meta-Method Family",
+    "methods": ["M1-MDES", "M3-MEVO", "M4-MINS", "M5-MCOM", "M7-DTID"]
+  },
+  {
+    "id": "P1-EXEC",
+    "name": "Execution Methodology",
+    "methods": ["M1-COUNCIL", "M2-ORCH", "M3-TMP"]
+  },
+  {
+    "id": "P2-SD",
+    "name": "Software Delivery Methodology",
+    "methods": ["M1-IMPL", "M2-DIMPL", "M3-PHRV", "M4-DDAG", "M5-PLAN", "M6-ARFN", "M7-PRDS"]
+  },
+  {
+    "id": "P3-DISPATCH",
+    "name": "Dispatch Methodology",
+    "methods": ["M1-INTERACTIVE", "M2-SEMIAUTO", "M3-FULLAUTO"]
+  }
+]</div>
+        </div>
+      </div>
+
+      <!-- Tool call: Read -->
+      <div class="tool-call" onclick="this.classList.toggle('expanded')">
+        <div class="tool-header">
+          <span class="tool-icon">&rsaquo;</span>
+          <span class="tool-name">Read</span>
+          <span class="tool-args">registry/P2-SD/P2-SD.yaml</span>
+          <span class="tool-duration">18ms</span>
+        </div>
+        <div class="tool-result">
+          <div class="tool-result-content">navigation:
+  id: P2-SD
+  name: Software Delivery Methodology
+  version: "2.0"
+  parent: P0-META
+  compilation_record:
+    compiled_by: M5-MCOM
+    gates_passed: [G0, G1, G2, G3, G4, G5, G6]
+    ...</div>
+        </div>
+      </div>
+
+      <!-- Response text -->
+      <div class="response-text">
+        The registry contains <strong>4 methodologies</strong> with <strong>18 methods</strong> across 90 total steps.
+
+        <strong>Registry audit results:</strong>
+
+        All four methodologies have valid compilation records with gates G0-G6 passed. No structural issues found:
+
+        &bull; <code>P0-META</code> &mdash; 5 methods (27 steps). M7-DTID shows 0 steps &mdash; this is an unpopulated method stub, not an error.
+        &bull; <code>P1-EXEC</code> &mdash; 3 methods (12 steps). Transition function &delta;_EXEC has 5 arms + fallback. All method references resolve.
+        &bull; <code>P2-SD</code> &mdash; 7 methods (34 steps). Transition function &delta;_SD has 9 arms. Instance cards I1-T1X and I2-METHOD correctly reference P2-SD as parent.
+        &bull; <code>P3-DISPATCH</code> &mdash; 3 methods (17 steps). Direct-map routing. All three autonomy modes have complete step DAGs.
+
+        No orphaned methods, no broken cross-references, no missing compilation records.<span class="terminal-cursor"></span>
+      </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="scroll-indicator" id="scrollIndicator" onclick="toggleAutoScroll()">
+      <span class="scroll-dot"></span>
+      <span id="scrollLabel">auto-scroll</span>
+    </div>
+  </div>
+
+  <!-- ── SIDEBAR STATS ───────────────────────────────── -->
+  <aside class="stats-sidebar">
+    <div class="stats-section-label">Session</div>
+
+    <div class="stat-card">
+      <div class="stat-label">Status</div>
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--solar);box-shadow:0 0 5px rgba(238,170,98,.5);animation:pulse 1.5s ease-in-out infinite;"></span>
+        <span style="font-family:var(--font-m);font-size:.75rem;color:var(--solar);">working</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Prompts</div>
+      <div class="stat-value" id="promptCount">1</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Queue Depth</div>
+      <div class="stat-value dim">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Session Time</div>
+      <div class="stat-value dim">4m 12s</div>
+    </div>
+
+    <div class="stats-section-label">Tokens</div>
+
+    <div class="stat-card">
+      <div class="stat-label">Total</div>
+      <div class="stat-value">68.4k</div>
+    </div>
+
+    <div class="token-row">
+      <span class="token-row-label">Input</span>
+      <span class="token-row-value">52,148</span>
+    </div>
+    <div class="token-row">
+      <span class="token-row-label">Output</span>
+      <span class="token-row-value">16,293</span>
+    </div>
+    <div class="token-row">
+      <span class="token-row-label">Cache read</span>
+      <span class="token-row-value bio">40,612</span>
+    </div>
+    <div class="token-row">
+      <span class="token-row-label">Cache write</span>
+      <span class="token-row-value">11,536</span>
+    </div>
+
+    <div style="margin-top:.75rem;">
+      <div class="stat-label">Cache Hit Rate</div>
+      <div style="display:flex;align-items:baseline;gap:.3rem;margin-top:.2rem;">
+        <span style="font-family:var(--font-d);font-size:1.2rem;font-weight:700;color:var(--bio);">78%</span>
+        <span style="font-family:var(--font-m);font-size:.6rem;color:var(--muted);">40.6k / 52.1k</span>
+      </div>
+      <div class="cache-bar">
+        <div class="cache-fill" style="width:78%;"></div>
+      </div>
+    </div>
+
+    <div class="stats-section-label">Methodology</div>
+
+    <div class="stat-card">
+      <div class="stat-label">Session ID</div>
+      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--bio);opacity:.8;">council-run-1</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Method</div>
+      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--stellar);">M1-COUNCIL</div>
+      <div style="font-family:var(--font-m);font-size:.6rem;color:var(--dim2);margin-top:.1rem;">Synthetic Agents Method</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Step</div>
+      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--stellar);">sigma_2 / 4</div>
+      <div style="font-family:var(--font-m);font-size:.6rem;color:var(--dim2);margin-top:.1rem;">Adversarial Debate</div>
+    </div>
+  </aside>
+
+  <!-- ── INPUT BAR ───────────────────────────────────── -->
+  <div class="input-bar">
+    <span class="input-label">bridge_prompt</span>
+    <input class="input-field" type="text" placeholder="Send a prompt to this agent..." />
+    <button class="send-btn">Send</button>
+  </div>
+
+  <script>
+    // Auto-scroll toggle
+    let autoScroll = true;
+    function toggleAutoScroll() {
+      autoScroll = !autoScroll;
+      const indicator = document.getElementById('scrollIndicator');
+      const label = document.getElementById('scrollLabel');
+      indicator.classList.toggle('paused', !autoScroll);
+      label.textContent = autoScroll ? 'auto-scroll' : 'paused';
+    }
+
+    // Simulate auto-scroll
+    const terminal = document.getElementById('terminal');
+    if (autoScroll) {
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+  </script>
+
+</body>
+</html>
