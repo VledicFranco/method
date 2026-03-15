@@ -391,6 +391,18 @@ phases:
       method-attributable insights. If characters merely have different expertise but
       the same philosophy, the debate degenerates into complementary monologues.
 
+      **Cognitive diversity heuristic:**
+      Ensure the cast covers both divergent-exploration (pushes beyond obvious solutions)
+      and convergent-pruning (tests feasibility and implementation cost). These are two
+      structurally different cognitive operations that degenerate when the same character
+      does both. They do NOT require separate characters — they can be merged into domain
+      contrarians through conviction and blind_spot fields. A contrarian whose blind spot
+      is "underweights implementation cost" naturally explores divergently; one whose blind
+      spot is "may kill good ideas too early" naturally prunes convergently. The key is
+      that both operations are represented in the cast. Evidence: sessions with explicit
+      divergent/convergent pairing produced the evolution ledger concept (divergent) and
+      the hardest_decision field (convergent) — neither emerged from domain-only casts.
+
       **Procedure:**
       1. Design characters tailored to the Challenge domain.
       2. For each Contrarian: name, expertise domain, core conviction (one sentence
