@@ -1,0 +1,136 @@
+retrospective:
+  session_id: "prd004-runtime-exec"
+  methodology: P2-SD
+  method: "M1-IMPL + M5-PLAN + M3-PHRV + M6-ARFN"
+  method_version: "2.0"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "Phase 2 M5-PLAN"
+    decision: "How to evaluate transition function conditions at runtime"
+    outcome: >
+      Chose AND-clause parsing with predicate name extraction from condition strings.
+      Structural predicates (is_method_selected, method_completed) inferred from session
+      state. Challenge predicates provided by agent. Works for all P1-EXEC and P2-SD
+      transition functions. Pragmatic but potentially fragile for complex conditions.
+    guidance_gap: true
+
+  observations:
+    - step: "Phase 1 M1-IMPL"
+      type: success
+      description: >
+        Worktree isolation worked well for Phase 1. Clean separation of concerns:
+        orchestrator plans, sub-agent implements, orchestrator reviews and merges.
+      evidence: "packages/core/src/methodology-session.ts — clean first implementation"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "Phase 2 M1-IMPL"
+      type: gap
+      description: >
+        Sub-agent modified registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml despite being
+        told not to modify registry files. Deleted the "Cognitive diversity heuristic"
+        section (12 lines). This is a DR-01 violation caught during M3-PHRV review.
+        The change was reverted during merge (not merged into master).
+      evidence: "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml — diff showed -12 lines"
+      severity: MEDIUM
+      improvement_target: project_card
+
+    - step: "Phase 2 M1-IMPL"
+      type: gap
+      description: >
+        M1-COUNCIL.yaml has a pre-existing YAML parsing error (duplicated mapping key
+        at line 225) that prevents listMethodologies from parsing it. This means
+        methodology_route can select M1-COUNCIL via arm matching but selectedMethod
+        metadata is null (can't look up the method info). Not a PRD 004 regression —
+        pre-existing issue that should be tracked separately.
+      evidence: "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml:225"
+      severity: HIGH
+      improvement_target: unclear
+
+    - step: "Phase 4 integration"
+      type: success
+      description: >
+        Full loop test exercises the complete pv-agi scenario: start → route → load →
+        execute → transition → route → load → verify cross-method outputs → transition.
+        70 tests, all passing. The working memory transfer (priorMethodOutputs) works
+        correctly — method B sees method A's results in step_context.
+      evidence: "packages/core/src/__tests__/integration-prd004.test.ts"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "Phase 3 M5-PLAN"
+      type: friction
+      description: >
+        Deciding where to put priorMethodOutputs required careful DR-04 analysis.
+        Options: enrich in MCP layer (formatting) vs add to Session (core logic).
+        Chose Session.setPriorMethodOutputs() because the data transformation is
+        business logic (mapping completed methods to output summaries), not just
+        response formatting. DR-04 boundary guidance from the retro-prd002 evolution
+        was helpful here.
+      evidence: "packages/core/src/state.ts:133 — setPriorMethodOutputs"
+      severity: LOW
+      improvement_target: project_card
+
+    - step: "Phase 4 integration"
+      type: gap
+      description: >
+        Phase 4 sub-agent unexpectedly modified .method/project-card.yaml and deleted
+        registry/P0-META/M4-MINS/PROJECT-CARD-SCHEMA.yaml. These were in the worktree
+        branch diff. Cherry-pick was used to extract only the test commit.
+        Sub-agents in worktrees sometimes pick up or create unrelated changes.
+      evidence: "git diff showed 4 files changed instead of expected 1"
+      severity: MEDIUM
+      improvement_target: project_card
+
+  card_feedback:
+    - rule_id: DR-01
+      verdict: helpful
+      note: >
+        Registry integrity rule caught the Phase 2 sub-agent's M1-COUNCIL modification.
+        Without this rule, the deletion would have been merged.
+
+    - rule_id: DR-03
+      verdict: helpful
+      note: "Clean separation held throughout. All core functions import only fs/path/js-yaml and internal modules."
+
+    - rule_id: DR-04
+      verdict: helpful
+      note: >
+        The evolved boundary guidance (from retro-prd002) helped decide where
+        priorMethodOutputs logic belongs. The distinction between "formatting" and
+        "business logic" was clear in this case.
+
+    - rule_id: DR-09
+      verdict: helpful
+      note: "Real YAML fixture tests caught the M1-COUNCIL parsing issue early. Would have been invisible with mocks."
+
+    - rule_id: DR-12
+      verdict: helpful
+      note: "state-model.md update was clean and self-contained. Horizontal docs work well."
+
+  proposed_deltas:
+    - target: project_card
+      location: "role_notes.impl_sub_agent"
+      current: "Registry changes must preserve method compilation status and structural completeness."
+      proposed: >
+        Registry changes must preserve method compilation status and structural completeness.
+        Sub-agents MUST NOT modify registry YAML files unless the task explicitly requires
+        registry changes. If a registry file has a parsing error, report it — do not fix it.
+      rationale: >
+        Phase 2 sub-agent modified M1-COUNCIL.yaml (deleted content) despite being told
+        not to. Phase 4 sub-agent deleted a registry schema file. Stronger explicit
+        prohibition is needed in the role note.
+
+    - target: abstract_method
+      location: "M1-IMPL guidance"
+      current: "No explicit guidance on condition evaluation for transition functions"
+      proposed: >
+        When implementing transition function evaluation, use clause-level parsing
+        (split by AND, handle NOT prefix, extract predicate names before parentheses).
+        Structural predicates (is_method_selected, method_completed) should be inferred
+        from session state. Challenge predicates are agent-provided booleans.
+      rationale: >
+        This was the hardest decision in the PRD. Future implementations of δ_Φ
+        evaluation will face the same design question. The current approach works
+        for P1-EXEC and P2-SD but may need extension for more complex conditions.

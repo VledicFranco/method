@@ -1,0 +1,99 @@
+retrospective:
+  session_id: "prd003-p1-m1-impl"
+  methodology: P2-SD
+  method: M1-IMPL
+  method_version: "3.1"
+  project_card_id: I2-METHOD
+
+  hardest_decision:
+    step: "sigma_B3"
+    decision: >
+      Whether to fix the P2-SD.yaml indentation issue (coverage_claim,
+      authority_claim, role_partition_rationale at wrong nesting level)
+      as part of the implementation, or flag it and leave it.
+    outcome: >
+      Fixed it. The indentation was causing js-yaml parse issues that
+      affected the routing extraction tests. The fix was semantically
+      correct (moved fields from invalid top-level to proper nesting
+      under the dispatcher role). All tests pass with the fix.
+    guidance_gap: false
+
+  observations:
+    - step: "sigma_B3"
+      type: surprise
+      description: >
+        The P2-SD.yaml had an indentation bug where coverage_claim,
+        authority_claim, and role_partition_rationale were at 2-space
+        indent (siblings to the sequence indicator) instead of 4-space
+        (properties of the role list item). This was invalid YAML that
+        js-yaml handled differently than expected. Had to fix the
+        registry YAML to make the routing extraction work correctly.
+      evidence: "registry/P2-SD/P2-SD.yaml:172-186"
+      severity: MEDIUM
+      improvement_target: project_card
+    - step: "sigma_B1"
+      type: success
+      description: >
+        The architecture docs (routing.md, state-model.md) provided
+        clear enough specs that the implementation was straightforward.
+        Types, function signatures, error messages, and YAML extraction
+        logic were all well-specified. Minimal improvisation needed.
+      evidence: "docs/arch/routing.md, docs/arch/state-model.md"
+      severity: LOW
+      improvement_target: unclear
+    - step: "sigma_B3"
+      type: friction
+      description: >
+        The readYaml helper function is duplicated between loader.ts
+        and routing.ts. Both files have identical implementations.
+        The architecture doc suggested either extracting a shared utility
+        or duplicating — duplication was chosen for simplicity, but this
+        will accumulate if more YAML-reading modules are added.
+      evidence: "packages/core/src/routing.ts:6-13 vs packages/core/src/loader.ts:6-13"
+      severity: LOW
+      improvement_target: project_card
+
+  card_feedback:
+    - rule_id: DR-03
+      verdict: helpful
+      note: >
+        Zero transport deps constraint was clear and easy to follow.
+        routing.ts naturally only needed fs, path, js-yaml.
+    - rule_id: DR-04
+      verdict: helpful
+      note: >
+        Thin wrapper guidance made the MCP handler implementation trivial.
+        Two handlers, each 5 lines.
+    - rule_id: DR-09
+      verdict: helpful
+      note: >
+        Using real P2-SD.yaml as test fixture caught the indentation bug
+        that would have been missed with minimal mocks.
+    - rule_id: DR-01
+      verdict: missing_coverage
+      note: >
+        DR-01 says "do not introduce changes that would cause a compiled
+        method to fail G0-G6 gates" but doesn't address fixing pre-existing
+        YAML structural issues. The P2-SD.yaml indentation was technically
+        wrong but had passed compilation somehow. Guidance on handling
+        discovered registry defects during implementation would be useful.
+
+  proposed_deltas:
+    - target: project_card
+      location: "DR-01"
+      current: >
+        Any change to a method YAML must preserve compilation status —
+        do not introduce changes that would cause a compiled method to
+        fail G0-G6 gates.
+      proposed: >
+        Any change to a method YAML must preserve compilation status —
+        do not introduce changes that would cause a compiled method to
+        fail G0-G6 gates. If a structural defect is discovered in a
+        registry YAML during implementation, fix it and document the
+        fix in the commit message. Registry defects that block
+        implementation are implementation scope.
+      rationale: >
+        The P2-SD.yaml indentation bug was discovered during Phase 1
+        implementation. Without clear guidance, the agent had to decide
+        whether fixing it was in scope. Adding explicit guidance prevents
+        future agents from being blocked by similar issues.

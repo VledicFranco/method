@@ -1,0 +1,124 @@
+retrospective:
+  session_id: "PHRV-P1EXEC-001"
+  methodology: P2-SD
+  method: M3-PHRV
+  method_version: "1.0"
+
+  hardest_decision:
+    step: sigma_1
+    decision: >
+      Whether M1-COUNCIL's Ax-4 and O_COUNCIL t_update free variable constitutes a
+      MEDIUM or HIGH severity finding. The variable is clearly an informal shorthand
+      for an existentially-quantified turn, and the intended semantics are unambiguous.
+      A HIGH rating would mean "guidance produced wrong output or blocked progress" —
+      but the axiom's intent is perfectly clear to any reader. A MEDIUM rating means
+      "agent had to improvise significantly" — which is closer, since a formal verifier
+      would reject the sentence. The question is whether formal closure is a hard
+      requirement (HIGH) or a quality standard (MEDIUM) for a system that operates
+      through LLM interpretation, not mechanical proof checking.
+    outcome: >
+      Rated MEDIUM. The reasoning: the compilation record claims these are "closed
+      axioms" (G1 note), so there is a specific false claim in the self-assessment.
+      However, the practical impact is zero — no downstream consumer would misinterpret
+      Ax-4 or O_COUNCIL because of the free variable. The false claim in G1 is the
+      real issue, not the axiom itself. Since the fix is straightforward (add explicit
+      existential quantification), MEDIUM is appropriate.
+    guidance_gap: false
+
+  observations:
+    - step: sigma_1
+      type: gap
+      description: >
+        M1-COUNCIL has 4 undeclared symbols (decision_issued_by, speaker_of_halt,
+        specific_question, State-as-sort) used across axioms, predicate signatures,
+        and success measures. This suggests the M1-COUNCIL compilation's G1 check
+        was less rigorous than M2-ORCH and M3-TMP. The undeclared symbols are all
+        concentrated in the later additions (Ax-6, Ax-7, diminishing_returns, mu_3)
+        which may indicate they were added after the initial G1 pass without re-checking.
+      evidence: >
+        M1-COUNCIL.yaml:132 (State sort undeclared), :182 (decision_issued_by undeclared),
+        :187 (speaker_of_halt unbound), :689 (specific_question undeclared). Compare with
+        M2-ORCH and M3-TMP which have zero undeclared symbol issues.
+      severity: MEDIUM
+      improvement_target: abstract_method
+
+    - step: sigma_1
+      type: gap
+      description: >
+        M1-COUNCIL's axioms Ax-4, Ax-5, and Ax-7 use informal syntax (free variables,
+        temporal operators, "where" clauses) in what the compilation record claims are
+        "closed axioms." The G1 self-assessment's claim of closure is factually incorrect
+        for these three axioms. The compilation gate system should catch this.
+      evidence: >
+        M1-COUNCIL.yaml:170 (Ax-4: t_update free), :178 (Ax-5: "after"/"before" temporal
+        operators), :187 (Ax-7: speaker_of_halt free). G1 note at line 752 claims
+        "7 axioms with rationale" without noting closure exceptions.
+      severity: MEDIUM
+      improvement_target: abstract_method
+
+    - step: sigma_2
+      type: success
+      description: >
+        Cross-file reference checking (retraction pairs to sub-method output schemas) was
+        clean. All 4 retraction pairs in P1-EXEC correctly reference field names that
+        exist in the target sub-method's terminal output_schema. This suggests the
+        retraction pair compilation was done carefully with actual field name verification.
+      evidence: >
+        P1-EXEC.yaml:369-372 -> M1-COUNCIL.yaml:565,570,576,582 (all match).
+        P1-EXEC.yaml:391 -> M2-ORCH.yaml:441 (match). P1-EXEC.yaml:402 -> M3-TMP.yaml:298
+        (match). P1-EXEC.yaml:414 -> M3-TMP.yaml:298 (match).
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: sigma_0
+      type: success
+      description: >
+        M3-PHRV's sigma_0 procedure worked well for this review: enumerating acceptance
+        criteria from the user's stated requirements before beginning evaluation prevented
+        scope drift. The 4 criteria mapped cleanly to specific checks, and the audit
+        was exhaustive against each criterion.
+      evidence: "4 acceptance criteria enumerated; all 4 evaluated with MET/GAP results in sigma_1."
+      severity: LOW
+      improvement_target: abstract_method
+
+  proposed_deltas:
+    - target: abstract_method
+      location: "M1-COUNCIL domain_theory sorts"
+      current: "9 sorts declared (Challenge through Artifact). No State sort."
+      proposed: >
+        Add: "- name: State / cardinality: singleton_per_execution / description:
+        'The full debate state at a given point in the session — used by
+        diminishing_returns predicate.'" Or alternatively, rephrase diminishing_returns
+        to take a signature over existing sorts.
+      rationale: "Eliminates undeclared sort reference in diminishing_returns predicate signature."
+
+    - target: abstract_method
+      location: "M1-COUNCIL domain_theory predicates"
+      current: "12 predicates declared. decision_issued_by and specific_question absent."
+      proposed: >
+        Add two predicates:
+        (1) "- name: decision_issued_by / signature: 'Character x Question' /
+            description: 'The Character issued the Decision on this Question'"
+        (2) "- name: specific_question / signature: 'Escalation' /
+            description: 'The Escalation contains a specific question with named alternatives'"
+      rationale: "Eliminates undeclared symbol references in Ax-6 and mu_3 formula."
+
+    - target: abstract_method
+      location: "M1-COUNCIL axioms Ax-4 and Ax-7"
+      current: >
+        Ax-4: "responds_to(t_update, t) where speaker(t_update) = c" (t_update free).
+        Ax-7: "is_leader(speaker_of_halt)" (speaker_of_halt free).
+      proposed: >
+        Ax-4: "exists t_update : Turn. speaker(t_update) = c AND responds_to(t_update, t)"
+        Ax-7: "exists l : Character. is_leader(l) AND diminishing_returns(s) -> ..."
+      rationale: "Closes the axiom sentences by binding all variables under quantifiers."
+
+    - target: abstract_method
+      location: "M1-COUNCIL O_COUNCIL formal (line 650)"
+      current: >
+        "exists t : Turn. speaker(t) != c AND topic(t) = q AND responds_to(t_update, t)"
+        (t_update free)
+      proposed: >
+        "exists t : Turn, t_update : Turn. speaker(t) != c AND topic(t) = q AND
+        speaker(t_update) = c AND responds_to(t_update, t)"
+      rationale: "Closes the objective sentence, matching the expressible_claim assertion."

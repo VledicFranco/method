@@ -1,0 +1,115 @@
+retrospective:
+  session_id: "review-P2-SD-20260314"
+  methodology: P2-SD
+  method: M3-PHRV
+  method_version: "1.0"
+
+  hardest_decision:
+    step: sigma_1
+    decision: >
+      Whether to classify the RP-5 domain ID mismatch (D_SI vs whatever M1-IMPL's current
+      domain_theory.id is) as a GAP on AC-2 or as MET-with-notation. The retraction pair
+      references D_SI, which is the legacy domain name from the P2-SI era. M1-IMPL was
+      compiled externally and is not in scope for this review, so I cannot directly verify
+      whether D_SI is still the correct domain ID. P2-SD itself marks RP-5 as "grounded"
+      (the only grounded RP) and known_wip W3 explains the verification status. The question
+      is: does referencing a potentially stale domain ID constitute a gap in AC-2 ("retraction
+      pairs reference correct domain/field names")?
+    outcome: >
+      Classified AC-2 as MET with a LOW architecture finding (F-3). Rationale: P2-SD is
+      honest about the verification status (grounded vs declared), and the D_SI name is
+      explicitly documented as coming from the original compilation. The known_wip section
+      acknowledges the verification gap. This is an external-dependency documentation issue,
+      not an internal consistency failure. If I had classified it as GAP, the finding would
+      still be LOW severity, producing the same CONDITIONAL verdict.
+    guidance_gap: false
+
+  observations:
+    - step: sigma_0
+      type: success
+      description: >
+        The acceptance criteria provided by the human were well-specified: concrete,
+        verifiable, and scoped to the specific compilation work. This made sigma_0
+        (orient) nearly trivial — the criteria were already in the right format for
+        M3-PHRV's criteria_results structure. This is exactly what good PhaseDoc
+        criteria look like.
+      evidence: "User prompt acceptance criteria 1-5: each is a concrete True/False check"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: sigma_1
+      type: friction
+      description: >
+        M3-PHRV's guidance says findings must have "file:line" citations per Ax-1.
+        When reviewing YAML methodology files (not source code), "file:line" citations
+        are awkward because YAML structures are identified by key paths, not line numbers.
+        Line numbers shift with any edit. Key paths (e.g., "M7-PRDS.yaml -> domain_theory
+        -> axioms -> Ax-5 -> statement") would be more stable and more useful for YAML
+        review. The method's citation requirement assumes source code review where line
+        numbers are the natural identifier.
+      evidence: "M3-PHRV.yaml:99-101 (Ax-1: finding_cited requirement); this review's findings cite both file:line and key-path context"
+      severity: MEDIUM
+      improvement_target: abstract_method
+
+    - step: sigma_2
+      type: success
+      description: >
+        Cross-file consistency checking was well-supported by the method's structure.
+        sigma_1 (per-criterion audit) and sigma_2 (architecture assessment) genuinely
+        cover different concerns: sigma_1 caught criteria-level issues (coverage,
+        operationalization), sigma_2 caught cross-file issues (domain ID consistency,
+        axiom closure, delta_SD arm count). The two-pass design works as intended for
+        methodology review.
+      evidence: "F-2 (axiom closure) and F-3 (domain ID) found in sigma_2, not sigma_1"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: sigma_3
+      type: surprise
+      description: >
+        The self-referential nature of M3-PHRV reviewing itself was not as paradoxical
+        as expected. The method's content-agnosticism (domain_boundary_note excludes
+        "the content domain of the implementation") cleanly separates the review
+        structure from the reviewed content. The self-review produced meaningful findings
+        rather than degenerating into circularity. This is a design property worth
+        preserving.
+      evidence: "M3-PHRV.yaml:120-124 (domain_boundary_note); this review's sigma_2 analysis of self-review"
+      severity: LOW
+      improvement_target: abstract_method
+
+  card_feedback: []
+
+  proposed_deltas:
+    - target: abstract_method
+      location: "M3-PHRV sigma_1 guidance, Ax-1"
+      current: >
+        Ax-1 requires "file:line" citations for all findings. Guidance says
+        "location (file:line)" throughout sigma_1 and sigma_2.
+      proposed: >
+        Generalize the citation requirement to "file:line or file:key-path" to
+        accommodate YAML/JSON/config file reviews where key paths are more stable
+        and informative than line numbers. Ax-1 statement could read:
+        "forall f : Finding. finding_cited(f)" where finding_cited is operationalized
+        as "the finding has a specific file:line or file:key-path citation that
+        uniquely identifies the location."
+      rationale: >
+        M3-PHRV is used for reviewing both source code and methodology YAML files.
+        Line numbers in YAML shift with any edit and are not the natural identifier
+        for structured documents. Key paths (domain_theory.axioms.Ax-5.statement)
+        are stable across edits and more informative for YAML consumers. The current
+        "file:line" requirement works for source code but creates friction for
+        methodology-level review.
+
+    - target: abstract_method
+      location: "M7-PRDS domain_theory.function_symbols"
+      current: >
+        function_symbols declares section_count and depends_on. Ax-5 uses 'order'
+        function which is not declared.
+      proposed: >
+        Add: "- name: order, signature: PRDSection -> nat, totality: partial
+        (defined for sections in a SectionMap with ordering_valid), description:
+        Position of the section in the delivery ordering."
+      rationale: >
+        Ax-5 references 'order(s2) < order(s1)' but 'order' is not in
+        function_symbols. Declaring it closes the axiom and maintains the G1
+        gate property that all axioms reference only declared symbols.

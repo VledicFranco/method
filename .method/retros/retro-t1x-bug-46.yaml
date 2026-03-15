@@ -1,0 +1,43 @@
+retrospective:
+  session_id: "T1X-BUG-46-20260314"
+  methodology: P2-SD
+  method: "M1-IMPL"
+  method_version: "3.1"
+  project_card_id: I1-T1X
+
+  hardest_decision:
+    step: "sigma_A1"
+    decision: "Whether to run Phase A investigation or collapse it for this trivial test addition"
+    outcome: "Collapsed Phase A — confirmed fix exists at RoleAssignmentRoutes.scala:80-83 and test file exists. Confidence ~1.0. Went directly to Phase B (write test)."
+    guidance_gap: false
+
+  observations:
+    - step: "sigma_B1"
+      type: success
+      description: "Phase A collapse for trivial tasks works well. The test was fully prescribed by the issue: exact endpoint, exact payload, exact assertion. No investigation needed. Sub-agent completed in 54 seconds including branch creation, edit, and commit."
+      evidence: "Sub-agent duration: 54379ms. 1 file changed, 17 insertions."
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_B2"
+      type: success
+      description: "Test follows existing patterns perfectly. Uses same buildRoutes(), generateCtoJwt(), runRequest(), bodyAsJson() helpers. Placed in the correct 'should' block. Compiles and passes on first try."
+      evidence: "RoleAssignmentRoutesSpec.scala — 7/7 tests pass including the new 'return 400 for malformed roleId' test"
+      severity: LOW
+      improvement_target: unclear
+
+  card_feedback:
+    - rule_id: DR-01
+      verdict: unhelpful
+      note: "For a single test file addition, Metals adds no value. The file path was given in the issue. Grep is overkill; the orchestrator simply read the file."
+
+    - rule_id: DR-14
+      verdict: helpful
+      note: "Self-review gate was trivially satisfied — the test compiles, runs, and asserts the correct status/code. Good habit even for trivial changes."
+
+  proposed_deltas:
+    - target: abstract_method
+      location: "M1-IMPL Phase A scaling"
+      current: "Phase A always runs (spec audit)"
+      proposed: "Phase A can be explicitly collapsed when: (1) task is a test addition, (2) the code under test already exists and is unchanged, (3) the test structure is fully prescribed. Record the collapse decision and confidence in the retrospective."
+      rationale: "Running full Phase A for 'add a test that asserts X' is pure overhead. The I1-T1X card doesn't explicitly address this scaling, but the orchestrator correctly collapsed it. Making this explicit in the method prevents future orchestrators from wasting time."

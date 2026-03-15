@@ -1,0 +1,132 @@
+retrospective:
+  session_id: "T1X-PHASE7-M2DIMPL-20260314"
+  methodology: P2-SD
+  method: "M2-DIMPL"
+  project_card_id: I1-T1X
+
+  hardest_decision:
+    step: "sigma_P3.3"
+    decision: "Token refresh story: direct path vs proxy as production recommendation for 150 engineers"
+    outcome: >
+      Chose tiered recommendation: direct path for soft launch (5-10 engineers, 8h token
+      covers workday), proxy as production recommendation (auto-refresh eliminates silent
+      401 failures at scale). Documented in P5.2 local dev guide. M1-COUNCIL deliberation
+      with 3 positions — resolved without sub-agent council because the evidence was clear
+      and positions had obvious tradeoffs.
+    guidance_gap: false
+
+  observations:
+    - step: "sigma_dispatch_P1P2"
+      type: success
+      description: >
+        Three parallel sub-agents (app/api/pipelines modules) completed P1+P2 with zero
+        file conflicts. DR-04 skip justified by trivially disjoint modules. All three
+        committed independently to the same branch without merge issues.
+      evidence: "commits 6cedee5, b9a8057, 54c90a9"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_dispatch_P3P4"
+      type: surprise
+      description: >
+        P3.4 agent accidentally committed P4.1's staged ci.yml changes alongside its own
+        build.sbt fix. The P4.1 agent then found nothing to do. No harm done — changes
+        were correct — but this shows that parallel agents sharing a working tree can
+        pick up each other's staged files during git add/commit.
+      evidence: "commit b4dc6a0 contains both build.sbt AND ci.yml changes"
+      severity: MEDIUM
+      improvement_target: project_card
+
+    - step: "sigma_P2.3_triage"
+      type: success
+      description: >
+        Orchestrator correctly triaged P2.3 (CortexMcpError exhaustiveness) as N/A —
+        the sealed type doesn't exist in the current codebase. Error handling uses JSON-RPC
+        codes directly. Saved a sub-agent dispatch by doing the research in the explore phase.
+      evidence: "P2 explore agent: 'CortexMcpError does not exist as a sealed type in the current version'"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_P3.1_impl"
+      type: success
+      description: >
+        P3.1 (contractor DX hint) was the most complex task: 10 files across core/pipelines/api,
+        new FanOutResult type, threading clearanceFiltered through 4 pipeline stages. Sub-agent
+        completed autonomously with 83 tests passing and invariants preserved (INV-CORTEX-3B,
+        INV-CORTEX-6-C). DR-14 self-review caught all integration points.
+      evidence: "commit de6682f, modules/pipelines FanOutStage+AssembleContextStage+LiveSemanticQueryPipeline"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_P5_docs"
+      type: success
+      description: >
+        Four documentation agents completed in parallel with no conflicts. Total output:
+        1158+ lines of guides covering product overview, local dev, QA, and MCP tools reference.
+        DR-03 SVW exemption for non-Scala tasks worked perfectly — no unnecessary ceremony.
+      evidence: "commits 237a375, 6de0449, 5046be4, a860e70"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "sigma_P1.2_triage"
+      type: success
+      description: >
+        P1.2 (McpDispatcherSpec ruleId fallback) found to be already clean during explore
+        phase. Explore agent confirmed explicit .getOrElse(fail(...)) patterns already in use.
+        Saved a sub-agent dispatch.
+      evidence: "Explore agent report: 'All assertions are explicit and properly checked'"
+      severity: LOW
+      improvement_target: abstract_method
+
+  card_feedback:
+    - rule_id: DR-01
+      verdict: helpful
+      note: >
+        The evolved DR-01 (Metals optional for targeted fixes <5 files) was exactly right
+        for Phase 7. All P1/P2 tasks were targeted test fixes with known file scope —
+        grep/glob was sufficient and faster. No Metals friction for the right reason.
+
+    - rule_id: DR-02
+      verdict: helpful
+      note: >
+        Orientation gate optional for targeted fixes worked well. P3.1 (feature-level work
+        touching 10 files) would have benefited from Metals orientation, but the sub-agent
+        navigated with grep/glob successfully due to clear orchestrator guidance on file paths.
+
+    - rule_id: DR-03
+      verdict: helpful
+      note: >
+        SVW exemption for non-Scala tasks (P5 docs, P4.1 ci.yml) eliminated unnecessary
+        ceremony. SVW for P1+P2 Scala tasks was lightweight but useful — confirmed file
+        locations and patterns before dispatch.
+
+    - rule_id: DR-04
+      verdict: helpful
+      note: >
+        R9-PDVF skip for trivially disjoint tasks (different modules, different file types)
+        saved significant orchestration overhead. 8 parallel agents dispatched across the
+        session with zero file conflicts. The disjointness justification was sufficient.
+
+    - rule_id: DR-14
+      verdict: helpful
+      note: >
+        Self-review gate caught integration points in P3.1 (complex 10-file change).
+        All sub-agents reported self-review results — orchestrator could verify quality
+        without re-reading every file.
+
+    - rule_id: DR-19
+      verdict: helpful
+      note: "No destructive git operations needed or attempted. Clean commit chain."
+
+  proposed_deltas:
+    - target: project_card
+      location: "delivery_rules (new rule)"
+      current: "No rule about parallel agents and git staging"
+      proposed: >
+        DR-22: When dispatching parallel agents to the same working tree, each agent
+        must use `git add <specific-files>` (not `git add .` or `git add -A`) before
+        committing, to avoid accidentally committing another agent's staged changes.
+      rationale: >
+        P3.4 agent committed P4.1's staged ci.yml changes because it used broad git add.
+        No harm in this case, but could cause incorrect commit attribution or partial
+        commits in more complex scenarios.
