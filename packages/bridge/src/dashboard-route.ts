@@ -6,6 +6,7 @@ import type { SessionPool, SessionChainInfo } from './pool.js';
 import type { UsagePoller, SubscriptionUsage, UsageBucket, UsagePollerStatus } from './usage-poller.js';
 import type { TokenTracker } from './token-tracker.js';
 import { readMessages, type ChannelMessage } from './channels.js';
+import type { SessionDiagnostics } from './diagnostics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -395,6 +396,7 @@ export function renderSessionRows(
     lastActivityAt: Date;
     workdir: string;
     chain: SessionChainInfo;
+    diagnostics: SessionDiagnostics | null;
   }>,
   tokenTracker: TokenTracker,
 ): string {
@@ -516,6 +518,18 @@ export function renderSessionRows(
             <div class="detail-field">
               <span class="detail-label">Tokens</span>
               <span class="detail-value mono">${tokenDetail}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">First Output</span>
+              <span class="detail-value mono">${session.diagnostics?.time_to_first_output_ms != null ? `${session.diagnostics.time_to_first_output_ms}ms` : '&mdash;'}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Tool Calls</span>
+              <span class="detail-value mono">${session.diagnostics ? String(session.diagnostics.tool_call_count) : '&mdash;'}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Stall Reason</span>
+              <span class="detail-value mono${session.diagnostics?.stall_reason ? ' stall-' + session.diagnostics.stall_reason : ''}">${session.diagnostics?.stall_reason ? escapeHtml(session.diagnostics.stall_reason.replace(/_/g, ' ')) : '&mdash;'}</span>
             </div>
           </div>
           <div class="detail-actions">
