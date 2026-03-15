@@ -503,7 +503,7 @@ function gracefulShutdown(signal: string) {
     // Stop usage polling
     usagePoller.stop();
 
-    // Kill all sessions
+    // Kill all sessions (triggers auto-retro via handleSessionDeath)
     const sessions = pool.list();
     let killed = 0;
     for (const session of sessions) {
@@ -517,8 +517,16 @@ function gracefulShutdown(signal: string) {
 
     const uptimeMs = Date.now() - BRIDGE_STARTED_AT.getTime();
     app.log.info(`Shutdown complete: ${killed} sessions killed, uptime ${Math.floor(uptimeMs / 60000)}m`);
-    process.exit(0);
+
+    // Brief delay to let PTY processes terminate before exiting
+    setTimeout(() => process.exit(0), 500);
   });
+
+  // Force exit after 5s if graceful shutdown hangs
+  setTimeout(() => {
+    app.log.warn('Graceful shutdown timed out — forcing exit');
+    process.exit(1);
+  }, 5000);
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
