@@ -369,6 +369,15 @@ var fitAddon = new FitAddon.FitAddon();
 term.loadAddon(fitAddon);
 term.open(document.getElementById('terminal'));
 
+// Detect proxy prefix and fix nav links
+var API_BASE = window.location.pathname.indexOf('/api/') === 0 ? '/api' : '';
+if (API_BASE) {
+  document.querySelectorAll('a[href^="/dashboard"], a[href^="/sessions/"]').forEach(function(a) {
+    var h = a.getAttribute('href');
+    if (h && !h.startsWith(API_BASE)) a.setAttribute('href', API_BASE + h);
+  });
+}
+
 // ── Resize: fit terminal and sync PTY dimensions ──
 var resizeTimer = null;
 
@@ -376,7 +385,7 @@ function syncResize() {
   fitAddon.fit();
   var dims = fitAddon.proposeDimensions();
   if (dims && dims.cols && dims.rows) {
-    fetch('/sessions/' + sessionId + '/resize', {
+    fetch(API_BASE + '/sessions/' + sessionId + '/resize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cols: dims.cols, rows: dims.rows })
@@ -417,7 +426,7 @@ term.element.addEventListener('wheel', function(e) {
 
 // ── SSE connection ──
 function connectSSE() {
-  eventSource = new EventSource('/sessions/' + sessionId + '/stream');
+  eventSource = new EventSource(API_BASE + '/sessions/' + sessionId + '/stream');
   eventSource.onmessage = function(e) {
     try {
       var data = JSON.parse(e.data);
@@ -446,7 +455,7 @@ function sendPrompt() {
   btn.disabled = true;
   btn.textContent = 'Sending...';
 
-  fetch('/sessions/' + sessionId + '/prompt', {
+  fetch(API_BASE + '/sessions/' + sessionId + '/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: text })

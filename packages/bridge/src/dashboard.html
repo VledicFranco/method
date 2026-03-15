@@ -1073,6 +1073,21 @@ body::after {
 </div>
 
 <script>
+// Detect if accessed via proxy (URL contains /api/) and prefix all links
+var API_BASE = window.location.pathname.indexOf('/api/') === 0 ? '/api' : '';
+
+// Fix all links on page load and after each refresh
+function fixLinks() {
+  if (!API_BASE) return;
+  document.querySelectorAll('a[href^="/sessions/"], a[href^="/dashboard"], a[href^="/pool/"]').forEach(function(a) {
+    var href = a.getAttribute('href');
+    if (href && !href.startsWith(API_BASE)) {
+      a.setAttribute('href', API_BASE + href);
+    }
+  });
+}
+fixLinks();
+
 function toggleDetail(detailId) {
   const el = document.getElementById(detailId);
   if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
@@ -1103,7 +1118,7 @@ function submitSpawn() {
   var body = { workdir: workdir };
   if (prompt) body.prompt = prompt;
 
-  fetch('/sessions', {
+  fetch(API_BASE + '/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -1190,6 +1205,7 @@ document.addEventListener('keydown', function(e) {
         var oldSub = document.querySelector('.subscription-panel');
         if (newSub && oldSub) oldSub.innerHTML = newSub.innerHTML;
       })
+      .then(function() { fixLinks(); })
       .catch(function() { /* silent — retry next cycle */ })
       .finally(function() { refreshing = false; });
   }, REFRESH_MS);
