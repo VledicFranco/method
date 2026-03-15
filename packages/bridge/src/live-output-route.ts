@@ -7,6 +7,19 @@ import type { SessionPool } from './pool.js';
 import type { TokenTracker } from './token-tracker.js';
 import { formatTokens, formatUptime, formatTimeAgo } from './dashboard-route.js';
 
+// Claude Code TUI spinner characters and chrome that strip-ansi doesn't catch
+const TUI_CHROME_RE = /[✢✶✻✽·●⎿▐▛▜▝▘█▌╭╮╰╯│─┌┐└┘├┤┬┴┼]+/g;
+const CURSOR_MOVE_RE = /\x1b\[\d*[A-HJKSTfm]|\x1b\[\?\d+[hl]|\x1b[=>]\d*[a-zA-Z]?|\r/g;
+
+function cleanPtyOutput(raw: string): string {
+  let text = stripAnsi(raw);
+  text = text.replace(CURSOR_MOVE_RE, '');
+  text = text.replace(TUI_CHROME_RE, '');
+  // Collapse multiple blank lines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const SSE_HEARTBEAT_MS = parseInt(process.env.SSE_HEARTBEAT_MS ?? '15000', 10);
@@ -63,13 +76,13 @@ export function registerLiveOutputRoutes(
 
     // Send initial transcript burst (strip ANSI escapes for browser display)
     if (session.transcript) {
-      const initialData = JSON.stringify({ text: stripAnsi(session.transcript), timestamp: new Date().toISOString() });
+      const initialData = JSON.stringify({ text: cleanPtyOutput(session.transcript), timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${initialData}\n\n`);
     }
 
     // Subscribe to live output (strip ANSI escapes for browser display)
     const unsubscribe = session.onOutput((data: string) => {
-      const payload = JSON.stringify({ text: stripAnsi(data), timestamp: new Date().toISOString() });
+      const payload = JSON.stringify({ text: cleanPtyOutput(data), timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${payload}\n\n`);
     });
 
