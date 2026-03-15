@@ -7,8 +7,8 @@ evolution_ledger:
   last_updated: "2026-03-14"
 
   summary:
-    total_retrospectives_processed: 12
-    total_gap_candidates: 5
+    total_retrospectives_processed: 17
+    total_gap_candidates: 6
     total_evolutions: 2
     total_card_revisions: 4
 
@@ -16,9 +16,9 @@ evolution_ledger:
     - gap_id: "GC-P2SD-001"
       target: "M1-IMPL sigma_B3"
       status: open
-      observation_count: 3
+      observation_count: 8
       first_observed: "2026-03-14"
-      sessions: ["PRD002-IMPL", "prd003-p1-m1-impl", "prd003-p3-m1-impl"]
+      sessions: ["PRD002-IMPL", "prd003-p1-m1-impl", "prd003-p2-m1-impl", "prd003-p3-m1-impl"]
       projects: ["pv-method"]
       summary: "sigma_B3 stretched across multi-task phases with internal parallelism not modeled by step DAG"
 
@@ -51,6 +51,34 @@ evolution_ledger:
       projects: ["pv-method", "t1-cortex"]
       summary: "No guidance on when M1-COUNCIL overhead is proportionate vs M3-TMP suffices"
 
+    - gap_id: "GC-P2SD-005"
+      target: "M1-IMPL sub-agent scope integrity"
+      status: open
+      observation_count: 3
+      first_observed: "2026-03-14"
+      sessions: ["prd003-p3-m1-impl", "prd004-runtime-exec"]
+      projects: ["pv-method"]
+      summary: >
+        Sub-agents modify or commit unrelated files — M1-COUNCIL.yaml deleted content,
+        project-card.yaml modified, unrelated orchestrator prompt committed. Three MEDIUM
+        observations in one project trigger card-level gap candidate.
+      threshold_met: "3 MEDIUM on same step within 1 project"
+      improvement_target: project_card
+
+    - gap_id: "GC-P2SD-006"
+      target: "M2-DIMPL parallel agent git staging"
+      status: open
+      observation_count: 2
+      first_observed: "2026-03-14"
+      sessions: ["prd003-p3-m1-impl", "T1X-PHASE7-M2DIMPL-20260314"]
+      projects: ["pv-method", "t1-cortex"]
+      summary: >
+        Parallel agents sharing a working tree pick up each other's staged files
+        during git add/commit. Observed in both M1-IMPL (prd003-p3) and M2-DIMPL
+        (T1X-PHASE7). Two MEDIUM across 2 projects — calibration period gap candidate.
+      threshold_met: "2 MEDIUM on same step across 2+ projects (calibration period)"
+      improvement_target: project_card
+
   evolution_history:
     - evolution_id: "EVO-P2SD-001"
       gap_id: "GC-P2SD-002"
@@ -78,7 +106,25 @@ evolution_ledger:
   regression_flags: []
 
   observation_counts:
-    M1-IMPL.sigma_B3: { HIGH: 0, MEDIUM: 3, LOW: 2, total_sessions: 5 }
-    M3-PHRV.sigma_1: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 2 }
+    M1-IMPL.sigma_B3: { HIGH: 0, MEDIUM: 4, LOW: 4, total_sessions: 4 }
+    M1-IMPL.sigma_A1: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 2 }
+    M1-IMPL.sigma_A2: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 2 }
+    M1-IMPL.sigma_A4: { HIGH: 0, MEDIUM: 1, LOW: 0, total_sessions: 1 }
+    M1-IMPL.sigma_B1: { HIGH: 0, MEDIUM: 0, LOW: 3, total_sessions: 3 }
+    M1-IMPL.sigma_B2: { HIGH: 0, MEDIUM: 0, LOW: 2, total_sessions: 2 }
+    M1-IMPL.sub_agent_integrity: { HIGH: 0, MEDIUM: 3, LOW: 0, total_sessions: 2 }
+    M3-PHRV.sigma_0: { HIGH: 0, MEDIUM: 0, LOW: 2, total_sessions: 2 }
+    M3-PHRV.sigma_1: { HIGH: 0, MEDIUM: 3, LOW: 0, total_sessions: 2 }
+    M3-PHRV.sigma_2: { HIGH: 0, MEDIUM: 0, LOW: 2, total_sessions: 2 }
+    M3-PHRV.sigma_3: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
     M6-ARFN.architecture_spec: { HIGH: 0, MEDIUM: 1, LOW: 1, total_sessions: 1 }
     M1-MDES.sigma_4: { HIGH: 0, MEDIUM: 1, LOW: 0, total_sessions: 1 }
+    M1-MDES.sigma_6: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
+    M2-DIMPL.dispatch: { HIGH: 0, MEDIUM: 1, LOW: 6, total_sessions: 2 }
+    M2-DIMPL.triage: { HIGH: 0, MEDIUM: 0, LOW: 2, total_sessions: 1 }
+    M2-DIMPL.implementation: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
+    M2-DIMPL.docs: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
+    M2-ORCH.dispatch: { HIGH: 0, MEDIUM: 2, LOW: 0, total_sessions: 1 }
+    M5-PLAN.sigma_3: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
+    M5-PLAN.priorMethodOutputs: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 1 }
+    I1-T1X.compile_errors: { HIGH: 1, MEDIUM: 0, LOW: 0, total_sessions: 1 }
