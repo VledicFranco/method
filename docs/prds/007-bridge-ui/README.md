@@ -1,10 +1,12 @@
 # PRD 007 — Bridge UI: Agent Identity, Live Output, and Transcript History
 
-**Status:** Draft
-**Date:** 2026-03-14
+**Status:** Implemented
+**Date:** 2026-03-15
+**Previous:** Draft (2026-03-14)
 **Scope:** Agent nicknames + progressive disclosure + live PTY output streaming + session transcript browsing
 **Depends on:** 005-bridge-v2 (dashboard, token tracking, MCP proxy tools)
 **Requested by:** Operator experience during PRD 005 validation — agents are opaque boxes with UUID labels
+**Implementation:** PR #2 merged (commit fd84073). All 3 phases: nicknames + expandable rows, SSE live output, transcript browser. 13 files, 1447 insertions, 154/154 tests. Commissioned via bridge with worktree isolation.
 
 ---
 

@@ -1,0 +1,197 @@
+# Bridge Commission Observations
+
+Empirical observations from commissioning agents via the bridge. These inform future PRDs, skill improvements, and bridge architecture decisions.
+
+**Last updated:** 2026-03-15
+**Sessions observed:** 5 commissions (PRD 006 attempt 1, PRD 006 attempt 2, PRD 008, PRD 007, AG-030)
+
+---
+
+## OBS-01: Agents don't use channel tools unless explicitly told
+
+**Severity:** HIGH — renders PRD 008 visibility useless if not addressed
+**Observed in:** PRD 006 attempt 2, PRD 007, AG-030
+
+Despite having `bridge_progress` and `bridge_event` in their `allowedTools`, agents don't spontaneously use them. They need explicit instructions in the prompt: what to call, when to call it, and with what payload structure.
+
+**Current mitigation:** Commission skill Section 10 now includes exact tool call instructions with payload examples.
+
+**Root cause hypothesis:** MCP tools are available but the agent has no intrinsic motivation to use them. The channel tools are "nice to have" from the agent's perspective — they don't affect task completion. The agent optimizes for task completion, not observability.
+
+**Potential PRD:** Auto-inject channel reporting into methodology step transitions. When `step_advance` fires and `BRIDGE_SESSION_ID` is set, automatically call `bridge_progress`. This already exists for auto-progress but only when the agent uses the methodology MCP tools — the agent itself still needs to report events.
+
+---
+
+## OBS-02: Agents consume initial prompt and go idle
+
+**Severity:** MEDIUM — requires manual nudge to restart work
+**Observed in:** PRD 006 attempt 2, PRD 007, AG-030
+
+After the initial prompt is consumed, agents frequently go to `ready` state without starting work. The initial prompt is read but the agent doesn't proceed autonomously. A follow-up `bridge_prompt` nudge is needed.
+
+**Current mitigation:** Monitor for `ready` state shortly after spawn and send a nudge prompt.
+
+**Root cause hypothesis:** The initial prompt may be too long (2000+ tokens of instructions). The agent may be treating it as context-setting rather than an action directive. Alternatively, Claude Code's interactive mode may be waiting for a "go" signal.
+
+**Potential fix options:**
+1. End the initial prompt with a stronger action directive: "START NOW. Your first action should be to read file X."
+2. Split: short initial prompt ("You are agent X, read .method/project-card.yaml") + detailed follow-up prompt with full instructions
+3. Bridge-level: auto-send a "begin" prompt after the session transitions to `ready` for the first time
+
+---
+
+## OBS-03: PTY parser returns empty responses
+
+**Severity:** MEDIUM — makes bridge_prompt unreliable for getting output
+**Observed in:** All bridge commissions
+
+`bridge_prompt` consistently returns `""` (empty string) or partial output (`"* Improvising..."`) regardless of what the agent actually produced. The parser looks for a `●` marker that doesn't always appear.
+
+**Current mitigation:** PRD 008 channels provide an alternative communication path. We read progress/events instead of relying on prompt responses.
+
+**Root cause:** The fallback parser in `packages/bridge/src/parser.ts` is best-effort. Claude Code's PTY output format is not stable — it depends on terminal width, ANSI escape sequences, and the response content.
+
+**Potential PRD:** Replace PTY parsing with Claude Code's `--output-format json` or structured output mode if available. Alternatively, lean fully into channels and deprecate prompt response parsing for commissioned work.
+
+---
+
+## OBS-04: Agents route to wrong method without strong directive
+
+**Severity:** MEDIUM — wastes time on wrong methodology path
+**Observed in:** PRD 006 attempt 2 (loaded M1-COUNCIL instead of M1-IMPL)
+
+When the commission prompt says "follow P2-SD" but doesn't explicitly state which method to use, the agent may self-route to the wrong method. The PRD 006 agent loaded M1-COUNCIL (debate method) for an implementation task.
+
+**Current mitigation:** Commission skill Section 3 now includes an explicit routing directive: "This is task_type=implement → M1-IMPL. Do NOT use M1-COUNCIL."
+
+**Root cause:** The agent reads the methodology's full transition function and tries to self-route. Without a strong directive, it may pick a method that matches its interpretation of the task (e.g., "I should debate the approach first").
+
+**Potential improvement:** The commission skill could pre-call `methodology_route` and embed the routing result in the prompt, so the agent doesn't need to re-evaluate delta.
+
+---
+
+## OBS-05: Sub-agents commit out-of-scope files
+
+**Severity:** MEDIUM — produces unexpected commits, hard to review
+**Observed in:** PRD 008 impl (arch docs agent committed council log), PRD 004 (sub-agents deleted M1-COUNCIL content)
+
+Sub-agents spawned by orchestrators modify files outside their declared scope. This ranges from harmless (extra council commit) to destructive (deleting registry content).
+
+**Current mitigation:**
+- Project card `role_notes.impl_sub_agent` strengthened with file-scope constraints
+- Commission skill Section 9 requires explicit file-scope listing per sub-agent
+- CLAUDE.md sub-agent guidelines section added
+- GC-P2SD-005 resolved as EVO-P2SD-CARD-002
+
+**Potential improvement:** Bridge-level enforcement — the spawn request could include an `allowed_paths` field, and the bridge could set up a pre-commit hook in the worktree that rejects changes outside those paths.
+
+---
+
+## OBS-06: Worktree isolation works but PR workflow untested
+
+**Severity:** LOW — infrastructure exists, workflow not yet validated end-to-end
+**Observed in:** PRD 007 and AG-030 (first commissions with worktree + GitHub MCP)
+
+Worktree creation succeeds (PRD 006 C2 implemented). Agents are spawned in isolated worktrees. But the full workflow — worktree → branch → push → create PR → review → merge — has not yet completed end-to-end. PRD 007 and AG-030 are the first test.
+
+**Validation needed:** Does the agent successfully push the worktree branch and create a PR? Does the PR diff look clean? Can we merge from the dashboard or CLI?
+
+---
+
+## OBS-07: bridge_prompt connection refused intermittently
+
+**Severity:** LOW — transient, self-recovers
+**Observed in:** PRD 007 nudge attempt
+
+`bridge_prompt` returned "connection refused" on one attempt but the bridge was running (confirmed via subsequent `bridge_list`). Likely a transient Fastify request handling issue under load.
+
+**Potential fix:** Retry logic in the MCP proxy tool for connection errors (1 retry with 1s delay).
+
+---
+
+## OBS-08: Multi-agent parallelism works at bridge level
+
+**Severity:** POSITIVE — validates PRD 006 design
+**Observed in:** PRD 007 + AG-030 parallel spawn
+
+Two agents running simultaneously in separate worktrees. Bridge reports 2/2 active, no interference. Session isolation at the git level (separate worktrees) and PTY level (separate processes) is working.
+
+**Next test:** Can both agents successfully push branches and create PRs without conflicts?
+
+---
+
+## OBS-09: PTY output contains parseable activity signals
+
+**Severity:** OPPORTUNITY — could solve OBS-01 without agent cooperation
+**Observed in:** All bridge commissions
+
+The PTY stream contains structured markers for every tool call, file operation, and git command the agent performs. Claude Code outputs recognizable patterns: tool call names, file paths being read/written, bash commands being run, thinking indicators. If the bridge parsed these patterns from the PTY buffer in real-time, it could auto-emit channel events — progress on file reads, step transitions when methodology tools fire, git commits, test results — without the agent needing to call bridge_progress at all.
+
+**Potential architecture:**
+- PTY session already accumulates a raw buffer
+- Add a pattern-matching layer that watches for: `mcp__method__step_advance` calls (→ progress event), `git commit` (→ progress event), `npm test` output (→ progress event with pass/fail), tool call markers (→ activity heartbeat)
+- Emit to the session's channels automatically
+- This is purely bridge-side — no agent changes needed
+
+**Advantages over prompt-level instructions:**
+- Works for ALL agents, including those without channel tools in allowedTools
+- Works for non-methodology tasks (research, bug fixes) where step_advance isn't used
+- Cannot be "forgotten" — it's infrastructure, not a prompt instruction
+- Provides activity heartbeat even when agent is just reading files (solves the "is it stuck?" question)
+
+**Risks:**
+- PTY output format is not stable (ANSI escapes, terminal width, Claude Code version changes)
+- Pattern matching on raw PTY is fragile — false positives/negatives likely
+- May duplicate events if the agent ALSO reports via channels (need dedup)
+
+**PRD candidate:** PRD 010 — PTY Activity Detection. Parse PTY output for tool calls, git ops, and test results. Auto-emit channel events. This would make OBS-01 and OBS-02 irrelevant — the bridge itself becomes the observer.
+
+---
+
+## OBS-10: Worktree → PR workflow works end-to-end
+
+**Severity:** POSITIVE — validates PRD 006 C2 + commission skill update
+**Observed in:** PRD 007 (PR #2) + AG-030 (PR #1)
+
+Both agents successfully: created commits in worktree branches, pushed to origin, and created PRs via `mcp__github-personal__create_pull_request`. The full cycle — commission → spawn in worktree → work → PR — is now validated. PRs are reviewable by the parent agent or human.
+
+**Remaining unknown:** PR review → merge cycle from the parent agent's perspective.
+
+---
+
+## OBS-11: Agents do excellent work silently
+
+**Severity:** INSIGHT — the work quality is high, the visibility is low
+**Observed in:** PRD 007 (346 lines, 13 files, all 3 phases), AG-030 (full feasibility report with architecture analysis)
+
+Both agents produced high-quality deliverables without any progress visibility. The parent only discovered the work by checking worktrees directly. This means the commission prompt and task spec are effective — agents understand what to build. The gap is purely in observability, not capability.
+
+**Implication:** Fixing OBS-01 (channel reporting) or implementing OBS-09 (PTY auto-detection) would make the system production-ready. The agents already deliver — we just can't see them doing it.
+
+---
+
+## Summary: What works vs what needs fixing
+
+### Works well
+- Bridge spawn + worktree isolation
+- Channel infrastructure (progress/events/push notifications)
+- Budget enforcement (depth + agent count)
+- Stale detection timers
+- Multi-agent parallelism
+- Dashboard shows all sessions with real-time refresh
+
+### Needs improvement (PRD candidates)
+- **Auto-channel reporting** — agents should report progress automatically, not manually
+- **Initial prompt activation** — agents stall after consuming initial prompt
+- **PTY parser replacement** — empty responses make bridge_prompt unreliable
+- **Path enforcement** — sub-agents commit out-of-scope files
+- **Retry on transient errors** — bridge_prompt connection refused
+
+### Validated
+- Worktree → PR workflow works end-to-end (OBS-10)
+- Agents produce high-quality work without visibility (OBS-11)
+- GitHub MCP tools work from within commissioned agents
+
+### Unknown (pending validation)
+- PR review → merge cycle from parent agent
+- PTY auto-detection feasibility (OBS-09 — proposed, not tested)

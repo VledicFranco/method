@@ -6,14 +6,7 @@ agenda:
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
-  p0_immediate:
-    - id: AG-030
-      item: "Prototype: context-mode MCP for indexed channel retrieval"
-      owner: council
-      status: open
-      added_in: SESSION-020
-      promoted_in: SESSION-021
-      note: "Install context-mode as MCP server. Test parent-agent indexed retrieval of child channel output. If pattern validates → PRD 009. D-032."
+  p0_immediate: []
 
   p1_next:
     - id: AG-026
@@ -22,6 +15,20 @@ agenda:
       status: open
       added_in: SESSION-017
       note: "Protocol binding between organon identity constraints and pv-method execution. D-028."
+
+    - id: AG-033
+      item: "PRD 010: PTY activity auto-detection for bridge channels"
+      owner: council
+      status: open
+      added_in: SESSION-021
+      note: "OBS-09: Parse PTY output for tool calls, git ops, test results. Auto-emit channel events without agent cooperation. Would make OBS-01/02 irrelevant."
+
+    - id: AG-034
+      item: "Context-mode prototype experiment (from AG-030 feasibility report)"
+      owner: council
+      status: open
+      added_in: SESSION-021
+      note: "PR #1 merged. Report recommends scoped prototype before PRD 009. Install MCP-only, test with real methodology child, measure 4 success criteria."
 
   governance_health:
     last_assessed: SESSION-018
@@ -89,6 +96,7 @@ agenda:
     - { id: AG-027, resolved_in: SESSION-019, note: "CLAUDE.md refreshed — 23 tools, channels, sub-agent guidelines, governance" }
     - { id: AG-028, resolved_in: SESSION-019, note: "GC-P2SD-005 resolved — 3-point fix: card role_notes + commission skill + CLAUDE.md" }
     - { id: AG-029, resolved_in: SESSION-019, note: "PRD 006 C2/C4 implemented via bridge commission — worktree isolation + stale detection" }
+    - { id: AG-030, resolved_in: SESSION-021, note: "Context-mode feasibility report — PR #1 merged. Recommends scoped prototype then PRD 009." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }
