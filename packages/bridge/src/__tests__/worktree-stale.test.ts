@@ -36,6 +36,7 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
     set lastActivityAt(d: Date) { lastActivityAt = d; },
     get transcript() { return ''; },
     onOutput(_cb: (data: string) => void) { return () => {}; },
+    onExit(_cb: (exitCode: number) => void) { /* no-op in test */ },
     async sendPrompt(_prompt: string, _timeoutMs?: number, _settleDelayMs?: number) {
       promptCount++;
       lastActivityAt = new Date();
