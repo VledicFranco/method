@@ -665,4 +665,45 @@ log:
 
       next_agenda_items:
         - "AG-025: Commission PRD 008 MVP implementation (manual, not bridge)"
+
+    - id: SESSION-017
+      date: "2026-03-15"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Organon integration into pv-method"
+
+      decisions:
+        - id: D-028
+          item: "Organon integration approach"
+          decision: >
+            Option C — Protocol binding (ORGANON-PROTO). Not a methodology, not
+            external reference. A protocol that: (1) essence derived from ETHOS.md
+            via essence_source field, (2) council loads ETHOS during guardianship,
+            (3) organon verify binds to M1-IMPL Phase A, (4) retro feedback references
+            ETHOS invariant IDs, (5) no duplication — ETHOS is source of truth for identity.
+          status: decided
+          for: >
+            Organon and pv-method are complementary: organon owns identity (constraints),
+            pv-method owns execution (methods). Protocol binding composes them without
+            forcing organon into the formal method 3-tuple (which would lose its
+            prose-first, progressive-disclosure value).
+          against: >
+            Option A (formalize as methodology) rejected: would lose prose richness.
+            Option B (external reference) rejected: too loose, no enforcement.
+          essence_check: "ETHOS.md becomes source of truth for identity. Faithful to both organon and pv-method invariants."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: +1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+        process_improvement_signal: "None"
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Decision D-028: ORGANON-PROTO protocol binding design"
+
+      next_agenda_items:
+        - "AG-026: Draft ORGANON-PROTO in registry/P0-META/"
         - "AG-007: CLAUDE.md for pv-method — promote to P0"
