@@ -9,6 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
 
+/* ═══════════════════════════════════════════════════════
+   @method/bridge — Session Transcript History
+   PRD 007 Mock · Design system: Vidtecci OS
+   ═══════════════════════════════════════════════════════ */
 :root {
   --void:       #050910;
   --abyssal:    #0e2030;
@@ -48,7 +52,7 @@ body {
   overflow: hidden;
 }
 
-/* grain */
+/* grain overlay */
 body::after {
   content: ''; position: fixed; inset: 0;
   pointer-events: none; z-index: 9999; opacity: .04;
@@ -77,14 +81,29 @@ body::after {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* ── DEPTH BADGE ───────────────────────────────────── */
+.depth-badge {
+  display: inline-block;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--nebular);
+  background: rgba(155,127,212,.10);
+  padding: .15rem .4rem;
+  border-radius: 2px;
 }
 
-@keyframes expandDown {
-  from { max-height: 0; opacity: 0; }
-  to { max-height: 500px; opacity: 1; }
+.depth-badge-sm {
+  display: inline-block;
+  font-family: var(--font-m);
+  font-size: .5rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--nebular);
+  background: rgba(155,127,212,.10);
+  padding: .1rem .3rem;
+  border-radius: 2px;
 }
 
 /* ── TOP BAR ────────────────────────────────────────── */
@@ -126,16 +145,33 @@ body::after {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  animation: fadeIn .5s var(--ease-out) .3s both;
 }
 
 .tb-meta-item {
   font-family: var(--font-m);
   font-size: .68rem;
   color: var(--dim2);
+  opacity: 0;
+  animation: staggerReveal .35s var(--ease-out) both;
 }
+.tb-meta-item:nth-child(1) { animation-delay: .3s; }
+.tb-meta-item:nth-child(2) { animation-delay: .35s; }
+.tb-meta-item:nth-child(3) { animation-delay: .4s; }
+.tb-meta-item:nth-child(4) { animation-delay: .45s; }
+.tb-meta-item:nth-child(5) { animation-delay: .5s; }
+.tb-meta-item:nth-child(6) { animation-delay: .55s; }
+.tb-meta-item:nth-child(7) { animation-delay: .6s; }
+.tb-meta-item:nth-child(8) { animation-delay: .65s; }
+
 .tb-meta-item strong { color: var(--dim); font-weight: 500; }
 .tb-meta-item .val { color: var(--bio); }
+
+.tb-nickname {
+  font-family: var(--font-d);
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--bio-bright);
+}
 
 .mock-tag {
   font-family: var(--font-m);
@@ -220,11 +256,6 @@ body::after {
   opacity: 0;
   animation: slideInRight .3s var(--ease-out) both;
 }
-.session-entry:nth-child(2) { animation-delay: .05s; }
-.session-entry:nth-child(3) { animation-delay: .1s; }
-.session-entry:nth-child(4) { animation-delay: .15s; }
-.session-entry:nth-child(5) { animation-delay: .2s; }
-.session-entry:nth-child(6) { animation-delay: .25s; }
 
 .session-entry:hover { background: rgba(0,212,176,.03); }
 .session-entry.active {
@@ -239,13 +270,13 @@ body::after {
   margin-bottom: .15rem;
 }
 
-.se-id {
-  font-family: var(--font-m);
-  font-size: .72rem;
-  font-weight: 500;
+.se-nickname {
+  font-family: var(--font-d);
+  font-size: .76rem;
+  font-weight: 600;
   color: var(--stellar);
 }
-.session-entry.active .se-id { color: var(--bio); }
+.session-entry.active .se-nickname { color: var(--bio-bright); }
 
 .se-status {
   width: 6px; height: 6px;
@@ -270,6 +301,8 @@ body::after {
   font-size: .6rem;
   color: var(--muted);
 }
+
+/* staggered sidebar entries — set per entry via inline style */
 
 /* ── TRANSCRIPT MAIN ────────────────────────────────── */
 .transcript-main {
@@ -302,6 +335,8 @@ body::after {
 .sm-item:nth-child(4) { animation-delay: .25s; }
 .sm-item:nth-child(5) { animation-delay: .3s; }
 .sm-item:nth-child(6) { animation-delay: .35s; }
+.sm-item:nth-child(7) { animation-delay: .4s; }
+.sm-item:nth-child(8) { animation-delay: .45s; }
 
 .sm-label {
   font-family: var(--font-m);
@@ -319,6 +354,12 @@ body::after {
 }
 .sm-value.bio { color: var(--bio); }
 .sm-value.mono { font-weight: 500; color: var(--stellar); }
+.sm-value.nickname {
+  font-family: var(--font-d);
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--bio-bright);
+}
 
 /* conversation turns */
 .turn {
@@ -326,10 +367,10 @@ body::after {
   opacity: 0;
   animation: fadeInUp .4s var(--ease-out) both;
 }
-.turn:nth-child(1) { animation-delay: .4s; }
-.turn:nth-child(2) { animation-delay: .55s; }
-.turn:nth-child(3) { animation-delay: .7s; }
-.turn:nth-child(4) { animation-delay: .85s; }
+.turn:nth-of-type(1) { animation-delay: .4s; }
+.turn:nth-of-type(2) { animation-delay: .55s; }
+.turn:nth-of-type(3) { animation-delay: .7s; }
+.turn:nth-of-type(4) { animation-delay: .85s; }
 
 /* user turn */
 .turn-user {
@@ -534,12 +575,16 @@ body::after {
     <h1 class="tb-title">Session <em>Transcripts</em></h1>
     <span class="tb-spacer"></span>
     <div class="tb-meta">
-      <span class="tb-meta-item"><strong>ID</strong> <span class="val">d9dea613-572e-4d16-a4ec-179d5c0846cf</span></span>
-      <span class="tb-meta-item"><strong>Tokens</strong> 68.4k</span>
+      <span class="tb-meta-item"><span class="tb-nickname">ember</span></span>
+      <span class="tb-meta-item"><strong>ID</strong> <span style="color:var(--stellar);font-size:.62rem">d9dea613-572e-4d16-a4ec-179d5c0846cf</span></span>
+      <span class="tb-meta-item"><span class="depth-badge">D2</span></span>
+      <span class="tb-meta-item"><strong>Workdir</strong> pv-agi</span>
+      <span class="tb-meta-item"><strong>Started</strong> 14:32:07</span>
+      <span class="tb-meta-item"><strong>Tokens</strong> <span class="val">68.4k</span></span>
       <span class="tb-meta-item"><strong>Cache</strong> <span class="val">78%</span></span>
       <span class="tb-meta-item"><strong>Duration</strong> 12m 34s</span>
     </div>
-    <span class="mock-tag">PRD-005 Mock</span>
+    <span class="mock-tag">PRD-007 Mock</span>
   </header>
 
   <!-- ── SESSION SIDEBAR ─────────────────────────────── -->
@@ -552,11 +597,14 @@ body::after {
 
     <div class="date-group">
       <div class="date-label">Today &middot; Mar 14</div>
-      <div class="session-entry active">
+
+      <!-- ember — active -->
+      <div class="session-entry active" style="animation-delay:.05s">
         <div class="se-row1">
           <span class="se-status se-status-ready"></span>
-          <span class="se-id">d9dea613</span>
-          <span class="se-workdir">pv-method</span>
+          <span class="se-nickname">ember</span>
+          <span class="depth-badge-sm">D2</span>
+          <span class="se-workdir">pv-agi</span>
         </div>
         <div class="se-row2">
           <span>14:32</span>
@@ -566,10 +614,13 @@ body::after {
           <span>council-run-1</span>
         </div>
       </div>
-      <div class="session-entry">
+
+      <!-- flux — active -->
+      <div class="session-entry" style="animation-delay:.1s">
         <div class="se-row1">
           <span class="se-status se-status-ready"></span>
-          <span class="se-id">64cf42b0</span>
+          <span class="se-nickname">flux</span>
+          <span class="depth-badge-sm">D1</span>
           <span class="se-workdir">pv-method</span>
         </div>
         <div class="se-row2">
@@ -580,10 +631,13 @@ body::after {
           <span>impl-phase2</span>
         </div>
       </div>
-      <div class="session-entry">
+
+      <!-- cedar — dead -->
+      <div class="session-entry" style="animation-delay:.15s">
         <div class="se-row1">
           <span class="se-status se-status-dead"></span>
-          <span class="se-id">a3f7bc01</span>
+          <span class="se-nickname" style="opacity:.55">cedar</span>
+          <span class="depth-badge-sm">D2</span>
           <span class="se-workdir">pv-agi</span>
         </div>
         <div class="se-row2">
@@ -598,10 +652,13 @@ body::after {
 
     <div class="date-group">
       <div class="date-label">Yesterday &middot; Mar 13</div>
-      <div class="session-entry">
+
+      <!-- drift — dead -->
+      <div class="session-entry" style="animation-delay:.2s">
         <div class="se-row1">
           <span class="se-status se-status-dead"></span>
-          <span class="se-id">7f2e9a14</span>
+          <span class="se-nickname" style="opacity:.55">drift</span>
+          <span class="depth-badge-sm">D0</span>
           <span class="se-workdir">pv-method</span>
         </div>
         <div class="se-row2">
@@ -612,10 +669,13 @@ body::after {
           <span>impl-prd004</span>
         </div>
       </div>
-      <div class="session-entry">
+
+      <!-- grain — dead -->
+      <div class="session-entry" style="animation-delay:.25s">
         <div class="se-row1">
           <span class="se-status se-status-dead"></span>
-          <span class="se-id">3bc51d88</span>
+          <span class="se-nickname" style="opacity:.55">grain</span>
+          <span class="depth-badge-sm">D1</span>
           <span class="se-workdir">pv-agi</span>
         </div>
         <div class="se-row2">
@@ -635,12 +695,20 @@ body::after {
     <!-- session metadata -->
     <div class="session-meta">
       <div class="sm-item">
+        <div class="sm-label">Nickname</div>
+        <div class="sm-value nickname">ember</div>
+      </div>
+      <div class="sm-item">
         <div class="sm-label">Session ID</div>
-        <div class="sm-value mono">d9dea613</div>
+        <div class="sm-value mono">d9dea613-572e-4d16-a4ec-179d5c0846cf</div>
+      </div>
+      <div class="sm-item">
+        <div class="sm-label">Depth</div>
+        <div class="sm-value"><span class="depth-badge">D2</span></div>
       </div>
       <div class="sm-item">
         <div class="sm-label">Workdir</div>
-        <div class="sm-value">/pv-method</div>
+        <div class="sm-value">/pv-agi</div>
       </div>
       <div class="sm-item">
         <div class="sm-label">Started</div>
@@ -675,12 +743,12 @@ body::after {
     <!-- Turn 2: Assistant -->
     <div class="turn turn-assistant">
       <div class="turn-header">
-        <span class="turn-role turn-role-assistant">agent</span>
+        <span class="turn-role turn-role-assistant">agent &middot; ember</span>
         <span class="turn-time">14:32:09</span>
         <span class="turn-tokens">13,847 tokens &middot; cache: 11.2k</span>
       </div>
 
-      <!-- Tool call -->
+      <!-- Tool call — expanded by default -->
       <div class="tool-block expanded" onclick="this.classList.toggle('expanded')">
         <div class="tool-block-header">
           <span class="tool-block-icon">&rsaquo;</span>
@@ -689,10 +757,10 @@ body::after {
         </div>
         <div class="tool-block-content">
           <div class="tool-block-inner">[
-  { "id": "P0-META", "name": "Genesis Methodology", "methods": 5 },
-  { "id": "P1-EXEC", "name": "Execution Methodology", "methods": 3 },
-  { "id": "P2-SD",   "name": "Software Delivery",     "methods": 7 },
-  { "id": "P3-DISPATCH", "name": "Dispatch Methodology", "methods": 3 }
+  { "id": "P0-META",     "name": "Genesis Methodology",  "methods": 5 },
+  { "id": "P1-EXEC",     "name": "Execution Methodology", "methods": 3 },
+  { "id": "P2-SD",       "name": "Software Delivery",     "methods": 7 },
+  { "id": "P3-DISPATCH", "name": "Dispatch Methodology",  "methods": 3 }
 ]</div>
         </div>
       </div>
@@ -722,19 +790,19 @@ body::after {
         <span class="turn-tokens">89 tokens</span>
       </div>
       <div class="turn-body">
-        Load P2-SD and show me the transition function. I want to understand how tasks are routed to methods.
+        Load P2-SD and show me the transition function. I want to understand how tasks are routed.
       </div>
     </div>
 
     <!-- Turn 4: Assistant -->
     <div class="turn turn-assistant">
       <div class="turn-header">
-        <span class="turn-role turn-role-assistant">agent</span>
+        <span class="turn-role turn-role-assistant">agent &middot; ember</span>
         <span class="turn-time">14:34:25</span>
         <span class="turn-tokens">42,381 tokens &middot; cache: 29.4k</span>
       </div>
 
-      <!-- Tool call 1 -->
+      <!-- Tool call 1 — collapsed -->
       <div class="tool-block" onclick="this.classList.toggle('expanded')">
         <div class="tool-block-header">
           <span class="tool-block-icon">&rsaquo;</span>
@@ -754,7 +822,7 @@ body::after {
         </div>
       </div>
 
-      <!-- Tool call 2 -->
+      <!-- Tool call 2 — collapsed -->
       <div class="tool-block" onclick="this.classList.toggle('expanded')">
         <div class="tool-block-header">
           <span class="tool-block-icon">&rsaquo;</span>
@@ -769,10 +837,13 @@ body::after {
     { "name": "multi_task_scope", "description": ">=3 independent tasks" }
   ],
   "arms": [
-    { "priority": 1, "label": "section", "selects": "M7-PRDS" },
+    { "priority": 1, "label": "section",    "selects": "M7-PRDS" },
     { "priority": 2, "label": "architecture", "selects": "M6-ARFN" },
-    { "priority": 3, "label": "plan", "selects": "M5-PLAN" },
-    ...
+    { "priority": 3, "label": "plan",       "selects": "M5-PLAN" },
+    { "priority": 4, "label": "implement (parallel)", "selects": "M2-DIMPL" },
+    { "priority": 5, "label": "implement",  "selects": "M1-IMPL" },
+    { "priority": 6, "label": "review",     "selects": "M3-PHRV" },
+    { "priority": 7, "label": "audit",      "selects": "M4-DDAG" }
   ]
 }</div>
         </div>

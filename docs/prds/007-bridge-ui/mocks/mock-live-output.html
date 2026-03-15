@@ -9,6 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
 
+/* ================================================================
+   @method/bridge — Live Agent Output View
+   PRD 007 Mock — Vidtecci OS Design System
+   ================================================================ */
+
 :root {
   --void:       #050910;
   --abyssal:    #0e2030;
@@ -48,7 +53,7 @@ body {
   overflow: hidden;
 }
 
-/* grain */
+/* grain overlay */
 body::after {
   content: ''; position: fixed; inset: 0;
   pointer-events: none; z-index: 9999; opacity: .04;
@@ -72,29 +77,9 @@ body::after {
   50% { opacity: 0; }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes slideInLine {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes expandIn {
-  from { opacity: 0; max-height: 0; }
-  to   { opacity: 1; max-height: 600px; }
-}
-
-@keyframes countPulse {
-  0% { color: var(--bio-bright); transform: scale(1.08); }
-  100% { color: var(--bio); transform: scale(1); }
-}
-
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(0,212,176,.15); }
-  50% { box-shadow: 0 0 14px rgba(0,212,176,.3); }
 }
 
 /* ── HEADER BAR ─────────────────────────────────────── */
@@ -104,9 +89,10 @@ body::after {
   padding: .65rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
   border-bottom: 1px solid rgba(0,212,176,.07);
   animation: fadeInUp .4s var(--ease-out);
+  flex-wrap: wrap;
 }
 
 .hb-back {
@@ -119,15 +105,28 @@ body::after {
   gap: .3rem;
   transition: color .15s;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .hb-back:hover { color: var(--bio); }
 
-.hb-id {
-  font-family: var(--font-m);
-  font-size: .82rem;
-  font-weight: 600;
+.hb-nickname {
+  font-family: var(--font-d);
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--stellar);
-  letter-spacing: .02em;
+  letter-spacing: -.01em;
+}
+
+.depth-badge {
+  display: inline-block;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--nebular);
+  background: rgba(155,127,212,.10);
+  padding: .15rem .4rem;
+  border-radius: 2px;
 }
 
 .hb-status {
@@ -140,46 +139,54 @@ body::after {
   padding: .15rem .55rem;
   border-radius: 2px;
 }
-
 .hb-status::before {
   content: '';
   width: 6px; height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-
 .hb-status-working { color: var(--solar); background: var(--solar-dim); }
 .hb-status-working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
 
-.hb-status-ready { color: var(--bio); background: var(--bio-dim); }
-.hb-status-ready::before { background: var(--bio); }
-
-.hb-meta {
-  font-family: var(--font-m);
-  font-size: .68rem;
-  color: var(--dim2);
+.hb-purpose {
+  font-family: var(--font-b);
+  font-size: .75rem;
+  color: var(--dim);
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.hb-meta strong { color: var(--dim); font-weight: 500; }
 
 .hb-spacer { flex: 1; }
 
-.hb-dashboard {
+.hb-meta {
   font-family: var(--font-m);
   font-size: .62rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--dim2);
-  text-decoration: none;
-  transition: color .15s;
-  cursor: pointer;
+  flex-shrink: 0;
 }
-.hb-dashboard:hover { color: var(--bio); }
+.hb-meta strong { color: var(--dim); font-weight: 500; }
+
+.mock-tag {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--nebular);
+  opacity: .6;
+  padding: .15rem .5rem;
+  background: rgba(155,127,212,.06);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
 
 /* ── TERMINAL OUTPUT ────────────────────────────────── */
 .terminal {
   background: rgba(2,5,10,.98);
   overflow-y: auto;
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 1.5rem 2.5rem;
   position: relative;
   scroll-behavior: smooth;
 }
@@ -189,16 +196,28 @@ body::after {
 .terminal::-webkit-scrollbar-thumb { background: rgba(0,212,176,.15); border-radius: 3px; }
 .terminal::-webkit-scrollbar-thumb:hover { background: rgba(0,212,176,.25); }
 
+/* exchange separator */
+.exchange-break {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,212,176,.08), transparent 60%);
+  margin: 1.75rem 0;
+}
+
 /* output blocks */
 .output-block {
   margin-bottom: 1.25rem;
   animation: slideInLine .3s var(--ease-out) both;
 }
-.output-block:nth-child(1) { animation-delay: .1s; }
-.output-block:nth-child(2) { animation-delay: .3s; }
-.output-block:nth-child(3) { animation-delay: .6s; }
-.output-block:nth-child(4) { animation-delay: .9s; }
-.output-block:nth-child(5) { animation-delay: 1.2s; }
+.output-block:nth-child(1) { animation-delay: .05s; }
+.output-block:nth-child(2) { animation-delay: .15s; }
+.output-block:nth-child(3) { animation-delay: .25s; }
+.output-block:nth-child(4) { animation-delay: .35s; }
+.output-block:nth-child(5) { animation-delay: .45s; }
+.output-block:nth-child(6) { animation-delay: .55s; }
+.output-block:nth-child(7) { animation-delay: .65s; }
+.output-block:nth-child(8) { animation-delay: .75s; }
+.output-block:nth-child(9) { animation-delay: .85s; }
+.output-block:nth-child(10) { animation-delay: .95s; }
 
 /* prompt marker */
 .prompt-marker {
@@ -250,7 +269,7 @@ body::after {
   background: var(--bio);
 }
 
-/* thinking block — collapsed */
+/* thinking block */
 .thinking-block {
   border-left: 2px solid rgba(155,127,212,.3);
   background: rgba(155,127,212,.03);
@@ -275,6 +294,7 @@ body::after {
   font-size: .65rem;
   color: var(--nebular);
   transition: transform .25s var(--ease-out);
+  display: inline-block;
 }
 .thinking-block.expanded .thinking-icon { transform: rotate(90deg); }
 
@@ -335,6 +355,7 @@ body::after {
   font-size: .65rem;
   color: var(--bio);
   transition: transform .25s var(--ease-out);
+  display: inline-block;
 }
 .tool-call.expanded .tool-icon { transform: rotate(90deg); }
 
@@ -404,7 +425,7 @@ body::after {
   font-size: .78rem;
 }
 
-/* cursor */
+/* terminal cursor */
 .terminal-cursor {
   display: inline-block;
   width: 7px;
@@ -457,6 +478,10 @@ body::after {
   animation: fadeInUp .5s var(--ease-out) .2s both;
 }
 
+.stats-sidebar::-webkit-scrollbar { width: 4px; }
+.stats-sidebar::-webkit-scrollbar-track { background: transparent; }
+.stats-sidebar::-webkit-scrollbar-thumb { background: rgba(0,212,176,.1); border-radius: 2px; }
+
 .stats-section-label {
   font-family: var(--font-m);
   font-size: .56rem;
@@ -499,6 +524,46 @@ body::after {
   margin-top: .15rem;
 }
 
+/* sidebar agent info */
+.sidebar-nickname {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bio);
+  letter-spacing: -.01em;
+}
+
+.sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .15rem;
+}
+
+.sidebar-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-status-dot.working {
+  background: var(--solar);
+  box-shadow: 0 0 5px rgba(238,170,98,.5);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sidebar-status-text {
+  font-family: var(--font-m);
+  font-size: .72rem;
+}
+
+.sidebar-purpose {
+  font-family: var(--font-b);
+  font-size: .68rem;
+  color: var(--dim);
+  line-height: 1.5;
+  margin-top: .4rem;
+}
+
 /* token breakdown */
 .token-row {
   display: flex;
@@ -525,6 +590,25 @@ body::after {
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(0,212,176,.25);
   transition: width .6s var(--ease-out);
+}
+
+/* methodology info */
+.method-info {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--stellar);
+}
+.method-sub {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--dim2);
+  margin-top: .1rem;
+}
+.method-id {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--bio);
+  opacity: .8;
 }
 
 /* ── INPUT BAR ──────────────────────────────────────── */
@@ -586,19 +670,6 @@ body::after {
   box-shadow: 0 0 12px rgba(0,212,176,.15);
 }
 
-/* ── MOCK BANNER ────────────────────────────────────── */
-.mock-tag {
-  font-family: var(--font-m);
-  font-size: .56rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--nebular);
-  opacity: .6;
-  padding: .15rem .5rem;
-  background: rgba(155,127,212,.06);
-  border-radius: 1px;
-}
-
   </style>
 </head>
 <body>
@@ -606,30 +677,34 @@ body::after {
   <!-- ── HEADER BAR ──────────────────────────────────── -->
   <header class="header-bar">
     <a class="hb-back">&larr; dashboard</a>
-    <span class="hb-id">d9dea613</span>
+    <span class="hb-nickname">ember</span>
+    <span class="depth-badge">D2</span>
     <span class="hb-status hb-status-working">working</span>
+    <span class="hb-purpose">Execute M1-COUNCIL sigma_2: adversarial debate</span>
+    <span class="hb-spacer"></span>
     <span class="hb-meta"><strong>workdir</strong> /pv-method</span>
     <span class="hb-meta"><strong>session</strong> council-run-1</span>
-    <span class="hb-spacer"></span>
-    <span class="mock-tag">PRD-005 Mock</span>
+    <span class="mock-tag">PRD-007 Mock</span>
   </header>
 
   <!-- ── TERMINAL OUTPUT ─────────────────────────────── -->
   <div class="terminal" id="terminal">
 
+    <!-- ═══ Exchange 1 ═══ -->
+
     <!-- Prompt 1 -->
     <div class="output-block">
       <div class="prompt-marker"><span class="dot"></span> prompt 1 &middot; 14:32:07</div>
-      <div class="prompt-text">Use the methodology_list MCP tool to list all available methodologies, then analyze the registry structure and report any issues you find.</div>
+      <div class="prompt-text">Use the methodology_list MCP tool to list all available methodologies, then analyze the registry structure.</div>
     </div>
 
     <!-- Response 1 -->
     <div class="output-block">
       <div class="response-marker"><span class="dot"></span> response &middot; 14:32:09</div>
 
-      <!-- Thinking block (collapsed) -->
-      <div class="thinking-block" onclick="this.classList.toggle('expanded')">
-        <div class="thinking-header">
+      <!-- Thinking block (collapsed by default) -->
+      <div class="thinking-block" id="thinking1">
+        <div class="thinking-header" onclick="toggleBlock('thinking1')">
           <span class="thinking-icon">&rsaquo;</span>
           <span class="thinking-label">thinking</span>
           <span class="thinking-duration">2.4s &middot; 1,847 tokens</span>
@@ -642,9 +717,9 @@ I should pay attention to:
 3. Whether instance cards reference valid parent methodologies</div>
       </div>
 
-      <!-- Tool call: methodology_list -->
-      <div class="tool-call expanded" onclick="this.classList.toggle('expanded')">
-        <div class="tool-header">
+      <!-- Tool call: methodology_list (expanded by default) -->
+      <div class="tool-call expanded" id="tool1">
+        <div class="tool-header" onclick="toggleBlock('tool1')">
           <span class="tool-icon">&rsaquo;</span>
           <span class="tool-name">methodology_list</span>
           <span class="tool-args">{ }</span>
@@ -676,9 +751,9 @@ I should pay attention to:
         </div>
       </div>
 
-      <!-- Tool call: Read -->
-      <div class="tool-call" onclick="this.classList.toggle('expanded')">
-        <div class="tool-header">
+      <!-- Tool call: Read (collapsed by default) -->
+      <div class="tool-call" id="tool2">
+        <div class="tool-header" onclick="toggleBlock('tool2')">
           <span class="tool-icon">&rsaquo;</span>
           <span class="tool-name">Read</span>
           <span class="tool-args">registry/P2-SD/P2-SD.yaml</span>
@@ -705,37 +780,143 @@ I should pay attention to:
 
         All four methodologies have valid compilation records with gates G0-G6 passed. No structural issues found:
 
-        &bull; <code>P0-META</code> &mdash; 5 methods (27 steps). M7-DTID shows 0 steps &mdash; this is an unpopulated method stub, not an error.
-        &bull; <code>P1-EXEC</code> &mdash; 3 methods (12 steps). Transition function &delta;_EXEC has 5 arms + fallback. All method references resolve.
-        &bull; <code>P2-SD</code> &mdash; 7 methods (34 steps). Transition function &delta;_SD has 9 arms. Instance cards I1-T1X and I2-METHOD correctly reference P2-SD as parent.
+        &bull; <code>P0-META</code> &mdash; 5 methods (27 steps). M7-DTID shows 0 steps &mdash; unpopulated method stub.
+        &bull; <code>P1-EXEC</code> &mdash; 3 methods (12 steps). Transition function &delta;_EXEC has 5 arms + fallback.
+        &bull; <code>P2-SD</code> &mdash; 7 methods (34 steps). Transition function &delta;_SD has 9 arms. Instance cards I1-T1X and I2-METHOD correctly reference P2-SD.
         &bull; <code>P3-DISPATCH</code> &mdash; 3 methods (17 steps). Direct-map routing. All three autonomy modes have complete step DAGs.
+      </div>
+    </div>
 
-        No orphaned methods, no broken cross-references, no missing compilation records.<span class="terminal-cursor"></span>
+    <!-- Exchange separator -->
+    <div class="exchange-break"></div>
+
+    <!-- ═══ Exchange 2 ═══ -->
+
+    <!-- Prompt 2 -->
+    <div class="output-block">
+      <div class="prompt-marker"><span class="dot"></span> prompt 2 &middot; 14:34:22</div>
+      <div class="prompt-text">Now load P2-SD and show me the routing table for &delta;_SD</div>
+    </div>
+
+    <!-- Response 2 -->
+    <div class="output-block">
+      <div class="response-marker"><span class="dot"></span> response &middot; 14:34:24</div>
+
+      <!-- Thinking block (collapsed) -->
+      <div class="thinking-block" id="thinking2">
+        <div class="thinking-header" onclick="toggleBlock('thinking2')">
+          <span class="thinking-icon">&rsaquo;</span>
+          <span class="thinking-label">thinking</span>
+          <span class="thinking-duration">1.8s &middot; 1,203 tokens</span>
+        </div>
+        <div class="thinking-content">The user wants to see the routing table for the Software Delivery methodology's transition function. I need to call methodology_start to load the session first, then methodology_get_routing to retrieve the delta function arms. The routing table maps input predicates to method selections — each arm has a priority, a predicate condition, and a target method ID.</div>
+      </div>
+
+      <!-- Tool call: methodology_start (expanded) -->
+      <div class="tool-call expanded" id="tool3">
+        <div class="tool-header" onclick="toggleBlock('tool3')">
+          <span class="tool-icon">&rsaquo;</span>
+          <span class="tool-name">methodology_start</span>
+          <span class="tool-args">{ "methodology": "P2-SD" }</span>
+          <span class="tool-duration">145ms</span>
+        </div>
+        <div class="tool-result">
+          <div class="tool-result-content">{
+  "sessionId": "sd-inspect-1",
+  "methodology": "P2-SD",
+  "name": "Software Delivery Methodology",
+  "status": "active",
+  "currentMethod": null,
+  "availableMethods": 7
+}</div>
+        </div>
+      </div>
+
+      <!-- Tool call: methodology_get_routing (expanded) -->
+      <div class="tool-call expanded" id="tool4">
+        <div class="tool-header" onclick="toggleBlock('tool4')">
+          <span class="tool-icon">&rsaquo;</span>
+          <span class="tool-name">methodology_get_routing</span>
+          <span class="tool-args">{ "sessionId": "sd-inspect-1" }</span>
+          <span class="tool-duration">89ms</span>
+        </div>
+        <div class="tool-result">
+          <div class="tool-result-content">{
+  "transitionFunction": "delta_SD",
+  "arms": 7,
+  "priority_stack": [
+    { "p": 1, "predicate": "has_prd && !has_design",      "target": "M5-PLAN" },
+    { "p": 2, "predicate": "has_design && !has_impl",     "target": "M1-IMPL" },
+    { "p": 3, "predicate": "needs_decomposition",         "target": "M2-DIMPL" },
+    { "p": 4, "predicate": "has_impl && needs_review",    "target": "M3-PHRV" },
+    { "p": 5, "predicate": "needs_dependency_analysis",   "target": "M4-DDAG" },
+    { "p": 6, "predicate": "needs_architecture_refine",   "target": "M6-ARFN" },
+    { "p": 7, "predicate": "needs_prd_spec",              "target": "M7-PRDS" }
+  ],
+  "fallback": "M1-IMPL"
+}</div>
+        </div>
+      </div>
+
+      <!-- Response text with cursor -->
+      <div class="response-text">
+        The <code>&delta;_SD</code> transition function uses a <strong>7-arm priority stack</strong> to route work through the Software Delivery methodology.
+
+        <strong>How routing works:</strong> Arms are evaluated top-down by priority. The first predicate that matches determines which method handles the current task. If no predicate matches, the fallback routes to <code>M1-IMPL</code> (standard implementation).
+
+        <strong>Priority breakdown:</strong>
+        &bull; <strong>P1</strong> &mdash; Planning first. If a PRD exists but no design, route to <code>M5-PLAN</code>.
+        &bull; <strong>P2</strong> &mdash; Implementation. Design exists but no code &rarr; <code>M1-IMPL</code>.
+        &bull; <strong>P3</strong> &mdash; Decomposition. Complex tasks get broken down via <code>M2-DIMPL</code>.
+        &bull; <strong>P4</strong> &mdash; Review. Post-implementation review through <code>M3-PHRV</code>.
+        &bull; <strong>P5-P7</strong> &mdash; Specialized arms for dependency analysis, architecture refinement, and PRD specification.
+
+        The stack ensures work flows through the natural lifecycle: spec &rarr; plan &rarr; implement &rarr; review, while specialized arms handle cross-cutting concerns.<span class="terminal-cursor"></span>
       </div>
     </div>
 
     <!-- Scroll indicator -->
     <div class="scroll-indicator" id="scrollIndicator" onclick="toggleAutoScroll()">
-      <span class="scroll-dot"></span>
+      <span class="scroll-dot" id="scrollDot"></span>
       <span id="scrollLabel">auto-scroll</span>
     </div>
   </div>
 
   <!-- ── SIDEBAR STATS ───────────────────────────────── -->
   <aside class="stats-sidebar">
-    <div class="stats-section-label">Session</div>
+
+    <!-- Agent section -->
+    <div class="stats-section-label">Agent</div>
+
+    <div class="stat-card">
+      <div class="stat-label">Nickname</div>
+      <div class="sidebar-nickname">ember</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Depth</div>
+      <span class="depth-badge">D2</span>
+    </div>
 
     <div class="stat-card">
       <div class="stat-label">Status</div>
-      <div style="display:flex;align-items:center;gap:.4rem;">
-        <span style="width:7px;height:7px;border-radius:50%;background:var(--solar);box-shadow:0 0 5px rgba(238,170,98,.5);animation:pulse 1.5s ease-in-out infinite;"></span>
-        <span style="font-family:var(--font-m);font-size:.75rem;color:var(--solar);">working</span>
+      <div class="sidebar-status">
+        <span class="sidebar-status-dot working"></span>
+        <span class="sidebar-status-text" style="color: var(--solar);">working</span>
       </div>
     </div>
 
     <div class="stat-card">
+      <div class="stat-label">Purpose</div>
+      <div class="sidebar-purpose">Execute M1-COUNCIL sigma_2: adversarial debate</div>
+    </div>
+
+    <!-- Session section -->
+    <div class="stats-section-label">Session</div>
+
+    <div class="stat-card">
       <div class="stat-label">Prompts</div>
-      <div class="stat-value" id="promptCount">1</div>
+      <div class="stat-value">2</div>
     </div>
 
     <div class="stat-card">
@@ -748,6 +929,7 @@ I should pay attention to:
       <div class="stat-value dim">4m 12s</div>
     </div>
 
+    <!-- Tokens section -->
     <div class="stats-section-label">Tokens</div>
 
     <div class="stat-card">
@@ -783,49 +965,88 @@ I should pay attention to:
       </div>
     </div>
 
+    <!-- Methodology section -->
     <div class="stats-section-label">Methodology</div>
 
     <div class="stat-card">
       <div class="stat-label">Session ID</div>
-      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--bio);opacity:.8;">council-run-1</div>
+      <div class="method-id">council-run-1</div>
     </div>
 
     <div class="stat-card">
       <div class="stat-label">Method</div>
-      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--stellar);">M1-COUNCIL</div>
-      <div style="font-family:var(--font-m);font-size:.6rem;color:var(--dim2);margin-top:.1rem;">Synthetic Agents Method</div>
+      <div class="method-info">M1-COUNCIL</div>
+      <div class="method-sub">Synthetic Agents Method</div>
     </div>
 
     <div class="stat-card">
       <div class="stat-label">Step</div>
-      <div style="font-family:var(--font-m);font-size:.72rem;color:var(--stellar);">sigma_2 / 4</div>
-      <div style="font-family:var(--font-m);font-size:.6rem;color:var(--dim2);margin-top:.1rem;">Adversarial Debate</div>
+      <div class="method-info">sigma_2 / 4</div>
+      <div class="method-sub">Adversarial Debate</div>
     </div>
+
   </aside>
 
   <!-- ── INPUT BAR ───────────────────────────────────── -->
   <div class="input-bar">
     <span class="input-label">bridge_prompt</span>
-    <input class="input-field" type="text" placeholder="Send a prompt to this agent..." />
-    <button class="send-btn">Send</button>
+    <input class="input-field" type="text" placeholder="Send a prompt to ember..." id="promptInput" />
+    <button class="send-btn" id="sendBtn">Send</button>
   </div>
 
   <script>
-    // Auto-scroll toggle
-    let autoScroll = true;
-    function toggleAutoScroll() {
-      autoScroll = !autoScroll;
-      const indicator = document.getElementById('scrollIndicator');
-      const label = document.getElementById('scrollLabel');
-      indicator.classList.toggle('paused', !autoScroll);
-      label.textContent = autoScroll ? 'auto-scroll' : 'paused';
+    // ── Toggle expand/collapse for thinking and tool blocks ──
+    function toggleBlock(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('expanded');
     }
 
-    // Simulate auto-scroll
-    const terminal = document.getElementById('terminal');
+    // ── Auto-scroll toggle ──
+    var autoScroll = true;
+    var terminal = document.getElementById('terminal');
+
+    function toggleAutoScroll() {
+      autoScroll = !autoScroll;
+      var indicator = document.getElementById('scrollIndicator');
+      var label = document.getElementById('scrollLabel');
+      indicator.classList.toggle('paused', !autoScroll);
+      label.textContent = autoScroll ? 'auto-scroll' : 'paused';
+
+      if (autoScroll) {
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+    }
+
+    // Detect manual scroll — pause auto-scroll if user scrolls up
+    terminal.addEventListener('scroll', function() {
+      if (!autoScroll) return;
+      var atBottom = terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 30;
+      if (!atBottom) {
+        autoScroll = false;
+        document.getElementById('scrollIndicator').classList.add('paused');
+        document.getElementById('scrollLabel').textContent = 'paused';
+      }
+    });
+
+    // Initial auto-scroll to bottom
     if (autoScroll) {
       terminal.scrollTop = terminal.scrollHeight;
     }
+
+    // ── Send button interaction (mock) ──
+    document.getElementById('sendBtn').addEventListener('click', function() {
+      var input = document.getElementById('promptInput');
+      if (input.value.trim()) {
+        input.value = '';
+        input.focus();
+      }
+    });
+
+    document.getElementById('promptInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('sendBtn').click();
+      }
+    });
   </script>
 
 </body>
