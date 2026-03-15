@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import { createPool } from './pool.js';
 import { createUsagePoller } from './usage-poller.js';
@@ -45,6 +46,23 @@ const transcriptReader = createTranscriptReader({
 const BRIDGE_STARTED_AT = new Date();
 
 const app = Fastify({ logger: true });
+
+// ---------- PWA static files ----------
+
+import { readFileSync } from 'node:fs';
+const __pwaDirname = dirname(fileURLToPath(import.meta.url));
+
+app.get('/manifest.json', async (_req, reply) => {
+  return reply.type('application/json').send(readFileSync(join(__pwaDirname, 'manifest.json'), 'utf-8'));
+});
+
+app.get('/icon-192.svg', async (_req, reply) => {
+  return reply.type('image/svg+xml').send(readFileSync(join(__pwaDirname, 'icon-192.svg'), 'utf-8'));
+});
+
+app.get('/icon-512.svg', async (_req, reply) => {
+  return reply.type('image/svg+xml').send(readFileSync(join(__pwaDirname, 'icon-512.svg'), 'utf-8'));
+});
 
 // ---------- Dashboard ----------
 
