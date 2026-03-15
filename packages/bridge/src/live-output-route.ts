@@ -2,23 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FastifyInstance } from 'fastify';
-import stripAnsi from 'strip-ansi';
 import type { SessionPool } from './pool.js';
 import type { TokenTracker } from './token-tracker.js';
 import { formatTokens, formatUptime, formatTimeAgo } from './dashboard-route.js';
-
-// Claude Code TUI spinner characters and chrome that strip-ansi doesn't catch
-const TUI_CHROME_RE = /[✢✶✻✽·●⎿▐▛▜▝▘█▌╭╮╰╯│─┌┐└┘├┤┬┴┼]+/g;
-const CURSOR_MOVE_RE = /\x1b\[\d*[A-HJKSTfm]|\x1b\[\?\d+[hl]|\x1b[=>]\d*[a-zA-Z]?|\r/g;
-
-function cleanPtyOutput(raw: string): string {
-  let text = stripAnsi(raw);
-  text = text.replace(CURSOR_MOVE_RE, '');
-  text = text.replace(TUI_CHROME_RE, '');
-  // Collapse multiple blank lines
-  text = text.replace(/\n{3,}/g, '\n\n');
-  return text;
-}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -74,15 +60,15 @@ export function registerLiveOutputRoutes(
       'X-Accel-Buffering': 'no',
     });
 
-    // Send initial transcript burst (strip ANSI escapes for browser display)
+    // Send initial transcript burst (raw PTY data — xterm.js handles rendering)
     if (session.transcript) {
-      const initialData = JSON.stringify({ text: cleanPtyOutput(session.transcript), timestamp: new Date().toISOString() });
+      const initialData = JSON.stringify({ text: session.transcript, timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${initialData}\n\n`);
     }
 
-    // Subscribe to live output (strip ANSI escapes for browser display)
+    // Subscribe to live output (raw PTY data — xterm.js handles rendering)
     const unsubscribe = session.onOutput((data: string) => {
-      const payload = JSON.stringify({ text: cleanPtyOutput(data), timestamp: new Date().toISOString() });
+      const payload = JSON.stringify({ text: data, timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${payload}\n\n`);
     });
 
