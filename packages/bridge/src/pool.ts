@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
+import { createPtyWatcher, parseWatcherConfig, type PtyWatcher } from './pty-watcher.js';
+import { generateAutoRetro } from './auto-retro.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -147,6 +148,10 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessionPurposes = new Map<string, string>();     // sessionId → purpose
   const activeNicknames = new Set<string>();              // uniqueness guard
 
+  // PRD 010: PTY watcher per session
+  const sessionWatchers = new Map<string, PtyWatcher>();
+  const sessionOriginalWorkdirs = new Map<string, string>(); // pre-worktree workdir for retro placement
+
   // Pool-level counters
   let totalSpawned = 0;
   const startedAt = new Date();
@@ -231,6 +236,46 @@ export function createPool(options?: PoolOptions): SessionPool {
       current = parent;
     }
     return current.budget;
+  }
+
+  /**
+   * PRD 010: Handle session death — detach watcher and generate auto-retro.
+   * Called from onExit callback and from kill().
+   */
+  function handleSessionDeath(sessionId: string, reason: 'killed' | 'exited' | 'stale'): void {
+    const watcher = sessionWatchers.get(sessionId);
+    if (!watcher) return;
+
+    watcher.detach();
+    sessionWatchers.delete(sessionId);
+
+    if (watcher.config.autoRetro) {
+      const nickname = sessionNicknames.get(sessionId) ?? sessionId.substring(0, 8);
+      const originalWorkdir = sessionOriginalWorkdirs.get(sessionId) ?? '';
+
+      if (originalWorkdir) {
+        const result = generateAutoRetro({
+          sessionId,
+          nickname,
+          observations: watcher.observations,
+          spawnedAt: watcher.spawnedAt,
+          terminatedAt: new Date(),
+          terminationReason: reason,
+          projectRoot: originalWorkdir,
+        });
+
+        if (result.written && result.path) {
+          // Emit retro event to session's events channel
+          const channels = sessionChannels.get(sessionId);
+          if (channels) {
+            appendMessage(channels.events, 'pty-watcher', 'retro_generated', {
+              path: result.path,
+              observations_count: watcher.observations.length,
+            });
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -385,6 +430,26 @@ export function createPool(options?: PoolOptions): SessionPool {
         depth: effectiveDepth,
       });
 
+      // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
+      sessionOriginalWorkdirs.set(sessionId, workdir);
+
+      // PRD 010: Create and attach PTY watcher
+      const watcherConfig = parseWatcherConfig(process.env, metadata);
+      if (watcherConfig.enabled) {
+        const watcher = createPtyWatcher(
+          sessionId,
+          channels,
+          (cb) => session.onOutput(cb),
+          watcherConfig,
+        );
+        sessionWatchers.set(sessionId, watcher);
+
+        // On session exit: detach watcher and generate auto-retro
+        session.onExit((_exitCode) => {
+          handleSessionDeath(sessionId, 'exited');
+        });
+      }
+
       totalSpawned++;
 
       return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo };
@@ -431,6 +496,9 @@ export function createPool(options?: PoolOptions): SessionPool {
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
       }
+
+      // PRD 010: Detach watcher and generate auto-retro before killing
+      handleSessionDeath(sessionId, 'killed');
 
       session.kill();
 
@@ -554,6 +622,8 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionStaleFlags.delete(sessionId);
             sessionNicknames.delete(sessionId);
             sessionPurposes.delete(sessionId);
+            sessionWatchers.delete(sessionId);
+            sessionOriginalWorkdirs.delete(sessionId);
             removed++;
           }
         }
@@ -583,6 +653,7 @@ export function createPool(options?: PoolOptions): SessionPool {
 
         // Auto-kill: inactive beyond kill timeout
         if (inactiveMs >= config.kill_timeout_ms) {
+          handleSessionDeath(sessionId, 'stale');
           session.kill();
 
           const channels = sessionChannels.get(sessionId);

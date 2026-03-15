@@ -17,6 +17,8 @@ export interface PtySession {
   readonly transcript: string;
   /** PRD 007: Subscribe to live PTY output. Returns unsubscribe function. */
   onOutput(cb: (data: string) => void): () => void;
+  /** PRD 010: Subscribe to PTY process exit. */
+  onExit(cb: (exitCode: number) => void): void;
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   kill(): void;
 }
@@ -85,6 +87,9 @@ export function spawnSession(options: SpawnOptions): PtySession {
   let transcriptBuffer = '';
   const outputSubscribers = new Set<(data: string) => void>();
 
+  // PRD 010: Exit callbacks
+  const exitCallbacks: Array<(exitCode: number) => void> = [];
+
   // Listen for PTY data
   ptyProcess.onData((data: string) => {
     outputBuffer += data;
@@ -123,9 +128,12 @@ export function spawnSession(options: SpawnOptions): PtySession {
   dataCallback = initWatcher;
 
   // Handle unexpected exit
-  ptyProcess.onExit(() => {
+  ptyProcess.onExit(({ exitCode }) => {
     status = 'dead';
     dataCallback = null;
+    for (const cb of exitCallbacks) {
+      try { cb(exitCode); } catch { /* exit callback errors are non-fatal */ }
+    }
   });
 
   const session: PtySession = {
@@ -163,6 +171,10 @@ export function spawnSession(options: SpawnOptions): PtySession {
     onOutput(cb: (data: string) => void): () => void {
       outputSubscribers.add(cb);
       return () => { outputSubscribers.delete(cb); };
+    },
+
+    onExit(cb: (exitCode: number) => void): void {
+      exitCallbacks.push(cb);
     },
 
     sendPrompt(prompt: string, timeoutMs?: number, settleDelayMsOverride?: number): Promise<{ output: string; timedOut: boolean }> {
