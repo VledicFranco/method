@@ -262,8 +262,20 @@ body {
     width: 100%;
   }
 
+  body {
+    height: 100dvh; /* dynamic viewport height — accounts for mobile browser chrome */
+  }
+
+  .terminal-container {
+    min-height: 40vh;
+  }
+
   .input-bar {
     padding: .5rem .75rem;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: rgba(11,28,43,.95);
   }
 
   .input-bar input {
