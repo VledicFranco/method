@@ -9,7 +9,8 @@ Without the bridge, an orchestrator runs every method in its own context window.
 With the bridge MCP proxy tools + methodology tools, the orchestrator:
 1. Uses MCP tools for methodology routing and session management
 2. Uses MCP bridge proxy tools (`bridge_spawn`, `bridge_prompt`, `bridge_kill`, `bridge_list`) to spawn and manage sub-agents
-3. Records outputs via `step_validate`, which flow automatically to the next method via `priorMethodOutputs`
+3. Uses visibility channels (`bridge_progress`, `bridge_event`, `bridge_read_progress`, `bridge_read_events`) to monitor sub-agent work in real time
+4. Records outputs via `step_validate`, which flow automatically to the next method via `priorMethodOutputs`
 
 ## Architecture
 
@@ -30,6 +31,11 @@ Orchestrator (human's Claude Code session)
         bridge_prompt             (send step prompt)    → POST /sessions/:id/prompt
         bridge_kill               (cleanup)             → DELETE /sessions/:id
         bridge_list               (monitor sessions)    → GET /sessions
+        bridge_progress           (report progress)     → POST /sessions/:id/channels/progress
+        bridge_event              (report events)       → POST /sessions/:id/channels/events
+        bridge_read_progress      (read child progress) → GET /sessions/:id/channels/progress
+        bridge_read_events        (read child events)   → GET /sessions/:id/channels/events
+        bridge_all_events         (all session events)  → GET /channels/events
 ```
 
 The MCP server exposes both methodology tools and bridge proxy tools. The orchestrator calls everything through MCP — methodology tools for intelligence, bridge proxy tools for agent labor. The proxy tools internally call the bridge HTTP API, so the orchestrator never needs to make raw HTTP requests.
@@ -42,7 +48,7 @@ The bridge itself remains methodology-unaware: it just spawns agents and relays 
    - Auto-loads OAuth token from `~/.claude/.credentials.json` for subscription usage meters
    - Shows plan type, rate limit tier, and token expiry on startup
    - Default port: 3456
-2. **Dashboard:** Open `http://localhost:3456/dashboard` in a browser for live observability
+2. **Dashboard:** Open `http://localhost:3456/dashboard` in a browser for live observability (see [Guide 14](14-bridge-dashboard-ui.md))
 3. **MCP server configured:** `.mcp.json` in the project workdir so spawned agents connect to the method MCP server
 4. **`BRIDGE_URL` env var:** The MCP server reads `BRIDGE_URL` (default `http://localhost:3456`) to know where to proxy bridge tool calls
 5. **Claude Code available:** The `CLAUDE_BIN` environment variable (or `claude` on PATH) must point to the Claude Code binary
@@ -102,16 +108,19 @@ methodology_load_method({ method_id: "M1-COUNCIL" })
 bridge_spawn({
   workdir: "/path/to/project",
   spawn_args: ["--allowedTools", "mcp__method__*"],
-  session_id: "council-run-1"
+  session_id: "council-run-1",
+  nickname: "council",
+  purpose: "Execute M1-COUNCIL debate for caching layer design"
 })
 → {
     bridge_session_id: "abc-123",
+    nickname: "council",
     status: "ready",
-    message: "Agent spawned. Call bridge_prompt to send work."
+    message: "Agent 'council' spawned. Call bridge_prompt to send work."
   }
 ```
 
-The `session_id` parameter auto-correlates this bridge session with the methodology session (see Session ID Correlation above). The `spawn_args` restrict the sub-agent to only methodology MCP tools.
+The `session_id` parameter auto-correlates this bridge session with the methodology session (see Session ID Correlation above). The `spawn_args` restrict the sub-agent to only methodology MCP tools. The `nickname` and `purpose` appear in the dashboard for human observability.
 
 ### Step 5: Execute the method steps via the sub-agent
 
@@ -177,7 +186,219 @@ The sub-agent for M3-TMP now has access to M1-COUNCIL's outputs via `step_contex
 
 Spawn a new bridge session, execute M3-TMP steps, transition again. Repeat until `methodology_transition` returns `nextMethod: null`.
 
-### Monitoring active sessions
+## Visibility Channels (PRD 008)
+
+The bridge provides two communication channels per session — **progress** and **events** — so orchestrators can monitor sub-agent work without polling raw output.
+
+### Progress channel
+
+Sub-agents (or the PTY watcher — see below) report structured progress updates: step transitions, tool calls, status changes.
+
+**Agent reports progress:**
+```
+bridge_progress({
+  bridge_session_id: "abc-123",
+  type: "step_advance",
+  step: "sigma_2",
+  description: "Council positions established"
+})
+```
+
+**Orchestrator reads child progress:**
+```
+bridge_read_progress({
+  bridge_session_id: "abc-123",
+  cursor: 0
+})
+→ {
+    messages: [
+      { sequence: 1, sender: "abc-123", type: "step_advance", content: { step: "sigma_2", ... } },
+      { sequence: 2, sender: "pty-watcher", type: "tool_call", content: { tool: "Edit", ... } }
+    ],
+    next_cursor: 2
+  }
+```
+
+The `cursor` parameter enables incremental reading — pass the `next_cursor` from the previous call to get only new messages.
+
+### Events channel
+
+Lifecycle events that signal completion, errors, escalations, or budget warnings.
+
+**Agent reports completion:**
+```
+bridge_event({
+  bridge_session_id: "abc-123",
+  type: "completed",
+  summary: "M1-COUNCIL executed successfully, decision: two-tier LRU cache"
+})
+```
+
+**Event types:**
+
+| Type | When | Push notification? |
+|------|------|--------------------|
+| `started` | Session begins work | No |
+| `completed` | Task finished successfully | Yes |
+| `error` | Unrecoverable error | Yes |
+| `escalation` | Sub-agent needs orchestrator decision | Yes |
+| `budget_warning` | Approaching depth or agent budget limit | Yes |
+| `stale` | Session inactive for 30+ minutes | Yes |
+| `killed` | Session killed | No |
+| `retro_generated` | Auto-retrospective written | No |
+
+### Push notifications
+
+When a child session emits a pushable event (`completed`, `error`, `escalation`, `budget_warning`, `stale`), the bridge automatically sends a notification prompt to the parent agent. The orchestrator doesn't need to poll — it receives a prompt with the event summary and suggested action.
+
+Push delivery is fire-and-forget: if the parent is busy processing another prompt, the notification queues. If delivery fails, it's non-fatal.
+
+### Cross-session event aggregation
+
+For council-level oversight or human monitoring:
+
+```
+bridge_all_events({ cursor: 0, type: "completed" })
+→ { messages: [...all completed events across all sessions...], next_cursor: 5 }
+```
+
+The optional `type` filter limits results to specific event types.
+
+## PTY Activity Auto-Detection (PRD 010)
+
+Agents rarely call `bridge_progress` voluntarily — they optimize out non-task-critical work. The PTY watcher solves this by detecting structured patterns in raw PTY output and auto-emitting to channels.
+
+### What it detects
+
+| Pattern | Detects | Channel emission |
+|---------|---------|-----------------|
+| Tool call | Read, Edit, Write, Bash, Glob, Grep, MCP tools | `progress: tool_call` |
+| Git commit | Branch, hash, message from git output | `progress: git_commit` |
+| Test result | Jest/Vitest/Mocha pass/fail counts | `progress: test_result` |
+| File operation | File paths touched (read/write/edit) | `progress: file_activity` |
+| Build result | tsc errors, build exit codes | `progress: build_result` |
+| Error | Stack traces, exceptions, non-zero exits | `events: error_detected` |
+| Idle | Prompt character after active work | `progress: idle` |
+
+Auto-detected messages have `sender: "pty-watcher"` so they're distinguishable from agent-reported messages in the progress timeline.
+
+### Rate limiting and dedup
+
+The watcher rate-limits emissions to avoid flooding channels:
+- Default: 1 emission per category per 5 seconds
+- File operations: 1 per 10 seconds (high-frequency pattern)
+- Errors: 1 per 15 seconds (multi-line stack traces)
+- Deduplication window: 10 seconds (same category + type = suppressed)
+
+### Configuration
+
+Enable/disable globally via environment variables, or per-session via spawn metadata:
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  metadata: {
+    pty_watcher: {
+      enabled: true,
+      patterns: ["tool_call", "git_commit", "test_result"],
+      auto_retro: true
+    }
+  }
+})
+```
+
+### Auto-retrospective generation
+
+When a session exits (normal exit, kill, or stale auto-kill), the watcher synthesizes a retrospective YAML from accumulated observations and writes it to `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. The retro includes:
+
+- **Timing** — spawn time, termination time, active vs idle minutes, termination reason
+- **Activity summary** — tool call counts with per-tool breakdown, files touched, git commits
+- **Quality** — whether tests ran, pass/fail counts, build status, error count
+
+Auto-retros are marked `generated_by: pty-watcher` to distinguish them from agent-authored retrospectives. If `.method/retros/` doesn't exist (project doesn't use the method system), the retro is silently skipped.
+
+## Split Prompt Delivery
+
+Long initial prompts (> 500 characters) are automatically split into two messages to prevent agents from treating the instructions as passive context (EXP-OBS02 finding):
+
+1. **Activation prompt** — short message with the session ID, asks the agent to acknowledge with "ready"
+2. **Full commission** — queued 3 seconds later with the complete task instructions and an "execute immediately" directive
+
+Short prompts (≤ 500 characters) are sent as-is with the session ID prefix. This splitting is transparent to the orchestrator — just pass the full prompt to `bridge_spawn` or `bridge_prompt` and the bridge handles delivery.
+
+## Persistent Sessions (PRD 011)
+
+Sessions spawned with `persistent: true` skip stale detection entirely. They won't be auto-killed after inactivity — they stay alive until explicitly killed or the bridge restarts.
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  persistent: true,
+  nickname: "mission",
+  purpose: "Remote admin session"
+})
+```
+
+Use persistent sessions for:
+- Long-running background agents that work intermittently
+- Remote access sessions (phone reconnects after disconnect)
+- Infrastructure agents that should survive inactivity periods
+
+Persistent sessions still die if the underlying PTY process exits, and are still subject to `DEAD_SESSION_TTL_MS` cleanup after death.
+
+## Stale Session Detection
+
+Non-persistent sessions are automatically monitored for inactivity:
+
+1. **Mark stale** — after 30 minutes of inactivity, the session gets a `stale` flag and a `stale` event is emitted to the events channel (triggers push notification to parent)
+2. **Auto-kill** — after 60 minutes of inactivity, the session is killed and a `stale` event with `action: "auto_killed"` is emitted
+
+Check staleness via `bridge_list()` — each session includes a `stale` boolean flag. Per-session timeout overrides are available via the `timeout_ms` parameter on spawn (the kill timeout is double the stale timeout).
+
+## Worktree Isolation
+
+Sessions can be spawned in isolated git worktrees to prevent file conflicts between parallel agents:
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  isolation: "worktree",
+  session_id: "impl-run-1"
+})
+→ {
+    bridge_session_id: "def-456",
+    worktree_path: ".claude/worktrees/def45678/",
+    metals_available: false,
+    ...
+  }
+```
+
+The bridge creates a worktree at `.claude/worktrees/{session_id[:8]}/` with a branch named `worktree-{session_id[:8]}`. The agent runs in the worktree directory.
+
+**Trade-off:** Metals MCP (language server) is not available in worktrees (`metals_available: false` in the spawn response). If the sub-agent needs Metals for code navigation, use `isolation: "shared"` (default) instead.
+
+On kill, the worktree can be merged, kept, or discarded via the `worktree_action` parameter on `bridge_kill`.
+
+## Chain and Budget System
+
+Sessions track parent-child relationships for multi-level orchestration:
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  parent_session_id: "abc-123",
+  budget: { max_depth: 3, max_agents: 10 }
+})
+```
+
+The budget is shared across the entire chain:
+- `max_depth` — maximum nesting level (orchestrator → sub-agent → sub-sub-agent)
+- `max_agents` — total agents that can be spawned across the chain
+- `agents_spawned` — incremented atomically on each spawn, validated against `max_agents`
+
+If a spawn would exceed the budget, the bridge rejects it with an error. The orchestrator can check current budget status via `bridge_list()`.
+
+## Monitoring Active Sessions
 
 At any point during orchestration, check session status:
 
@@ -187,22 +408,36 @@ bridge_list()
     sessions: [
       {
         bridge_session_id: "abc-123",
+        nickname: "council",
         status: "ready",
+        stale: false,
         queue_depth: 0,
         metadata: {},
         methodology_session_id: "council-run-1"
       }
     ],
-    capacity: { active: 1, max: 1 },
-    message: "1 of 1 sessions active"
+    capacity: { active: 1, max: 10 },
+    message: "1 of 10 sessions active"
   }
 ```
 
 Use this to verify sessions are alive before sending prompts, or to detect dead sessions that need respawning.
 
+### Live output
+
+For real-time visibility into what a sub-agent is doing, open the live output page in a browser:
+
+```
+http://localhost:3456/sessions/{session_id}/live
+```
+
+This renders a full xterm.js terminal emulator with the agent's raw PTY output — ANSI colors, cursor movement, box-drawing characters all render correctly. The page also shows session metadata (nickname, status, tokens, cache rate).
+
+The underlying SSE stream is at `/sessions/{session_id}/stream` for programmatic consumption.
+
 ## Dashboard
 
-The bridge serves a browser dashboard at `http://localhost:3456/dashboard` that provides live observability into all sessions and resource usage. The dashboard auto-refreshes every 5 seconds.
+The bridge serves a browser dashboard at `http://localhost:3456/dashboard` that provides live observability into all sessions and resource usage. See [Guide 14](14-bridge-dashboard-ui.md) for the full dashboard reference and extension patterns.
 
 ### Health cards
 
@@ -218,15 +453,13 @@ Four usage meters sourced from the Anthropic API (requires OAuth token):
 
 Each meter shows utilization percentage, color-coded (green < 60%, yellow 60-85%, red > 85%), with time-until-reset.
 
-If no OAuth token is available, the panel shows status: "Not Configured", "Scope Error (403)", "Network Error", or "Loading..." with instructions for resolution.
-
 ### Session table
 
-Each active session displays:
+Tree-ordered by depth (parent-child indentation). Each active session displays:
 
 | Column | Description |
 |--------|-------------|
-| Session ID | First 8 chars of the bridge session UUID |
+| Nickname | Session nickname (indented by depth for chain visualization) |
 | Status | `initializing`, `ready`, `working`, `dead` |
 | Workdir | Last path segment of the session's working directory |
 | Method Session | Methodology session ID (from `bridge_spawn` correlation) |
@@ -234,6 +467,16 @@ Each active session displays:
 | Tokens | Total tokens with input/output breakdown |
 | Cache | Cache hit rate percentage with cache read token count |
 | Last Activity | Time since last prompt or status change |
+
+Clickable rows expand a detail view with purpose, full session ID, and links to "View Live Output" (xterm.js) and "View Transcript" (session history).
+
+### Progress timeline
+
+Per-session timeline showing the last 8 progress entries — step advances, tool calls, idle transitions. Time, type, and description for each entry.
+
+### Event feed
+
+Global feed of the 20 most recent events across all sessions. Each entry shows time, session nickname, color-coded event badge, and summary.
 
 ## Prompt Composition for Sub-Agents
 
@@ -310,17 +553,21 @@ If a prompt times out (`timed_out: true` in `bridge_prompt` response), the parti
 
 ### Bridge not running
 
-If any bridge proxy tool returns a connection refused error, start the bridge with `npm run bridge` and retry. The error message includes the `BRIDGE_URL` being used.
+If any bridge proxy tool returns a connection refused error, start the bridge with `npm run bridge` and retry. The error message includes the `BRIDGE_URL` being used. All MCP proxy tools retry once (after 1 second) on connection errors automatically.
 
-## Relationship to Guide 8
+## Relationship to Other Guides
 
-Guide 8 covers orchestrator prompt design — how to write the initial prompt that sets up the orchestrating agent's role, methodology binding, and sub-agent instructions. This guide (10) covers what happens at runtime — the actual MCP tool calls during a multi-method session.
+- **Guide 8** covers orchestrator prompt design — how to write the initial prompt that sets up the orchestrating agent. This guide (10) covers the runtime execution mechanics.
+- **Guide 14** covers the dashboard UI — rendering architecture, design system, and how to add new panels.
+- **Guide 15** covers remote access via Tailscale — accessing the bridge from a phone or another machine.
 
-Use Guide 8 to write the orchestrator prompt. Use this guide to understand the execution mechanics.
+Use Guide 8 to write the orchestrator prompt. Use this guide to understand the execution mechanics. Use Guide 14 to understand the dashboard. Use Guide 15 to access the bridge remotely.
 
 ## HTTP API Reference
 
 The bridge proxy MCP tools call the bridge HTTP API internally. This section documents the raw endpoints for debugging, direct integration, or cases where the MCP proxy is unavailable.
+
+### Session management
 
 | MCP Proxy Tool | HTTP Endpoint | Method |
 |----------------|---------------|--------|
@@ -329,13 +576,27 @@ The bridge proxy MCP tools call the bridge HTTP API internally. This section doc
 | `bridge_kill` | `/sessions/:id` | `DELETE` |
 | `bridge_list` | `/sessions` | `GET` |
 
-Additional endpoints not exposed via MCP:
+### Visibility channels
+
+| MCP Proxy Tool | HTTP Endpoint | Method |
+|----------------|---------------|--------|
+| `bridge_progress` | `/sessions/:id/channels/progress` | `POST` |
+| `bridge_event` | `/sessions/:id/channels/events` | `POST` |
+| `bridge_read_progress` | `/sessions/:id/channels/progress` | `GET` |
+| `bridge_read_events` | `/sessions/:id/channels/events` | `GET` |
+| `bridge_all_events` | `/channels/events` | `GET` |
+
+### Additional endpoints (not exposed via MCP)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | `GET` | Health check — JSON with status, session count, uptime |
 | `/dashboard` | `GET` | Browser dashboard (HTML) |
-| `/sessions/:id/status` | `GET` | Single session status and metadata |
+| `/sessions/:id/status` | `GET` | Single session status, metadata, chain info, stale flag |
+| `/sessions/:id/stream` | `GET` | SSE stream of raw PTY output (for xterm.js) |
+| `/sessions/:id/live` | `GET` | HTML page with embedded xterm.js terminal emulator |
+| `/sessions/:id/transcript` | `GET` | Transcript browser for a specific session |
+| `/transcripts` | `GET` | List all available transcript sessions |
 
 ### POST /sessions
 
@@ -344,11 +605,18 @@ Additional endpoints not exposed via MCP:
   "workdir": "/path/to/project",
   "spawn_args": ["--allowedTools", "mcp__method__*"],
   "initial_prompt": "optional initial prompt",
-  "metadata": { "methodology_session_id": "council-run-1" }
+  "metadata": { "methodology_session_id": "council-run-1" },
+  "parent_session_id": "optional-parent-id",
+  "budget": { "max_depth": 3, "max_agents": 10 },
+  "isolation": "worktree",
+  "nickname": "council",
+  "purpose": "Execute M1-COUNCIL debate",
+  "persistent": false,
+  "timeout_ms": 1800000
 }
 ```
 
-Response: `{ "session_id": "abc-123", "status": "ready" }`
+Response: `{ "session_id": "abc-123", "nickname": "council", "status": "ready", "worktree_path": null, "metals_available": true }`
 
 ### POST /sessions/:id/prompt
 
@@ -367,7 +635,30 @@ Response: `{ "session_id": "abc-123", "killed": true }`
 
 ### GET /sessions
 
-Response: array of `{ session_id, status, queue_depth, metadata }`
+Response: array of `{ session_id, nickname, status, stale, queue_depth, metadata, methodology_session_id }`
+
+### POST /sessions/:id/channels/progress
+
+```json
+{
+  "type": "step_advance",
+  "step": "sigma_2",
+  "description": "Council positions established"
+}
+```
+
+### POST /sessions/:id/channels/events
+
+```json
+{
+  "type": "completed",
+  "summary": "Task completed successfully"
+}
+```
+
+### GET /sessions/:id/channels/progress?cursor=0
+
+Response: `{ "messages": [...], "next_cursor": 5 }`
 
 ### Configuration
 
@@ -375,9 +666,18 @@ Response: array of `{ session_id, status, queue_depth, metadata }`
 |----------|---------|-------------|
 | `PORT` | `3456` | HTTP listen port |
 | `CLAUDE_BIN` | `claude` | Path to Claude Code binary |
-| `MAX_SESSIONS` | `5` | Max concurrent PTY sessions |
-| `SETTLE_DELAY_MS` | `2000` | Response completion debounce |
+| `MAX_SESSIONS` | `10` | Max concurrent PTY sessions |
+| `SETTLE_DELAY_MS` | `1000` | Response completion debounce |
 | `DEAD_SESSION_TTL_MS` | `300000` | Auto-cleanup TTL for dead sessions (5 min) |
+| `STALE_CHECK_INTERVAL_MS` | `60000` | Interval for stale session detection (1 min) |
 | `CLAUDE_OAUTH_TOKEN` | *(auto-loaded)* | Enables subscription usage meters in dashboard |
-| `USAGE_POLL_INTERVAL_MS` | `60000` | Subscription usage poll interval |
+| `USAGE_POLL_INTERVAL_MS` | `600000` | Subscription usage poll interval (10 min) |
 | `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base dir for Claude Code session logs |
+| `SSE_HEARTBEAT_MS` | `15000` | SSE keepalive interval for xterm.js stream |
+| `MAX_TRANSCRIPT_SIZE_BYTES` | `5242880` | Transcript buffer cap (5 MB) |
+| `PTY_WATCHER_ENABLED` | `true` | Enable PTY activity auto-detection |
+| `PTY_WATCHER_PATTERNS` | `all` | Pattern categories to track (comma-separated or "all") |
+| `PTY_WATCHER_RATE_LIMIT_MS` | `5000` | Rate limit for observation emissions |
+| `PTY_WATCHER_DEDUP_WINDOW_MS` | `10000` | Dedup window for repeated observations |
+| `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
+| `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |

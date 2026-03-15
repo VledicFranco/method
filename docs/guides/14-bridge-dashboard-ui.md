@@ -20,22 +20,37 @@ GET /dashboard (response)     ←  text/html, auto-refreshes every 5s
 |------|---------------|
 | `packages/bridge/src/dashboard.html` | HTML template with `{{placeholder}}` tokens |
 | `packages/bridge/src/dashboard-route.ts` | Fastify route handler — assembles data, renders template |
+| `packages/bridge/src/live-output-route.ts` | xterm.js live output page + SSE stream endpoint |
+| `packages/bridge/src/transcript-route.ts` | Transcript browser page + transcript listing |
 | `packages/bridge/src/usage-poller.ts` | Subscription usage data source |
-| `packages/bridge/src/token-tracker.ts` | Per-session token data source |
-| `packages/bridge/src/pool.ts` | Session list and pool stats data source |
+| `packages/bridge/src/token-tracker.ts` | Per-session token data source (from JSONL transcripts) |
+| `packages/bridge/src/pool.ts` | Session list, pool stats, channel data |
+| `packages/bridge/src/pty-watcher.ts` | PTY activity auto-detection (feeds channels) |
 | `scripts/start-bridge.js` | Launcher — auto-loads OAuth token |
 
 ### Data Flow
 
 ```
-pool.list()           → session table rows
+pool.list()           → session table rows (tree-ordered by depth)
 pool.poolStats()      → health cards (active, total, dead, max)
+pool.channels         → progress timeline + event feed
 tokenTracker          → per-session and aggregate token data
 usagePoller           → subscription usage meters
 config                → port, startedAt, version
 ```
 
 The route handler in `dashboard-route.ts` calls these, then replaces `{{placeholder}}` tokens in the HTML template using `String.prototype.replace()`.
+
+### Pages
+
+The bridge serves multiple pages, each as a route + template pair:
+
+| Route | Template | Description |
+|-------|----------|-------------|
+| `GET /dashboard` | `dashboard.html` | Main dashboard — sessions, usage, events, progress |
+| `GET /sessions/:id/live` | Inline HTML in `live-output-route.ts` | xterm.js terminal emulator with live PTY stream |
+| `GET /sessions/:id/transcript` | Inline HTML in `transcript-route.ts` | Transcript browser with JSONL parsing and stats |
+| `GET /transcripts` | Inline HTML in `transcript-route.ts` | List of all available transcript sessions |
 
 ## Design System
 
@@ -96,6 +111,48 @@ The dashboard follows the **Vidtecci OS Design System**. Reference files are in 
 | 0–60% | `healthy` | `--bio` | Normal usage |
 | 60–85% | `warning` | `--solar` | Approaching limit |
 | 85–100% | `critical` | `--red` | Near capacity |
+
+## Dashboard Panels
+
+The main dashboard has six panels, each with its own data source and rendering logic.
+
+### 1. Bridge status (health cards)
+
+Top-level stats in a row of health cards: port, uptime, active/max sessions, total spawned, dead sessions.
+
+Data source: `pool.poolStats()` + config.
+
+### 2. Token tracking (health cards)
+
+Aggregate token usage: total tokens, input, output, cache hit rate, cache read tokens. Uses `bio` accent for system metrics.
+
+Data source: `tokenTracker.getAggregateUsage()`.
+
+### 3. Subscription usage meters
+
+Four meters sourced from the Anthropic API: 5-hour window, 7-day ceiling, 7-day Sonnet, 7-day Opus. Each shows utilization percentage with color-coded bar and reset timer.
+
+Data source: `usagePoller`. Requires `CLAUDE_OAUTH_TOKEN`. If unavailable, shows status text ("Not Configured", "Scope Error (403)", "Network Error", "Loading...").
+
+### 4. Session table
+
+Tree-ordered by depth (parent-child indentation via `nickname` column). Each row shows nickname, status badge, workdir, method session ID, prompt count, token usage, cache rate, and last activity time.
+
+Clickable rows expand a detail view with: purpose, full session ID, full workdir path, methodology session, detailed token breakdown. Detail view includes links to "View Live Output" (for alive sessions) and "View Transcript".
+
+Data sources: `pool.list()`, `tokenTracker.getUsage(id)`.
+
+### 5. Progress timeline
+
+Per-session timeline of the last 8 progress entries. Each entry shows time, type badge (step_advance, tool_call, idle, git_commit, etc.), and description or step name.
+
+Data source: per-session progress channel (`pool.channels.progress`). Entries come from both agent-reported progress (`bridge_progress`) and PTY watcher auto-detection (sender: `pty-watcher`).
+
+### 6. Event feed
+
+Global feed of the 20 most recent events across all sessions. Each entry shows time, session nickname, color-coded event badge (completed = bio, error = red, stale = solar, etc.), and summary.
+
+Data source: aggregated events channel (`pool.channels.events`). Includes both agent-reported events and auto-detected events.
 
 ## Adding a New Panel
 
@@ -208,7 +265,7 @@ Add a link in the dashboard template's header or session table rows:
 
 ## Adding a Streaming Endpoint (SSE)
 
-For live output streaming, use Server-Sent Events (SSE). Fastify supports raw response streaming:
+The live output page uses SSE for real-time PTY streaming. Follow this pattern for new streaming features:
 
 ```typescript
 app.get('/sessions/:id/stream', async (request, reply) => {
@@ -239,9 +296,11 @@ Client-side consumption:
 const source = new EventSource('/sessions/d9dea613/stream');
 source.onmessage = (event) => {
   const { text } = JSON.parse(event.data);
-  terminal.textContent += text;
+  terminal.write(text);  // xterm.js write method handles ANSI
 };
 ```
+
+The SSE endpoint sends a heartbeat every `SSE_HEARTBEAT_MS` (default 15 seconds) to keep the connection alive. On initial connection, it replays the complete transcript buffer so late-joining clients see the full output.
 
 ## Component Reference
 
@@ -293,6 +352,14 @@ Existing CSS classes available in the dashboard template. Reuse these for consis
 </table>
 ```
 
+### Event Badge
+```html
+<span class="event-badge event-completed">completed</span>  <!-- bio -->
+<span class="event-badge event-error">error</span>          <!-- red -->
+<span class="event-badge event-stale">stale</span>          <!-- solar -->
+<span class="event-badge event-escalation">escalation</span> <!-- nebular -->
+```
+
 ## Mockups
 
 UI mockups for planned features are in `tmp/`:
@@ -316,3 +383,5 @@ Before merging a dashboard UI change:
 - [ ] Template renders correctly with zero data (graceful degradation)
 - [ ] `npm run build --workspace=packages/bridge` copies HTML to dist
 - [ ] Auto-refresh (5s) doesn't cause layout jumps
+- [ ] PTY watcher auto-detected entries render correctly alongside agent-reported entries
+- [ ] Links to `/sessions/:id/live` and `/sessions/:id/transcript` work from session table
