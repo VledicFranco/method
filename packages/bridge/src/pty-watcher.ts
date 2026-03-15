@@ -9,6 +9,7 @@ import {
   PROMPT_CHAR_RE,
 } from './pattern-matchers.js';
 import { appendMessage, type SessionChannels } from './channels.js';
+import { type SessionDiagnostics } from './diagnostics.js';
 
 // ── ANSI stripping ──────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export interface PtyWatcher {
   readonly observations: ActivityObservation[];
   readonly spawnedAt: Date;
   readonly config: WatcherConfig;
+  readonly diagnostics: SessionDiagnostics | null;
   detach(): void;
 }
 
@@ -47,7 +49,7 @@ export interface PtyWatcher {
 
 const ALL_CATEGORIES: ObservationCategory[] = [
   'tool_call', 'git_commit', 'test_result', 'file_operation',
-  'build_result', 'error', 'idle',
+  'build_result', 'error', 'idle', 'permission_prompt',
 ];
 
 export function parseWatcherConfig(env: Record<string, string | undefined>, metadata?: Record<string, unknown>): WatcherConfig {
@@ -98,6 +100,7 @@ export function createPtyWatcher(
   channels: SessionChannels,
   onOutputSubscribe: (cb: (data: string) => void) => () => void,
   config: WatcherConfig,
+  diagnostics?: SessionDiagnostics,
 ): PtyWatcher {
   const observations: ActivityObservation[] = [];
   const spawnedAt = new Date();
@@ -111,6 +114,10 @@ export function createPtyWatcher(
   // Idle detection state
   let lastActivityTimestamp = 0;
   let isWorking = false;
+
+  // PRD 012: Diagnostics tracking state
+  let firstOutputRecorded = false;
+  let idleStartedAt: number | null = null;
 
   // Line buffer for cross-chunk patterns
   let lineBuffer = '';
@@ -138,6 +145,13 @@ export function createPtyWatcher(
 
   function handleChunk(rawData: string): void {
     const cleaned = stripAnsiCodes(rawData);
+
+    // PRD 012: Track time to first output
+    if (diagnostics && !firstOutputRecorded) {
+      diagnostics.time_to_first_output_ms = Date.now() - spawnedAt.getTime();
+      firstOutputRecorded = true;
+    }
+
     const text = lineBuffer + cleaned;
 
     // Split into lines; keep last incomplete line in buffer
@@ -163,6 +177,27 @@ export function createPtyWatcher(
           category: match.category,
           detail: match.content,
         });
+
+        // PRD 012: Track diagnostics from observations
+        if (diagnostics) {
+          if (match.category === 'tool_call') {
+            diagnostics.tool_call_count++;
+            if (diagnostics.time_to_first_tool_ms === null) {
+              diagnostics.time_to_first_tool_ms = now - spawnedAt.getTime();
+            }
+          }
+          if (match.category === 'permission_prompt') {
+            diagnostics.permission_prompt_detected = true;
+          }
+          // Track idle → active transition for longest_idle_ms
+          if (!isWorking && idleStartedAt !== null) {
+            const idleDuration = now - idleStartedAt;
+            if (idleDuration > diagnostics.longest_idle_ms) {
+              diagnostics.longest_idle_ms = idleDuration;
+            }
+            idleStartedAt = null;
+          }
+        }
 
         // Update activity tracking for idle detection
         lastActivityTimestamp = now;
@@ -195,6 +230,12 @@ export function createPtyWatcher(
           detail: { idle_after_seconds: idleAfterSeconds, last_activity: lastActivity },
         });
 
+        // PRD 012: Track idle transitions and start idle timer
+        if (diagnostics) {
+          diagnostics.idle_transitions++;
+          idleStartedAt = now;
+        }
+
         // Rate-limit idle emissions
         const lastIdleEmit = lastEmissionTime.get('idle') ?? 0;
         if (now - lastIdleEmit >= config.rateLimitMs) {
@@ -226,6 +267,7 @@ export function createPtyWatcher(
     observations,
     spawnedAt,
     config,
+    diagnostics: diagnostics ?? null,
     detach() {
       unsubscribe();
       // Flush remaining line buffer

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createPool, type SessionPool, type SessionChainInfo, type WorktreeInfo, type IsolationMode } from '../pool.js';
 import type { PtySession, SessionStatus } from '../pty-session.js';
 import { createSessionChannels, type SessionChannels } from '../channels.js';
+import { createSessionDiagnostics } from '../diagnostics.js';
 
 /**
  * Create a fake PtySession for testing without spawning a real PTY process.
@@ -60,6 +61,7 @@ function createTestPool(maxSessions = 5) {
   const sessionWorkdirs = new Map<string, string>();
   const sessionChains = new Map<string, SessionChainInfo>();
   const sessionChannelsMap = new Map<string, SessionChannels>();
+  const sessionDiags = new Map<string, ReturnType<typeof createSessionDiagnostics>>();
   let totalSpawned = 0;
   const startedAt = new Date();
   let nextId = 0;
@@ -119,6 +121,7 @@ function createTestPool(maxSessions = 5) {
       };
       sessionChains.set(sessionId, chainInfo);
       sessionChannelsMap.set(sessionId, createSessionChannels());
+      sessionDiags.set(sessionId, createSessionDiagnostics());
 
       if (parentSessionId) {
         const parentChain = sessionChains.get(parentSessionId);
@@ -155,6 +158,7 @@ function createTestPool(maxSessions = 5) {
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
         worktree: DEFAULT_WORKTREE,
         stale: false,
+        diagnostics: sessionDiags.get(sessionId) ?? null,
       };
     },
 
@@ -179,6 +183,7 @@ function createTestPool(maxSessions = 5) {
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
         worktree: DEFAULT_WORKTREE,
         stale: false,
+        diagnostics: sessionDiags.get(sessionId) ?? null,
       }));
     },
 
@@ -219,6 +224,7 @@ function createTestPool(maxSessions = 5) {
             sessionWorkdirs.delete(sessionId);
             sessionChains.delete(sessionId);
             sessionChannelsMap.delete(sessionId);
+            sessionDiags.delete(sessionId);
             removed++;
           }
         }

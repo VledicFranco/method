@@ -335,6 +335,7 @@ app.get<{
       worktree_path: result.worktree.worktree_path,
       metals_available: result.worktree.metals_available,
       stale: result.stale,
+      diagnostics: result.diagnostics,
     });
   } catch (e) {
     const message = (e as Error).message;

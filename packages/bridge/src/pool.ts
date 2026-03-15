@@ -5,6 +5,7 @@ import { spawnSession, type PtySession } from './pty-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
 import { createPtyWatcher, parseWatcherConfig, type PtyWatcher } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
+import { createSessionDiagnostics, type SessionDiagnostics } from './diagnostics.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -55,6 +56,7 @@ export interface SessionStatusInfo {
   chain: SessionChainInfo;
   worktree: WorktreeInfo;
   stale: boolean;
+  diagnostics: SessionDiagnostics | null;
 }
 
 export interface PoolStats {
@@ -152,6 +154,9 @@ export function createPool(options?: PoolOptions): SessionPool {
   // PRD 010: PTY watcher per session
   const sessionWatchers = new Map<string, PtyWatcher>();
   const sessionOriginalWorkdirs = new Map<string, string>(); // pre-worktree workdir for retro placement
+
+  // PRD 012: Per-session diagnostics
+  const sessionDiagnostics = new Map<string, SessionDiagnostics>();
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -455,6 +460,10 @@ export function createPool(options?: PoolOptions): SessionPool {
       // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
+      // PRD 012: Create per-session diagnostics
+      const diag = createSessionDiagnostics(settleDelayMs ?? 1000);
+      sessionDiagnostics.set(sessionId, diag);
+
       // PRD 010: Create and attach PTY watcher
       const watcherConfig = parseWatcherConfig(process.env, metadata);
       if (watcherConfig.enabled) {
@@ -463,6 +472,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           channels,
           (cb) => session.onOutput(cb),
           watcherConfig,
+          diag,
         );
         sessionWatchers.set(sessionId, watcher);
 
@@ -522,6 +532,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           isolation: 'shared', worktree_path: null, worktree_branch: null, metals_available: true,
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
+        diagnostics: sessionDiagnostics.get(sessionId) ?? null,
       };
     },
 
@@ -605,6 +616,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           isolation: 'shared' as IsolationMode, worktree_path: null, worktree_branch: null, metals_available: true,
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
+        diagnostics: sessionDiagnostics.get(sessionId) ?? null,
       }));
     },
 
@@ -658,6 +670,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionPurposes.delete(sessionId);
             sessionWatchers.delete(sessionId);
             sessionOriginalWorkdirs.delete(sessionId);
+            sessionDiagnostics.delete(sessionId);
             removed++;
           }
         }
