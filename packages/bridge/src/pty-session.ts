@@ -35,6 +35,76 @@ export interface SpawnOptions {
 const DEFAULT_SETTLE_DELAY_MS = 1000;
 const DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
 
+// ── Ring buffer for transcript — avoids 5 MB string reallocation ──
+
+const TRANSCRIPT_CHUNK_SLOTS = 2048;
+
+export class TranscriptRingBuffer {
+  private chunks: (string | undefined)[];
+  private head = 0;    // index of oldest chunk
+  private count = 0;   // number of live chunks
+  private totalLen = 0; // total character length across live chunks
+  private readonly maxSize: number;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+    this.chunks = new Array(TRANSCRIPT_CHUNK_SLOTS);
+  }
+
+  get length(): number { return this.totalLen; }
+
+  /** O(1) amortized append — drops oldest chunks to stay within budget. */
+  append(data: string): void {
+    // Compact if chunk slots are exhausted (rare — ~2k slots for ~5 MB)
+    if (this.count === TRANSCRIPT_CHUNK_SLOTS) {
+      this.compact();
+    }
+
+    const writeIdx = (this.head + this.count) % TRANSCRIPT_CHUNK_SLOTS;
+    this.chunks[writeIdx] = data;
+    this.count++;
+    this.totalLen += data.length;
+
+    // Evict oldest chunks until within budget
+    while (this.totalLen > this.maxSize && this.count > 1) {
+      const oldest = this.chunks[this.head]!;
+      this.chunks[this.head] = undefined;
+      this.totalLen -= oldest.length;
+      this.head = (this.head + 1) % TRANSCRIPT_CHUNK_SLOTS;
+      this.count--;
+    }
+
+    // If single remaining chunk exceeds limit, trim it
+    if (this.totalLen > this.maxSize && this.count === 1) {
+      const chunk = this.chunks[this.head]!;
+      const trimmed = chunk.substring(chunk.length - this.maxSize);
+      this.chunks[this.head] = trimmed;
+      this.totalLen = trimmed.length;
+    }
+  }
+
+  /** Merge all chunks into one slot — escape hatch when slots are exhausted. */
+  private compact(): void {
+    const merged = this.toString();
+    this.chunks = new Array(TRANSCRIPT_CHUNK_SLOTS);
+    this.head = 0;
+    this.count = 1;
+    this.chunks[0] = merged;
+    this.totalLen = merged.length;
+  }
+
+  /** Materialize the full transcript string. Called on read (cold path). */
+  toString(): string {
+    if (this.count === 0) return '';
+    if (this.count === 1) return this.chunks[this.head]!;
+    const parts: string[] = new Array(this.count);
+    for (let i = 0; i < this.count; i++) {
+      parts[i] = this.chunks[(this.head + i) % TRANSCRIPT_CHUNK_SLOTS]!;
+    }
+    return parts.join('');
+  }
+}
+
 /**
  * Spawn a new Claude Code PTY session.
  *
@@ -82,9 +152,9 @@ export function spawnSession(options: SpawnOptions): PtySession {
   let outputBuffer = '';
   let dataCallback: ((data: string) => void) | null = null;
 
-  // PRD 007: Full transcript buffer + live output subscribers
+  // PRD 007: Full transcript ring buffer + live output subscribers
   const MAX_TRANSCRIPT_SIZE = parseInt(process.env.MAX_TRANSCRIPT_SIZE_BYTES ?? '5242880', 10);
-  let transcriptBuffer = '';
+  const transcriptRing = new TranscriptRingBuffer(MAX_TRANSCRIPT_SIZE);
   const outputSubscribers = new Set<(data: string) => void>();
 
   // PRD 010: Exit callbacks
@@ -94,11 +164,8 @@ export function spawnSession(options: SpawnOptions): PtySession {
   ptyProcess.onData((data: string) => {
     outputBuffer += data;
 
-    // PRD 007: Accumulate transcript (with size cap)
-    transcriptBuffer += data;
-    if (transcriptBuffer.length > MAX_TRANSCRIPT_SIZE) {
-      transcriptBuffer = transcriptBuffer.substring(transcriptBuffer.length - MAX_TRANSCRIPT_SIZE);
-    }
+    // PRD 007: Accumulate transcript via ring buffer (O(1) append, no reallocation)
+    transcriptRing.append(data);
 
     // PRD 007: Notify live output subscribers
     for (const sub of outputSubscribers) {
@@ -165,7 +232,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
     },
 
     get transcript() {
-      return transcriptBuffer;
+      return transcriptRing.toString();
     },
 
     onOutput(cb: (data: string) => void): () => void {
