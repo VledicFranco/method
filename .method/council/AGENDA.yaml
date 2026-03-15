@@ -47,34 +47,42 @@ agenda:
       owner: "Reva (docs), Harlan (accuracy)"
       status: open
 
-  p1_soon:
-    - id: AG-004
-      item: "Plan STEER-PROTO trial criteria and promotion path"
-      rationale: "STEER-PROTO is in draft. It needs trial criteria (like RETRO-PROTO had) before we can trial it formally."
-      owner: "Orion (protocol design), Reva (usability)"
+    - id: AG-015
+      item: "Apply D-010: add processes section to project card with PR-01/02/03"
+      rationale: "Council decision from SESSION-006."
+      owner: "Harlan"
       status: open
 
-    - id: AG-005
-      item: "Evaluate cross-project communication needs — does pv-method need to message pv-agi or t1-cortex councils?"
-      rationale: "STEER-PROTO defines inbox/outbox channels but no projects use them yet. Is there a real need?"
-      owner: "Orion (cross-project), Reva (practical need)"
+    - id: AG-016
+      item: "Apply D-011: update STEER-PROTO with governance retro schema (session_retro)"
+      rationale: "Council decision from SESSION-006."
+      owner: "Thane"
       status: open
 
-    - id: AG-006
-      item: "Review Guide quality — are the 11 guides sufficient for someone to adopt the system from scratch?"
-      rationale: "We wrote guides fast during the trial. Quality and completeness haven't been reviewed."
-      owner: "Reva (DX), Harlan (accuracy)"
-      status: open
-
-  p2_later:
-    - id: AG-007
-      item: "Design a CLAUDE.md for pv-method that references the project card and council"
-      rationale: "pv-method still has no CLAUDE.md. Agents don't know the card exists unless told."
+    - id: AG-017
+      item: "Create CLAUDE.md for pv-method (promoted from P2 via PR-02 stale escalation)"
+      rationale: "AG-007 stale for 5 sessions. Promoted to P0. Every agent needs to know about card + council."
       owner: "Reva"
       status: open
 
-    - id: AG-008
-      item: "Consider M6-MAUD compilation — the only partially operational arm in delta_META"
-      rationale: "6 of 7 delta_META arms are compiled. M6-MAUD is partially operational. Should we compile it?"
-      owner: "Thane"
+  p1_soon:
+    - id: AG-004
+      item: "Plan STEER-PROTO trial criteria and promotion path"
+      owner: "Orion (protocol design), Reva (usability)"
       status: open
+
+  archived:
+    - id: AG-005
+      item: "Cross-project communication evaluation"
+      archived_in: SESSION-006
+      reason: "PR-02 escalation: no real need identified. Reopen when actual cross-project messaging is needed."
+
+    - id: AG-006
+      item: "Guide quality review"
+      archived_in: SESSION-006
+      reason: "PR-02 escalation: guides evolving organically through retro signals. One-off review is not ongoing governance."
+
+    - id: AG-008
+      item: "M6-MAUD compilation"
+      archived_in: SESSION-006
+      reason: "PR-02 escalation: 6/7 arms compiled. Compile when evidence shows need, not for completeness."

@@ -154,6 +154,54 @@ log:
         - "AG-012: implement manifest.yaml for pv-method"
         - "AG-013: add installation specs to RETRO-PROTO and STEER-PROTO"
 
+    - id: SESSION-006
+      date: "2026-03-14"
+      type: process_design
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Design initial processes from 123-commit evidence + council retrospective mechanism"
+
+      decisions:
+        - id: D-010
+          item: "Initial processes for pv-method"
+          decision: >
+            3 processes launched (evidence-based): PR-01 (guide sync on registry change),
+            PR-02 (stale agenda escalation after 3 sessions), PR-03 (retro placement
+            in .method/retros/ not tmp/). Deferred: ADRs and changelog entries — monitor
+            whether council LOG and retro evidence_source fields are sufficient.
+          status: decided
+          for: "All 3 backed by hard evidence from 123-commit analysis. Lightweight."
+          against: "Nika argued 5 was too many — pruned to 3. Reva argued formal RFCs would slow us — deferred ADRs."
+          essence_check: "Processes make governance rules explicit (theory) and council enforces (source of truth). Faithful."
+
+        - id: D-011
+          item: "Council governance retrospective"
+          decision: >
+            Add session_retro to every LOG.yaml session entry. 5 fields: decisions_actionable,
+            essence_check_genuine, agenda_delta, processes_followed (per-process with
+            followed + note), process_improvement_signal. The process_improvement_signal
+            field drives organic process evolution — same pattern as RETRO-PROTO.
+          status: decided
+          for: "Closes the governance feedback loop. Processes evolve from evidence, not opinion."
+          against: "None — unanimous."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: 0
+        processes_followed:
+          - { process: "N/A — processes not yet installed", followed: true }
+        process_improvement_signal: "This is the first session with a governance retro. Baseline established."
+        member_adequacy: true
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+        - "Evolution analysis: tmp/evolution-analysis.yaml"
+
+      next_agenda_items:
+        - "AG-015: Apply D-010 — add processes section to project card"
+        - "AG-016: Apply D-011 — update STEER-PROTO with governance retro schema"
+        - "AG-017: Apply PR-02 immediately — escalate stale items AG-005/006/007/008"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion

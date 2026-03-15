@@ -1,0 +1,116 @@
+evolution_analysis:
+  date: "2026-03-14"
+  commits_analyzed: 123
+  project: pv-method
+
+  # Patterns observed from git history
+
+  pattern_1_registry_without_guide:
+    description: "Registry changes that didn't produce corresponding guide updates"
+    examples:
+      - commit: "8040ddf"
+        change: "M2-MDIS compiled — all 7 delta_META arms operational"
+        guide_updated: false
+        guide_needed: "Guide 3 (meta-methods) should mention M2-MDIS is now compiled"
+      - commit: "f53a22e"
+        change: "STEER-PROTO drafted"
+        guide_updated: "Guide 12 written later (88f4785), but 3 commits apart"
+      - commit: "e73abc5"
+        change: "Cognitive diversity heuristic added to M1-COUNCIL"
+        guide_updated: false
+        guide_needed: "Guide 4 (execution methods) should mention the heuristic"
+      - commit: "74abfae"
+        change: "RETRO-ARTIFACTS spec added"
+        guide_updated: false
+        guide_needed: "Guide 9 should reference the artifact flow"
+    frequency: "~40% of registry changes lack corresponding guide updates"
+    proposed_process: "PR-02: guide update after protocol/method change"
+
+  pattern_2_no_rfcs:
+    description: "Architectural decisions made without formal RFCs"
+    examples:
+      - decision: "Installation manifest system"
+        session: "SESSION-004"
+        rfc: false
+        impact: "Affects all projects adopting methodologies"
+      - decision: "Sub-council spawning"
+        session: "SESSION-002"
+        rfc: false
+        impact: "Adds recursive governance capability"
+      - decision: "Essence section in project cards"
+        session: "council (pre-steering)"
+        rfc: false
+        impact: "Required field in all project cards"
+      - decision: "Commission skill design"
+        session: "council"
+        rfc: false
+        impact: "New skill affecting all agent commissioning"
+    frequency: "0 RFCs written in 123 commits"
+    note: "docs/rfcs/ directory doesn't exist in this project"
+    proposed_process: "PR-01: RFC before architecture change"
+
+  pattern_3_changelog_gaps:
+    description: "Card changes without CHANGELOG.yaml entries"
+    examples:
+      - change: "DR-04 formatting/logic boundary added"
+        changelog: false
+      - change: "Essence section added (v1.1 → v1.2)"
+        changelog: false
+      - change: "DR-13 YAML validation added (v1.2 → v1.3)"
+        changelog: false
+    frequency: "0 CHANGELOG.yaml entries despite 3 card version bumps"
+    note: ".method/CHANGELOG.yaml was proposed but never created"
+    proposed_process: "PR-03: changelog entry on card revision"
+
+  pattern_4_architecture_updates_with_implementation:
+    description: "Architecture docs updated alongside implementation — good pattern"
+    examples:
+      - commit: "2feaa43"
+        change: "PRD 002: state-model, mcp-layer, theory-lookup updated"
+      - commit: "ed044b0"
+        change: "PRD 005: bridge and mcp-layer arch specs updated"
+    frequency: "Consistent during PRD implementation — agents follow DR-12"
+    note: "This pattern works because the orchestrator prompt includes it"
+
+  pattern_5_council_agenda_growth:
+    description: "Agenda items accumulating faster than closing"
+    current_state:
+      done: 5
+      open: 8
+      net: "+3 growth since founding"
+    items_never_addressed:
+      - "AG-005: cross-project comms (P1, never discussed)"
+      - "AG-006: guide quality review (P1, never discussed)"
+      - "AG-007: CLAUDE.md (P2, never promoted despite multiple mentions)"
+      - "AG-008: M6-MAUD compilation (P2, never discussed)"
+    proposed_process: "PR-04: agenda review — stale items after 3 sessions get escalated or archived"
+
+  pattern_6_retro_artifacts_in_wrong_place:
+    description: "Retrospectives saved to tmp/ instead of .method/retros/"
+    examples:
+      - "retro-prd002-impl.yaml → tmp/"
+      - "retro-prd003-*.yaml → tmp/"
+      - "retro-t1x-*.yaml → tmp/"
+      - "retro-prd004-full.yaml → tmp/"
+    frequency: "ALL retrospectives are in tmp/, ZERO in .method/retros/"
+    note: "RETRO-ARTIFACTS spec says .method/retros/ but no agent has followed it yet"
+    proposed_process: "PR-05: retro placement — retrospectives go to .method/retros/, not tmp/"
+
+  summary:
+    processes_identified: 5
+    processes:
+      - id: PR-01
+        name: "RFC before architecture change"
+        evidence: "0 RFCs in 123 commits, 4+ architectural decisions without formal proposals"
+      - id: PR-02
+        name: "Guide update after protocol/method change"
+        evidence: "~40% of registry changes lack guide updates"
+      - id: PR-03
+        name: "Changelog entry on card revision"
+        evidence: "3 card version bumps with 0 changelog entries"
+      - id: PR-04
+        name: "Stale agenda escalation"
+        evidence: "4 agenda items never addressed across 5 sessions"
+      - id: PR-05
+        name: "Retro placement enforcement"
+        evidence: "ALL retros in tmp/, ZERO in .method/retros/"
