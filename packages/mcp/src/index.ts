@@ -8,12 +8,14 @@ import {
 import { z } from "zod";
 import {
   createSessionManager,
+  createMethodologySessionManager,
   listMethodologies,
   loadMethodology,
   getMethodologyRouting,
   lookupTheory,
   selectMethodology,
   validateStepOutput,
+  startMethodologySession,
 } from "@method/core";
 
 // Path resolution
@@ -23,6 +25,7 @@ const THEORY = resolve(ROOT, "theory");
 
 // Session manager — isolates state by session_id
 const sessions = createSessionManager();
+const methodologySessions = createMethodologySessionManager();
 
 // Input schemas
 const loadInput = z.object({
@@ -50,7 +53,7 @@ const sessionIdProperty = {
 
 // Server
 const server = new Server(
-  { name: "method", version: "0.3.0" },
+  { name: "method", version: "0.4.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -203,6 +206,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["step_id", "output"],
       },
     },
+    {
+      name: "methodology_start",
+      description: "Start a methodology-level session that tracks global state across method transitions. Returns methodology metadata and transition function summary.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          methodology_id: {
+            type: "string",
+            description: "Methodology ID (e.g., P1-EXEC)",
+          },
+          challenge: {
+            type: "string",
+            description: "Optional: the challenge being addressed",
+          },
+          ...sessionIdProperty,
+        },
+        required: ["methodology_id"],
+      },
+    },
   ],
 }));
 
@@ -307,6 +329,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
         const session = sessions.getOrCreate(session_id ?? '__default__');
         const result = validateStepOutput(session, step_id, output);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "methodology_start": {
+        const { methodology_id, challenge, session_id } = z.object({
+          methodology_id: z.string(),
+          challenge: z.string().optional(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const sid = session_id ?? '__default__';
+        const { session: methSession, result } = startMethodologySession(
+          REGISTRY, methodology_id, challenge ?? null, sid
+        );
+        methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
       }
 
