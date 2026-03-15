@@ -14,6 +14,7 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 8 | [Prompting Methodology Agents](08-prompting-methodology-agents.md) | Agent operators | How to write orchestrator prompts, based on 4 production sessions |
 | 9 | [The Retrospective Protocol](09-retrospective-protocol.md) | Everyone | Self-improvement loop, retro schema, aggregation, thresholds, empirical results |
 | 10 | [Bridge Orchestration](10-bridge-orchestration.md) | Agent operators | Using the bridge + PRD 004 tools for multi-method sessions with sub-agents |
+| 11 | [Protocols and Method Discovery](11-protocols-and-discovery.md) | Method designers | How informal practices become formal methods — the R&D pipeline |
 
 ## How to read these guides
 
