@@ -842,3 +842,68 @@ log:
         - "AG-026: Draft ORGANON-PROTO (P1, deferred from SESSION-019)"
         - "PRD 006 remaining: C1 parent-child chains already done, C3 commission-to-bridge already done"
         - "Update commission skill with bridge agent learnings (channel usage, routing directive)"
+
+    - id: SESSION-021
+      date: "2026-03-15"
+      type: research_evaluation
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Evaluate three external tools for agent context management"
+
+      decisions:
+        - id: D-032
+          item: "AG-030: context-mode MCP server"
+          decision: >
+            Prototype with context-mode. Install as MCP server, test parent-agent
+            indexed retrieval of child channel output. If pattern validates, draft
+            PRD 009 (native channel indexing). Nika and Harlan aligned: prototype
+            first, build native later if pattern works.
+          status: decided
+          for: >
+            Direct pain point: parent agents drown in child telemetry (18 progress
+            messages from one child). Indexed retrieval beats raw channel dumps.
+            Prototype is low risk, fast signal.
+          against: >
+            Harlan initially preferred building native. Conceded to prototype-first
+            after Nika argued fast validation outweighs build cost.
+          essence_check: "Selective retrieval makes methodology execution more efficient. Prototype doesn't touch theory or registry. Faithful."
+
+        - id: D-033
+          item: "AG-031: OpenViking"
+          decision: >
+            Archive. Hierarchical memory doesn't solve a current pain point.
+            Methodology context already tiered via MCP tools (methodology_load,
+            step_context). Revisit if agent chains go 3+ levels deep.
+          status: decided
+          for: "Unanimous — concept interesting, not actionable. Our context is already structured."
+          against: "None."
+          essence_check: "Not investing preserves simplicity. No essence concern."
+
+        - id: D-034
+          item: "AG-032: Playwright MCP"
+          decision: >
+            Archive. Dashboard is static HTML with auto-refresh. Agents interact
+            via channel MCP tools, not browser. Nika identified a test use case
+            (dashboard rendering verification) but Reva and Harlan agreed it's
+            disproportionate to current dashboard complexity. Revisit if dashboard
+            becomes interactive or agents need external web UI interaction.
+          status: decided
+          for: "Consensus — no current need. Testing use case valid but low ROI."
+          against: "None."
+          essence_check: "Not investing preserves simplicity. No essence concern."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: -1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+        process_improvement_signal: "None"
+        member_adequacy: true
+
+      artifacts_produced:
+        - "D-032: context-mode prototype approved as P0"
+        - "D-033/034: OpenViking and Playwright MCP archived"
+
+      next_agenda_items:
+        - "AG-030: Prototype context-mode MCP (P0)"
+        - "AG-026: Draft ORGANON-PROTO (P1)"

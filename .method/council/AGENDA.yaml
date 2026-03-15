@@ -6,7 +6,14 @@ agenda:
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
-  p0_immediate: []
+  p0_immediate:
+    - id: AG-030
+      item: "Prototype: context-mode MCP for indexed channel retrieval"
+      owner: council
+      status: open
+      added_in: SESSION-020
+      promoted_in: SESSION-021
+      note: "Install context-mode as MCP server. Test parent-agent indexed retrieval of child channel output. If pattern validates → PRD 009. D-032."
 
   p1_next:
     - id: AG-026
@@ -15,13 +22,6 @@ agenda:
       status: open
       added_in: SESSION-017
       note: "Protocol binding between organon identity constraints and pv-method execution. D-028."
-
-    - id: AG-027
-      item: "Update CLAUDE.md for pv-method with methodology, governance, and skills references"
-      owner: council
-      status: open
-      added_in: SESSION-017
-      note: "Re-opened from archived AG-007. CLAUDE.md needs refresh after 17 sessions of decisions."
 
   governance_health:
     last_assessed: SESSION-018
@@ -96,3 +96,5 @@ agenda:
     - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when needed" }
     - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs in protocol spec" }
     - { id: AG-004, archived_in: SESSION-010, reason: "Trial criteria already in STEER-PROTO Part 8" }
+    - { id: AG-031, archived_in: SESSION-021, reason: "OpenViking — methodology context already tiered via MCP tools. Revisit at 3+ agent chain depth." }
+    - { id: AG-032, archived_in: SESSION-021, reason: "Playwright MCP — dashboard is static HTML, agents use channel tools. Revisit if dashboard becomes interactive." }
