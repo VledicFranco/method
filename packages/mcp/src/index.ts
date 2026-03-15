@@ -278,7 +278,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "bridge_spawn",
-      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement (PRD 006).",
+      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement, worktree isolation, and stale detection (PRD 006).",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -315,6 +315,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
             description: "Budget constraints for the session chain",
           },
+          isolation: {
+            type: "string",
+            enum: ["worktree", "shared"],
+            description: "Isolation mode: 'worktree' creates a git worktree for the agent (prevents git staging conflicts). Default: 'shared'.",
+          },
+          timeout_ms: {
+            type: "number",
+            description: "Session stale timeout in milliseconds. Agent marked stale after this, auto-killed at 2x. Default: 30 minutes.",
+          },
         },
         required: ["workdir"],
       },
@@ -343,13 +352,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "bridge_kill",
-      description: "Kill a spawned bridge agent session.",
+      description: "Kill a spawned bridge agent session. For worktree sessions, specify worktree_action to control cleanup.",
       inputSchema: {
         type: "object" as const,
         properties: {
           bridge_session_id: {
             type: "string",
             description: "Bridge session ID to kill",
+          },
+          worktree_action: {
+            type: "string",
+            enum: ["merge", "keep", "discard"],
+            description: "Action for worktree sessions: 'merge' cherry-picks into parent branch, 'keep' leaves on disk, 'discard' removes worktree and branch. Default: 'keep'.",
           },
         },
         required: ["bridge_session_id"],
@@ -674,7 +688,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_spawn": {
-        const { workdir, spawn_args, initial_prompt, session_id, parent_session_id, depth, budget } = z.object({
+        const { workdir, spawn_args, initial_prompt, session_id, parent_session_id, depth, budget, isolation, timeout_ms } = z.object({
           workdir: z.string(),
           spawn_args: z.array(z.string()).optional(),
           initial_prompt: z.string().optional(),
@@ -685,6 +699,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             max_depth: z.number().optional(),
             max_agents: z.number().optional(),
           }).optional(),
+          isolation: z.enum(["worktree", "shared"]).optional(),
+          timeout_ms: z.number().optional(),
         }).parse(args);
 
         const body: Record<string, unknown> = { workdir };
@@ -698,6 +714,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (parent_session_id) body.parent_session_id = parent_session_id;
         if (depth !== undefined) body.depth = depth;
         if (budget) body.budget = budget;
+        // PRD 006 Component 2: worktree isolation
+        if (isolation) body.isolation = isolation;
+        // PRD 006 Component 4: stale timeout
+        if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
 
         try {
           const res = await fetch(`${BRIDGE_URL}/sessions`, {
@@ -721,6 +741,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             depth?: number;
             parent_session_id?: string | null;
             budget?: { max_depth: number; max_agents: number; agents_spawned: number };
+            isolation?: string;
+            worktree_path?: string | null;
+            metals_available?: boolean;
           };
           return ok(JSON.stringify({
             bridge_session_id: data.session_id,
@@ -728,7 +751,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             depth: data.depth ?? 0,
             parent_session_id: data.parent_session_id ?? null,
             budget: data.budget ?? null,
-            message: "Agent spawned. Call bridge_prompt to send work.",
+            isolation: data.isolation ?? 'shared',
+            worktree_path: data.worktree_path ?? null,
+            metals_available: data.metals_available ?? true,
+            message: data.isolation === 'worktree'
+              ? `Agent spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
+              : "Agent spawned. Call bridge_prompt to send work.",
           }, null, 2));
         } catch (e) {
           if (e instanceof TypeError) {
@@ -778,13 +806,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_kill": {
-        const { bridge_session_id } = z.object({
+        const { bridge_session_id, worktree_action } = z.object({
           bridge_session_id: z.string(),
+          worktree_action: z.enum(["merge", "keep", "discard"]).optional(),
         }).parse(args);
 
         try {
           const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
             method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ worktree_action }),
           });
 
           if (!res.ok) {
@@ -792,11 +823,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
           }
 
-          const data = await res.json() as { session_id: string; killed: boolean };
+          const data = await res.json() as { session_id: string; killed: boolean; worktree_cleaned?: boolean };
           return ok(JSON.stringify({
             bridge_session_id: data.session_id,
             killed: data.killed,
-            message: "Session killed",
+            worktree_cleaned: data.worktree_cleaned ?? false,
+            message: data.worktree_cleaned ? "Session killed, worktree cleaned" : "Session killed",
           }, null, 2));
         } catch (e) {
           if (e instanceof TypeError) {

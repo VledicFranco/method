@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPool, type SessionPool, type SessionChainInfo } from '../pool.js';
+import { createPool, type SessionPool, type SessionChainInfo, type WorktreeInfo, type IsolationMode } from '../pool.js';
 import type { PtySession, SessionStatus } from '../pty-session.js';
 import { createSessionChannels, type SessionChannels } from '../channels.js';
 
@@ -37,6 +37,13 @@ const DEFAULT_CHAIN: SessionChainInfo = {
   depth: 0,
   children: [],
   budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
+};
+
+const DEFAULT_WORKTREE: WorktreeInfo = {
+  isolation: 'shared',
+  worktree_path: null,
+  worktree_branch: null,
+  metals_available: true,
 };
 
 /**
@@ -119,7 +126,7 @@ function createTestPool(maxSessions = 5) {
 
       totalSpawned++;
 
-      return { sessionId, status: session.status, chain: chainInfo };
+      return { sessionId, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -141,14 +148,16 @@ function createTestPool(maxSessions = 5) {
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
+        worktree: DEFAULT_WORKTREE,
+        stale: false,
       };
     },
 
-    kill(sessionId) {
+    kill(sessionId, _worktreeAction) {
       const session = sessions.get(sessionId);
       if (!session) throw new Error(`Session not found: ${sessionId}`);
       session.kill();
-      return { sessionId: session.id, killed: true };
+      return { sessionId: session.id, killed: true, worktree_cleaned: false };
     },
 
     list() {
@@ -161,6 +170,8 @@ function createTestPool(maxSessions = 5) {
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
+        worktree: DEFAULT_WORKTREE,
+        stale: false,
       }));
     },
 
@@ -200,6 +211,10 @@ function createTestPool(maxSessions = 5) {
         }
       }
       return removed;
+    },
+
+    checkStale() {
+      return { stale: [], killed: [] };
     },
   };
 

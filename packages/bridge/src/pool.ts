@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
 
@@ -17,6 +20,25 @@ export interface SessionChainInfo {
   budget: SessionBudget;
 }
 
+// ── PRD 006: Worktree isolation types ────────────────────────
+
+export type IsolationMode = 'worktree' | 'shared';
+export type WorktreeAction = 'merge' | 'keep' | 'discard';
+
+export interface WorktreeInfo {
+  isolation: IsolationMode;
+  worktree_path: string | null;
+  worktree_branch: string | null;
+  metals_available: boolean;
+}
+
+// ── PRD 006: Stale detection types ──────────────────────────
+
+export interface StaleConfig {
+  stale_timeout_ms: number;   // Mark stale after this (default 30 min)
+  kill_timeout_ms: number;    // Auto-kill after this (default 60 min)
+}
+
 // ── Existing types (extended) ─────────────────────────────────
 
 export interface SessionStatusInfo {
@@ -28,6 +50,8 @@ export interface SessionStatusInfo {
   lastActivityAt: Date;
   workdir: string;
   chain: SessionChainInfo;
+  worktree: WorktreeInfo;
+  stale: boolean;
 }
 
 export interface PoolStats {
@@ -47,14 +71,17 @@ export interface SessionPool {
     parentSessionId?: string;
     depth?: number;
     budget?: Partial<SessionBudget>;
-  }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo }>;
+    isolation?: IsolationMode;
+    timeout_ms?: number;
+  }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
-  kill(sessionId: string): { sessionId: string; killed: boolean };
+  kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean };
   list(): SessionStatusInfo[];
   poolStats(): PoolStats;
   removeDead(ttlMs: number): number;
   getChannels(sessionId: string): SessionChannels;
+  checkStale(): { stale: string[]; killed: string[] };
 }
 
 export interface PoolOptions {
@@ -66,6 +93,9 @@ export interface PoolOptions {
 const DEFAULT_MAX_SESSIONS = 5;
 const DEFAULT_MAX_DEPTH = 3;
 const DEFAULT_MAX_AGENTS = 10;
+const DEFAULT_STALE_TIMEOUT_MS = 30 * 60 * 1000;  // 30 minutes
+const DEFAULT_KILL_TIMEOUT_MS = 60 * 60 * 1000;   // 60 minutes
+const WORKTREE_DIR = '.claude/worktrees';
 
 /**
  * Create a session pool that manages multiple Claude Code PTY sessions.
@@ -85,6 +115,9 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessionWorkdirs = new Map<string, string>();
   const sessionChains = new Map<string, SessionChainInfo>();
   const sessionChannels = new Map<string, SessionChannels>();
+  const sessionWorktrees = new Map<string, WorktreeInfo>();
+  const sessionStaleConfigs = new Map<string, StaleConfig>();
+  const sessionStaleFlags = new Map<string, boolean>();
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -120,7 +153,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -176,6 +209,41 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       const sessionId = randomUUID();
 
+      // PRD 006 Component 2: Worktree isolation
+      const effectiveIsolation: IsolationMode = isolation ?? 'shared';
+      let worktreePath: string | null = null;
+      let worktreeBranch: string | null = null;
+      let effectiveWorkdir = workdir;
+
+      if (effectiveIsolation === 'worktree') {
+        worktreeBranch = `worktree-${sessionId.substring(0, 8)}`;
+        const worktreeRelDir = join(WORKTREE_DIR, sessionId.substring(0, 8));
+        worktreePath = resolve(workdir, worktreeRelDir);
+
+        try {
+          execSync(
+            `git worktree add "${worktreeRelDir}" -b "${worktreeBranch}"`,
+            { cwd: workdir, stdio: 'pipe' },
+          );
+          effectiveWorkdir = worktreePath;
+        } catch (e) {
+          throw new Error(`Worktree creation failed: ${(e as Error).message}`);
+        }
+      }
+
+      const worktreeInfo: WorktreeInfo = {
+        isolation: effectiveIsolation,
+        worktree_path: worktreePath,
+        worktree_branch: worktreeBranch,
+        metals_available: effectiveIsolation !== 'worktree',
+      };
+
+      // PRD 006 Component 4: Stale detection config
+      const staleConfig: StaleConfig = {
+        stale_timeout_ms: timeout_ms ?? DEFAULT_STALE_TIMEOUT_MS,
+        kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
+      };
+
       // PRD 008 / EXP-008-2: Inject session ID into initial prompt
       const injectedPrompt = initialPrompt
         ? `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.\n\n${initialPrompt}`
@@ -183,7 +251,7 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       const session = spawnSession({
         id: sessionId,
-        workdir,
+        workdir: effectiveWorkdir,
         claudeBin,
         settleDelayMs,
         initialPrompt: injectedPrompt,
@@ -191,10 +259,13 @@ export function createPool(options?: PoolOptions): SessionPool {
       });
 
       sessions.set(sessionId, session);
-      sessionWorkdirs.set(sessionId, workdir);
+      sessionWorkdirs.set(sessionId, effectiveWorkdir);
       if (metadata) {
         sessionMetadata.set(sessionId, metadata);
       }
+      sessionWorktrees.set(sessionId, worktreeInfo);
+      sessionStaleConfigs.set(sessionId, staleConfig);
+      sessionStaleFlags.set(sessionId, false);
 
       // Record chain info
       const chainInfo: SessionChainInfo = {
@@ -224,7 +295,7 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       totalSpawned++;
 
-      return { sessionId, status: session.status, chain: chainInfo };
+      return { sessionId, status: session.status, chain: chainInfo, worktree: worktreeInfo };
     },
 
     async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
@@ -254,10 +325,14 @@ export function createPool(options?: PoolOptions): SessionPool {
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
         chain: getChain(sessionId),
+        worktree: sessionWorktrees.get(sessionId) ?? {
+          isolation: 'shared', worktree_path: null, worktree_branch: null, metals_available: true,
+        },
+        stale: sessionStaleFlags.get(sessionId) ?? false,
       };
     },
 
-    kill(sessionId: string): { sessionId: string; killed: boolean } {
+    kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean } {
       const session = sessions.get(sessionId);
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
@@ -265,16 +340,57 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       session.kill();
 
+      // PRD 006 Component 2: Handle worktree cleanup
+      let worktreeCleaned = false;
+      const wtInfo = sessionWorktrees.get(sessionId);
+      if (wtInfo && wtInfo.isolation === 'worktree' && wtInfo.worktree_path) {
+        const action = worktreeAction ?? 'keep';
+        const originalWorkdir = resolve(wtInfo.worktree_path, '..', '..', '..');
+
+        if (action === 'discard') {
+          try {
+            execSync(`git worktree remove "${wtInfo.worktree_path}" --force`, {
+              cwd: originalWorkdir, stdio: 'pipe',
+            });
+            if (wtInfo.worktree_branch) {
+              execSync(`git branch -D "${wtInfo.worktree_branch}"`, {
+                cwd: originalWorkdir, stdio: 'pipe',
+              });
+            }
+            worktreeCleaned = true;
+          } catch {
+            // Worktree cleanup failure is non-fatal
+          }
+        } else if (action === 'merge') {
+          try {
+            if (wtInfo.worktree_branch) {
+              execSync(`git merge "${wtInfo.worktree_branch}" --no-edit`, {
+                cwd: originalWorkdir, stdio: 'pipe',
+              });
+            }
+            execSync(`git worktree remove "${wtInfo.worktree_path}" --force`, {
+              cwd: originalWorkdir, stdio: 'pipe',
+            });
+            worktreeCleaned = true;
+          } catch {
+            // Merge failure is non-fatal — worktree preserved for manual merge
+          }
+        }
+        // action === 'keep': leave worktree on disk
+      }
+
       // PRD 008: Auto-generate 'killed' event
       const channels = sessionChannels.get(sessionId);
       if (channels) {
         appendMessage(channels.events, 'bridge', 'killed', {
           session_id: sessionId,
           killed_by: 'api',
+          worktree_action: worktreeAction ?? 'keep',
+          worktree_cleaned: worktreeCleaned,
         });
       }
 
-      return { sessionId: session.id, killed: true };
+      return { sessionId: session.id, killed: true, worktree_cleaned: worktreeCleaned };
     },
 
     list(): SessionStatusInfo[] {
@@ -287,6 +403,10 @@ export function createPool(options?: PoolOptions): SessionPool {
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
         chain: getChain(sessionId),
+        worktree: sessionWorktrees.get(sessionId) ?? {
+          isolation: 'shared' as IsolationMode, worktree_path: null, worktree_branch: null, metals_available: true,
+        },
+        stale: sessionStaleFlags.get(sessionId) ?? false,
       }));
     },
 
@@ -323,11 +443,73 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionWorkdirs.delete(sessionId);
             sessionChains.delete(sessionId);
             sessionChannels.delete(sessionId);
+            sessionWorktrees.delete(sessionId);
+            sessionStaleConfigs.delete(sessionId);
+            sessionStaleFlags.delete(sessionId);
             removed++;
           }
         }
       }
       return removed;
+    },
+
+    /**
+     * PRD 006 Component 4: Check all sessions for staleness.
+     * - Sessions inactive > stale_timeout_ms → marked stale, 'stale' event emitted
+     * - Sessions inactive > kill_timeout_ms → auto-killed
+     * Returns lists of newly-stale and newly-killed session IDs.
+     */
+    checkStale(): { stale: string[]; killed: string[] } {
+      const now = Date.now();
+      const staleIds: string[] = [];
+      const killedIds: string[] = [];
+
+      for (const [sessionId, session] of sessions.entries()) {
+        if (session.status === 'dead') continue;
+
+        const config = sessionStaleConfigs.get(sessionId);
+        if (!config) continue;
+
+        const inactiveMs = now - session.lastActivityAt.getTime();
+        const isStale = sessionStaleFlags.get(sessionId) ?? false;
+
+        // Auto-kill: inactive beyond kill timeout
+        if (inactiveMs >= config.kill_timeout_ms) {
+          session.kill();
+
+          const channels = sessionChannels.get(sessionId);
+          if (channels) {
+            appendMessage(channels.events, 'bridge', 'stale', {
+              session_id: sessionId,
+              inactive_ms: inactiveMs,
+              action: 'auto_killed',
+            });
+          }
+
+          killedIds.push(sessionId);
+          sessionStaleFlags.set(sessionId, true);
+          continue;
+        }
+
+        // Mark stale: inactive beyond stale timeout (but not yet killed)
+        if (inactiveMs >= config.stale_timeout_ms && !isStale) {
+          sessionStaleFlags.set(sessionId, true);
+
+          const channels = sessionChannels.get(sessionId);
+          if (channels) {
+            appendMessage(channels.events, 'bridge', 'stale', {
+              session_id: sessionId,
+              inactive_ms: inactiveMs,
+              action: 'marked_stale',
+              kill_in_ms: config.kill_timeout_ms - inactiveMs,
+            });
+          }
+
+          staleIds.push(sessionId);
+        }
+      }
+
+      return { stale: staleIds, killed: killedIds };
     },
   };
 }

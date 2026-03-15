@@ -15,6 +15,7 @@ const CLAUDE_OAUTH_TOKEN = process.env.CLAUDE_OAUTH_TOKEN ?? null;
 const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '60000', 10);
 const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
 const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000', 10);
+const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -70,9 +71,11 @@ app.post<{
     parent_session_id?: string;
     depth?: number;
     budget?: { max_depth?: number; max_agents?: number; agents_spawned?: number };
+    isolation?: 'worktree' | 'shared';
+    timeout_ms?: number;
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -87,6 +90,8 @@ app.post<{
       parentSessionId: parent_session_id,
       depth,
       budget,
+      isolation,
+      timeout_ms,
     });
 
     // Register session with token tracker
@@ -98,6 +103,9 @@ app.post<{
       depth: result.chain.depth,
       parent_session_id: result.chain.parent_session_id,
       budget: result.chain.budget,
+      isolation: result.worktree.isolation,
+      worktree_path: result.worktree.worktree_path,
+      metals_available: result.worktree.metals_available,
     });
   } catch (e) {
     const message = (e as Error).message;
@@ -173,6 +181,10 @@ app.get<{
       depth: result.chain.depth,
       children: result.chain.children,
       budget: result.chain.budget,
+      isolation: result.worktree.isolation,
+      worktree_path: result.worktree.worktree_path,
+      metals_available: result.worktree.metals_available,
+      stale: result.stale,
     });
   } catch (e) {
     const message = (e as Error).message;
@@ -188,14 +200,17 @@ app.get<{
  */
 app.delete<{
   Params: { id: string };
+  Body: { worktree_action?: 'merge' | 'keep' | 'discard' };
 }>('/sessions/:id', async (request, reply) => {
   const { id } = request.params;
+  const { worktree_action } = request.body ?? {};
 
   try {
-    const result = pool.kill(id);
+    const result = pool.kill(id, worktree_action);
     return reply.status(200).send({
       session_id: result.sessionId,
       killed: result.killed,
+      worktree_cleaned: result.worktree_cleaned,
     });
   } catch (e) {
     const message = (e as Error).message;
@@ -224,6 +239,10 @@ app.get('/sessions', async (_request, reply) => {
       depth: s.chain.depth,
       children: s.chain.children,
       budget: s.chain.budget,
+      isolation: s.worktree.isolation,
+      worktree_path: s.worktree.worktree_path,
+      metals_available: s.worktree.metals_available,
+      stale: s.stale,
     })),
   );
 });
@@ -433,6 +452,17 @@ async function start() {
         app.log.info(`Cleaned up ${removed} dead session(s) (TTL: ${DEAD_SESSION_TTL_MS}ms)`);
       }
     }, 60_000); // Check every minute
+
+    // PRD 006 Component 4: Stale detection timer
+    setInterval(() => {
+      const result = pool.checkStale();
+      if (result.stale.length > 0) {
+        app.log.warn(`Stale sessions detected: ${result.stale.join(', ')}`);
+      }
+      if (result.killed.length > 0) {
+        app.log.warn(`Auto-killed stale sessions: ${result.killed.join(', ')}`);
+      }
+    }, STALE_CHECK_INTERVAL_MS);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
