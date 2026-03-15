@@ -190,6 +190,131 @@ Returns all recorded step outputs as an array.
 
 `context()` reads the same internal state as `current()` and `status()`. It is intentionally a superset — an agent that calls `step_context` does not need to also call `step_current` or `methodology_status`. The three methods coexist because `step_current` and `methodology_status` are established tools with existing consumers; `step_context` is additive, not a replacement.
 
+## MethodologySession (PRD 004)
+
+### Purpose
+
+A methodology-level session that tracks global state across method transitions. This is the superordinate goal context — it persists while individual methods are loaded, executed, and completed within it.
+
+The existing `Session` manages traversal within a single method. `MethodologySession` composes multiple method sessions sequentially, tracking which methods have completed, their outputs, and the global objective status.
+
+### Architecture
+
+```
+MethodologySessionManager  →  MethodologySessionData
+                                      ↓ (shares session_id)
+SessionManager  →  Session (for current method)
+```
+
+Both managers use the same `session_id` namespace. Methodology tools (`methodology_start`, `methodology_route`, `methodology_load_method`, `methodology_transition`) operate on `MethodologySessionManager`. Method/step tools (`step_current`, `step_advance`, `step_context`, `step_validate`) continue to operate on `SessionManager` unchanged.
+
+When `methodology_load_method` is called, it loads the method into the `Session` from `SessionManager` for the same session ID. This means existing step tools work transparently within a methodology session — they operate on the current method's Session without knowing about the methodology layer.
+
+### State Model
+
+```typescript
+type MethodologySessionData = {
+  id: string;
+  methodologyId: string;
+  methodologyName: string;
+  challenge: string | null;
+  status: MethodologySessionStatus;
+  currentMethodId: string | null;
+  completedMethods: CompletedMethodRecord[];
+  globalObjectiveStatus: GlobalObjectiveStatus;
+  routingInfo: RoutingInfo;   // cached at session creation
+};
+
+type MethodologySessionStatus =
+  | 'initialized'    // after methodology_start
+  | 'routing'        // during methodology_route evaluation
+  | 'executing'      // method loaded and being traversed
+  | 'transitioning'  // during methodology_transition
+  | 'completed'      // δ_Φ returned None — methodology complete
+  | 'failed';        // terminal failure
+
+type CompletedMethodRecord = {
+  methodId: string;
+  completedAt: string;   // ISO timestamp
+  stepOutputs: Array<{ stepId: string; outputSummary: string }>;
+  completionSummary: string | null;
+};
+```
+
+### MethodologySessionManager
+
+`packages/core/src/methodology-session.ts` exports a factory that returns a map-based manager:
+
+```typescript
+export function createMethodologySessionManager() {
+  const sessions = new Map<string, MethodologySessionData>();
+
+  return {
+    get(sessionId: string): MethodologySessionData | null,
+    set(sessionId: string, session: MethodologySessionData): void,
+  };
+}
+```
+
+Unlike `SessionManager.getOrCreate()`, methodology sessions use explicit `get()`/`set()` because they are created by `startMethodologySession`, not auto-created on first access.
+
+### `startMethodologySession`
+
+Core function in `methodology-session.ts`:
+
+```typescript
+export function startMethodologySession(
+  registryPath: string,
+  methodologyId: string,
+  challenge: string | null,
+  sessionId: string,
+): MethodologyStartResult
+```
+
+1. Validates methodology exists via `listMethodologies()`
+2. Gets routing info via `getMethodologyRouting()` — cached in session data
+3. Reads methodology YAML for objective (top-level `objective.formal`)
+4. Creates `MethodologySessionData` with status `"initialized"`
+5. Returns `MethodologyStartResult` with methodology metadata + transition function summary
+
+The function does not store the session — it returns the data for the caller to store via `MethodologySessionManager.set()`. This keeps the function pure (side-effect-free) for testability, matching how `selectMethodology` takes a pre-resolved session.
+
+### Session ID Sharing
+
+A methodology session and its contained method sessions share a `session_id`. The session ID is the correlation key:
+
+- `methodology_start({ session_id: "abc" })` → creates `MethodologySessionData` under key `"abc"` in `MethodologySessionManager`
+- `methodology_load_method({ session_id: "abc" })` → loads method into `Session` under key `"abc"` in `SessionManager`
+- `step_current({ session_id: "abc" })` → reads from `Session` under key `"abc"` — unchanged behavior
+
+When no `session_id` is provided, the MCP layer uses `"__default__"` for both managers (same convention as existing tools).
+
+### Relationship to Existing Constructs
+
+| Construct | Role | Changed by PRD 004? |
+|-----------|------|---------------------|
+| `Session` | Method-level traversal (load, current, advance, context) | No |
+| `SessionManager` | Maps session_id → Session | No |
+| `MethodologySessionData` | Methodology-level state (methods completed, global objective) | **New** |
+| `MethodologySessionManager` | Maps session_id → MethodologySessionData | **New** |
+| `selectMethodology()` | Legacy tool — becomes alias for start + load_method in Phase 3 | Phase 3 |
+
+### Lifecycle
+
+```
+methodology_start → status: "initialized"
+  ↓
+methodology_route → status: "routing" → back to "initialized" (decision recorded)
+  ↓
+methodology_load_method → status: "executing"
+  ↓
+(agent traverses method steps via step_current/advance/validate)
+  ↓
+methodology_transition → status: "transitioning"
+  ↓
+(re-evaluate δ_Φ) → "executing" (next method) or "completed" (terminal)
+```
+
 ## Post-MVP
 
 When DAG traversal is added, `advance()` will need to accept a branch selector or evaluate preconditions to determine the next step. The factory API stays the same; the internal logic changes.
