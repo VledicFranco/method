@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>@method/bridge — Dashboard</title>
-  <meta http-equiv="refresh" content="5">
+  <!-- Replaced meta refresh with JS targeted updates — preserves form state -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1112,9 +1112,10 @@ function submitSpawn() {
     if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Spawn failed'); });
     return res.json();
   })
-  .then(function() {
+  .then(function(data) {
     closeSpawnModal();
-    window.location.reload();
+    // Auto-refresh will pick up the new session — no page reload needed
+    document.getElementById('spawn-prompt').value = '';
   })
   .catch(function(e) {
     errEl.textContent = e.message;
@@ -1129,6 +1130,70 @@ function submitSpawn() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeSpawnModal();
 });
+
+// --- Auto-refresh: fetch dashboard HTML and update dynamic sections ---
+// Replaces meta refresh — preserves form state, expanded rows, modal state
+(function() {
+  var REFRESH_MS = 5000;
+  var refreshing = false;
+
+  setInterval(function() {
+    // Don't refresh if modal is open or actively interacting
+    if (refreshing) return;
+    var modal = document.getElementById('spawn-overlay');
+    if (modal && modal.classList.contains('active')) return;
+
+    refreshing = true;
+    fetch(window.location.href)
+      .then(function(res) { return res.text(); })
+      .then(function(html) {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, 'text/html');
+
+        // Save expanded detail row states
+        var expanded = {};
+        document.querySelectorAll('.detail-row').forEach(function(row) {
+          if (row.style.display === 'table-row') expanded[row.id] = true;
+        });
+
+        // Update health cards
+        var newHealth = doc.querySelectorAll('.health-row');
+        var oldHealth = document.querySelectorAll('.health-row');
+        newHealth.forEach(function(nh, i) {
+          if (oldHealth[i]) oldHealth[i].innerHTML = nh.innerHTML;
+        });
+
+        // Update session table body
+        var newTbody = doc.querySelector('.session-table tbody');
+        var oldTbody = document.querySelector('.session-table tbody');
+        if (newTbody && oldTbody) {
+          oldTbody.innerHTML = newTbody.innerHTML;
+          // Restore expanded states
+          Object.keys(expanded).forEach(function(id) {
+            var row = document.getElementById(id);
+            if (row) row.style.display = 'table-row';
+          });
+        }
+
+        // Update session count tag
+        var newTag = doc.querySelector('.section-header .section-tag');
+        var oldTag = document.querySelector('.section-header .section-tag');
+        if (newTag && oldTag) oldTag.innerHTML = newTag.innerHTML;
+
+        // Update channels
+        var newChannels = doc.querySelector('.channels-panel');
+        var oldChannels = document.querySelector('.channels-panel');
+        if (newChannels && oldChannels) oldChannels.innerHTML = newChannels.innerHTML;
+
+        // Update subscription panel
+        var newSub = doc.querySelector('.subscription-panel');
+        var oldSub = document.querySelector('.subscription-panel');
+        if (newSub && oldSub) oldSub.innerHTML = newSub.innerHTML;
+      })
+      .catch(function() { /* silent — retry next cycle */ })
+      .finally(function() { refreshing = false; });
+  }, REFRESH_MS);
+})();
 </script>
 
 </body>
