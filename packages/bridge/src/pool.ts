@@ -6,6 +6,7 @@ import { createSessionChannels, appendMessage, type SessionChannels } from './ch
 import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
+import { AdaptiveSettleDelay, parseAdaptiveSettleConfig, isAdaptiveSettleEnabled } from './adaptive-settle.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -415,6 +416,12 @@ export function createPool(options?: PoolOptions): SessionPool {
         await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
 
+      // PRD 012 Phase 2: Create adaptive settle delay if enabled
+      const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
+      const adaptiveSettle = adaptiveEnabled
+        ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
+        : undefined;
+
       const session = spawnSession({
         id: sessionId,
         workdir: effectiveWorkdir,
@@ -422,6 +429,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         settleDelayMs,
         initialPrompt: activationPrompt,
         spawnArgs,
+        adaptiveSettle,
       });
 
       sessions.set(sessionId, session);
@@ -469,8 +477,9 @@ export function createPool(options?: PoolOptions): SessionPool {
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
       // PRD 012: Create diagnostics tracker
+      // PRD 012 Phase 2: Pass adaptive settle for dynamic metrics
       const effectiveSettleDelay = settleDelayMs ?? 1000;
-      const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay);
+      const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay, adaptiveSettle);
       sessionDiagnostics.set(sessionId, diagnosticsTracker);
 
       // PRD 012: Track first PTY output for time_to_first_output_ms
@@ -486,11 +495,16 @@ export function createPool(options?: PoolOptions): SessionPool {
       const watcherConfig = parseWatcherConfig(process.env, metadata);
       if (watcherConfig.enabled) {
         // PRD 012: Observation callback — feeds diagnostics tracker
+        // PRD 012 Phase 2: Also resets adaptive settle on tool markers
         const diagnosticsCallback: ObservationCallback = (match, isIdle) => {
           if (isIdle) {
             diagnosticsTracker.recordIdleTransition();
           } else if (match.category === 'tool_call') {
             diagnosticsTracker.recordToolCall();
+            // PRD 012 Phase 2: Reset adaptive settle on tool-output marker
+            if (adaptiveSettle) {
+              adaptiveSettle.resetOnToolMarker();
+            }
           } else if (match.category === 'permission_prompt') {
             diagnosticsTracker.recordPermissionPrompt();
           } else {
