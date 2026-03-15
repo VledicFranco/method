@@ -1,5 +1,44 @@
 log:
   project: pv-method
-  sessions: []
-  # Sessions will be appended here. Each entry follows the schema defined
-  # in STEERING-PROTOCOL.yaml. First session is AG-001 (founding session).
+  sessions:
+    - id: SESSION-001
+      date: "2026-03-14"
+      type: founding
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Founding session — validate STEER-PROTO, review retro signals, essence health check"
+
+      decisions:
+        - id: D-001
+          item: "AG-002 — retro signal review"
+          decision: >
+            Trigger M3-MEVO for GC-P1EXEC-002 (M1-COUNCIL proportionality heuristic).
+            Add to P1-EXEC predicate_operationalization. Defer GC-P2SD-001 (sigma_B3
+            multi-task friction) pending cross-project evidence.
+          status: decided
+          for: "Evidence meets calibration-period threshold (2 MEDIUM, 2 projects). Proposed delta is concrete and ready to embed."
+          against: "Orion flags GC-P2SD-001 as structural (not just guidance) — wave-structure within sigma_B3 may need PAT-003A, not just better text."
+          po_ruling: null
+
+        - id: D-002
+          item: "AG-003 — essence health check"
+          decision: >
+            Invariant mostly served. Two items flagged: (1) step_validate postcondition
+            checking is heuristic — documented as honest gap, not violation. (2) Add
+            DR-13 to project card: YAML parse validation after registry edits.
+          status: decided
+          for: "M1-COUNCIL duplicate key incident proves YAML validation is needed. Heuristic postcondition checking is pragmatic first step."
+          against: "None — unanimous on both items."
+          po_ruling: null
+
+      open_questions:
+        - "GC-P2SD-001: when will t1-cortex produce sigma_B3 friction evidence? (needed for cross-project threshold)"
+        - "Should step_validate's heuristic approach be documented in the registry as a known limitation?"
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+        - "Decision to apply D-001 (M3-MEVO for proportionality) and D-002 (DR-13 YAML validation)"
+
+      next_agenda_items:
+        - "Apply D-001: add proportionality heuristic to P1-EXEC predicate_operationalization"
+        - "Apply D-002: add DR-13 (YAML validation) to I2-METHOD project card"
+        - "AG-004: plan STEER-PROTO trial criteria"

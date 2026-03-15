@@ -4,28 +4,35 @@ agenda:
 
   p0_immediate:
     - id: AG-001
-      item: "Validate the steering council itself — run a founding session to test STEER-PROTO on this project"
-      rationale: "Dogfooding. We can't recommend STEER-PROTO to other projects without validating it here first."
+      item: "Validate the steering council itself — run a founding session"
       owner: "Thane (facilitates), full council"
-      status: in_progress
+      status: done
+      resolved_in: SESSION-001
 
     - id: AG-002
       item: "Review accumulated retrospective signals and decide on next evolution cycle"
-      rationale: >
-        12 retros collected, 4 gap candidates surfaced, 2 resolved. Open gaps:
-        GC-P2SD-001 (sigma_B3 multi-task friction), GC-P1EXEC-002 (M1-COUNCIL
-        proportionality). Council should review and decide: evolve now or accumulate more?
       owner: "Nika (evidence analysis), Thane (decision)"
-      status: open
+      status: done
+      resolved_in: SESSION-001
+      resolution: "D-001: M3-MEVO for GC-P1EXEC-002. GC-P2SD-001 deferred."
 
     - id: AG-003
-      item: "Assess project health against essence — are we serving the invariant?"
-      rationale: >
-        First essence check since the project card was created. The invariant is
-        "theory is source of truth." Question: has any implementation decision
-        deviated from this? PRD 004 introduced runtime transition function evaluation
-        with heuristic keyword matching — is that faithful to the theory?
+      item: "Assess project health against essence"
       owner: "Harlan (theory alignment), Nika (execution evidence)"
+      status: done
+      resolved_in: SESSION-001
+      resolution: "D-002: invariant mostly served. DR-13 (YAML validation) to be added."
+
+    - id: AG-009
+      item: "Apply D-001: add proportionality heuristic to P1-EXEC predicate_operationalization"
+      rationale: "Council decision from SESSION-001. GC-P1EXEC-002 meets threshold."
+      owner: "Harlan (implementation)"
+      status: open
+
+    - id: AG-010
+      item: "Apply D-002: add DR-13 (YAML parse validation after registry edits) to project card"
+      rationale: "Council decision from SESSION-001. M1-COUNCIL duplicate key incident."
+      owner: "Harlan (implementation)"
       status: open
 
   p1_soon:
