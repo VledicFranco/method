@@ -8,51 +8,41 @@ agenda:
   p0_immediate:
     - id: AG-012
       item: "Write Guide 13: Installation and .method/ directory structure"
-      rationale: "D-006 formalized installation. 4 sessions open — 1 from PR-02 stale threshold."
-      owner: "Reva, Harlan"
-      status: open
-      sessions_open: 5
-
-    - id: AG-021
-      item: "Reconcile steering-council skill with STEER-PROTO"
-      rationale: "S-010 identified drift: skill doesn't reflect governance_health, process enforcement in Step 4, or governance retro schema."
-      owner: "Thane"
-      status: open
+      owner: "Fresh agent (commissioned in SESSION-011)"
+      status: commissioned
+      sessions_open: 6
+      commission_note: "PR-02 escalated. Commission for fresh agent to write full guide."
 
   governance_health:
     last_assessed: SESSION-009
-    sessions_since_processes_installed: 4
+    sessions_since_processes_installed: 5
     next_review: SESSION-014
 
     process_health:
       PR-01:
-        times_followed: 2
+        times_followed: 3
         times_skipped: 0
         times_triggered: 2
         verdict: healthy
       PR-02:
-        times_followed: 2
+        times_followed: 3
         times_skipped: 0
-        times_triggered: 1
+        times_triggered: 2
         verdict: healthy
       PR-03:
-        times_followed: 2
+        times_followed: 3
         times_skipped: 0
         times_triggered: 0
-        verdict: "untested — council sessions don't produce methodology retros"
+        verdict: "untested in governance sessions (expected)"
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
         count: 1
         action_threshold: 3
         status: accumulating
-      - signal: "Skill/protocol drift — reconcile steering-council skill"
-        count: 1
-        action_threshold: 1
-        status: "actioned → AG-021"
 
     retro_quality:
-      sessions_with_retro: 5
+      sessions_with_retro: 6
       sessions_without: 5
       actionable_signals_produced: 3
       rote_retros: 0
@@ -69,6 +59,7 @@ agenda:
     - { id: AG-018, resolved_in: SESSION-007 }
     - { id: AG-019, resolved_in: SESSION-007 }
     - { id: AG-020, resolved_in: SESSION-010 }
+    - { id: AG-021, resolved_in: SESSION-011 }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

@@ -373,6 +373,46 @@ log:
         - "AG-012: Guide 13 (installation) — next session, will be stale if not done"
         - "AG-021: Reconcile steering-council skill with STEER-PROTO (drift from governance_health and process enforcement)"
 
+    - id: SESSION-011
+      date: "2026-03-14"
+      type: execution
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Resolve remaining P0 items — AG-012 stale escalation, AG-021 skill reconciliation"
+
+      decisions:
+        - id: D-021
+          item: "AG-012 — Guide 13 (installation)"
+          decision: >
+            PR-02 escalation at 5 sessions. Commission for fresh agent — this session
+            is at context limits. Guide 13 needs a full write covering manifest.yaml,
+            installation specs, .method/ structure, and adoption steps.
+          status: "commissioned"
+          commission:
+            task: "Write docs/guides/13-installation.md following the pattern of existing guides"
+            governance_context: "Covers manifest.yaml, installation specs per methodology/protocol, .method/ directory structure"
+
+        - id: D-022
+          item: "AG-021 — skill/protocol reconciliation"
+          decision: "Added to steering-council skill: process enforcement in Step 4, governance retro in Step 5, governance_health review in Step 2."
+          status: decided
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: false
+        agenda_delta: -1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-02, followed: true, note: "AG-012 escalated via commission" }
+        process_improvement_signal: "None — execution session. Skill reconciliation was a targeted fix."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "steering-council skill updated (governance retro, process enforcement, health review)"
+        - "Commission for Guide 13"
+
+      next_agenda_items:
+        - "AG-012 commissioned — fresh agent will write Guide 13"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion
