@@ -296,6 +296,43 @@ log:
         - "AG-020: Update Guide 5 artifact locations (still open)"
         - "AG-012: Guide 13 installation (still open — PR-02 check: 3 sessions, not yet stale)"
 
+    - id: SESSION-009
+      date: "2026-03-14"
+      type: process_refinement
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Governance retro quality tracking and process discovery/removal mechanism"
+
+      decisions:
+        - id: D-018
+          item: "Governance health tracking"
+          decision: >
+            Add governance_health section to AGENDA.yaml. Tracks: per-process health
+            (followed/skipped/triggered/signals/verdict), accumulated improvement signals
+            with 3-count action threshold, retro quality metrics. Updated every 5 sessions
+            or when a signal recurs 3 times. Discovery: signal count >= 3 becomes agenda
+            item. Removal: process with 0 triggers after 10 sessions gets reviewed.
+          status: decided
+          for: "Closes the accumulation gap. Same pattern as RETRO-PROTO evolution ledger but lighter — lives in AGENDA.yaml not a separate file."
+          against: "None — the gap was unanimously identified."
+          essence_check: "Process health data IS theory of whether processes work. Faithful."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: 0
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes this session" }
+          - { process: PR-02, followed: true, note: "No items at 3-session stale threshold" }
+        process_improvement_signal: "The governance_health section itself is a process improvement discovered through retro analysis. Meta-validation: the retro mechanism produced an improvement to itself."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "AGENDA.yaml governance_health section populated"
+        - "LOG.yaml SESSION-009 entry"
+
+      next_agenda_items:
+        - "AG-020 and AG-012 remain open (not stale yet)"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion

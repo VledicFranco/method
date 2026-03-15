@@ -15,6 +15,45 @@ agenda:
       owner: "Reva, Harlan"
       status: open
 
+  governance_health:
+    last_assessed: SESSION-009
+    sessions_since_processes_installed: 3
+    next_review: "SESSION-014 (every 5 sessions)"
+
+    process_health:
+      PR-01:
+        times_followed: 2
+        times_skipped: 0
+        times_triggered: 2
+        signals: ["S-007: correctly identified Guide 5 update"]
+        verdict: healthy
+      PR-02:
+        times_followed: 1
+        times_skipped: 0
+        times_triggered: 1
+        signals: ["S-008: AG-011 archived after 5 sessions stale"]
+        verdict: healthy
+      PR-03:
+        times_followed: 1
+        times_skipped: 0
+        times_triggered: 0
+        signals: []
+        verdict: "untested — no retros produced during governance sessions"
+        note: "PR-03 applies to methodology execution retros, not governance. Expected to have 0 triggers in council sessions."
+
+    improvement_signals:
+      - signal: "Essence check proportionality for execution sessions"
+        count: 1
+        sessions: [SESSION-008]
+        action_threshold: 3
+        status: accumulating
+
+    retro_quality:
+      sessions_with_retro: 4
+      sessions_without: 5
+      actionable_signals_produced: 2
+      rote_retros: 0
+
   p1_soon:
     - id: AG-004
       item: "Plan STEER-PROTO trial criteria and promotion path"
