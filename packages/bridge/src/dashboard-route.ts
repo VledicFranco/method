@@ -26,12 +26,9 @@ export function registerDashboardRoute(
 ): void {
   app.get('/dashboard', async (_request, reply) => {
     const sessions = pool.list();
+    const stats = pool.poolStats();
     const aggregate = tokenTracker.getAggregate();
     const subscriptionUsage = usagePoller.getCached();
-
-    const activeSessions = sessions.filter((s) => s.status !== 'dead').length;
-    const deadSessions = sessions.filter((s) => s.status === 'dead').length;
-    const totalSpawned = sessions.length;
 
     let html = loadTemplate();
 
@@ -39,11 +36,11 @@ export function registerDashboardRoute(
     html = html.replace(/\{\{bridge\.port\}\}/g, String(config.port));
     html = html.replace(/\{\{bridge\.startedAt\}\}/g, formatStartedAt(config.startedAt));
     html = html.replace(/\{\{bridge\.version\}\}/g, config.version);
-    html = html.replace(/\{\{bridge\.activeSessions\}\}/g, String(activeSessions));
-    html = html.replace(/\{\{bridge\.maxSessions\}\}/g, '5'); // from pool config
-    html = html.replace(/\{\{bridge\.totalSpawned\}\}/g, String(totalSpawned));
+    html = html.replace(/\{\{bridge\.activeSessions\}\}/g, String(stats.activeSessions));
+    html = html.replace(/\{\{bridge\.maxSessions\}\}/g, String(stats.maxSessions));
+    html = html.replace(/\{\{bridge\.totalSpawned\}\}/g, String(stats.totalSpawned));
     html = html.replace(/\{\{bridge\.uptime\}\}/g, formatUptime(config.startedAt));
-    html = html.replace(/\{\{bridge\.deadSessions\}\}/g, String(deadSessions));
+    html = html.replace(/\{\{bridge\.deadSessions\}\}/g, String(stats.deadSessions));
 
     // Token placeholders
     html = html.replace(/\{\{tokens\.totalTokens\}\}/g, formatTokens(aggregate.totalTokens));
@@ -199,13 +196,21 @@ export function renderSubscriptionPanel(usage: SubscriptionUsage | null): string
 }
 
 export function renderSessionRows(
-  sessions: Array<{ sessionId: string; status: string; queueDepth: number }>,
+  sessions: Array<{
+    sessionId: string;
+    status: string;
+    queueDepth: number;
+    metadata?: Record<string, unknown>;
+    promptCount: number;
+    lastActivityAt: Date;
+    workdir: string;
+  }>,
   tokenTracker: TokenTracker,
 ): string {
   if (sessions.length === 0) {
     return `
       <tr>
-        <td colspan="6" style="text-align: center; color: var(--muted); padding: 2rem;">
+        <td colspan="8" style="text-align: center; color: var(--muted); padding: 2rem;">
           No sessions. POST /sessions to spawn one.
         </td>
       </tr>`;
@@ -216,6 +221,8 @@ export function renderSessionRows(
       const shortId = session.sessionId.substring(0, 8);
       const badgeClass = statusBadgeClass(session.status);
       const usage = tokenTracker.getUsage(session.sessionId);
+      const methodSid = (session.metadata as any)?.methodology_session_id ?? null;
+      const workdirShort = session.workdir.split(/[\\/]/).pop() ?? session.workdir;
 
       let tokensCell: string;
       let cacheCell: string;
@@ -238,10 +245,12 @@ export function renderSessionRows(
       <tr>
         <td class="mono session-id">${escapeHtml(shortId)}</td>
         <td><span class="status ${badgeClass}">${escapeHtml(session.status)}</span></td>
-        <td class="mono workdir">&mdash;</td>
-        <td class="mono prompt-count">${session.queueDepth}</td>
+        <td class="mono workdir">${escapeHtml(workdirShort)}</td>
+        <td class="mono method-sid">${methodSid ? escapeHtml(methodSid) : '&mdash;'}</td>
+        <td class="mono prompt-count" style="text-align:center">${session.promptCount}</td>
         <td class="mono tokens" style="text-align:right">${tokensCell}</td>
         <td class="mono" style="text-align:right">${cacheCell}</td>
+        <td class="mono timestamp">${formatTimeAgo(session.lastActivityAt)}</td>
       </tr>`;
     })
     .join('\n');

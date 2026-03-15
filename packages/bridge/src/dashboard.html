@@ -503,9 +503,11 @@ body::after {
         <th>Session ID</th>
         <th>Status</th>
         <th>Workdir</th>
-        <th style="text-align:center">Queue</th>
+        <th>Method Session</th>
+        <th style="text-align:center">Prompts</th>
         <th style="text-align:right">Tokens</th>
         <th style="text-align:right">Cache</th>
+        <th>Last Activity</th>
       </tr>
     </thead>
     <tbody>
@@ -513,78 +515,79 @@ body::after {
     </tbody>
   </table>
 
-  <div class="section-divider"></div>
+  <!-- Reference (collapsible) -->
+  <div id="ref-panel" style="display:none; margin-top: 2rem;">
+    <div class="section-divider"></div>
+    <div class="section-header">
+      <h2 class="section-title">Reference</h2>
+      <span class="section-tag">Session states &middot; Cache rate colors</span>
+    </div>
 
-  <!-- Session States reference -->
-  <div class="section-header">
-    <h2 class="section-title">Reference</h2>
-    <span class="section-tag">Session states &middot; Cache rate colors</span>
-  </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+      <table class="session-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Visual</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">initializing</td>
+            <td><span class="status status-init">initializing</span></td>
+            <td style="color: var(--dim); font-size: .82rem;">PTY spawned, waiting for prompt marker</td>
+          </tr>
+          <tr>
+            <td class="mono">ready</td>
+            <td><span class="status status-ready">ready</span></td>
+            <td style="color: var(--dim); font-size: .82rem;">Agent idle, waiting for prompt</td>
+          </tr>
+          <tr>
+            <td class="mono">working</td>
+            <td><span class="status status-working">working</span></td>
+            <td style="color: var(--dim); font-size: .82rem;">Processing prompt, output pending</td>
+          </tr>
+          <tr>
+            <td class="mono">dead</td>
+            <td><span class="status status-dead">dead</span></td>
+            <td style="color: var(--dim); font-size: .82rem;">PTY exited or killed</td>
+          </tr>
+        </tbody>
+      </table>
 
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
-    <table class="session-table">
-      <thead>
-        <tr>
-          <th>Status</th>
-          <th>Visual</th>
-          <th>Meaning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="mono">initializing</td>
-          <td><span class="status status-init">initializing</span></td>
-          <td style="color: var(--dim); font-size: .82rem;">PTY spawned, waiting for prompt marker</td>
-        </tr>
-        <tr>
-          <td class="mono">ready</td>
-          <td><span class="status status-ready">ready</span></td>
-          <td style="color: var(--dim); font-size: .82rem;">Agent idle, waiting for prompt</td>
-        </tr>
-        <tr>
-          <td class="mono">working</td>
-          <td><span class="status status-working">working</span></td>
-          <td style="color: var(--dim); font-size: .82rem;">Processing prompt, output pending</td>
-        </tr>
-        <tr>
-          <td class="mono">dead</td>
-          <td><span class="status status-dead">dead</span></td>
-          <td style="color: var(--dim); font-size: .82rem;">PTY exited or killed</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <table class="session-table">
-      <thead>
-        <tr>
-          <th>Cache Rate</th>
-          <th>Color</th>
-          <th>Meaning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="mono cache-rate good">&ge; 70%</td>
-          <td style="color: var(--bio);">Bioluminescent</td>
-          <td style="color: var(--dim); font-size: .82rem;">Good cache utilization</td>
-        </tr>
-        <tr>
-          <td class="mono cache-rate mid">40&ndash;69%</td>
-          <td style="color: var(--solar);">Solar</td>
-          <td style="color: var(--dim); font-size: .82rem;">Moderate &mdash; check prompt structure</td>
-        </tr>
-        <tr>
-          <td class="mono cache-rate low">&lt; 40%</td>
-          <td style="color: var(--dim2);">Dim</td>
-          <td style="color: var(--dim); font-size: .82rem;">Low &mdash; prompts may not be caching</td>
-        </tr>
-        <tr>
-          <td class="mono" style="color: var(--muted);">&mdash;</td>
-          <td style="color: var(--muted);">Muted</td>
-          <td style="color: var(--dim); font-size: .82rem;">Session logs not found</td>
-        </tr>
-      </tbody>
-    </table>
+      <table class="session-table">
+        <thead>
+          <tr>
+            <th>Cache Rate</th>
+            <th>Color</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono cache-rate good">&ge; 70%</td>
+            <td style="color: var(--bio);">Bioluminescent</td>
+            <td style="color: var(--dim); font-size: .82rem;">Good cache utilization</td>
+          </tr>
+          <tr>
+            <td class="mono cache-rate mid">40&ndash;69%</td>
+            <td style="color: var(--solar);">Solar</td>
+            <td style="color: var(--dim); font-size: .82rem;">Moderate &mdash; check prompt structure</td>
+          </tr>
+          <tr>
+            <td class="mono cache-rate low">&lt; 40%</td>
+            <td style="color: var(--dim2);">Dim</td>
+            <td style="color: var(--dim); font-size: .82rem;">Low &mdash; prompts may not be caching</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color: var(--muted);">&mdash;</td>
+            <td style="color: var(--muted);">Muted</td>
+            <td style="color: var(--dim); font-size: .82rem;">Session logs not found</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Footer -->
@@ -592,9 +595,24 @@ body::after {
     <div class="footer-left">
       @method/bridge v{{bridge.version}} &middot; PRD-005 Phase 2
     </div>
-    <div class="footer-refresh">
-      <span class="refresh-dot"></span>
-      Auto-refresh 5s &middot; Usage poll 60s
+    <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <button id="ref-toggle" onclick="document.getElementById('ref-panel').style.display=document.getElementById('ref-panel').style.display==='none'?'block':'none'" style="
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 2px;
+        color: var(--dim2);
+        font-family: var(--font-m);
+        font-size: .6rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        padding: .35rem .7rem;
+        cursor: pointer;
+        transition: color .2s, border-color .2s;
+      " onmouseover="this.style.color='var(--bio)';this.style.borderColor='rgba(0,212,176,.25)'" onmouseout="this.style.color='var(--dim2)';this.style.borderColor='rgba(255,255,255,.08)'">Reference</button>
+      <div class="footer-refresh">
+        <span class="refresh-dot"></span>
+        Auto-refresh 5s &middot; Usage poll 60s
+      </div>
     </div>
   </footer>
 
