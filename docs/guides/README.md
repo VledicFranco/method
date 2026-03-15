@@ -16,6 +16,7 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 10 | [Bridge Orchestration](10-bridge-orchestration.md) | Agent operators | Using the bridge + PRD 004 tools for multi-method sessions with sub-agents |
 | 11 | [Protocols and Method Discovery](11-protocols-and-discovery.md) | Method designers | How informal practices become formal methods — the R&D pipeline |
 | 12 | [The Steering Council](12-steering-council.md) | Project leads | Persistent governance council, essence guardianship, session structure |
+| 13 | [Installation and .method/](13-installation.md) | Project leads | The .method/ directory, manifest, installation specs, committed vs ephemeral |
 
 ## How to read these guides
 
