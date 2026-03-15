@@ -1,4 +1,4 @@
-# PRD 006 — Bridge UI: Agent Identity, Live Output, and Transcript History
+# PRD 007 — Bridge UI: Agent Identity, Live Output, and Transcript History
 
 **Status:** Draft
 **Date:** 2026-03-14

@@ -67,9 +67,12 @@ app.post<{
     initial_prompt?: string;
     spawn_args?: string[];
     metadata?: Record<string, unknown>;
+    parent_session_id?: string;
+    depth?: number;
+    budget?: { max_depth?: number; max_agents?: number; agents_spawned?: number };
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -81,6 +84,9 @@ app.post<{
       initialPrompt: initial_prompt,
       spawnArgs: spawn_args,
       metadata,
+      parentSessionId: parent_session_id,
+      depth,
+      budget,
     });
 
     // Register session with token tracker
@@ -89,12 +95,22 @@ app.post<{
     return reply.status(201).send({
       session_id: result.sessionId,
       status: result.status,
+      depth: result.chain.depth,
+      parent_session_id: result.chain.parent_session_id,
+      budget: result.chain.budget,
     });
   } catch (e) {
     const message = (e as Error).message;
     if (message.includes('pool full')) {
       return reply.status(503).send({ error: message });
     }
+    // Budget/depth errors come as JSON strings — try to parse and return structured
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.error === 'DEPTH_EXCEEDED' || parsed.error === 'BUDGET_EXHAUSTED') {
+        return reply.status(409).send(parsed);
+      }
+    } catch { /* not JSON, fall through */ }
     return reply.status(500).send({ error: message });
   }
 });
@@ -153,6 +169,10 @@ app.get<{
       prompt_count: result.promptCount,
       last_activity_at: result.lastActivityAt.toISOString(),
       workdir: result.workdir,
+      parent_session_id: result.chain.parent_session_id,
+      depth: result.chain.depth,
+      children: result.chain.children,
+      budget: result.chain.budget,
     });
   } catch (e) {
     const message = (e as Error).message;
@@ -200,6 +220,10 @@ app.get('/sessions', async (_request, reply) => {
       prompt_count: s.promptCount,
       last_activity_at: s.lastActivityAt.toISOString(),
       workdir: s.workdir,
+      parent_session_id: s.chain.parent_session_id,
+      depth: s.chain.depth,
+      children: s.chain.children,
+      budget: s.chain.budget,
     })),
   );
 });

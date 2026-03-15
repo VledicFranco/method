@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FastifyInstance } from 'fastify';
-import type { SessionPool } from './pool.js';
+import type { SessionPool, SessionChainInfo } from './pool.js';
 import type { UsagePoller, SubscriptionUsage, UsageBucket, UsagePollerStatus } from './usage-poller.js';
 import type { TokenTracker } from './token-tracker.js';
 
@@ -245,25 +245,57 @@ export function renderSessionRows(
     promptCount: number;
     lastActivityAt: Date;
     workdir: string;
+    chain: SessionChainInfo;
   }>,
   tokenTracker: TokenTracker,
 ): string {
   if (sessions.length === 0) {
     return `
       <tr>
-        <td colspan="8" style="text-align: center; color: var(--muted); padding: 2rem;">
+        <td colspan="9" style="text-align: center; color: var(--muted); padding: 2rem;">
           No sessions. POST /sessions to spawn one.
         </td>
       </tr>`;
   }
 
-  return sessions
+  // Sort sessions into tree order: roots first, then children by depth
+  const byId = new Map(sessions.map(s => [s.sessionId, s]));
+  const ordered: typeof sessions = [];
+  const visited = new Set<string>();
+
+  function walk(sessionId: string): void {
+    if (visited.has(sessionId)) return;
+    visited.add(sessionId);
+    const s = byId.get(sessionId);
+    if (!s) return;
+    ordered.push(s);
+    for (const childId of s.chain.children) {
+      walk(childId);
+    }
+  }
+
+  // Start with roots (depth 0 or no parent)
+  for (const s of sessions) {
+    if (!s.chain.parent_session_id) {
+      walk(s.sessionId);
+    }
+  }
+  // Add any orphans not yet visited
+  for (const s of sessions) {
+    if (!visited.has(s.sessionId)) {
+      ordered.push(s);
+    }
+  }
+
+  return ordered
     .map((session) => {
       const shortId = session.sessionId.substring(0, 8);
       const badgeClass = statusBadgeClass(session.status);
       const usage = tokenTracker.getUsage(session.sessionId);
       const methodSid = (session.metadata as any)?.methodology_session_id ?? null;
       const workdirShort = session.workdir.split(/[\\/]/).pop() ?? session.workdir;
+      const depth = session.chain.depth;
+      const indent = depth > 0 ? `${'&nbsp;&nbsp;'.repeat(depth)}${'└─ '}` : '';
 
       let tokensCell: string;
       let cacheCell: string;
@@ -282,10 +314,15 @@ export function renderSessionRows(
         cacheCell = `<span style="color: var(--muted);">&mdash;</span>`;
       }
 
+      const depthBadge = depth > 0
+        ? `<span class="depth-badge">L${depth}</span>`
+        : '';
+
       return `
       <tr>
-        <td class="mono session-id">${escapeHtml(shortId)}</td>
+        <td class="mono session-id">${indent}${escapeHtml(shortId)}</td>
         <td><span class="status ${badgeClass}">${escapeHtml(session.status)}</span></td>
+        <td class="mono depth-cell" style="text-align:center">${depthBadge}</td>
         <td class="mono workdir">${escapeHtml(workdirShort)}</td>
         <td class="mono method-sid">${methodSid ? escapeHtml(methodSid) : '&mdash;'}</td>
         <td class="mono prompt-count" style="text-align:center">${session.promptCount}</td>

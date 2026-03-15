@@ -1,6 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import { spawnSession, type PtySession } from './pty-session.js';
 
+// ── PRD 006: Session chain types ──────────────────────────────
+
+export interface SessionBudget {
+  max_depth: number;
+  max_agents: number;
+  agents_spawned: number;
+}
+
+export interface SessionChainInfo {
+  parent_session_id: string | null;
+  depth: number;
+  children: string[];
+  budget: SessionBudget;
+}
+
+// ── Existing types (extended) ─────────────────────────────────
+
 export interface SessionStatusInfo {
   sessionId: string;
   status: string;
@@ -9,6 +26,7 @@ export interface SessionStatusInfo {
   promptCount: number;
   lastActivityAt: Date;
   workdir: string;
+  chain: SessionChainInfo;
 }
 
 export interface PoolStats {
@@ -25,7 +43,10 @@ export interface SessionPool {
     initialPrompt?: string;
     spawnArgs?: string[];
     metadata?: Record<string, unknown>;
-  }): Promise<{ sessionId: string; status: string }>;
+    parentSessionId?: string;
+    depth?: number;
+    budget?: Partial<SessionBudget>;
+  }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string): { sessionId: string; killed: boolean };
@@ -41,12 +62,16 @@ export interface PoolOptions {
 }
 
 const DEFAULT_MAX_SESSIONS = 5;
+const DEFAULT_MAX_DEPTH = 3;
+const DEFAULT_MAX_AGENTS = 10;
 
 /**
  * Create a session pool that manages multiple Claude Code PTY sessions.
  *
  * The pool enforces a maximum session count and provides a uniform interface
  * for creating, prompting, inspecting, and killing sessions.
+ *
+ * PRD 006: Sessions now track parent-child chains with budget enforcement.
  */
 export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
@@ -56,17 +81,94 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessions = new Map<string, PtySession>();
   const sessionMetadata = new Map<string, Record<string, unknown>>();
   const sessionWorkdirs = new Map<string, string>();
+  const sessionChains = new Map<string, SessionChainInfo>();
 
   // Pool-level counters
   let totalSpawned = 0;
   const startedAt = new Date();
 
+  function getChain(sessionId: string): SessionChainInfo {
+    return sessionChains.get(sessionId) ?? {
+      parent_session_id: null,
+      depth: 0,
+      children: [],
+      budget: { max_depth: DEFAULT_MAX_DEPTH, max_agents: DEFAULT_MAX_AGENTS, agents_spawned: 0 },
+    };
+  }
+
+  /**
+   * Find the root session of a chain and return its shared budget reference.
+   * Budget is tracked at the root — all agents in a chain share the same budget.
+   */
+  function getRootBudget(sessionId: string): SessionBudget | null {
+    const chain = sessionChains.get(sessionId);
+    if (!chain) return null;
+
+    // Walk up to root
+    let currentId = sessionId;
+    let current = chain;
+    while (current.parent_session_id) {
+      const parent = sessionChains.get(current.parent_session_id);
+      if (!parent) break;
+      currentId = current.parent_session_id;
+      current = parent;
+    }
+    return current.budget;
+  }
+
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata }): Promise<{ sessionId: string; status: string }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
         throw new Error(`Session pool full — maximum ${maxSessions} active sessions`);
+      }
+
+      // Determine chain properties
+      const effectiveDepth = depth ?? 0;
+      const effectiveBudget: SessionBudget = {
+        max_depth: budget?.max_depth ?? DEFAULT_MAX_DEPTH,
+        max_agents: budget?.max_agents ?? DEFAULT_MAX_AGENTS,
+        agents_spawned: budget?.agents_spawned ?? 0,
+      };
+
+      // If this is a child session, inherit and validate budget from parent
+      if (parentSessionId) {
+        const parentChain = sessionChains.get(parentSessionId);
+        if (parentChain) {
+          // Use parent's budget as the source of truth (shared budget across chain)
+          const rootBudget = getRootBudget(parentSessionId) ?? parentChain.budget;
+
+          // Depth check
+          if (effectiveDepth >= rootBudget.max_depth) {
+            throw new Error(
+              JSON.stringify({
+                error: 'DEPTH_EXCEEDED',
+                message: `Depth limit exceeded: depth ${effectiveDepth} >= max_depth ${rootBudget.max_depth}. Cannot spawn deeper.`,
+                budget: rootBudget,
+              }),
+            );
+          }
+
+          // Agent count check
+          if (rootBudget.agents_spawned >= rootBudget.max_agents) {
+            throw new Error(
+              JSON.stringify({
+                error: 'BUDGET_EXHAUSTED',
+                message: `Agent budget exceeded: ${rootBudget.agents_spawned}/${rootBudget.max_agents} agents spawned. Increase budget or complete existing work.`,
+                budget: rootBudget,
+              }),
+            );
+          }
+
+          // Increment the root budget's agent count
+          rootBudget.agents_spawned++;
+
+          // Copy current root budget values for the child
+          effectiveBudget.max_depth = rootBudget.max_depth;
+          effectiveBudget.max_agents = rootBudget.max_agents;
+          effectiveBudget.agents_spawned = rootBudget.agents_spawned;
+        }
       }
 
       const sessionId = randomUUID();
@@ -85,9 +187,27 @@ export function createPool(options?: PoolOptions): SessionPool {
       if (metadata) {
         sessionMetadata.set(sessionId, metadata);
       }
+
+      // Record chain info
+      const chainInfo: SessionChainInfo = {
+        parent_session_id: parentSessionId ?? null,
+        depth: effectiveDepth,
+        children: [],
+        budget: effectiveBudget,
+      };
+      sessionChains.set(sessionId, chainInfo);
+
+      // Register as child of parent
+      if (parentSessionId) {
+        const parentChain = sessionChains.get(parentSessionId);
+        if (parentChain) {
+          parentChain.children.push(sessionId);
+        }
+      }
+
       totalSpawned++;
 
-      return { sessionId, status: session.status };
+      return { sessionId, status: session.status, chain: chainInfo };
     },
 
     async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
@@ -116,6 +236,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         promptCount: session.promptCount,
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
+        chain: getChain(sessionId),
       };
     },
 
@@ -139,6 +260,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         promptCount: session.promptCount,
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
+        chain: getChain(sessionId),
       }));
     },
 
@@ -165,6 +287,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessions.delete(sessionId);
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
+            sessionChains.delete(sessionId);
             removed++;
           }
         }

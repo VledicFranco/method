@@ -252,3 +252,19 @@ export type MethodologyLoadMethodResult = {
   }>;
   message: string;
 };
+
+// ── PRD 006: Recursive Agent Orchestration ────────────────────
+
+export type SessionBudget = {
+  max_depth: number;
+  max_agents: number;
+  agents_spawned: number;
+};
+
+export type SessionChain = {
+  session_id: string;
+  parent_session_id: string | null;
+  depth: number;
+  children: string[];
+  budget: SessionBudget;
+};

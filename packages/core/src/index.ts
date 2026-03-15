@@ -1,4 +1,5 @@
 export * from './types.js';
+export { validateSessionBudget } from './session-chain.js';
 export { listMethodologies, loadMethodology } from './loader.js';
 export { getMethodologyRouting } from './routing.js';
 export { createSession, createSessionManager } from './state.js';

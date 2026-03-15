@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPool, type SessionPool } from '../pool.js';
+import { createPool, type SessionPool, type SessionChainInfo } from '../pool.js';
 import type { PtySession, SessionStatus } from '../pty-session.js';
 
 /**
@@ -31,34 +31,64 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
   };
 }
 
-/**
- * Build a pool that uses a fake spawnSession function for testing.
- *
- * We can't cleanly inject a mock into createPool (it imports spawnSession directly),
- * so these tests exercise the pool's own data-structure logic by calling the real
- * createPool and accepting that the underlying PTY spawn will fail in CI.
- *
- * For unit-level coverage of metadata/workdir/stats bookkeeping, we test the
- * pool's internal contract via its public API using a thin wrapper that
- * intercepts session creation.
- */
+const DEFAULT_CHAIN: SessionChainInfo = {
+  parent_session_id: null,
+  depth: 0,
+  children: [],
+  budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
+};
 
-// Since we can't inject a mock spawnSession into the real createPool,
-// we build a minimal pool-like object that mirrors createPool's logic
-// but uses fakePtySession. This tests the pool's bookkeeping without PTY deps.
+/**
+ * Build a test pool that uses fakePtySession for unit testing.
+ * Mirrors createPool's bookkeeping logic without PTY dependencies.
+ * PRD 006: Includes session chain tracking.
+ */
 function createTestPool(maxSessions = 5) {
   const sessions = new Map<string, PtySession>();
   const sessionMetadata = new Map<string, Record<string, unknown>>();
   const sessionWorkdirs = new Map<string, string>();
+  const sessionChains = new Map<string, SessionChainInfo>();
   let totalSpawned = 0;
   const startedAt = new Date();
   let nextId = 0;
 
   const pool: SessionPool = {
-    async create({ workdir, initialPrompt: _initialPrompt, spawnArgs: _spawnArgs, metadata }) {
+    async create({ workdir, initialPrompt: _initialPrompt, spawnArgs: _spawnArgs, metadata, parentSessionId, depth, budget }) {
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
         throw new Error(`Session pool full — maximum ${maxSessions} active sessions`);
+      }
+
+      const effectiveDepth = depth ?? 0;
+      const effectiveBudget = {
+        max_depth: budget?.max_depth ?? 3,
+        max_agents: budget?.max_agents ?? 10,
+        agents_spawned: budget?.agents_spawned ?? 0,
+      };
+
+      // Budget validation for child sessions
+      if (parentSessionId) {
+        const parentChain = sessionChains.get(parentSessionId);
+        if (parentChain) {
+          if (effectiveDepth >= parentChain.budget.max_depth) {
+            throw new Error(JSON.stringify({
+              error: 'DEPTH_EXCEEDED',
+              message: `Depth limit exceeded: depth ${effectiveDepth} >= max_depth ${parentChain.budget.max_depth}`,
+              budget: parentChain.budget,
+            }));
+          }
+          if (parentChain.budget.agents_spawned >= parentChain.budget.max_agents) {
+            throw new Error(JSON.stringify({
+              error: 'BUDGET_EXHAUSTED',
+              message: `Agent budget exceeded: ${parentChain.budget.agents_spawned}/${parentChain.budget.max_agents}`,
+              budget: parentChain.budget,
+            }));
+          }
+          parentChain.budget.agents_spawned++;
+          effectiveBudget.max_depth = parentChain.budget.max_depth;
+          effectiveBudget.max_agents = parentChain.budget.max_agents;
+          effectiveBudget.agents_spawned = parentChain.budget.agents_spawned;
+        }
       }
 
       const sessionId = `test-session-${nextId++}`;
@@ -68,9 +98,25 @@ function createTestPool(maxSessions = 5) {
       if (metadata) {
         sessionMetadata.set(sessionId, metadata);
       }
+
+      const chainInfo: SessionChainInfo = {
+        parent_session_id: parentSessionId ?? null,
+        depth: effectiveDepth,
+        children: [],
+        budget: effectiveBudget,
+      };
+      sessionChains.set(sessionId, chainInfo);
+
+      if (parentSessionId) {
+        const parentChain = sessionChains.get(parentSessionId);
+        if (parentChain) {
+          parentChain.children.push(sessionId);
+        }
+      }
+
       totalSpawned++;
 
-      return { sessionId, status: session.status };
+      return { sessionId, status: session.status, chain: chainInfo };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -91,6 +137,7 @@ function createTestPool(maxSessions = 5) {
         promptCount: session.promptCount,
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
+        chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
       };
     },
 
@@ -110,6 +157,7 @@ function createTestPool(maxSessions = 5) {
         promptCount: session.promptCount,
         lastActivityAt: session.lastActivityAt,
         workdir: sessionWorkdirs.get(sessionId) ?? '',
+        chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
       }));
     },
 
@@ -134,6 +182,7 @@ function createTestPool(maxSessions = 5) {
             sessions.delete(sessionId);
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
+            sessionChains.delete(sessionId);
             removed++;
           }
         }
@@ -378,6 +427,106 @@ describe('SessionPool', () => {
     it('returns 0 when no sessions exist', () => {
       const removed = pool.removeDead(0);
       assert.equal(removed, 0);
+    });
+  });
+
+  // ── PRD 006: Session Chain Tests ──────────────────────────────
+
+  describe('session chains (PRD 006)', () => {
+    it('root session has depth 0 and no parent', async () => {
+      const result = await pool.create({ workdir: '/tmp/root' });
+      const status = pool.status(result.sessionId);
+
+      assert.equal(status.chain.depth, 0);
+      assert.equal(status.chain.parent_session_id, null);
+      assert.deepEqual(status.chain.children, []);
+    });
+
+    it('child session records parent and depth', async () => {
+      const parent = await pool.create({ workdir: '/tmp/parent' });
+      const child = await pool.create({
+        workdir: '/tmp/child',
+        parentSessionId: parent.sessionId,
+        depth: 1,
+      });
+
+      const childStatus = pool.status(child.sessionId);
+      assert.equal(childStatus.chain.parent_session_id, parent.sessionId);
+      assert.equal(childStatus.chain.depth, 1);
+
+      const parentStatus = pool.status(parent.sessionId);
+      assert.deepEqual(parentStatus.chain.children, [child.sessionId]);
+    });
+
+    it('rejects spawn when depth exceeds max_depth', async () => {
+      const root = await pool.create({
+        workdir: '/tmp/root',
+        budget: { max_depth: 2, max_agents: 10 },
+      });
+
+      await assert.rejects(
+        () => pool.create({
+          workdir: '/tmp/deep',
+          parentSessionId: root.sessionId,
+          depth: 2,
+        }),
+        /DEPTH_EXCEEDED/,
+      );
+    });
+
+    it('rejects spawn when agent budget is exhausted', async () => {
+      const root = await pool.create({
+        workdir: '/tmp/root',
+        budget: { max_depth: 5, max_agents: 1 },
+      });
+
+      // First child — should succeed (agents_spawned goes from 0 to 1)
+      await pool.create({
+        workdir: '/tmp/child1',
+        parentSessionId: root.sessionId,
+        depth: 1,
+      });
+
+      // Second child — should fail (agents_spawned = 1, max_agents = 1)
+      await assert.rejects(
+        () => pool.create({
+          workdir: '/tmp/child2',
+          parentSessionId: root.sessionId,
+          depth: 1,
+        }),
+        /BUDGET_EXHAUSTED/,
+      );
+    });
+
+    it('returns chain info from create()', async () => {
+      const result = await pool.create({
+        workdir: '/tmp/root',
+        budget: { max_depth: 5, max_agents: 20 },
+      });
+
+      assert.equal(result.chain.depth, 0);
+      assert.equal(result.chain.parent_session_id, null);
+      assert.equal(result.chain.budget.max_depth, 5);
+      assert.equal(result.chain.budget.max_agents, 20);
+    });
+
+    it('list() includes chain info for all sessions', async () => {
+      const root = await pool.create({ workdir: '/tmp/root' });
+      await pool.create({
+        workdir: '/tmp/child',
+        parentSessionId: root.sessionId,
+        depth: 1,
+      });
+
+      const sessions = pool.list();
+      assert.equal(sessions.length, 2);
+
+      const rootSession = sessions.find(s => s.chain.depth === 0);
+      const childSession = sessions.find(s => s.chain.depth === 1);
+
+      assert.ok(rootSession);
+      assert.ok(childSession);
+      assert.equal(childSession!.chain.parent_session_id, rootSession!.sessionId);
     });
   });
 });

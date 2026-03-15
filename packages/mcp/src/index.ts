@@ -278,7 +278,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "bridge_spawn",
-      description: "Spawn a new Claude Code agent session via the bridge.",
+      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement (PRD 006).",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -298,6 +298,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           session_id: {
             type: "string",
             description: "Optional methodology session ID to correlate with the bridge session",
+          },
+          parent_session_id: {
+            type: "string",
+            description: "Bridge session ID of the parent agent (creates a parent-child chain)",
+          },
+          depth: {
+            type: "number",
+            description: "Recursion depth of the spawned agent (0 = root, increments per level)",
+          },
+          budget: {
+            type: "object",
+            properties: {
+              max_depth: { type: "number", description: "Maximum recursion depth (default: 3)" },
+              max_agents: { type: "number", description: "Maximum total agents in chain (default: 10)" },
+            },
+            description: "Budget constraints for the session chain",
           },
         },
         required: ["workdir"],
@@ -529,11 +545,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_spawn": {
-        const { workdir, spawn_args, initial_prompt, session_id } = z.object({
+        const { workdir, spawn_args, initial_prompt, session_id, parent_session_id, depth, budget } = z.object({
           workdir: z.string(),
           spawn_args: z.array(z.string()).optional(),
           initial_prompt: z.string().optional(),
           session_id: z.string().optional(),
+          parent_session_id: z.string().optional(),
+          depth: z.number().optional(),
+          budget: z.object({
+            max_depth: z.number().optional(),
+            max_agents: z.number().optional(),
+          }).optional(),
         }).parse(args);
 
         const body: Record<string, unknown> = { workdir };
@@ -543,6 +565,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (session_id) {
           body.metadata = { methodology_session_id: session_id };
         }
+        // PRD 006: parent-child chain fields
+        if (parent_session_id) body.parent_session_id = parent_session_id;
+        if (depth !== undefined) body.depth = depth;
+        if (budget) body.budget = budget;
 
         try {
           const res = await fetch(`${BRIDGE_URL}/sessions`, {
@@ -553,13 +579,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+            // Surface structured budget errors from bridge
+            if ((errBody as any).error === 'DEPTH_EXCEEDED' || (errBody as any).error === 'BUDGET_EXHAUSTED') {
+              throw new Error(`Budget rejected: ${(errBody as any).message}`);
+            }
+            throw new Error(`Bridge error: ${(errBody as any).error ?? (errBody as any).message ?? res.statusText}`);
           }
 
-          const data = await res.json() as { session_id: string; status: string };
+          const data = await res.json() as {
+            session_id: string;
+            status: string;
+            depth?: number;
+            parent_session_id?: string | null;
+            budget?: { max_depth: number; max_agents: number; agents_spawned: number };
+          };
           return ok(JSON.stringify({
             bridge_session_id: data.session_id,
             status: data.status,
+            depth: data.depth ?? 0,
+            parent_session_id: data.parent_session_id ?? null,
+            budget: data.budget ?? null,
             message: "Agent spawned. Call bridge_prompt to send work.",
           }, null, 2));
         } catch (e) {
@@ -652,6 +691,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             status: string;
             queue_depth: number;
             metadata?: Record<string, unknown>;
+            parent_session_id?: string | null;
+            depth?: number;
+            children?: string[];
+            budget?: { max_depth: number; max_agents: number; agents_spawned: number };
           }>;
 
           const formatted = bridgeSessions.map(s => ({
@@ -660,12 +703,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             queue_depth: s.queue_depth,
             metadata: s.metadata ?? {},
             methodology_session_id: (s.metadata as any)?.methodology_session_id ?? null,
+            parent_session_id: s.parent_session_id ?? null,
+            depth: s.depth ?? 0,
+            children: s.children ?? [],
+            budget: s.budget ?? null,
           }));
 
           const active = bridgeSessions.filter(s => s.status !== 'dead').length;
           return ok(JSON.stringify({
             sessions: formatted,
-            capacity: { active, max: bridgeSessions.length },  // max is approximate — bridge enforces actual limit
+            capacity: { active, max: bridgeSessions.length },
             message: `${active} of ${bridgeSessions.length} sessions active`,
           }, null, 2));
         } catch (e) {

@@ -377,6 +377,21 @@ body::after {
   margin-top: .15rem;
 }
 
+/* ── DEPTH BADGE (PRD 006) ────────────────────────────── */
+.depth-badge {
+  display: inline-block;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--nebular);
+  background: rgba(155,127,212,.10);
+  padding: .15rem .4rem;
+  border-radius: 2px;
+}
+
+.depth-cell { color: var(--nebular); }
+
 /* ── DIVIDER ─────────────────────────────────────────── */
 .section-divider {
   height: 1px;
@@ -502,6 +517,7 @@ body::after {
       <tr>
         <th>Session ID</th>
         <th>Status</th>
+        <th style="text-align:center">Depth</th>
         <th>Workdir</th>
         <th>Method Session</th>
         <th style="text-align:center">Prompts</th>
@@ -593,7 +609,7 @@ body::after {
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-left">
-      @method/bridge v{{bridge.version}} &middot; PRD-005 Phase 2
+      @method/bridge v{{bridge.version}} &middot; PRD-006 Phase 1
     </div>
     <div style="display: flex; align-items: center; gap: 1.25rem;">
       <button id="ref-toggle" onclick="document.getElementById('ref-panel').style.display=document.getElementById('ref-panel').style.display==='none'?'block':'none'" style="
