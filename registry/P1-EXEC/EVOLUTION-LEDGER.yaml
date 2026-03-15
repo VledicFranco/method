@@ -7,8 +7,8 @@ evolution_ledger:
   last_updated: "2026-03-14"
 
   summary:
-    total_retrospectives_processed: 3
-    total_gap_candidates: 2
+    total_retrospectives_processed: 17
+    total_gap_candidates: 3
     total_evolutions: 1
     total_card_revisions: 0
 
@@ -32,6 +32,21 @@ evolution_ledger:
       projects: ["pv-method", "t1-cortex"]
       summary: "No guidance on when M1-COUNCIL overhead is proportionate vs M3-TMP"
 
+    - gap_id: "GC-P1EXEC-003"
+      target: "M1-COUNCIL YAML integrity"
+      status: open
+      observation_count: 1
+      first_observed: "2026-03-14"
+      sessions: ["prd004-runtime-exec"]
+      projects: ["pv-method"]
+      summary: >
+        M1-COUNCIL.yaml has a pre-existing YAML parsing error (duplicated mapping key
+        at line 225) that prevents listMethodologies from parsing it. methodology_route
+        can select M1-COUNCIL via arm matching but selectedMethod metadata is null.
+        Detected during PRD 004 runtime integration testing.
+      threshold_met: "1 HIGH = immediate gap candidate"
+      improvement_target: abstract_method
+
   evolution_history:
     - evolution_id: "EVO-P1EXEC-001"
       gap_id: "GC-P1EXEC-001"
@@ -47,3 +62,5 @@ evolution_ledger:
 
   observation_counts:
     M1-COUNCIL.domain_theory: { HIGH: 0, MEDIUM: 7, LOW: 0, total_sessions: 1 }
+    M1-COUNCIL.proportionality: { HIGH: 0, MEDIUM: 0, LOW: 1, total_sessions: 2 }
+    M1-COUNCIL.yaml_integrity: { HIGH: 1, MEDIUM: 0, LOW: 0, total_sessions: 1 }

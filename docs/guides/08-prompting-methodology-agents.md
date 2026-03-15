@@ -144,6 +144,24 @@ When spawning sub-agents:
 6. State which P1-EXEC method the sub-agent should use
 ```
 
+### Spawning Sub-Agents via Bridge
+
+When the orchestrator uses the bridge to spawn sub-agents, use `bridge_spawn` with permission bypass:
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  spawn_args: ["--allowedTools", "mcp__method__*"],
+  session_id: "current-session-id"
+})
+```
+
+The `spawn_args` field passes CLI flags to the spawned Claude Code process:
+- `["--dangerously-skip-permissions"]` — bypass all permission prompts (development only)
+- `["--allowedTools", "mcp__method__*"]` — allow methodology MCP tools without prompting (production)
+
+The `session_id` parameter auto-correlates the methodology session with the bridge session — no manual ID mapping needed.
+
 **The critical constraint:** "Do not let sub-agents make scope decisions." In every session, the orchestrator made better scope decisions than sub-agents would have because it holds the full context.
 
 ## Project Card Integration
