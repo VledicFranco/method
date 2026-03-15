@@ -589,4 +589,42 @@ log:
 
       next_agenda_items:
         - "AG-023: Commission Phase A — live bridge integration test (SC-4/5/6)"
+
+    - id: SESSION-015
+      date: "2026-03-14"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Design PRD 008 — Agent Visibility and Communication"
+
+      decisions:
+        - id: D-026
+          item: "PRD 008 scope"
+          decision: >
+            4 components, conclave-inspired but bridge-native:
+            (1) Progress channels — per-agent structured status updates
+            (2) Event notifications — completion/error/escalation via consumption cursor
+            (3) Result handoff — structured output replaces PTY parsing
+            (4) Heartbeat — stall detection
+            NOT in scope: full conclave integration, JWT, exploration cursors,
+            sibling communication, rate limiting. Phase 2 if needed.
+          status: decided
+          for: "Conclave patterns proven. Bridge-native ships faster than separate server. 4 features cover all identified gaps."
+          against: "Orion wanted sibling communication — deferred as Phase 2."
+          essence_check: "Makes methodology execution pipeline observable and reliable. Faithful."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: +1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+        process_improvement_signal: "Sub-council research (conclave exploration) was valuable — spawned sub-agent returned rich analysis. Pattern works."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Decision D-026: PRD 008 scope from conclave patterns"
+        - "Conclave analysis in sub-agent output"
+
+      next_agenda_items:
+        - "AG-024: Draft PRD 008 (Agent Visibility and Communication)"
         - "AG-007: CLAUDE.md for pv-method — promote to P0"
