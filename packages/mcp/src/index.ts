@@ -57,7 +57,7 @@ const sessionIdProperty = {
 
 // Server
 const server = new Server(
-  { name: "method", version: "0.4.0" },
+  { name: "method", version: "0.5.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -363,6 +363,105 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {},
       },
     },
+    {
+      name: "bridge_progress",
+      description: "Report progress from a bridge agent session. Call at natural breakpoints: step transitions, significant work, sub-agent spawns.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID (from spawn or BRIDGE_SESSION_ID env var)",
+          },
+          type: {
+            type: "string",
+            enum: ["step_started", "step_completed", "working_on", "sub_agent_spawned"],
+            description: "Progress event type",
+          },
+          content: {
+            type: "object",
+            description: "Progress details: { methodology?, method?, step?, step_name?, description?, sub_agent_id? }",
+          },
+        },
+        required: ["bridge_session_id", "type"],
+      },
+    },
+    {
+      name: "bridge_event",
+      description: "Report a lifecycle event from a bridge agent session. Call at lifecycle boundaries: completion, errors, escalations.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID (from spawn or BRIDGE_SESSION_ID env var)",
+          },
+          type: {
+            type: "string",
+            enum: ["completed", "error", "escalation", "budget_warning"],
+            description: "Lifecycle event type",
+          },
+          content: {
+            type: "object",
+            description: "Event details: { result?, error_message?, escalation_question?, budget_status? }",
+          },
+        },
+        required: ["bridge_session_id", "type"],
+      },
+    },
+    {
+      name: "bridge_read_progress",
+      description: "Read progress messages from a child bridge agent session. Uses consumption cursor pattern — pass since_sequence from previous call for incremental updates.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID of the child agent to read progress from",
+          },
+          since_sequence: {
+            type: "number",
+            description: "Read messages after this sequence number (0 for full history, or last_sequence from previous call)",
+          },
+        },
+        required: ["bridge_session_id"],
+      },
+    },
+    {
+      name: "bridge_read_events",
+      description: "Read lifecycle events from a child bridge agent session. Uses consumption cursor pattern — pass since_sequence from previous call for incremental updates.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID of the child agent to read events from",
+          },
+          since_sequence: {
+            type: "number",
+            description: "Read events after this sequence number (0 for full history, or last_sequence from previous call)",
+          },
+        },
+        required: ["bridge_session_id"],
+      },
+    },
+    {
+      name: "bridge_all_events",
+      description: "Read lifecycle events from ALL active bridge sessions. For cross-cutting visibility — council or human oversight of all commissioned work.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          since_sequence: {
+            type: "number",
+            description: "Read events after this sequence number (0 for full history)",
+          },
+          filter_type: {
+            type: "string",
+            description: "Optional: filter to specific event type (completed, error, escalation, etc.)",
+          },
+        },
+      },
+    },
   ],
 }));
 
@@ -419,6 +518,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { session_id } = sessionInput.parse(args);
         const session = sessions.getOrCreate(session_id ?? '__default__');
         const result = session.advance();
+
+        // Auto-progress: if running in a bridge session, report step transition
+        const bridgeUrl = process.env.BRIDGE_URL;
+        const bridgeSessionId = process.env.BRIDGE_SESSION_ID;
+        if (bridgeUrl && bridgeSessionId) {
+          // Fire-and-forget: don't block step_advance on bridge response
+          const progressPayload = (type: string, content: Record<string, unknown>) =>
+            fetch(`${bridgeUrl}/sessions/${bridgeSessionId}/channels/progress`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type, content, sender: bridgeSessionId }),
+            }).catch(() => { /* non-fatal */ });
+
+          progressPayload('step_completed', {
+            methodology: result.methodologyId,
+            method: result.methodId,
+            step: result.previousStep.id,
+            step_name: result.previousStep.name,
+          });
+
+          if (result.nextStep) {
+            progressPayload('step_started', {
+              methodology: result.methodologyId,
+              method: result.methodId,
+              step: result.nextStep.id,
+              step_name: result.nextStep.name,
+            });
+          }
+        }
+
         return ok(JSON.stringify(result, null, 2));
       }
 
@@ -715,6 +844,150 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             capacity: { active, max: bridgeSessions.length },
             message: `${active} of ${bridgeSessions.length} sessions active`,
           }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_progress": {
+        const { bridge_session_id, type: progressType, content: progressContent } = z.object({
+          bridge_session_id: z.string(),
+          type: z.enum(["step_started", "step_completed", "working_on", "sub_agent_spawned"]),
+          content: z.record(z.unknown()).optional(),
+        }).parse(args);
+
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: progressType, content: progressContent ?? {}, sender: bridge_session_id }),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json() as { sequence: number; acknowledged: boolean };
+          return ok(JSON.stringify({
+            sequence: data.sequence,
+            acknowledged: data.acknowledged,
+            message: `Progress reported: ${progressType}`,
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_event": {
+        const { bridge_session_id, type: eventType, content: eventContent } = z.object({
+          bridge_session_id: z.string(),
+          type: z.enum(["completed", "error", "escalation", "budget_warning"]),
+          content: z.record(z.unknown()).optional(),
+        }).parse(args);
+
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: eventType, content: eventContent ?? {}, sender: bridge_session_id }),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json() as { sequence: number; acknowledged: boolean };
+          return ok(JSON.stringify({
+            sequence: data.sequence,
+            acknowledged: data.acknowledged,
+            message: `Event reported: ${eventType}`,
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_read_progress": {
+        const { bridge_session_id, since_sequence } = z.object({
+          bridge_session_id: z.string(),
+          since_sequence: z.number().optional(),
+        }).parse(args);
+
+        try {
+          const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress${qs}`);
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json();
+          return ok(JSON.stringify(data, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_read_events": {
+        const { bridge_session_id, since_sequence } = z.object({
+          bridge_session_id: z.string(),
+          since_sequence: z.number().optional(),
+        }).parse(args);
+
+        try {
+          const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events${qs}`);
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json();
+          return ok(JSON.stringify(data, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_all_events": {
+        const { since_sequence, filter_type } = z.object({
+          since_sequence: z.number().optional(),
+          filter_type: z.string().optional(),
+        }).parse(args);
+
+        try {
+          const params = new URLSearchParams();
+          if (since_sequence !== undefined) params.set('since_sequence', String(since_sequence));
+          if (filter_type) params.set('filter_type', filter_type);
+          const qs = params.toString() ? `?${params.toString()}` : '';
+          const res = await fetch(`${BRIDGE_URL}/channels/events${qs}`);
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json();
+          return ok(JSON.stringify(data, null, 2));
         } catch (e) {
           if (e instanceof TypeError) {
             throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
