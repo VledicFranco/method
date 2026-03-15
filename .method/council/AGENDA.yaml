@@ -35,6 +35,12 @@ agenda:
       owner: "Harlan (implementation)"
       status: open
 
+    - id: AG-011
+      item: "Update Guide 12 with sub-council spawning documentation"
+      rationale: "D-003 added sub-council mechanism to STEER-PROTO. Guide needs updating."
+      owner: "Reva (docs)"
+      status: open
+
   p1_soon:
     - id: AG-004
       item: "Plan STEER-PROTO trial criteria and promotion path"

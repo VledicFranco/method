@@ -42,3 +42,48 @@ log:
         - "Apply D-001: add proportionality heuristic to P1-EXEC predicate_operationalization"
         - "Apply D-002: add DR-13 (YAML validation) to I2-METHOD project card"
         - "AG-004: plan STEER-PROTO trial criteria"
+
+    - id: SESSION-002
+      date: "2026-03-14"
+      type: protocol_improvement
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Add sub-council spawning to STEER-PROTO"
+
+      decisions:
+        - id: D-003
+          item: "Sub-council spawning mechanism"
+          decision: >
+            Add sub-council spawning to STEER-PROTO. The steering council can spawn
+            specialized /council-team sessions for questions requiring expertise the
+            standing council lacks. Sub-councils ADVISE; the steering council DECIDES.
+          status: decided
+          for: >
+            Enables recursive depth for hard decisions. Sub-council produces adversarial
+            analysis from specialists. Logging in .method/council/sub-councils/ preserves
+            the full debate. Proportionality check prevents bureaucracy.
+          against: >
+            Risk of over-spawning sub-councils for questions a member could research.
+            Mitigated by proportionality criteria: expertise gap + adversarial value +
+            decision significance must all hold.
+          trigger_criteria:
+            - "The question requires expertise the standing council lacks"
+            - "Adversarial debate (not factual lookup) adds value"
+            - "The decision is significant (architecture, essence, irreversible)"
+          mechanism:
+            spawn: "Agent tool running /council-team with specific question and tailored cast"
+            artifact: ".method/council/sub-councils/sc-NNN-{topic}.yaml"
+            log_integration: "LOG.yaml session entry gets summary + pointer to sub-council artifact"
+            authority: "Sub-council advises, steering council decides"
+          proportionality_check: "Before spawning: can a member research and report back instead?"
+
+      open_questions:
+        - "Should sub-councils be able to spawn their own sub-councils? (Orion says theoretically yes, practically flag as excessive)"
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+        - ".method/council/sub-councils/ directory created"
+
+      next_agenda_items:
+        - "Apply D-003: update STEERING-PROTOCOL.yaml and steering-council skill"
+        - "AG-009: apply proportionality heuristic to P1-EXEC (from D-001)"
+        - "AG-010: apply DR-13 YAML validation (from D-002)"

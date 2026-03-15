@@ -364,6 +364,57 @@ protocol:
       governance-execution-feedback cycle.
 
   # ═══════════════════════════════════════════════════════
+  # PART 7.5 — SUB-COUNCIL SPAWNING
+  # ═══════════════════════════════════════════════════════
+
+  sub_councils:
+    description: >
+      When the steering council encounters a question that exceeds its collective
+      expertise, it can spawn a specialized sub-council — a fresh /council-team
+      session with specialists tailored to the specific question. The sub-council
+      debates, produces an artifact, and the steering council consumes the result.
+    authority_model: >
+      Sub-councils ADVISE. The steering council DECIDES. The sub-council produces
+      a recommendation with tradeoff analysis; the steering council evaluates it
+      against the project's essence and makes the final call.
+    trigger_criteria:
+      all_must_hold:
+        - "The question requires expertise the standing council lacks — none of the members can credibly argue both sides"
+        - "Adversarial multi-perspective debate adds value — not a factual lookup"
+        - "The decision is significant — affects architecture, essence, or irreversible commitments"
+    when_not_to_spawn:
+      - "A council member can research the question and report back next session"
+      - "The question is factual — look it up, don't debate it"
+      - "The question is already decided — reopen via agenda item, not sub-council"
+    mechanism:
+      spawn: "Use the Agent tool to run /council-team with the specific question and a tailored cast"
+      cast_design: >
+        The sub-council cast is designed for the specific question, NOT reusing the
+        steering council members. The cast should have the disciplines needed to
+        argue the specific tradeoff (e.g., formal methods expert + prompt engineer
+        + performance engineer for a validation approach question).
+      artifact_location: ".method/council/sub-councils/sc-NNN-{topic}.yaml"
+      artifact_schema: |
+        sub_council:
+          id: "SC-001"
+          question: "The specific question the sub-council was asked to address"
+          spawned_by: "Which steering council member raised the question"
+          spawned_in: "SESSION-NNN"
+          cast: [{ name, role, expertise, conviction, blind_spot, voice }]
+          debate_summary: "Key arguments and positions"
+          recommendation: "The sub-council's recommendation"
+          minority_positions: ["Positions argued but not adopted"]
+          confidence: "How confident the sub-council is in its recommendation"
+      log_integration: >
+        The steering council's LOG.yaml session entry includes a sub_councils array
+        with: id, question, spawned_by, artifact_summary (1-2 sentences),
+        full_artifact (path pointer), consumed_by_decision (which decision used it).
+    recursion: >
+      A sub-council could theoretically spawn its own sub-council. In practice, this
+      should be flagged as excessive — if a sub-council can't answer the question,
+      the question needs to be decomposed, not recursed.
+
+  # ═══════════════════════════════════════════════════════
   # PART 8 — PROMOTION PATH
   # ═══════════════════════════════════════════════════════
 
