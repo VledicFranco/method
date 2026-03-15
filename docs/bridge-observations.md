@@ -229,6 +229,17 @@ A background agent successfully scaffolded a full Fastify + passkey auth + PWA p
 - **Path enforcement** — sub-agents commit out-of-scope files (OBS-05, mitigated by card + skill)
 - **Retry on transient errors** — bridge_prompt connection refused (OBS-07)
 
-### Unknown (pending validation)
-- PTY auto-detection feasibility (OBS-09 — PRD 010 drafted, implementation in progress)
-- Bridge cross-project commissioning (workdir set to different repo)
+### Resolved by PRD 010
+- **OBS-01** — auto-channel reporting via PTY watcher (7 pattern matchers, no agent cooperation needed)
+- **OBS-09** — PTY auto-detection implemented and validated
+- **OBS-11** — silent agents now visible via auto-detected tool calls, git commits, test results
+- **OBS-13** — meta-validated: the problem was structural, infrastructure fix was correct
+
+### Validated (this session)
+- **Cross-project bridge commissioning works** — pv-silky voice commission from pv-method bridge (OBS-14 resolved)
+- **PTY auto-detection works in production** — first commission with PRD 010 active showed tool_call, file_activity, idle events from pty-watcher
+- **PR review → merge from parent agent** — PRs #1-3 (pv-method) + PR #1 (pv-silky) all reviewed and merged programmatically
+
+### New bugs found
+- **Live output view shows raw ANSI escapes** — PRD 007's SSE stream doesn't strip ANSI codes before sending to browser. The `strip-ansi` function needs to be applied in the SSE endpoint or client-side.
+- **Initial prompt garbling on long prompts** — PTY paste of 2000+ token prompts produces corrupted text ("ment." instead of full prompt). Likely a terminal width / paste buffer issue. Needs investigation.
