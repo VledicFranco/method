@@ -329,6 +329,102 @@ Guide 8 (prompting) updated: orchestrator prompts should tell agents to call `br
 
 ---
 
+## Known Gaps and Required Pre-Implementation Experiments
+
+Six gaps identified during design review. Gaps 1-3 require experiments before
+implementation begins. Gaps 4-6 are acceptable MVP limitations.
+
+### Gap 1: bridge_prompt delivery reliability (BLOCKING — needs experiment)
+
+Push notifications use `bridge_prompt` to notify the parent. But `bridge_prompt`
+returns empty responses in our experience — the PTY output parser is lossy for
+text responses. If push notifications use the same unreliable channel, they might
+not arrive.
+
+**Key insight:** The empty response problem is in PTY OUTPUT parsing (bridge reads
+agent's stdout). Push notifications go in the OPPOSITE direction (bridge sends TO
+agent's stdin via PTY write). These are different code paths — sending might work
+even when receiving fails.
+
+**Experiment EXP-008-1:** Test bridge_prompt DELIVERY (not response parsing).
+- Spawn an agent via bridge
+- Send it a prompt that asks it to write a file (not respond with text)
+- Check if the file was created
+- If yes: bridge_prompt delivery works even when response parsing is lossy
+- If no: bridge_prompt is fundamentally unreliable and push notifications need
+  a different mechanism (e.g., file-based notification, environment variable flag)
+
+**Mitigation if experiment fails:** Dashboard is the reliable fallback — it reads
+directly from the channel store. Push becomes "best-effort bonus." Agents that
+need reliable notifications poll `bridge_read_events` instead.
+
+### Gap 2: Agent self-identification (BLOCKING — needs design decision)
+
+To call `bridge_progress` or `bridge_event`, the agent needs its own
+`bridge_session_id`. Currently the spawned agent doesn't receive this — only
+the spawner knows it.
+
+**Experiment EXP-008-2:** Test three approaches for injecting session identity:
+- (a) Environment variable: spawn with `BRIDGE_SESSION_ID=abc` — check if the
+  spawned Claude Code agent can read it via `process.env` in tool calls
+- (b) Initial prompt injection: include the session_id in the prompt text —
+  the agent parses it and uses it in tool calls
+- (c) `bridge_whoami` tool: the agent calls a discovery tool that returns its
+  session_id based on the PTY session it's running in
+
+**Decision criteria:** (a) is cleanest if env vars propagate to MCP tool contexts.
+(b) is most reliable but couples identity to prompt text. (c) is most elegant
+but requires matching PTY → session which may be fragile.
+
+### Gap 3: Method MCP → bridge coupling for auto-progress (BLOCKING — needs design)
+
+Auto-progress requires `step_advance` in the method MCP server to POST to the
+bridge. The method MCP and bridge are separate processes. The method MCP needs
+the bridge URL and the agent's bridge_session_id.
+
+**Design decision:** The method MCP reads `BRIDGE_URL` and `BRIDGE_SESSION_ID`
+from environment variables. When `step_advance` fires:
+1. Check if `BRIDGE_URL` is set — if not, skip (non-bridge agent)
+2. POST to `${BRIDGE_URL}/channels/${BRIDGE_SESSION_ID}/progress`
+3. Fire-and-forget (don't block step_advance on bridge response)
+
+**Experiment EXP-008-3:** Test if the method MCP server process has access to
+environment variables set on the spawned Claude Code process. The bridge sets
+env vars on the PTY spawn → does the MCP server subprocess inherit them?
+
+### Gap 4: In-memory only (ACCEPTABLE for MVP)
+
+Channels are in-memory. Bridge restart = all channel data lost. Consistent with
+existing bridge behavior (PTY sessions also die on restart). Persistence is Phase 2.
+
+### Gap 5: No back-pressure (ACCEPTABLE for MVP)
+
+Verbose agents can flood channels. Mitigation: cap at 1000 messages per channel
+per session. Oldest messages evicted. Progress is ephemeral — recent state matters,
+not full history.
+
+### Gap 6: Human root notification (ACCEPTABLE for MVP)
+
+The human's terminal session is not a bridge session. Bridge can't `bridge_prompt`
+the human. Dashboard toasts are the notification channel for the root level.
+OS-level browser notifications (Notification API) if dashboard is open.
+
+---
+
+## Pre-Implementation Experiment Plan
+
+Run these experiments BEFORE implementing. Results determine final design.
+
+| Experiment | Question | Method | Pass criteria | Blocks |
+|---|---|---|---|---|
+| EXP-008-1 | Does bridge_prompt deliver reliably to stdin? | Spawn agent, prompt to write file, check file | File created = delivery works | Push notification design |
+| EXP-008-2 | How does agent learn its session_id? | Test env var, prompt injection, whoami tool | Agent can use session_id in tool calls | All agent-side tools |
+| EXP-008-3 | Does MCP server inherit bridge env vars? | Set BRIDGE_URL on spawn, check in MCP handler | MCP handler reads env var | Auto-progress feature |
+
+**Estimated experiment time:** 30 minutes total. All three can run on the live bridge.
+
+---
+
 ## Out of Scope (MVP)
 
 - Structured result handoff (Component 3)
