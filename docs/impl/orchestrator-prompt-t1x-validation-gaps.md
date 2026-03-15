@@ -48,48 +48,19 @@ For every step you execute, state which P1-EXEC execution method you're using:
 
 ### Retrospective Protocol (MANDATORY)
 
-After completing each method execution, produce a retrospective YAML file. Save to a location accessible from pv-method:
+After completing each method execution, produce a retrospective YAML file.
 
-**Save retrospectives to:** `C:\Users\atfm0\Repositories\pv-method\tmp\retro-t1x-{method}.yaml`
+**Save retrospectives to the project repo:** `.method/retros/retro-YYYY-MM-DD-NNN.yaml`
+(committed to git, NOT tmp/). One file per method execution.
 
-Follow this schema:
+**Full schema:** Read `docs/impl/orchestrator-retro-section.md` in the pv-method repo for the complete schema including essence feedback. If that file isn't accessible, use this minimum:
 
-```yaml
-retrospective:
-  session_id: "T1X-VALGAPS-{method}-20260314"
-  methodology: P2-SD
-  method: "M1-IMPL"  # or whichever method
-  method_version: "3.1"
-  project_card_id: I1-T1X
+- `hardest_decision` (mandatory): step, decision, outcome, guidance_gap
+- `observations` (mandatory, >= 1): step, type, description, evidence, severity, improvement_target
+- `card_feedback` (mandatory): per-rule verdicts + essence section feedback (did `invariant` guide decisions? did `optimize_for` resolve tradeoffs?)
+- `proposed_deltas` (optional): target, location, current, proposed, rationale
 
-  hardest_decision:
-    step: "sigma_X"
-    decision: "What you had to decide"
-    outcome: "What you did and what happened"
-    guidance_gap: true/false
-
-  observations:  # AT LEAST 1 required
-    - step: "sigma_X"
-      type: gap | friction | success | surprise
-      description: "What happened, concretely"
-      evidence: "file:line or artifact reference"
-      severity: LOW | MEDIUM | HIGH
-      improvement_target: abstract_method | project_card | both | unclear
-
-  card_feedback:  # Required — feedback on I1-T1X delivery rules
-    - rule_id: DR-NN
-      verdict: helpful | unhelpful | missing_coverage | overly_restrictive
-      note: "What worked or didn't"
-
-  proposed_deltas:  # Optional
-    - target: abstract_method | project_card
-      location: "where"
-      current: "what it says now"
-      proposed: "what it should say"
-      rationale: "why"
-```
-
-**Be genuine.** This is the first time the I1-T1X project card is used in production. We need real feedback on whether the 20 delivery rules are helpful, overly restrictive, or missing coverage.
+**Be genuine.** We need real feedback on whether the 21 delivery rules and the essence section are helpful, overly restrictive, or missing coverage.
 
 ### Your Execution Protocol
 

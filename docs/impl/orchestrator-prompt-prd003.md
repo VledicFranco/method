@@ -42,50 +42,17 @@ State which execution method you're using for each step.
 
 ### Retrospective Protocol (MANDATORY)
 
-This project uses the Retrospective Protocol (RETRO-PROTO, trial stage). **After completing each method**, you must produce a retrospective YAML artifact following this schema:
+This project uses the Retrospective Protocol (RETRO-PROTO, promoted). **After completing each method**, you must produce a retrospective YAML artifact.
 
-```yaml
-retrospective:
-  session_id: "unique-id"
-  methodology: P2-SD
-  method: "M5-PLAN"  # or M1-IMPL, M6-ARFN, etc.
-  method_version: "1.0"
-  project_card_id: I2-METHOD
+**Full schema and instructions:** Read `docs/impl/orchestrator-retro-section.md` for the complete retrospective schema, including essence feedback.
 
-  hardest_decision:
-    step: "sigma_N"
-    decision: "What you had to decide"
-    outcome: "What you did and what happened"
-    guidance_gap: true/false  # Was the method's guidance silent on this?
-
-  observations:  # AT LEAST 1 required
-    - step: "sigma_N"
-      type: gap | friction | success | surprise
-      description: "What happened, concretely"
-      evidence: "file:line or artifact reference"
-      severity: LOW | MEDIUM | HIGH
-      improvement_target: abstract_method | project_card | both | unclear
-
-  card_feedback:  # Required — feedback on project card delivery rules
-    - rule_id: DR-NN
-      verdict: helpful | unhelpful | missing_coverage | overly_restrictive
-      note: "What worked or didn't"
-
-  proposed_deltas:  # Optional — your suggested changes
-    - target: abstract_method | project_card
-      location: "M1-IMPL sigma_B3 guidance" or "DR-04"
-      current: "what it says now"
-      proposed: "what it should say"
-      rationale: "why"
-```
-
-**Write one retrospective per method executed.** Save to `tmp/retro-prd003-{method}.yaml`. E.g.:
-- `tmp/retro-prd003-m7-prds.yaml` (if you section the PRD)
-- `tmp/retro-prd003-m6-arfn.yaml` (if you refine architecture)
-- `tmp/retro-prd003-m5-plan.yaml` (per planning phase)
-- `tmp/retro-prd003-m1-impl.yaml` (per implementation phase)
-
-The retrospective must be genuine — name real friction, real gaps, real successes. Do not produce rote "everything was fine" retrospectives.
+**Key points:**
+- Save to `.method/retros/retro-YYYY-MM-DD-NNN.yaml` (committed to git, NOT tmp/)
+- One file per method execution
+- MUST include: hardest_decision, observations (>= 1), card_feedback (including essence section feedback)
+- OPTIONAL: proposed_deltas with current/proposed/rationale
+- Evaluate the essence section: did `invariant` guide decisions? Did `optimize_for` resolve tradeoffs?
+- Do NOT produce rote "everything was fine" retrospectives
 
 ### Your Execution Protocol
 

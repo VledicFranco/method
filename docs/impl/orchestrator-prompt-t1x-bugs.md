@@ -41,54 +41,28 @@ However, since the bugs are independent with disjoint file scopes, you may run t
 
 ### Critical t1-cortex Rules (from I1-T1X card)
 
-- **DR-01:** Metals MCP mandatory for Scala navigation. Never use Read/Grep for symbol lookup.
-- **DR-02:** Metals orientation gate before writing code (typed-glob-search, get-usages).
+- **DR-01:** Metals MCP mandatory for feature exploration; recommended (not mandatory) for targeted bug fixes with <5 known files.
+- **DR-02:** Metals orientation gate required for feature work; optional for bug fixes with <5 files.
 - **DR-09:** Security chain: authenticate → checkAuthorization → domain logic for every handler.
 - **DR-14:** Impl self-review gate (9 checks) before returning result.
 - **DR-19:** Never run destructive git operations.
 
 ### Retrospective Protocol (MANDATORY)
 
-After completing each bug fix, produce a retrospective YAML. Save to:
-`C:\Users\atfm0\Repositories\pv-method\tmp\retro-t1x-bug-{issue_number}.yaml`
+After completing each bug fix, produce a retrospective YAML file.
 
-Schema:
-```yaml
-retrospective:
-  session_id: "T1X-BUG-{number}-20260314"
-  methodology: P2-SD
-  method: "M1-IMPL"
-  method_version: "3.1"
-  project_card_id: I1-T1X
+**Save to the project repo:** `.method/retros/retro-YYYY-MM-DD-NNN.yaml`
+(committed to git, NOT tmp/). One file per method execution.
 
-  hardest_decision:
-    step: "sigma_X"
-    decision: "What you had to decide"
-    outcome: "What you did"
-    guidance_gap: true/false
+**Full schema:** Read `orchestrator-retro-section.md` (in pv-method/docs/impl/) for the
+complete schema. Key fields: hardest_decision, observations (>= 1), card_feedback
+(including essence section feedback), proposed_deltas (optional).
 
-  observations:  # AT LEAST 1 required
-    - step: "sigma_X"
-      type: gap | friction | success | surprise
-      description: "Concrete observation"
-      evidence: "file:line or artifact"
-      severity: LOW | MEDIUM | HIGH
-      improvement_target: abstract_method | project_card | both | unclear
-
-  card_feedback:  # REQUIRED — test the I1-T1X card on real bug work
-    - rule_id: DR-NN
-      verdict: helpful | unhelpful | missing_coverage | overly_restrictive
-      note: "What worked or didn't for bug fix context"
-
-  proposed_deltas:  # Optional
-    - target: abstract_method | project_card
-      location: "where"
-      current: "what it says now"
-      proposed: "what it should say"
-      rationale: "why"
-```
-
-**Key question for the retrospective:** The I1-T1X card was designed for feature implementation (M1-IMPL Phase A + Phase B). Does it work for bug fixes? Are the 20 delivery rules helpful, overly restrictive, or missing coverage for this context? Be honest.
+**Key question:** The I1-T1X card now has an `essence` section (purpose, invariant,
+optimize_for). Did the invariant ("no unauthorized access — deny by default") guide
+your bug fix decisions? Did the optimize_for stack (security > correctness > auditability)
+resolve any tradeoffs? Also: do the 21 delivery rules work for bug fixes, or are some
+overly restrictive in this context?
 
 ### Execution Protocol
 
@@ -129,12 +103,9 @@ After both sub-agents complete:
 
 **Step 3 — Produce retrospectives**
 
-One per bug:
-- `C:\Users\atfm0\Repositories\pv-method\tmp\retro-t1x-bug-47.yaml`
-- `C:\Users\atfm0\Repositories\pv-method\tmp\retro-t1x-bug-46.yaml`
-
-Also produce a summary report:
-- `C:\Users\atfm0\Repositories\pv-method\tmp\t1x-bugs-report.yaml`
+One per bug, saved to `.method/retros/` in the project repo:
+- `.method/retros/retro-YYYY-MM-DD-001.yaml` (bug #47)
+- `.method/retros/retro-YYYY-MM-DD-002.yaml` (bug #46)
 
 ### Decision Points (Your Authority)
 
