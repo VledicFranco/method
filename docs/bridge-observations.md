@@ -279,3 +279,14 @@ Split delivery solved the activation problem (all 5 agents started) but 3 of 5 s
 **Observed in:** Stress test — drift (new CLAUDE.md content) and flux (new docs + script) completed, while bravo (edit YAML), cedar (edit observations), ember (edit PRD status) all stalled.
 
 Editing existing files requires Read → think about changes → Edit, which is a multi-step tool chain. Creating new content is Write, which is a single tool call. The fewer tool call chains required, the more likely completion.
+
+### OBS-19: Agent status shows "ready" while waiting for sub-agents
+
+**Severity:** UX — misleading status
+**Observed in:** RFC analyst agent running council-team via Agent tool
+
+When an agent spawns a sub-agent (via the `Agent` tool), the parent agent's PTY goes idle — the bridge sees `ready`. But the agent isn't idle, it's waiting for the sub-agent to return. The dashboard shows green "ready" when the agent is actually blocked.
+
+**Potential fix:** PTY watcher already detects `tool_call: Agent`. If a session transitions to `ready` within 5s of an Agent tool call, mark status as `waiting` instead of `ready`. Revert to `ready` when the next PTY output arrives (sub-agent returned).
+
+**Alternative:** Track sub-agent relationships — if an agent spawned a sub-agent via bridge_spawn, the parent's status could show "waiting (1 child active)" by checking children list.
