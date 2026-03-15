@@ -116,7 +116,7 @@ export function createTokenTracker(config: {
  *   /home/user/project → -home-user-project
  *   C:\Users\user\project → C--Users-user-project
  */
-function deriveProjectDirName(workdir: string): string {
+export function deriveProjectDirName(workdir: string): string {
   const abs = resolve(workdir);
   // Replace colon with --, then separators with -, collapse leading separator
   return abs.replace(/:/g, '-').replace(/[\\/]/g, '-').replace(/^-/, '');
