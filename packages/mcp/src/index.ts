@@ -25,6 +25,7 @@ import {
 const ROOT = process.env.METHOD_ROOT ?? process.cwd();
 const REGISTRY = resolve(ROOT, "registry");
 const THEORY = resolve(ROOT, "theory");
+const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 
 // Session manager — isolates state by session_id
 const sessions = createSessionManager();
@@ -275,6 +276,77 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "bridge_spawn",
+      description: "Spawn a new Claude Code agent session via the bridge.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          workdir: {
+            type: "string",
+            description: "Working directory for the spawned agent",
+          },
+          spawn_args: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional CLI arguments to pass to the spawned agent",
+          },
+          initial_prompt: {
+            type: "string",
+            description: "Optional initial prompt to send to the agent on spawn",
+          },
+          session_id: {
+            type: "string",
+            description: "Optional methodology session ID to correlate with the bridge session",
+          },
+        },
+        required: ["workdir"],
+      },
+    },
+    {
+      name: "bridge_prompt",
+      description: "Send a prompt to a spawned bridge agent and wait for the response.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID returned by bridge_spawn",
+          },
+          prompt: {
+            type: "string",
+            description: "Prompt to send to the bridge agent",
+          },
+          timeout_ms: {
+            type: "number",
+            description: "Optional timeout in milliseconds",
+          },
+        },
+        required: ["bridge_session_id", "prompt"],
+      },
+    },
+    {
+      name: "bridge_kill",
+      description: "Kill a spawned bridge agent session.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          bridge_session_id: {
+            type: "string",
+            description: "Bridge session ID to kill",
+          },
+        },
+        required: ["bridge_session_id"],
+      },
+    },
+    {
+      name: "bridge_list",
+      description: "List all active bridge sessions with status and metadata.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
   ],
 }));
 
@@ -454,6 +526,154 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
         methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "bridge_spawn": {
+        const { workdir, spawn_args, initial_prompt, session_id } = z.object({
+          workdir: z.string(),
+          spawn_args: z.array(z.string()).optional(),
+          initial_prompt: z.string().optional(),
+          session_id: z.string().optional(),
+        }).parse(args);
+
+        const body: Record<string, unknown> = { workdir };
+        if (spawn_args) body.spawn_args = spawn_args;
+        if (initial_prompt) body.initial_prompt = initial_prompt;
+        // Auto-correlate methodology session ID
+        if (session_id) {
+          body.metadata = { methodology_session_id: session_id };
+        }
+
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json() as { session_id: string; status: string };
+          return ok(JSON.stringify({
+            bridge_session_id: data.session_id,
+            status: data.status,
+            message: "Agent spawned. Call bridge_prompt to send work.",
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_prompt": {
+        const { bridge_session_id, prompt, timeout_ms } = z.object({
+          bridge_session_id: z.string(),
+          prompt: z.string(),
+          timeout_ms: z.number().optional(),
+        }).parse(args);
+
+        const body: Record<string, unknown> = { prompt };
+        if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
+
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json() as { output: string; timed_out: boolean };
+          const charCount = data.output.length;
+          return ok(JSON.stringify({
+            output: data.output,
+            timed_out: data.timed_out,
+            message: data.timed_out
+              ? "Prompt timed out — partial output returned"
+              : `Response received (${charCount} chars)`,
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_kill": {
+        const { bridge_session_id } = z.object({
+          bridge_session_id: z.string(),
+        }).parse(args);
+
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
+            method: 'DELETE',
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const data = await res.json() as { session_id: string; killed: boolean };
+          return ok(JSON.stringify({
+            bridge_session_id: data.session_id,
+            killed: data.killed,
+            message: "Session killed",
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
+      }
+
+      case "bridge_list": {
+        try {
+          const res = await fetch(`${BRIDGE_URL}/sessions`);
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
+          }
+
+          const bridgeSessions = await res.json() as Array<{
+            session_id: string;
+            status: string;
+            queue_depth: number;
+            metadata?: Record<string, unknown>;
+          }>;
+
+          const formatted = bridgeSessions.map(s => ({
+            bridge_session_id: s.session_id,
+            status: s.status,
+            queue_depth: s.queue_depth,
+            metadata: s.metadata ?? {},
+            methodology_session_id: (s.metadata as any)?.methodology_session_id ?? null,
+          }));
+
+          const active = bridgeSessions.filter(s => s.status !== 'dead').length;
+          return ok(JSON.stringify({
+            sessions: formatted,
+            capacity: { active, max: bridgeSessions.length },  // max is approximate — bridge enforces actual limit
+            message: `${active} of ${bridgeSessions.length} sessions active`,
+          }, null, 2));
+        } catch (e) {
+          if (e instanceof TypeError) {
+            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+          }
+          throw e;
+        }
       }
 
       default:
