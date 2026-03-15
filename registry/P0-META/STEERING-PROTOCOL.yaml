@@ -1,0 +1,364 @@
+protocol:
+  id: STEER-PROTO
+  name: "Steering Protocol — Project Governance via Persistent Council"
+  version: "0.1"
+  status: draft
+  date: "2026-03-14"
+  description: >
+    Universal protocol for project-level governance through a persistent steering
+    council. The council champions the project's essence (purpose, invariant,
+    optimize_for), steers work priorities, and ensures all methodology execution
+    serves the project's ultimate goals. Composes with P1-EXEC (how to execute),
+    P2-SD (what to deliver), and P3-DISPATCH (how autonomously to run).
+  derived_from: "pv-agi steering council (council/TEAM.md, .claude/skills/steering-council/SKILL.md)"
+
+  # ═══════════════════════════════════════════════════════
+  # LAYER PLACEMENT
+  # ═══════════════════════════════════════════════════════
+
+  layer_placement:
+    description: >
+      The steering protocol sits ABOVE execution and delivery methodologies.
+      It answers "what should this project work on?" and "are we serving the essence?"
+      — questions that P1-EXEC, P2-SD, and P3-DISPATCH cannot answer because they
+      operate at the challenge level, not the project level.
+    hierarchy: |
+      P4-STEER  — what should the project work on? (governance)
+        ↓ produces challenges for
+      P2-SD / P1-EXEC — how are those challenges executed? (delivery/execution)
+        ↓ produces results that
+      P4-STEER — evaluates against the project's essence (accountability)
+    relationship_to_existing:
+      P0-META: "STEER-PROTO is a protocol in P0-META, not a standalone methodology. P0-META governs methods; STEER-PROTO governs projects."
+      P1-EXEC: "Council sessions use M1-COUNCIL for debate. The steering council IS an M1-COUNCIL instance with persistent state."
+      P2-SD: "The council produces work items that become P2-SD challenges (PRDs, architecture tasks, bug fixes)."
+      P3-DISPATCH: "The autonomy agreement maps to P3-DISPATCH modes (INTERACTIVE/SEMIAUTO/FULLAUTO)."
+      RETRO-PROTO: "Retrospectives feed back to the council. The council reviews accumulated retro signals during reflection sessions."
+
+  # ═══════════════════════════════════════════════════════
+  # PART 1 — COUNCIL ARTIFACTS
+  # ═══════════════════════════════════════════════════════
+
+  artifacts:
+    location: ".method/council/"
+    committed: true
+    description: >
+      Persistent governance state. All files committed to git. The council's
+      continuity depends on these artifacts surviving across sessions.
+
+    structure: |
+      .method/council/
+        TEAM.yaml       — persistent member definitions
+        AGENDA.yaml     — forward-looking work items
+        LOG.yaml        — append-only decision record
+        inbox/          — messages from other project councils
+        outbox/         — messages to other project councils
+
+    team:
+      path: ".method/council/TEAM.yaml"
+      description: >
+        The council's persistent membership. Each member has a role, expertise,
+        conviction, blind spot, and voice — the same character card structure as
+        M1-COUNCIL but persisted across sessions. Members are NOT per-session
+        characters — they are the project's standing governance body.
+      schema: |
+        council:
+          project: "project-name"
+          established: "YYYY-MM-DD"
+          members:
+            - name: "Voss"
+              role: leader
+              expertise: "Research program design, tech roadmaps"
+              conviction: "A good README is a thesis statement"
+              blind_spot: "Over-optimizing for narrative coherence"
+              voice: "Precise, structured"
+              joined: "YYYY-MM-DD"
+            - name: "Noor"
+              role: contrarian
+              expertise: "Cognitive science, executive function modeling"
+              conviction: "AGI won't come from scaling — it'll come from supervisory structures"
+              blind_spot: "Underestimates engineering constraints"
+              voice: "Theoretical, grounded"
+              joined: "YYYY-MM-DD"
+          contrarian_axes:
+            - axis: "Noor ↔ Kael"
+              tension: "Cognitive fidelity vs engineering feasibility"
+          minimum_members: 3
+          maximum_members: 8
+      requirements:
+        - "Exactly 1 Leader (neutral mediator)"
+        - "At least 2 Contrarians with opposing philosophies"
+        - "Cognitive diversity heuristic: at least 1 divergent-exploration member, 1 convergent-pruning member"
+        - "Members should have the disciplines required to steer THIS project"
+      examples:
+        research_project: "Head of research, systems architect, epistemologist, applied ML engineer, methodology lead"
+        delivery_project: "Tech lead, product owner proxy, security architect, DX advocate, process lead"
+
+    agenda:
+      path: ".method/council/AGENDA.yaml"
+      description: >
+        Forward-looking work items prioritized by urgency. Updated at the end of
+        every session. The agenda is the council's commitment to what happens next.
+      schema: |
+        agenda:
+          last_updated: "YYYY-MM-DD"
+          p0_immediate:
+            - id: "AG-001"
+              item: "What needs to happen next"
+              rationale: "Why this is P0"
+              owner: "Council member name"
+              status: open | in_progress | done | tabled
+          p1_soon:
+            - id: "AG-002"
+              item: "..."
+              owner: "..."
+              status: open
+          p2_later:
+            - id: "AG-003"
+              item: "..."
+      growth_discipline: >
+        The agenda should SHRINK over time, not grow. Every session must close at
+        least as many items as it opens. If the agenda grows for 3 consecutive
+        sessions, the council must hold a reflection session (M4-REFLECT equivalent)
+        to assess whether it's generating work faster than executing it.
+
+    log:
+      path: ".method/council/LOG.yaml"
+      description: >
+        Append-only record of all council sessions. Never edited after writing.
+        Each entry captures: date, cast, challenge, decisions (with rationale,
+        for/against, PO ruling), open questions, artifacts produced.
+      schema: |
+        log:
+          sessions:
+            - id: "SESSION-001"
+              date: "YYYY-MM-DD"
+              cast: ["Voss", "Noor", "Kael", "Seren", "Idris", "Maren"]
+              challenge: "What the session addressed"
+              decisions:
+                - id: "D-001"
+                  decision: "What was decided"
+                  status: decided | tabled | escalated_to_po
+                  rationale: "Why"
+                  for: "Arguments in favor"
+                  against: "Arguments against (minority positions)"
+                  po_ruling: "If escalated, what the PO decided"
+              open_questions: ["What remains unresolved"]
+              artifacts_produced: ["Files created or updated"]
+              next_agenda_items: ["What was queued for next session"]
+      incremental_capture: >
+        During long sessions, the Leader captures decisions INCREMENTALLY — after
+        each major decision, not batched at the end. Context windows can run out
+        mid-session. If the log isn't updated incrementally, decisions are lost.
+
+  # ═══════════════════════════════════════════════════════
+  # PART 2 — SESSION STRUCTURE
+  # ═══════════════════════════════════════════════════════
+
+  session_structure:
+    description: >
+      Five steps per council session. Derived from pv-agi's steering-council
+      skill, generalized for any project.
+    steps:
+      - step: 1
+        name: "Revive"
+        description: >
+          Load the council cast from TEAM.yaml. Review members against the current
+          project phase — are the right disciplines represented? Propose swaps or
+          additions if the project's needs have evolved. Present the cast.
+        autonomous: true
+        output: "Active cast confirmed or swap proposed"
+
+      - step: 2
+        name: "Set Agenda"
+        description: >
+          Load AGENDA.yaml. If P0 items exist, those are the session's focus. If a
+          specific challenge was provided, add it as P0. The Leader frames: what are
+          we deciding, what constrains us, what would success look like?
+        autonomous: true
+        escalate_when: "Multiple P0 items compete for priority"
+        output: "Session agenda confirmed"
+
+      - step: 3
+        name: "Debate & Decide"
+        description: >
+          Structured adversarial debate following M1-COUNCIL axioms (Ax-3 through
+          Ax-7). Characters speak in turn. The Leader monitors for repetition (Ax-3),
+          enforces conviction stability (Ax-4), ensures turn progress (Ax-5), and
+          may halt on diminishing returns (Ax-7).
+        autonomous: "for clear decisions where council converges"
+        escalate_when: >
+          Decision affects the project's essence (purpose/invariant/optimize_for),
+          decision is irreversible, or council cannot converge.
+        essence_guardianship: >
+          Before finalizing any decision, the Leader checks: does this decision
+          serve the project's essence.purpose? Does it respect essence.invariant?
+          Is it consistent with essence.optimize_for priorities? If not, the
+          decision must be escalated to the PO regardless of autonomy level.
+        output: "Decisions with rationale, for/against, minority positions"
+
+      - step: 4
+        name: "Capture & Close"
+        description: >
+          Update LOG.yaml with session decisions. Update AGENDA.yaml (close done items,
+          add new items with owners). Update any project files affected by decisions.
+          Verification: no decisions exist only in conversation.
+        autonomous: true
+        output: "LOG.yaml updated, AGENDA.yaml current"
+
+      - step: 5
+        name: "Set Next Agenda"
+        description: >
+          Leader proposes top 3 items for next session based on: unresolved work,
+          new questions from this session, project roadmap demands, accumulated
+          retrospective signals. Update AGENDA.yaml P0 section.
+        autonomous: true
+        output: "Next session agenda set in AGENDA.yaml"
+        mandatory: "Runs in same message as Step 4 — never deferred"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 3 — ESSENCE GUARDIANSHIP
+  # ═══════════════════════════════════════════════════════
+
+  essence_guardianship:
+    description: >
+      The council's PRIMARY DUTY is ensuring all project work serves the essence.
+      This is what distinguishes a steering council from a working group — the
+      council doesn't do the work, it ensures the work serves the vision.
+    mechanism:
+      every_agenda_item: >
+        Before an agenda item becomes a work challenge (dispatched to P2-SD or
+        P1-EXEC), the council evaluates: "Does this serve our purpose? Does it
+        respect our invariant? Is it consistent with our optimization priorities?"
+        Items that don't serve the essence are tabled or rejected with rationale.
+      every_decision: >
+        Before a decision is finalized, the Leader performs an essence check:
+        "Does this decision align with essence.purpose? Could it violate
+        essence.invariant? Is it consistent with essence.optimize_for?" Misaligned
+        decisions are escalated to PO regardless of autonomy level.
+      retrospective_review: >
+        When retrospective signals accumulate (from RETRO-PROTO), the council
+        reviews them against the essence. A pattern of "optimize_for priority 3
+        overriding priority 1" indicates governance drift — the project is
+        optimizing for the wrong thing.
+
+  # ═══════════════════════════════════════════════════════
+  # PART 4 — AUTONOMY AGREEMENT
+  # ═══════════════════════════════════════════════════════
+
+  autonomy_agreement:
+    description: >
+      Each project declares how autonomous its steering council is. Maps to
+      P3-DISPATCH modes. Configured in the project card's governance section.
+    card_schema:
+      field_name: governance
+      location: "project_card.governance"
+      fields:
+        - name: autonomy
+          type: enum
+          values: [M1-INTERACTIVE, M2-SEMIAUTO, M3-FULLAUTO]
+          required: true
+          description: "P3-DISPATCH mode for council-initiated work"
+        - name: session_cadence
+          type: string
+          required: true
+          description: "How often the council meets"
+          examples: ["weekly", "biweekly", "on-demand", "every 3 phases"]
+        - name: veto_authority
+          type: string
+          required: true
+          description: "Who has final veto over council decisions"
+          default: "product_owner"
+        - name: max_autonomous_decisions
+          type: integer
+          required: false
+          description: "Maximum decisions per session before mandatory PO check-in"
+          default: 3
+        - name: essence_escalation
+          type: string
+          required: true
+          description: "Any decision touching the essence MUST be escalated to PO"
+          value: "always"
+          note: "This is not configurable — essence decisions always escalate"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 5 — INTER-PROJECT COMMUNICATIONS
+  # ═══════════════════════════════════════════════════════
+
+  communications:
+    description: >
+      Structured messages between project councils. Enables cross-project
+      coordination without breaking project boundaries.
+    channels:
+      inbox:
+        path: ".method/council/inbox/"
+        naming: "msg-YYYY-MM-DD-{from}-NNN.yaml"
+        description: "Messages received from other councils"
+      outbox:
+        path: ".method/council/outbox/"
+        naming: "msg-YYYY-MM-DD-{to}-NNN.yaml"
+        description: "Messages this council wants to send"
+    message_schema: |
+      message:
+        id: "MSG-001"
+        from: "I1-T1X-council"
+        to: "I2-METHOD-council"
+        date: "YYYY-MM-DD"
+        type: request | inform | question | offer
+        priority: normal | urgent
+        subject: "One-line summary"
+        body: "Full message content"
+        response_requested: true | false
+        context: "Why this message matters to the recipient"
+    routing: >
+      Messages are routed manually (human copies file) or via the bridge (automated
+      copy between repos). The bridge can watch outbox/ directories and deliver to
+      inbox/ directories. The council reviews inbox/ at the start of each session
+      (Step 2: Set Agenda — incoming messages may add P0 items).
+    message_types:
+      request: "Asking another council to do something or provide something"
+      inform: "Notifying another council of a decision or change that affects them"
+      question: "Asking for input on a decision this council is making"
+      offer: "Proposing a collaboration or shared work"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 6 — MEMBER EVOLUTION
+  # ═══════════════════════════════════════════════════════
+
+  member_evolution:
+    description: >
+      The council's composition evolves with the project. Members can be recruited,
+      retired, or swapped based on the project's changing needs.
+    rules:
+      minimum: 3
+      maximum: "configurable per project (default 8)"
+      swap_authority: "Leader proposes, PO approves"
+      swap_logging: >
+        Every membership change is logged in TEAM.yaml with: date, who joined/left,
+        rationale, who approved. The log section of TEAM.yaml is append-only.
+    when_to_swap:
+      - "Project has entered a new phase requiring expertise the current cast lacks"
+      - "A member's discipline is no longer relevant (e.g., research phase ended, deployment phase began)"
+      - "A contrarian axis is no longer producing useful tension"
+      - "The cognitive diversity heuristic is violated (no divergent or no convergent member)"
+    when_not_to_swap:
+      - "A member disagrees with the majority — disagreement is the point"
+      - "A member's contributions seem minor — they may be the minority voice that prevents drift"
+
+  # ═══════════════════════════════════════════════════════
+  # PART 7 — INTEGRATION WITH RETRO-PROTO
+  # ═══════════════════════════════════════════════════════
+
+  retro_integration:
+    description: >
+      The steering council is the natural consumer of retrospective signals.
+      Accumulated observations from delivery sessions feed into council agenda items.
+    mechanism: >
+      During Step 2 (Set Agenda), the council reviews the project's .method/retros/
+      directory for accumulated observations. Patterns that have reached gap candidate
+      threshold become P0 agenda items. The council decides: evolve the card (direct
+      edit), submit to registry (method-level change), or table (insufficient evidence).
+    feedback_loop: >
+      Council decisions → work challenges → methodology execution → retrospectives
+      → council reviews retros → council adjusts direction. This is the full
+      governance-execution-feedback cycle.
