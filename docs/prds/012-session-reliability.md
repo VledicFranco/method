@@ -236,9 +236,56 @@ const PERMISSION_PROMPT_RE = /\bAllow\b.*\?\s*\([Yy](?:es)?\/[Nn](?:o)?\)/;
 
 When detected, set `permission_prompt_detected = true` on the session diagnostics. This is critical for distinguishing "agent is stuck" from "agent is waiting for human approval" — the most common false-stall scenario.
 
+### Component 5: Staggered Spawn
+
+Spawn agents with a configurable delay between each to prevent API rate limit contention.
+
+**Evidence (2026-03-15):** 0/5 agents completed when spawned simultaneously. 3/3 completed when staggered by 5s. The API rate limit or auth handshake creates a thundering herd when multiple Claude Code processes initialize at the same instant.
+
+**New bridge behavior:**
+
+```typescript
+// Option A: per-spawn delay
+bridge_spawn({ ..., spawn_delay_ms: 3000 })
+// Bridge waits spawn_delay_ms before actually spawning the PTY process
+
+// Option B: batch endpoint
+POST /sessions/batch
+{
+  sessions: [
+    { workdir, initial_prompt, ... },
+    { workdir, initial_prompt, ... },
+  ],
+  stagger_ms: 3000  // delay between each spawn
+}
+// Bridge spawns each session stagger_ms apart, returns all session IDs
+```
+
+**Recommended defaults:**
+- `stagger_ms`: 3000 (3s between spawns — enough for API handshake, fast enough for practical use)
+- Individual `spawn_delay_ms`: 0 (no delay for single spawns)
+
+**Configuration:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BATCH_STAGGER_MS` | `3000` | Default stagger between batch spawns |
+
+**MCP tool update:** Add `bridge_spawn_batch` tool that accepts an array of session configs and a `stagger_ms` parameter.
+
 ---
 
 ## 3. Implementation Order
+
+### Phase 0: Staggered Spawn (C5)
+
+**Deliverables:**
+- `spawn_delay_ms` field on `POST /sessions` — bridge waits before spawning PTY
+- `POST /sessions/batch` endpoint — accepts array of session configs + `stagger_ms`
+- `bridge_spawn_batch` MCP tool
+- Tests: batch spawn with stagger, verify all sessions initialize sequentially
+
+**Why first:** This is the cheapest, highest-impact fix. Our experiment proved 0/5 → 3/3 with just a 5s stagger. No algorithmic complexity, no parser changes — just a setTimeout between spawns. Delivers immediate value for parallel commissioning.
 
 ### Phase 1: Diagnostic Instrumentation (C4)
 
@@ -302,6 +349,7 @@ When detected, set `permission_prompt_detected = true` on the session diagnostic
 6. **5-agent completion rate ≥80%:** Up from the current 40% baseline (OBS-17)
 7. **Parser probe complete:** Phase A experiment executed with documented findings — either JSON parser shipped or explicit rationale for deferral
 8. **No regression:** Existing single-agent and 2-agent workflows maintain current reliability (no false-positive settle cutoffs introduced)
+9. **Staggered spawn:** `bridge_spawn_batch` with 3s stagger achieves ≥80% completion at 5 agents (up from 0% simultaneous)
 
 ---
 
