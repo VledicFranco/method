@@ -336,8 +336,10 @@ body {
 </div>
 
 <div class="input-bar">
+  <button id="mic-btn" onclick="toggleMic()" title="Hold or tap to speak" style="background:none;border:1px solid rgba(0,212,176,.25);border-radius:2px;color:var(--bio);font-size:1.1rem;padding:.4rem .6rem;cursor:pointer;min-height:44px;min-width:44px;">&#x1F399;</button>
   <input type="text" id="prompt-input" placeholder="Send a prompt..." onkeydown="if(event.key==='Enter')sendPrompt()">
   <button onclick="sendPrompt()" id="send-btn">Send</button>
+  <button id="speak-btn" onclick="speakLast()" title="Read last response aloud" style="background:none;border:1px solid rgba(238,170,98,.25);border-radius:2px;color:var(--solar);font-size:.9rem;padding:.4rem .6rem;cursor:pointer;min-height:44px;display:none;">&#x1F50A;</button>
 </div>
 
 <script>
@@ -471,6 +473,12 @@ function sendPrompt() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: text })
+  }).then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.output) {
+      lastResponse = data.output;
+      document.getElementById('speak-btn').style.display = 'inline-block';
+    }
   }).catch(function(e) {
     term.write('\r\n[Error sending prompt: ' + e.message + ']\r\n');
   }).finally(function() {
@@ -481,6 +489,62 @@ function sendPrompt() {
 }
 
 connectSSE();
+
+// ── Voice Input (Web Speech API) ──
+var recognition = null;
+var isListening = false;
+var lastResponse = '';
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = function(e) {
+    var input = document.getElementById('prompt-input');
+    var transcript = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    input.value = transcript;
+    if (e.results[e.results.length - 1].isFinal) {
+      input.style.fontStyle = 'normal';
+      sendPrompt();
+    } else {
+      input.style.fontStyle = 'italic';
+    }
+  };
+
+  recognition.onend = function() {
+    isListening = false;
+    document.getElementById('mic-btn').style.borderColor = 'rgba(0,212,176,.25)';
+    document.getElementById('mic-btn').style.background = 'none';
+  };
+}
+
+function toggleMic() {
+  if (!recognition) return;
+  if (isListening) {
+    recognition.stop();
+  } else {
+    isListening = true;
+    document.getElementById('mic-btn').style.borderColor = 'var(--bio)';
+    document.getElementById('mic-btn').style.background = 'rgba(0,212,176,.15)';
+    recognition.start();
+  }
+}
+
+// ── Voice Output (SpeechSynthesis) ──
+function speakLast() {
+  if (!lastResponse || !window.speechSynthesis) return;
+  var text = lastResponse.replace(/```[\s\S]*?```/g, '').replace(/\n{2,}/g, '. ').trim();
+  if (text.length > 500) text = text.substring(0, 500) + '... truncated.';
+  var utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.1;
+  window.speechSynthesis.speak(utterance);
+}
 </script>
 
 </body>
