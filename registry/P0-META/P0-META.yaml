@@ -297,15 +297,13 @@ transition_function:
         Derivation grounds theory in executable artifacts (addresses P6).
 
     - priority: 7
-      label: discovery_wip
+      label: discovery
       condition: "exists d. informal_practice(d, s) AND NOT domain_sketch_ready(d, s)"
       selects: M2-MDIS
-      status: WIP
-      callable: false
-      wip_note: >
-        M2-MDIS is proposed, not compiled. When this condition fires, the
-        meta-architect records the domain and produces a minimal domain sketch manually.
-        Arm becomes callable when M2-MDIS compiles.
+      rationale: >
+        An informal practice has been observed but no domain sketch is ready.
+        M2-MDIS structures the practice through the protocol lifecycle:
+        recognize → draft → trial → evaluate → promote. Compiled 2026-03-14.
 
     - priority: 8
       label: terminate
@@ -399,9 +397,9 @@ inter_method_coherence:
 
 known_wip:
   - id: M2-MDIS
-    status: proposed
+    status: compiled
     delta_arm: priority_7
-    workaround: "meta-architect produces minimal domain sketch manually when condition fires"
+    note: "Compiled 2026-03-14. Protocol lifecycle as step DAG. Validated by RETRO-PROTO (full lifecycle) and STEER-PROTO (draft stage)."
   - id: nu_META_weights
     status: open
     description: "W_method and W_gap have no calibrated values; first empirical runs will calibrate"

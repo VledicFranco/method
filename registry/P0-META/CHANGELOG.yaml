@@ -4,6 +4,19 @@ changelog:
   note: "P0-META versions are managed in ov-oss. This changelog tracks registry-side additions only."
 
   entries:
+    - version: "M2-MDIS compiled"
+      date: "2026-03-14"
+      type: method_compiled
+      method: M2-MDIS
+      changes:
+        - "M2-MDIS v1.0 compiled — Method Discovery from Informal Practice"
+        - "delta_META arm 7 now callable (was WIP since P0-META v1.0)"
+        - "5-step DAG: recognize → draft → trial → evaluate → promote"
+        - "Protocol lifecycle operationalizes the discovery process"
+        - "All 7 delta_META arms now operational"
+        - "STEERING-PROTOCOL.yaml — project governance protocol (draft)"
+      evidence: "RETRO-PROTO full lifecycle, STEER-PROTO draft, Guide 11"
+
     - version: "registry additions"
       date: "2026-03-14"
       type: registry

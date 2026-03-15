@@ -1,0 +1,539 @@
+method:
+  id: M2-MDIS
+  parent: P0-META
+  name: "Method Discovery from Informal Practice"
+  description: >
+    Takes an observed informal practice — a recurring pattern identified from
+    retrospective signals, council debates, cross-project examination, or human
+    intuition — and structures it through the protocol lifecycle: recognize,
+    draft, trial, evaluate, promote. Produces either a compiled method (via M1-MDES),
+    a promoted axiom, or an archived learning. Completes delta_META arm 7.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-14"
+  formal_grounding: "theory/F1-FTH.md"
+  note: >
+    M2-MDIS was WIP since P0-META v1.0. The protocol system (RETRO-PROTO,
+    STEER-PROTO) empirically validated the discovery lifecycle. This compilation
+    formalizes the pattern that was already working informally.
+
+navigation:
+  what: >
+    M2-MDIS takes an observed informal practice and produces a validated outcome:
+    a compiled method, a promoted protocol/axiom, or an archived finding. It does
+    NOT produce the observation — the creative act of recognizing a practice happens
+    outside M2-MDIS (from retro signals, councils, or intuition). M2-MDIS structures
+    what comes AFTER recognition: drafting, trialing, evaluating, and promoting.
+  who: >
+    One role — the discoverer. The meta-architect or any agent who has observed a
+    recurring informal practice and wants to formalize it. In practice, the
+    discoverer is often the human reviewing accumulated retrospective signals.
+  why: >
+    Methods are static after compilation. New methods require domain knowledge that
+    doesn't exist yet — it emerges from execution. Without M2-MDIS, the gap between
+    "we keep doing this informally" and "this is a compiled method" is crossed by
+    ad-hoc judgment. M2-MDIS makes the crossing structured and evidence-based.
+  how: >
+    Five linear steps: recognize (validate the observation) → draft (write protocol
+    YAML) → trial (enforce on one project/methodology, collect data) → evaluate
+    (check promotion criteria) → promote (formalize or archive).
+  when_to_use:
+    - "A practice recurs across 3+ sessions and produces identifiable artifacts"
+    - "A retrospective observation has reached gap candidate threshold"
+    - "A project has invented a process that other projects would benefit from"
+    - "A council session identifies a governance or process gap"
+  when_not_to_use:
+    - "The domain knowledge is already established — use M1-MDES directly"
+    - "The practice is project-specific — add it as a delivery rule in the project card"
+    - "The practice is a one-off — just do it, don't formalize"
+
+domain_theory:
+  id: D_MDIS
+  sorts:
+    - name: InformalPractice
+      cardinality: singleton_per_execution
+      description: "An observed recurring pattern from execution evidence — the input to M2-MDIS"
+    - name: Protocol
+      cardinality: singleton_per_execution
+      description: "A structured practice with schema, enforcement, and trial criteria — drafted from the observation"
+    - name: TrialEvidence
+      cardinality: unbounded
+      description: "Data collected during trial: usage counts, gap candidates surfaced, evolutions triggered"
+    - name: PromotionCriteria
+      cardinality: finite
+      description: "Measurable conditions that must be met for the protocol to graduate"
+    - name: PromotionDecision
+      cardinality: finite
+      values: [compile_to_method, compile_to_methodology, promote_to_axiom, keep_as_protocol, archive]
+      description: "The outcome of evaluating trial evidence against promotion criteria"
+    - name: Artifact
+      cardinality: singleton_per_execution
+      description: "The terminal output: a compiled method, a promoted axiom, an archived finding, or a retained protocol"
+  function_symbols:
+    - name: evidence_count
+      signature: "Protocol -> nat"
+      totality: total
+      description: "Number of trial data points collected"
+    - name: criteria_satisfied
+      signature: "Protocol -> nat"
+      totality: total
+      description: "Number of promotion criteria met by trial evidence"
+    - name: total_criteria
+      signature: "Protocol -> nat"
+      totality: total
+  predicates:
+    - name: practice_observed
+      signature: "InformalPractice"
+      description: "A recurring pattern has been recognized from execution evidence"
+    - name: practice_sufficient
+      signature: "InformalPractice"
+      description: "The observation passes the sufficiency test: nameable, recurring, artifact-producing"
+    - name: protocol_drafted
+      signature: "Protocol"
+      description: "A protocol YAML exists with schema, enforcement, and trial criteria"
+    - name: trial_running
+      signature: "Protocol"
+      description: "The protocol is being enforced on at least one project/methodology"
+    - name: trial_complete
+      signature: "Protocol"
+      description: "Trial data collection is sufficient for evaluation"
+    - name: criteria_met
+      signature: "Protocol"
+      description: "criteria_satisfied(p) = total_criteria(p) — all promotion criteria are met"
+    - name: promotion_decided
+      signature: "Protocol x PromotionDecision"
+      description: "The promotion decision has been made for this protocol"
+    - name: artifact_produced
+      signature: "Artifact"
+      description: "The terminal artifact exists (method, axiom, or archive record)"
+  axioms:
+    - id: Ax-1
+      name: Observation before draft
+      statement: "forall p : Protocol. protocol_drafted(p) -> exists ip : InformalPractice. practice_observed(ip) AND practice_sufficient(ip)"
+      rationale: "A protocol can only be drafted from a recognized, sufficient informal practice. No drafting from theory alone — discovery requires empirical observation."
+    - id: Ax-2
+      name: Draft before trial
+      statement: "forall p : Protocol. trial_running(p) -> protocol_drafted(p)"
+      rationale: "A trial requires a drafted protocol with schema and enforcement criteria. You can't trial something that isn't written down."
+    - id: Ax-3
+      name: Trial before promotion
+      statement: "forall p : Protocol, d : PromotionDecision. promotion_decided(p, d) -> trial_complete(p)"
+      rationale: "Promotion decisions require trial evidence. No promotion from theory or draft alone."
+    - id: Ax-4
+      name: Evidence sufficiency
+      statement: "forall p : Protocol. trial_complete(p) -> evidence_count(p) >= 1"
+      rationale: "Trial completion requires at least some evidence. An empty trial is not a trial."
+    - id: Ax-5
+      name: Artifact from decision
+      statement: "forall p : Protocol, d : PromotionDecision. promotion_decided(p, d) -> exists a : Artifact. artifact_produced(a)"
+      rationale: "Every promotion decision produces an artifact — even archive produces a record of what was learned."
+  domain_boundary_note: >
+    Excludes: the creative act of recognizing a practice (happens outside M2-MDIS);
+    the content of the practice being discovered (M2-MDIS structures the lifecycle,
+    not the practice itself); M1-MDES compilation (if the decision is compile_to_method,
+    M1-MDES runs separately); the domain knowledge of the practice's target domain.
+  initial_state_valid_claim: >
+    A state with InformalPractice observed, no Protocol drafted, no trial, no decision.
+    All axioms vacuously true (no Protocol exists). Valid.
+  terminal_state_valid_claim: >
+    A state with Protocol drafted (Ax-2), trial complete (Ax-3), promotion decided
+    (Ax-3), artifact produced (Ax-5). All axioms satisfied. Valid.
+
+roles:
+  - id: discoverer
+    description: >
+      The agent or human who has observed a recurring informal practice and is
+      structuring it through the protocol lifecycle. Holds full visibility over
+      the observation, the protocol draft, the trial evidence, and the promotion
+      criteria. In practice, often the meta-architect or a human reviewing
+      accumulated retrospective signals.
+    observation_projection: "pi_discoverer = id : Mod(D_MDIS) -> Mod(D_MDIS) — full visibility"
+    authorized_transitions:
+      - "Validate observation sufficiency (sigma_0)"
+      - "Draft protocol YAML (sigma_1)"
+      - "Configure and initiate trial (sigma_2)"
+      - "Evaluate trial evidence against criteria (sigma_3)"
+      - "Make promotion decision and produce artifact (sigma_4)"
+    not_authorized:
+      - "Fabricate observations (must come from execution evidence)"
+      - "Skip trial (Ax-3: promotion requires trial)"
+      - "Compile the method directly (M1-MDES handles compilation if promoted)"
+  coverage_claim: "Discoverer sees full D_MDIS. Identity projection. Trivially total."
+  authority_claim: "All five steps authorized. No required transition unauthorized."
+  role_partition_rationale: >
+    One role because discovery is a single-perspective analytical process. The
+    discoverer reads evidence, drafts, evaluates, decides. No epistemic separation
+    needed — unlike M1-MDES where designer and compiler are separate, M2-MDIS's
+    evaluation is against measurable criteria (promotion thresholds), not structural
+    gates. The criteria themselves provide objectivity.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (path graph, trivially acyclic)"
+  formal: "Gamma_MDIS = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4}, {(sigma_0,sigma_1),(sigma_1,sigma_2),(sigma_2,sigma_3),(sigma_3,sigma_4)}, sigma_0, sigma_4)"
+
+phases:
+  - id: sigma_0
+    name: "Recognize"
+    role: discoverer
+    precondition: "An informal practice has been observed from execution evidence"
+    postcondition: "practice_sufficient(ip) evaluated; proceed if sufficient, redirect if not"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - practice_name is non-empty.
+      - recurrence_evidence names at least 3 instances where the practice appeared.
+      - artifacts_produced names at least 1 concrete output the practice generates.
+      - sufficiency_decision is proceed or redirect.
+
+      **Rationale:**
+      This step does NOT discover the practice — the creative recognition already
+      happened (from retro signals, council debate, cross-project examination, or
+      intuition). This step VALIDATES the recognition: is it real enough to draft
+      into a protocol?
+
+      **Sufficiency test (heuristic):**
+      1. Can you NAME the practice in one sentence? (If you can't name it, you don't understand it)
+      2. Can you cite 3+ instances where it recurred? (One instance is anecdote, not pattern)
+      3. Does it produce identifiable ARTIFACTS? (A practice without artifacts is a habit, not a method candidate)
+      4. Would OTHER projects benefit from it? (Project-specific → delivery rule, not protocol)
+
+      If all four: proceed. If fewer than 3: redirect (note the observation, wait for more evidence).
+
+      **Output schema reference:**
+      - practice_name: one sentence naming the practice
+      - recurrence_evidence: array of 3+ instance descriptions
+      - artifacts_produced: array of artifact names/types
+      - sufficiency_decision: proceed or redirect
+    output_schema:
+      fields:
+        - name: practice_name
+          type: string
+          min_length: 1
+          required: true
+        - name: recurrence_evidence
+          type: array
+          items: string
+          min_items: 3
+          required: true
+        - name: artifacts_produced
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: sufficiency_decision
+          type: enum
+          values: [proceed, redirect]
+          required: true
+    invariants:
+      hard:
+        - "practice_name is non-empty"
+        - "recurrence_evidence has at least 3 items"
+        - "artifacts_produced has at least 1 item"
+        - "sufficiency_decision is proceed or redirect"
+      soft:
+        - "recurrence_evidence cites specific sessions or projects"
+        - "each evidence item names a concrete observation, not a vague pattern"
+
+  - id: sigma_1
+    name: "Draft"
+    role: discoverer
+    precondition: "sigma_0 complete; sufficiency_decision = proceed"
+    postcondition: "Protocol YAML drafted with schema, enforcement, and promotion criteria"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - protocol_yaml is non-empty: a complete protocol YAML following the pattern
+        established by RETRO-PROTO and STEER-PROTO.
+      - The protocol must define: artifact schema (what it produces), enforcement
+        mechanism (what's mandatory), and promotion criteria (measurable thresholds
+        for graduation).
+      - promotion_criteria has at least 2 measurable criteria.
+
+      **Rationale:**
+      The draft is the structured form of the observation. It converts "we keep doing X"
+      into "here's the schema for X, here's what's mandatory, here's how we'll know if
+      it works." The promotion criteria are critical — without measurable criteria, the
+      trial has no endpoint and promotion decisions become subjective.
+
+      **Procedure:**
+      1. Define the artifact schema — what does the practice produce? What fields? What types?
+      2. Define the enforcement mechanism — what's mandatory? What axiom enforces it?
+      3. Define promotion criteria — measurable thresholds (counts, rates, validated outcomes).
+      4. Write the protocol YAML and save to registry/P0-META/.
+
+      **Output schema reference:**
+      - protocol_yaml: the protocol YAML content (or path to file)
+      - promotion_criteria: array of measurable criteria with thresholds
+    output_schema:
+      fields:
+        - name: protocol_yaml
+          type: string
+          required: true
+        - name: promotion_criteria
+          type: array
+          items: object
+          description: "{metric: string, threshold: string}"
+          min_items: 2
+          required: true
+    invariants:
+      hard:
+        - "protocol_yaml is non-empty"
+        - "promotion_criteria has at least 2 items"
+        - "each criterion has a metric and a threshold"
+      soft:
+        - "criteria are measurable from trial data (not subjective judgments)"
+
+  - id: sigma_2
+    name: "Trial"
+    role: discoverer
+    precondition: "sigma_1 complete; protocol drafted with promotion criteria"
+    postcondition: "Trial configured and running; evidence accumulating"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - trial_scope names which project(s) or methodology(ies) the protocol is enforced on.
+      - trial_duration specifies when evidence collection ends (count-based or time-based).
+      - enforcement_active = true: the protocol is being used in real sessions.
+
+      **Rationale:**
+      The trial is the empirical validation. Without it, promotion is speculation.
+      The trial scope should be narrow enough to manage (one methodology or project)
+      but broad enough to produce generalizable evidence.
+
+      **Procedure:**
+      1. Select trial scope — which methodology or project will enforce the protocol.
+      2. Configure enforcement — add the protocol's axiom or instructions to the trial target.
+      3. Set trial duration — "until N data points collected" or "for M weeks."
+      4. Begin collecting evidence.
+
+      **Output schema reference:**
+      - trial_scope: what the protocol is enforced on
+      - trial_duration: when evidence collection ends
+      - enforcement_active: boolean
+    output_schema:
+      fields:
+        - name: trial_scope
+          type: string
+          required: true
+        - name: trial_duration
+          type: string
+          required: true
+        - name: enforcement_active
+          type: boolean
+          required: true
+    invariants:
+      hard:
+        - "trial_scope is non-empty"
+        - "trial_duration is specified"
+        - "enforcement_active = true"
+      soft:
+        - "trial_scope is narrow (one methodology or project)"
+
+  - id: sigma_3
+    name: "Evaluate"
+    role: discoverer
+    precondition: "sigma_2 complete; trial evidence accumulated; trial_complete conditions met"
+    postcondition: "Each promotion criterion evaluated against trial evidence; criteria_met determined"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - criteria_evaluation contains one entry per promotion criterion with met/not_met verdict.
+      - evidence_summary describes what the trial produced.
+      - all_criteria_met is true or false.
+      - If not all met: recommendation is extend_trial, refine_protocol, or archive.
+
+      **Rationale:**
+      Objective evaluation against the criteria defined at draft time. The discoverer
+      does not subjectively decide if the protocol "feels right" — they check the
+      measurable thresholds. This is what separates evidence-based discovery from
+      opinion-based adoption.
+
+      **Procedure:**
+      1. Gather trial evidence (counts, rates, outcomes).
+      2. For each promotion criterion: evaluate threshold against evidence.
+      3. Determine: all met → proceed to promote. Not all met → recommend next action.
+
+      **Output schema reference:**
+      - evidence_summary: what the trial produced
+      - criteria_evaluation: array of per-criterion verdicts
+      - all_criteria_met: boolean
+      - recommendation: promote | extend_trial | refine_protocol | archive
+    output_schema:
+      fields:
+        - name: evidence_summary
+          type: string
+          required: true
+        - name: criteria_evaluation
+          type: array
+          items: object
+          description: "{criterion: string, threshold: string, actual: string, met: boolean}"
+          min_items: 2
+          required: true
+        - name: all_criteria_met
+          type: boolean
+          required: true
+        - name: recommendation
+          type: enum
+          values: [promote, extend_trial, refine_protocol, archive]
+          required: true
+    invariants:
+      hard:
+        - "criteria_evaluation has entries for all promotion criteria"
+        - "all_criteria_met matches the individual verdicts"
+        - "recommendation is present"
+      soft:
+        - "evidence_summary cites specific trial data, not vague impressions"
+
+  - id: sigma_4
+    name: "Promote"
+    role: discoverer
+    precondition: "sigma_3 complete; recommendation determined"
+    postcondition: "Promotion decision made; artifact produced"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - promotion_decision is one of: compile_to_method, compile_to_methodology,
+        promote_to_axiom, keep_as_protocol, archive.
+      - artifact_description describes what was produced.
+      - If compile_to_method: note that M1-MDES runs SEPARATELY to compile the method.
+        M2-MDIS produces the decision and the domain sketch; M1-MDES produces the method.
+      - If promote_to_axiom: the axiom is added to target methodologies.
+      - If archive: document what was learned and why the practice didn't generalize.
+
+      **Rationale:**
+      Five possible outcomes, each producing a different artifact. The decision is
+      based on the evaluation from sigma_3, not on new evidence. The discoverer
+      translates "criteria met/not met" into "what do we do with this."
+
+      **Promotion decision tree:**
+      - All criteria met + practice has clear steps/roles/objectives → compile_to_method
+      - All criteria met + practice routes between methods → compile_to_methodology
+      - All criteria met + practice is a universal constraint → promote_to_axiom
+      - Partially met + practice still valuable → keep_as_protocol
+      - Not met + practice doesn't generalize → archive with learnings
+
+      **Output schema reference:**
+      - promotion_decision: which outcome
+      - artifact_description: what was produced
+      - next_action: what happens next (e.g., "run M1-MDES to compile method")
+    output_schema:
+      fields:
+        - name: promotion_decision
+          type: enum
+          values: [compile_to_method, compile_to_methodology, promote_to_axiom, keep_as_protocol, archive]
+          required: true
+        - name: artifact_description
+          type: string
+          required: true
+        - name: next_action
+          type: string
+          required: true
+    invariants:
+      hard:
+        - "promotion_decision is present"
+        - "artifact_description is non-empty"
+        - "next_action is non-empty"
+      soft:
+        - "promotion_decision aligns with sigma_3 recommendation"
+        - "if archive: artifact_description includes what was learned"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: "post_sigma_0 establishes practice_sufficient. pre_sigma_1 requires sufficiency_decision = proceed. Identity inclusion on the proceed path."
+    - edge: "sigma_1 -> sigma_2"
+      claim: "post_sigma_1 establishes protocol_drafted with promotion criteria. pre_sigma_2 requires drafted protocol. Identity inclusion."
+    - edge: "sigma_2 -> sigma_3"
+      claim: "post_sigma_2 establishes trial running with evidence accumulating. pre_sigma_3 requires trial_complete (evidence collected). The trial runs between sigma_2 and sigma_3 — time passes, evidence accumulates."
+    - edge: "sigma_3 -> sigma_4"
+      claim: "post_sigma_3 establishes criteria_evaluation and recommendation. pre_sigma_4 requires recommendation determined. Identity inclusion."
+  terminal_condition_claim: >
+    post_sigma_4 = promotion_decided AND artifact_produced = O_MDIS. Terminal.
+  initial_condition_claim: >
+    pre_sigma_0 requires an informal practice observed. This holds when delta_META
+    arm 7 fires: informal_practice(d) AND NOT domain_sketch_ready(d).
+  contrarian_challenge:
+    weakest_edge: "sigma_3 -> sigma_4"
+    challenge: >
+      The promotion criteria might be insufficient. A protocol that meets all
+      threshold criteria during a one-project trial might fail to generalize.
+      RETRO-PROTO worked on pv-method and t1-cortex — but those are both operated
+      by the same human with the same methodology style. A truly different team or
+      project might find the protocol unusable.
+    defense_or_revision: >
+      This is a genuine limitation that the method acknowledges rather than solves.
+      The cross-project requirement (2+ projects for method-level changes) mitigates
+      but doesn't eliminate the concern. The defense is that archive is always an
+      option — a protocol promoted prematurely can be demoted. The method system is
+      self-correcting: if a promoted practice doesn't work, retrospective signals
+      will surface the problem and M3-MEVO can revise or revert.
+
+objective:
+  id: O_MDIS
+  formal: >
+    O_MDIS(s) = exists p : Protocol, d : PromotionDecision, a : Artifact.
+    promotion_decided(p, d) AND artifact_produced(a)
+  type: terminal
+  expressible_claim: >
+    O_MDIS references promotion_decided (declared predicate over Protocol x
+    PromotionDecision) and artifact_produced (declared predicate over Artifact).
+    Both in Sigma_MDIS. Closed sentence over Mod(D_MDIS).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff lifecycle_stage(s1) <= lifecycle_stage(s2) where stages are
+      ordered: observed < drafted < trialing < evaluated < promoted. Total chain.
+    well_founded: "5 stages, strict total order, finite."
+  success_profile:
+    - id: mu_1
+      name: lifecycle_progress
+      formula: "lifecycle_stage(s) / 5"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: "Linear progress through 5 stages. mu_1 = 1.0 when promotion decision is made."
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0,..,sigma_4} | NOT executed}|"
+  initial: 5
+  final: 0
+  decrease_witness: >
+    Each step executes once. Note: sigma_2 (Trial) may take days or weeks of
+    elapsed time between sigma_2 completion (trial configured) and sigma_3 start
+    (evidence sufficient). The method doesn't model elapsed time — it models step
+    completion. The trial runs asynchronously; sigma_3 begins when the discoverer
+    judges evidence is sufficient.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: structure informal practice through protocol
+        lifecycle. Who: discoverer. Why: bridge gap between informal practice and
+        compiled method. How: 5-step linear DAG. When: recurring practice with
+        artifacts, not one-off or project-specific.
+    - gate: G1
+      result: PASS
+      note: >
+        D_MDIS = (Sigma_MDIS, Ax_MDIS). 6 sorts, 3 function symbols, 8 predicates,
+        5 closed axioms encoding lifecycle ordering. Domain boundary stated.
+        State claims verified axiom-by-axiom.
+    - gate: G2
+      result: PASS
+      note: >
+        O_MDIS as conjunction of promotion_decided + artifact_produced. Terminal
+        type. 5-stage total chain preorder. 1 measure (lifecycle progress).
+    - gate: G3
+      result: PASS
+      note: >
+        1 role (discoverer), identity projection, all 5 steps authorized.
+        Role partition: one role because evaluation is against measurable criteria.
+    - gate: G4
+      result: PASS
+      note: >
+        5 steps in path graph. Composability claims for all 4 edges. sigma_2->sigma_3
+        edge has elapsed time between steps (trial runs asynchronously). Contrarian
+        challenge on sigma_3->sigma_4: generalization concern, defended by
+        self-correcting property.
+    - gate: G5
+      result: PASS
+      note: >
+        All 5 steps have constraints-first guidance naming all output_schema fields.
+        sigma_0 sufficiency test is a 4-question heuristic (same pattern as M1-MDES sigma_0).
+    - gate: G6
+      result: PASS
+      note: "This file (P0-META/M2-MDIS/M2-MDIS.yaml). Structurally complete."
