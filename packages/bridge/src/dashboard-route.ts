@@ -83,7 +83,7 @@ export function formatUptime(startedAt: Date): string {
   return `${hours}h ${minutes}m`;
 }
 
-function formatStartedAt(date: Date): string {
+export function formatStartedAt(date: Date): string {
   const y = date.getFullYear();
   const mo = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -105,7 +105,7 @@ export function formatTimeAgo(date: Date): string {
   return `${hours}h ago`;
 }
 
-function formatTimeUntil(isoString: string): string {
+export function formatTimeUntil(isoString: string): string {
   const target = new Date(isoString).getTime();
   const diffMs = target - Date.now();
   if (diffMs <= 0) return 'now';
@@ -123,19 +123,19 @@ function formatTimeUntil(isoString: string): string {
   return `${minutes}m`;
 }
 
-function meterClass(utilization: number): string {
+export function meterClass(utilization: number): string {
   if (utilization >= 85) return 'critical';
   if (utilization >= 60) return 'warning';
   return 'healthy';
 }
 
-function cacheRateClass(rate: number): string {
+export function cacheRateClass(rate: number): string {
   if (rate >= 70) return 'good';
   if (rate >= 40) return 'mid';
   return 'low';
 }
 
-function statusBadgeClass(status: string): string {
+export function statusBadgeClass(status: string): string {
   switch (status) {
     case 'ready': return 'status-ready';
     case 'working': return 'status-working';
@@ -146,7 +146,7 @@ function statusBadgeClass(status: string): string {
   }
 }
 
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -372,7 +372,7 @@ function eventIconClass(type: string): string {
   }
 }
 
-function summarizeEventContent(content: Record<string, unknown>): string {
+export function summarizeEventContent(content: Record<string, unknown>): string {
   if (!content || Object.keys(content).length === 0) return '';
   // Try common fields
   if (content.result) return String(content.result).substring(0, 80);
