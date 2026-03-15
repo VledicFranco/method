@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Date:** 2026-03-14
-**Scope:** Bridge MCP proxy tools + permission handling + human observability dashboard
+**Scope:** Bridge MCP proxy tools + permission handling + human observability dashboard + token usage tracking
 **Depends on:** 003-dispatch (bridge implementation), 004-methodology-runtime (methodology session tools)
 **Requested by:** pv-agi (steering council acceptance test blocked by bridge UX gaps)
 **Evidence:** [pv-agi acceptance test report](../../../pv-agi/tmp/001-bridge-acceptance-test.md), council session 2026-03-14
@@ -242,7 +242,90 @@ The bridge serves a server-rendered HTML page showing live agent activity. This 
 - Last activity timestamp requires tracking the last prompt/response time per session
 - Both are lightweight additions to the session state in `pty-session.ts`
 
-See `mocks/` directory for visual mockups (to be added).
+See `mocks/` directory for visual mockups.
+
+#### Subscription Usage Meters
+
+The dashboard includes a subscription usage panel showing Claude Code Max quota consumption. This answers the operator's primary question: "Am I about to hit my rate limit?"
+
+**Data source:** Anthropic's OAuth usage endpoint:
+
+```
+GET https://api.anthropic.com/api/oauth/usage
+Authorization: Bearer <CLAUDE_OAUTH_TOKEN>
+anthropic-beta: oauth-2025-04-20
+```
+
+**Response fields:**
+- `five_hour.utilization` (0-100%) — 5-hour rolling window burst limit
+- `five_hour.resets_at` — ISO timestamp when the window resets
+- `seven_day.utilization` (0-100%) — 7-day weekly ceiling
+- `seven_day.resets_at` — ISO timestamp when the week resets
+- `seven_day_sonnet.utilization` — 7-day Sonnet-specific bucket
+- `seven_day_opus.utilization` — 7-day Opus-specific bucket
+- `extra_usage` — overflow billing status
+
+**Dashboard rendering:** Horizontal progress bars for each bucket, color-coded by utilization:
+- 0-60%: bioluminescent (green) — healthy
+- 60-85%: solar (amber) — approaching limit
+- 85-100%: red — near/at limit
+
+Reset times shown as relative timestamps ("resets in 2h 14m").
+
+**Configuration:** `CLAUDE_OAUTH_TOKEN` environment variable. When not set, the subscription panel shows "OAuth token not configured" and is non-blocking — the rest of the dashboard works fine.
+
+**Polling:** The bridge polls the endpoint every 60 seconds (configurable via `USAGE_POLL_INTERVAL_MS`, default `60000`). The dashboard displays the most recent cached response. The endpoint is lightweight — Anthropic supports sustained 1/minute polling.
+
+**Prior art:** pv-agent-tavern implements this in `ClaudeCodeProvider.ts` (line 38-78) with a `SubscriptionMeter` React component. The bridge implementation is simpler — server-rendered HTML, no React.
+
+#### Per-Session Token Usage
+
+Each bridge session tracks token consumption by parsing Claude Code's JSONL session logs. This gives the operator per-agent visibility: "How many tokens has this agent consumed? What's the cache hit rate?"
+
+**Data source:** Claude Code writes session logs to `~/.claude/projects/<project-hash>/sessions/` as JSONL files. Each line contains a message event with `usage` fields:
+
+```json
+{
+  "type": "assistant",
+  "message": { ... },
+  "usage": {
+    "input_tokens": 1250,
+    "output_tokens": 340,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 980
+  }
+}
+```
+
+**Tracking mechanism:**
+
+1. When a bridge session is spawned, the bridge records the session's workdir and start time.
+2. After each `prompt()` response is captured, the bridge reads the most recent JSONL log file for that workdir and aggregates `usage` fields from events since the session's start time.
+3. Aggregated metrics per session:
+   - `inputTokens` — total input tokens (uncached)
+   - `outputTokens` — total output tokens
+   - `cacheReadTokens` — total cache hits
+   - `cacheWriteTokens` — total cache creation tokens
+   - `cacheHitRate` — `cacheReadTokens / (inputTokens + cacheReadTokens)` as percentage
+   - `totalTokens` — sum of all token fields
+
+**Dashboard rendering:** Token metrics appear in the session table as additional columns:
+- `Tokens` — total tokens (formatted: e.g., "14.2k")
+- `Cache` — cache hit rate as percentage (e.g., "78%")
+
+A session detail view (accessible by clicking a session row) shows the full breakdown:
+- Input tokens (uncached): 1,250
+- Output tokens: 340
+- Cache read (hits): 980
+- Cache write: 0
+- Hit rate: 78%
+- Estimated cost: $0.02 (based on model pricing)
+
+**Log file discovery:** The bridge uses the workdir to derive the project hash that Claude Code uses for its log directory. The hashing algorithm matches Claude Code's internal convention: the project path is hashed to determine the log subdirectory under `~/.claude/projects/`.
+
+**Fallback:** If session logs are not found (Claude Code version doesn't write them, or the path convention changed), the per-session token columns show "—" and a tooltip "Session logs not found." The dashboard remains functional — this is a best-effort enrichment, not a hard dependency.
+
+**Configuration:** `CLAUDE_SESSIONS_DIR` environment variable (default: `~/.claude/projects`). Override if Claude Code stores sessions elsewhere.
 
 ---
 
@@ -275,6 +358,14 @@ Handle `SIGTERM` and `SIGINT`:
 Configurable TTL for dead sessions (default: 5 minutes). Dead sessions are removed from the pool after the TTL expires. Prevents unbounded memory growth during long orchestration runs.
 
 New environment variable: `DEAD_SESSION_TTL_MS` (default: `300000`).
+
+#### New environment variables (Phase 2)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLAUDE_OAUTH_TOKEN` | *(none)* | OAuth token for subscription usage polling. When unset, subscription meters are hidden. |
+| `USAGE_POLL_INTERVAL_MS` | `60000` | Interval between subscription usage polls |
+| `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base directory for Claude Code session logs |
 
 #### Permission prompt detection (future fallback)
 
@@ -320,6 +411,8 @@ New surfaces:
 | MCP `bridge_kill` | Phase 1 |
 | MCP `bridge_list` | Phase 1 |
 | `GET /dashboard` | Phase 2 |
+| Subscription usage polling | Phase 2 |
+| Per-session token tracking | Phase 2 |
 | `GET /health` | Phase 3 |
 
 After Phase 1, the MCP server exposes **18 tools** (14 methodology + 4 bridge proxy).
@@ -356,10 +449,10 @@ After Phase 1, the MCP server exposes **18 tools** (14 methodology + 4 bridge pr
 
 - **Bridge lifecycle management via MCP** — the human starts/stops the bridge independently. MCP tools assume the bridge is running. Lifecycle management (start/stop via MCP) is a future extension.
 - **Prompt/response history API** — storing full transcripts per session. Deferred until logging infrastructure exists.
-- **Token usage tracking** — requires Claude Code API integration we don't have. Character count proxy may be added to dashboard later.
 - **Agent-readable observability MCP tool** — a `bridge_dashboard` tool returning structured summary for agents. Deferred to future PRD.
 - **WebSocket real-time dashboard** — auto-refresh is sufficient for v1.
 - **Multi-bridge federation** — connecting to multiple bridge instances. Single bridge instance only.
+- **Admin API integration** — the org-level `GET /v1/organizations/usage_report/messages` endpoint provides aggregate token breakdowns by model/workspace. Requires admin key. Useful for multi-user orgs but not for single-operator bridge use. Deferred.
 
 ---
 
@@ -369,9 +462,9 @@ After Phase 1, the MCP server exposes **18 tools** (14 methodology + 4 bridge pr
 
 Add `spawn_args` and `metadata` to bridge. Implement 4 MCP proxy tools. This unblocks the pv-agi acceptance test — agents can be spawned with permission bypass through MCP.
 
-### Phase 2: Human Observability Dashboard
+### Phase 2: Human Observability Dashboard + Token Usage
 
-Add `GET /dashboard` to bridge. Add prompt count and last-activity tracking to sessions. The operator opens a browser tab and sees live agent state.
+Add `GET /dashboard` to bridge. Add prompt count and last-activity tracking to sessions. Poll subscription usage via OAuth. Parse session logs for per-agent token consumption and cache hit rates. The operator opens a browser tab and sees live agent state, subscription quota, and token usage.
 
 ### Phase 3: Operational Polish
 
@@ -415,7 +508,9 @@ Health endpoint, graceful shutdown, dead session cleanup, per-prompt settle dela
 1. An orchestrating agent can spawn sub-agents via `bridge_spawn` MCP tool with permission bypass
 2. The entire methodology session loop (start → route → load → spawn → execute → transition) uses MCP only
 3. Bridge session metadata automatically includes the methodology session ID
-4. A human operator can open `http://localhost:3456/dashboard` and see live agent activity
-5. The pv-agi acceptance test (blocked since PRD 004) passes end-to-end
+4. A human operator can open `http://localhost:3456/dashboard` and see live agent activity, subscription quota meters, and per-session token usage
+5. Subscription meters show 5-hour and 7-day utilization with reset times when `CLAUDE_OAUTH_TOKEN` is configured
+6. Per-session token breakdown (input, output, cache hit rate) is visible in the session table
+7. The pv-agi acceptance test (blocked since PRD 004) passes end-to-end
 6. All existing bridge HTTP endpoints continue to work unchanged (backward compatible)
 7. All existing MCP tools (14) continue to work unchanged

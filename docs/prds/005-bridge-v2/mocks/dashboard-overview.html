@@ -60,7 +60,7 @@ body::after {
 
 /* ── LAYOUT ─────────────────────────────────────────── */
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2.5rem 3rem;
 }
@@ -75,8 +75,6 @@ body::after {
   border-bottom: 1px solid rgba(0,212,176,.07);
 }
 
-.header-left { }
-
 .header-title {
   font-family: var(--font-d);
   font-size: 1.6rem;
@@ -84,10 +82,7 @@ body::after {
   letter-spacing: -.02em;
   line-height: 1.1;
 }
-.header-title em {
-  font-style: normal;
-  color: var(--bio);
-}
+.header-title em { font-style: normal; color: var(--bio); }
 
 .header-subtitle {
   font-family: var(--font-m);
@@ -99,9 +94,7 @@ body::after {
   margin-top: .35rem;
 }
 
-.header-right {
-  text-align: right;
-}
+.header-right { text-align: right; }
 
 .header-meta {
   font-family: var(--font-m);
@@ -109,10 +102,7 @@ body::after {
   color: var(--dim2);
   line-height: 1.8;
 }
-.header-meta strong {
-  color: var(--dim);
-  font-weight: 500;
-}
+.header-meta strong { color: var(--dim); font-weight: 500; }
 
 /* ── HEALTH CARDS ────────────────────────────────────── */
 .health-row {
@@ -158,7 +148,6 @@ body::after {
   margin-top: .4rem;
 }
 
-/* accent line */
 .health-card::before {
   content: '';
   position: absolute;
@@ -169,6 +158,111 @@ body::after {
 .health-card.accent-solar::before { background: var(--solar); }
 .health-card.accent-nebular::before { background: var(--nebular); }
 .health-card.accent-dim::before { background: var(--muted); }
+
+/* ── SUBSCRIPTION METERS ─────────────────────────────── */
+.subscription-panel {
+  background: rgba(11,28,43,.35);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 2px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+.subscription-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--bio), var(--nebular));
+}
+
+.subscription-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.subscription-title {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.subscription-poll {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.subscription-poll .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--bio);
+  opacity: .6;
+}
+
+.meters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 3rem;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+.meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.meter-label {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.meter-value {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  font-weight: 600;
+}
+.meter-value.healthy { color: var(--bio); }
+.meter-value.warning { color: var(--solar); }
+.meter-value.critical { color: var(--red); }
+
+.meter-bar {
+  height: 6px;
+  background: rgba(255,255,255,.06);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width .3s ease;
+}
+.meter-fill.healthy { background: var(--bio); box-shadow: 0 0 8px rgba(0,212,176,.3); }
+.meter-fill.warning { background: var(--solar); box-shadow: 0 0 8px rgba(238,170,98,.3); }
+.meter-fill.critical { background: var(--red); box-shadow: 0 0 8px rgba(224,90,90,.3); }
+
+.meter-detail {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--muted);
+}
 
 /* ── SECTION HEADER ──────────────────────────────────── */
 .section-header {
@@ -202,26 +296,25 @@ body::after {
 
 .session-table th {
   font-family: var(--font-m);
-  font-size: .58rem;
+  font-size: .56rem;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--bio);
   text-align: left;
-  padding: .6rem 1rem;
+  padding: .6rem .75rem;
   border-bottom: 1px solid rgba(0,212,176,.12);
   opacity: .8;
+  white-space: nowrap;
 }
 
 .session-table td {
-  padding: .75rem 1rem;
+  padding: .75rem .75rem;
   border-bottom: 1px solid rgba(255,255,255,.04);
   color: var(--dim);
   vertical-align: middle;
 }
 
-.session-table tr:hover td {
-  background: rgba(0,212,176,.02);
-}
+.session-table tr:hover td { background: rgba(0,212,176,.02); }
 
 /* status badges */
 .status {
@@ -229,48 +322,31 @@ body::after {
   align-items: center;
   gap: .4rem;
   font-family: var(--font-m);
-  font-size: .72rem;
+  font-size: .7rem;
   font-weight: 500;
-  padding: .2rem .65rem;
+  padding: .2rem .6rem;
   border-radius: 2px;
+  white-space: nowrap;
 }
 
 .status::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 6px; height: 6px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.status-ready {
-  color: var(--bio);
-  background: var(--bio-dim);
-}
+.status-ready { color: var(--bio); background: var(--bio-dim); }
 .status-ready::before { background: var(--bio); }
 
-.status-working {
-  color: var(--solar);
-  background: var(--solar-dim);
-}
-.status-working::before {
-  background: var(--solar);
-  animation: pulse 1.5s ease-in-out infinite;
-}
+.status-working { color: var(--solar); background: var(--solar-dim); }
+.status-working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
 
-.status-dead {
-  color: var(--red);
-  background: var(--red-dim);
-}
+.status-dead { color: var(--red); background: var(--red-dim); }
 .status-dead::before { background: var(--red); opacity: .5; }
 
-.status-init {
-  color: var(--dim2);
-  background: rgba(122,144,162,.08);
-}
-.status-init::before {
-  background: var(--dim2);
-  animation: pulse 2s ease-in-out infinite;
-}
+.status-init { color: var(--dim2); background: rgba(122,144,162,.08); }
+.status-init::before { background: var(--dim2); animation: pulse 2s ease-in-out infinite; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -278,32 +354,34 @@ body::after {
 }
 
 /* mono text cells */
-.mono {
-  font-family: var(--font-m);
-  font-size: .75rem;
+.mono { font-family: var(--font-m); font-size: .72rem; }
+.session-id { color: var(--stellar); font-weight: 500; }
+.workdir { color: var(--nebular); }
+.method-sid { color: var(--bio); opacity: .75; }
+.timestamp { color: var(--dim2); }
+.prompt-count { color: var(--dim); text-align: center; }
+
+/* token cells */
+.tokens { color: var(--dim); text-align: right; }
+.tokens-in { color: var(--dim); }
+.tokens-out { color: var(--solar); opacity: .8; }
+.cache-rate { text-align: right; }
+.cache-rate.good { color: var(--bio); }
+.cache-rate.mid { color: var(--solar); }
+.cache-rate.low { color: var(--dim2); }
+
+/* token detail (mini breakdown under main number) */
+.token-breakdown {
+  font-size: .6rem;
+  color: var(--muted);
+  margin-top: .15rem;
 }
 
-.session-id {
-  color: var(--stellar);
-  font-weight: 500;
-}
-
-.workdir {
-  color: var(--nebular);
-}
-
-.method-sid {
-  color: var(--bio);
-  opacity: .75;
-}
-
-.timestamp {
-  color: var(--dim2);
-}
-
-.prompt-count {
-  color: var(--dim);
-  text-align: center;
+/* ── DIVIDER ─────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,212,176,.12), transparent 70%);
+  margin: 2.5rem 0;
 }
 
 /* ── FOOTER ──────────────────────────────────────────── */
@@ -335,8 +413,7 @@ body::after {
 }
 
 .refresh-dot {
-  width: 5px;
-  height: 5px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--bio);
   animation: pulse 5s ease-in-out infinite;
@@ -408,10 +485,71 @@ body::after {
     </div>
   </div>
 
-  <!-- Session table -->
+  <!-- Subscription Usage Meters -->
+  <div class="subscription-panel">
+    <div class="subscription-header">
+      <h2 class="subscription-title">Subscription Usage</h2>
+      <div class="subscription-poll">
+        <span class="dot"></span>
+        Polled 12s ago &middot; Claude Code Max
+      </div>
+    </div>
+
+    <div class="meters-grid">
+      <!-- 5-hour burst -->
+      <div class="meter">
+        <div class="meter-header">
+          <span class="meter-label">5-Hour Window</span>
+          <span class="meter-value warning">42%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill warning" style="width: 42%;"></div>
+        </div>
+        <div class="meter-detail">resets in 3h 18m</div>
+      </div>
+
+      <!-- 7-day ceiling -->
+      <div class="meter">
+        <div class="meter-header">
+          <span class="meter-label">7-Day Ceiling</span>
+          <span class="meter-value healthy">28%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill healthy" style="width: 28%;"></div>
+        </div>
+        <div class="meter-detail">resets in 4d 11h</div>
+      </div>
+
+      <!-- 7-day Sonnet -->
+      <div class="meter">
+        <div class="meter-header">
+          <span class="meter-label">7-Day Sonnet</span>
+          <span class="meter-value healthy">19%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill healthy" style="width: 19%;"></div>
+        </div>
+        <div class="meter-detail">resets in 4d 11h</div>
+      </div>
+
+      <!-- 7-day Opus -->
+      <div class="meter">
+        <div class="meter-header">
+          <span class="meter-label">7-Day Opus</span>
+          <span class="meter-value critical">87%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill critical" style="width: 87%;"></div>
+        </div>
+        <div class="meter-detail">resets in 4d 11h &middot; consider switching to Sonnet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session table with token columns -->
   <div class="section-header">
     <h2 class="section-title">Sessions</h2>
-    <span class="section-tag">3 total &middot; 2 active</span>
+    <span class="section-tag">3 total &middot; 2 active &middot; 142.7k tokens</span>
   </div>
 
   <table class="session-table">
@@ -422,6 +560,8 @@ body::after {
         <th>Workdir</th>
         <th>Method Session</th>
         <th style="text-align:center">Prompts</th>
+        <th style="text-align:right">Tokens</th>
+        <th style="text-align:right">Cache</th>
         <th>Last Activity</th>
       </tr>
     </thead>
@@ -432,6 +572,14 @@ body::after {
         <td class="mono workdir">/pv-agi</td>
         <td class="mono method-sid">council-run-1</td>
         <td class="mono prompt-count">4</td>
+        <td class="mono tokens" style="text-align:right">
+          68.4k
+          <div class="token-breakdown">in: 52.1k &middot; out: 16.3k</div>
+        </td>
+        <td class="mono cache-rate good" style="text-align:right">
+          78%
+          <div class="token-breakdown">hits: 40.6k</div>
+        </td>
         <td class="mono timestamp">now</td>
       </tr>
       <tr>
@@ -440,6 +588,14 @@ body::after {
         <td class="mono workdir">/pv-method</td>
         <td class="mono method-sid">impl-phase2</td>
         <td class="mono prompt-count">12</td>
+        <td class="mono tokens" style="text-align:right">
+          51.2k
+          <div class="token-breakdown">in: 38.9k &middot; out: 12.3k</div>
+        </td>
+        <td class="mono cache-rate good" style="text-align:right">
+          82%
+          <div class="token-breakdown">hits: 31.9k</div>
+        </td>
         <td class="mono timestamp">32s ago</td>
       </tr>
       <tr>
@@ -448,18 +604,28 @@ body::after {
         <td class="mono workdir">/pv-agi</td>
         <td class="mono method-sid">council-run-1</td>
         <td class="mono prompt-count">7</td>
+        <td class="mono tokens" style="text-align:right">
+          23.1k
+          <div class="token-breakdown">in: 18.7k &middot; out: 4.4k</div>
+        </td>
+        <td class="mono cache-rate mid" style="text-align:right">
+          54%
+          <div class="token-breakdown">hits: 10.1k</div>
+        </td>
         <td class="mono timestamp">3m ago</td>
       </tr>
     </tbody>
   </table>
 
-  <!-- Second scenario: initializing state -->
-  <div style="margin-top: 3rem;">
-    <div class="section-header">
-      <h2 class="section-title">Session States</h2>
-      <span class="section-tag">All possible statuses</span>
-    </div>
+  <div class="section-divider"></div>
 
+  <!-- Session States reference -->
+  <div class="section-header">
+    <h2 class="section-title">Reference</h2>
+    <span class="section-tag">Session states &middot; Cache rate colors</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
     <table class="session-table">
       <thead>
         <tr>
@@ -472,22 +638,54 @@ body::after {
         <tr>
           <td class="mono">initializing</td>
           <td><span class="status status-init">initializing</span></td>
-          <td style="color: var(--dim); font-size: .85rem;">PTY spawned, waiting for first prompt marker</td>
+          <td style="color: var(--dim); font-size: .82rem;">PTY spawned, waiting for prompt marker</td>
         </tr>
         <tr>
           <td class="mono">ready</td>
           <td><span class="status status-ready">ready</span></td>
-          <td style="color: var(--dim); font-size: .85rem;">Agent idle, waiting for prompt</td>
+          <td style="color: var(--dim); font-size: .82rem;">Agent idle, waiting for prompt</td>
         </tr>
         <tr>
           <td class="mono">working</td>
           <td><span class="status status-working">working</span></td>
-          <td style="color: var(--dim); font-size: .85rem;">Processing a prompt, output pending</td>
+          <td style="color: var(--dim); font-size: .82rem;">Processing prompt, output pending</td>
         </tr>
         <tr>
           <td class="mono">dead</td>
           <td><span class="status status-dead">dead</span></td>
-          <td style="color: var(--dim); font-size: .85rem;">PTY exited or killed, awaiting cleanup</td>
+          <td style="color: var(--dim); font-size: .82rem;">PTY exited or killed</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="session-table">
+      <thead>
+        <tr>
+          <th>Cache Rate</th>
+          <th>Color</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono cache-rate good">&ge; 70%</td>
+          <td style="color: var(--bio);">Bioluminescent</td>
+          <td style="color: var(--dim); font-size: .82rem;">Good cache utilization</td>
+        </tr>
+        <tr>
+          <td class="mono cache-rate mid">40–69%</td>
+          <td style="color: var(--solar);">Solar</td>
+          <td style="color: var(--dim); font-size: .82rem;">Moderate — check prompt structure</td>
+        </tr>
+        <tr>
+          <td class="mono cache-rate low">&lt; 40%</td>
+          <td style="color: var(--dim2);">Dim</td>
+          <td style="color: var(--dim); font-size: .82rem;">Low — prompts may not be caching</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color: var(--muted);">&mdash;</td>
+          <td style="color: var(--muted);">Muted</td>
+          <td style="color: var(--dim); font-size: .82rem;">Session logs not found</td>
         </tr>
       </tbody>
     </table>
@@ -500,7 +698,7 @@ body::after {
     </div>
     <div class="footer-refresh">
       <span class="refresh-dot"></span>
-      Auto-refresh 5s
+      Auto-refresh 5s &middot; Usage poll 60s
     </div>
   </footer>
 
