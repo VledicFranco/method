@@ -1,0 +1,42 @@
+# Method Installation Manifest — pv-method
+# Source of truth for what methodologies and protocols are active on this project.
+
+manifest:
+  project: pv-method
+  last_updated: "2026-03-14"
+
+  installed:
+    - id: P2-SD
+      type: methodology
+      version: "2.0"
+      card: project-card.yaml
+      card_version: "1.3"
+      instance_id: I2-METHOD
+      artifacts:
+        - project-card.yaml
+        - CHANGELOG.yaml
+
+    - id: P1-EXEC
+      type: methodology
+      version: "1.1"
+      note: "Execution substrate — routes challenges to COUNCIL/ORCH/TMP"
+      artifacts: []  # no project-level artifacts; operates at runtime
+
+    - id: RETRO-PROTO
+      type: protocol
+      version: "1.0"
+      status: promoted
+      artifacts:
+        - retros/
+
+    - id: STEER-PROTO
+      type: protocol
+      version: "0.1"
+      status: draft
+      artifacts:
+        - council/TEAM.yaml
+        - council/AGENDA.yaml
+        - council/LOG.yaml
+        - council/inbox/
+        - council/outbox/
+        - council/sub-councils/

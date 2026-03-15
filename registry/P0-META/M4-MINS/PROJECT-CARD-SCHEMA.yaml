@@ -346,6 +346,34 @@ example_cards:
       full-surface security, drift every 3 phases). 3 role notes (orchestrator,
       reviewer, impl_sub_agent). Replaces 10 handwritten role files.
 
+installation:
+  description: "What a project needs in .method/ to use a methodology via the MIC system"
+  artifacts:
+    - path: "project-card.yaml"
+      type: file
+      required: true
+      description: "The project card — essence, context, delivery rules, role notes"
+      human_input_needed: true
+    - path: "CHANGELOG.yaml"
+      type: file
+      required: false
+      description: "Card version history with retro evidence"
+      human_input_needed: false
+    - path: "manifest.yaml"
+      type: file
+      required: true
+      description: "Installation manifest — what methodologies and protocols are active"
+      human_input_needed: false
+      note: "Generated/updated when methodologies or protocols are installed"
+  manifest_entry: |
+    - id: {methodology_id}
+      type: methodology
+      version: "{version}"
+      card: project-card.yaml
+      card_version: "{card_version}"
+      instance_id: "{instance_id}"
+      artifacts: [project-card.yaml, CHANGELOG.yaml]
+
 card_placement:
   description: >
     Where the project card lives, how it's named, and how the agent discovers it.

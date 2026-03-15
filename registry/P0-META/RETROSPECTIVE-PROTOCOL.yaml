@@ -6,6 +6,21 @@ protocol:
   date: "2026-03-14"
   promotion_date: "2026-03-14"
   maturity: promoted
+
+  installation:
+    description: "What a project needs in .method/ to use this protocol"
+    artifacts:
+      - path: "retros/"
+        type: directory
+        required: true
+        description: "Retrospective archive. One YAML per method execution per session."
+        human_input_needed: false
+    manifest_entry: |
+      - id: RETRO-PROTO
+        type: protocol
+        version: "1.0"
+        status: promoted
+        artifacts: [retros/]
   description: >
     Universal protocol for methodology self-improvement through agent retrospectives.
     Every methodology session produces a structured retrospective artifact. Observations

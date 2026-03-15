@@ -4,6 +4,52 @@ protocol:
   version: "0.1"
   status: draft
   date: "2026-03-14"
+
+  installation:
+    description: "What a project needs in .method/ to use this protocol"
+    artifacts:
+      - path: "council/TEAM.yaml"
+        type: file
+        required: true
+        description: "Persistent council member definitions"
+        human_input_needed: true
+        template_note: "Define 3-8 members with roles, convictions, blind spots covering the project's needed disciplines"
+      - path: "council/AGENDA.yaml"
+        type: file
+        required: true
+        description: "Forward-looking work items prioritized by urgency"
+        human_input_needed: true
+        template_note: "Set 3 initial P0 items for the founding session"
+      - path: "council/LOG.yaml"
+        type: file
+        required: true
+        description: "Append-only session decision record"
+        human_input_needed: false
+        template_note: "Start empty: log: { project: X, sessions: [] }"
+      - path: "council/inbox/"
+        type: directory
+        required: true
+        description: "Messages from other project councils"
+        human_input_needed: false
+      - path: "council/outbox/"
+        type: directory
+        required: true
+        description: "Messages to other project councils"
+        human_input_needed: false
+      - path: "council/sub-councils/"
+        type: directory
+        required: true
+        description: "Artifacts from spawned sub-council sessions"
+        human_input_needed: false
+    card_requirement:
+      field: "governance"
+      description: "Project card must have a governance section with autonomy, session_cadence, veto_authority"
+    manifest_entry: |
+      - id: STEER-PROTO
+        type: protocol
+        version: "0.1"
+        status: draft
+        artifacts: [council/TEAM.yaml, council/AGENDA.yaml, council/LOG.yaml, council/inbox/, council/outbox/, council/sub-councils/]
   description: >
     Universal protocol for project-level governance through a persistent steering
     council. The council champions the project's essence (purpose, invariant,

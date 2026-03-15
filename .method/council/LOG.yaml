@@ -124,3 +124,32 @@ log:
       next_agenda_items:
         - "AG-011: update Guide 12 with sub-council docs (still open)"
         - "AG-007: CLAUDE.md for pv-method (promote from P2 to P1)"
+
+    - id: SESSION-004
+      date: "2026-03-14"
+      type: design
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Formalize installation of methodologies and protocols into .method/"
+
+      decisions:
+        - id: D-006
+          item: "Installation manifest and specs"
+          decision: >
+            Formalize .method/ installation with: (1) installation specs in registry
+            declaring required artifacts, (2) manifest.yaml in .method/ declaring
+            what's installed, (3) manual or assisted scaffolding.
+          status: decided
+          for: >
+            Unified discovery (agents read manifest to know what's available).
+            Installation specs are the theory of required artifacts.
+            Manifest is source of truth for what's installed.
+          against: "None — unanimous. Nika notes: keep manifest simple."
+          essence_check: "Serves invariant: installation spec IS theory, manifest IS source of truth."
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+        - "Decision to implement manifest.yaml and installation specs"
+
+      next_agenda_items:
+        - "AG-012: implement manifest.yaml for pv-method"
+        - "AG-013: add installation specs to RETRO-PROTO and STEER-PROTO"

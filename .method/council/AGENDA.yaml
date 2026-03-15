@@ -41,6 +41,12 @@ agenda:
       owner: "Reva (docs)"
       status: open
 
+    - id: AG-012
+      item: "Write Guide 13: Installation and .method/ directory structure"
+      rationale: "D-006 formalized installation. Need a guide explaining manifest.yaml, installation specs, and how to adopt methodologies."
+      owner: "Reva (docs), Harlan (accuracy)"
+      status: open
+
   p1_soon:
     - id: AG-004
       item: "Plan STEER-PROTO trial criteria and promotion path"
