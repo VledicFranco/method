@@ -375,17 +375,33 @@ export function createPool(options?: PoolOptions): SessionPool {
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
 
-      // PRD 008 / EXP-008-2: Inject session ID + OBS-02 auto-nudge into initial prompt
-      const injectedPrompt = initialPrompt
-        ? `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`
-        : undefined;
+      // EXP-OBS02: Split prompt delivery for long initial prompts
+      // Short prompts (<500 chars) work reliably as initial prompts.
+      // Long prompts cause agents to start then stall (OBS-02).
+      // Fix: send short activation as initial, queue full commission as follow-up.
+      const SPLIT_THRESHOLD = 500;
+      const sessionIdPrefix = `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.`;
+
+      let activationPrompt: string | undefined;
+      let followUpPrompt: string | undefined;
+
+      if (initialPrompt) {
+        if (initialPrompt.length > SPLIT_THRESHOLD) {
+          // Split: short init to activate, full commission as follow-up
+          activationPrompt = `${sessionIdPrefix}\n\nYou will receive your full task instructions in the next message. Acknowledge with "ready".`;
+          followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
+        } else {
+          // Short enough to send as-is
+          activationPrompt = `${sessionIdPrefix}\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions.`;
+        }
+      }
 
       const session = spawnSession({
         id: sessionId,
         workdir: effectiveWorkdir,
         claudeBin,
         settleDelayMs,
-        initialPrompt: injectedPrompt,
+        initialPrompt: activationPrompt,
         spawnArgs,
       });
 
@@ -451,6 +467,18 @@ export function createPool(options?: PoolOptions): SessionPool {
       }
 
       totalSpawned++;
+
+      // EXP-OBS02: Queue follow-up prompt for split delivery
+      // The activation prompt is sent by pty-session on first ready.
+      // The follow-up is queued via sendPrompt — p-queue ensures ordering.
+      if (followUpPrompt) {
+        // Small delay to let the activation prompt be sent first
+        setTimeout(() => {
+          session.sendPrompt(followUpPrompt!).catch(() => {
+            // Follow-up delivery failure is non-fatal — agent can be prompted manually
+          });
+        }, 3000);
+      }
 
       return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo };
     },
