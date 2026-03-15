@@ -153,3 +153,50 @@ log:
       next_agenda_items:
         - "AG-012: implement manifest.yaml for pv-method"
         - "AG-013: add installation specs to RETRO-PROTO and STEER-PROTO"
+
+    - id: SESSION-005
+      date: "2026-03-14"
+      type: governance_expansion
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Installation guide, MCP automation, project-specific process enforcement"
+
+      decisions:
+        - id: D-007
+          item: "Installation guide"
+          decision: "AG-012 confirmed. Reva drafts Guide 13 (installation and .method/ structure)."
+          status: decided
+          for: "Pre-decided — documentation work."
+          against: "None."
+
+        - id: D-008
+          item: "MCP automation for installation"
+          decision: "Defer MCP tool. Use /method-init skill for scaffolding. Skill reads installation specs from registry, creates directories and template files in .method/."
+          status: decided
+          for: "Skill runs in project directory — no server changes. Installation spec is in registry (faithful)."
+          against: "None."
+
+        - id: D-009
+          item: "Project-specific process enforcement"
+          decision: >
+            Add processes section to project card schema. Trigger-action pairs
+            enforced by the steering council during Step 4. Start lightweight.
+            Project-local methodologies are a separate PRD if needed later.
+          status: decided
+          for: >
+            Addresses real pain: documentation skipped, no RFCs, no CLAUDE.md.
+            Makes enforcement explicit and declarative. Faithful to invariant.
+          against: "Orion wanted project-local methodologies immediately — but agreed to start with processes."
+          essence_check: "Process rules make governance theory source of truth. Faithful."
+          escalation_note: "PO asked whether to go with (A) processes only, (B) project-local methods, or (C) both. Council recommends (C) with processes now."
+
+      open_questions:
+        - "Should project-local methodologies be a PRD? (Deferred — processes may be sufficient)"
+        - "Who enforces processes — council only, or methodology execution too?"
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+
+      next_agenda_items:
+        - "AG-014: Add processes section to MIC schema and populate for pv-method"
+        - "AG-012: Guide 13 (installation) — Reva"
+        - "AG-007: CLAUDE.md for pv-method — promote to P0"
