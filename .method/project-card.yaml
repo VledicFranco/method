@@ -4,7 +4,15 @@
 project_card:
   id: I2-METHOD
   project: pv-method
-  card_version: "1.1"
+  card_version: "1.2"
+
+  governance:
+    autonomy: M2-SEMIAUTO
+    session_cadence: "weekly or on-demand"
+    veto_authority: product_owner
+    max_autonomous_decisions: 3
+    essence_escalation: always
+    council_path: ".method/council/"
   methodology: P2-SD
   methodology_version: "2.0"
 

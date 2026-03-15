@@ -1,0 +1,5 @@
+log:
+  project: pv-method
+  sessions: []
+  # Sessions will be appended here. Each entry follows the schema defined
+  # in STEERING-PROTOCOL.yaml. First session is AG-001 (founding session).

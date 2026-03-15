@@ -1,0 +1,61 @@
+agenda:
+  project: pv-method
+  last_updated: "2026-03-14"
+
+  p0_immediate:
+    - id: AG-001
+      item: "Validate the steering council itself — run a founding session to test STEER-PROTO on this project"
+      rationale: "Dogfooding. We can't recommend STEER-PROTO to other projects without validating it here first."
+      owner: "Thane (facilitates), full council"
+      status: in_progress
+
+    - id: AG-002
+      item: "Review accumulated retrospective signals and decide on next evolution cycle"
+      rationale: >
+        12 retros collected, 4 gap candidates surfaced, 2 resolved. Open gaps:
+        GC-P2SD-001 (sigma_B3 multi-task friction), GC-P1EXEC-002 (M1-COUNCIL
+        proportionality). Council should review and decide: evolve now or accumulate more?
+      owner: "Nika (evidence analysis), Thane (decision)"
+      status: open
+
+    - id: AG-003
+      item: "Assess project health against essence — are we serving the invariant?"
+      rationale: >
+        First essence check since the project card was created. The invariant is
+        "theory is source of truth." Question: has any implementation decision
+        deviated from this? PRD 004 introduced runtime transition function evaluation
+        with heuristic keyword matching — is that faithful to the theory?
+      owner: "Harlan (theory alignment), Nika (execution evidence)"
+      status: open
+
+  p1_soon:
+    - id: AG-004
+      item: "Plan STEER-PROTO trial criteria and promotion path"
+      rationale: "STEER-PROTO is in draft. It needs trial criteria (like RETRO-PROTO had) before we can trial it formally."
+      owner: "Orion (protocol design), Reva (usability)"
+      status: open
+
+    - id: AG-005
+      item: "Evaluate cross-project communication needs — does pv-method need to message pv-agi or t1-cortex councils?"
+      rationale: "STEER-PROTO defines inbox/outbox channels but no projects use them yet. Is there a real need?"
+      owner: "Orion (cross-project), Reva (practical need)"
+      status: open
+
+    - id: AG-006
+      item: "Review Guide quality — are the 11 guides sufficient for someone to adopt the system from scratch?"
+      rationale: "We wrote guides fast during the trial. Quality and completeness haven't been reviewed."
+      owner: "Reva (DX), Harlan (accuracy)"
+      status: open
+
+  p2_later:
+    - id: AG-007
+      item: "Design a CLAUDE.md for pv-method that references the project card and council"
+      rationale: "pv-method still has no CLAUDE.md. Agents don't know the card exists unless told."
+      owner: "Reva"
+      status: open
+
+    - id: AG-008
+      item: "Consider M6-MAUD compilation — the only partially operational arm in delta_META"
+      rationale: "6 of 7 delta_META arms are compiled. M6-MAUD is partially operational. Should we compile it?"
+      owner: "Thane"
+      status: open
