@@ -176,3 +176,52 @@ export type MethodologyStartResult = {
   status: 'initialized';
   message: string;
 };
+
+export type EvaluatedPredicate = {
+  name: string;
+  value: boolean | null;
+  source: 'provided' | 'inferred';
+};
+
+export type MethodologyRouteResult = {
+  methodologyId: string;
+  evaluatedPredicates: EvaluatedPredicate[];
+  selectedArm: {
+    priority: number;
+    label: string;
+    condition: string;
+    rationale: string | null;
+  } | null;
+  selectedMethod: {
+    id: string;
+    name: string;
+    stepCount: number;
+    description: string;
+  } | null;
+  priorMethodsCompleted: Array<{
+    methodId: string;
+    completedAt: string;
+    outputSummary: string | null;
+  }>;
+  message: string;
+};
+
+export type MethodologyLoadMethodResult = {
+  methodologySessionId: string;
+  method: {
+    id: string;
+    name: string;
+    stepCount: number;
+    firstStep: { id: string; name: string };
+  };
+  methodologyProgress: {
+    methodsCompleted: number;
+    methodsRemaining: number | 'unknown';
+    currentMethodIndex: number;
+  };
+  priorMethodOutputs: Array<{
+    methodId: string;
+    stepOutputs: Array<{ stepId: string; summary: string }>;
+  }>;
+  message: string;
+};

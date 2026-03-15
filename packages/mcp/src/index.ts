@@ -16,6 +16,8 @@ import {
   selectMethodology,
   validateStepOutput,
   startMethodologySession,
+  routeMethodology,
+  loadMethodInSession,
 } from "@method/core";
 
 // Path resolution
@@ -225,6 +227,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["methodology_id"],
       },
     },
+    {
+      name: "methodology_route",
+      description: "Evaluate \u03B4_\u03A6 against current state and return the recommended method with routing rationale. Requires an active methodology session.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          challenge_predicates: {
+            type: "object",
+            description: "Pre-evaluated predicate values: { predicate_name: true/false }",
+          },
+          ...sessionIdProperty,
+        },
+      },
+    },
+    {
+      name: "methodology_load_method",
+      description: "Load a specific method within the active methodology session. Prior method outputs will be available in step_context.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          method_id: {
+            type: "string",
+            description: "Method ID to load (e.g., M1-COUNCIL)",
+          },
+          ...sessionIdProperty,
+        },
+        required: ["method_id"],
+      },
+    },
   ],
 }));
 
@@ -342,6 +373,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { session: methSession, result } = startMethodologySession(
           REGISTRY, methodology_id, challenge ?? null, sid
         );
+        methodologySessions.set(sid, methSession);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "methodology_route": {
+        const { challenge_predicates, session_id } = z.object({
+          challenge_predicates: z.record(z.boolean()).optional(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const sid = session_id ?? '__default__';
+        const methSession = methodologySessions.get(sid);
+        if (!methSession) {
+          throw new Error('No methodology session active. Call methodology_start first.');
+        }
+        const result = routeMethodology(REGISTRY, methSession, challenge_predicates);
+        methodologySessions.set(sid, methSession);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "methodology_load_method": {
+        const { method_id, session_id } = z.object({
+          method_id: z.string(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const sid = session_id ?? '__default__';
+        const methSession = methodologySessions.get(sid);
+        if (!methSession) {
+          throw new Error('No methodology session active. Call methodology_start first.');
+        }
+        const session = sessions.getOrCreate(sid);
+        const result = loadMethodInSession(REGISTRY, methSession, method_id, session, sid);
         methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
       }
