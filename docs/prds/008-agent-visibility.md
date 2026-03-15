@@ -346,17 +346,19 @@ agent's stdout). Push notifications go in the OPPOSITE direction (bridge sends T
 agent's stdin via PTY write). These are different code paths — sending might work
 even when receiving fails.
 
-**Experiment EXP-008-1:** Test bridge_prompt DELIVERY (not response parsing).
-- Spawn an agent via bridge
-- Send it a prompt that asks it to write a file (not respond with text)
-- Check if the file was created
-- If yes: bridge_prompt delivery works even when response parsing is lossy
-- If no: bridge_prompt is fundamentally unreliable and push notifications need
-  a different mechanism (e.g., file-based notification, environment variable flag)
+**Experiment EXP-008-1:** COMPLETED — PASS.
+bridge_prompt delivers reliably to stdin. Two sequential deliveries both confirmed
+via file creation with exact content. The empty response issue is OUTPUT parsing
+only (PTY stdout → parser). INPUT delivery (bridge → agent stdin) works perfectly.
 
-**Mitigation if experiment fails:** Dashboard is the reliable fallback — it reads
-directly from the channel store. Push becomes "best-effort bonus." Agents that
-need reliable notifications poll `bridge_read_events` instead.
+**Design decision:** Push notifications via bridge_prompt are RELIABLE for delivery.
+Response parsing remains lossy — but push notifications are fire-and-forget (we don't
+need the response). Dashboard is the reading channel; bridge_prompt is the notification
+channel. Different paths, both work for their purpose.
+
+**Hotfix opportunity:** The output parser should be investigated separately — the
+empty response issue affects `bridge_prompt` return values and general bridge UX.
+See packages/bridge/src/parser.ts.
 
 ### Gap 2: Agent self-identification (BLOCKING — needs design decision)
 
@@ -364,17 +366,15 @@ To call `bridge_progress` or `bridge_event`, the agent needs its own
 `bridge_session_id`. Currently the spawned agent doesn't receive this — only
 the spawner knows it.
 
-**Experiment EXP-008-2:** Test three approaches for injecting session identity:
-- (a) Environment variable: spawn with `BRIDGE_SESSION_ID=abc` — check if the
-  spawned Claude Code agent can read it via `process.env` in tool calls
-- (b) Initial prompt injection: include the session_id in the prompt text —
-  the agent parses it and uses it in tool calls
-- (c) `bridge_whoami` tool: the agent calls a discovery tool that returns its
-  session_id based on the PTY session it's running in
+**Experiment EXP-008-2:** COMPLETED — PASS (option b: prompt injection).
+Agent correctly received and used bridge_session_id from prompt text. Confirmed
+by file write containing the exact session_id.
 
-**Decision criteria:** (a) is cleanest if env vars propagate to MCP tool contexts.
-(b) is most reliable but couples identity to prompt text. (c) is most elegant
-but requires matching PTY → session which may be fragile.
+**Design decision:** Bridge auto-injects session_id into initial_prompt on spawn.
+The bridge prepends to the initial_prompt:
+`"Your bridge_session_id is {id}. Use this in bridge_progress and bridge_event calls."`
+Zero configuration for the agent author. Combined with option (a) for MCP server
+auto-progress — both prompt injection AND env var injection.
 
 ### Gap 3: Method MCP → bridge coupling for auto-progress (BLOCKING — needs design)
 
@@ -382,15 +382,24 @@ Auto-progress requires `step_advance` in the method MCP server to POST to the
 bridge. The method MCP and bridge are separate processes. The method MCP needs
 the bridge URL and the agent's bridge_session_id.
 
-**Design decision:** The method MCP reads `BRIDGE_URL` and `BRIDGE_SESSION_ID`
-from environment variables. When `step_advance` fires:
-1. Check if `BRIDGE_URL` is set — if not, skip (non-bridge agent)
-2. POST to `${BRIDGE_URL}/channels/${BRIDGE_SESSION_ID}/progress`
-3. Fire-and-forget (don't block step_advance on bridge response)
+**Experiment EXP-008-3:** COMPLETED — PASS (with 2-line bridge change).
+Environment variables propagate from PTY spawn to child processes. PATH confirmed
+inherited. Custom vars (BRIDGE_URL, BRIDGE_SESSION_ID) require the bridge to inject
+them at spawn time.
 
-**Experiment EXP-008-3:** Test if the method MCP server process has access to
-environment variables set on the spawned Claude Code process. The bridge sets
-env vars on the PTY spawn → does the MCP server subprocess inherit them?
+**Design decision:** Bridge change in pty-session.ts:
+```typescript
+env: {
+  ...process.env,
+  BRIDGE_URL: `http://localhost:${port}`,
+  BRIDGE_SESSION_ID: sessionId,
+} as Record<string, string>,
+```
+Method MCP reads `BRIDGE_URL` and `BRIDGE_SESSION_ID` from `process.env`.
+When `step_advance` fires:
+1. Check if `BRIDGE_URL` is set — if not, skip (non-bridge agent)
+2. POST to `${BRIDGE_URL}/sessions/${BRIDGE_SESSION_ID}/channels/progress`
+3. Fire-and-forget (don't block step_advance on bridge response)
 
 ### Gap 4: In-memory only (ACCEPTABLE for MVP)
 
@@ -421,7 +430,12 @@ Run these experiments BEFORE implementing. Results determine final design.
 | EXP-008-2 | How does agent learn its session_id? | Test env var, prompt injection, whoami tool | Agent can use session_id in tool calls | All agent-side tools |
 | EXP-008-3 | Does MCP server inherit bridge env vars? | Set BRIDGE_URL on spawn, check in MCP handler | MCP handler reads env var | Auto-progress feature |
 
-**Estimated experiment time:** 30 minutes total. All three can run on the live bridge.
+**All experiments completed.** Results: all 3 blocking gaps resolved. See commit 9b54f92.
+
+**Pre-requisite hotfix:** The output parser issue (empty bridge_prompt responses)
+should be investigated and fixed BEFORE or IN PARALLEL with PRD 008 implementation.
+The parser works for initial prompt processing but fails for follow-up text responses.
+This affects bridge UX broadly, not just PRD 008.
 
 ---
 

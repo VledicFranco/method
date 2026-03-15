@@ -29,10 +29,13 @@ const CURSOR_RIGHT_RE = /\x1b\[1C/g;
  *  7. Trim and return
  */
 export function extractResponse(rawBuffer: string): string {
-  // 1. Slice from last ● marker
+  // 1. Slice from last ● marker (primary response indicator)
   const markerIndex = rawBuffer.lastIndexOf('●');
   if (markerIndex === -1) {
-    return '';
+    // Fallback: no ● marker found. This happens on follow-up prompts where
+    // Claude Code's TUI doesn't emit the ● marker for text-only responses.
+    // Try to extract content between the last prompt submission and the ❯ prompt.
+    return extractFallbackResponse(rawBuffer);
   }
   let text = rawBuffer.slice(markerIndex + 1);
 
@@ -72,6 +75,51 @@ export function extractResponse(rawBuffer: string): string {
   });
 
   // 7. Trim and return
+  return filtered.join('\n').trim();
+}
+
+/**
+ * Fallback response extraction when no ● marker is found.
+ * Handles follow-up prompts where Claude Code responds with plain text
+ * without the ● marker that precedes tool-use responses.
+ *
+ * Strategy: take the raw buffer, strip ANSI, simulate CR, cut at ❯,
+ * filter TUI chrome, and return whatever readable text remains.
+ */
+function extractFallbackResponse(rawBuffer: string): string {
+  // Replace cursor-right escapes with spaces
+  let text = rawBuffer.replace(CURSOR_RIGHT_RE, ' ');
+
+  // Strip ANSI escapes
+  text = stripAnsi(text);
+
+  // Simulate carriage returns
+  const lines = text.split('\n').map(simulateCarriageReturn);
+
+  // Cut at ❯ prompt — take content before the LAST ❯
+  const cutLines: string[] = [];
+  for (const line of lines) {
+    const promptIdx = line.indexOf('❯');
+    if (promptIdx !== -1) {
+      const before = line.slice(0, promptIdx);
+      if (before.trim().length > 0) {
+        cutLines.push(before);
+      }
+      break;
+    }
+    cutLines.push(line);
+  }
+
+  // Filter TUI chrome
+  const filtered = cutLines.filter((line) => {
+    if (line.trim().length === 0) return false;
+    if (BOX_DRAWING_RE.test(line)) return false;
+    if (TUI_STATUS_RE.test(line)) return false;
+    // Also filter common TUI elements that appear without ● marker
+    if (line.trim().startsWith('✻')) return false; // brewing indicator
+    return true;
+  });
+
   return filtered.join('\n').trim();
 }
 

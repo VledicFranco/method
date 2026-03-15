@@ -27,8 +27,14 @@ describe('extractResponse', () => {
     assert.equal(result, 'Done!');
   });
 
-  it('returns empty string when no ● marker is present', () => {
+  it('uses fallback extraction when no ● marker is present', () => {
     const buffer = 'Just some output without a marker\n❯ ';
+    const result = extractResponse(buffer);
+    assert.equal(result, 'Just some output without a marker');
+  });
+
+  it('returns empty string when buffer has no readable content', () => {
+    const buffer = '\n\n❯ ';
     const result = extractResponse(buffer);
     assert.equal(result, '');
   });
