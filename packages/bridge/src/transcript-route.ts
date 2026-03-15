@@ -46,12 +46,26 @@ export function registerTranscriptRoutes(
     }
 
     // Try to find and parse the session's JSONL transcript
+    // Match by spawn time — pick the JSONL created closest to when this bridge session started
     const sessions = transcriptReader.listSessions(statusInfo.workdir);
     let turns: TranscriptTurn[] = [];
 
     if (sessions.length > 0) {
-      // Use the most recent session file
-      turns = transcriptReader.getTranscript(sessions[0].file);
+      // Find the session file whose modification time is closest to (but after) the bridge session's first activity
+      const spawnTime = statusInfo.lastActivityAt.getTime();
+      let bestMatch = sessions[0];
+      let bestDelta = Infinity;
+
+      for (const s of sessions) {
+        const mtime = new Date(s.modifiedAt).getTime();
+        const delta = Math.abs(mtime - spawnTime);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          bestMatch = s;
+        }
+      }
+
+      turns = transcriptReader.getTranscript(bestMatch.file);
     }
 
     const usage = tokenTracker.getUsage(id);
