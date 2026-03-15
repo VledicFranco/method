@@ -202,6 +202,53 @@ log:
         - "AG-016: Apply D-011 — update STEER-PROTO with governance retro schema"
         - "AG-017: Apply PR-02 immediately — escalate stale items AG-005/006/007/008"
 
+    - id: SESSION-007
+      date: "2026-03-14"
+      type: architecture
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Migrate P2-SD execution artifacts from docs/impl/ to .method/delivery/"
+
+      decisions:
+        - id: D-012
+          item: "Artifact placement: docs/ vs .method/"
+          decision: >
+            Clean split: docs/ = human-facing knowledge (PRDs, arch, RFCs, guides).
+            .method/ = methodology execution (card, manifest, retros, council, delivery).
+            P2-SD artifacts move to .method/delivery/ (phases, sessions, reviews, audits).
+            Reviews committed (evidence). Sessions/phases/audits gitignored (ephemeral).
+          status: decided
+          for: "Clear separation. Installation spec declares structure. Manifest records state."
+          against: "None — unanimous."
+          essence_check: "Installation spec IS theory of directory structure. Faithful."
+
+        - id: D-013
+          item: "Migration path for existing projects"
+          decision: >
+            pv-method: migrate docs/impl/ to .method/delivery/ and update references.
+            t1-cortex: add .method/delivery/ via installation, keep docs/implementation/
+            as legacy until migrated. New projects: .method/delivery/ from start.
+          status: decided
+          for: "Non-breaking for t1-cortex. Clean for new projects."
+          against: "None."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: 0
+        processes_followed:
+          - { process: PR-01, followed: true, note: "This changes PROJECT-STRUCTURE.yaml — Guide 5 needs updating (PR-01 triggered)" }
+        process_improvement_signal: "PR-01 worked — the guide sync trigger correctly identified Guide 5 as needing an update."
+        member_adequacy: true
+
+      artifacts_produced:
+        - ".method/council/LOG.yaml (this entry)"
+        - "Decisions to update PROJECT-STRUCTURE.yaml, installation specs, and guides"
+
+      next_agenda_items:
+        - "AG-018: Update P2-SD PROJECT-STRUCTURE.yaml (docs/impl → .method/delivery)"
+        - "AG-019: Add P2-SD delivery/ installation spec"
+        - "AG-020: Update Guide 5 artifact locations (PR-01 triggered)"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion

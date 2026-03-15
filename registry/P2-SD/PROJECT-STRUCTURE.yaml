@@ -66,40 +66,67 @@ directory_structure:
 
       impl:
         description: >
-          Implementation documentation. Phased delivery roadmap, session logs,
-          progress tracking. Most content here is ephemeral — produced per session
-          and not committed.
-        readme: true
+          DEPRECATED — methodology execution artifacts have moved to .method/delivery/.
+          See the .method directory structure below. docs/ is for human-facing knowledge only.
+        note: "Legacy projects may still have docs/impl/. Migrate to .method/delivery/ when convenient."
+
+  method_directory:
+    description: >
+      Methodology execution artifacts. Everything the method system produces and
+      consumes at runtime. Separate from docs/ (human knowledge).
+    location: ".method/"
+    children:
+      project-card.yaml:
+        description: "MIC project card — essence, context, delivery rules, role notes"
+        committed: true
+      manifest.yaml:
+        description: "Installation manifest — what methodologies and protocols are active"
+        committed: true
+      CHANGELOG.yaml:
+        description: "Card version history with retro evidence"
+        committed: true
+      retros:
+        description: "Retrospective archive. One YAML per method execution. Produced by agents."
+        naming: "retro-YYYY-MM-DD-NNN.yaml"
+        committed: true
+        notes: "RETRO-PROTO artifact. Evidence base for card and method evolution."
+      council:
+        description: "Steering council governance artifacts."
+        committed: true
+        children:
+          TEAM.yaml: "Persistent council members"
+          AGENDA.yaml: "Forward-looking work items"
+          LOG.yaml: "Append-only session decisions"
+          inbox: "Messages from other project councils"
+          outbox: "Messages to other project councils"
+          sub-councils: "Artifacts from spawned sub-council sessions"
+      delivery:
+        description: "P2-SD execution artifacts. Methodology-driven, mostly ephemeral."
         children:
           phases:
             description: "PhaseDoc files — one per delivery phase. Produced by M5-PLAN."
             naming: "phase-N-short-name.md"
-            examples:
-              - "phase-1-schema-and-ingest.md"
-              - "phase-2-retrieval.md"
             method_producer: "M5-PLAN"
             method_consumer: "M1-IMPL, M2-DIMPL"
-            gitignore: true
-            notes: "PhaseDoc files are ephemeral — produced per planning session. Committed only if the team wants a persistent roadmap."
+            committed: false
+            notes: "Ephemeral — produced per planning session."
           sessions:
             description: "Per-session execution logs. Produced by M1-IMPL sigma_B5."
             naming: "session-YYYYMMDD-NNN.md"
-            gitignore: true
-            notes: "Never committed. Session logs are disposable per-agent artifacts."
-          audits:
-            description: "Quality gate reviews (Gate A, Gate B). Produced by M2-DIMPL sub-agents."
-            gitignore: true
+            committed: false
+            notes: "Ephemeral — disposable per-agent artifacts."
           reviews:
             description: "Phase review reports. Produced by M3-PHRV."
             naming: "review-phase-N.md"
             method_producer: "M3-PHRV"
-            gitignore: true
-            notes: "Ephemeral unless the team wants persistent review records."
-          retrospectives:
-            description: "Post-phase analysis and drift reports. Produced by M4-DDAG."
+            committed: true
+            notes: "COMMITTED — reviews are evidence for evolution, not ephemeral."
+          audits:
+            description: "Drift reports. Produced by M4-DDAG."
             naming: "drift-audit-YYYYMMDD.md"
             method_producer: "M4-DDAG"
-            gitignore: true
+            committed: false
+            notes: "Ephemeral unless the team wants persistent drift records."
 
       rfcs:
         description: >
@@ -124,19 +151,60 @@ directory_structure:
           reference. The current versions are in their original directories.
 
   gitignore_template: |
-    # P2-SD project documentation gitignore
-    # Committed: PRDs, architecture, RFCs, archive
-    # Ignored: implementation ephemera (sessions, phases, audits, reviews, retrospectives)
+    # P2-SD project gitignore
+    # Committed: docs/ (PRDs, arch, RFCs), .method/ (card, manifest, retros, council, reviews)
+    # Ignored: methodology execution ephemera (sessions, phases, audits)
 
-    # Implementation session artifacts (ephemeral per-agent)
+    # Methodology execution ephemera (per-agent, disposable)
+    .method/delivery/sessions/
+    .method/delivery/phases/
+    .method/delivery/audits/
+
+    # Keep these (evidence for evolution):
+    # .method/retros/          ← retrospectives (RETRO-PROTO)
+    # .method/delivery/reviews/ ← review reports (M3-PHRV)
+    # .method/council/         ← governance (STEER-PROTO)
+
+    # Legacy (if docs/impl/ still exists during migration)
     docs/impl/sessions/
     docs/impl/phases/
     docs/impl/audits/
-    docs/impl/reviews/
-    docs/impl/retrospectives/
 
     # Temporary artifacts
     tmp/
+
+installation:
+  description: "What a project needs in .method/ to use P2-SD"
+  artifacts:
+    - path: "delivery/phases/"
+      type: directory
+      required: true
+      description: "PhaseDoc files from M5-PLAN"
+      committed: false
+    - path: "delivery/sessions/"
+      type: directory
+      required: true
+      description: "Session logs from M1-IMPL/M2-DIMPL"
+      committed: false
+    - path: "delivery/reviews/"
+      type: directory
+      required: true
+      description: "Review reports from M3-PHRV"
+      committed: true
+    - path: "delivery/audits/"
+      type: directory
+      required: true
+      description: "Drift reports from M4-DDAG"
+      committed: false
+  manifest_entry: |
+    - id: P2-SD
+      type: methodology
+      version: "2.0"
+      card: project-card.yaml
+      artifacts: [delivery/phases/, delivery/sessions/, delivery/reviews/, delivery/audits/]
+  note: >
+    P2-SD also requires RETRO-PROTO (retros/) which has its own installation spec.
+    The project card (project-card.yaml) is installed via the MIC schema, not P2-SD directly.
 
 readme_conventions:
   every_directory_has_readme: true

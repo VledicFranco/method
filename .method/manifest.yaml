@@ -15,6 +15,10 @@ manifest:
       artifacts:
         - project-card.yaml
         - CHANGELOG.yaml
+        - delivery/phases/
+        - delivery/sessions/
+        - delivery/reviews/
+        - delivery/audits/
 
     - id: P1-EXEC
       type: methodology
