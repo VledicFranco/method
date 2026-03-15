@@ -9,7 +9,8 @@
     "test": "npx tsx --test packages/core/src/__tests__/*.test.ts packages/bridge/src/__tests__/*.test.ts",
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
-    "bridge:stop": "node scripts/kill-port.js"
+    "bridge:stop": "node scripts/kill-port.js",
+    "bridge:cleanup": "node scripts/cleanup-claude.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

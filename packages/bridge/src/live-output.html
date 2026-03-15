@@ -210,6 +210,20 @@ body {
 .input-bar button:hover { background: rgba(0,212,176,.2); }
 .input-bar button:disabled { opacity: .4; cursor: not-allowed; }
 
+.voice-btn {
+  background: none;
+  border: 1px solid rgba(0,212,176,.25);
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: .85rem;
+  padding: .3rem .45rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.voice-btn.mic { color: var(--bio); }
+.voice-btn.mic.active { background: rgba(0,212,176,.15); border-color: var(--bio); }
+.voice-btn.spk { color: var(--solar); border-color: rgba(238,170,98,.25); }
+
 /* ── NAV ─────────────────────────────────────────── */
 .nav-bar {
   display: flex;
@@ -276,7 +290,11 @@ body {
     bottom: 0;
     z-index: 10;
     background: rgba(11,28,43,.95);
+    overflow: hidden;
+    gap: .4rem;
   }
+
+  .voice-btn { padding: .4rem .5rem; font-size: .8rem; }
 
   .input-bar input {
     font-size: .9rem;
@@ -336,10 +354,10 @@ body {
 </div>
 
 <div class="input-bar">
-  <button id="mic-btn" onclick="toggleMic()" title="Hold or tap to speak" style="background:none;border:1px solid rgba(0,212,176,.25);border-radius:2px;color:var(--bio);font-size:1.1rem;padding:.4rem .6rem;cursor:pointer;min-height:44px;min-width:44px;">&#x1F399;</button>
+  <button id="mic-btn" class="voice-btn mic" onclick="toggleMic()" title="Tap to speak">&#x1F399;</button>
   <input type="text" id="prompt-input" placeholder="Send a prompt..." onkeydown="if(event.key==='Enter')sendPrompt()">
   <button onclick="sendPrompt()" id="send-btn">Send</button>
-  <button id="speak-btn" onclick="speakLast()" title="Read last response aloud" style="background:none;border:1px solid rgba(238,170,98,.25);border-radius:2px;color:var(--solar);font-size:.9rem;padding:.4rem .6rem;cursor:pointer;min-height:44px;display:none;">&#x1F50A;</button>
+  <button id="speak-btn" class="voice-btn spk" onclick="speakLast()" title="Read aloud" style="display:none;">&#x1F50A;</button>
 </div>
 
 <script>
@@ -519,8 +537,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 
   recognition.onend = function() {
     isListening = false;
-    document.getElementById('mic-btn').style.borderColor = 'rgba(0,212,176,.25)';
-    document.getElementById('mic-btn').style.background = 'none';
+    document.getElementById('mic-btn').classList.remove('active');
   };
 }
 
@@ -530,21 +547,54 @@ function toggleMic() {
     recognition.stop();
   } else {
     isListening = true;
-    document.getElementById('mic-btn').style.borderColor = 'var(--bio)';
-    document.getElementById('mic-btn').style.background = 'rgba(0,212,176,.15)';
+    document.getElementById('mic-btn').classList.add('active');
     recognition.start();
   }
 }
 
 // ── Voice Output (SpeechSynthesis) ──
 function speakLast() {
-  if (!lastResponse || !window.speechSynthesis) return;
-  var text = lastResponse.replace(/```[\s\S]*?```/g, '').replace(/\n{2,}/g, '. ').trim();
+  if (!window.speechSynthesis) return;
+  var text = lastResponse;
+
+  // If bridge_prompt returned empty, grab last lines from xterm buffer
+  if (!text) {
+    var buf = term.buffer.active;
+    var lines = [];
+    var start = Math.max(0, buf.cursorY - 20);
+    for (var i = start; i <= buf.cursorY; i++) {
+      var line = buf.getLine(i);
+      if (line) {
+        var t = line.translateToString(true).trim();
+        if (t) lines.push(t);
+      }
+    }
+    text = lines.join(' ');
+  }
+
+  if (!text) return;
+
+  // Strip tool markers, escape chars, spinner text
+  text = text.replace(/[●✢✶✻✽·▐▛▜▝▘█▌]/g, '')
+    .replace(/\(ctrl\+o to expand\)/g, '')
+    .replace(/esc to interrupt/g, '')
+    .replace(/\? for shortcuts/g, '')
+    .replace(/high\s*·\s*\/effort/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!text || text.length < 5) return;
   if (text.length > 500) text = text.substring(0, 500) + '... truncated.';
+
   var utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 1.1;
   window.speechSynthesis.speak(utterance);
+  document.getElementById('speak-btn').style.display = 'inline-block';
 }
+
+// Always show speak button — it can read from terminal buffer
+document.getElementById('speak-btn').style.display = 'inline-block';
 </script>
 
 </body>
