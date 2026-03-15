@@ -12,8 +12,8 @@ import { createTranscriptReader } from './transcript-reader.js';
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
-const SETTLE_DELAY_MS = parseInt(process.env.SETTLE_DELAY_MS ?? '2000', 10);
-const MAX_SESSIONS = parseInt(process.env.MAX_SESSIONS ?? '5', 10);
+const SETTLE_DELAY_MS = parseInt(process.env.SETTLE_DELAY_MS ?? '1000', 10);
+const MAX_SESSIONS = parseInt(process.env.MAX_SESSIONS ?? '10', 10);
 const CLAUDE_OAUTH_TOKEN = process.env.CLAUDE_OAUTH_TOKEN ?? null;
 const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '600000', 10);
 const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
