@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5/css/xterm.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0/lib/addon-fit.min.js"></script>
   <style>
 :root {
   --void:       #050910;
@@ -128,31 +131,20 @@ body {
   flex-direction: column;
   min-height: 0;
   position: relative;
-}
-
-.terminal {
-  flex: 1;
   background: var(--deep-void);
-  overflow-y: auto;
-  padding: 1rem 1.5rem;
-  font-family: var(--font-m);
-  font-size: .78rem;
-  line-height: 1.65;
-  color: var(--dim);
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
-.terminal .chunk {
-  animation: fadeSlide .2s ease-out;
+#terminal {
+  flex: 1;
+  min-height: 0;
 }
 
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* xterm.js overrides for Vidtecci theme */
+#terminal .xterm {
+  padding: 8px 12px;
 }
 
-.auto-scroll-indicator {
+.scroll-lock-btn {
   position: absolute;
   bottom: 4.5rem;
   right: 1.5rem;
@@ -165,9 +157,14 @@ body {
   padding: .3rem .6rem;
   cursor: pointer;
   display: none;
+  z-index: 10;
 }
-.auto-scroll-indicator:hover {
+.scroll-lock-btn:hover {
   background: var(--bio-dim);
+}
+.scroll-lock-btn.active {
+  color: var(--solar);
+  border-color: rgba(238,170,98,.3);
 }
 
 /* ── INPUT BAR ───────────────────────────────────── */
@@ -263,8 +260,8 @@ body {
 </div>
 
 <div class="terminal-container">
-  <div class="terminal" id="terminal"></div>
-  <div class="auto-scroll-indicator" id="scroll-btn" onclick="resumeScroll()">&#x2193; Auto-scroll paused — click to resume</div>
+  <div id="terminal"></div>
+  <button class="scroll-lock-btn" id="scroll-btn" onclick="toggleScrollLock()">Scroll lock: OFF</button>
 </div>
 
 <div class="input-bar">
@@ -273,83 +270,112 @@ body {
 </div>
 
 <script>
-const sessionId = '{{sessionId}}';
-const terminal = document.getElementById('terminal');
-const scrollBtn = document.getElementById('scroll-btn');
-let autoScroll = true;
-let eventSource = null;
+var sessionId = '{{sessionId}}';
+var scrollLock = false;
+var eventSource = null;
 
-function stripAnsi(str) {
-  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
-}
+// ── Initialize xterm.js ──
+var term = new Terminal({
+  fontFamily: 'JetBrains Mono, Consolas, monospace',
+  fontSize: 13,
+  scrollback: 10000,
+  cursorBlink: true,
+  cursorStyle: 'bar',
+  theme: {
+    background: '#050910',
+    foreground: '#f4f8fc',
+    cursor: '#00d4b0',
+    selectionBackground: 'rgba(0,212,176,0.2)',
+    selectionForeground: '#f4f8fc',
+    black: '#0b1c2b',
+    red: '#e05a5a',
+    green: '#00d4b0',
+    yellow: '#eeaa62',
+    blue: '#4a90d9',
+    magenta: '#9b7fd4',
+    cyan: '#00d4b0',
+    white: '#c0d0de',
+    brightBlack: '#4a5c6a',
+    brightRed: '#ff6b6b',
+    brightGreen: '#00f0d0',
+    brightYellow: '#ffc078',
+    brightBlue: '#6ab0f3',
+    brightMagenta: '#b39ddb',
+    brightCyan: '#00f0d0',
+    brightWhite: '#f4f8fc'
+  }
+});
 
-function appendOutput(text) {
-  const cleaned = stripAnsi(text);
-  if (!cleaned) return;
-  const chunk = document.createElement('span');
-  chunk.className = 'chunk';
-  chunk.textContent = cleaned;
-  terminal.appendChild(chunk);
-  if (autoScroll) {
-    terminal.scrollTop = terminal.scrollHeight;
+var fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal'));
+fitAddon.fit();
+
+// Refit on window resize
+window.addEventListener('resize', function() { fitAddon.fit(); });
+
+// ── Scroll lock toggle ──
+var scrollBtn = document.getElementById('scroll-btn');
+
+function toggleScrollLock() {
+  scrollLock = !scrollLock;
+  scrollBtn.textContent = 'Scroll lock: ' + (scrollLock ? 'ON' : 'OFF');
+  scrollBtn.classList.toggle('active', scrollLock);
+  if (!scrollLock) {
+    term.scrollToBottom();
   }
 }
 
+// Show scroll lock button when user scrolls up
+term.element.addEventListener('wheel', function(e) {
+  if (e.deltaY < 0) {
+    // Scrolling up — show button
+    scrollBtn.style.display = 'block';
+  }
+});
+
+// ── SSE connection ──
 function connectSSE() {
   eventSource = new EventSource('/sessions/' + sessionId + '/stream');
   eventSource.onmessage = function(e) {
     try {
-      const data = JSON.parse(e.data);
-      if (data.text) appendOutput(data.text);
-    } catch {}
+      var data = JSON.parse(e.data);
+      if (data.text) {
+        term.write(data.text);
+        if (!scrollLock) {
+          term.scrollToBottom();
+        }
+      }
+    } catch (err) {}
   };
   eventSource.onerror = function() {
-    // Reconnect after 3s on error
     eventSource.close();
     setTimeout(connectSSE, 3000);
   };
 }
 
-terminal.addEventListener('scroll', function() {
-  const atBottom = terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 50;
-  if (!atBottom) {
-    autoScroll = false;
-    scrollBtn.style.display = 'block';
-  } else {
-    autoScroll = true;
-    scrollBtn.style.display = 'none';
-  }
-});
-
-function resumeScroll() {
-  autoScroll = true;
-  scrollBtn.style.display = 'none';
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
-async function sendPrompt() {
-  const input = document.getElementById('prompt-input');
-  const btn = document.getElementById('send-btn');
-  const text = input.value.trim();
+// ── Send prompt ──
+function sendPrompt() {
+  var input = document.getElementById('prompt-input');
+  var btn = document.getElementById('send-btn');
+  var text = input.value.trim();
   if (!text) return;
 
   input.value = '';
   btn.disabled = true;
   btn.textContent = 'Sending...';
 
-  try {
-    await fetch('/sessions/' + sessionId + '/prompt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: text }),
-    });
-  } catch (e) {
-    appendOutput('\n[Error sending prompt: ' + e.message + ']\n');
-  } finally {
+  fetch('/sessions/' + sessionId + '/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: text })
+  }).catch(function(e) {
+    term.write('\r\n[Error sending prompt: ' + e.message + ']\r\n');
+  }).finally(function() {
     btn.disabled = false;
     btn.textContent = 'Send';
     input.focus();
-  }
+  });
 }
 
 connectSSE();
