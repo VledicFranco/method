@@ -548,4 +548,45 @@ log:
         - "AG-012: Guide 13 (commissioned)"
         - "AG-022: Retro aggregation (commissioned)"
         - "Weekly steady-state begins next week"
+
+    - id: SESSION-014
+      date: "2026-03-14"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Evaluate MCP + bridge maturity for automated council commissions with recursive agent spawning"
+
+      decisions:
+        - id: D-025
+          item: "Readiness for automated commission pipeline"
+          decision: >
+            Two-phase approach. Phase A (validation): run SC-4/5/6 integration
+            tests with live bridge — one agent follows P2-SD via method MCP.
+            No PRD needed. Phase B (PRD 006): if Phase A succeeds, write PRD
+            covering recursive sessions, worktree isolation, council-to-bridge
+            automation, and guardrails.
+          status: decided
+          for: >
+            Infrastructure is 80% ready. Tools exist, bridge exists. Missing:
+            end-to-end validation (SC-4/5/6 deferred), worktree isolation for
+            git staging conflicts (GC-P2SD-006), recursive session management.
+          against: "None — unanimous on phased approach. Nika: Phase A first, no skipping."
+          essence_check: >
+            Most essence-aligned work possible: "the runtime that makes formal
+            methodologies executable by LLM agents." Using MCP tools for automated
+            commission IS the project's purpose. Faithful.
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: +1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+        process_improvement_signal: "None"
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Decision D-025: two-phase approach to automated commission pipeline"
+
+      next_agenda_items:
+        - "AG-023: Commission Phase A — live bridge integration test (SC-4/5/6)"
         - "AG-007: CLAUDE.md for pv-method — promote to P0"
