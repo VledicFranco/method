@@ -12,3 +12,4 @@ docs/impl/*
 # volatile artifacts
 tmp/*
 !tmp/.gitkeep
+.claude/worktrees/
