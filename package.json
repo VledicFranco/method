@@ -6,7 +6,10 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "npx tsx --test packages/core/src/__tests__/*.test.ts"
+    "test": "npx tsx --test packages/core/src/__tests__/*.test.ts",
+    "bridge": "npm run build && node packages/bridge/dist/index.js",
+    "bridge:dev": "npx tsx packages/bridge/src/index.ts",
+    "bridge:stop": "node scripts/kill-port.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
