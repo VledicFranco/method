@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FastifyInstance } from 'fastify';
+import stripAnsi from 'strip-ansi';
 import type { SessionPool } from './pool.js';
 import type { TokenTracker } from './token-tracker.js';
 import { formatTokens, formatUptime, formatTimeAgo } from './dashboard-route.js';
@@ -60,15 +61,15 @@ export function registerLiveOutputRoutes(
       'X-Accel-Buffering': 'no',
     });
 
-    // Send initial transcript burst
+    // Send initial transcript burst (strip ANSI escapes for browser display)
     if (session.transcript) {
-      const initialData = JSON.stringify({ text: session.transcript, timestamp: new Date().toISOString() });
+      const initialData = JSON.stringify({ text: stripAnsi(session.transcript), timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${initialData}\n\n`);
     }
 
-    // Subscribe to live output
+    // Subscribe to live output (strip ANSI escapes for browser display)
     const unsubscribe = session.onOutput((data: string) => {
-      const payload = JSON.stringify({ text: data, timestamp: new Date().toISOString() });
+      const payload = JSON.stringify({ text: stripAnsi(data), timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${payload}\n\n`);
     });
 

@@ -375,9 +375,9 @@ export function createPool(options?: PoolOptions): SessionPool {
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
 
-      // PRD 008 / EXP-008-2: Inject session ID into initial prompt
+      // PRD 008 / EXP-008-2: Inject session ID + OBS-02 auto-nudge into initial prompt
       const injectedPrompt = initialPrompt
-        ? `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.\n\n${initialPrompt}`
+        ? `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`
         : undefined;
 
       const session = spawnSession({
