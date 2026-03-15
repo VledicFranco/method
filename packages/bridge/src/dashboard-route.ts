@@ -5,6 +5,7 @@ import { FastifyInstance } from 'fastify';
 import type { SessionPool, SessionChainInfo } from './pool.js';
 import type { UsagePoller, SubscriptionUsage, UsageBucket, UsagePollerStatus } from './usage-poller.js';
 import type { TokenTracker } from './token-tracker.js';
+import { readMessages, type ChannelMessage } from './channels.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -54,6 +55,9 @@ export function registerDashboardRoute(
 
     // Session rows
     html = html.replace(/\{\{sessions\}\}/g, renderSessionRows(sessions, tokenTracker));
+
+    // Channel data for each session (PRD 008)
+    html = html.replace(/\{\{channels\}\}/g, renderChannelsPanel(sessions, pool));
 
     return reply.type('text/html').send(html);
   });
@@ -234,6 +238,147 @@ export function renderSubscriptionPanel(usage: SubscriptionUsage | null, status:
       ${renderMeter('7-Day Opus', usage.seven_day_opus)}
     </div>
   </div>`;
+}
+
+function renderChannelsPanel(
+  sessions: Array<{
+    sessionId: string;
+    status: string;
+    metadata?: Record<string, unknown>;
+  }>,
+  pool: SessionPool,
+): string {
+  // Collect recent events across all sessions
+  const allEvents: Array<{
+    sessionId: string;
+    shortId: string;
+    message: ChannelMessage;
+  }> = [];
+
+  const progressTimelines: string[] = [];
+
+  for (const session of sessions) {
+    if (session.status === 'dead') continue;
+
+    try {
+      const channels = pool.getChannels(session.sessionId);
+      const shortId = session.sessionId.substring(0, 8);
+
+      // Progress timeline for this session
+      const progressResult = readMessages(channels.progress, 0);
+      if (progressResult.messages.length > 0) {
+        const recentProgress = progressResult.messages.slice(-8); // Last 8 entries
+        const rows = recentProgress.map(msg => {
+          const time = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const content = msg.content as Record<string, string>;
+          const detail = content.description ?? content.step_name ?? content.step ?? '';
+          return `
+            <div class="progress-entry">
+              <span class="progress-time">${escapeHtml(time)}</span>
+              <span class="progress-type">${escapeHtml(msg.type)}</span>
+              <span class="progress-detail">${escapeHtml(String(detail))}</span>
+            </div>`;
+        }).join('');
+
+        progressTimelines.push(`
+          <div class="progress-timeline">
+            <div class="progress-timeline-header">
+              <span class="mono session-id">${escapeHtml(shortId)}</span>
+              <span class="progress-count">${progressResult.messages.length} entries</span>
+            </div>
+            ${rows}
+          </div>`);
+      }
+
+      // Events for the global feed
+      const eventsResult = readMessages(channels.events, 0);
+      for (const msg of eventsResult.messages) {
+        allEvents.push({ sessionId: session.sessionId, shortId, message: msg });
+      }
+    } catch {
+      // Session may have been cleaned up
+    }
+  }
+
+  // Sort events by timestamp descending, take last 20
+  allEvents.sort((a, b) => b.message.timestamp.localeCompare(a.message.timestamp));
+  const recentEvents = allEvents.slice(0, 20);
+
+  // Build event feed
+  const eventRows = recentEvents.length > 0
+    ? recentEvents.map(e => {
+        const time = new Date(e.message.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const iconClass = eventIconClass(e.message.type);
+        return `
+          <tr>
+            <td class="mono timestamp">${escapeHtml(time)}</td>
+            <td class="mono session-id">${escapeHtml(e.shortId)}</td>
+            <td><span class="event-badge ${iconClass}">${escapeHtml(e.message.type)}</span></td>
+            <td class="mono" style="color: var(--dim); font-size: .72rem;">${escapeHtml(summarizeEventContent(e.message.content))}</td>
+          </tr>`;
+      }).join('')
+    : `<tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 1.5rem;">No events yet</td></tr>`;
+
+  const progressSection = progressTimelines.length > 0
+    ? progressTimelines.join('')
+    : '<div style="color: var(--muted); padding: 1rem; font-size: .82rem;">No active progress</div>';
+
+  return `
+    <div class="channels-panel">
+      <div class="channels-grid">
+        <div class="channel-section">
+          <div class="section-header">
+            <h2 class="section-title">Progress</h2>
+            <span class="section-tag">live methodology tracking</span>
+          </div>
+          ${progressSection}
+        </div>
+        <div class="channel-section">
+          <div class="section-header">
+            <h2 class="section-title">Event Feed</h2>
+            <span class="section-tag">${recentEvents.length} recent events</span>
+          </div>
+          <table class="session-table" style="font-size: .8rem;">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Session</th>
+                <th>Event</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eventRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+function eventIconClass(type: string): string {
+  switch (type) {
+    case 'completed': return 'event-completed';
+    case 'error': return 'event-error';
+    case 'escalation': return 'event-escalation';
+    case 'budget_warning': return 'event-warning';
+    case 'started': return 'event-started';
+    case 'killed': return 'event-killed';
+    case 'stale': return 'event-stale';
+    default: return 'event-default';
+  }
+}
+
+function summarizeEventContent(content: Record<string, unknown>): string {
+  if (!content || Object.keys(content).length === 0) return '';
+  // Try common fields
+  if (content.result) return String(content.result).substring(0, 80);
+  if (content.error_message) return String(content.error_message).substring(0, 80);
+  if (content.escalation_question) return String(content.escalation_question).substring(0, 80);
+  if (content.description) return String(content.description).substring(0, 80);
+  // Fallback: first value
+  const firstVal = Object.values(content)[0];
+  return String(firstVal).substring(0, 60);
 }
 
 export function renderSessionRows(
