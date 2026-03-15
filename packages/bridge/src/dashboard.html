@@ -40,6 +40,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Custom scrollbars — Vidtecci dark theme */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,176,.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,176,.3); }
+::-webkit-scrollbar-corner { background: transparent; }
+
 body {
   background: var(--void);
   color: var(--stellar);
