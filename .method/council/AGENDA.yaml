@@ -1,50 +1,78 @@
 agenda:
   project: pv-method
   last_updated: "2026-03-14"
+  last_session: SESSION-018
   mode: steady-state
   cadence: "weekly or on-demand"
-  next_health_review: SESSION-014
+  next_health_review: SESSION-023
 
   p0_immediate:
-    - id: AG-012
-      item: "Write Guide 13: Installation and .method/ directory structure"
-      owner: "Fresh agent (commissioned in SESSION-011)"
-      status: commissioned
-      sessions_open: 6
-      commission_note: "PR-02 escalated. Commission for fresh agent to write full guide."
+    - id: AG-029
+      item: "Commission PRD 006 (recursive orchestration) — now unblocked by PRD 008"
+      owner: council
+      status: open
+      added_in: SESSION-019
+      note: "D-027 dependency chain satisfied. Use bridge WITH visibility."
+
+  p1_next:
+    - id: AG-026
+      item: "Draft ORGANON-PROTO in registry/P0-META/"
+      owner: council
+      status: open
+      added_in: SESSION-017
+      note: "Protocol binding between organon identity constraints and pv-method execution. D-028."
+
+    - id: AG-027
+      item: "Update CLAUDE.md for pv-method with methodology, governance, and skills references"
+      owner: council
+      status: open
+      added_in: SESSION-017
+      note: "Re-opened from archived AG-007. CLAUDE.md needs refresh after 17 sessions of decisions."
 
   governance_health:
-    last_assessed: SESSION-009
-    sessions_since_processes_installed: 5
-    next_review: SESSION-014
+    last_assessed: SESSION-018
+    sessions_since_processes_installed: 12
+    next_review: SESSION-023
 
     process_health:
       PR-01:
-        times_followed: 3
+        times_followed: 7
         times_skipped: 0
         times_triggered: 2
         verdict: healthy
+        note: "No registry changes in sessions 014-018"
       PR-02:
-        times_followed: 3
+        times_followed: 4
         times_skipped: 0
-        times_triggered: 2
+        times_triggered: 3
         verdict: healthy
+        note: "AG-012 was stale but commissioned and completed — process worked"
       PR-03:
         times_followed: 3
         times_skipped: 0
         times_triggered: 0
-        verdict: "untested in governance sessions (expected)"
+        verdict: "untested in governance sessions (retros produced by impl agents, not council)"
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
         count: 1
         action_threshold: 3
         status: accumulating
+      - signal: "Commission via bridge failed for complex PRDs — need known-limitation docs"
+        count: 1
+        action_threshold: 3
+        status: accumulating
+        source: SESSION-016
+      - signal: "Sub-council research pattern works well — spawned sub-agent returned rich analysis"
+        count: 1
+        action_threshold: 3
+        status: accumulating
+        source: SESSION-015
 
     retro_quality:
-      sessions_with_retro: 6
+      sessions_with_retro: 11
       sessions_without: 5
-      actionable_signals_produced: 3
+      actionable_signals_produced: 5
       rote_retros: 0
 
   done:
@@ -60,11 +88,16 @@ agenda:
     - { id: AG-019, resolved_in: SESSION-007 }
     - { id: AG-020, resolved_in: SESSION-010 }
     - { id: AG-021, resolved_in: SESSION-011 }
+    - { id: AG-012, resolved_in: SESSION-012, note: "Guide 13 written by commissioned agent" }
+    - { id: AG-023, resolved_in: SESSION-014, note: "Phase A bridge test succeeded" }
+    - { id: AG-024, resolved_in: SESSION-015, note: "PRD 008 drafted" }
+    - { id: AG-025, resolved_in: SESSION-018, note: "PRD 008 MVP implemented — 5 commits, 138 tests, 8/8 criteria met" }
+    - { id: AG-027, resolved_in: SESSION-019, note: "CLAUDE.md refreshed — 23 tools, channels, sub-agent guidelines, governance" }
+    - { id: AG-028, resolved_in: SESSION-019, note: "GC-P2SD-005 resolved — 3-point fix: card role_notes + commission skill + CLAUDE.md" }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }
     - { id: AG-006, archived_in: SESSION-006, reason: "Guides evolving organically" }
-    - { id: AG-007, archived_in: SESSION-008, reason: "Promoted → AG-017, completed" }
     - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when needed" }
     - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs in protocol spec" }
     - { id: AG-004, archived_in: SESSION-010, reason: "Trial criteria already in STEER-PROTO Part 8" }

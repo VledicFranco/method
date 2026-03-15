@@ -1,6 +1,6 @@
 # pv-method
 
-Runtime that makes formal methodologies executable by LLM agents. Loads compiled methodology YAML specs from the registry, exposes them via MCP tools, and includes a bridge for spawning and managing Claude Code sub-agent sessions.
+Runtime that makes formal methodologies executable by LLM agents. Loads compiled methodology YAML specs from the registry, exposes them via MCP tools, and includes a bridge for spawning and managing Claude Code sub-agent sessions with structured visibility channels.
 
 ## Quick Start
 
@@ -10,36 +10,65 @@ npm run build
 npm test
 ```
 
+## Project Structure
+
+```
+packages/
+  core/       Pure methodology logic — YAML loader, sessions, theory lookup (zero transport deps)
+  mcp/        MCP server — 23 tools (14 methodology + 9 bridge proxy)
+  bridge/     HTTP server — PTY session pool, channels, dashboard, token tracking
+registry/     Compiled methodology YAML specs (production artifacts — do not modify casually)
+theory/       Formal theory files (F1-FTH, F4-PHI)
+docs/
+  arch/       Architecture specs (one concern per file)
+  prds/       Product requirement documents
+  guides/     Usage guides (14 guides)
+.method/      Methodology execution home
+  project-card.yaml   Essence, delivery rules, processes, governance
+  manifest.yaml       Installed methodologies and protocols
+  council/            Steering council (TEAM, AGENDA, LOG)
+  retros/             Retrospective artifacts (retro-YYYY-MM-DD-NNN.yaml)
+  delivery/           Phases, sessions, reviews, audits
+```
+
+## Key Commands
+
+```bash
+npm run build          # TypeScript build (all packages)
+npm test               # Run all tests (core + bridge)
+npm run bridge         # Start bridge server (builds first)
+npm run bridge:dev     # Start bridge in dev mode (tsx)
+npm run bridge:stop    # Stop bridge server
+```
+
 ## Bridge (Agent Session Server)
 
-The bridge is a standalone HTTP server that manages a pool of Claude Code PTY sessions. It provides a REST API + a browser dashboard for human observability.
+HTTP server managing a pool of Claude Code PTY sessions. REST API + browser dashboard.
 
 ### Start / Stop
 
 ```bash
-# Production (builds first)
-npm run bridge
-
-# Development (tsx, no build step)
-npm run bridge:dev
-
-# Stop
-npm run bridge:stop
-
-# Or just Ctrl+C (graceful shutdown handles SIGTERM/SIGINT)
+npm run bridge         # Production (builds first)
+npm run bridge:dev     # Development (tsx, no build step)
+npm run bridge:stop    # Stop
 ```
 
 ### Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /dashboard` | Browser dashboard — live sessions, token usage, subscription meters |
+| `GET /dashboard` | Browser dashboard — live sessions, progress timelines, event feeds |
 | `GET /health` | Health check — JSON with status, session count, uptime |
-| `POST /sessions` | Spawn a new Claude Code agent session |
+| `POST /sessions` | Spawn a new agent session (supports parent/child chains, budgets) |
 | `POST /sessions/:id/prompt` | Send a prompt and wait for response |
-| `GET /sessions/:id/status` | Session status, metadata, prompt count |
+| `GET /sessions/:id/status` | Session status, metadata, chain info |
 | `GET /sessions` | List all sessions |
 | `DELETE /sessions/:id` | Kill a session |
+| `POST /sessions/:id/channels/progress` | Agent reports structured progress |
+| `POST /sessions/:id/channels/events` | Agent reports lifecycle events (with push notifications) |
+| `GET /sessions/:id/channels/progress` | Parent reads child progress (cursor-based) |
+| `GET /sessions/:id/channels/events` | Parent reads child events (cursor-based) |
+| `GET /channels/events` | Aggregated events across all sessions |
 
 ### Configuration
 
@@ -56,69 +85,69 @@ npm run bridge:stop
 
 ### MCP Proxy Tools
 
-The MCP server exposes 4 bridge proxy tools that let agents manage sub-agents through MCP instead of raw HTTP:
+The MCP server exposes 9 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`).
 
+**Session management:**
 - `bridge_spawn` — spawn a session (auto-correlates methodology session ID)
 - `bridge_prompt` — send prompt, wait for response
 - `bridge_kill` — kill a session
 - `bridge_list` — list sessions with metadata
 
-Configure with `BRIDGE_URL` env var (default `http://localhost:3456`).
+**Visibility channels (PRD 008):**
+- `bridge_progress` — report progress (step transitions, status updates)
+- `bridge_event` — report lifecycle events (completed, error, escalation)
+- `bridge_read_progress` — read child's progress (cursor-based)
+- `bridge_read_events` — read child's events (cursor-based)
+- `bridge_all_events` — aggregated events across all sessions
 
-## Project Structure
+Push notifications: when a child emits `completed`, `error`, `escalation`, `budget_warning`, or `stale` events, the bridge auto-prompts the parent agent.
 
-```
-packages/
-  core/       Pure methodology logic — YAML loader, sessions, theory lookup (zero transport deps)
-  mcp/        MCP server — 18 tools (14 methodology + 4 bridge proxy)
-  bridge/     HTTP server — PTY session pool, dashboard, token tracking
-registry/     Compiled methodology YAML specs (production artifacts — do not modify casually)
-theory/       Formal theory files (F1-FTH, F4-PHI)
-docs/
-  arch/       Architecture specs (one concern per file)
-  prds/       Product requirement documents
-  guides/     Usage guides
-  impl/       Implementation session logs
-.method/      Methodology instance card (project-card.yaml)
-```
+## Delivery Rules (Summary)
 
-## Key Commands
-
-```bash
-npm run build          # TypeScript build (all packages)
-npm test               # Run core tests
-npm run bridge         # Start bridge server (builds first)
-npm run bridge:dev     # Start bridge in dev mode (tsx)
-npm run bridge:stop    # Stop bridge server
-```
-
-## Delivery Rules
-
+- **DR-01/02:** Registry files are production artifacts. Preserve compilation status and structural completeness.
 - **DR-03:** Core has zero transport dependencies. Bridge proxy tools go in `@method/mcp`.
 - **DR-04:** MCP handlers are thin wrappers — parse input, call core/fetch, format output.
+- **DR-05:** Use js-yaml for all YAML parsing. Preserve structure faithfully.
 - **DR-09:** Tests use real YAML fixtures, not minimal mocks.
 - **DR-12:** Architecture docs follow horizontal pattern — one file per concern in `docs/arch/`.
+- **DR-13:** Validate YAML after registry edits: `node -e "require('js-yaml').load(require('fs').readFileSync('file.yaml','utf8'))"`.
 
-See `.method/project-card.yaml` for the full methodology instance (I2-METHOD, P2-SD v2.0).
+See `.method/project-card.yaml` for the full set (DR-01 through DR-13).
 
 ## Methodology & Governance
 
-This project uses the method system it builds. Key files:
-
-- **`.method/project-card.yaml`** — essence (purpose, invariant, optimize_for), delivery rules, processes, governance settings
-- **`.method/manifest.yaml`** — what methodologies and protocols are installed (P2-SD, P1-EXEC, RETRO-PROTO, STEER-PROTO)
-- **`.method/council/`** — steering council (TEAM, AGENDA, LOG). Run `/steering-council` to start a session.
+This project uses the method system it builds. Instance: I2-METHOD, methodology: P2-SD v2.0.
 
 ### Essence
 
+- **Purpose:** The runtime that makes formal methodologies executable by LLM agents.
 - **Invariant:** Theory is the source of truth. When implementation and formal theory diverge, revise the implementation — never the theory.
 - **Optimize for:** Faithfulness > simplicity > registry integrity.
 
+### Installed (`.method/manifest.yaml`)
+
+- **P2-SD v2.0** — software delivery methodology (7 methods)
+- **P1-EXEC v1.1** — execution methodology (M1-COUNCIL, M2-ORCH, M3-TMP)
+- **RETRO-PROTO v1.0** — retrospective protocol (promoted)
+- **STEER-PROTO v0.1** — steering council protocol (trial)
+
+### Steering Council
+
+Persistent governance body in `.method/council/`. Run `/steering-council` to start a session. The council:
+- Reviews priorities and steers direction
+- Guards the project's essence (purpose, invariant, optimize_for)
+- Enforces processes (PR-01/02/03)
+- Commissions agent work via `/commission`
+
 ### Processes (enforced by steering council)
 
-- **PR-01:** Guide sync — update docs/guides/ when registry/ changes
+- **PR-01:** Guide sync — update `docs/guides/` when `registry/` changes
 - **PR-02:** Stale agenda escalation — items open 3+ sessions get resolved or archived
 - **PR-03:** Retro placement — retrospectives go to `.method/retros/`, not `tmp/`
+
+### Retrospectives
+
+After every methodology session, produce a retrospective at `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. Include: `hardest_decision`, `observations` (>= 1), `card_feedback` (with essence feedback), `proposed_deltas` (optional).
 
 ### Skills
 
@@ -126,6 +155,12 @@ This project uses the method system it builds. Key files:
 - `/council-team [challenge]` — adversarial expert debate
 - `/commission [task]` — generate orchestrator prompt for a fresh agent
 
-### Retrospectives
+## Sub-Agent Guidelines
 
-After every methodology session, produce a retrospective at `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. See `docs/impl/orchestrator-retro-section.md` for the schema. Include essence feedback (did the invariant guide decisions?).
+If you are a sub-agent spawned for implementation work:
+
+- **Do NOT modify registry YAML files** unless the task explicitly requires registry changes. If a registry file has a parsing error, REPORT it — do not fix it.
+- **Do NOT modify** `.method/project-card.yaml`, schema files, or council artifacts.
+- **Do NOT commit to files outside your task scope.** One step, one deliverable per sub-agent.
+- **Scope decisions go to the orchestrator.** If the task requires decisions beyond your scope, report back.
+- When in doubt about a registry change, check the method's `compilation_record` to understand what gates it passed.

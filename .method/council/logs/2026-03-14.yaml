@@ -707,3 +707,84 @@ log:
       next_agenda_items:
         - "AG-026: Draft ORGANON-PROTO in registry/P0-META/"
         - "AG-007: CLAUDE.md for pv-method — promote to P0"
+
+    - id: SESSION-018
+      date: "2026-03-14"
+      type: housekeeping
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Auto session — agenda sync and governance health review (4 sessions overdue)"
+
+      decisions:
+        - id: D-029
+          item: "Agenda housekeeping — sync with reality"
+          decision: >
+            Bulk update: AG-012 (Guide 13) marked done. AG-023 (Phase A) and
+            AG-024 (PRD 008 draft) added and marked done. AG-025 (PRD 008 MVP
+            impl) added as P0 in-progress. AG-026 (ORGANON-PROTO) and AG-027
+            (CLAUDE.md refresh) added as P1. AG-007 un-archived as AG-027.
+            Governance health counters updated — next review SESSION-023.
+          status: decided
+          for: "Agenda was 6 sessions stale. All items verified against artifacts on disk."
+          against: "None — bookkeeping, not strategy."
+          essence_check: "Housekeeping. No essence impact."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: false
+        agenda_delta: -1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-02, followed: true, note: "AG-012 stale item resolved — process worked" }
+        process_improvement_signal: "Agenda drifted 6 sessions. Consider lighter-weight sync at end of each session even outside formal council."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Updated AGENDA.yaml — synced with sessions 012-017"
+        - "Governance health review completed (was overdue since SESSION-014)"
+
+      next_agenda_items:
+        - "AG-025: Monitor PRD 008 MVP agent (in progress)"
+        - "AG-026: Draft ORGANON-PROTO"
+        - "AG-027: CLAUDE.md refresh"
+
+    - id: SESSION-019
+      date: "2026-03-14"
+      type: prioritization
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "P0 empty after PRD 008 shipped — decide next priorities"
+
+      decisions:
+        - id: D-030
+          item: "Next priority order"
+          decision: >
+            1) AG-027 CLAUDE.md refresh (low effort, high leverage for all future commissions).
+            2) AG-028 Process PRD 008 retro — sub-agent scope constraint MEDIUM finding.
+            3) AG-029 Commission PRD 006 recursive orchestration — unblocked by PRD 008.
+            AG-026 ORGANON-PROTO deferred to next session (not urgent, nothing blocked).
+          status: decided
+          for: >
+            Nika: PRD 006 is highest impact but needs retro lesson first. Reva: CLAUDE.md
+            is 15-min work that improves every future agent session. Harlan: retro MEDIUM
+            finding (sub-agent scope) directly relevant to PRD 006's recursive agents.
+            Orion: ORGANON-PROTO important but not urgent.
+          against: "None — unanimous on ordering."
+          essence_check: "All items serve the purpose. CLAUDE.md makes agents more effective. PRD 006 is the core automated pipeline. Faithful."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: +2
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-03, followed: true, note: "PRD 008 retro correctly placed in .method/retros/" }
+        process_improvement_signal: "None"
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Decision D-030: AG-027 → AG-028 → AG-029 priority order"
+        - "AG-025 marked done (PRD 008 shipped)"
+
+      next_agenda_items:
+        - "AG-027: CLAUDE.md refresh (P0)"
+        - "AG-028: Process PRD 008 retro (P0)"
+        - "AG-029: Commission PRD 006 (P0)"

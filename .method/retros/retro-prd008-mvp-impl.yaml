@@ -1,0 +1,133 @@
+# Retrospective — PRD 008 MVP Implementation
+# Date: 2026-03-14
+# Session: PRD 008 MVP (Components 1 + 2)
+# Methodology: P2-SD v2.0 / M1-IMPL
+# Execution binding: M3-TMP (orchestrator), M3-TMP (sub-agents)
+
+session:
+  id: "PRD-008-MVP-IMPL"
+  methodology: P2-SD
+  method: M1-IMPL
+  instance: I2-METHOD
+  duration_estimate: "~45 minutes wall clock"
+
+hardest_decision: >
+  Whether to run bridge and MCP sub-agents in parallel or sequentially. The MCP tools
+  are HTTP proxies (DR-04) — they don't compile-time depend on bridge code, only runtime.
+  Chose to run them sequentially anyway (bridge first) because the MCP sub-agent needed
+  exact endpoint URLs to be correct. In hindsight, providing the URLs in the prompt was
+  sufficient and they could have run in parallel. The dashboard sub-agent DID run in
+  parallel with MCP successfully.
+
+observations:
+  - step: "Step 0 — Contextualize"
+    type: insight
+    description: >
+      Reading all 11 context files in parallel at the start saved significant time.
+      The complete picture — bridge architecture, pool mechanics, MCP patterns, test
+      conventions — was available before any planning decisions were made.
+    evidence: "11 files read in one batch, plan produced immediately after"
+    severity: low
+
+  - step: "Step 3 — Implement"
+    type: success
+    description: >
+      The 5-sub-agent decomposition (arch docs, bridge, MCP, dashboard, tests) mapped
+      cleanly to package boundaries. Zero merge conflicts despite parallel execution.
+      Each sub-agent committed independently to master.
+    evidence: "5 commits, all on master, no conflicts, build passes after each"
+    severity: low
+
+  - step: "Step 3 — Sub-agent B (bridge)"
+    type: success
+    description: >
+      The experiment results (EXP-008-1/2/3) translated directly to implementation.
+      Session ID prompt injection (EXP-008-2) and env var injection (EXP-008-3) were
+      2-3 line changes each. Pre-implementation experiments eliminated design uncertainty.
+    evidence: "pty-session.ts changed 2 lines for env vars, pool.ts added 3 lines for prompt injection"
+    severity: low
+
+  - step: "Step 3 — Sub-agent E (tests)"
+    type: success
+    description: >
+      22 new channel tests covering all 7 scenarios (factory, append, read, cap, step
+      progression, event lifecycle, cursor isolation). Test count went from 76 to 138.
+      DR-09 satisfied — tests use realistic message sequences, not synthetic data.
+    evidence: "138 pass, 0 fail, includes methodology step progression scenario"
+    severity: low
+
+  - step: "Step 1 — Architecture update"
+    type: observation
+    description: >
+      The architecture docs sub-agent produced an unexpected council commit
+      (6d2e2b2 "council: SESSION-017") alongside the expected arch docs commit.
+      This was non-harmful but indicates the sub-agent had broader scope than intended.
+      Sub-agent prompts should explicitly constrain which files may be modified.
+    evidence: "git log shows 6d2e2b2 between arch docs and bridge commits"
+    severity: medium
+
+card_feedback:
+  invariant_guided: true
+  invariant_application: >
+    DR-03 (core zero transport deps) was respected — channel types live in bridge, not core.
+    DR-04 (thin wrappers) guided MCP tool design — all 5 tools are pure HTTP proxies.
+    The invariant "theory is source of truth" didn't apply directly (no registry changes),
+    but the essence principle "faithfulness > simplicity" guided the push notification
+    design — fire-and-forget matches the bridge's existing async-tolerant architecture.
+  essence_feedback: >
+    The optimize_for ordering (faithfulness > simplicity > registry integrity) validated
+    the design. Channel infrastructure is simple (Map + array, no external deps) and
+    faithful to the PRD spec's conclave-inspired dual-cursor pattern.
+
+proposed_deltas: []
+
+deliverables:
+  commits:
+    - hash: "e091a63"
+      message: "docs(arch): add PRD 008 channel types and MCP tools to architecture specs"
+    - hash: "8cf4bc3"
+      message: "feat(bridge): add channel infrastructure, HTTP endpoints, push notifications (PRD 008)"
+    - hash: "0c48525"
+      message: "feat(mcp): add 5 channel proxy tools and auto-progress integration (PRD 008)"
+    - hash: "fee3cd2"
+      message: "feat(dashboard): add progress timeline and event feed (PRD 008)"
+    - hash: "aa6ee6d"
+      message: "test(bridge): add channel infrastructure tests (PRD 008)"
+
+  files_created:
+    - packages/bridge/src/channels.ts
+    - packages/bridge/src/__tests__/channels.test.ts
+
+  files_modified:
+    - packages/bridge/src/pool.ts
+    - packages/bridge/src/pty-session.ts
+    - packages/bridge/src/index.ts
+    - packages/bridge/src/dashboard-route.ts
+    - packages/bridge/src/dashboard.html
+    - packages/mcp/src/index.ts
+    - docs/arch/state-model.md
+    - docs/arch/mcp-layer.md
+
+  test_results:
+    total: 138
+    passed: 138
+    failed: 0
+    new_tests: 22
+
+success_criteria_status:
+  - criterion: "SC-1: Step transitions in bridge_read_progress within 5s"
+    status: "IMPLEMENTED — auto-progress from step_advance POSTs to bridge"
+  - criterion: "SC-2: Completed event in bridge_read_events"
+    status: "IMPLEMENTED — bridge_event tool + events channel endpoint"
+  - criterion: "SC-3: Error event in bridge_read_events"
+    status: "IMPLEMENTED — bridge_event tool supports error type"
+  - criterion: "SC-4: bridge_all_events across sessions"
+    status: "IMPLEMENTED — GET /channels/events aggregates all sessions"
+  - criterion: "SC-5: Dashboard progress timeline"
+    status: "IMPLEMENTED — per-session progress timeline in channels panel"
+  - criterion: "SC-6: Auto-progress from step_advance"
+    status: "IMPLEMENTED — checks BRIDGE_URL/BRIDGE_SESSION_ID env vars"
+  - criterion: "SC-7: Push notification to parent within 10s"
+    status: "IMPLEMENTED — events endpoint auto-prompts parent via pool.prompt()"
+  - criterion: "SC-8: No auto-bubble through chain"
+    status: "IMPLEMENTED — push goes one level only, parent decides propagation"

@@ -233,11 +233,16 @@ project_card:
         (packages/) and methodology YAML specifications (registry/). Sub-agents
         MUST NOT modify registry YAML files unless the task explicitly requires
         registry changes. If a registry file has a parsing error, REPORT it to
-        the orchestrator — do not fix it. Also do not modify .method/project-card.yaml
-        or any schema files. Code changes follow standard TypeScript practices.
-        Registry changes (when explicitly authorized) must preserve method compilation
-        status and structural completeness. When in doubt about a registry change, check the method's
-        compilation_record to understand what gates it passed.
+        the orchestrator — do not fix it. Also do not modify .method/project-card.yaml,
+        .method/council/ artifacts, or any schema files. Code changes follow
+        standard TypeScript practices. Registry changes (when explicitly authorized)
+        must preserve method compilation status and structural completeness.
+        IMPORTANT: Only modify files within the scope specified by the orchestrator's
+        task description. If the task says "update bridge endpoints", do not also
+        commit changes to council logs, architecture docs, or other files outside
+        that scope. Out-of-scope changes must be reported back, not committed.
+        When in doubt about a registry change, check the method's compilation_record
+        to understand what gates it passed.
     reviewer:
       note: >
         Review has two dimensions: code quality (standard) and registry integrity
