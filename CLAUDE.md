@@ -80,7 +80,7 @@ npm run bridge:stop    # Stop
 | `SETTLE_DELAY_MS` | `2000` | Response completion debounce |
 | `DEAD_SESSION_TTL_MS` | `300000` | Auto-cleanup TTL for dead sessions (5 min) |
 | `CLAUDE_OAUTH_TOKEN` | *(none)* | Enables subscription usage meters in dashboard |
-| `USAGE_POLL_INTERVAL_MS` | `60000` | Subscription usage poll interval |
+| `USAGE_POLL_INTERVAL_MS` | `600000` | Subscription usage poll interval (10 min) |
 | `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base dir for Claude Code session logs |
 
 ### MCP Proxy Tools
