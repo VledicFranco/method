@@ -1,4 +1,4 @@
-import type { LoadedMethod, SessionStatus, AdvanceResult, CurrentStepResult, StepContext } from './types.js';
+import type { LoadedMethod, SessionStatus, AdvanceResult, CurrentStepResult, StepContext, PriorMethodOutput } from './types.js';
 
 export type Session = {
   load(method: LoadedMethod): void;
@@ -10,6 +10,7 @@ export type Session = {
   setMethodologyContext(methodologyId: string, methodologyName: string): void;
   recordStepOutput(stepId: string, output: Record<string, unknown>): void;
   getStepOutputs(): Array<{ stepId: string; output: Record<string, unknown> }>;
+  setPriorMethodOutputs(outputs: PriorMethodOutput[]): void;
 };
 
 export function createSession(): Session {
@@ -17,6 +18,7 @@ export function createSession(): Session {
   let currentIndex = 0;
   let methodologyContext: { id: string; name: string } | null = null;
   const stepOutputs = new Map<string, Record<string, unknown>>();
+  let priorMethodOutputsData: PriorMethodOutput[] = [];
 
   function assertLoaded(): LoadedMethod {
     if (method === null) {
@@ -108,6 +110,7 @@ export function createSession(): Session {
         stepIndex: currentIndex,
         totalSteps: m.steps.length,
         priorStepOutputs: priorOutputs,
+        priorMethodOutputs: priorMethodOutputsData,
       };
     },
 
@@ -125,6 +128,10 @@ export function createSession(): Session {
 
     getStepOutputs(): Array<{ stepId: string; output: Record<string, unknown> }> {
       return Array.from(stepOutputs.entries()).map(([stepId, output]) => ({ stepId, output }));
+    },
+
+    setPriorMethodOutputs(outputs: PriorMethodOutput[]): void {
+      priorMethodOutputsData = outputs;
     },
   };
 }

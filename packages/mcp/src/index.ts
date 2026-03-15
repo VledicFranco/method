@@ -18,6 +18,7 @@ import {
   startMethodologySession,
   routeMethodology,
   loadMethodInSession,
+  transitionMethodology,
 } from "@method/core";
 
 // Path resolution
@@ -256,6 +257,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["method_id"],
       },
     },
+    {
+      name: "methodology_transition",
+      description: "Complete the current method and evaluate δ_Φ for the next method. Returns the completed method summary and next method recommendation.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          completion_summary: {
+            type: "string",
+            description: "Optional: agent's summary of what the method achieved",
+          },
+          challenge_predicates: {
+            type: "object",
+            description: "Optional: updated predicates for re-routing { predicate_name: true/false }",
+          },
+          ...sessionIdProperty,
+        },
+      },
+    },
   ],
 }));
 
@@ -349,6 +368,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const sid = session_id ?? '__default__';
         const session = sessions.getOrCreate(sid);
         const result = selectMethodology(REGISTRY, methodology_id, selected_method_id, session, sid);
+        // Also create a methodology session for backward compatibility (PRD 004)
+        try {
+          const { session: methSession } = startMethodologySession(REGISTRY, methodology_id, null, sid);
+          methSession.currentMethodId = selected_method_id;
+          methSession.status = 'executing';
+          methodologySessions.set(sid, methSession);
+        } catch {
+          // Non-critical: if methodology session creation fails, the existing select still works
+        }
         return ok(JSON.stringify(result, null, 2));
       }
 
@@ -404,6 +432,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         const session = sessions.getOrCreate(sid);
         const result = loadMethodInSession(REGISTRY, methSession, method_id, session, sid);
+        methodologySessions.set(sid, methSession);
+        return ok(JSON.stringify(result, null, 2));
+      }
+
+      case "methodology_transition": {
+        const { completion_summary, challenge_predicates, session_id } = z.object({
+          completion_summary: z.string().optional(),
+          challenge_predicates: z.record(z.boolean()).optional(),
+          session_id: z.string().optional(),
+        }).parse(args);
+        const sid = session_id ?? '__default__';
+        const methSession = methodologySessions.get(sid);
+        if (!methSession) {
+          throw new Error('No methodology session active. Call methodology_start first.');
+        }
+        const session = sessions.getOrCreate(sid);
+        const result = transitionMethodology(
+          REGISTRY, methSession, session,
+          completion_summary ?? null, challenge_predicates
+        );
         methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
       }

@@ -9,7 +9,10 @@ import type {
   MethodologyStartResult,
   MethodologyRouteResult,
   MethodologyLoadMethodResult,
+  MethodologyTransitionResult,
   EvaluatedPredicate,
+  PriorMethodOutput,
+  CompletedMethodRecord,
 } from './types.js';
 
 export type MethodologySessionManager = {
@@ -309,11 +312,21 @@ export function loadMethodInSession(
   // 5. Set methodology context
   session.setMethodologyContext(methodologySession.methodologyId, methodologySession.methodologyName);
 
-  // 6. Update methodology session state (mutate)
+  // 6. Set prior method outputs on the session
+  const priorMethodOutputsData: PriorMethodOutput[] = methodologySession.completedMethods.map((cm) => ({
+    methodId: cm.methodId,
+    stepOutputs: cm.stepOutputs.map((so) => ({
+      stepId: so.stepId,
+      summary: so.outputSummary,
+    })),
+  }));
+  session.setPriorMethodOutputs(priorMethodOutputsData);
+
+  // 7. Update methodology session state (mutate)
   methodologySession.currentMethodId = methodId;
   methodologySession.status = 'executing';
 
-  // 7. Build prior method outputs
+  // 8. Build prior method outputs for the result
   const priorMethodOutputs = methodologySession.completedMethods.map((cm) => ({
     methodId: cm.methodId,
     stepOutputs: cm.stepOutputs.map((so) => ({
@@ -322,7 +335,7 @@ export function loadMethodInSession(
     })),
   }));
 
-  // 8. Return result
+  // 9. Return result
   return {
     methodologySessionId: sessionId,
     method: {
@@ -341,5 +354,95 @@ export function loadMethodInSession(
     },
     priorMethodOutputs,
     message: `Loaded ${loadedMethod.methodId} — ${loadedMethod.name} (${loadedMethod.steps.length} steps) under ${methodologySession.methodologyName}. Call step_context to get the first step's context.`,
+  };
+}
+
+/**
+ * Complete the current method and evaluate δ_Φ for the next method.
+ * Returns the completed method summary and next method recommendation.
+ */
+export function transitionMethodology(
+  registryPath: string,
+  methodologySession: MethodologySessionData,
+  session: Session,
+  completionSummary: string | null,
+  challengePredicates?: Record<string, boolean>,
+): MethodologyTransitionResult {
+  // 1. Validate status
+  if (methodologySession.status !== 'executing') {
+    throw new Error('Cannot transition: no method is currently executing');
+  }
+
+  // 2. Validate currentMethodId
+  if (methodologySession.currentMethodId === null) {
+    throw new Error('Cannot transition: no method is currently executing');
+  }
+
+  // 3. Gather step outputs from current method session
+  const stepOutputs = session.getStepOutputs();
+  const outputEntries = stepOutputs.map((so) => ({
+    stepId: so.stepId,
+    outputSummary: JSON.stringify(so.output).slice(0, 200),
+  }));
+
+  // 4. Get the current method's name and step count
+  let currentMethodName = methodologySession.currentMethodId;
+  let currentStepCount = 0;
+  try {
+    const st = session.status();
+    currentMethodName = st.methodId;
+    currentStepCount = st.totalSteps;
+  } catch {
+    /* method may not be loaded */
+  }
+
+  // 5. Create completed method record
+  const completedRecord: CompletedMethodRecord = {
+    methodId: methodologySession.currentMethodId,
+    completedAt: new Date().toISOString(),
+    stepOutputs: outputEntries,
+    completionSummary: completionSummary,
+  };
+  methodologySession.completedMethods.push(completedRecord);
+
+  // 6. Update session state for re-routing
+  methodologySession.status = 'transitioning';
+  methodologySession.currentMethodId = null;
+
+  // 7. Re-evaluate δ_Φ
+  const routeResult = routeMethodology(registryPath, methodologySession, challengePredicates);
+
+  // 8. Determine next method and update status
+  if (routeResult.selectedMethod === null) {
+    // Methodology complete or no route found
+    methodologySession.globalObjectiveStatus = 'satisfied';
+    methodologySession.status = 'completed';
+  }
+  // If selectedMethod is not null, keep status as 'transitioning' (ready for load_method)
+
+  // 9. Return result
+  return {
+    completedMethod: {
+      id: completedRecord.methodId,
+      name: currentMethodName,
+      stepCount: currentStepCount,
+      outputsRecorded: outputEntries.length,
+    },
+    methodologyProgress: {
+      methodsCompleted: methodologySession.completedMethods.length,
+      globalObjectiveStatus: methodologySession.globalObjectiveStatus,
+    },
+    nextMethod: routeResult.selectedMethod
+      ? {
+          id: routeResult.selectedMethod.id,
+          name: routeResult.selectedMethod.name,
+          stepCount: routeResult.selectedMethod.stepCount,
+          description: routeResult.selectedMethod.description,
+          routingRationale: routeResult.selectedArm?.rationale ?? 'No rationale provided',
+        }
+      : null,
+    message: routeResult.selectedMethod
+      ? `${completedRecord.methodId} completed. δ_Φ re-evaluated → ${routeResult.selectedMethod.id} selected. Call methodology_load_method to begin.`
+      : `${completedRecord.methodId} completed. Methodology complete — no further methods needed.`,
   };
 }

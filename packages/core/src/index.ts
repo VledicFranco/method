@@ -6,5 +6,5 @@ export type { Session, SessionManager } from './state.js';
 export { lookupTheory } from './theory.js';
 export { selectMethodology } from './select.js';
 export { validateStepOutput } from './validate.js';
-export { startMethodologySession, createMethodologySessionManager, routeMethodology, loadMethodInSession } from './methodology-session.js';
+export { startMethodologySession, createMethodologySessionManager, routeMethodology, loadMethodInSession, transitionMethodology } from './methodology-session.js';
 export type { MethodologySessionManager } from './methodology-session.js';

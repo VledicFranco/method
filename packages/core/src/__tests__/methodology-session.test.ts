@@ -6,6 +6,7 @@ import {
   createMethodologySessionManager,
   routeMethodology,
   loadMethodInSession,
+  transitionMethodology,
   createSession,
 } from '../index.js';
 import type { MethodologySessionData } from '../index.js';
@@ -231,5 +232,125 @@ describe('loadMethodInSession — P1-EXEC', () => {
       () => loadMethodInSession(REGISTRY, methSession, 'M1-COUNCIL', session, 'load-5'),
       /Cannot load method when session status is 'executing'/,
     );
+  });
+});
+
+// --- Phase 3 tests: transitionMethodology ---
+
+describe('transitionMethodology — full flow: start → load → transition', () => {
+  it('completes M3-TMP and re-routes to a next method', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'trans-1');
+    const session = createSession();
+
+    // Load M3-TMP
+    loadMethodInSession(REGISTRY, methSession, 'M3-TMP', session, 'trans-1');
+    assert.equal(methSession.status, 'executing');
+    assert.equal(methSession.currentMethodId, 'M3-TMP');
+
+    // Transition
+    const result = transitionMethodology(REGISTRY, methSession, session, 'M3-TMP done', {
+      adversarial_pressure_beneficial: false,
+      decomposable_before_execution: false,
+    });
+
+    // Verify completedMethod
+    assert.equal(result.completedMethod.id, 'M3-TMP');
+    assert.ok(result.completedMethod.stepCount > 0, 'should have step count');
+
+    // Verify methodologyProgress
+    assert.equal(result.methodologyProgress.methodsCompleted, 1);
+
+    // Message should indicate completion
+    assert.ok(result.message.includes('M3-TMP'));
+    assert.ok(result.message.includes('completed'));
+  });
+});
+
+describe('transitionMethodology — records step outputs', () => {
+  it('captures recorded step outputs in the completed method', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'trans-2');
+    const session = createSession();
+
+    loadMethodInSession(REGISTRY, methSession, 'M3-TMP', session, 'trans-2');
+
+    // Record some step outputs
+    session.recordStepOutput('sigma_A1', { analysis: 'done' });
+    session.recordStepOutput('sigma_A2', { design: 'complete' });
+
+    const result = transitionMethodology(REGISTRY, methSession, session, 'done');
+
+    assert.equal(result.completedMethod.outputsRecorded, 2);
+
+    // Verify the outputs are stored in completedMethods
+    assert.equal(methSession.completedMethods.length, 1);
+    assert.equal(methSession.completedMethods[0].stepOutputs.length, 2);
+    assert.equal(methSession.completedMethods[0].stepOutputs[0].stepId, 'sigma_A1');
+  });
+});
+
+describe('transitionMethodology — with completion summary', () => {
+  it('stores the completion summary in completedMethods', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'trans-3');
+    const session = createSession();
+
+    loadMethodInSession(REGISTRY, methSession, 'M3-TMP', session, 'trans-3');
+
+    transitionMethodology(REGISTRY, methSession, session, 'Successfully completed task analysis');
+
+    assert.equal(methSession.completedMethods.length, 1);
+    assert.equal(methSession.completedMethods[0].completionSummary, 'Successfully completed task analysis');
+  });
+});
+
+describe('transitionMethodology — error: not executing', () => {
+  it('throws when session status is initialized (not executing)', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'trans-4');
+    const session = createSession();
+
+    // Don't load any method — status is still 'initialized'
+    assert.throws(
+      () => transitionMethodology(REGISTRY, methSession, session, null),
+      { message: 'Cannot transition: no method is currently executing' },
+    );
+  });
+});
+
+// --- Phase 3 tests: enhanced step_context with priorMethodOutputs ---
+
+describe('enhanced step_context — priorMethodOutputs', () => {
+  it('priorMethodOutputs is empty on first method load', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'ctx-1');
+    const session = createSession();
+
+    loadMethodInSession(REGISTRY, methSession, 'M3-TMP', session, 'ctx-1');
+
+    const ctx = session.context();
+    assert.deepStrictEqual(ctx.priorMethodOutputs, []);
+  });
+
+  it('priorMethodOutputs populated after transition and re-load', () => {
+    const { session: methSession } = startMethodologySession(REGISTRY, 'P1-EXEC', 'test', 'ctx-2');
+    const session = createSession();
+
+    // Load M3-TMP and record outputs
+    loadMethodInSession(REGISTRY, methSession, 'M3-TMP', session, 'ctx-2');
+    session.recordStepOutput('sigma_A1', { result: 'analyzed' });
+
+    // Transition (completes M3-TMP) — provide predicates so re-routing finds M2-ORCH
+    transitionMethodology(REGISTRY, methSession, session, 'done', {
+      adversarial_pressure_beneficial: false,
+      decomposable_before_execution: true,
+    });
+
+    // Load M2-ORCH
+    loadMethodInSession(REGISTRY, methSession, 'M2-ORCH', session, 'ctx-2');
+
+    // Check context — should have M3-TMP's outputs as prior method outputs
+    const ctx = session.context();
+    assert.equal(ctx.priorMethodOutputs.length, 1);
+    assert.equal(ctx.priorMethodOutputs[0].methodId, 'M3-TMP');
+    assert.equal(ctx.priorMethodOutputs[0].stepOutputs.length, 1);
+    assert.equal(ctx.priorMethodOutputs[0].stepOutputs[0].stepId, 'sigma_A1');
+    assert.ok(ctx.priorMethodOutputs[0].stepOutputs[0].summary.includes('analyzed'));
   });
 });

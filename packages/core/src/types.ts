@@ -91,6 +91,32 @@ export type PriorStepOutput = {
   summary: string;
 };
 
+export type PriorMethodOutput = {
+  methodId: string;
+  stepOutputs: Array<{ stepId: string; summary: string }>;
+};
+
+export type MethodologyTransitionResult = {
+  completedMethod: {
+    id: string;
+    name: string;
+    stepCount: number;
+    outputsRecorded: number;
+  };
+  methodologyProgress: {
+    methodsCompleted: number;
+    globalObjectiveStatus: GlobalObjectiveStatus;
+  };
+  nextMethod: {
+    id: string;
+    name: string;
+    stepCount: number;
+    description: string;
+    routingRationale: string;
+  } | null;
+  message: string;
+};
+
 export type MethodologySelectResult = {
   methodologySessionId: string;
   selectedMethod: {
@@ -130,6 +156,7 @@ export type StepContext = {
   stepIndex: number;
   totalSteps: number;
   priorStepOutputs: PriorStepOutput[];
+  priorMethodOutputs: PriorMethodOutput[];
 };
 
 export type MethodologySessionStatus =
