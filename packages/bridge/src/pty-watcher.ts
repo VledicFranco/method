@@ -10,6 +10,9 @@ import {
 } from './pattern-matchers.js';
 import { appendMessage, type SessionChannels } from './channels.js';
 
+/** PRD 012: Callback invoked for each observation (used by DiagnosticsTracker). */
+export type ObservationCallback = (match: PatternMatch, isIdle: boolean) => void;
+
 // ── ANSI stripping ──────────────────────────────────────────────
 
 const ANSI_RE = /\x1B\[[0-9;]*[a-zA-Z]/g;
@@ -47,7 +50,7 @@ export interface PtyWatcher {
 
 const ALL_CATEGORIES: ObservationCategory[] = [
   'tool_call', 'git_commit', 'test_result', 'file_operation',
-  'build_result', 'error', 'idle',
+  'build_result', 'error', 'idle', 'permission_prompt',
 ];
 
 export function parseWatcherConfig(env: Record<string, string | undefined>, metadata?: Record<string, unknown>): WatcherConfig {
@@ -98,6 +101,7 @@ export function createPtyWatcher(
   channels: SessionChannels,
   onOutputSubscribe: (cb: (data: string) => void) => () => void,
   config: WatcherConfig,
+  onObservation?: ObservationCallback,
 ): PtyWatcher {
   const observations: ActivityObservation[] = [];
   const spawnedAt = new Date();
@@ -164,6 +168,11 @@ export function createPtyWatcher(
           detail: match.content,
         });
 
+        // PRD 012: Notify diagnostics tracker
+        if (onObservation) {
+          try { onObservation(match, false); } catch { /* callback errors are non-fatal */ }
+        }
+
         // Update activity tracking for idle detection
         lastActivityTimestamp = now;
         isWorking = true;
@@ -189,11 +198,24 @@ export function createPtyWatcher(
           ? observations[observations.length - 1].category
           : 'unknown';
 
-        observations.push({
+        const idleObservation = {
           timestamp: new Date(now).toISOString(),
-          category: 'idle',
+          category: 'idle' as ObservationCategory,
           detail: { idle_after_seconds: idleAfterSeconds, last_activity: lastActivity },
-        });
+        };
+        observations.push(idleObservation);
+
+        // PRD 012: Notify diagnostics tracker of idle transition
+        if (onObservation) {
+          try {
+            onObservation({
+              category: 'idle',
+              channelTarget: 'progress',
+              messageType: 'idle',
+              content: idleObservation.detail,
+            }, true);
+          } catch { /* callback errors are non-fatal */ }
+        }
 
         // Rate-limit idle emissions
         const lastIdleEmit = lastEmissionTime.get('idle') ?? 0;

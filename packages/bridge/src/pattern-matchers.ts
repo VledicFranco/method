@@ -9,7 +9,8 @@ export type ObservationCategory =
   | 'build_result'
   | 'file_operation'
   | 'error'
-  | 'idle';
+  | 'idle'
+  | 'permission_prompt';
 
 export interface PatternMatch {
   category: ObservationCategory;
@@ -311,6 +312,22 @@ export const matchError: PatternMatcher = (text) => {
   return matches;
 };
 
+// ── Pattern 8: Permission Prompt Detection (PRD 012) ────────────
+
+const PERMISSION_PROMPT_RE = /\bAllow\b.*\?\s*\([Yy](?:es)?\/[Nn](?:o)?\)/;
+
+export const matchPermissionPrompt: PatternMatcher = (text) => {
+  if (PERMISSION_PROMPT_RE.test(text)) {
+    return [{
+      category: 'permission_prompt',
+      channelTarget: 'events',
+      messageType: 'permission_prompt_detected',
+      content: {},
+    }];
+  }
+  return [];
+};
+
 // ── Matcher Registry ────────────────────────────────────────────
 
 export const ALL_MATCHERS: Array<{ category: ObservationCategory; matcher: PatternMatcher }> = [
@@ -320,4 +337,5 @@ export const ALL_MATCHERS: Array<{ category: ObservationCategory; matcher: Patte
   { category: 'file_operation', matcher: matchFileOperation },
   { category: 'build_result', matcher: matchBuildResult },
   { category: 'error', matcher: matchError },
+  { category: 'permission_prompt', matcher: matchPermissionPrompt },
 ];

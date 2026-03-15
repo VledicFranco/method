@@ -157,6 +157,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
+        diagnostics: null,
       };
     },
 
@@ -182,6 +183,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
+        diagnostics: null,
       }));
     },
 
