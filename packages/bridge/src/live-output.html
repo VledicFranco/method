@@ -309,10 +309,32 @@ var term = new Terminal({
 var fitAddon = new FitAddon.FitAddon();
 term.loadAddon(fitAddon);
 term.open(document.getElementById('terminal'));
-fitAddon.fit();
 
-// Refit on window resize
-window.addEventListener('resize', function() { fitAddon.fit(); });
+// ── Resize: fit terminal and sync PTY dimensions ──
+var resizeTimer = null;
+
+function syncResize() {
+  fitAddon.fit();
+  var dims = fitAddon.proposeDimensions();
+  if (dims && dims.cols && dims.rows) {
+    fetch('/sessions/' + sessionId + '/resize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cols: dims.cols, rows: dims.rows })
+    }).catch(function() { /* resize sync failure is non-fatal */ });
+  }
+}
+
+function debouncedResize() {
+  if (resizeTimer) clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(syncResize, 200);
+}
+
+// Initial fit + sync
+syncResize();
+
+// Refit on window resize (debounced)
+window.addEventListener('resize', debouncedResize);
 
 // ── Scroll lock toggle ──
 var scrollBtn = document.getElementById('scroll-btn');

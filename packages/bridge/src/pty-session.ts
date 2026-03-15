@@ -20,6 +20,7 @@ export interface PtySession {
   /** PRD 010: Subscribe to PTY process exit. */
   onExit(cb: (exitCode: number) => void): void;
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  resize(cols: number, rows: number): void;
   kill(): void;
 }
 
@@ -286,6 +287,14 @@ export function spawnSession(options: SpawnOptions): PtySession {
 
         return { output, timedOut: result.timedOut };
       }) as Promise<{ output: string; timedOut: boolean }>;
+    },
+
+    resize(cols: number, rows: number): void {
+      try {
+        ptyProcess.resize(cols, rows);
+      } catch {
+        // Resize failure is non-fatal — session may already be dead
+      }
     },
 
     kill(): void {
