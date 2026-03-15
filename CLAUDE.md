@@ -100,3 +100,32 @@ npm run bridge:stop    # Stop bridge server
 - **DR-12:** Architecture docs follow horizontal pattern — one file per concern in `docs/arch/`.
 
 See `.method/project-card.yaml` for the full methodology instance (I2-METHOD, P2-SD v2.0).
+
+## Methodology & Governance
+
+This project uses the method system it builds. Key files:
+
+- **`.method/project-card.yaml`** — essence (purpose, invariant, optimize_for), delivery rules, processes, governance settings
+- **`.method/manifest.yaml`** — what methodologies and protocols are installed (P2-SD, P1-EXEC, RETRO-PROTO, STEER-PROTO)
+- **`.method/council/`** — steering council (TEAM, AGENDA, LOG). Run `/steering-council` to start a session.
+
+### Essence
+
+- **Invariant:** Theory is the source of truth. When implementation and formal theory diverge, revise the implementation — never the theory.
+- **Optimize for:** Faithfulness > simplicity > registry integrity.
+
+### Processes (enforced by steering council)
+
+- **PR-01:** Guide sync — update docs/guides/ when registry/ changes
+- **PR-02:** Stale agenda escalation — items open 3+ sessions get resolved or archived
+- **PR-03:** Retro placement — retrospectives go to `.method/retros/`, not `tmp/`
+
+### Skills
+
+- `/steering-council` — project governance session
+- `/council-team [challenge]` — adversarial expert debate
+- `/commission [task]` — generate orchestrator prompt for a fresh agent
+
+### Retrospectives
+
+After every methodology session, produce a retrospective at `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. See `docs/impl/orchestrator-retro-section.md` for the schema. Include essence feedback (did the invariant guide decisions?).

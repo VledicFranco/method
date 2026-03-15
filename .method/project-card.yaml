@@ -4,7 +4,7 @@
 project_card:
   id: I2-METHOD
   project: pv-method
-  card_version: "1.3"
+  card_version: "1.4"
 
   governance:
     autonomy: M2-SEMIAUTO
@@ -197,6 +197,34 @@ project_card:
       applies_to: [M6-ARFN]
       affects_roles: [architect]
       protocol: horizontal_documentation
+
+  processes:
+    description: >
+      Trigger-action pairs enforced by the steering council during Step 4 (Capture).
+      Processes evolve organically through the council's governance retrospective
+      (session_retro.process_improvement_signal). Evidence-based: every process traces
+      to a specific pattern observed in the project's history.
+    items:
+      - id: PR-01
+        name: "Guide sync on registry change"
+        trigger: "Any commit modifying registry/ methodology or method YAMLs"
+        action: "Check if the relevant guide in docs/guides/ needs updating. If yes, create an agenda item or update inline."
+        enforced_by: council_step_4
+        evidence: "evolution-analysis: 40% of registry changes lacked guide updates"
+
+      - id: PR-02
+        name: "Stale agenda escalation"
+        trigger: "An agenda item has been open for 3+ sessions without discussion"
+        action: "Leader escalates: close (do it), promote to P0 (do it next), or archive (won't do it). No item lives in limbo."
+        enforced_by: council_step_2
+        evidence: "evolution-analysis: 4 items never addressed across 5 sessions"
+
+      - id: PR-03
+        name: "Retro placement enforcement"
+        trigger: "Any retrospective artifact is produced"
+        action: "Save to .method/retros/retro-YYYY-MM-DD-NNN.yaml. NOT tmp/. Orchestrator prompts must specify this path."
+        enforced_by: orchestrator_prompt
+        evidence: "evolution-analysis: 12/12 retros in tmp/, 0/12 in .method/retros/"
 
   role_notes:
     impl_sub_agent:

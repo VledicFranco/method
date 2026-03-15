@@ -3,86 +3,39 @@ agenda:
   last_updated: "2026-03-14"
 
   p0_immediate:
-    - id: AG-001
-      item: "Validate the steering council itself — run a founding session"
-      owner: "Thane (facilitates), full council"
-      status: done
-      resolved_in: SESSION-001
-
-    - id: AG-002
-      item: "Review accumulated retrospective signals and decide on next evolution cycle"
-      owner: "Nika (evidence analysis), Thane (decision)"
-      status: done
-      resolved_in: SESSION-001
-      resolution: "D-001: M3-MEVO for GC-P1EXEC-002. GC-P2SD-001 deferred."
-
-    - id: AG-003
-      item: "Assess project health against essence"
-      owner: "Harlan (theory alignment), Nika (execution evidence)"
-      status: done
-      resolved_in: SESSION-001
-      resolution: "D-002: invariant mostly served. DR-13 (YAML validation) to be added."
-
-    - id: AG-009
-      item: "Apply D-001: add proportionality heuristic to P1-EXEC predicate_operationalization"
-      owner: "Harlan (implementation)"
-      status: done
-      resolved_in: SESSION-003
-
-    - id: AG-010
-      item: "Apply D-002: add DR-13 (YAML parse validation after registry edits) to project card"
-      owner: "Harlan (implementation)"
-      status: done
-      resolved_in: SESSION-003
-
-    - id: AG-011
-      item: "Update Guide 12 with sub-council spawning documentation"
-      rationale: "D-003 added sub-council mechanism to STEER-PROTO. Guide needs updating."
-      owner: "Reva (docs)"
+    - id: AG-020
+      item: "Update Guide 5 artifact locations (.method/delivery/ instead of docs/impl/)"
+      rationale: "PR-01 triggered by SESSION-007 D-012. Guide 5 references old docs/impl/ paths."
+      owner: "Reva"
       status: open
 
     - id: AG-012
       item: "Write Guide 13: Installation and .method/ directory structure"
-      rationale: "D-006 formalized installation. Need a guide explaining manifest.yaml, installation specs, and how to adopt methodologies."
-      owner: "Reva (docs), Harlan (accuracy)"
-      status: open
-
-    - id: AG-015
-      item: "Apply D-010: add processes section to project card with PR-01/02/03"
-      rationale: "Council decision from SESSION-006."
-      owner: "Harlan"
-      status: open
-
-    - id: AG-016
-      item: "Apply D-011: update STEER-PROTO with governance retro schema (session_retro)"
-      rationale: "Council decision from SESSION-006."
-      owner: "Thane"
-      status: open
-
-    - id: AG-017
-      item: "Create CLAUDE.md for pv-method (promoted from P2 via PR-02 stale escalation)"
-      rationale: "AG-007 stale for 5 sessions. Promoted to P0. Every agent needs to know about card + council."
-      owner: "Reva"
+      rationale: "D-006 formalized installation. Guide explains manifest, installation specs, adoption."
+      owner: "Reva, Harlan"
       status: open
 
   p1_soon:
     - id: AG-004
       item: "Plan STEER-PROTO trial criteria and promotion path"
-      owner: "Orion (protocol design), Reva (usability)"
+      owner: "Orion, Reva"
       status: open
 
+  done:
+    - { id: AG-001, resolved_in: SESSION-001 }
+    - { id: AG-002, resolved_in: SESSION-001 }
+    - { id: AG-003, resolved_in: SESSION-001 }
+    - { id: AG-009, resolved_in: SESSION-003 }
+    - { id: AG-010, resolved_in: SESSION-003 }
+    - { id: AG-015, resolved_in: SESSION-008 }
+    - { id: AG-016, resolved_in: SESSION-008 }
+    - { id: AG-017, resolved_in: SESSION-008 }
+    - { id: AG-018, resolved_in: SESSION-007 }
+    - { id: AG-019, resolved_in: SESSION-007 }
+
   archived:
-    - id: AG-005
-      item: "Cross-project communication evaluation"
-      archived_in: SESSION-006
-      reason: "PR-02 escalation: no real need identified. Reopen when actual cross-project messaging is needed."
-
-    - id: AG-006
-      item: "Guide quality review"
-      archived_in: SESSION-006
-      reason: "PR-02 escalation: guides evolving organically through retro signals. One-off review is not ongoing governance."
-
-    - id: AG-008
-      item: "M6-MAUD compilation"
-      archived_in: SESSION-006
-      reason: "PR-02 escalation: 6/7 arms compiled. Compile when evidence shows need, not for completeness."
+    - { id: AG-005, archived_in: SESSION-006, reason: "No real cross-project comms need identified" }
+    - { id: AG-006, archived_in: SESSION-006, reason: "Guides evolving organically via retro signals" }
+    - { id: AG-007, archived_in: SESSION-008, reason: "Promoted to AG-017, completed" }
+    - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when evidence shows need" }
+    - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs exist in protocol spec and skill" }

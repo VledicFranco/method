@@ -410,6 +410,36 @@ protocol:
       governance-execution-feedback cycle.
 
   # ═══════════════════════════════════════════════════════
+  # PART 7.25 — GOVERNANCE RETROSPECTIVE
+  # ═══════════════════════════════════════════════════════
+
+  governance_retrospective:
+    description: >
+      Every council session ends with a brief governance retrospective appended
+      to the LOG.yaml session entry. This is the feedback mechanism that keeps
+      governance processes improving — same pattern as RETRO-PROTO drives method
+      evolution. The session_retro block captures whether the session was productive,
+      whether processes were followed, and what should change.
+    schema: |
+      session_retro:
+        decisions_actionable: true/false   # did we produce decisions, not just discussion?
+        essence_check_genuine: true/false  # did the essence check catch something real?
+        agenda_delta: N                    # net change in agenda items (negative = shrinking)
+        processes_followed:
+          - process: PR-NN
+            followed: true/false
+            note: "what happened"
+        process_improvement_signal: "what should change about the processes?"
+        member_adequacy: true/false        # were the right disciplines present?
+    when: "Step 5 (Set Next Agenda) — runs in the same message as capture"
+    evolution_mechanism: >
+      The process_improvement_signal field drives organic process evolution. When a
+      process isn't followed, the retro captures WHY. When a process adds no value,
+      the retro captures THAT. Over time, the council adjusts processes based on this
+      evidence — adding new processes from observed patterns, removing processes that
+      aren't working, refining triggers and actions.
+
+  # ═══════════════════════════════════════════════════════
   # PART 7.5 — SUB-COUNCIL SPAWNING
   # ═══════════════════════════════════════════════════════
 

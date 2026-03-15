@@ -249,6 +249,53 @@ log:
         - "AG-019: Add P2-SD delivery/ installation spec"
         - "AG-020: Update Guide 5 artifact locations (PR-01 triggered)"
 
+    - id: SESSION-008
+      date: "2026-03-14"
+      type: execution
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Execute open agenda items — processes, CLAUDE.md, STEER-PROTO retro, stale escalation"
+
+      decisions:
+        - id: D-014
+          item: "AG-011 PR-02 escalation"
+          decision: "Archive. Sub-council docs exist in protocol spec and skill. Guide update would duplicate."
+          status: decided
+
+        - id: D-015
+          item: "AG-015 — processes section"
+          decision: "Added to project card v1.4. PR-01/02/03 with evidence and enforcement points."
+          status: decided
+
+        - id: D-016
+          item: "AG-017 — CLAUDE.md"
+          decision: "Updated existing CLAUDE.md with methodology, governance, processes, skills, retrospective instructions."
+          status: decided
+
+        - id: D-017
+          item: "AG-016 — governance retro in STEER-PROTO"
+          decision: "Added Part 7.25 (Governance Retrospective) to STEERING-PROTOCOL.yaml with schema and evolution mechanism."
+          status: decided
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: false
+        agenda_delta: -4
+        processes_followed:
+          - { process: PR-01, followed: true, note: "STEER-PROTO updated — but no guide update needed (protocol spec IS the doc)" }
+          - { process: PR-02, followed: true, note: "AG-011 escalated and archived after 5 sessions stale" }
+          - { process: PR-03, followed: true, note: "No retros produced this session (execution, not methodology)" }
+        process_improvement_signal: "Essence check was skipped — these were pure execution items, no decisions touching essence. Should essence check be mandatory even for execution sessions? Probably not — proportionality applies."
+        member_adequacy: true
+
+      artifacts_produced:
+        - ".method/project-card.yaml v1.4 (processes section)"
+        - "CLAUDE.md updated"
+        - "STEERING-PROTOCOL.yaml Part 7.25 (governance retro)"
+
+      next_agenda_items:
+        - "AG-020: Update Guide 5 artifact locations (still open)"
+        - "AG-012: Guide 13 installation (still open — PR-02 check: 3 sessions, not yet stale)"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion
