@@ -131,3 +131,48 @@ export type StepContext = {
   totalSteps: number;
   priorStepOutputs: PriorStepOutput[];
 };
+
+export type MethodologySessionStatus =
+  | 'initialized'
+  | 'routing'
+  | 'executing'
+  | 'transitioning'
+  | 'completed'
+  | 'failed';
+
+export type GlobalObjectiveStatus = 'in_progress' | 'satisfied' | 'failed';
+
+export type CompletedMethodRecord = {
+  methodId: string;
+  completedAt: string;
+  stepOutputs: Array<{ stepId: string; outputSummary: string }>;
+  completionSummary: string | null;
+};
+
+export type MethodologySessionData = {
+  id: string;
+  methodologyId: string;
+  methodologyName: string;
+  challenge: string | null;
+  status: MethodologySessionStatus;
+  currentMethodId: string | null;
+  completedMethods: CompletedMethodRecord[];
+  globalObjectiveStatus: GlobalObjectiveStatus;
+  routingInfo: RoutingInfo;
+};
+
+export type MethodologyStartResult = {
+  methodologySessionId: string;
+  methodology: {
+    id: string;
+    name: string;
+    objective: string | null;
+    methodCount: number;
+  };
+  transitionFunction: {
+    predicateCount: number;
+    armCount: number;
+  };
+  status: 'initialized';
+  message: string;
+};
