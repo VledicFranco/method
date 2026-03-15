@@ -1,216 +1,236 @@
-# PRD 015 — On-Demand Commission via MCP Tools
+# PRD 015 — Default Execution Method: Keep Agents Active via Step DAG
 
 **Status:** Draft
 **Date:** 2026-03-15
-**Scope:** Replace long commission prompts with MCP-driven task loading to prevent agent stalling
-**Depends on:** PRD 004 (methodology runtime), PRD 005 (bridge), PRD 012 (reliability)
-**Evidence:** OBS-02 (stalling on long prompts), EXP-OBS02 (threshold ~500 chars), stagger helps but doesn't fully solve concurrent activation
-**Origin:** PO insight during stress testing — agents that use MCP tools immediately stay active; agents that receive long prompts stall
+**Scope:** A generic compiled method (M-EXEC) that any agent follows when no specific methodology is loaded — provides the step_advance engagement loop for ad-hoc tasks, commissions, and any work that doesn't have a dedicated method
+**Depends on:** PRD 004 (methodology runtime), PRD 005 (bridge), P0-META (compilation gates)
+**Evidence:** OBS-02 (stalling on long prompts), EXP-OBS02 (threshold ~500 chars), agents using methodology MCP tools stay active
+**Origin:** PO insight — agents following methodology steps via MCP never stall because `step_current → work → step_advance` keeps them in active tool-calling mode. Making this the DEFAULT for all bridge-spawned agents eliminates stalling at the infrastructure level.
 
 ---
 
 ## 1. Problem Statement
 
-Commissioned agents receive their entire task specification as a single initial prompt (1500+ tokens). Despite split delivery (EXP-OBS02), agents frequently stall — they enter "thinking" mode and never transition to tool-calling mode. The stalling rate increases with prompt length and concurrent agent count.
+Commissioned agents receive their task as a monolithic prompt (1500+ tokens). Despite split delivery and stagger, agents frequently stall — they enter passive "thinking" mode and never transition to active tool calling.
 
-**Root cause hypothesis:** Claude Code has two cognitive modes:
-1. **Passive mode** — reading a long context block, planning internally, no tool calls. The agent may "think itself into a corner" and stop.
-2. **Active mode** — making tool calls, receiving results, deciding next action. Each tool response creates a new interaction cycle that keeps the agent engaged.
+**But agents following a methodology via MCP tools don't stall.** When an agent runs `methodology_start → step_current → step_advance`, it stays in an active loop: each step provides guidance, the agent does work, advances, gets next guidance. The methodology runtime acts as an engagement engine.
 
-Long commission prompts push agents into passive mode. MCP tool calls pull them into active mode. The fix: **make the commission itself an MCP interaction**, not a prompt dump.
+**The insight:** If ALL agent work followed a method — with steps, guidance, and the standard `step_advance` loop — agents would stay in active mode permanently. Not just commissions, but any ad-hoc task: bug fixes, research, documentation. The bridge spawns an agent → agent loads the default method → method's step DAG keeps the agent engaged.
 
-## 2. Proposed Architecture
+This is **M3-TMP formalized as a step DAG**. M3-TMP is currently "just think through it sequentially" — no steps, no guidance, no auto-refresh. M-EXEC turns that into a structured loop that the methodology runtime manages.
 
-### Commission Registry
+## 2. The Default Execution Method (M-EXEC)
 
-Store commission tasks in a registry accessible via MCP tools. When an agent is spawned, it receives a minimal activation prompt that directs it to load its task via MCP:
+A new compiled method in `registry/P1-EXEC/M-EXEC/` following the standard 5-tuple. Unlike M3-TMP (which has no step DAG), M-EXEC provides structured steps that the methodology runtime manages:
 
 ```
-You are a commissioned agent. Load your task:
-  methodology_start({ methodology: "P2-SD", instance: "I2-METHOD" })
-  Then call commission_load({ commission_id: "COM-2026-0315-001" })
+M-EXEC = (D_EXEC, {rho_agent}, Γ_EXEC, O_EXEC, μ⃗_EXEC)
 ```
 
-The agent's first action is a tool call (active mode), not reading a wall of text (passive mode).
+**Key difference from M3-TMP:** M3-TMP is unstructured — "think through it." M-EXEC has a step DAG with auto-refresh guidance, so the agent always knows its next action. This is what keeps agents in active mode.
 
-### Commission MCP Tools
+### Step DAG (Γ_COM)
 
-New tools exposed by the method MCP server:
-
-**`commission_load`** — Load a commission by ID. Returns the task spec in structured chunks:
-```typescript
-Input: { commission_id: string }
-Output: {
-  commission_id: string;
-  objective: string;           // 1-2 sentences
-  task_spec_path: string;      // path to PRD or task description
-  routing: {
-    task_type: string;         // "implement" | "review" | etc.
-    method: string;            // "M1-IMPL"
-    directive: string;         // "Do NOT use M1-COUNCIL"
-  };
-  essence: {
-    purpose: string;
-    invariant: string;
-  };
-  delivery_rules: string[];    // just the relevant 3-5 rule IDs
-  file_scope: string[];        // allowed paths for sub-agents
-  git_workflow: string;        // "worktree → branch → PR"
-  next_step: string;           // "Call commission_context to get delivery rules and file list"
-}
+```
+σ_0 (Activate)
+  ↓
+σ_1 (Load Commission)
+  ↓
+σ_2 (Load Context)
+  ↓
+σ_3 (Route Method)
+  ↓
+σ_4 (Execute)
+  ↓
+σ_5 (Deliver)
+  ↓
+σ_6 (Report)
 ```
 
-**`commission_context`** — Load detailed context for the current commission:
-```typescript
-Input: { commission_id: string, section: "rules" | "files" | "governance" | "sub_agents" }
-Output: {
-  section: string;
-  content: string;             // the relevant section content
-  next_step: string;           // "Read the files listed, then begin implementing"
-}
-```
+### Step Definitions
 
-**`commission_complete`** — Report commission completion:
-```typescript
-Input: {
-  commission_id: string;
-  result: "success" | "error" | "escalation";
-  pr_url?: string;
-  summary: string;
-}
-```
+**σ_0 — Activate**
+- Guidance: "You are a commissioned agent. Call `step_advance` to load your commission."
+- Output: none
+- Purpose: Transition agent from passive → active. First action is always a tool call.
 
-### Commission Storage
+**σ_1 — Load Commission**
+- Guidance: "Read your commission file at `{commission_path}`. Extract: objective, task_spec, routing, file_scope."
+- Output schema: `{ objective: string, task_spec_path: string, routing: { task_type, method } }`
+- Purpose: Agent reads the commission YAML. Structured by step guidance, not a prompt dump.
 
-Commissions stored as YAML files in `.method/commissions/`:
+**σ_2 — Load Context**
+- Guidance: "Read: (1) the task spec at `{task_spec_path}`, (2) `.method/project-card.yaml` for essence and delivery rules, (3) any files listed in the commission's `files_to_read`."
+- Output schema: `{ files_read: string[], essence_understood: boolean }`
+- Purpose: Context loading as a discrete step with validation.
+
+**σ_3 — Route Method**
+- Guidance: "Based on the commission's routing directive, call `methodology_load_method` to load the execution method (`{method}`). If the routing says M1-IMPL, load M1-IMPL. Do not re-evaluate routing."
+- Output schema: `{ method_loaded: string }`
+- Purpose: Explicit method loading. The commission pre-evaluated routing — the agent just follows it.
+
+**σ_4 — Execute**
+- Guidance: "Execute the loaded method (`{method}`) on the task. Follow its step DAG. For M1-IMPL: contextualize → inventory → implement → verify. Spawn sub-agents if needed (respect file_scope constraints)."
+- Output schema: `{ method_completed: boolean, commits: string[], tests_passed: number }`
+- Purpose: This is the actual work. The step guidance includes the commission's delivery rules and file scope.
+- Note: This step wraps the execution method (M1-IMPL, M2-DIMPL, etc.) — the agent follows two step DAGs: M-COM's outer DAG and the execution method's inner DAG.
+
+**σ_5 — Deliver**
+- Guidance: "Push your branch and create a PR via `mcp__github-personal__create_pull_request`. Title: `{commission_title}`. Base: master. Include commit list and test results in PR body."
+- Output schema: `{ pr_url: string, branch: string }`
+- Purpose: Structured delivery with explicit tool calls.
+
+**σ_6 — Report**
+- Guidance: "Call `bridge_event` with type 'completed'. Include pr_url, test results, and summary. Write retrospective to `.method/retros/`."
+- Output schema: `{ reported: boolean, retro_path: string }`
+- Purpose: Completion reporting as a required step, not an optional prompt instruction.
+
+### Why This Prevents Stalling
+
+| Step | Agent action | Mode |
+|------|-------------|------|
+| σ_0 | `step_advance` | Active (tool call) |
+| σ_1 | `Read` commission file | Active (tool call) |
+| σ_2 | `Read` 3-5 files | Active (tool calls) |
+| σ_3 | `methodology_load_method` | Active (tool call) |
+| σ_4 | Execute method (many tool calls) | Active |
+| σ_5 | `git push` + `create_pull_request` | Active (tool calls) |
+| σ_6 | `bridge_event` + write retro | Active (tool calls) |
+
+**The agent is never in passive mode.** Every step requires tool calls. The methodology runtime's `step_current` provides fresh guidance at each transition, keeping the agent oriented.
+
+## 3. Commission Storage
+
+Commissions stored as YAML in `.method/commissions/`:
 
 ```yaml
 commission:
   id: COM-2026-0315-001
-  created: "2026-03-15T10:00:00Z"
-  created_by: steering-council  # or "manual"
+  created: "2026-03-15"
   status: pending  # pending | active | completed | failed
 
+  # What to do
   objective: "Implement PRD 012 Phase 1 — diagnostic instrumentation"
   task_spec: docs/prds/012-session-reliability.md
   task_section: "Component 4"
+  title: "feat(bridge): diagnostic instrumentation (PRD 012 Phase 1)"
 
+  # How to route
   routing:
     task_type: implement
     method: M1-IMPL
     methodology: P2-SD
     directive: "Do NOT use M1-COUNCIL"
 
+  # Essence (loaded in σ_2)
   essence:
     purpose: "Runtime that makes formal methodologies executable by LLM agents"
     invariant: "Theory is source of truth"
 
+  # Constraints
   delivery_rules: [DR-03, DR-04, DR-09]
-
   file_scope:
     - "packages/bridge/src/**"
     - "packages/bridge/src/__tests__/**"
+  files_to_read:
+    - ".method/project-card.yaml"
+    - "docs/prds/012-session-reliability.md"
+    - "packages/bridge/src/pool.ts"
+    - "packages/bridge/src/pty-watcher.ts"
 
-  git_workflow: worktree_pr  # worktree → branch → PR
+  # Git workflow
+  git_workflow: worktree_pr
+  base_branch: master
 
+  # Governance
   governance_context: "SESSION-022 D-035, RFC #1 highest priority"
-
-  sub_agent_rules:
-    max_agents: 3
-    file_constraints:
-      bridge: "packages/bridge/src/ only"
-      tests: "packages/bridge/src/__tests__/ only"
-      mcp: "packages/mcp/src/index.ts only"
 ```
 
-### Agent Activation Flow
+## 4. Agent Activation Flow
 
 ```
-1. Bridge spawns agent with short prompt (~100 chars):
-   "You are a commissioned agent. Call commission_load('COM-2026-0315-001') to get your task."
+Bridge spawns agent with ~50 char prompt:
+  "Call step_advance to start your commission."
 
-2. Agent calls commission_load → gets objective, routing, essence (structured, not prose)
-
-3. Agent calls commission_context('rules') → gets delivery rules
-
-4. Agent calls commission_context('files') → gets file list to read
-
-5. Agent reads files, implements, tests
-
-6. Agent calls commission_complete → reports result + PR URL
+Agent: step_current → σ_0 guidance: "Call step_advance"
+Agent: step_advance → σ_1 guidance: "Read commission at .method/commissions/COM-001.yaml"
+Agent: Read → gets commission YAML
+Agent: step_advance → σ_2 guidance: "Read these 4 files: ..."
+Agent: Read × 4
+Agent: step_advance → σ_3 guidance: "Load M1-IMPL"
+Agent: methodology_load_method → M1-IMPL loaded
+Agent: step_advance → σ_4 guidance: "Execute M1-IMPL on the task"
+  ... (M1-IMPL inner step DAG runs) ...
+Agent: step_advance → σ_5 guidance: "Push and create PR"
+Agent: git push + create_pull_request
+Agent: step_advance → σ_6 guidance: "Report completion"
+Agent: bridge_event + write retro
+DONE
 ```
 
-Each step is an MCP tool call → response → next action. The agent never enters passive mode because every instruction arrives as a tool response, not a prompt block.
+## 5. Integration
 
-## 3. Integration with Existing Systems
-
-### /commission Skill Update
-
-The `/commission` skill currently generates a monolithic prompt. With this PRD:
-1. Skill creates a commission YAML in `.method/commissions/`
-2. Skill generates a short activation prompt referencing the commission ID
-3. Bridge spawns agent with the short prompt
-4. Agent loads commission via MCP tools
-
-### Steering Council Integration
-
-Council sessions that produce commission decisions (e.g., D-035) write the commission YAML directly. The `/commission` skill reads council decisions and pre-populates governance_context.
-
-### Bridge Spawn
-
-`bridge_spawn` gains a `commission_id` field:
-```typescript
+### /commission Skill
+Skill creates commission YAML, then spawns via bridge with:
+```
 bridge_spawn({
-  workdir: "...",
-  commission_id: "COM-2026-0315-001",  // agent auto-loads this on activation
+  workdir,
   isolation: "worktree",
+  initial_prompt: "Call step_advance to start your commission.",
+  metadata: { commission_id: "COM-2026-0315-001" }
 })
 ```
 
-The bridge injects the activation prompt automatically when `commission_id` is provided.
+### Methodology Runtime
+The commission method (M-COM) is compiled against P0-META like any other method. It lives in P1-EXEC alongside M1-COUNCIL, M2-ORCH, M3-TMP.
 
-## 4. Why This Solves Stalling
+### P1-EXEC Routing
+M-EXEC becomes the **default** in P1-EXEC's delta function. When no specific execution method is selected (proportionality check says "this doesn't need M1-COUNCIL or M2-ORCH"), route to M-EXEC instead of M3-TMP. M-EXEC wraps the execution method — σ_4 loads and runs M1-IMPL/M2-DIMPL/etc.
 
-| Current (prompt-based) | Proposed (MCP-based) |
-|----------------------|---------------------|
-| 1500-token initial prompt | ~100-char activation |
-| Agent reads passively | Agent calls tool immediately |
-| Agent may plan indefinitely | Each tool response triggers next action |
-| Split delivery helps but not reliable | No splitting needed — prompt is always short |
-| Context lost on compaction | Commission loadable at any time via MCP |
-| No structured progress | commission_load/context/complete are trackable |
+**M3-TMP is not deprecated** — it remains available for truly unstructured thinking tasks. But bridge-spawned agents default to M-EXEC because the step DAG prevents stalling.
 
-**Key insight:** The methodology MCP tools already keep agents in active mode (methodology_start → step_current → step_advance loop). The commission system extends this pattern to task loading itself.
+### Auto-load on Bridge Spawn
+When `bridge_spawn` is called with `initial_prompt`, the bridge can auto-load M-EXEC for the agent:
+1. Call `methodology_start` with P2-SD (or whatever methodology)
+2. Route to M-EXEC as the execution binding
+3. Agent's first `step_current` returns σ_0 guidance
 
-## 5. Implementation Phases
-
-### Phase 1: Commission Storage + MCP Tools
-- Commission YAML schema
-- `.method/commissions/` directory
-- `commission_load`, `commission_context`, `commission_complete` MCP tools
-- Core functions in `@method/core`
-
-### Phase 2: /commission Skill Integration
-- Skill writes commission YAML instead of generating prompt
-- Skill generates short activation prompt
-- `bridge_spawn` accepts `commission_id`
-
-### Phase 3: Validation
-- Commission same task twice: once as prompt, once as MCP
-- Compare: stall rate, time to first tool call, completion rate
-- Test at 3 and 5 concurrent agents
+This means every bridge-spawned agent is automatically in the methodology step loop — no prompt engineering needed to prevent stalling.
 
 ## 6. Success Criteria
 
-1. Agent spawned with commission_id makes first tool call within 5s (vs current 10-30s)
-2. 5 concurrent commissioned agents achieve ≥90% completion (vs current 40-60% with stagger)
-3. Commission context survives context compaction (re-loadable via MCP)
-4. No commission prompt exceeds 200 chars
-5. Existing prompt-based commissioning still works (backward compatible)
+1. Agent spawned with M-COM makes first tool call within 3s
+2. Agent loads commission context incrementally — no step receives >200 tokens of guidance
+3. 5 concurrent M-COM agents achieve ≥90% completion
+4. Commission context survives context compaction (re-loadable via step_current)
+5. Auto-retro generated at σ_6 (PR-03 enforcement)
+6. Existing prompt-based commissioning still works (backward compatible)
 
-## 7. Out of Scope
+## 7. Implementation Phases
 
-- **Commission queue / scheduling** — commissions are created and spawned manually
-- **Commission dependencies** — no DAG of commissions (use methodology's step DAG instead)
-- **Commission persistence across bridge restarts** — YAML files persist, but active commission state is in-memory
-- **Auto-commission from council** — council produces decisions, human fires commissions
+### Phase 1: Commission YAML Schema + Storage
+- `.method/commissions/` directory
+- Commission YAML schema
+- `/commission` skill writes YAML instead of prompt
+
+### Phase 2: M-COM Method Compilation
+- Compile M-COM against P0-META (G0-G6 gates)
+- Register in `registry/P1-EXEC/M-COM/`
+- 7-step DAG with guidance and output schemas
+
+### Phase 3: Runtime Integration
+- Add commission_id to bridge_spawn metadata
+- P1-EXEC delta routes to M-COM when commission_id present
+- M-COM σ_4 loads and runs the execution method
+
+### Phase 4: Validation
+- Commission same task as prompt vs M-COM
+- Compare stall rates at 1, 3, 5 concurrent agents
+- Measure time to first tool call
+
+## 8. Out of Scope
+
+- Commission queue / scheduling
+- Commission dependencies (DAG of commissions)
+- Auto-commission from council decisions
+- Commission persistence across bridge restarts (YAML persists, runtime state doesn't)
