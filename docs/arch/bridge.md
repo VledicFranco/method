@@ -172,3 +172,49 @@ Response completion is detected via debounce: no new PTY output for `SETTLE_DELA
 | `strip-ansi` | ANSI escape sequence removal |
 
 These are transport/infrastructure dependencies. DR-03 (no transport deps in core) does not apply — the bridge is a standalone service, not a domain library.
+
+## Integration with Methodology Sessions (PRD 004)
+
+PRD 004 introduced runtime methodology execution — `methodology_start`, `methodology_route`, `methodology_load_method`, `methodology_transition`. These tools manage the *what* (which method, which step, what outputs). The bridge manages the *who* (spawned agents that do the work).
+
+### Session ID Architecture
+
+Two independent ID spaces:
+
+| ID | Managed by | Scope |
+|----|-----------|-------|
+| Methodology session ID | `@method/core` MethodologySessionManager | Persists across method transitions. Passed to all MCP tool calls via `session_id`. |
+| Bridge session ID | `@method/bridge` session pool | Ephemeral per spawned agent. Created via `POST /sessions`, destroyed after method completes. |
+
+The orchestrator maps between them. A single methodology session may spawn multiple bridge sessions (one per method execution). Bridge sessions are disposable; methodology sessions track durable state (completed methods, outputs, routing decisions).
+
+### Data Flow
+
+```
+Orchestrator
+  │
+  ├─ methodology_load_method("M1-COUNCIL")     ← MCP: sets up method context
+  ├─ POST /sessions { workdir }                 ← Bridge: spawns sub-agent
+  │
+  │  for each step:
+  │    ├─ step_context()                        ← MCP: gets step + priorMethodOutputs
+  │    ├─ POST /sessions/:id/prompt { ... }     ← Bridge: sub-agent executes step
+  │    ├─ step_validate({ output })             ← MCP: records output
+  │    └─ step_advance()                        ← MCP: moves to next step
+  │
+  ├─ DELETE /sessions/:id                       ← Bridge: cleanup
+  └─ methodology_transition()                   ← MCP: completes method, re-routes
+```
+
+### Cross-Method Output Forwarding
+
+When `methodology_load_method` is called for the second method, it calls `session.setPriorMethodOutputs()` with outputs from all completed methods. These appear in `step_context().priorMethodOutputs` for the new method's sub-agent. The bridge itself is unaware of this — it just relays prompts. The orchestrator includes the prior outputs in the prompt it sends to the sub-agent.
+
+### Why the Bridge Stays Methodology-Unaware
+
+The bridge has no dependency on `@method/core`. This is intentional:
+- The bridge spawns *any* Claude Code agent, not just methodology-following ones
+- Methodology intelligence lives in the MCP server, which the spawned agents access via their own MCP connections
+- The orchestrator is the integration point — it calls both systems and composes the workflow
+
+Adding methodology awareness to the bridge would create a circular dependency and couple agent spawning to the method system's type hierarchy.
