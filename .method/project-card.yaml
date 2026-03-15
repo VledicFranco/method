@@ -4,7 +4,7 @@
 project_card:
   id: I2-METHOD
   project: pv-method
-  card_version: "1.2"
+  card_version: "1.3"
 
   governance:
     autonomy: M2-SEMIAUTO
@@ -175,6 +175,17 @@ project_card:
       applies_to: [M4-DDAG]
       affects_roles: [drift_auditor]
       trigger: "phase_count % 3 == 0"
+
+    # --- Registry YAML validation ---
+    - id: DR-13
+      rule: >
+        After editing any registry YAML file, verify parsing with strict-mode YAML
+        parser: node -e "require('js-yaml').load(require('fs').readFileSync('file.yaml','utf8'))".
+        Parse failures are registry integrity violations. A compiled method with
+        invalid YAML is silently broken — the server can't load it.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent, orchestrator]
+      evolution_source: "council SESSION-001 D-002 — M1-COUNCIL duplicate key incident"
 
     # --- Architecture refinement ---
     - id: DR-12

@@ -25,15 +25,15 @@ agenda:
 
     - id: AG-009
       item: "Apply D-001: add proportionality heuristic to P1-EXEC predicate_operationalization"
-      rationale: "Council decision from SESSION-001. GC-P1EXEC-002 meets threshold."
       owner: "Harlan (implementation)"
-      status: open
+      status: done
+      resolved_in: SESSION-003
 
     - id: AG-010
       item: "Apply D-002: add DR-13 (YAML parse validation after registry edits) to project card"
-      rationale: "Council decision from SESSION-001. M1-COUNCIL duplicate key incident."
       owner: "Harlan (implementation)"
-      status: open
+      status: done
+      resolved_in: SESSION-003
 
     - id: AG-011
       item: "Update Guide 12 with sub-council spawning documentation"

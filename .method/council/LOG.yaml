@@ -87,3 +87,40 @@ log:
         - "Apply D-003: update STEERING-PROTOCOL.yaml and steering-council skill"
         - "AG-009: apply proportionality heuristic to P1-EXEC (from D-001)"
         - "AG-010: apply DR-13 YAML validation (from D-002)"
+
+    - id: SESSION-003
+      date: "2026-03-14"
+      type: execution
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Execute open P0 action items from prior sessions"
+
+      decisions:
+        - id: D-004
+          item: "AG-009 — proportionality heuristic applied"
+          decision: >
+            Added proportionality_heuristic to P1-EXEC predicate_operationalization.
+            M1-COUNCIL is proportionate when: security invariants, 3+ options with
+            non-obvious tradeoffs, or irreversible. M3-TMP for reversible, low-stakes.
+            evaluation_order updated to check proportionality before routing to COUNCIL.
+          status: decided
+          for: "Evidence from GC-P1EXEC-002 (2 projects). Proposed delta was concrete."
+          against: "None — pre-decided in SESSION-001."
+
+        - id: D-005
+          item: "AG-010 — DR-13 YAML validation added"
+          decision: >
+            Added DR-13 to I2-METHOD project card v1.3: after editing registry YAML,
+            verify parsing with js-yaml strict mode. Parse failures = integrity violation.
+          status: decided
+          for: "M1-COUNCIL duplicate key incident proves the need."
+          against: "None — pre-decided in SESSION-001."
+
+      open_questions: []
+
+      artifacts_produced:
+        - "registry/P1-EXEC/P1-EXEC.yaml — proportionality_heuristic section added"
+        - ".method/project-card.yaml v1.3 — DR-13 added"
+
+      next_agenda_items:
+        - "AG-011: update Guide 12 with sub-council docs (still open)"
+        - "AG-007: CLAUDE.md for pv-method (promote from P2 to P1)"

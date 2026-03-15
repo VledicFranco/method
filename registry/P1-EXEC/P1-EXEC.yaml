@@ -344,9 +344,21 @@ predicate_operationalization:
       boundary: >
         If exactly 2 sub-tasks exist, single-agent execution is more efficient.
         Orchestration overhead is justified at n >= 3.
+  proportionality_heuristic: >
+    BEFORE routing to M1-COUNCIL, check proportionality. M1-COUNCIL adds multi-turn
+    debate overhead. It is proportionate when: (a) the decision affects security
+    invariants or the project's essence, (b) 3+ defensible options exist with
+    non-obvious tradeoffs, or (c) the decision is irreversible. For reversible,
+    low-stakes decisions with 2 clear options and no invariant tension, use M3-TMP
+    with transparent inline reasoning instead — council would be pure overhead.
+    Evidence: t1-cortex agent correctly overrode M1-COUNCIL → M3-TMP for a dev-
+    tooling decision (P2 JIT sync), saving ~5 minutes of council overhead on a
+    30-second decision. Source: retro-t1x-valgaps, GC-P1EXEC-002.
   evaluation_order: >
     1. Evaluate adversarial_pressure_beneficial first (PFU, MDP, C3, C4 — any true
-       means COUNCIL). If true, stop — route to M1-COUNCIL.
+       means COUNCIL). If true, apply proportionality_heuristic — is council
+       proportionate for this specific decision? If not proportionate, route to
+       M3-TMP instead. If proportionate, route to M1-COUNCIL.
     2. If false, evaluate decomposable_before_execution. If true, route to M2-ORCH.
     3. If false, route to M3-TMP (default).
 
