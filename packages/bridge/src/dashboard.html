@@ -536,62 +536,76 @@ body::after {
   font-size: .76rem;
 }
 
-.session-row:hover td { cursor: pointer; }
+.session-row:hover td { cursor: pointer; background: rgba(0,212,176,.02); }
+
+/* PRD 007: Agent nickname — hero identity in session table */
+.nickname {
+  color: var(--bio-bright);
+  font-weight: 600;
+  font-size: .78rem;
+}
 
 .detail-row td { padding: 0 !important; border-bottom: 1px solid rgba(0,212,176,.08); }
 
 .detail-cell {
   background: rgba(5,9,16,.6);
-  padding: 1.25rem 1.5rem !important;
+  padding: 1.25rem 2rem !important;
   border-left: 2px solid var(--bio);
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: .6rem 2rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: .75rem 2.5rem;
   margin-bottom: 1rem;
 }
 
 .detail-field {
   display: flex;
   flex-direction: column;
-  gap: .15rem;
+  gap: .2rem;
 }
 
 .detail-label {
   font-family: var(--font-m);
-  font-size: .56rem;
+  font-size: .54rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--dim2);
+  color: var(--bio);
+  opacity: .6;
 }
 
 .detail-value {
   font-family: var(--font-b);
   font-size: .82rem;
   color: var(--dim);
+  word-break: break-all;
 }
+.detail-value .mono { font-size: .72rem; }
 
 .detail-actions {
   display: flex;
-  gap: 1rem;
-  padding-top: .5rem;
+  gap: .75rem;
+  padding-top: .75rem;
+  margin-top: .5rem;
+  border-top: 1px solid rgba(0,212,176,.08);
 }
 
 .detail-link {
   font-family: var(--font-m);
-  font-size: .68rem;
+  font-size: .65rem;
+  letter-spacing: .06em;
   color: var(--bio);
   text-decoration: none;
-  padding: .3rem .7rem;
-  border: 1px solid rgba(0,212,176,.2);
+  padding: .35rem .85rem;
+  border: 1px solid rgba(0,212,176,.25);
   border-radius: 2px;
-  transition: background .2s, border-color .2s;
+  transition: all .2s;
 }
 .detail-link:hover {
   background: var(--bio-dim);
-  border-color: rgba(0,212,176,.4);
+  border-color: rgba(0,212,176,.5);
+  color: var(--bio-bright);
 }
 
   </style>
