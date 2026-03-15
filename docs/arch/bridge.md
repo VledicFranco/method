@@ -53,12 +53,16 @@ State transitions:
 - `working` → `ready`: response extraction complete
 - Any → `dead`: PTY process exits, kill() called, or fatal error
 
+Additional fields tracked by PtySession:
+- `promptCount: number` — incremented on each `prompt()` call
+- `lastActivityAt: Date` — updated on prompt send and response receive
+
 ### API Request / Response Types
 
 #### `POST /sessions`
 ```typescript
 // Request
-{ workdir: string; initial_prompt?: string }
+{ workdir: string; spawn_args?: string[]; initial_prompt?: string; metadata?: Record<string, unknown> }
 
 // Response 201
 { session_id: string; status: string }
@@ -81,7 +85,7 @@ State transitions:
 #### `GET /sessions/:id/status`
 ```typescript
 // Response 200
-{ session_id: string; status: string; queue_depth: number }
+{ session_id: string; status: string; queue_depth: number; metadata?: Record<string, unknown> }
 
 // Error 404 — session not found
 ```
@@ -97,7 +101,7 @@ State transitions:
 #### `GET /sessions`
 ```typescript
 // Response 200
-Array<{ session_id: string; status: string; queue_depth: number }>
+Array<{ session_id: string; status: string; queue_depth: number; metadata?: Record<string, unknown> }>
 ```
 
 ## Output Parser Algorithm
@@ -187,6 +191,8 @@ Two independent ID spaces:
 | Bridge session ID | `@method/bridge` session pool | Ephemeral per spawned agent. Created via `POST /sessions`, destroyed after method completes. |
 
 The orchestrator maps between them. A single methodology session may spawn multiple bridge sessions (one per method execution). Bridge sessions are disposable; methodology sessions track durable state (completed methods, outputs, routing decisions).
+
+PRD 005's MCP proxy tools (bridge_spawn, bridge_prompt, bridge_kill, bridge_list) add automatic session ID correlation via `metadata.methodology_session_id`, replacing manual orchestrator mapping. When the orchestrator spawns a bridge session through the MCP proxy, it can attach the methodology session ID as metadata, making the association queryable via `GET /sessions` and `GET /sessions/:id/status`.
 
 ### Data Flow
 
