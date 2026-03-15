@@ -200,7 +200,49 @@ Output: {
 }
 ```
 
-Same consumption cursor pattern as progress. Parent polls periodically or on-demand.
+Same consumption cursor pattern as progress. Parent can poll periodically — but see Push Notifications below for the preferred approach.
+
+### Push Notifications to Parent (MVP)
+
+**The bridge proactively notifies the parent when child events occur.** This replaces polling with reactive notification. When a child agent publishes an event, the bridge:
+
+1. Looks up the child's `parent_session_id` (from PRD 006 session chain, or from spawn metadata)
+2. Calls `bridge_prompt(parent_session_id, notification_message)` automatically
+3. The parent agent receives the prompt as if a human sent it — it can act immediately
+
+**Notification format:**
+```
+BRIDGE NOTIFICATION — Child agent [session_id] event: {type}
+Commission: {metadata.commission_id} — {metadata.task_summary}
+Details: {event.content}
+Action required: {suggested_action}
+```
+
+**Which events trigger push notifications:**
+
+| Event type | Push to parent? | Rationale |
+|---|---|---|
+| `completed` | YES | Parent needs to collect results and proceed |
+| `error` | YES | Parent needs to decide: retry, escalate, or abort |
+| `escalation` | YES | Child is blocked and needs parent input |
+| `budget_warning` | YES | Parent may need to increase budget or restructure |
+| `step_completed` | NO (too noisy) | Parent can poll progress if interested |
+| `started` | NO | Parent already knows — it spawned the child |
+| `stale` | YES | Child may be stuck — parent should investigate |
+
+**Push to human session:** If the parent is the human's session (root level — no parent_session_id), the bridge pushes to the dashboard instead:
+- Dashboard shows a toast notification
+- Dashboard plays a subtle sound on error/escalation
+- The human can click through to the session's progress timeline
+
+**Recursive push:** In a 3-level chain (human → orchestrator → sub-agent), events bubble up one level at a time:
+```
+Sub-agent errors → bridge pushes to orchestrator
+Orchestrator receives notification → decides to escalate
+Orchestrator publishes escalation event → bridge pushes to human (dashboard)
+```
+
+Events do NOT auto-bubble through the full chain — each level decides whether to propagate. This prevents notification storms from deep recursion.
 
 ### Notification Aggregation for Council
 
@@ -307,6 +349,8 @@ Guide 8 (prompting) updated: orchestrator prompts should tell agents to call `br
 4. `bridge_all_events` returns events from multiple concurrent sessions
 5. The dashboard shows a real-time progress timeline per session
 6. Auto-progress from `step_advance` works without the agent explicitly calling `bridge_progress`
+7. When a child agent completes/errors, the parent agent receives a push notification via `bridge_prompt` within 10 seconds
+8. Push notifications do NOT auto-bubble through the full chain — each level decides whether to propagate
 
 ---
 
