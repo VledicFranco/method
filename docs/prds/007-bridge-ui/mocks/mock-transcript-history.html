@@ -141,38 +141,6 @@ body::after {
 
 .tb-spacer { flex: 1; }
 
-.tb-meta {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.tb-meta-item {
-  font-family: var(--font-m);
-  font-size: .68rem;
-  color: var(--dim2);
-  opacity: 0;
-  animation: staggerReveal .35s var(--ease-out) both;
-}
-.tb-meta-item:nth-child(1) { animation-delay: .3s; }
-.tb-meta-item:nth-child(2) { animation-delay: .35s; }
-.tb-meta-item:nth-child(3) { animation-delay: .4s; }
-.tb-meta-item:nth-child(4) { animation-delay: .45s; }
-.tb-meta-item:nth-child(5) { animation-delay: .5s; }
-.tb-meta-item:nth-child(6) { animation-delay: .55s; }
-.tb-meta-item:nth-child(7) { animation-delay: .6s; }
-.tb-meta-item:nth-child(8) { animation-delay: .65s; }
-
-.tb-meta-item strong { color: var(--dim); font-weight: 500; }
-.tb-meta-item .val { color: var(--bio); }
-
-.tb-nickname {
-  font-family: var(--font-d);
-  font-size: .82rem;
-  font-weight: 600;
-  color: var(--bio-bright);
-}
-
 .mock-tag {
   font-family: var(--font-m);
   font-size: .56rem;
@@ -315,45 +283,69 @@ body::after {
 .transcript-main::-webkit-scrollbar-track { background: transparent; }
 .transcript-main::-webkit-scrollbar-thumb { background: rgba(0,212,176,.12); border-radius: 3px; }
 
-/* session metadata bar */
-.session-meta {
-  display: flex;
-  gap: 2rem;
+/* agent identity banner */
+.agent-banner {
+  background: rgba(10,22,36,.97);
+  border-left: 2px solid rgba(0,212,176,.25);
+  border-radius: 1px;
+  padding: 1.1rem 1.35rem;
   margin-bottom: 2rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid rgba(0,212,176,.06);
+}
+
+.ab-row1 {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .5rem;
+}
+
+.ab-nickname {
+  font-family: var(--font-d);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--bio-bright);
+  line-height: 1;
+}
+
+.ab-status {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--bio);
+  display: flex;
+  align-items: center;
+}
+
+.ab-meta-right {
+  margin-left: auto;
+  font-family: var(--font-m);
+  font-size: .65rem;
+  color: var(--muted);
+}
+
+.ab-purpose {
+  font-family: var(--font-b);
+  font-size: .92rem;
+  color: var(--stellar);
+  line-height: 1.5;
+  margin-bottom: .75rem;
+  font-weight: 400;
+}
+
+.ab-details {
+  display: flex;
   flex-wrap: wrap;
-}
-
-.sm-item {
-  opacity: 0;
-  animation: staggerReveal .35s var(--ease-out) both;
-}
-.sm-item:nth-child(1) { animation-delay: .1s; }
-.sm-item:nth-child(2) { animation-delay: .15s; }
-.sm-item:nth-child(3) { animation-delay: .2s; }
-.sm-item:nth-child(4) { animation-delay: .25s; }
-.sm-item:nth-child(5) { animation-delay: .3s; }
-.sm-item:nth-child(6) { animation-delay: .35s; }
-.sm-item:nth-child(7) { animation-delay: .4s; }
-.sm-item:nth-child(8) { animation-delay: .45s; }
-
-.sm-label {
+  gap: .5rem 1.5rem;
   font-family: var(--font-m);
-  font-size: .56rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: .65rem;
   color: var(--dim2);
-  margin-bottom: .15rem;
+}
+.ab-details strong {
+  color: var(--dim);
+  font-weight: 500;
 }
 
-.sm-value {
-  font-family: var(--font-m);
-  font-size: .75rem;
-  color: var(--dim);
-}
-.sm-value.bio { color: var(--bio); }
-.sm-value.mono { font-weight: 500; color: var(--stellar); }
+/* legacy sm-value (kept for unused refs) */
 .sm-value.nickname {
   font-family: var(--font-d);
   font-weight: 600;
@@ -574,16 +566,6 @@ body::after {
     <a class="tb-back">&larr; dashboard</a>
     <h1 class="tb-title">Session <em>Transcripts</em></h1>
     <span class="tb-spacer"></span>
-    <div class="tb-meta">
-      <span class="tb-meta-item"><span class="tb-nickname">ember</span></span>
-      <span class="tb-meta-item"><strong>ID</strong> <span style="color:var(--stellar);font-size:.62rem">d9dea613-572e-4d16-a4ec-179d5c0846cf</span></span>
-      <span class="tb-meta-item"><span class="depth-badge">D2</span></span>
-      <span class="tb-meta-item"><strong>Workdir</strong> pv-agi</span>
-      <span class="tb-meta-item"><strong>Started</strong> 14:32:07</span>
-      <span class="tb-meta-item"><strong>Tokens</strong> <span class="val">68.4k</span></span>
-      <span class="tb-meta-item"><strong>Cache</strong> <span class="val">78%</span></span>
-      <span class="tb-meta-item"><strong>Duration</strong> 12m 34s</span>
-    </div>
     <span class="mock-tag">PRD-007 Mock</span>
   </header>
 
@@ -692,39 +674,25 @@ body::after {
   <!-- ── TRANSCRIPT MAIN ─────────────────────────────── -->
   <main class="transcript-main">
 
-    <!-- session metadata -->
-    <div class="session-meta">
-      <div class="sm-item">
-        <div class="sm-label">Nickname</div>
-        <div class="sm-value nickname">ember</div>
+    <!-- agent identity banner -->
+    <div class="agent-banner" style="animation: fadeInUp .4s var(--ease-out) .1s both;">
+      <div class="ab-row1">
+        <span class="ab-nickname">ember</span>
+        <span class="depth-badge">D2</span>
+        <span class="ab-status"><span style="width:6px;height:6px;border-radius:50%;background:var(--bio);display:inline-block;margin-right:.3rem;"></span>ready</span>
+        <span class="ab-meta-right">
+          <span style="color:var(--dim2);">d9dea613</span>
+          &middot;
+          <span>12m 34s</span>
+        </span>
       </div>
-      <div class="sm-item">
-        <div class="sm-label">Session ID</div>
-        <div class="sm-value mono">d9dea613-572e-4d16-a4ec-179d5c0846cf</div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Depth</div>
-        <div class="sm-value"><span class="depth-badge">D2</span></div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Workdir</div>
-        <div class="sm-value">/pv-agi</div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Started</div>
-        <div class="sm-value">14:32:07</div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Total Tokens</div>
-        <div class="sm-value bio">68,441</div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Cache Rate</div>
-        <div class="sm-value bio">78%</div>
-      </div>
-      <div class="sm-item">
-        <div class="sm-label">Duration</div>
-        <div class="sm-value">12m 34s</div>
+      <div class="ab-purpose">Execute M1-COUNCIL sigma_2: adversarial debate on architecture decision for pv-agi steering council</div>
+      <div class="ab-details">
+        <span><strong>workdir</strong> /pv-agi</span>
+        <span><strong>method</strong> M1-COUNCIL &mdash; Synthetic Agents Method</span>
+        <span><strong>session</strong> council-run-1</span>
+        <span><strong>tokens</strong> <span style="color:var(--bio)">68.4k</span> &middot; cache <span style="color:var(--bio)">78%</span></span>
+        <span><strong>started</strong> 14:32:07</span>
       </div>
     </div>
 

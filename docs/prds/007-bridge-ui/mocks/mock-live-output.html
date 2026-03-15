@@ -113,7 +113,7 @@ body::after {
   font-family: var(--font-d);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--stellar);
+  color: var(--bio-bright);
   letter-spacing: -.01em;
 }
 
@@ -150,13 +150,14 @@ body::after {
 
 .hb-purpose {
   font-family: var(--font-b);
-  font-size: .75rem;
-  color: var(--dim);
+  font-size: .82rem;
+  color: var(--stellar);
+  font-weight: 400;
   flex-shrink: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border-left: 2px solid rgba(0,212,176,.15);
+  padding-left: .65rem;
+  line-height: 1.3;
 }
 
 .hb-spacer { flex: 1; }
@@ -680,7 +681,7 @@ body::after {
     <span class="hb-nickname">ember</span>
     <span class="depth-badge">D2</span>
     <span class="hb-status hb-status-working">working</span>
-    <span class="hb-purpose">Execute M1-COUNCIL sigma_2: adversarial debate</span>
+    <span class="hb-purpose">Execute M1-COUNCIL sigma_2: adversarial debate on architecture decision for pv-agi steering council</span>
     <span class="hb-spacer"></span>
     <span class="hb-meta"><strong>workdir</strong> /pv-method</span>
     <span class="hb-meta"><strong>session</strong> council-run-1</span>

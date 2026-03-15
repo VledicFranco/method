@@ -125,6 +125,29 @@ The expanded view provides:
 - Full session UUID (copyable)
 - Purpose text
 - Methodology context (method name, step progress)
+
+#### Agent Identity Banner (detail views)
+
+When the operator navigates to a detail view (live output or transcript), the page shows an **agent identity banner** at the top — a single card that answers "who is this agent and why does it exist" at a glance.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ember  D2  ● ready                                   d9dea613 · 12m │
+│                                                                       │
+│  Execute M1-COUNCIL sigma_2: adversarial debate on architecture       │
+│  decision for pv-agi steering council                                 │
+│                                                                       │
+│  workdir /pv-agi · method M1-COUNCIL · session council-run-1          │
+│  tokens 68.4k · cache 78% · started 14:32:07                         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+Design rules:
+- **Nickname is hero text** — largest element, `bio-bright` color, Space Grotesk 1.35rem
+- **Purpose is the subtitle** — full sentence, stellar white, Inter at .92rem. This is what the operator reads to understand the agent. No truncation.
+- **Metadata is tertiary** — small mono text below purpose. Workdir, method, session, tokens, cache, start time.
+- **No duplication** — the banner replaces both the top-bar metadata AND any inline metadata section. One place, one truth.
+- **Bio left-accent border** — 2px, consistent with agent/system semantic
 - Token breakdown
 - Links to the live output view and transcript view
 
