@@ -240,6 +240,42 @@ A background agent successfully scaffolded a full Fastify + passkey auth + PWA p
 - **PTY auto-detection works in production** — first commission with PRD 010 active showed tool_call, file_activity, idle events from pty-watcher
 - **PR review → merge from parent agent** — PRs #1-3 (pv-method) + PR #1 (pv-silky) all reviewed and merged programmatically
 
-### New bugs found
-- **Live output view shows raw ANSI escapes** — PRD 007's SSE stream doesn't strip ANSI codes before sending to browser. The `strip-ansi` function needs to be applied in the SSE endpoint or client-side.
-- **Initial prompt garbling on long prompts** — PTY paste of 2000+ token prompts produces corrupted text ("ment." instead of full prompt). Likely a terminal width / paste buffer issue. Needs investigation.
+### Resolved (this session)
+- **Live output ANSI escapes** → replaced with xterm.js terminal emulator (PR #4)
+- **OBS-02 (agent stalling)** → split prompt delivery (EXP-OBS02-B validated)
+- **OBS-07 (connection refused)** → fetchWithRetry in MCP proxy tools (PR #5)
+
+### Stress Test Results (5 parallel agents)
+
+**Setup:** 5 agents fired simultaneously — 4 on pv-method, 1 on pv-silky. All with worktree isolation, split delivery, PTY auto-detection.
+
+| Agent | Task | Completed? | PR? | Notes |
+|-------|------|-----------|-----|-------|
+| bravo (YAML fix) | Fix 2 registry parse errors | NO — stalled | — | No commits, no work produced |
+| cedar (observations) | Update bridge-observations.md | NO — stalled | — | No commits, no work produced |
+| drift (CLAUDE.md) | Refresh CLAUDE.md | YES | No PR (committed to worktree) | Cherry-picked to master |
+| ember (PRD 010 status) | Mark PRD 010 implemented | NO — stalled | — | No commits, no work produced |
+| flux (Tailscale docs) | Add Tailscale setup to portal | YES | [silky PR #2](https://github.com/VledicFranco/silky/pull/2) | Full deployment guide + setup script |
+
+**Result: 2/5 completed (40%).** Split delivery improved activation (all 5 started) but 3 still stalled mid-task. The pattern: agents that needed to edit existing files (YAML, observations, PRD) stalled, while agents creating new content (CLAUDE.md update, new docs) completed.
+
+### OBS-17: 5-agent parallel stress test — 40% completion rate
+
+**Severity:** MEDIUM — system works but isn't reliable at scale
+**Observed in:** Stress test with 5 parallel agents
+
+Split delivery solved the activation problem (all 5 agents started) but 3 of 5 stalled mid-task without completing. The 2 that completed both involved creating/updating a single file with clear content. The 3 that stalled involved tasks requiring multiple file reads, validation steps, or complex edits.
+
+**Possible causes:**
+1. Resource contention — 5 Claude Code processes competing for API rate limits
+2. Complex tasks with multiple steps more likely to stall than simple single-file tasks
+3. Permission prompts blocking agents silently (undetectable from outside)
+
+**Next investigation:** Run stress test with 3 agents instead of 5. If completion rate improves, it's resource contention. If not, it's task complexity.
+
+### OBS-18: Agents that create new content complete more reliably than agents editing existing files
+
+**Severity:** INSIGHT
+**Observed in:** Stress test — drift (new CLAUDE.md content) and flux (new docs + script) completed, while bravo (edit YAML), cedar (edit observations), ember (edit PRD status) all stalled.
+
+Editing existing files requires Read → think about changes → Edit, which is a multi-step tool chain. Creating new content is Write, which is a single tool call. The fewer tool call chains required, the more likely completion.
