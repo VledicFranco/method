@@ -9,6 +9,10 @@ export interface PtySession {
   status: SessionStatus;
   /** Number of prompts queued (including the one currently in-flight). */
   queueDepth: number;
+  /** Total number of prompts sent through this session. */
+  promptCount: number;
+  /** Timestamp of the last prompt send or response receipt. */
+  lastActivityAt: Date;
   sendPrompt(prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }>;
   kill(): void;
 }
@@ -19,6 +23,7 @@ export interface SpawnOptions {
   claudeBin?: string;
   settleDelayMs?: number;
   initialPrompt?: string;
+  spawnArgs?: string[];
 }
 
 const DEFAULT_SETTLE_DELAY_MS = 2000;
@@ -38,17 +43,22 @@ export function spawnSession(options: SpawnOptions): PtySession {
     claudeBin = 'claude',
     settleDelayMs = DEFAULT_SETTLE_DELAY_MS,
     initialPrompt,
+    spawnArgs,
   } = options;
 
   let status: SessionStatus = 'initializing';
+  let promptCount = 0;
+  let lastActivityAt = new Date();
   const queue = new PQueue({ concurrency: 1 });
 
   /** Read current status — defeats TypeScript's control-flow narrowing for async mutations. */
   const getStatus = (): SessionStatus => status;
 
-  // Spawn the PTY process
+  // Spawn the PTY process — append spawnArgs to the Claude binary command
+  const cliFlags = spawnArgs?.join(' ') ?? '';
+  const fullCmd = cliFlags ? `${claudeBin} ${cliFlags}` : claudeBin;
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
-  const args = process.platform === 'win32' ? ['/c', claudeBin] : ['-c', claudeBin];
+  const args = process.platform === 'win32' ? ['/c', fullCmd] : ['-c', fullCmd];
 
   const ptyProcess = pty.spawn(shell, args, {
     name: 'xterm-256color',
@@ -107,6 +117,20 @@ export function spawnSession(options: SpawnOptions): PtySession {
       return queue.size + queue.pending;
     },
 
+    get promptCount() {
+      return promptCount;
+    },
+    set promptCount(n: number) {
+      promptCount = n;
+    },
+
+    get lastActivityAt() {
+      return lastActivityAt;
+    },
+    set lastActivityAt(d: Date) {
+      lastActivityAt = d;
+    },
+
     sendPrompt(prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }> {
       if (status === 'dead') {
         return Promise.reject(new Error(`Session ${id} is dead — cannot send prompt`));
@@ -118,6 +142,8 @@ export function spawnSession(options: SpawnOptions): PtySession {
         }
 
         status = 'working';
+        promptCount++;
+        lastActivityAt = new Date();
 
         // Reset buffer for this prompt's output
         outputBuffer = '';
@@ -133,6 +159,9 @@ export function spawnSession(options: SpawnOptions): PtySession {
 
         // Extract clean response
         const output = extractResponse(result.buffer);
+
+        // Update activity timestamp on response receipt
+        lastActivityAt = new Date();
 
         // Restore to ready unless session died during prompt execution
         if (getStatus() !== 'dead') {
