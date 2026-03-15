@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && node -e \"require('fs').copyFileSync('src/dashboard.html','dist/dashboard.html')\"",
+    "build": "tsc && node -e \"['dashboard.html','live-output.html','transcript.html'].forEach(f=>require('fs').copyFileSync('src/'+f,'dist/'+f))\"",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "node --import tsx --test src/__tests__/*.test.ts"
