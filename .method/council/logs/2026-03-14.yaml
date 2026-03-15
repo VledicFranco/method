@@ -907,3 +907,66 @@ log:
       next_agenda_items:
         - "AG-030: Prototype context-mode MCP (P0)"
         - "AG-026: Draft ORGANON-PROTO (P1)"
+
+    - id: SESSION-022
+      date: "2026-03-15"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Post-milestone strategic assessment — all 8 PRDs implemented, first parallel bridge commissions with worktree + PR workflow"
+
+      decisions:
+        - id: D-035
+          item: "Priority ordering and PRD 010 scope"
+          decision: >
+            Priority: AG-033 (PRD 010) → AG-034 (context-mode experiment) → AG-026
+            (ORGANON-PROTO). PRD 010 scope: parse PTY output for tool calls, git
+            ops, test results — auto-emit channel events without agent cooperation.
+            Include auto-retro generation from PTY activity signals (addresses PR-03
+            enforcement gap). Reva proposed system-prompt approach — rejected on
+            evidence: 3 prompt-level attempts have failed, infrastructure-level
+            is the only reliable path. Harlan scoped PTY parsing to stable signals
+            only (tool names, git commits, test exit codes).
+          status: decided
+          for: >
+            OBS-01/02 are systemic — seen in every bridge commission. Three prompt
+            formulations tried, all failed. Infrastructure-level detection is the
+            only approach that doesn't require agent cooperation. Auto-retro solves
+            PR-03 violation from PRD 007/AG-030 commissions.
+          against: "None — unanimous on priority. Debate was on scope (Harlan narrowed to stable signals)."
+          essence_check: >
+            PTY auto-detection makes methodology execution observable without agent
+            cooperation. Serves purpose directly. Auto-retro supports self-improvement
+            loop. Faithful.
+
+        - id: D-036
+          item: "Governance health review"
+          decision: >
+            PR-01: healthy. PR-02: AG-026 at 5 sessions — stale warning, 2-session
+            deadline. PR-03: DEGRADED — first violations (PRD 007, AG-030 missing
+            retros). Addressed by PRD 010 auto-retro. Channel non-reporting signal
+            hit threshold (count=3) — actioned via PRD 010.
+          status: decided
+          for: "Evidence-based assessment. PR-03 degradation is real, not theoretical."
+          against: "None."
+          essence_check: "Governance housekeeping. No essence impact."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: 0
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-02, followed: true, note: "AG-026 stale warning issued" }
+          - { process: PR-03, followed: true, note: "Violation detected and addressed via PRD 010 scope" }
+        process_improvement_signal: "Channel non-reporting signal hit threshold — proves governance health tracking works. First signal to trigger action."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "D-035: PRD 010 scope defined (PTY auto-detection + auto-retro)"
+        - "D-036: Governance health review — PR-03 degraded, addressed"
+        - "Governance health updated in AGENDA.yaml"
+
+      next_agenda_items:
+        - "AG-033: Draft PRD 010 (P0)"
+        - "AG-034: Context-mode experiment (P1)"
+        - "AG-026: ORGANON-PROTO — 2-session deadline (P1)"

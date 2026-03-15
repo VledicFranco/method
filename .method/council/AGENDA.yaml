@@ -6,34 +6,35 @@ agenda:
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
-  p0_immediate: []
-
-  p1_next:
-    - id: AG-026
-      item: "Draft ORGANON-PROTO in registry/P0-META/"
-      owner: council
-      status: open
-      added_in: SESSION-017
-      note: "Protocol binding between organon identity constraints and pv-method execution. D-028."
-
+  p0_immediate:
     - id: AG-033
-      item: "PRD 010: PTY activity auto-detection for bridge channels"
+      item: "Draft PRD 010: PTY activity auto-detection + auto-retro for bridge channels"
       owner: council
       status: open
       added_in: SESSION-021
-      note: "OBS-09: Parse PTY output for tool calls, git ops, test results. Auto-emit channel events without agent cooperation. Would make OBS-01/02 irrelevant."
+      promoted_in: SESSION-022
+      note: "OBS-01/02/09: Parse PTY output for tool calls, git ops, test results. Auto-emit channel events. Include auto-retro from activity signals (PR-03 enforcement). D-035."
 
+  p1_next:
     - id: AG-034
       item: "Context-mode prototype experiment (from AG-030 feasibility report)"
       owner: council
       status: open
       added_in: SESSION-021
-      note: "PR #1 merged. Report recommends scoped prototype before PRD 009. Install MCP-only, test with real methodology child, measure 4 success criteria."
+      note: "PR #1 merged. Benefits from PRD 010 richer channel data. Install MCP-only, test, measure 4 criteria."
+
+    - id: AG-026
+      item: "Draft ORGANON-PROTO in registry/P0-META/"
+      owner: council
+      status: open
+      added_in: SESSION-017
+      sessions_open: 5
+      note: "Protocol binding. PR-02 stale warning — must be addressed within 2 sessions or archived. D-028."
 
   governance_health:
-    last_assessed: SESSION-018
-    sessions_since_processes_installed: 12
-    next_review: SESSION-023
+    last_assessed: SESSION-022
+    sessions_since_processes_installed: 16
+    next_review: SESSION-027
 
     process_health:
       PR-01:
@@ -41,38 +42,41 @@ agenda:
         times_skipped: 0
         times_triggered: 2
         verdict: healthy
-        note: "No registry changes in sessions 014-018"
+        note: "No registry changes since SESSION-014"
       PR-02:
-        times_followed: 4
+        times_followed: 5
         times_skipped: 0
-        times_triggered: 3
+        times_triggered: 4
         verdict: healthy
-        note: "AG-012 was stale but commissioned and completed — process worked"
+        note: "AG-026 at 5 sessions — stale warning issued, 2-session deadline"
       PR-03:
         times_followed: 3
-        times_skipped: 0
-        times_triggered: 0
-        verdict: "untested in governance sessions (retros produced by impl agents, not council)"
+        times_skipped: 2
+        times_triggered: 2
+        verdict: degraded
+        note: "PRD 007 and AG-030 agents didn't produce retros. Commission prompt has instructions but agents ignore them. PRD 010 will address via auto-retro."
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
         count: 1
         action_threshold: 3
         status: accumulating
-      - signal: "Commission via bridge failed for complex PRDs — need known-limitation docs"
-        count: 1
+      - signal: "Commissioned agents don't use channel tools despite prompt instructions"
+        count: 3
+        action_threshold: 3
+        status: threshold_met
+        source: "SESSION-019 (PRD 006), SESSION-021 (PRD 007 + AG-030)"
+        action: "PRD 010 — auto-detect from PTY instead of relying on agent cooperation"
+      - signal: "Commissioned agents don't produce retros despite prompt instructions"
+        count: 2
         action_threshold: 3
         status: accumulating
-        source: SESSION-016
-      - signal: "Sub-council research pattern works well — spawned sub-agent returned rich analysis"
-        count: 1
-        action_threshold: 3
-        status: accumulating
-        source: SESSION-015
+        source: "SESSION-021 (PRD 007, AG-030)"
+        action: "PRD 010 — auto-retro from PTY activity signals"
 
     retro_quality:
-      sessions_with_retro: 11
-      sessions_without: 5
+      sessions_with_retro: 12
+      sessions_without: 7
       actionable_signals_produced: 5
       rote_retros: 0
 
