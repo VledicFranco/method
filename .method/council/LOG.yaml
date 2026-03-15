@@ -333,6 +333,46 @@ log:
       next_agenda_items:
         - "AG-020 and AG-012 remain open (not stale yet)"
 
+    - id: SESSION-010
+      date: "2026-03-14"
+      type: transition
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Execute remaining items + transition from bootstrapping to steady-state"
+
+      decisions:
+        - id: D-019
+          item: "AG-020 — Guide 5 path update"
+          decision: "Execute now. Fix docs/impl/ references to .method/delivery/ in Guide 5."
+          status: decided
+
+        - id: D-020
+          item: "Transition to steady-state"
+          decision: >
+            Council transitions from bootstrapping (9 sessions in one day) to steady-state
+            (weekly or on-demand). Agenda: AG-020 to execute now, AG-012 for next session.
+            Governance health review at SESSION-014.
+          status: decided
+          for: "18 decisions in 9 sessions. Governance infrastructure is comprehensive. Stop building, start governing."
+          against: "None — unanimous. Nika's point about testing vs building was persuasive."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: -1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-02, followed: true, note: "AG-012 at 4 sessions, 1 from stale — flagged for next session" }
+        process_improvement_signal: "Skill/protocol drift identified — steering-council skill doesn't reflect all STEER-PROTO additions (governance_health, processes in Step 4). Should reconcile."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "LOG.yaml SESSION-010"
+        - "Transition decision to steady-state governance"
+
+      next_agenda_items:
+        - "AG-012: Guide 13 (installation) — next session, will be stale if not done"
+        - "AG-021: Reconcile steering-council skill with STEER-PROTO (drift from governance_health and process enforcement)"
+
     - id: SESSION-005
       date: "2026-03-14"
       type: governance_expansion

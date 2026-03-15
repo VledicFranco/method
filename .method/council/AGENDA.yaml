@@ -1,64 +1,61 @@
 agenda:
   project: pv-method
   last_updated: "2026-03-14"
+  mode: steady-state
+  cadence: "weekly or on-demand"
+  next_health_review: SESSION-014
 
   p0_immediate:
-    - id: AG-020
-      item: "Update Guide 5 artifact locations (.method/delivery/ instead of docs/impl/)"
-      rationale: "PR-01 triggered by SESSION-007 D-012. Guide 5 references old docs/impl/ paths."
-      owner: "Reva"
-      status: open
-
     - id: AG-012
       item: "Write Guide 13: Installation and .method/ directory structure"
-      rationale: "D-006 formalized installation. Guide explains manifest, installation specs, adoption."
+      rationale: "D-006 formalized installation. 4 sessions open — 1 from PR-02 stale threshold."
       owner: "Reva, Harlan"
+      status: open
+      sessions_open: 5
+
+    - id: AG-021
+      item: "Reconcile steering-council skill with STEER-PROTO"
+      rationale: "S-010 identified drift: skill doesn't reflect governance_health, process enforcement in Step 4, or governance retro schema."
+      owner: "Thane"
       status: open
 
   governance_health:
     last_assessed: SESSION-009
-    sessions_since_processes_installed: 3
-    next_review: "SESSION-014 (every 5 sessions)"
+    sessions_since_processes_installed: 4
+    next_review: SESSION-014
 
     process_health:
       PR-01:
         times_followed: 2
         times_skipped: 0
         times_triggered: 2
-        signals: ["S-007: correctly identified Guide 5 update"]
         verdict: healthy
       PR-02:
-        times_followed: 1
+        times_followed: 2
         times_skipped: 0
         times_triggered: 1
-        signals: ["S-008: AG-011 archived after 5 sessions stale"]
         verdict: healthy
       PR-03:
-        times_followed: 1
+        times_followed: 2
         times_skipped: 0
         times_triggered: 0
-        signals: []
-        verdict: "untested — no retros produced during governance sessions"
-        note: "PR-03 applies to methodology execution retros, not governance. Expected to have 0 triggers in council sessions."
+        verdict: "untested — council sessions don't produce methodology retros"
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
         count: 1
-        sessions: [SESSION-008]
         action_threshold: 3
         status: accumulating
+      - signal: "Skill/protocol drift — reconcile steering-council skill"
+        count: 1
+        action_threshold: 1
+        status: "actioned → AG-021"
 
     retro_quality:
-      sessions_with_retro: 4
+      sessions_with_retro: 5
       sessions_without: 5
-      actionable_signals_produced: 2
+      actionable_signals_produced: 3
       rote_retros: 0
-
-  p1_soon:
-    - id: AG-004
-      item: "Plan STEER-PROTO trial criteria and promotion path"
-      owner: "Orion, Reva"
-      status: open
 
   done:
     - { id: AG-001, resolved_in: SESSION-001 }
@@ -71,10 +68,12 @@ agenda:
     - { id: AG-017, resolved_in: SESSION-008 }
     - { id: AG-018, resolved_in: SESSION-007 }
     - { id: AG-019, resolved_in: SESSION-007 }
+    - { id: AG-020, resolved_in: SESSION-010 }
 
   archived:
-    - { id: AG-005, archived_in: SESSION-006, reason: "No real cross-project comms need identified" }
-    - { id: AG-006, archived_in: SESSION-006, reason: "Guides evolving organically via retro signals" }
-    - { id: AG-007, archived_in: SESSION-008, reason: "Promoted to AG-017, completed" }
-    - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when evidence shows need" }
-    - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs exist in protocol spec and skill" }
+    - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }
+    - { id: AG-006, archived_in: SESSION-006, reason: "Guides evolving organically" }
+    - { id: AG-007, archived_in: SESSION-008, reason: "Promoted → AG-017, completed" }
+    - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when needed" }
+    - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs in protocol spec" }
+    - { id: AG-004, archived_in: SESSION-010, reason: "Trial criteria already in STEER-PROTO Part 8" }
