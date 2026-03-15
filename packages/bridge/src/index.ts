@@ -21,9 +21,14 @@ const app = Fastify({ logger: true });
  * POST /sessions — Spawn a new Claude Code agent session.
  */
 app.post<{
-  Body: { workdir: string; initial_prompt?: string };
+  Body: {
+    workdir: string;
+    initial_prompt?: string;
+    spawn_args?: string[];
+    metadata?: Record<string, unknown>;
+  };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -33,6 +38,8 @@ app.post<{
     const result = await pool.create({
       workdir,
       initialPrompt: initial_prompt,
+      spawnArgs: spawn_args,
+      metadata,
     });
     return reply.status(201).send({
       session_id: result.sessionId,
@@ -93,6 +100,10 @@ app.get<{
       session_id: result.sessionId,
       status: result.status,
       queue_depth: result.queueDepth,
+      metadata: result.metadata,
+      prompt_count: result.promptCount,
+      last_activity_at: result.lastActivityAt.toISOString(),
+      workdir: result.workdir,
     });
   } catch (e) {
     const message = (e as Error).message;
@@ -136,6 +147,10 @@ app.get('/sessions', async (_request, reply) => {
       session_id: s.sessionId,
       status: s.status,
       queue_depth: s.queueDepth,
+      metadata: s.metadata,
+      prompt_count: s.promptCount,
+      last_activity_at: s.lastActivityAt.toISOString(),
+      workdir: s.workdir,
     })),
   );
 });
