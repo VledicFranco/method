@@ -17,11 +17,13 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 11 | [Protocols and Method Discovery](11-protocols-and-discovery.md) | Method designers | How informal practices become formal methods — the R&D pipeline |
 | 12 | [The Steering Council](12-steering-council.md) | Project leads | Persistent governance council, essence guardianship, session structure |
 | 13 | [Installation and .method/](13-installation.md) | Project leads | The .method/ directory, manifest, installation specs, committed vs ephemeral |
+| 14 | [Extending the Bridge Dashboard UI](14-bridge-dashboard-ui.md) | Contributors | Dashboard rendering architecture, Vidtecci OS design system, adding panels and pages |
+| 15 | [Remote Access via Tailscale](15-remote-access.md) | Agent operators | Accessing the bridge from a phone or remote machine over Tailscale |
 
 ## How to read these guides
 
 - **Using the system?** Start with Guides 1-2 (concepts), then 4 or 5 (whichever methodology you're using), then 6 (project cards).
-- **Running agents?** Read Guide 8 (prompting) after Guides 1-2. It includes a template and empirical evidence.
+- **Running agents?** Read Guide 8 (prompting) after Guides 1-2. Then Guide 10 (bridge orchestration) for multi-agent sessions, and Guide 15 (remote access) if accessing the bridge from another machine.
 - **Governing a project?** Read Guide 12 (steering council) after Guides 1-2 and 6 (project cards).
 - **Designing methods?** Read all guides in order, especially 3, 7, and 11.
 - **Just curious?** Guide 1 is self-contained and gives you the core idea in 5 minutes.
