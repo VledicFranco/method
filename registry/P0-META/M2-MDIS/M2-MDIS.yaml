@@ -127,6 +127,18 @@ domain_theory:
       name: Artifact from decision
       statement: "forall p : Protocol, d : PromotionDecision. promotion_decided(p, d) -> exists a : Artifact. artifact_produced(a)"
       rationale: "Every promotion decision produces an artifact — even archive produces a record of what was learned."
+  cross_references:
+    promotion_criteria_location: >
+      M2-MDIS defines the PROCESS for evaluating promotion criteria (sigma_3) and
+      making promotion decisions (sigma_4). Each PROTOCOL defines its own specific
+      criteria in its promotion section. Examples:
+        - RETRO-PROTO: registry/P0-META/RETROSPECTIVE-PROTOCOL.yaml → promotion_status.stages
+        - STEER-PROTO: registry/P0-META/STEERING-PROTOCOL.yaml → promotion.stages
+      The criteria are protocol-specific because different practices need different
+      evidence thresholds. M2-MDIS's sigma_1 (Draft) requires at least 2 measurable
+      criteria per protocol. M2-MDIS's sigma_3 (Evaluate) checks those criteria
+      against trial evidence.
+    guide: "docs/guides/11-protocols-and-discovery.md"
   domain_boundary_note: >
     Excludes: the creative act of recognizing a practice (happens outside M2-MDIS);
     the content of the practice being discovered (M2-MDIS structures the lifecycle,
