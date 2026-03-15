@@ -13,7 +13,7 @@ export interface PtySession {
   promptCount: number;
   /** Timestamp of the last prompt send or response receipt. */
   lastActivityAt: Date;
-  sendPrompt(prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   kill(): void;
 }
 
@@ -131,7 +131,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
       lastActivityAt = d;
     },
 
-    sendPrompt(prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }> {
+    sendPrompt(prompt: string, timeoutMs?: number, settleDelayMsOverride?: number): Promise<{ output: string; timedOut: boolean }> {
       if (status === 'dead') {
         return Promise.reject(new Error(`Session ${id} is dead — cannot send prompt`));
       }
@@ -153,7 +153,8 @@ export function spawnSession(options: SpawnOptions): PtySession {
 
         // Wait for response completion via debounce
         const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        const result = await waitForCompletion(outputBuffer, settleDelayMs, timeout, (cb) => {
+        const effectiveSettleDelay = settleDelayMsOverride ?? settleDelayMs;
+        const result = await waitForCompletion(outputBuffer, effectiveSettleDelay, timeout, (cb) => {
           dataCallback = cb;
         }, () => outputBuffer, () => getStatus() === 'dead');
 

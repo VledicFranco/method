@@ -26,11 +26,12 @@ export interface SessionPool {
     spawnArgs?: string[];
     metadata?: Record<string, unknown>;
   }): Promise<{ sessionId: string; status: string }>;
-  prompt(sessionId: string, prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string): { sessionId: string; killed: boolean };
   list(): SessionStatusInfo[];
   poolStats(): PoolStats;
+  removeDead(ttlMs: number): number;
 }
 
 export interface PoolOptions {
@@ -89,7 +90,7 @@ export function createPool(options?: PoolOptions): SessionPool {
       return { sessionId, status: session.status };
     },
 
-    async prompt(sessionId: string, prompt: string, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }> {
+    async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
       const session = sessions.get(sessionId);
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
@@ -98,7 +99,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
       }
 
-      return session.sendPrompt(prompt, timeoutMs);
+      return session.sendPrompt(prompt, timeoutMs, settleDelayMs);
     },
 
     status(sessionId: string): SessionStatusInfo {
@@ -153,6 +154,22 @@ export function createPool(options?: PoolOptions): SessionPool {
         activeSessions: active,
         deadSessions: dead,
       };
+    },
+
+    removeDead(ttlMs: number): number {
+      let removed = 0;
+      for (const [sessionId, session] of sessions.entries()) {
+        if (session.status === 'dead') {
+          // Use lastActivityAt as the "died at" timestamp (it's the last activity before death)
+          if (Date.now() - session.lastActivityAt.getTime() > ttlMs) {
+            sessions.delete(sessionId);
+            sessionMetadata.delete(sessionId);
+            sessionWorkdirs.delete(sessionId);
+            removed++;
+          }
+        }
+      }
+      return removed;
     },
   };
 }
