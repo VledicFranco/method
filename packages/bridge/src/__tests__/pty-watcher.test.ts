@@ -463,7 +463,7 @@ describe('parseWatcherConfig', () => {
     assert.equal(config.dedupWindowMs, 10000);
     assert.equal(config.autoRetro, true);
     assert.equal(config.logMatches, false);
-    assert.equal(config.patterns.size, 7);
+    assert.equal(config.patterns.size, 8);
   });
 
   it('respects PTY_WATCHER_ENABLED=false', () => {

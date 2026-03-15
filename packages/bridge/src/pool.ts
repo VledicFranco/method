@@ -3,8 +3,9 @@ import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
-import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher } from './pty-watcher.js';
+import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
+import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -56,6 +57,8 @@ export interface SessionStatusInfo {
   worktree: WorktreeInfo;
   stale: boolean;
   waiting_for: string | null;
+  /** PRD 012: Per-session diagnostic metrics. */
+  diagnostics: SessionDiagnostics | null;
 }
 
 export interface PoolStats {
@@ -153,6 +156,9 @@ export function createPool(options?: PoolOptions): SessionPool {
   // PRD 010: PTY watcher per session
   const sessionWatchers = new Map<string, PtyWatcher>();
   const sessionOriginalWorkdirs = new Map<string, string>(); // pre-worktree workdir for retro placement
+
+  // PRD 012: Per-session diagnostics trackers
+  const sessionDiagnostics = new Map<string, DiagnosticsTracker>();
 
   // OBS-19: Waiting-for-sub-agent detection
   const sessionWaitingFor = new Map<string, string>();        // sessionId → what it's waiting for
@@ -462,14 +468,43 @@ export function createPool(options?: PoolOptions): SessionPool {
       // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
+      // PRD 012: Create diagnostics tracker
+      const effectiveSettleDelay = settleDelayMs ?? 1000;
+      const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay);
+      sessionDiagnostics.set(sessionId, diagnosticsTracker);
+
+      // PRD 012: Track first PTY output for time_to_first_output_ms
+      let firstOutputRecorded = false;
+      session.onOutput((_data: string) => {
+        if (!firstOutputRecorded) {
+          firstOutputRecorded = true;
+          diagnosticsTracker.recordFirstOutput();
+        }
+      });
+
       // PRD 010: Create and attach PTY watcher
       const watcherConfig = parseWatcherConfig(process.env, metadata);
       if (watcherConfig.enabled) {
+        // PRD 012: Observation callback — feeds diagnostics tracker
+        const diagnosticsCallback: ObservationCallback = (match, isIdle) => {
+          if (isIdle) {
+            diagnosticsTracker.recordIdleTransition();
+          } else if (match.category === 'tool_call') {
+            diagnosticsTracker.recordToolCall();
+          } else if (match.category === 'permission_prompt') {
+            diagnosticsTracker.recordPermissionPrompt();
+          } else {
+            // Any non-idle, non-tool activity still ends idle period
+            diagnosticsTracker.recordActivity();
+          }
+        };
+
         const watcher = createPtyWatcher(
           sessionId,
           channels,
           (cb) => session.onOutput(cb),
           watcherConfig,
+          diagnosticsCallback,
         );
         sessionWatchers.set(sessionId, watcher);
 
@@ -533,7 +568,15 @@ export function createPool(options?: PoolOptions): SessionPool {
         throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
       }
 
-      return session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+      const result = await session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+
+      // PRD 012: Record settle overhead for this prompt
+      const tracker = sessionDiagnostics.get(sessionId);
+      if (tracker && !result.timedOut) {
+        tracker.recordPromptCompletion();
+      }
+
+      return result;
     },
 
     status(sessionId: string): SessionStatusInfo {
@@ -545,6 +588,24 @@ export function createPool(options?: PoolOptions): SessionPool {
       // OBS-19: Override status to 'waiting' when session is waiting for a sub-agent
       const waitingFor = sessionWaitingFor.get(sessionId) ?? null;
       const effectiveStatus = (waitingFor && session.status === 'ready') ? 'waiting' : session.status;
+
+      // PRD 012: Build diagnostics snapshot with stall classification
+      const tracker = sessionDiagnostics.get(sessionId);
+      let diagnostics: SessionDiagnostics | null = null;
+      if (tracker) {
+        diagnostics = tracker.snapshot();
+        // Classify stall reason for stale or idle sessions
+        const isStale = sessionStaleFlags.get(sessionId) ?? false;
+        if (isStale || (effectiveStatus === 'ready' && session.promptCount > 0)) {
+          // Check if other sessions are also slow (for resource_contention classification)
+          const otherSessionsSlow = [...sessionDiagnostics.entries()].some(([otherId, otherTracker]) => {
+            if (otherId === sessionId) return false;
+            const otherSnap = otherTracker.snapshot();
+            return otherSnap.time_to_first_output_ms !== null && otherSnap.time_to_first_output_ms > 10_000;
+          });
+          diagnostics.stall_reason = tracker.classifyStall(otherSessionsSlow);
+        }
+      }
 
       return {
         sessionId: session.id,
@@ -562,6 +623,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: waitingFor,
+        diagnostics,
       };
     },
 
@@ -635,6 +697,10 @@ export function createPool(options?: PoolOptions): SessionPool {
         const waitingFor = sessionWaitingFor.get(sessionId) ?? null;
         const effectiveStatus = (waitingFor && session.status === 'ready') ? 'waiting' : session.status;
 
+        // PRD 012: Include diagnostics snapshot
+        const tracker = sessionDiagnostics.get(sessionId);
+        const diagnostics = tracker ? tracker.snapshot() : null;
+
         return {
           sessionId: session.id,
           nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
@@ -651,6 +717,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           },
           stale: sessionStaleFlags.get(sessionId) ?? false,
           waiting_for: waitingFor,
+          diagnostics,
         };
       });
     },
@@ -707,6 +774,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionOriginalWorkdirs.delete(sessionId);
             sessionWaitingFor.delete(sessionId);
             lastAgentToolCallAt.delete(sessionId);
+            sessionDiagnostics.delete(sessionId);
             removed++;
           }
         }

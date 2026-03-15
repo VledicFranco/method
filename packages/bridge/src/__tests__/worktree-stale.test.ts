@@ -175,6 +175,7 @@ function createStaleTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: null,
+        diagnostics: null,
       };
     },
 
@@ -204,6 +205,7 @@ function createStaleTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: null,
+        diagnostics: null,
       }));
     },
 
