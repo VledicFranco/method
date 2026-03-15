@@ -30,7 +30,7 @@ export interface SpawnOptions {
   spawnArgs?: string[];
 }
 
-const DEFAULT_SETTLE_DELAY_MS = 2000;
+const DEFAULT_SETTLE_DELAY_MS = 1000;
 const DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
 
 /**

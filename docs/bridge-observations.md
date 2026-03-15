@@ -3,7 +3,7 @@
 Empirical observations from commissioning agents via the bridge. These inform future PRDs, skill improvements, and bridge architecture decisions.
 
 **Last updated:** 2026-03-15
-**Sessions observed:** 5 commissions (PRD 006 attempt 1, PRD 006 attempt 2, PRD 008, PRD 007, AG-030)
+**Sessions observed:** 7 commissions (PRD 006 attempt 1, PRD 006 attempt 2, PRD 008, PRD 007, AG-030, PRD 010, pv-silky portal)
 
 ---
 
@@ -170,6 +170,43 @@ Both agents produced high-quality deliverables without any progress visibility. 
 
 ---
 
+## OBS-12: SETTLE_DELAY_MS compounds into major latency for tool-heavy agents
+
+**Severity:** MEDIUM — agent wall-clock time inflated 2x-3x by debounce overhead
+**Observed in:** PRD 010 commission (4+ min "Clauding" before first visible action)
+
+The bridge uses `SETTLE_DELAY_MS` (default 2000ms) to detect when a prompt response has finished — it waits for 2s of PTY silence before declaring the output complete. This is per-tool-call. An agent reading 9 files makes 9 tool calls, each adding 2s of idle waiting = 18s of pure overhead before any real work.
+
+For agents that make many small tool calls (file reads, greps, edits), this compounds dramatically. A 30-second task becomes 2+ minutes.
+
+**Mitigation applied:** Default reduced from 2000ms to 1000ms. Still configurable per-session via `settle_delay_ms` parameter on `bridge_prompt`.
+
+**Potential improvement:** Adaptive settle delay — start at 500ms, increase if false-positive early cutoffs detected. Or detect tool-call output markers specifically and use a shorter delay for known tool patterns.
+
+---
+
+## OBS-13: PRD 010 agent exhibits the exact bug it's implementing a fix for
+
+**Severity:** IRONIC/INSIGHT — meta-validation of the problem statement
+**Observed in:** PRD 010 commission
+
+The agent commissioned to implement PTY auto-detection (which solves OBS-01 and OBS-02) itself: (a) consumed the initial prompt and went idle (OBS-02), (b) produced zero channel progress reports (OBS-01), (c) required a manual nudge to start working. This is the strongest possible evidence that these are systemic issues, not prompt-quality issues. The agent was given explicit channel instructions and a strong routing directive, and still didn't comply.
+
+**Implication:** Prompt-level solutions are definitively insufficient. Infrastructure-level detection (PRD 010) is the only reliable path.
+
+---
+
+## OBS-14: Cross-project commissioning works
+
+**Severity:** POSITIVE — extends bridge utility beyond pv-method
+**Observed in:** pv-silky portal scaffold (background agent, not bridge)
+
+A background agent successfully scaffolded a full Fastify + passkey auth + PWA portal in a different repo (pv-silky). The agent read the target project's CLAUDE.md, understood the existing stack, and produced clean code that built successfully. Cross-project commissioning is viable — agents can work in repos they haven't seen before if given clear instructions.
+
+**Note:** This was a native background agent, not a bridge commission. Bridge cross-project commissioning (setting `workdir` to a different repo) is untested but should work since the bridge just spawns Claude Code with a workdir parameter.
+
+---
+
 ## Summary: What works vs what needs fixing
 
 ### Works well
@@ -179,19 +216,19 @@ Both agents produced high-quality deliverables without any progress visibility. 
 - Stale detection timers
 - Multi-agent parallelism
 - Dashboard shows all sessions with real-time refresh
+- Worktree → PR workflow end-to-end (OBS-10)
+- GitHub MCP tools from within commissions
+- PR review → merge from parent agent (PRD 007 + AG-030)
+- Cross-project commissioning (OBS-14)
 
 ### Needs improvement (PRD candidates)
-- **Auto-channel reporting** — agents should report progress automatically, not manually
-- **Initial prompt activation** — agents stall after consuming initial prompt
-- **PTY parser replacement** — empty responses make bridge_prompt unreliable
-- **Path enforcement** — sub-agents commit out-of-scope files
-- **Retry on transient errors** — bridge_prompt connection refused
-
-### Validated
-- Worktree → PR workflow works end-to-end (OBS-10)
-- Agents produce high-quality work without visibility (OBS-11)
-- GitHub MCP tools work from within commissioned agents
+- **Auto-channel reporting** — agents never self-report, confirmed across 7 commissions (OBS-01) → PRD 010
+- **Initial prompt activation** — agents stall after initial prompt, confirmed across 7 commissions (OBS-02) → PRD 010
+- **PTY parser replacement** — empty responses make bridge_prompt unreliable (OBS-03)
+- **Settle delay latency** — 2s debounce per tool call compounds to minutes (OBS-12) → reduced to 1s
+- **Path enforcement** — sub-agents commit out-of-scope files (OBS-05, mitigated by card + skill)
+- **Retry on transient errors** — bridge_prompt connection refused (OBS-07)
 
 ### Unknown (pending validation)
-- PR review → merge cycle from parent agent
-- PTY auto-detection feasibility (OBS-09 — proposed, not tested)
+- PTY auto-detection feasibility (OBS-09 — PRD 010 drafted, implementation in progress)
+- Bridge cross-project commissioning (workdir set to different repo)
