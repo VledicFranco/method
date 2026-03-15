@@ -73,6 +73,19 @@ app.get('/health', async (_request, reply) => {
   });
 });
 
+// ---------- Pool Stats ----------
+
+app.get('/pool/stats', async (_request, reply) => {
+  const stats = pool.poolStats();
+  return reply.status(200).send({
+    max_sessions: stats.maxSessions,
+    active_count: stats.activeSessions,
+    dead_count: stats.deadSessions,
+    total_spawned: stats.totalSpawned,
+    uptime_ms: Date.now() - stats.startedAt.getTime(),
+  });
+});
+
 // ---------- Routes ----------
 
 /**

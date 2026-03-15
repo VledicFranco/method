@@ -1004,9 +1004,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_list": {
-        const res = await bridgeFetch(`${BRIDGE_URL}/sessions`);
+        const [sessionsRes, statsRes] = await Promise.all([
+          bridgeFetch(`${BRIDGE_URL}/sessions`),
+          bridgeFetch(`${BRIDGE_URL}/pool/stats`),
+        ]);
 
-        const bridgeSessions = await res.json() as Array<{
+        const bridgeSessions = await sessionsRes.json() as Array<{
           session_id: string;
           nickname: string;
           purpose: string | null;
@@ -1018,6 +1021,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           children?: string[];
           budget?: { max_depth: number; max_agents: number; agents_spawned: number };
         }>;
+
+        const poolStats = await statsRes.json() as {
+          max_sessions: number;
+          active_count: number;
+          dead_count: number;
+          total_spawned: number;
+          uptime_ms: number;
+        };
 
         const formatted = bridgeSessions.map(s => ({
           bridge_session_id: s.session_id,
@@ -1033,11 +1044,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           budget: s.budget ?? null,
         }));
 
-        const active = bridgeSessions.filter(s => s.status !== 'dead').length;
         return ok(JSON.stringify({
           sessions: formatted,
-          capacity: { active, max: bridgeSessions.length },
-          message: `${active} of ${bridgeSessions.length} sessions active`,
+          pool: poolStats,
+          message: `${poolStats.active_count} of ${poolStats.max_sessions} sessions active (${poolStats.total_spawned} total spawned)`,
         }, null, 2));
       }
 
