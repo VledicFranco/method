@@ -61,9 +61,11 @@ npm run bridge:stop    # Stop
 | `GET /health` | Health check — JSON with status, session count, uptime |
 | `POST /sessions` | Spawn a new agent session (supports parent/child chains, budgets) |
 | `POST /sessions/:id/prompt` | Send a prompt and wait for response |
-| `GET /sessions/:id/status` | Session status, metadata, chain info |
+| `GET /sessions/:id/status` | Session status, metadata, chain info (includes `stale` flag) |
 | `GET /sessions` | List all sessions |
 | `DELETE /sessions/:id` | Kill a session |
+| `GET /sessions/:id/stream` | SSE stream of raw PTY output (for xterm.js rendering) |
+| `GET /sessions/:id/output.html` | HTML page with embedded xterm.js terminal emulator |
 | `POST /sessions/:id/channels/progress` | Agent reports structured progress |
 | `POST /sessions/:id/channels/events` | Agent reports lifecycle events (with push notifications) |
 | `GET /sessions/:id/channels/progress` | Parent reads child progress (cursor-based) |
@@ -77,25 +79,48 @@ npm run bridge:stop    # Stop
 | `PORT` | `3456` | HTTP listen port |
 | `CLAUDE_BIN` | `claude` | Path to Claude Code binary |
 | `MAX_SESSIONS` | `10` | Max concurrent PTY sessions |
-| `SETTLE_DELAY_MS` | `2000` | Response completion debounce |
+| `SETTLE_DELAY_MS` | `1000` | Response completion debounce |
 | `DEAD_SESSION_TTL_MS` | `300000` | Auto-cleanup TTL for dead sessions (5 min) |
+| `STALE_CHECK_INTERVAL_MS` | `60000` | Interval for stale session detection (1 min) |
 | `CLAUDE_OAUTH_TOKEN` | *(none)* | Enables subscription usage meters in dashboard |
 | `USAGE_POLL_INTERVAL_MS` | `600000` | Subscription usage poll interval (10 min) |
 | `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base dir for Claude Code session logs |
+| `SSE_HEARTBEAT_MS` | `15000` | SSE keepalive interval for xterm.js stream |
+| `MAX_TRANSCRIPT_SIZE_BYTES` | `5242880` | Transcript buffer cap (5 MB) |
+| `PTY_WATCHER_ENABLED` | `true` | Enable PTY activity auto-detection (PRD 010) |
+| `PTY_WATCHER_PATTERNS` | `all` | Which observation patterns to track |
+| `PTY_WATCHER_RATE_LIMIT_MS` | `5000` | Rate limit for observation emissions |
+| `PTY_WATCHER_DEDUP_WINDOW_MS` | `10000` | Dedup window for repeated observations |
+| `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
+| `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |
+
+### Key Bridge Features
+
+**Split prompt delivery (EXP-OBS02):** Long initial prompts (> 500 chars) are automatically split into two messages — a short activation prompt first, then the full commission after the agent acknowledges. Prevents Claude Code from treating long instructions as passive context.
+
+**xterm.js terminal emulator:** Live PTY output streams as raw SSE data to browser-side xterm.js, which handles ANSI rendering (colors, cursor movement, box-drawing). Endpoints: `/sessions/:id/stream` (SSE) and `/sessions/:id/output.html` (HTML viewer).
+
+**PTY activity auto-detection (PRD 010):** Per-session watcher detects structured patterns in PTY output (tool calls, git commits, test results, file operations, build results, errors, idle states). Observations auto-emit to channels with rate limiting and dedup. On session exit, auto-generates a retrospective YAML at `.method/retros/`. Configurable per-session via `pty_watcher` metadata key.
+
+**Persistent sessions (PRD 011):** Sessions spawned with `persistent=true` skip stale detection and auto-kill. For long-running background agents or infrastructure that shouldn't be auto-terminated.
+
+**Orphaned process cleanup:** `npm run bridge:stop` kills both the bridge process and any orphaned `claude.exe` processes. Graceful shutdown includes a 500ms PTY cleanup delay and a 5s force-exit timeout.
+
+**Connection retry:** All MCP proxy tools retry once (after 1s) on connection errors to the bridge, handling transient failures automatically.
 
 ### MCP Proxy Tools
 
-The MCP server exposes 9 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`).
+The MCP server exposes 9 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`). All tools include automatic retry (1 retry after 1s on connection error).
 
 **Session management:**
-- `bridge_spawn` — spawn a session (auto-correlates methodology session ID)
+- `bridge_spawn` — spawn a session (auto-correlates methodology session ID; supports `persistent` flag)
 - `bridge_prompt` — send prompt, wait for response
 - `bridge_kill` — kill a session
-- `bridge_list` — list sessions with metadata
+- `bridge_list` — list sessions with metadata (includes `stale` flag per session)
 
 **Visibility channels (PRD 008):**
 - `bridge_progress` — report progress (step transitions, status updates)
-- `bridge_event` — report lifecycle events (completed, error, escalation)
+- `bridge_event` — report lifecycle events (completed, error, escalation, stale)
 - `bridge_read_progress` — read child's progress (cursor-based)
 - `bridge_read_events` — read child's events (cursor-based)
 - `bridge_all_events` — aggregated events across all sessions
