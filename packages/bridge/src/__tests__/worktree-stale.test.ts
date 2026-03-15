@@ -173,6 +173,7 @@ function createStaleTestPool(maxSessions = 5) {
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
+        waiting_for: null,
       };
     },
 
@@ -201,6 +202,7 @@ function createStaleTestPool(maxSessions = 5) {
         chain: sessionChains.get(sessionId) ?? DEFAULT_CHAIN,
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
+        waiting_for: null,
       }));
     },
 

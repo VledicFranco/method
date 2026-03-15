@@ -349,6 +349,9 @@ body::after {
 .status-working { color: var(--solar); background: var(--solar-dim); }
 .status-working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
 
+.status-waiting { color: var(--nebular); background: rgba(155,127,212,.10); }
+.status-waiting::before { background: var(--nebular); animation: pulse 2s ease-in-out infinite; }
+
 .status-dead { color: var(--red); background: var(--red-dim); }
 .status-dead::before { background: var(--red); opacity: .5; }
 
@@ -748,6 +751,11 @@ body::after {
             <td class="mono">working</td>
             <td><span class="status status-working">working</span></td>
             <td style="color: var(--dim); font-size: .82rem;">Processing prompt, output pending</td>
+          </tr>
+          <tr>
+            <td class="mono">waiting</td>
+            <td><span class="status status-waiting">waiting</span></td>
+            <td style="color: var(--dim); font-size: .82rem;">Idle, waiting for sub-agent to complete</td>
           </tr>
           <tr>
             <td class="mono">dead</td>

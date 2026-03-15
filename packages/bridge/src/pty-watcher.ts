@@ -14,7 +14,7 @@ import { appendMessage, type SessionChannels } from './channels.js';
 
 const ANSI_RE = /\x1B\[[0-9;]*[a-zA-Z]/g;
 
-function stripAnsiCodes(text: string): string {
+export function stripAnsiCodes(text: string): string {
   return text.replace(ANSI_RE, '');
 }
 
