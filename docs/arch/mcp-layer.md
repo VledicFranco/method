@@ -6,7 +6,7 @@
 
 1. Resolves filesystem paths (see [path-resolution.md](path-resolution.md))
 2. Creates session managers via `createSessionManager()` and `createMethodologySessionManager()`
-3. Defines 18 MCP tools with Zod input schemas
+3. Defines 23 MCP tools with Zod input schemas
 4. Maps each tool call to a core function
 5. Formats responses and catches errors
 
@@ -34,6 +34,11 @@
 | `bridge_prompt` | `{ bridge_session_id, prompt, timeout_ms?, settle_delay_ms? }` | HTTP proxy | PRD 005 Phase 1+3 |
 | `bridge_kill` | `{ bridge_session_id }` | HTTP proxy | PRD 005 Phase 1 |
 | `bridge_list` | `{}` | HTTP proxy | PRD 005 Phase 1 |
+| `bridge_progress` | `{ bridge_session_id: string, type: string, content: object }` | HTTP proxy | PRD 008 — agent reports progress |
+| `bridge_event` | `{ bridge_session_id: string, type: string, content: object }` | HTTP proxy | PRD 008 — agent reports lifecycle events |
+| `bridge_read_progress` | `{ bridge_session_id: string, since_sequence?: number }` | HTTP proxy | PRD 008 — parent reads child progress |
+| `bridge_read_events` | `{ bridge_session_id: string, since_sequence?: number }` | HTTP proxy | PRD 008 — parent reads child events |
+| `bridge_all_events` | `{ since_sequence?: number, filter_type?: string }` | HTTP proxy | PRD 008 — cross-session event aggregation |
 
 `session_id` is optional on all tools (P3). When omitted, the MCP layer passes `"__default__"` to both the SessionManager and MethodologySessionManager. See [state-model.md](state-model.md) for session design.
 
@@ -51,6 +56,18 @@ PRD 005 Phase 1 introduces four bridge proxy tools (`bridge_spawn`, `bridge_prom
 **Error pattern:** All `fetch` errors are wrapped with a `"Bridge error:"` prefix to distinguish transport failures from methodology domain errors. This lets the orchestrating agent differentiate between "the bridge is down" and "the methodology logic rejected the input."
 
 **Design rationale:** The proxy tools follow DR-04's spirit (thin wrappers) but the wrapped target is HTTP instead of core. There is no compile-time dependency between `@method/mcp` and `@method/bridge` — communication is HTTP only. The MCP server does not import any bridge types or modules.
+
+The 5 channel tools added by PRD 008 follow the same HTTP proxy pattern as the existing 4 bridge tools.
+
+### Channel Tools (PRD 008)
+
+PRD 008 adds 5 channel proxy tools for agent visibility. These follow the same HTTP proxy pattern as the existing bridge tools:
+
+- **Agent-side:** `bridge_progress` and `bridge_event` POST messages to bridge channel endpoints
+- **Parent-side:** `bridge_read_progress` and `bridge_read_events` read messages with consumption cursors
+- **Council/cross-cutting:** `bridge_all_events` aggregates events across all sessions
+
+Auto-progress: The `step_advance` handler checks for `BRIDGE_URL` and `BRIDGE_SESSION_ID` environment variables. When present (i.e., agent is running in a bridge session), it automatically POSTs `step_completed` and `step_started` messages to the bridge progress endpoint after each step transition. This gives methodology-driven agents free progress reporting.
 
 ## Error Handling
 
