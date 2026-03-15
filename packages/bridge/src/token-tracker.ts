@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 export type SessionTokenUsage = {
@@ -107,15 +107,19 @@ export function createTokenTracker(config: {
  * Derive the Claude Code project directory name from a workdir path.
  *
  * Claude Code stores project data under ~/.claude/projects/ in directories
- * named after the absolute path with path separators replaced by dashes.
- * e.g. /home/user/project → -home-user-project
+ * named after the absolute path with separators replaced:
+ *   - Path separators (/ and \) become -
+ *   - Drive letter colon becomes -- (e.g. C: → C--)
+ *   - Leading separator is collapsed
  *
- * On Windows: C:\Users\user\project → C--Users-user-project
+ * Examples:
+ *   /home/user/project → -home-user-project
+ *   C:\Users\user\project → C--Users-user-project
  */
 function deriveProjectDirName(workdir: string): string {
   const abs = resolve(workdir);
-  // Replace both / and \ with -, collapse leading separator
-  return abs.replace(/[\\/]/g, '-').replace(/^-/, '');
+  // Replace colon with --, then separators with -, collapse leading separator
+  return abs.replace(/:/g, '-').replace(/[\\/]/g, '-').replace(/^-/, '');
 }
 
 /**
@@ -155,20 +159,32 @@ function findProjectDir(sessionsDir: string, workdir: string): string | null {
 }
 
 /**
- * Find the most recent JSONL session file under the project's sessions/ dir
- * that was created after startedAt.
+ * Find the most recent JSONL session file in the project directory.
+ *
+ * Claude Code stores JSONL files directly in the project directory
+ * (not in a sessions/ subdirectory). Files are named {uuid}.jsonl.
+ * We pick the most recently modified one.
  */
 function findSessionFile(projectDir: string, _startedAt: Date): string | null {
   try {
-    const sessionsPath = join(projectDir, 'sessions');
-    if (!existsSync(sessionsPath)) return null;
+    const files = readdirSync(projectDir)
+      .filter((f) => f.endsWith('.jsonl'));
 
-    const files = readdirSync(sessionsPath)
-      .filter((f) => f.endsWith('.jsonl'))
-      .sort()
-      .reverse(); // Most recent first (filenames typically include timestamps)
+    if (files.length === 0) return null;
 
-    return files.length > 0 ? join(sessionsPath, files[0]) : null;
+    // Sort by modification time, most recent first
+    const withStats = files.map((f) => {
+      const fullPath = join(projectDir, f);
+      try {
+        const stat = statSync(fullPath);
+        return { path: fullPath, mtime: stat.mtimeMs };
+      } catch {
+        return { path: fullPath, mtime: 0 };
+      }
+    });
+    withStats.sort((a, b) => b.mtime - a.mtime);
+
+    return withStats[0].path;
   } catch {
     return null;
   }
@@ -200,7 +216,9 @@ function parseSessionTokens(
     for (const line of lines) {
       try {
         const event = JSON.parse(line) as Record<string, unknown>;
-        const usage = event.usage as Record<string, unknown> | undefined;
+        // Usage can be at top level or nested under message.usage
+        const msg = event.message as Record<string, unknown> | undefined;
+        const usage = (event.usage ?? msg?.usage) as Record<string, unknown> | undefined;
         if (!usage || typeof usage !== 'object') continue;
 
         inputTokens += asNumber(usage.input_tokens);
