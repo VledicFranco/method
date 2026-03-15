@@ -6,7 +6,7 @@
 
 1. Resolves filesystem paths (see [path-resolution.md](path-resolution.md))
 2. Creates session managers via `createSessionManager()` and `createMethodologySessionManager()`
-3. Defines 14 MCP tools with Zod input schemas
+3. Defines 18 MCP tools with Zod input schemas
 4. Maps each tool call to a core function
 5. Formats responses and catches errors
 
@@ -30,8 +30,25 @@
 | `methodology_route` | `{ challenge_predicates?: object, session_id?: string }` | `routeMethodology(REGISTRY, methSession, predicates)` | PRD 004 Phase 2 |
 | `methodology_load_method` | `{ method_id: string, session_id?: string }` | `loadMethodInSession(REGISTRY, methSession, mid, session, sid)` | PRD 004 Phase 2 |
 | `methodology_transition` | `{ completion_summary?: string, challenge_predicates?: object, session_id?: string }` | `transitionMethodology(REGISTRY, methSession, session, summary, predicates)` | PRD 004 Phase 3 |
+| `bridge_spawn` | `{ workdir, spawn_args?, initial_prompt?, session_id? }` | HTTP proxy | PRD 005 Phase 1 |
+| `bridge_prompt` | `{ bridge_session_id, prompt, timeout_ms? }` | HTTP proxy | PRD 005 Phase 1 |
+| `bridge_kill` | `{ bridge_session_id }` | HTTP proxy | PRD 005 Phase 1 |
+| `bridge_list` | `{}` | HTTP proxy | PRD 005 Phase 1 |
 
 `session_id` is optional on all tools (P3). When omitted, the MCP layer passes `"__default__"` to both the SessionManager and MethodologySessionManager. See [state-model.md](state-model.md) for session design.
+
+## Bridge Proxy Tools
+
+PRD 005 Phase 1 introduces four bridge proxy tools (`bridge_spawn`, `bridge_prompt`, `bridge_kill`, `bridge_list`). These are thin HTTP transport adapters, NOT core function wrappers. They proxy requests to the bridge HTTP API and relay responses back through MCP.
+
+**Configuration:**
+- `BRIDGE_URL` environment variable (default: `http://localhost:3456`)
+
+**HTTP client:** Node.js built-in `fetch` (Node 18+). No additional HTTP library dependency.
+
+**Error pattern:** All `fetch` errors are wrapped with a `"Bridge error:"` prefix to distinguish transport failures from methodology domain errors. This lets the orchestrating agent differentiate between "the bridge is down" and "the methodology logic rejected the input."
+
+**Design rationale:** The proxy tools follow DR-04's spirit (thin wrappers) but the wrapped target is HTTP instead of core. There is no compile-time dependency between `@method/mcp` and `@method/bridge` — communication is HTTP only. The MCP server does not import any bridge types or modules.
 
 ## Error Handling
 
@@ -47,6 +64,15 @@ try {
 ```
 
 No error codes, no error taxonomies. The message is the interface. The agent reads it and acts.
+
+### Dual Error Model (PRD 005)
+
+With the addition of bridge proxy tools, the MCP layer has two distinct error paths:
+
+- **Methodology tools:** catch core function errors → return `{ isError: true, text: message }`
+- **Bridge proxy tools:** catch `fetch` errors → wrap with `"Bridge error:"` prefix → return `{ isError: true, text: message }`
+
+The prefix convention lets agents distinguish transport failures (bridge unavailable, network timeout) from domain errors (invalid session ID, methodology not found) without needing structured error codes.
 
 ## Response Formatting
 
