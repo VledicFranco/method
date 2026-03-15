@@ -232,6 +232,65 @@ body {
 }
 .nav-link:hover { color: var(--bio); }
 .nav-sep { color: var(--muted); font-size: .7rem; }
+
+/* ── MOBILE RESPONSIVE ─────────────────────────────── */
+@media (max-width: 768px) {
+  .agent-banner {
+    padding: .75rem 1rem;
+  }
+
+  .banner-nickname {
+    font-size: 1.1rem;
+  }
+
+  .banner-meta {
+    gap: .75rem;
+    font-size: .6rem;
+  }
+
+  .banner-meta span {
+    white-space: normal;
+  }
+
+  .banner-top {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+
+  .banner-id {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .input-bar {
+    padding: .5rem .75rem;
+  }
+
+  .input-bar input {
+    font-size: .9rem;
+    padding: .65rem .75rem;
+    min-height: 44px;
+  }
+
+  .input-bar button {
+    font-size: .78rem;
+    padding: .65rem 1.25rem;
+    min-height: 44px;
+  }
+
+  .nav-bar {
+    padding: .5rem 1rem;
+  }
+
+  .scroll-lock-btn {
+    bottom: 5rem;
+    right: .75rem;
+    min-height: 44px;
+    min-width: 44px;
+    display: none;
+    padding: .4rem .75rem;
+  }
+}
   </style>
 </head>
 <body>
