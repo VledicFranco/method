@@ -788,3 +788,57 @@ log:
         - "AG-027: CLAUDE.md refresh (P0)"
         - "AG-028: Process PRD 008 retro (P0)"
         - "AG-029: Commission PRD 006 (P0)"
+
+    - id: SESSION-020
+      date: "2026-03-15"
+      type: execution
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Execute AG-027/028/029 from SESSION-019 priority order"
+
+      decisions:
+        - id: D-031
+          item: "AG-027/028/029 execution and PRD 006 bridge commission"
+          decision: >
+            All three items completed in sequence: (1) AG-027 CLAUDE.md refreshed
+            with 23 tools, channels, sub-agent guidelines, governance. (2) AG-028
+            PRD 008 retro processed — GC-P2SD-005 resolved via 3-point fix (card,
+            skill, CLAUDE.md). (3) AG-029 PRD 006 commissioned via bridge — first
+            successful bridge commission with PRD 008 visibility. Agent implemented
+            worktree isolation + stale detection (C2/C4). 154 tests, all passing.
+            Dashboard hotfix applied for channel panel overflow.
+          status: decided
+          for: >
+            Bridge commission worked end-to-end: spawn → methodology loading →
+            M1-IMPL step progression → implementation → tests → commit → completion
+            event. PRD 008 channels were critical — PTY parser still lossy but
+            channels provided full visibility. Agent needed one course correction
+            (loaded M1-COUNCIL instead of M1-IMPL initially).
+          against: "None."
+          essence_check: >
+            PRD 006 C2/C4 makes the bridge usable for parallel agent work
+            (worktree isolation) and reliable (stale detection). Serves purpose
+            directly. Faithful.
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: -3
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes in agent's work" }
+          - { process: PR-03, followed: false, note: "Agent did not produce retro — need to check .method/retros/" }
+        process_improvement_signal: >
+          Bridge agent needed explicit nudge to use channel tools and course correction
+          on method routing. Commission prompts should include: (1) explicit instruction
+          to use bridge_progress/bridge_event, (2) stronger routing directive (M1-IMPL
+          not M1-COUNCIL).
+        member_adequacy: true
+
+      artifacts_produced:
+        - "PRD 006 C2/C4 implementation (commit 470ac56)"
+        - "Dashboard overflow fix (commit 237a2c7)"
+        - "CLAUDE.md refresh, sub-agent scope fix, evolution ledger update"
+
+      next_agenda_items:
+        - "AG-026: Draft ORGANON-PROTO (P1, deferred from SESSION-019)"
+        - "PRD 006 remaining: C1 parent-child chains already done, C3 commission-to-bridge already done"
+        - "Update commission skill with bridge agent learnings (channel usage, routing directive)"

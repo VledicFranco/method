@@ -6,13 +6,7 @@ agenda:
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
-  p0_immediate:
-    - id: AG-029
-      item: "Commission PRD 006 (recursive orchestration) — now unblocked by PRD 008"
-      owner: council
-      status: open
-      added_in: SESSION-019
-      note: "D-027 dependency chain satisfied. Use bridge WITH visibility."
+  p0_immediate: []
 
   p1_next:
     - id: AG-026
@@ -94,6 +88,7 @@ agenda:
     - { id: AG-025, resolved_in: SESSION-018, note: "PRD 008 MVP implemented — 5 commits, 138 tests, 8/8 criteria met" }
     - { id: AG-027, resolved_in: SESSION-019, note: "CLAUDE.md refreshed — 23 tools, channels, sub-agent guidelines, governance" }
     - { id: AG-028, resolved_in: SESSION-019, note: "GC-P2SD-005 resolved — 3-point fix: card role_notes + commission skill + CLAUDE.md" }
+    - { id: AG-029, resolved_in: SESSION-019, note: "PRD 006 C2/C4 implemented via bridge commission — worktree isolation + stale detection" }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }
