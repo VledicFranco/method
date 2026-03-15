@@ -15,10 +15,12 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 9 | [The Retrospective Protocol](09-retrospective-protocol.md) | Everyone | Self-improvement loop, retro schema, aggregation, thresholds, empirical results |
 | 10 | [Bridge Orchestration](10-bridge-orchestration.md) | Agent operators | Using the bridge + PRD 004 tools for multi-method sessions with sub-agents |
 | 11 | [Protocols and Method Discovery](11-protocols-and-discovery.md) | Method designers | How informal practices become formal methods — the R&D pipeline |
+| 12 | [The Steering Council](12-steering-council.md) | Project leads | Persistent governance council, essence guardianship, session structure |
 
 ## How to read these guides
 
 - **Using the system?** Start with Guides 1-2 (concepts), then 4 or 5 (whichever methodology you're using), then 6 (project cards).
 - **Running agents?** Read Guide 8 (prompting) after Guides 1-2. It includes a template and empirical evidence.
-- **Designing methods?** Read all guides in order, especially 3 and 7.
+- **Governing a project?** Read Guide 12 (steering council) after Guides 1-2 and 6 (project cards).
+- **Designing methods?** Read all guides in order, especially 3, 7, and 11.
 - **Just curious?** Guide 1 is self-contained and gives you the core idea in 5 minutes.

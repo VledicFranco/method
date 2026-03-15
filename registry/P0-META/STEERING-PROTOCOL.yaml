@@ -362,3 +362,64 @@ protocol:
       Council decisions → work challenges → methodology execution → retrospectives
       → council reviews retros → council adjusts direction. This is the full
       governance-execution-feedback cycle.
+
+  # ═══════════════════════════════════════════════════════
+  # PART 8 — PROMOTION PATH
+  # ═══════════════════════════════════════════════════════
+
+  promotion:
+    current_stage: draft
+    lifecycle: "Follows M2-MDIS protocol lifecycle: draft → trial → evaluate → promote"
+    reference: "registry/P0-META/M2-MDIS/M2-MDIS.yaml"
+
+    stages:
+      - name: draft
+        status: current
+        criteria_to_advance: >
+          Protocol spec complete. At least one project has initialized a council.
+          STATUS: MET (pv-method SESSION-001 completed 2026-03-14).
+
+      - name: trial
+        description: "Protocol enforced on 2+ projects. Sessions run, decisions captured, essence checks performed."
+        criteria_to_advance:
+          all_required:
+            - metric: sessions_run
+              threshold: ">= 5 sessions across 2+ projects"
+              rationale: "Validates the 5-step structure works repeatably in different contexts"
+            - metric: decisions_produced
+              threshold: ">= 10 decisions logged in LOG.yaml"
+              rationale: "Shows the council produces actionable output, not just discussion"
+            - metric: essence_checks
+              threshold: ">= 3 essence checks that caught real concerns"
+              rationale: "The primary duty must demonstrably add value"
+            - metric: agenda_discipline
+              threshold: "Net agenda size <= initial size after 5 sessions"
+              rationale: "The council closes items, doesn't just generate them"
+            - metric: member_swap
+              threshold: ">= 1 successful swap with documented rationale"
+              rationale: "The evolution mechanism works"
+            - metric: cross_project_message
+              threshold: ">= 1 message sent and received between councils"
+              rationale: "The comms channel works"
+
+      - name: promoted
+        description: "Protocol promoted based on trial evidence."
+        possible_outcomes:
+          - outcome: compile_to_methodology
+            when: "The council needs a formal transition function (delta_STEER) with compiled methods for session types"
+            what_happens: "M1-MDES compiles P4-STEER as Phi = (D_STEER, delta_STEER, O_STEER)"
+          - outcome: promote_to_axiom
+            when: "Every project should have a council (like every session should have a retrospective)"
+            what_happens: "Ax-STEER added to all methodology domain theories"
+          - outcome: keep_as_protocol
+            when: "The protocol structure is sufficient — formalization would add overhead without value"
+            what_happens: "Protocol remains in P0-META as a recommended practice"
+
+    upgrade_triggers:
+      description: "Conditions that should prompt a protocol version revision (not promotion — refinement within current stage)"
+      triggers:
+        - "3+ sessions report the same friction with the 5-step structure"
+        - "A session fails to produce decisions (the structure isn't working)"
+        - "Essence guardianship is consistently skipped or feels perfunctory"
+        - "The agenda grows for 3 consecutive sessions (governance overhead exceeds value)"
+        - "A new project type reveals that the protocol doesn't cover its governance needs"
