@@ -627,4 +627,42 @@ log:
 
       next_agenda_items:
         - "AG-024: Draft PRD 008 (Agent Visibility and Communication)"
+
+    - id: SESSION-016
+      date: "2026-03-14"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Strategic review of all open PRDs and execution strategy"
+
+      decisions:
+        - id: D-027
+          item: "PRD execution priority and approach"
+          decision: >
+            Priority: (1) PRD 008 MVP (progress + events only, via manual commission),
+            (2) PRD 006 (via bridge WITH PRD 008 visibility), (3) PRD 007 (PO independent).
+            Do NOT use bridge for complex PRDs until PRD 008 ships.
+            PRD 008 MVP scope: 2 of 4 components (progress channels + event notifications).
+            Defer result handoff + heartbeat.
+          status: decided
+          for: >
+            Evidence: bridge-spawned PRD 006 agent produced docs not code, couldn't
+            monitor or redirect. Manual commission consistently works (PRDs 002-005).
+            Dependency: 008 → 006 → 007.
+          against: "None — unanimous. Orion accepts MVP scope."
+          essence_check: "PRD 008 makes bridge USABLE, not just spawnable. See first, then automate. Faithful."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: 0
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+        process_improvement_signal: "Commission via bridge failed for complex PRDs — need to add this as a known limitation to the commission skill and Guide 8."
+        member_adequacy: true
+
+      artifacts_produced:
+        - "Strategic execution plan: PRD 008 MVP → PRD 006 → PRD 007"
+
+      next_agenda_items:
+        - "AG-025: Commission PRD 008 MVP implementation (manual, not bridge)"
         - "AG-007: CLAUDE.md for pv-method — promote to P0"
