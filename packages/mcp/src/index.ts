@@ -27,6 +27,19 @@ const REGISTRY = resolve(ROOT, "registry");
 const THEORY = resolve(ROOT, "theory");
 const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 
+async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    if (e instanceof TypeError) {
+      // Connection error — retry once after 1s
+      await new Promise(r => setTimeout(r, 1000));
+      return await fetch(url, init);
+    }
+    throw e;
+  }
+}
+
 // Session manager — isolates state by session_id
 const sessions = createSessionManager();
 const methodologySessions = createMethodologySessionManager();
@@ -733,7 +746,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
 
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions`, {
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -792,7 +805,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
 
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/prompt`, {
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/prompt`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -827,7 +840,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
 
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ worktree_action }),
@@ -855,7 +868,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "bridge_list": {
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions`);
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions`);
 
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({ error: res.statusText }));
@@ -911,7 +924,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
 
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress`, {
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: progressType, content: progressContent ?? {}, sender: bridge_session_id }),
@@ -944,7 +957,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
 
         try {
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events`, {
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: eventType, content: eventContent ?? {}, sender: bridge_session_id }),
@@ -977,7 +990,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         try {
           const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress${qs}`);
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress${qs}`);
 
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({ error: res.statusText }));
@@ -1002,7 +1015,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         try {
           const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
-          const res = await fetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events${qs}`);
+          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events${qs}`);
 
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({ error: res.statusText }));
@@ -1030,7 +1043,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           if (since_sequence !== undefined) params.set('since_sequence', String(since_sequence));
           if (filter_type) params.set('filter_type', filter_type);
           const qs = params.toString() ? `?${params.toString()}` : '';
-          const res = await fetch(`${BRIDGE_URL}/channels/events${qs}`);
+          const res = await fetchWithRetry(`${BRIDGE_URL}/channels/events${qs}`);
 
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({ error: res.statusText }));
