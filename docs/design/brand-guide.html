@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidtecci — Brand Identity Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+
+/* ═══════════════════════════════════════════════════════════
+   VIDTECCI BRAND GUIDE — Living Reference Document
+   Visual Compass v1.1 applied to a reference format
+   ═══════════════════════════════════════════════════════════ */
+:root {
+    /* Core palette */
+    --void:       #050910;
+    --abyss:      #0b1c2b;
+    --ocean:      #082030;
+    --surface:    #0f2235;
+    --bio:        #00c9a7;
+    --bio-bright: #00e5cc;
+    --bio-dim:    #1a6b5a;
+    --warmth:     #e8a45a;
+    --nebular:    #7b5fb5;
+    --stellar:    #f0f4f8;
+    --dim:        #8a9bb0;
+    --muted:      #4a5a6a;
+
+    /* Type */
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Consolas', monospace;
+
+    /* Type scale — Perfect Fourth (1.333) base 16px */
+    --text-xs:    0.75rem;   /* 12px */
+    --text-sm:    0.875rem;  /* 14px */
+    --text-base:  1rem;      /* 16px */
+    --text-md:    1.125rem;  /* 18px */
+    --text-lg:    1.313rem;  /* 21px */
+    --text-xl:    1.75rem;   /* 28px */
+    --text-2xl:   2.313rem;  /* 37px */
+    --text-3xl:   3.125rem;  /* 50px */
+    --text-4xl:   4.188rem;  /* 67px */
+
+    /* Easing */
+    --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-circ:  cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Sidebar width */
+    --sidebar: 220px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    background: var(--void);
+    color: var(--stellar);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    display: grid;
+    grid-template-columns: var(--sidebar) 1fr;
+    min-height: 100vh;
+}
+
+/* ── Grain ───────────────────────────────────────────────── */
+body::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999; opacity: .04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 300px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR NAVIGATION
+   ══════════════════════════════════════════════════════════ */
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: rgba(11, 28, 43, 0.95);
+    border-right: 1px solid rgba(0, 201, 167, 0.07);
+    padding: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+}
+
+.sidebar-logo {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    color: var(--stellar);
+    padding: 0 1.5rem 1.5rem;
+    border-bottom: 1px solid rgba(0, 201, 167, 0.07);
+    margin-bottom: 1.5rem;
+}
+
+.sidebar-logo span {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bio);
+    opacity: 0.7;
+    margin-top: 0.2rem;
+}
+
+.nav-section-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 1.5rem;
+    margin-bottom: 0.4rem;
+    margin-top: 1.25rem;
+}
+
+.nav-link {
+    display: block;
+    padding: 0.4rem 1.5rem;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--dim);
+    text-decoration: none;
+    transition: color 0.2s, background 0.2s;
+    border-left: 2px solid transparent;
+    line-height: 1.4;
+}
+.nav-link:hover { color: var(--stellar); background: rgba(0,201,167,.04); }
+.nav-link.active { color: var(--bio); border-left-color: var(--bio); background: rgba(0,201,167,.05); }
+
+.sidebar-version {
+    margin-top: auto;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(0,201,167,.07);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN CONTENT
+   ══════════════════════════════════════════════════════════ */
+.main {
+    min-width: 0;
+    padding: 0;
+}
+
+.guide-section {
+    padding: 5rem 4rem;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+}
+
+.guide-section:last-child { border-bottom: none; }
+
+/* Alternating section backgrounds */
+.guide-section:nth-child(even) { background: rgba(11,28,43,.3); }
+
+/* Section header */
+.section-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bio);
+    opacity: 0.75;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.section-title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+.section-lead {
+    font-size: var(--text-md);
+    color: var(--dim);
+    line-height: 1.65;
+    max-width: 640px;
+    margin-bottom: 3rem;
+}
+
+.divider { height: 1px; background: linear-gradient(90deg, rgba(0,201,167,.2), transparent); margin: 3rem 0; }
+
+/* ── Typography utilities ────────────────────────────────── */
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+.bio     { color: var(--bio); }
+.warmth  { color: var(--warmth); }
+.nebular { color: var(--nebular); }
+.dim     { color: var(--dim); }
+.mono    { font-family: var(--font-mono); }
+
+/* ── Two-col grid ────────────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; }
+
+/* ── Subsection heading ──────────────────────────────────── */
+.sub-heading {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--stellar);
+    margin-bottom: 1.25rem;
+    margin-top: 2.5rem;
+    letter-spacing: -0.015em;
+}
+.sub-heading:first-child { margin-top: 0; }
+
+/* ── Spec table ──────────────────────────────────────────── */
+.spec-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem; }
+.spec-table th { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bio); text-align: left; padding: 0.6rem 1rem; border-bottom: 1px solid rgba(0,201,167,.12); }
+.spec-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--dim); vertical-align: top; }
+.spec-table td:first-child { color: var(--stellar); font-family: var(--font-mono); font-size: 0.8rem; }
+.spec-table tr:last-child td { border-bottom: none; }
+.spec-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── Do/Don't ────────────────────────────────────────────── */
+.do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+.do-block, .dont-block { padding: 1.5rem; border-radius: 1px; }
+.do-block   { background: rgba(0,201,167,.04); border: 1px solid rgba(0,201,167,.12); }
+.dont-block { background: rgba(232,164,90,.04); border: 1px solid rgba(232,164,90,.12); }
+.do-label   { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); margin-bottom: .75rem; }
+.dont-label { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: .14em; text-transform: uppercase; color: var(--warmth); margin-bottom: .75rem; }
+.do-block   p, .dont-block p { font-size: .875rem; color: var(--dim); line-height: 1.6; }
+.do-block   strong { color: var(--stellar); }
+.dont-block strong { color: var(--stellar); }
+
+
+/* ══════════════════════════════════════════════════════════
+   HERO SECTION
+   ══════════════════════════════════════════════════════════ */
+.guide-hero {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    padding: 6rem 4rem;
+    background: var(--void);
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(0,201,167,.08);
+}
+
+.guide-hero-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 60% 50%, rgba(0,201,167,.06), transparent);
+}
+
+.guide-hero-content { position: relative; z-index: 1; }
+
+.guide-hero-wordmark {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 10vw, 8rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 0 60px rgba(0,201,167,.2), 0 0 120px rgba(0,201,167,.08);
+}
+
+.guide-hero-sub {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bio);
+    opacity: .8;
+    margin-bottom: 0.6rem;
+}
+
+.guide-hero-desc {
+    font-size: var(--text-md);
+    color: var(--dim);
+    max-width: 520px;
+    line-height: 1.65;
+    margin-top: 1.5rem;
+}
+
+.guide-meta {
+    margin-top: 2.5rem;
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.meta-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.meta-value { font-size: 0.875rem; color: var(--dim); }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 1 BRAND NARRATIVE
+   ══════════════════════════════════════════════════════════ */
+.brand-thesis {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--stellar);
+    border-left: 2px solid var(--bio);
+    padding-left: 1.75rem;
+    margin-bottom: 2.5rem;
+}
+
+.brand-thesis span { color: var(--bio); }
+
+.personality-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem; }
+.personality-card {
+    background: var(--abyss);
+    border: 1px solid rgba(255,255,255,.05);
+    border-top: 2px solid var(--bio);
+    padding: 1.5rem;
+    border-radius: 1px;
+}
+.personality-card.warm  { border-top-color: var(--warmth); }
+.personality-card.neb   { border-top-color: var(--nebular); }
+.personality-card.dim   { border-top-color: var(--muted); }
+.personality-word { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--stellar); margin-bottom: .5rem; }
+.personality-yes  { font-size: .82rem; color: var(--bio); margin-bottom: .2rem; }
+.personality-no   { font-size: .82rem; color: rgba(138,155,176,.5); }
+.personality-yes::before { content: '↑ '; }
+.personality-no::before  { content: '↓ '; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 2 WORDMARK
+   ══════════════════════════════════════════════════════════ */
+.wordmark-display {
+    background: var(--abyss);
+    border: 1px solid rgba(0,201,167,.08);
+    padding: 4rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.wordmark-display.dark-bg  { background: var(--void); }
+.wordmark-display.light-bg { background: #f0f4f8; }
+
+.wordmark-text {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.wordmark-text.on-dark  { color: #f0f4f8; }
+.wordmark-text.on-light { color: #050910; }
+.wordmark-text.mono-dark  { color: #050910; }
+.wordmark-text.mono-white { color: #f0f4f8; }
+
+.display-label {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.dont-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.dont-item {
+    background: var(--abyss);
+    border: 1px solid rgba(232,164,90,.08);
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+}
+.dont-item::after {
+    content: '✕';
+    position: absolute; top: .6rem; right: .75rem;
+    font-size: .75rem; color: var(--warmth); opacity: .6;
+}
+.dont-item .dont-wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: rgba(138,155,176,.4);
+    letter-spacing: -0.02em;
+    display: block;
+    margin-bottom: .4rem;
+}
+.dont-item p { font-size: .72rem; color: var(--muted); font-family: var(--font-mono); }
+
+/* Clear space diagram */
+.clearspace-demo {
+    background: var(--abyss);
+    border: 1px solid rgba(0,201,167,.08);
+    padding: 3rem;
+    text-align: center;
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+.clearspace-inner {
+    display: inline-block;
+    position: relative;
+    border: 1px dashed rgba(0,201,167,.2);
+    padding: 1.5rem 2rem;
+}
+.clearspace-inner::before, .clearspace-inner::after {
+    content: '← X →';
+    font-family: var(--font-mono); font-size: .6rem; color: var(--bio); opacity: .5;
+    position: absolute; left: 50%; transform: translateX(-50%);
+}
+.clearspace-inner::before { top: -.8rem; content: '↑ X'; }
+.clearspace-inner::after  { bottom: -.8rem; content: '↓ X'; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 3 COLOR SYSTEM
+   ══════════════════════════════════════════════════════════ */
+.color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+
+.swatch {
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    position: relative;
+}
+
+.swatch-color {
+    height: 80px;
+    border-radius: 1px;
+    margin-bottom: .6rem;
+    transition: transform .2s var(--ease-out), box-shadow .2s;
+}
+
+.swatch:hover .swatch-color { transform: scale(1.02); }
+
+.swatch-name   { font-family: var(--font-display); font-size: .82rem; font-weight: 500; color: var(--stellar); margin-bottom: .1rem; }
+.swatch-hex    { font-family: var(--font-mono); font-size: .72rem; color: var(--dim); }
+.swatch-role   { font-family: var(--font-mono); font-size: .62rem; color: var(--muted); margin-top: .15rem; }
+.swatch-copied { position: absolute; top: .5rem; left: .5rem; background: var(--bio); color: var(--void); font-family: var(--font-mono); font-size: .62rem; padding: .15rem .4rem; border-radius: 2px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.swatch.just-copied .swatch-copied { opacity: 1; }
+
+/* Gradient swatches */
+.gradient-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+.gradient-swatch { height: 64px; border-radius: 1px; margin-bottom: .5rem; }
+.gradient-name { font-family: var(--font-mono); font-size: .72rem; color: var(--dim); }
+
+/* Contrast badge */
+.contrast-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-family: var(--font-mono); font-size: .65rem;
+    padding: .15rem .5rem; border-radius: 2px;
+    background: rgba(0,201,167,.08); border: 1px solid rgba(0,201,167,.15);
+    color: var(--bio);
+}
+.contrast-badge.warn { background: rgba(232,164,90,.08); border-color: rgba(232,164,90,.15); color: var(--warmth); }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 4 TYPOGRAPHY
+   ══════════════════════════════════════════════════════════ */
+.type-specimen {
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    padding: 1.5rem 0;
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+}
+.type-specimen:last-child { border-bottom: none; }
+
+.type-meta {
+    width: 140px;
+    flex-shrink: 0;
+}
+.type-meta-name  { font-family: var(--font-mono); font-size: .65rem; color: var(--bio); letter-spacing: .08em; text-transform: uppercase; }
+.type-meta-specs { font-family: var(--font-mono); font-size: .62rem; color: var(--muted); line-height: 1.6; margin-top: .3rem; }
+
+.type-sample { flex: 1; min-width: 0; }
+
+.specimen-display { font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; letter-spacing: -.04em; line-height: .95; color: var(--stellar); }
+.specimen-h1      { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 700; letter-spacing: -.035em; line-height: 1.0; color: var(--stellar); }
+.specimen-h2      { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; letter-spacing: -.025em; line-height: 1.1; color: var(--stellar); }
+.specimen-h3      { font-family: var(--font-display); font-size: var(--text-xl);  font-weight: 600; letter-spacing: -.02em;  line-height: 1.15; color: var(--stellar); }
+.specimen-lg      { font-family: var(--font-body);    font-size: var(--text-lg);  font-weight: 400; line-height: 1.5; color: var(--dim); }
+.specimen-base    { font-family: var(--font-body);    font-size: var(--text-base); font-weight: 400; line-height: 1.6; color: var(--dim); }
+.specimen-sm      { font-family: var(--font-body);    font-size: var(--text-sm);  font-weight: 400; line-height: 1.6; color: var(--dim); }
+.specimen-mono    { font-family: var(--font-mono);    font-size: var(--text-sm);  font-weight: 400; line-height: 1.6; color: var(--bio); }
+.specimen-label   { font-family: var(--font-mono);    font-size: var(--text-xs);  font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); }
+
+.font-showcase {
+    background: var(--abyss);
+    border: 1px solid rgba(255,255,255,.05);
+    padding: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+.font-name    { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); opacity: .75; margin-bottom: 1rem; }
+.font-alpha   { font-family: var(--font-display); font-size: 2rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.3; color: rgba(240,244,248,.7); word-break: break-all; }
+.font-alpha.body { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
+.font-alpha.mono { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 400; letter-spacing: .02em; }
+.font-weights {
+    display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1.25rem; padding-top: 1.25rem;
+    border-top: 1px solid rgba(255,255,255,.05);
+}
+.font-weight-demo { font-family: var(--font-display); font-size: 1.1rem; color: var(--stellar); }
+.font-weight-demo.body { font-family: var(--font-body); }
+.font-weight-label { font-family: var(--font-mono); font-size: .62rem; color: var(--muted); margin-top: .15rem; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 5 VOICE & TONE
+   ══════════════════════════════════════════════════════════ */
+.voice-context {
+    background: var(--abyss);
+    border: 1px solid rgba(255,255,255,.05);
+    border-left: 2px solid var(--bio);
+    padding: 1.5rem 2rem;
+    margin-bottom: 1rem;
+}
+.voice-context.warm  { border-left-color: var(--warmth); }
+.voice-context.neb   { border-left-color: var(--nebular); }
+.voice-context-label { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bio); margin-bottom: .5rem; }
+.voice-context.warm .voice-context-label { color: var(--warmth); }
+.voice-context.neb  .voice-context-label { color: var(--nebular); }
+.voice-context-tone  { font-size: .875rem; color: var(--stellar); font-family: var(--font-display); font-weight: 500; margin-bottom: .4rem; }
+.voice-context-ex    { font-size: .82rem; color: var(--dim); font-style: italic; line-height: 1.55; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 6 VISUAL LANGUAGE
+   ══════════════════════════════════════════════════════════ */
+.motif-demo {
+    background: var(--abyss);
+    border: 1px solid rgba(0,201,167,.08);
+    padding: 2.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.photo-style { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.photo-card {
+    background: var(--abyss);
+    border: 1px solid rgba(255,255,255,.05);
+    padding: 1.25rem;
+    border-radius: 1px;
+}
+.photo-card-preview {
+    height: 100px;
+    border-radius: 1px;
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+.photo-card-name  { font-family: var(--font-display); font-size: .875rem; font-weight: 500; color: var(--stellar); margin-bottom: .3rem; }
+.photo-card-desc  { font-size: .78rem; color: var(--dim); line-height: 1.5; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 7 MOTION
+   ══════════════════════════════════════════════════════════ */
+.motion-demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.motion-card {
+    background: var(--abyss);
+    border: 1px solid rgba(255,255,255,.05);
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+}
+.motion-card:hover .motion-ball { animation: none; }
+.motion-ball {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--bio);
+    box-shadow: 0 0 12px rgba(0,201,167,.4);
+    margin: 0 auto 1rem;
+    transition: transform .6s var(--ease-out);
+}
+.motion-card:hover .motion-ball { transform: scale(1.4); }
+.motion-card.warm-card .motion-ball { background: var(--warmth); box-shadow: 0 0 12px rgba(232,164,90,.4); }
+.motion-card.neb-card  .motion-ball { background: var(--nebular); box-shadow: 0 0 12px rgba(123,95,181,.4); }
+
+.motion-name   { font-family: var(--font-display); font-size: .875rem; font-weight: 600; color: var(--stellar); margin-bottom: .3rem; }
+.motion-curve  { font-family: var(--font-mono); font-size: .65rem; color: var(--bio); margin-bottom: .3rem; }
+.motion-desc   { font-size: .75rem; color: var(--dim); line-height: 1.4; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 8 COMPONENTS
+   ══════════════════════════════════════════════════════════ */
+
+/* Buttons */
+.btn-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 2rem; }
+
+.btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-family: var(--font-display); font-weight: 600; font-size: .875rem;
+    letter-spacing: .01em;
+    padding: .65rem 1.5rem;
+    border-radius: 2px;
+    border: none; cursor: pointer;
+    text-decoration: none;
+    transition: all .2s var(--ease-out);
+    position: relative; overflow: hidden;
+}
+.btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background .15s;
+}
+.btn:hover::after { background: rgba(255,255,255,.06); }
+
+.btn-primary   { background: var(--bio); color: var(--void); }
+.btn-secondary { background: rgba(0,201,167,.1); color: var(--bio); border: 1px solid rgba(0,201,167,.2); }
+.btn-ghost     { background: transparent; color: var(--dim); border: 1px solid rgba(255,255,255,.08); }
+.btn-ghost:hover { color: var(--stellar); border-color: rgba(255,255,255,.15); }
+.btn-warm      { background: rgba(232,164,90,.1); color: var(--warmth); border: 1px solid rgba(232,164,90,.2); }
+.btn-sm        { padding: .4rem 1rem; font-size: .8rem; }
+.btn-lg        { padding: .85rem 2rem; font-size: 1rem; }
+
+/* Tags/badges */
+.tag-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-family: var(--font-mono); font-size: .65rem;
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: .18rem .55rem; border-radius: 2px;
+    border: 1px solid; line-height: 1;
+}
+.tag-bio     { color: var(--bio);    background: rgba(0,201,167,.07);   border-color: rgba(0,201,167,.18); }
+.tag-warmth  { color: var(--warmth); background: rgba(232,164,90,.07);  border-color: rgba(232,164,90,.18); }
+.tag-nebular { color: var(--nebular);background: rgba(123,95,181,.07); border-color: rgba(123,95,181,.18); }
+.tag-muted   { color: var(--muted);  background: rgba(74,90,106,.07);  border-color: rgba(74,90,106,.18); }
+.tag-dot     { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* Cards */
+.card {
+    background: var(--abyss);
+    border: 1px solid rgba(0,201,167,.06);
+    border-left: 2px solid var(--bio);
+    border-radius: 1px;
+    padding: 1.75rem;
+    position: relative;
+}
+.card.warm  { border-left-color: var(--warmth); }
+.card.neb   { border-left-color: var(--nebular); }
+.card-label { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); margin-bottom: .75rem; }
+.card.warm .card-label { color: var(--warmth); }
+.card.neb  .card-label { color: var(--nebular); }
+.card-title { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; color: var(--stellar); margin-bottom: .6rem; }
+.card-body  { font-size: .875rem; color: var(--dim); line-height: 1.65; }
+
+/* Aperture corners */
+.corner { position: relative; }
+.corner::before, .corner::after { content: ''; position: absolute; width: 9px; height: 9px; pointer-events: none; z-index: 1; }
+.corner::before { top: 0; left: 0; border-top: 1.5px solid var(--bio); border-left: 1.5px solid var(--bio); }
+.corner::after  { bottom: 0; right: 0; border-bottom: 1.5px solid var(--bio); border-right: 1.5px solid var(--bio); }
+.corner.warm::before, .corner.warm::after { border-color: var(--warmth); }
+.corner.neb::before,  .corner.neb::after  { border-color: var(--nebular); }
+
+/* Callout */
+.callout { background: rgba(0,201,167,.04); border: 1px solid rgba(0,201,167,.1); border-radius: 1px; padding: 1.75rem 2rem; }
+.callout.warm { background: rgba(232,164,90,.04); border-color: rgba(232,164,90,.1); }
+
+/* Code block */
+.code-block {
+    background: #020c14;
+    border: 1px solid rgba(0,201,167,.1);
+    border-radius: 1px;
+    padding: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: .8rem;
+    line-height: 1.7;
+    color: var(--bio);
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+.code-block .c-comment { color: var(--muted); }
+.code-block .c-prop    { color: var(--stellar); }
+.code-block .c-val     { color: var(--bio); }
+.code-block .c-str     { color: var(--warmth); }
+
+/* Stat */
+.stat-row { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.stat-item { display: flex; flex-direction: column; gap: .2rem; }
+.stat-value { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; color: var(--bio); letter-spacing: -.03em; line-height: 1; }
+.stat-label { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+/* Bio rule */
+.bio-rule { width: 48px; height: 1px; background: linear-gradient(90deg, var(--bio), transparent); margin: 2rem 0; }
+
+
+/* ══════════════════════════════════════════════════════════
+   § 9 APPLICATIONS
+   ══════════════════════════════════════════════════════════ */
+.app-frame {
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255,255,255,.06);
+}
+.app-titlebar {
+    background: rgba(5,9,16,.95);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    padding: .6rem 1rem;
+    display: flex; align-items: center; gap: .5rem;
+}
+.dot-red    { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+.dot-yellow { width: 10px; height: 10px; border-radius: 50%; background: #febc2e; }
+.dot-green  { width: 10px; height: 10px; border-radius: 50%; background: #28c840; }
+.titlebar-label { font-family: var(--font-mono); font-size: .65rem; color: var(--muted); margin-left: auto; }
+
+.doc-header {
+    background: var(--abyss);
+    padding: 3rem;
+    border-bottom: 1px solid rgba(0,201,167,.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.doc-brand { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--stellar); }
+.doc-brand span { display: block; font-family: var(--font-mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bio); opacity: .7; margin-bottom: .2rem; }
+.doc-content { background: var(--void); padding: 3rem; }
+.doc-content h3 { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: .75rem; }
+.doc-content p  { font-size: .875rem; color: var(--dim); line-height: 1.7; max-width: 540px; }
+
+.social-card {
+    background: var(--abyss);
+    border: 1px solid rgba(0,201,167,.08);
+    padding: 2.5rem;
+    aspect-ratio: 1.91;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+.social-card-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 70% at 100% 0%, rgba(0,201,167,.08), transparent); }
+.social-card-content { position: relative; z-index: 1; }
+.social-card-eyebrow { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); opacity: .8; margin-bottom: .5rem; }
+.social-card-title   { font-family: var(--font-display); font-size: clamp(1.2rem,3vw,1.8rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.social-card-brand   { font-family: var(--font-display); font-weight: 700; font-size: .875rem; color: var(--stellar); position: relative; z-index: 1; }
+
+
+/* ══════════════════════════════════════════════════════════
+   SCROLLSPY
+   ══════════════════════════════════════════════════════════ */
+@property --beam { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.beam-border { position: relative; }
+.beam-border::before {
+    content: '';
+    position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+    background: conic-gradient(from var(--beam), transparent 0%, rgba(0,201,167,.8) 6%, transparent 12%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: beam-spin 5s linear infinite; pointer-events: none; z-index: 0;
+}
+@keyframes beam-spin { to { --beam: 360deg; } }
+
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+    body { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; padding: 1rem; overflow: visible; }
+    .sidebar-logo { border-bottom: none; padding: 0 1rem; margin: 0; }
+    .nav-section-label { display: none; }
+    .nav-link { padding: .35rem .75rem; }
+    .guide-hero, .guide-section { padding: 3rem 1.5rem; }
+    .grid-2, .grid-3, .do-dont { grid-template-columns: 1fr; }
+    .type-specimen { flex-direction: column; gap: .75rem; }
+    .type-meta { width: auto; }
+    .doc-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+}
+
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     SIDEBAR NAVIGATION
+     ══════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+    <div class="sidebar-logo">
+        Vidtecci
+        <span>Brand Guide v1.0</span>
+    </div>
+
+    <span class="nav-section-label">Foundation</span>
+    <a href="#narrative"   class="nav-link active">Brand Narrative</a>
+    <a href="#wordmark"    class="nav-link">Wordmark</a>
+
+    <span class="nav-section-label">Visual System</span>
+    <a href="#color"       class="nav-link">Color System</a>
+    <a href="#typography"  class="nav-link">Typography</a>
+    <a href="#visual"      class="nav-link">Visual Language</a>
+    <a href="#motion"      class="nav-link">Motion</a>
+
+    <span class="nav-section-label">Components & Use</span>
+    <a href="#components"  class="nav-link">Components</a>
+    <a href="#voice"       class="nav-link">Voice & Tone</a>
+    <a href="#applications" class="nav-link">Applications</a>
+
+    <div class="sidebar-version">
+        Version 1.0<br>
+        2026-03-09<br>
+        Visual Compass v1.1
+    </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN CONTENT
+     ══════════════════════════════════════════════════════════ -->
+<main class="main">
+
+    <!-- ── HERO ─────────────────────────────────────────── -->
+    <div class="guide-hero">
+        <div class="guide-hero-bg"></div>
+        <div class="guide-hero-content">
+            <div class="guide-hero-sub">Brand Identity Guide</div>
+            <div class="guide-hero-wordmark">Vidtecci</div>
+            <div class="guide-hero-sub">Vida · Ciencia · Tecnología</div>
+            <p class="guide-hero-desc">
+                This guide defines the visual and verbal language of Vidtecci — how it looks, how it speaks, and how it moves. Use it as the standard against which every artifact is tested.
+            </p>
+            <div class="guide-meta">
+                <div class="meta-item"><div class="meta-label">Primary typeface</div><div class="meta-value">Space Grotesk</div></div>
+                <div class="meta-item"><div class="meta-label">Primary color</div><div class="meta-value" style="color:var(--bio);">#00c9a7 Bioluminescent</div></div>
+                <div class="meta-item"><div class="meta-label">Background</div><div class="meta-value">#050910 Deep Void</div></div>
+                <div class="meta-item"><div class="meta-label">Aesthetic refs</div><div class="meta-value">CBL · Solar Fields · Tycho · Aperture</div></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 1  BRAND NARRATIVE
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="narrative">
+        <span class="section-tag">01 — Foundation</span>
+        <h2 class="section-title">Brand Narrative</h2>
+        <p class="section-lead">The purpose, positioning, and worldview that make everything else legible. This is the "why" before the "what."</p>
+
+        <h3 class="sub-heading">The Founding Thesis</h3>
+        <p class="brand-thesis">
+            Science and technology are not inherently good or harmful. They are instruments —
+            <span>and instruments amplify whoever wields them.</span>
+            The most important work of our time is ensuring they amplify human beings and the living world.
+        </p>
+
+        <h3 class="sub-heading">Positioning Statement</h3>
+        <div class="callout corner" style="margin-bottom:2rem;">
+            <p style="font-family:var(--font-display);font-size:1.2rem;font-weight:500;line-height:1.5;color:var(--stellar);">
+                Vidtecci is a personal organization that builds tools, methods, and knowledge systems to guide the use of science and technology in service of human flourishing and ecological balance.
+            </p>
+        </div>
+
+        <h3 class="sub-heading">Brand Personality</h3>
+        <p style="font-size:.875rem;color:var(--dim);margin-bottom:1.5rem;">Four words. Each defined by what it means and what it explicitly does not mean.</p>
+
+        <div class="personality-grid">
+            <div class="personality-card">
+                <div class="personality-word">Precise</div>
+                <div class="personality-yes">Specific, falsifiable, exact</div>
+                <div class="personality-no">Not pedantic, not cold</div>
+            </div>
+            <div class="personality-card warm">
+                <div class="personality-word">Principled</div>
+                <div class="personality-yes">Conviction under pressure, coherent values</div>
+                <div class="personality-no">Not preachy, not rigid</div>
+            </div>
+            <div class="personality-card neb">
+                <div class="personality-word">Curious</div>
+                <div class="personality-yes">Open-ended, genuinely interested, investigative</div>
+                <div class="personality-no">Not naive, not undirected</div>
+            </div>
+            <div class="personality-card dim">
+                <div class="personality-word">Warm</div>
+                <div class="personality-yes">Human, honest, for-life energy</div>
+                <div class="personality-no">Not soft, not sentimental</div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">The Door Sentence</h3>
+        <p style="font-size:.875rem;color:var(--dim);margin-bottom:1rem;">The single sentence that introduces Vidtecci to any stranger in any context.</p>
+        <div class="callout beam-border corner" style="text-align:center;padding:2.5rem;">
+            <p style="font-family:var(--font-display);font-size:1.5rem;font-weight:600;letter-spacing:-.02em;color:var(--stellar);">
+                We build with science and technology, for life.
+            </p>
+            <p style="font-size:.78rem;color:var(--dim);margin-top:.75rem;font-family:var(--font-mono);">Specific enough to exclude. Broad enough to last.</p>
+        </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 2  WORDMARK
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="wordmark">
+        <span class="section-tag">02 — Foundation</span>
+        <h2 class="section-title">Wordmark</h2>
+        <p class="section-lead">The Vidtecci wordmark is set in Space Grotesk Bold. It is a typographic mark — no separate icon. Simplicity signals competence.</p>
+
+        <h3 class="sub-heading">Primary Variants</h3>
+        <div class="grid-2" style="margin-bottom:1.5rem;">
+            <div>
+                <div class="wordmark-display dark-bg">
+                    <div class="wordmark-text on-dark" style="text-shadow:0 0 40px rgba(0,201,167,.2);">Vidtecci</div>
+                    <div class="display-label">On dark — preferred</div>
+                </div>
+            </div>
+            <div>
+                <div class="wordmark-display light-bg">
+                    <div class="wordmark-text on-light">Vidtecci</div>
+                    <div class="display-label" style="color:#4a5a6a;">On light</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Monochrome Variants</h3>
+        <div class="grid-2" style="margin-bottom:2rem;">
+            <div>
+                <div class="wordmark-display" style="background:#111;">
+                    <div class="wordmark-text" style="color:#fff;">Vidtecci</div>
+                    <div class="display-label">Monochrome white</div>
+                </div>
+            </div>
+            <div>
+                <div class="wordmark-display" style="background:#eee;">
+                    <div class="wordmark-text" style="color:#000;">Vidtecci</div>
+                    <div class="display-label" style="color:#666;">Monochrome black</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Clear Space</h3>
+        <p style="font-size:.875rem;color:var(--dim);margin-bottom:1.25rem;">Minimum clear space equals the cap-height of the wordmark on all sides. No other element may enter this zone.</p>
+        <div class="clearspace-demo">
+            <div class="clearspace-inner">
+                <div class="wordmark-text on-dark" style="font-size:2.5rem;">Vidtecci</div>
+            </div>
+            <p style="margin-top:1rem;font-family:var(--font-mono);font-size:.65rem;color:var(--muted);">X = cap-height of wordmark</p>
+        </div>
+
+        <h3 class="sub-heading">Specs</h3>
+        <table class="spec-table">
+            <tr><th>Property</th><th>Value</th><th>Notes</th></tr>
+            <tr><td>Typeface</td><td>Space Grotesk</td><td>Weight 700 only</td></tr>
+            <tr><td>Letter spacing</td><td>-0.03em</td><td>Optical tightening for large size</td></tr>
+            <tr><td>Min size (digital)</td><td>80px wide</td><td>Never below — legibility breaks</td></tr>
+            <tr><td>Min size (print)</td><td>1.5 inches wide</td><td>Standard print minimum</td></tr>
+            <tr><td>Favicon</td><td>V letterform only</td><td>At 16px, wordmark collapses</td></tr>
+        </table>
+
+        <h3 class="sub-heading">Never Do This</h3>
+        <div class="dont-grid">
+            <div class="dont-item">
+                <span class="dont-wordmark" style="font-style:italic;">Vidtecci</span>
+                <p>Italic — the mark is always upright</p>
+            </div>
+            <div class="dont-item">
+                <span class="dont-wordmark" style="font-weight:300;letter-spacing:.15em;">Vidtecci</span>
+                <p>Light weight or tracked out</p>
+            </div>
+            <div class="dont-item">
+                <span class="dont-wordmark" style="color:var(--warmth);">Vidtecci</span>
+                <p>Off-palette color — on-dark only in Stellar White</p>
+            </div>
+            <div class="dont-item">
+                <span class="dont-wordmark" style="text-transform:uppercase;font-size:1.2rem;">VIDTECCI</span>
+                <p>All-caps — the wordmark is title case</p>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 3  COLOR SYSTEM
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="color">
+        <span class="section-tag">03 — Visual System</span>
+        <h2 class="section-title">Color System</h2>
+        <p class="section-lead">Dark-first. Color consistency drives up to 80% of brand recognition. Every color serves a defined role. Click any swatch to copy the hex.</p>
+
+        <h3 class="sub-heading">Core Palette</h3>
+        <div class="color-grid">
+            <button class="swatch" onclick="copyHex(this,'#050910')">
+                <div class="swatch-color" style="background:#050910;border:1px solid rgba(255,255,255,.08);"></div>
+                <div class="swatch-name">Deep Void</div>
+                <div class="swatch-hex">#050910</div>
+                <div class="swatch-role">Primary background</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#0b1c2b')">
+                <div class="swatch-color" style="background:#0b1c2b;"></div>
+                <div class="swatch-name">Abyssal Blue</div>
+                <div class="swatch-hex">#0b1c2b</div>
+                <div class="swatch-role">Secondary background</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#082030')">
+                <div class="swatch-color" style="background:#082030;"></div>
+                <div class="swatch-name">Ocean Deep</div>
+                <div class="swatch-hex">#082030</div>
+                <div class="swatch-role">Tertiary background</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#00c9a7')">
+                <div class="swatch-color" style="background:#00c9a7;box-shadow:0 0 20px rgba(0,201,167,.4);"></div>
+                <div class="swatch-name">Bioluminescent</div>
+                <div class="swatch-hex">#00c9a7</div>
+                <div class="swatch-role">Primary accent — brand</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#00e5cc')">
+                <div class="swatch-color" style="background:#00e5cc;"></div>
+                <div class="swatch-name">Bright Cyan</div>
+                <div class="swatch-hex">#00e5cc</div>
+                <div class="swatch-role">Hover / active states</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#e8a45a')">
+                <div class="swatch-color" style="background:#e8a45a;"></div>
+                <div class="swatch-name">Solar Warmth</div>
+                <div class="swatch-hex">#e8a45a</div>
+                <div class="swatch-role">Human accent — use sparingly</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#7b5fb5')">
+                <div class="swatch-color" style="background:#7b5fb5;"></div>
+                <div class="swatch-name">Nebular</div>
+                <div class="swatch-hex">#7b5fb5</div>
+                <div class="swatch-role">Depth / secondary accent</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#f0f4f8')">
+                <div class="swatch-color" style="background:#f0f4f8;border:1px solid rgba(255,255,255,.1);"></div>
+                <div class="swatch-name">Stellar White</div>
+                <div class="swatch-hex">#f0f4f8</div>
+                <div class="swatch-role">Primary text on dark</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#8a9bb0')">
+                <div class="swatch-color" style="background:#8a9bb0;"></div>
+                <div class="swatch-name">Dim White</div>
+                <div class="swatch-hex">#8a9bb0</div>
+                <div class="swatch-role">Secondary text</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+            <button class="swatch" onclick="copyHex(this,'#4a5a6a')">
+                <div class="swatch-color" style="background:#4a5a6a;"></div>
+                <div class="swatch-name">Muted</div>
+                <div class="swatch-hex">#4a5a6a</div>
+                <div class="swatch-role">Tertiary text, labels</div>
+                <div class="swatch-copied">Copied!</div>
+            </button>
+        </div>
+
+        <h3 class="sub-heading">Gradients</h3>
+        <div class="gradient-row">
+            <div>
+                <div class="gradient-swatch" style="background:linear-gradient(135deg,#050910,#00c9a7);"></div>
+                <div class="gradient-name">Void to Life — primary emergence</div>
+            </div>
+            <div>
+                <div class="gradient-swatch" style="background:linear-gradient(135deg,#0b1c2b,#7b5fb5);"></div>
+                <div class="gradient-name">Cosmic Depth — nebular distance</div>
+            </div>
+            <div>
+                <div class="gradient-swatch" style="background:linear-gradient(135deg,#050910,#e8a45a);"></div>
+                <div class="gradient-name">Warmth on Void — human signal</div>
+            </div>
+            <div>
+                <div class="gradient-swatch" style="background:linear-gradient(135deg,#1a6b5a,#00c9a7);"></div>
+                <div class="gradient-name">Living Surface — cell to glow</div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Semantic Tokens</h3>
+        <table class="spec-table">
+            <tr><th>Token</th><th>Primitive</th><th>Purpose</th></tr>
+            <tr><td>background-primary</td><td>#050910</td><td>Main page background</td></tr>
+            <tr><td>background-secondary</td><td>#0b1c2b</td><td>Cards, panels, sections</td></tr>
+            <tr><td>background-tertiary</td><td>#082030</td><td>Alternate section backgrounds</td></tr>
+            <tr><td>text-primary</td><td>#f0f4f8</td><td>Headings, primary content</td></tr>
+            <tr><td>text-secondary</td><td>#8a9bb0</td><td>Body text, descriptions</td></tr>
+            <tr><td>text-muted</td><td>#4a5a6a</td><td>Labels, metadata, captions</td></tr>
+            <tr><td>accent-brand</td><td>#00c9a7</td><td>Brand accent, highlights, interactive</td></tr>
+            <tr><td>accent-human</td><td>#e8a45a</td><td>Warmth — marks the human element</td></tr>
+            <tr><td>accent-depth</td><td>#7b5fb5</td><td>Depth, independence, transitions</td></tr>
+            <tr><td>border-subtle</td><td>rgba(255,255,255,.05)</td><td>Dividers, card borders</td></tr>
+            <tr><td>border-brand</td><td>rgba(0,201,167,.12)</td><td>Brand-accented borders</td></tr>
+        </table>
+
+        <h3 class="sub-heading">Contrast Ratios (WCAG AA)</h3>
+        <table class="spec-table">
+            <tr><th>Foreground</th><th>Background</th><th>Ratio</th><th>Status</th></tr>
+            <tr>
+                <td>#f0f4f8 text</td><td>#050910</td><td>15.8:1</td>
+                <td><span class="contrast-badge">AAA ✓</span></td>
+            </tr>
+            <tr>
+                <td>#f0f4f8 text</td><td>#0b1c2b</td><td>11.2:1</td>
+                <td><span class="contrast-badge">AAA ✓</span></td>
+            </tr>
+            <tr>
+                <td>#00c9a7 text</td><td>#050910</td><td>9.1:1</td>
+                <td><span class="contrast-badge">AAA ✓</span></td>
+            </tr>
+            <tr>
+                <td>#8a9bb0 text</td><td>#050910</td><td>6.3:1</td>
+                <td><span class="contrast-badge">AA ✓</span></td>
+            </tr>
+            <tr>
+                <td>#4a5a6a text</td><td>#050910</td><td>2.8:1</td>
+                <td><span class="contrast-badge warn">Decorative only</span></td>
+            </tr>
+        </table>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 4  TYPOGRAPHY
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="typography">
+        <span class="section-tag">04 — Visual System</span>
+        <h2 class="section-title">Typography</h2>
+        <p class="section-lead">Three typefaces, each with a defined role. Scale follows Perfect Fourth (1.333 ratio). Typography is 90% of design — every specification here is enforced.</p>
+
+        <h3 class="sub-heading">Typeface System</h3>
+        <div class="font-showcase">
+            <div class="font-name">Space Grotesk — Display & Headings</div>
+            <div class="font-alpha">AaBbCcDdEeFf GgHhIiJjKk 0123456789</div>
+            <div class="font-weights">
+                <div>
+                    <div class="font-weight-demo" style="font-weight:700;">Vidtecci</div>
+                    <div class="font-weight-label">700 Bold — Display, H1</div>
+                </div>
+                <div>
+                    <div class="font-weight-demo" style="font-weight:600;">Vidtecci</div>
+                    <div class="font-weight-label">600 Semibold — H2, H3</div>
+                </div>
+                <div>
+                    <div class="font-weight-demo" style="font-weight:500;">Vidtecci</div>
+                    <div class="font-weight-label">500 Medium — UI labels</div>
+                </div>
+                <div>
+                    <div class="font-weight-demo" style="font-weight:400;">Vidtecci</div>
+                    <div class="font-weight-label">400 Regular — body (rare)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="font-showcase">
+            <div class="font-name">Inter — Body & UI</div>
+            <div class="font-alpha body">AaBbCcDdEeFf GgHhIiJjKk 0123456789</div>
+            <div class="font-weights">
+                <div>
+                    <div class="font-weight-demo body" style="font-weight:400;">Long-form reading text at comfortable density.</div>
+                    <div class="font-weight-label">400 Regular — body text</div>
+                </div>
+                <div>
+                    <div class="font-weight-demo body" style="font-weight:300;">Subheadings, captions, supporting copy.</div>
+                    <div class="font-weight-label">300 Light — subhead</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="font-showcase">
+            <div class="font-name">JetBrains Mono — Code & Technical</div>
+            <div class="font-alpha mono">AaBbCcDdEeFf GgHhIiJjKk 0123456789</div>
+            <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.05);font-family:var(--font-mono);font-size:.875rem;color:var(--bio);line-height:1.7;">
+                <span style="color:var(--muted);">// Capture layer — nothing gets lost</span><br>
+                <span style="color:var(--stellar);">const</span> vidtecci = { amplify: <span style="color:var(--warmth);">'life'</span> };<br>
+                <span style="color:var(--muted);">→ labels, data, exit conditions, annotations</span>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Type Scale — Perfect Fourth (1.333)</h3>
+        <div style="margin-bottom:2rem;">
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Display</div>
+                    <div class="type-meta-specs">67px / 4.188rem<br>SG 700, -0.04em<br>lh 0.92</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-display">Science &amp; Life</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Heading 1</div>
+                    <div class="type-meta-specs">50px / 3.125rem<br>SG 700, -0.035em<br>lh 1.0</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-h1">One person, organizational scale.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Heading 2</div>
+                    <div class="type-meta-specs">37px / 2.313rem<br>SG 600, -0.025em<br>lh 1.1</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-h2">The shape of forward progress.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Heading 3</div>
+                    <div class="type-meta-specs">28px / 1.75rem<br>SG 600, -0.02em<br>lh 1.15</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-h3">Three values with teeth.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Body Large</div>
+                    <div class="type-meta-specs">21px / 1.313rem<br>Inter 300, 0em<br>lh 1.65</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-lg">Science and technology amplify whoever wields them.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Body</div>
+                    <div class="type-meta-specs">16px / 1rem<br>Inter 400, 0em<br>lh 1.6</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-base">Phase 0 is proving the claim that one person with AI can produce what would otherwise require an organization. This is not a productivity improvement — it is a qualitative shift.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Body Small</div>
+                    <div class="type-meta-specs">14px / 0.875rem<br>Inter 400, 0em<br>lh 1.6</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-sm">Violated by: fully automated systems with no appeal · tools that optimize human behavior rather than serve it.</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Mono</div>
+                    <div class="type-meta-specs">14px / 0.875rem<br>JB Mono 400<br>+0.03em</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-mono">EXIT_CONDITION: sustained_org_scale_output = true</div>
+                </div>
+            </div>
+            <div class="type-specimen">
+                <div class="type-meta">
+                    <div class="type-meta-name">Label</div>
+                    <div class="type-meta-specs">12px / 0.75rem<br>JB Mono 400<br>+0.14em, uppercase</div>
+                </div>
+                <div class="type-sample">
+                    <div class="specimen-label">Phase 0 — Active · Vida · Ciencia · Tecnología</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Reading Standards</h3>
+        <table class="spec-table">
+            <tr><th>Property</th><th>Value</th><th>Rationale</th></tr>
+            <tr><td>Measure (line length)</td><td>45–75 chars · target 66</td><td>Baymard research: optimal reading range</td></tr>
+            <tr><td>Body line height</td><td>1.6</td><td>Research consensus gold standard</td></tr>
+            <tr><td>Heading line height</td><td>1.0–1.15</td><td>Tighter optical feel at large size</td></tr>
+            <tr><td>Body letter spacing</td><td>0 to +0.01em</td><td>Inter is optically balanced at 0</td></tr>
+            <tr><td>Display letter spacing</td><td>-0.04em to -0.02em</td><td>Optical compensation at large size</td></tr>
+            <tr><td>Label tracking</td><td>+0.12em to +0.16em</td><td>All-caps mono labels need air</td></tr>
+            <tr><td>Min body size</td><td>16px</td><td>Digital accessibility standard</td></tr>
+        </table>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 5  VOICE & TONE
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="voice">
+        <span class="section-tag">05 — Communication</span>
+        <h2 class="section-title">Voice &amp; Tone</h2>
+        <p class="section-lead">Voice is constant — it is who Vidtecci is. Tone is variable — it shifts by context. Both must be documented with concrete examples, not abstract adjectives.</p>
+
+        <h3 class="sub-heading">Voice: Always</h3>
+        <div class="do-dont">
+            <div class="do-block">
+                <div class="do-label">Vidtecci sounds like</div>
+                <p><strong>Specific over vague.</strong> "We won't build systems that remove human judgment" — not "we value human agency."</p>
+                <p style="margin-top:.75rem;"><strong>Active over passive.</strong> "We evaluate every project against ecological impact" — not "ecological impact is evaluated."</p>
+                <p style="margin-top:.75rem;"><strong>Precise warmth.</strong> Curious, direct, for-life without being soft or sentimental.</p>
+            </div>
+            <div class="dont-block">
+                <div class="dont-label">Never sounds like</div>
+                <p><strong>Corporate aspiration.</strong> "We are committed to excellence and innovation" — means nothing, excludes nothing.</p>
+                <p style="margin-top:.75rem;"><strong>Activist sloganeering.</strong> "Join the movement!" — too broad, too performed.</p>
+                <p style="margin-top:.75rem;"><strong>Academic hedging.</strong> "It could be argued that technology may potentially..." — say the claim.</p>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Tone by Context</h3>
+        <div class="voice-context">
+            <div class="voice-context-label">Publishing work / methods</div>
+            <div class="voice-context-tone">Precise, evidence-forward, intellectually honest</div>
+            <div class="voice-context-ex">"Phase 0 exit condition: one person producing, consistently, what would require an organization without AI. This is the measure — not hours saved, but organizational-scale output sustained."</div>
+        </div>
+        <div class="voice-context warm">
+            <div class="voice-context-label">Mission statements / public presence</div>
+            <div class="voice-context-tone">Principled, clear, warmly ambitious</div>
+            <div class="voice-context-ex">"We build with science and technology, for life. Not because it is easy — because it is what this work demands."</div>
+        </div>
+        <div class="voice-context neb">
+            <div class="voice-context-label">Documenting decisions / values</div>
+            <div class="voice-context-tone">Direct, specific, defensible under pressure</div>
+            <div class="voice-context-ex">"Violated by: fully automated systems with no appeal · tools that optimize human behavior rather than serve it. The punishment test: would we hold this value even if a competitor's product won the market by violating it?"</div>
+        </div>
+
+        <h3 class="sub-heading">Mechanics</h3>
+        <table class="spec-table">
+            <tr><th>Rule</th><th>Correct</th><th>Incorrect</th></tr>
+            <tr><td>Capitalization</td><td>Sentence case for all headings</td><td>Title Case For All Headings</td></tr>
+            <tr><td>Oxford comma</td><td>Science, technology, and life</td><td>Science, technology and life</td></tr>
+            <tr><td>Numbers</td><td>50× amplification, Phase 0</td><td>fifty times, phase zero</td></tr>
+            <tr><td>Em dash</td><td>Used for emphasis — like this</td><td>Hyphen-dash or double --</td></tr>
+            <tr><td>Ellipsis</td><td>Avoid in formal copy</td><td>We will change this world...</td></tr>
+            <tr><td>Exclamations</td><td>Reserved for genuine celebration</td><td>Scattered throughout for energy!</td></tr>
+        </table>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 6  VISUAL LANGUAGE
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="visual">
+        <span class="section-tag">06 — Visual System</span>
+        <h2 class="section-title">Visual Language</h2>
+        <p class="section-lead">The aesthetic thesis: life at all scales. Biological precision seen at cosmic scope. Every visual element should feel like it belongs in a CBL album or an Aperture Science test chamber.</p>
+
+        <h3 class="sub-heading">The Five Principles</h3>
+        <div class="grid-2" style="margin-bottom:2.5rem;">
+            <div class="callout corner" style="padding:1.5rem;">
+                <div style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--bio);margin-bottom:.5rem;">01</div>
+                <div style="font-family:var(--font-display);font-size:1rem;font-weight:600;color:var(--stellar);margin-bottom:.4rem;">Depth before decoration</div>
+                <div style="font-size:.8rem;color:var(--dim);">Light emerges from within against darkness. Not surface color applied to a pale canvas — luminance from a dark ground.</div>
+            </div>
+            <div class="callout corner" style="padding:1.5rem;">
+                <div style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--bio);margin-bottom:.5rem;">02</div>
+                <div style="font-family:var(--font-display);font-size:1rem;font-weight:600;color:var(--stellar);margin-bottom:.4rem;">Precision in service of wonder</div>
+                <div style="font-size:.8rem;color:var(--dim);">Aperture's rigor is not cold — it reveals. Every element is placed exactly, in service of making living content more visible.</div>
+            </div>
+            <div class="callout corner" style="padding:1.5rem;">
+                <div style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--bio);margin-bottom:.5rem;">03</div>
+                <div style="font-family:var(--font-display);font-size:1rem;font-weight:600;color:var(--stellar);margin-bottom:.4rem;">Organic geometry</div>
+                <div style="font-size:.8rem;color:var(--dim);">Shapes are geometric; their arrangement is organic. Circles suggest cells. Grids breathe. Structure and life share a visual language.</div>
+            </div>
+            <div class="callout corner" style="padding:1.5rem;">
+                <div style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--bio);margin-bottom:.5rem;">04</div>
+                <div style="font-family:var(--font-display);font-size:1rem;font-weight:600;color:var(--stellar);margin-bottom:.4rem;">Warm signal on cold cosmos</div>
+                <div style="font-size:.8rem;color:var(--dim);">Solar Warmth and amber are the human signal — used as accent only. They mark the person, the emotion, the individual against the vast.</div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Cellular Network Motif</h3>
+        <p style="font-size:.875rem;color:var(--dim);margin-bottom:1.25rem;">The primary Vidtecci visual motif: nodes connected by faint lines. Could be a microscope slide or a star map. Used in backgrounds, headers, and large-format surfaces.</p>
+        <div class="motif-demo">
+            <svg width="500" height="200" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg">
+                <g stroke="#00c9a7" stroke-width="0.6" fill="none" opacity="0.3">
+                    <line x1="60" y1="60"  x2="150" y2="100"/>
+                    <line x1="150" y1="100" x2="240" y2="60"/>
+                    <line x1="240" y1="60"  x2="320" y2="130"/>
+                    <line x1="320" y1="130" x2="440" y2="80"/>
+                    <line x1="150" y1="100" x2="180" y2="160"/>
+                    <line x1="180" y1="160" x2="270" y2="150"/>
+                    <line x1="270" y1="150" x2="320" y2="130"/>
+                    <line x1="60"  y1="60"  x2="90"  y2="140"/>
+                    <line x1="90"  y1="140" x2="180" y2="160"/>
+                    <line x1="440" y1="80"  x2="420" y2="160"/>
+                    <line x1="420" y1="160" x2="270" y2="150"/>
+                </g>
+                <circle cx="500" cy="100" r="200" stroke="#00c9a7" stroke-width="0.3" fill="none" opacity="0.05"/>
+                <g fill="#00c9a7">
+                    <circle cx="60"  cy="60"  r="3"   opacity="0.5"/>
+                    <circle cx="150" cy="100" r="5"   opacity="0.6"/>
+                    <circle cx="240" cy="60"  r="3"   opacity="0.4"/>
+                    <circle cx="320" cy="130" r="6"   opacity="0.7"/>
+                    <circle cx="440" cy="80"  r="3"   opacity="0.4"/>
+                    <circle cx="180" cy="160" r="4"   opacity="0.5"/>
+                    <circle cx="270" cy="150" r="3"   opacity="0.45"/>
+                    <circle cx="90"  cy="140" r="2.5" opacity="0.4"/>
+                    <circle cx="420" cy="160" r="2.5" opacity="0.35"/>
+                </g>
+                <g fill="#00c9a7">
+                    <circle cx="320" cy="130" r="14"  opacity="0.06"/>
+                    <circle cx="150" cy="100" r="10"  opacity="0.05"/>
+                </g>
+            </svg>
+        </div>
+
+        <h3 class="sub-heading">Anti-Patterns</h3>
+        <table class="spec-table">
+            <tr><th>Anti-pattern</th><th>Why it fails</th></tr>
+            <tr><td>Bright white background</td><td>Erases the CBL void argument — life needs darkness to glow against</td></tr>
+            <tr><td>Generic startup palette</td><td>Default aesthetic communicates nothing about Vidtecci's specific mission</td></tr>
+            <tr><td>Nature photography (landscapes)</td><td>Too literal — CBL's aesthetic is microscopic, not scenic</td></tr>
+            <tr><td>Neon / cyberpunk</td><td>Bioluminescence is organic glow, not LED. Comes from within organisms, not power sources</td></tr>
+            <tr><td>Flat design</td><td>Depth is structural to the thesis — void and glow require dimensionality</td></tr>
+            <tr><td>Solar Warmth as default</td><td>Warmth marks the human specifically — using it everywhere neutralizes its meaning</td></tr>
+        </table>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 7  MOTION
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="motion">
+        <span class="section-tag">07 — Visual System</span>
+        <h2 class="section-title">Motion</h2>
+        <p class="section-lead">Motion is purposeful and precise, never decorative. Default to productive motion. Reserve expressive motion for genuine narrative moments. Hover the demos to preview.</p>
+
+        <h3 class="sub-heading">Easing Curves</h3>
+        <div class="motion-demo-grid">
+            <div class="motion-card">
+                <div class="motion-ball" style="transition-timing-function: cubic-bezier(0.16,1,0.3,1);"></div>
+                <div class="motion-name">Ease Out</div>
+                <div class="motion-curve">cubic-bezier(0.16, 1, 0.3, 1)</div>
+                <div class="motion-desc">Default for all UI entrances. Fast start, soft landing.</div>
+            </div>
+            <div class="motion-card">
+                <div class="motion-ball" style="transition-timing-function: cubic-bezier(0.77,0,0.175,1);"></div>
+                <div class="motion-name">Circular</div>
+                <div class="motion-curve">cubic-bezier(0.77, 0, 0.175, 1)</div>
+                <div class="motion-desc">Wipe reveals, clip-path transitions. Crisp and intentional.</div>
+            </div>
+            <div class="motion-card warm-card">
+                <div class="motion-ball" style="transition-timing-function: cubic-bezier(0.34,1.56,0.64,1);"></div>
+                <div class="motion-name">Spring</div>
+                <div class="motion-curve">cubic-bezier(0.34, 1.56, 0.64, 1)</div>
+                <div class="motion-desc">Expressive moments only — success states, key milestones.</div>
+            </div>
+            <div class="motion-card neb-card">
+                <div class="motion-ball" style="transition: transform .8s linear; animation: none;"></div>
+                <div class="motion-name">Linear</div>
+                <div class="motion-curve">linear</div>
+                <div class="motion-desc">Continuous loops only — breathing glows, border beams, particle drift.</div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Duration Scale</h3>
+        <table class="spec-table">
+            <tr><th>Type</th><th>Duration</th><th>Examples</th></tr>
+            <tr><td>Micro</td><td>80–150ms</td><td>Button hover, color transitions, focus rings</td></tr>
+            <tr><td>Small</td><td>200–300ms</td><td>Tooltip appear, dropdown open, tag animations</td></tr>
+            <tr><td>Standard</td><td>400–600ms</td><td>Card entrance, modal appear, page transitions</td></tr>
+            <tr><td>Expressive</td><td>800–1200ms</td><td>Hero wordmark, section reveals, counter animation</td></tr>
+            <tr><td>Ambient</td><td>3000–10000ms</td><td>Breathing glows, border beams, particle network, SVG rings</td></tr>
+        </table>
+
+        <h3 class="sub-heading">Productive vs. Expressive</h3>
+        <div class="do-dont">
+            <div class="do-block">
+                <div class="do-label">Productive — default</div>
+                <p>Fast, functional, gets out of the way. Button transitions, state changes, navigation. Never distracts from content. User barely notices it.</p>
+            </div>
+            <div class="dont-block" style="border-color:rgba(123,95,181,.12);background:rgba(123,95,181,.04);">
+                <div class="dont-label" style="color:var(--nebular);">Expressive — selective</div>
+                <p>Slower, personality-bearing. Hero entrance, onboarding moments, major reveals. Used deliberately, not by default. Maximum 2–3 per page.</p>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 8  COMPONENTS
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="components">
+        <span class="section-tag">08 — Components</span>
+        <h2 class="section-title">Component Library</h2>
+        <p class="section-lead">Every component is live and copy-ready. Built from the visual compass — dark backgrounds, bioluminescent accents, Aperture corners where appropriate.</p>
+
+        <h3 class="sub-heading">Buttons</h3>
+        <div class="btn-row">
+            <a href="#" class="btn btn-primary">Primary action</a>
+            <a href="#" class="btn btn-secondary">Secondary</a>
+            <a href="#" class="btn btn-ghost">Ghost</a>
+            <a href="#" class="btn btn-warm">Warm accent</a>
+        </div>
+        <div class="btn-row">
+            <a href="#" class="btn btn-primary btn-sm">Small</a>
+            <a href="#" class="btn btn-primary">Default</a>
+            <a href="#" class="btn btn-primary btn-lg">Large</a>
+        </div>
+
+        <div class="divider"></div>
+
+        <h3 class="sub-heading">Tags &amp; Badges</h3>
+        <div class="tag-row">
+            <span class="tag tag-bio"><span class="tag-dot"></span>Phase 0</span>
+            <span class="tag tag-bio">Active</span>
+            <span class="tag tag-warmth"><span class="tag-dot"></span>Human Agency</span>
+            <span class="tag tag-nebular">Independence</span>
+            <span class="tag tag-muted">Archived</span>
+            <span class="tag tag-bio">Science</span>
+            <span class="tag tag-warmth">Life</span>
+            <span class="tag tag-nebular">Technology</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <h3 class="sub-heading">Cards</h3>
+        <div class="grid-3">
+            <div class="card corner">
+                <div class="card-label">Bio variant</div>
+                <div class="card-title">Human Agency</div>
+                <div class="card-body">We do not remove humans from the loop, even when automation is more efficient.</div>
+            </div>
+            <div class="card warm corner warm">
+                <div class="card-label">Warm variant</div>
+                <div class="card-title">Ecological Primacy</div>
+                <div class="card-body">Human benefit is not sufficient justification if ecological cost is the price.</div>
+            </div>
+            <div class="card neb corner neb">
+                <div class="card-label">Nebular variant</div>
+                <div class="card-title">Epistemic Integrity</div>
+                <div class="card-body">All claims are falsifiable. We publish disconfirming evidence.</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h3 class="sub-heading">Callout Panels</h3>
+        <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:2rem;">
+            <div class="callout corner">
+                <p style="font-family:var(--font-display);font-size:1.05rem;font-weight:500;color:var(--stellar);">We build with science and technology, for life.</p>
+                <p style="font-size:.8rem;color:var(--dim);margin-top:.4rem;">Bio callout — for key statements and quotes.</p>
+            </div>
+            <div class="callout warm corner warm">
+                <p style="font-family:var(--font-display);font-size:1.05rem;font-weight:500;color:var(--stellar);">The immune system must be built before you need it.</p>
+                <p style="font-size:.8rem;color:var(--dim);margin-top:.4rem;">Warm callout — for warnings, bridges, human context.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h3 class="sub-heading">Code Block</h3>
+        <div class="code-block">
+<span class="c-comment">/* Vidtecci — Visual Compass v1.1 */</span>
+<span class="c-prop">--void:</span>         <span class="c-val">#050910</span>;   <span class="c-comment">/* Deep Void */</span>
+<span class="c-prop">--bio:</span>          <span class="c-val">#00c9a7</span>;   <span class="c-comment">/* Bioluminescent */</span>
+<span class="c-prop">--warmth:</span>       <span class="c-val">#e8a45a</span>;   <span class="c-comment">/* Solar Warmth */</span>
+<span class="c-prop">--font-display:</span> <span class="c-str">'Space Grotesk'</span>, system-ui;
+<span class="c-prop">--ease-out:</span>     <span class="c-val">cubic-bezier(0.16, 1, 0.3, 1)</span>;
+        </div>
+
+        <div class="divider"></div>
+
+        <h3 class="sub-heading">Stat Display</h3>
+        <div class="stat-row">
+            <div class="stat-item"><div class="stat-value">50×</div><div class="stat-label">Target amplification</div></div>
+            <div class="stat-item"><div class="stat-value" style="color:var(--warmth);">Phase 0</div><div class="stat-label">Current stage</div></div>
+            <div class="stat-item"><div class="stat-value" style="color:var(--nebular);">3</div><div class="stat-label">Core values</div></div>
+            <div class="stat-item"><div class="stat-value">5</div><div class="stat-label">Roadmap phases</div></div>
+        </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════
+         § 9  APPLICATIONS
+         ══════════════════════════════════════════════════ -->
+    <section class="guide-section" id="applications">
+        <span class="section-tag">09 — In Context</span>
+        <h2 class="section-title">Applications</h2>
+        <p class="section-lead">The brand in real contexts. Each mockup demonstrates how the visual compass applies — not as decoration but as argument.</p>
+
+        <h3 class="sub-heading">Document Header</h3>
+        <div class="app-frame">
+            <div class="app-titlebar">
+                <div class="dot-red"></div>
+                <div class="dot-yellow"></div>
+                <div class="dot-green"></div>
+                <span class="titlebar-label">vidtecci-document.html</span>
+            </div>
+            <div class="doc-header">
+                <div>
+                    <div class="doc-brand">
+                        <span>Vida · Ciencia · Tecnología</span>
+                        Vidtecci
+                    </div>
+                </div>
+                <div style="display:flex;gap:.75rem;align-items:center;">
+                    <span class="tag tag-bio"><span class="tag-dot"></span>Phase 0</span>
+                    <span style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);">2026-03-09</span>
+                </div>
+            </div>
+            <div class="doc-content">
+                <div class="bio-rule" style="margin-bottom:1.5rem;"></div>
+                <h3>Founding Identity — v1.0</h3>
+                <p style="margin-top:.75rem;">Science and technology amplify whoever wields them. The most important work of our time is ensuring they amplify human beings and the living world.</p>
+                <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+                    <a href="#" class="btn btn-primary btn-sm">Read document</a>
+                    <a href="#" class="btn btn-ghost btn-sm">View history</a>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Social Card (1.91:1)</h3>
+        <div style="max-width:600px;">
+            <div class="social-card">
+                <div class="social-card-bg"></div>
+                <div class="social-card-content">
+                    <div class="social-card-eyebrow">Vida · Ciencia · Tecnología</div>
+                    <div class="social-card-title">
+                        Science and technology<br>
+                        <span style="color:var(--bio);">amplify whoever wields them.</span>
+                    </div>
+                </div>
+                <div class="social-card-brand">Vidtecci</div>
+            </div>
+        </div>
+
+        <h3 class="sub-heading" style="margin-top:2.5rem;">Color on Dark Backgrounds</h3>
+        <div class="grid-3">
+            <div style="background:var(--void);padding:2rem;border:1px solid rgba(255,255,255,.05);text-align:center;">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--bio);text-shadow:0 0 30px rgba(0,201,167,.4);">Vidtecci</div>
+                <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin-top:.5rem;">On Deep Void #050910</div>
+            </div>
+            <div style="background:var(--abyss);padding:2rem;border:1px solid rgba(255,255,255,.05);text-align:center;">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--stellar);">Vidtecci</div>
+                <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin-top:.5rem;">On Abyssal Blue #0b1c2b</div>
+            </div>
+            <div style="background:var(--ocean);padding:2rem;border:1px solid rgba(255,255,255,.05);text-align:center;">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--warmth);">Vidtecci</div>
+                <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin-top:.5rem;">On Ocean Deep #082030</div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     SCRIPTS
+     1. Sidebar scrollspy
+     2. Copy hex on swatch click
+     ══════════════════════════════════════════════════════════ -->
+<script>
+
+/* ── Scrollspy ───────────────────────────────────────────── */
+(function() {
+    const links = document.querySelectorAll('.nav-link[href^="#"]');
+    const sections = [...links].map(l => document.querySelector(l.getAttribute('href'))).filter(Boolean);
+
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                links.forEach(l => l.classList.remove('active'));
+                const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+                if (active) active.classList.add('active');
+            }
+        });
+    }, { threshold: 0.25, rootMargin: '-10% 0px -60% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+})();
+
+
+/* ── Copy hex ────────────────────────────────────────────── */
+function copyHex(btn, hex) {
+    navigator.clipboard.writeText(hex).then(() => {
+        btn.classList.add('just-copied');
+        setTimeout(() => btn.classList.remove('just-copied'), 1400);
+    }).catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = hex; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.classList.add('just-copied');
+        setTimeout(() => btn.classList.remove('just-copied'), 1400);
+    });
+}
+
+</script>
+</body>
+</html>

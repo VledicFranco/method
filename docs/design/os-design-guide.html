@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vidtecci OS — Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+/* ═══════════════════════════════════════════════════════
+   VIDTECCI OS — Design System Reference
+   Derived from Visual Compass v1.0 + OS cognitive-load audit
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --void:       #050910;
+  --abyssal:    #0e2030;
+  --abyss:      #0b1c2b;
+  --ocean:      #0c2a3c;
+  --bio:        #00d4b0;
+  --bio-bright: #00f0d0;
+  --bio-dim:    rgba(0,212,176,.10);
+  --solar:      #eeaa62;
+  --solar-dim:  rgba(238,170,98,.08);
+  --stellar:    #f4f8fc;
+  --dim:        #c0d0de;
+  --dim2:       #7a90a2;
+  --nebular:    #9b7fd4;
+  --muted:      #4a5c6a;
+  --font-d: 'Space Grotesk', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', 'Consolas', monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sidebar: 228px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--stellar);
+  font-family: var(--font-b);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  grid-template-columns: var(--sidebar) 1fr;
+  min-height: 100vh;
+}
+
+/* grain */
+body::after {
+  content: ''; position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999; opacity: .04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 300px;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto;
+  background: rgba(11,28,43,.97);
+  border-right: 1px solid rgba(0,212,176,.07);
+  padding: 2rem 0;
+  display: flex; flex-direction: column;
+  backdrop-filter: blur(8px);
+}
+
+.sidebar-logo {
+  font-family: var(--font-d); font-weight: 700;
+  font-size: .95rem; letter-spacing: .03em; color: var(--stellar);
+  padding: 0 1.5rem 1.5rem;
+  border-bottom: 1px solid rgba(0,212,176,.07);
+  margin-bottom: 1.25rem;
+}
+.sidebar-logo em { font-style: normal; color: var(--bio); }
+.sidebar-logo span {
+  display: block; font-family: var(--font-m);
+  font-size: .6rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--bio); opacity: .65; margin-top: .25rem;
+}
+
+.nav-section-label {
+  font-family: var(--font-m); font-size: .6rem;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: var(--dim2); padding: 0 1.5rem;
+  margin-bottom: .35rem; margin-top: 1.25rem;
+}
+
+.nav-link {
+  display: block; padding: .38rem 1.5rem;
+  font-family: var(--font-b); font-size: .8rem;
+  color: var(--dim); text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color .15s, background .15s, border-color .15s;
+  line-height: 1.4;
+}
+.nav-link:hover { color: var(--stellar); background: rgba(0,212,176,.03); }
+.nav-link.active { color: var(--bio); border-left-color: var(--bio); background: rgba(0,212,176,.04); }
+
+.sidebar-version {
+  margin-top: auto; padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(0,212,176,.07);
+  font-family: var(--font-m); font-size: .62rem;
+  color: var(--dim2); line-height: 1.65;
+}
+
+/* ── MAIN ────────────────────────────────────────────── */
+.main { min-width: 0; }
+
+.guide-section {
+  padding: 5rem 4rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.guide-section:last-child { border-bottom: none; }
+.guide-section:nth-child(even) { background: rgba(11,28,43,.22); }
+
+/* section anatomy */
+.section-tag {
+  font-family: var(--font-m); font-size: .62rem;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--bio); opacity: .75;
+  display: block; margin-bottom: .6rem;
+}
+.section-tag.warm { color: var(--solar); }
+.section-tag.neb  { color: var(--nebular); }
+
+.section-title {
+  font-family: var(--font-d); font-size: 2.1rem;
+  font-weight: 700; letter-spacing: -.03em;
+  line-height: 1.1; margin-bottom: .75rem;
+}
+
+.section-lead {
+  font-size: .925rem; color: var(--dim);
+  line-height: 1.65; max-width: 580px; margin-bottom: 3rem;
+}
+
+.sub-heading {
+  font-family: var(--font-d); font-size: 1.05rem;
+  font-weight: 600; color: var(--stellar);
+  margin-bottom: 1rem; margin-top: 2.5rem;
+  letter-spacing: -.015em;
+}
+.sub-heading:first-of-type { margin-top: 0; }
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,212,176,.16), transparent 70%);
+  margin: 2.75rem 0;
+}
+
+/* ── GRIDS ───────────────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+
+/* ── DEMO SURFACE ────────────────────────────────────── */
+.demo {
+  background: rgba(5,9,16,.75);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 2px; padding: 2rem;
+  margin-bottom: 1.5rem; position: relative;
+}
+.demo-label {
+  position: absolute; top: .6rem; right: .75rem;
+  font-family: var(--font-m); font-size: .58rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+
+/* ── CODE BLOCK ──────────────────────────────────────── */
+.code {
+  background: rgba(2,8,16,.96);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid rgba(0,212,176,.22);
+  padding: 1.25rem 1.5rem;
+  font-family: var(--font-m); font-size: .78rem;
+  line-height: 1.75; color: var(--bio);
+  overflow-x: auto; margin-bottom: 1.5rem;
+}
+.c-cmt  { color: var(--dim2); }
+.c-prop { color: var(--stellar); }
+.c-val  { color: var(--bio); }
+.c-str  { color: var(--solar); }
+.c-sel  { color: var(--nebular); }
+
+/* ── SPEC TABLE ──────────────────────────────────────── */
+.spec-table { width: 100%; border-collapse: collapse; font-size: .875rem; margin-bottom: 2rem; }
+.spec-table th {
+  font-family: var(--font-m); font-size: .6rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--bio); text-align: left;
+  padding: .55rem 1rem; border-bottom: 1px solid rgba(0,212,176,.1);
+}
+.spec-table td {
+  padding: .7rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  color: var(--dim); vertical-align: top;
+}
+.spec-table td:first-child { font-family: var(--font-m); font-size: .8rem; color: var(--stellar); }
+.spec-table tr:last-child td { border-bottom: none; }
+.spec-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── DO / DON'T ──────────────────────────────────────── */
+.do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+.do-block   { background: rgba(0,212,176,.03); border: 1px solid rgba(0,212,176,.09); border-radius: 1px; padding: 1.5rem; }
+.dont-block { background: rgba(238,170,98,.03); border: 1px solid rgba(238,170,98,.09); border-radius: 1px; padding: 1.5rem; }
+.do-label   { font-family: var(--font-m); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--bio); margin-bottom: .75rem; }
+.dont-label { font-family: var(--font-m); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--solar); margin-bottom: .75rem; }
+.do-block p, .dont-block p { font-size: .875rem; color: var(--dim); line-height: 1.6; }
+.do-block strong, .dont-block strong { color: var(--stellar); }
+
+/* ── CALLOUT ─────────────────────────────────────────── */
+.callout {
+  background: rgba(0,212,176,.03); border: 1px solid rgba(0,212,176,.08);
+  border-left: 2px solid var(--bio); border-radius: 1px;
+  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+  font-size: .875rem; color: var(--dim); line-height: 1.65;
+}
+.callout.warm { background: rgba(238,170,98,.03); border-color: rgba(238,170,98,.08); border-left-color: var(--solar); }
+.callout strong { color: var(--stellar); }
+
+/* ── STAT ROW ────────────────────────────────────────── */
+.stat-row { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+.stat-val { font-family: var(--font-d); font-size: 2.25rem; font-weight: 700; letter-spacing: -.035em; line-height: 1; color: var(--bio); }
+.stat-lbl { font-family: var(--font-m); font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim2); margin-top: .2rem; }
+
+/* ── ORB ─────────────────────────────────────────────── */
+.orb { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.orb-bio   { background: var(--bio);   box-shadow: 0 0 5px rgba(0,212,176,.5); }
+.orb-solar { background: var(--solar); box-shadow: 0 0 5px rgba(238,170,98,.5); }
+.orb-dim   { background: var(--dim2); }
+
+/* ── COLOR SWATCHES ──────────────────────────────────── */
+.color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 2rem; }
+.swatch-color { height: 68px; border-radius: 1px; margin-bottom: .55rem; }
+.swatch-name  { font-family: var(--font-d); font-size: .8rem; font-weight: 500; color: var(--stellar); margin-bottom: .1rem; }
+.swatch-hex   { font-family: var(--font-m); font-size: .68rem; color: var(--dim); }
+.swatch-role  { font-family: var(--font-m); font-size: .6rem; color: var(--dim2); margin-top: .1rem; }
+
+/* ══ LIVE COMPONENT DEMOS ════════════════════════════════
+
+   All components below are rendered exactly as they appear
+   in the OS — same CSS values, same structure.
+   ══════════════════════════════════════════════════════ */
+
+/* Panel surface hierarchy demo */
+.pd-wrap { border-radius: 1px; overflow: hidden; margin-bottom: .75rem; }
+.pd-header {
+  padding: .55rem 1rem; display: flex; align-items: center; gap: .5rem;
+  font-family: var(--font-d); font-size: .72rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--dim);
+}
+.pd-body {
+  padding: .9rem 1rem; font-family: var(--font-m);
+  font-size: .73rem; color: var(--dim2); line-height: 1.65;
+}
+
+/* Artifact card */
+.wba-demo {
+  background: rgba(10,22,36,.97);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid rgba(0,212,176,.18);
+  border-radius: 1px; overflow: hidden; margin-bottom: 1rem;
+  transition: box-shadow .2s, border-left-color .2s;
+}
+.wba-demo:hover { box-shadow: 0 0 22px rgba(0,212,176,.07); border-left-color: rgba(0,212,176,.38); }
+.wba-demo-head {
+  padding: .55rem .9rem; background: rgba(8,18,32,.88);
+  display: flex; align-items: center; gap: .55rem;
+}
+.wba-demo-by   { font-family: var(--font-m); font-size: .65rem; color: var(--bio); opacity: .65; }
+.wba-demo-name { font-family: var(--font-d); font-size: .875rem; font-weight: 600; color: var(--stellar); }
+.wba-demo-meta { font-family: var(--font-m); font-size: .65rem; color: var(--dim2); margin-left: auto; }
+.wba-demo-body { padding: .9rem; font-family: var(--font-m); font-size: .78rem; color: var(--dim); line-height: 1.7; }
+
+/* Flow node */
+.wb-fn-demo {
+  width: 148px; padding: 10px 12px;
+  background: rgba(10,22,38,.97);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid rgba(255,255,255,.06);
+  border-radius: 1px;
+  transition: box-shadow .2s, border-left-color .2s;
+}
+.wb-fn-demo.active { border-left-color: rgba(0,212,176,.5); box-shadow: 0 0 20px rgba(0,212,176,.07); }
+.wb-fn-demo.pending { opacity: .65; }
+.wbf-ph  { font-family: var(--font-m); font-size: 7.5px; letter-spacing: .13em; text-transform: uppercase; margin-bottom: 5px; }
+.wbf-met { font-family: var(--font-d); font-size: 12px; font-weight: 600; color: var(--stellar); margin-bottom: 4px; line-height: 1.25; }
+.wbf-des { font-size: 9.5px; color: var(--dim); line-height: 1.6; margin-bottom: 9px; }
+
+/* Tag */
+.tag {
+  font-family: var(--font-m); font-size: .62rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .18rem .55rem; border-radius: 1px; display: inline-flex; align-items: center; gap: .3rem;
+}
+.tag-bio   { color: var(--bio);       background: rgba(0,212,176,.1); }
+.tag-neb   { color: var(--nebular);   background: rgba(155,127,212,.1); }
+.tag-dim   { color: var(--dim);       background: rgba(192,208,222,.07); }
+.tag-solar { color: var(--solar);     background: rgba(238,170,98,.1); }
+.tag-ready { color: var(--bio-bright);background: rgba(0,240,208,.1); }
+.tag-pend  { color: var(--dim2);      background: rgba(122,144,162,.07); }
+.tag-row   { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+/* Chat bubble */
+.bubble-demo {
+  padding: .65rem .9rem; font-family: var(--font-m);
+  font-size: .8rem; line-height: 1.75; color: var(--stellar);
+  border-radius: 1px; margin-bottom: .5rem;
+}
+.bubble-demo::before {
+  display: block; font-family: var(--font-m); font-size: .6rem;
+  letter-spacing: .15em; text-transform: uppercase; opacity: .65; margin-bottom: .4rem;
+}
+.bd-genesis {
+  background: rgba(8,18,32,.98);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid var(--bio);
+}
+.bd-genesis::before { content: 'genesis'; color: var(--bio); }
+.bd-user {
+  background: rgba(238,170,98,.06);
+  border: 1px solid rgba(255,255,255,.04);
+  border-right: 2px solid var(--solar);
+}
+.bd-user::before { content: 'you'; color: var(--solar); }
+
+/* Agent card */
+.acard-demo {
+  padding: .5rem .75rem .5rem .6rem;
+  border-left: 2px solid transparent;
+  background: rgba(0,212,176,.02);
+  display: flex; align-items: center; gap: .6rem;
+  border-radius: 1px; margin-bottom: .25rem;
+  transition: background .15s;
+  cursor: default;
+}
+.acard-demo:hover { background: rgba(0,212,176,.05); }
+.acd-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.acd-name { font-family: var(--font-m); font-size: .75rem; font-weight: 500; color: var(--stellar); flex: 1; }
+
+/* Alert card */
+.alert-card-demo {
+  padding: .55rem .75rem;
+  background: rgba(238,170,98,.05);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid rgba(238,170,98,.4);
+  border-radius: 1px; margin-bottom: .5rem;
+}
+.acd-repo { font-family: var(--font-m); font-size: .8rem; font-weight: 500; color: var(--stellar); margin-bottom: .2rem; }
+.acd-need { font-family: var(--font-m); font-size: .75rem; color: rgba(238,170,98,.85); line-height: 1.5; }
+
+/* Checkpoint node */
+.cp-demo {
+  padding: 10px 11px; width: 148px;
+  background: rgba(238,170,98,.05);
+  border: 1px solid rgba(255,255,255,.04);
+  border-left: 2px solid rgba(238,170,98,.35);
+  border-radius: 1px;
+}
+.cp-lbl { font-family: var(--font-m); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: var(--solar); margin-bottom: 5px; }
+.cp-txt { font-family: var(--font-m); font-size: 9px; color: rgba(238,170,98,.8); line-height: 1.6; }
+
+/* Pill */
+.pill { font-family: var(--font-m); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; padding: .18rem .6rem; border: 1px solid; display: inline-flex; align-items: center; gap: .3rem; border-radius: 0; }
+.pill-bio  { color: var(--bio);   border-color: rgba(0,212,176,.26); }
+.pill-dim  { color: var(--dim);   border-color: rgba(192,208,222,.18); }
+
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ──────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    Vidte<em>cc</em>i OS
+    <span>Design System — v1.0</span>
+  </div>
+
+  <span class="nav-section-label">Foundation</span>
+  <a href="#philosophy" class="nav-link active">Design Philosophy</a>
+  <a href="#separation" class="nav-link">Separation Language</a>
+  <a href="#color" class="nav-link">Color & Status</a>
+
+  <span class="nav-section-label">Surfaces</span>
+  <a href="#panels" class="nav-link">Panel Architecture</a>
+  <a href="#cards" class="nav-link">Card Patterns</a>
+  <a href="#tags" class="nav-link">Tags & Badges</a>
+
+  <span class="nav-section-label">Typography</span>
+  <a href="#type" class="nav-link">Type System</a>
+
+  <span class="nav-section-label">Guidelines</span>
+  <a href="#antipatterns" class="nav-link">Anti-patterns</a>
+
+  <div class="sidebar-version">
+    OS Design System v1.0<br>
+    2026-03-10<br>
+    Derived from Visual Compass v1.0<br>
+    Cognitive audit: Sweller · Cowan · Durlach
+  </div>
+</aside>
+
+<!-- ── MAIN ─────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- HERO ─────────────────────────────────────────────── -->
+  <section class="guide-section" style="padding-top:7rem;padding-bottom:7rem;background:var(--void);position:relative;overflow:hidden;">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 62% 50%, rgba(0,212,176,.05),transparent);pointer-events:none;"></div>
+    <div style="position:relative;">
+      <span class="section-tag">Vidtecci OS — Design System v1.0</span>
+      <h1 style="font-family:var(--font-d);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;letter-spacing:-.04em;line-height:1.05;margin-bottom:1rem;">Every element earns<br>its place or doesn't exist.</h1>
+      <p class="section-lead" style="margin-bottom:2.5rem;">The OS design language has one constraint: <strong style="color:var(--stellar)">cognitive load</strong>. The user's working memory is reserved for abstract thinking — not for parsing the interface. Every rule below is derived from that constraint, grounded in peer-reviewed research.</p>
+      <div class="stat-row">
+        <div><div class="stat-val">4</div><div class="stat-lbl">Cowan chunks max</div></div>
+        <div><div class="stat-val">3</div><div class="stat-lbl">Signals per agent card</div></div>
+        <div><div class="stat-val">0</div><div class="stat-lbl">Decorative divider lines</div></div>
+        <div><div class="stat-val" style="color:var(--solar)">1</div><div class="stat-lbl">Alert type (blocked only)</div></div>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+        <span class="pill pill-bio">Phase 0</span>
+        <span class="pill pill-dim">Mission Control</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- § 1 DESIGN PHILOSOPHY ─────────────────────────────── -->
+  <section class="guide-section" id="philosophy">
+    <span class="section-tag">§ 1 — Foundation</span>
+    <h2 class="section-title">Design Philosophy</h2>
+    <p class="section-lead">Three principles govern every design decision in the OS. They are not aesthetic preferences — each is derived from a specific research finding. Check every new element against all three.</p>
+
+    <div class="grid-3" style="margin-bottom:2.5rem;">
+      <div class="wba-demo">
+        <div class="wba-demo-head">
+          <span class="wba-demo-by">principle 01</span>
+          <span class="wba-demo-name">Color carries state</span>
+        </div>
+        <div class="wba-demo-body">Pre-attentive color is processed in &lt;200ms with zero working memory cost (Healey &amp; Enns 2012). Every status is encoded as color only — never text alone, never a conjunction of two features.<br><br>Text identifies <span style="color:var(--stellar)">which thing</span>. Color identifies <span style="color:var(--bio)">what state</span>.</div>
+      </div>
+      <div class="wba-demo" style="border-left-color:rgba(155,127,212,.22);">
+        <div class="wba-demo-head">
+          <span class="wba-demo-by" style="color:var(--nebular)">principle 02</span>
+          <span class="wba-demo-name">Contrast separates</span>
+        </div>
+        <div class="wba-demo-body">Background color contrast creates visual separation without drawing lines. A darker header on a lighter panel body is a separator. A border on top of that is redundancy — and redundancy is extraneous load (Sweller 1988).<br><br>The rule: if contrast creates the separation, the line is not needed.</div>
+      </div>
+      <div class="wba-demo" style="border-left-color:rgba(238,170,98,.22);">
+        <div class="wba-demo-head">
+          <span class="wba-demo-by" style="color:var(--solar)">principle 03</span>
+          <span class="wba-demo-name">Accent borders carry meaning</span>
+        </div>
+        <div class="wba-demo-body">Left-side accent borders (2px) carry semantic meaning. Bio = GENESIS-authored. Solar = human decision needed. Nebular = council mode.<br><br>A full 4-side border says nothing. It just draws a box. Every border in the OS must answer: what does this border <span style="color:var(--stellar)">mean</span>?</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>The derivation chain:</strong> Sweller's CLT says eliminate extraneous load. Durlach (2004) says peripheral text changes are invisible during active work. Cowan (2001) says 4 chunks max. These three findings produce the three principles above. When a design decision feels unclear, trace it back to these sources.
+    </div>
+  </section>
+
+  <!-- § 2 SEPARATION LANGUAGE ──────────────────────────── -->
+  <section class="guide-section" id="separation">
+    <span class="section-tag">§ 2 — Foundation</span>
+    <h2 class="section-title">Separation Language</h2>
+    <p class="section-lead">Zero decorative divider lines. Separation happens through three mechanisms — background layering, spacing, and left-accent borders. Here is each mechanism, what it communicates, and when to use it.</p>
+
+    <h3 class="sub-heading">Background Layering</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1.25rem;">Three depth levels. Each step darker creates a natural hierarchy. Use the darkest surface for headers and labels, the mid level for content surfaces, the void for the canvas behind everything.</p>
+
+    <div class="demo">
+      <div class="demo-label">live — exact OS values</div>
+      <div style="display:flex;flex-direction:column;gap:.75rem;">
+        <div class="pd-wrap">
+          <div class="pd-header" style="background:rgba(8,20,34,.98);">Panel Header <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(8,20,34,.98)</code></div>
+          <div class="pd-body"  style="background:rgba(10,24,40,.96);">Panel Body <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(10,24,40,.96)</code> — no border between header and body. Background contrast is the separator.</div>
+        </div>
+        <div class="pd-wrap">
+          <div class="pd-header" style="background:rgba(8,18,32,.88);">Artifact Header <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(8,18,32,.88)</code></div>
+          <div class="pd-body"  style="background:rgba(10,22,36,.97);">Artifact Body <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(10,22,36,.97)</code></div>
+        </div>
+        <div class="pd-wrap">
+          <div class="pd-header" style="background:rgba(6,14,26,.98);">Intent Zone <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(6,14,26,.98)</code></div>
+          <div class="pd-body"  style="background:rgba(8,18,32,.99);">Input Surface <code style="font-family:var(--font-m);font-size:.68rem;color:var(--bio);margin-left:.5rem;">rgba(8,18,32,.99)</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Left-Accent Border — Semantic Encoding</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1.25rem;">The only expressive border in the OS. Always left edge, always 2px. The four meanings:</p>
+
+    <table class="spec-table">
+      <tr><th>Color</th><th>Value (at rest)</th><th>Semantic</th><th>Applied to</th></tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.5rem;"><span style="width:3px;height:18px;background:var(--bio);border-radius:1px;flex-shrink:0;display:inline-block;"></span>Bio-teal</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">rgba(0,212,176,.18)</code></td>
+        <td>GENESIS-authored content</td>
+        <td>Whiteboard artifacts, GENESIS chat bubbles</td>
+      </tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.5rem;"><span style="width:3px;height:18px;background:var(--solar);border-radius:1px;flex-shrink:0;display:inline-block;"></span>Solar</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--solar)">rgba(238,170,98,.35)</code></td>
+        <td>Human decision required</td>
+        <td>Alert cards, checkpoint nodes, user bubbles</td>
+      </tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.5rem;"><span style="width:3px;height:18px;background:var(--nebular);border-radius:1px;flex-shrink:0;display:inline-block;"></span>Nebular</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--nebular)">rgba(155,127,212,.5)</code></td>
+        <td>COUNCIL mode</td>
+        <td>COUNCIL agent cards</td>
+      </tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.5rem;"><span style="width:3px;height:18px;background:var(--dim2);border-radius:1px;flex-shrink:0;display:inline-block;"></span>Dim</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--dim2)">rgba(138,155,176,.35)</code></td>
+        <td>TMP / inactive</td>
+        <td>TMP agent cards</td>
+      </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Spacing as Separation</h3>
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Correct</div>
+        <p>Use <strong>gap and padding</strong> between items. Agent list: <strong>3px gap</strong> between cards, <strong>8px container padding</strong>. The air between cards is the separator. Each card is a floating object.</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Wrong</div>
+        <p>Add <strong>border-bottom to every list row</strong>. A grid of lines tells the eye there are rows — which is extraneous information the content already communicates.</p>
+      </div>
+    </div>
+
+    <h3 class="sub-heading">Structural Borders — Near-invisible Only</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Structural borders (between panels, between major layout regions) use <code style="font-family:var(--font-m);color:var(--bio)">rgba(255,255,255,.04)</code> — 4% white. This is the brand-guide's section divider opacity. It is felt as an edge, not read as a line.</p>
+    <div class="demo">
+      <div class="demo-label">structural border opacity</div>
+      <div style="display:flex;align-items:stretch;height:60px;gap:0;border:1px solid rgba(255,255,255,.04);border-radius:1px;overflow:hidden;">
+        <div style="flex:1;background:rgba(8,14,24,.72);display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:.65rem;color:var(--dim2);">Panel A</div>
+        <div style="width:1px;background:rgba(255,255,255,.04);"></div>
+        <div style="flex:2;background:rgba(5,13,22,.6);display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:.65rem;color:var(--dim2);">Panel B</div>
+        <div style="width:1px;background:rgba(255,255,255,.04);"></div>
+        <div style="flex:1.5;background:rgba(10,24,40,.96);display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:.65rem;color:var(--bio);">Panel C</div>
+        <div style="width:1px;background:rgba(255,255,255,.04);"></div>
+        <div style="flex:1;background:rgba(8,14,24,.72);display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:.65rem;color:var(--dim2);">Panel D</div>
+      </div>
+      <p style="font-family:var(--font-m);font-size:.65rem;color:var(--dim2);margin-top:.75rem;">Panel separation is primarily background contrast — C stands out because it's a different surface level, not because it has a brighter border.</p>
+    </div>
+  </section>
+
+  <!-- § 3 COLOR & STATUS ────────────────────────────────── -->
+  <section class="guide-section" id="color">
+    <span class="section-tag">§ 3 — Foundation</span>
+    <h2 class="section-title">Color & Pre-attentive Status</h2>
+    <p class="section-lead">Every color has a role. Using a color outside its role degrades the pre-attentive system — the moment a color means two things, it means neither reliably.</p>
+
+    <h3 class="sub-heading">Core Palette</h3>
+    <div class="color-grid">
+      <div>
+        <div class="swatch-color" style="background:#050910;border:1px solid rgba(255,255,255,.08);"></div>
+        <div class="swatch-name">Deep Void</div>
+        <div class="swatch-hex">#050910</div>
+        <div class="swatch-role">Canvas, shell background</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#0e2030;"></div>
+        <div class="swatch-name">Abyssal</div>
+        <div class="swatch-hex">#0e2030</div>
+        <div class="swatch-role">Panel surfaces, cards</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#00d4b0;box-shadow:0 0 20px rgba(0,212,176,.3);"></div>
+        <div class="swatch-name">Bioluminescent</div>
+        <div class="swatch-hex">#00d4b0</div>
+        <div class="swatch-role">Running · GENESIS · ORCH</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#eeaa62;box-shadow:0 0 20px rgba(238,170,98,.25);"></div>
+        <div class="swatch-name">Solar Warmth</div>
+        <div class="swatch-hex">#eeaa62</div>
+        <div class="swatch-role">Blocked · human · alert</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#9b7fd4;"></div>
+        <div class="swatch-name">Nebular</div>
+        <div class="swatch-hex">#9b7fd4</div>
+        <div class="swatch-role">Council · multi-agent</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#f4f8fc;"></div>
+        <div class="swatch-name">Stellar White</div>
+        <div class="swatch-hex">#f4f8fc</div>
+        <div class="swatch-role">Primary text, identity</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#c0d0de;"></div>
+        <div class="swatch-name">Dim</div>
+        <div class="swatch-hex">#c0d0de</div>
+        <div class="swatch-role">Secondary text, body</div>
+      </div>
+      <div>
+        <div class="swatch-color" style="background:#7a90a2;"></div>
+        <div class="swatch-name">Dim 2</div>
+        <div class="swatch-hex">#7a90a2</div>
+        <div class="swatch-role">Metadata, captions</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Pre-attentive Status System</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1.25rem;">Three agent states. Color is the primary encoding channel. Shape (icon) provides redundancy for accessibility. Text labels for status are always redundant and should be omitted.</p>
+
+    <table class="spec-table">
+      <tr><th>State</th><th>Color</th><th>Animation</th><th>Meaning — action required</th></tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.6rem;"><span class="orb orb-bio"></span>Running</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">var(--bio)</code></td>
+        <td>Pulse 2.8s ease</td>
+        <td>Agent active — no action needed</td>
+      </tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.6rem;"><span class="orb orb-solar"></span>Blocked</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--solar)">var(--solar)</code></td>
+        <td>Pulse 1.9s (faster urgency)</td>
+        <td>Needs human decision — surfaces to Panel D Zone 1</td>
+      </tr>
+      <tr>
+        <td><span style="display:flex;align-items:center;gap:.6rem;"><span class="orb orb-dim"></span>Done</span></td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--dim2)">var(--dim2)</code></td>
+        <td>Static — no animation</td>
+        <td>Complete — no action needed</td>
+      </tr>
+    </table>
+
+    <div class="callout warm">
+      <strong>Single-feature rule:</strong> Pre-attentive detection works only for single-feature differences (Wolfe &amp; Utochkin 2019). Color alone is sufficient and is the highest-bandwidth pre-attentive channel. If you add text AND color AND an icon to encode status, you have created a conjunction — which destroys the pre-attentive advantage and forces serial search.
+    </div>
+  </section>
+
+  <!-- § 4 PANEL ARCHITECTURE ───────────────────────────── -->
+  <section class="guide-section" id="panels">
+    <span class="section-tag">§ 4 — Surfaces</span>
+    <h2 class="section-title">Panel Architecture</h2>
+    <p class="section-lead">Four panels, four attentional modes. The number matches Cowan's 4-chunk working memory limit. Each panel occupies one chunk. A fifth panel would require one of the four to share a chunk — which means it gets deprioritized and cognitively dropped.</p>
+
+    <table class="spec-table">
+      <tr><th>Panel</th><th>Attentional mode</th><th>Content type</th><th>Body background</th></tr>
+      <tr>
+        <td>A — Agents</td>
+        <td>Synchronic status</td>
+        <td>Pre-attentive color cards only</td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">rgba(8,14,24,.72)</code></td>
+      </tr>
+      <tr>
+        <td>B — Whiteboard</td>
+        <td>Spatial thinking</td>
+        <td>GENESIS artifacts, plans, diagrams</td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">#050d16 + dot grid</code></td>
+      </tr>
+      <tr>
+        <td>C — GENESIS</td>
+        <td>Decision dialogue</td>
+        <td>Chat — the only text-dense panel</td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">rgba(10,24,40,.96)</code></td>
+      </tr>
+      <tr>
+        <td>D — Signals</td>
+        <td>Alert + ambient</td>
+        <td>Zone 1: solar alert cards. Zone 2: activity canvas</td>
+        <td><code style="font-family:var(--font-m);font-size:.75rem;color:var(--bio)">var(--void)</code></td>
+      </tr>
+    </table>
+
+    <div class="callout">
+      <strong>Panel C is the only text-dense panel.</strong> The user is actively reading it — it is the decision surface. All other panels communicate pre-attentively. If you find yourself adding text-dense content to panel A or D, it belongs in panel C. When a blocked agent needs a decision, its message migrates from panel A to panel D Zone 1 as a solar alert card.
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Panel D — Signals Architecture</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1.25rem;">Panel D is split into two zones with a purpose boundary between them.</p>
+    <div class="grid-2">
+      <div>
+        <div style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--solar);opacity:.75;margin-bottom:.5rem;">Zone 1 — Alert Surface</div>
+        <div class="alert-card-demo">
+          <div class="acd-repo">oss-glyphjs</div>
+          <div class="acd-need">awaiting schema decision</div>
+        </div>
+        <p style="font-family:var(--font-m);font-size:.68rem;color:var(--dim2);line-height:1.6;margin-top:.5rem;">Empty = all clear. One card per blocked agent. Disappears when resolved.</p>
+      </div>
+      <div>
+        <div style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--bio);opacity:.75;margin-bottom:.5rem;">Zone 2 — Activity Canvas</div>
+        <div style="height:80px;background:rgba(5,9,16,.8);border-radius:1px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--bio);box-shadow:0 0 8px rgba(0,212,176,.5);position:absolute;top:22px;left:40px;"></div>
+          <div style="width:4px;height:4px;border-radius:50%;background:var(--bio);box-shadow:0 0 5px rgba(0,212,176,.4);position:absolute;top:48px;left:80px;opacity:.6;"></div>
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--bio);box-shadow:0 0 7px rgba(0,212,176,.4);position:absolute;top:35px;left:140px;opacity:.75;"></div>
+          <div style="width:3px;height:3px;border-radius:50%;background:var(--solar);box-shadow:0 0 6px rgba(238,170,98,.5);position:absolute;top:55px;left:110px;"></div>
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--bio);box-shadow:0 0 6px rgba(0,212,176,.35);position:absolute;top:18px;left:170px;opacity:.5;"></div>
+          <span style="font-family:var(--font-m);font-size:.6rem;color:var(--dim2);opacity:.5;">ambient canvas</span>
+        </div>
+        <p style="font-family:var(--font-m);font-size:.68rem;color:var(--dim2);line-height:1.6;margin-top:.5rem;">Bio particle density = work volume. Solar warmth = blocked state present. No axes, no labels.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- § 5 CARD PATTERNS ────────────────────────────────── -->
+  <section class="guide-section" id="cards">
+    <span class="section-tag">§ 5 — Surfaces</span>
+    <h2 class="section-title">Card Patterns</h2>
+    <p class="section-lead">Four card types. Each left-accent border carries semantic meaning. The outer border is always near-invisible — edge definition only. Background contrast handles header/body separation.</p>
+
+    <h3 class="sub-heading">Whiteboard Artifact Card</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Everything GENESIS places on the whiteboard. Left accent marks authorship. Hover brightens the accent + adds ambient glow — no border-color change.</p>
+    <div class="demo" style="padding:1.5rem;">
+      <div class="demo-label">hover me</div>
+      <div class="wba-demo">
+        <div class="wba-demo-head">
+          <span class="wba-demo-by">genesis</span>
+          <span class="wba-demo-name">Execution Plan · Φ_EXEC Formalization</span>
+          <span class="wba-demo-meta">4 steps · 1 checkpoint</span>
+        </div>
+        <div class="wba-demo-body">Header background: <code style="color:var(--bio)">rgba(8,18,32,.88)</code> — darker than body. No border between them.<br>Body background: <code style="color:var(--bio)">rgba(10,22,36,.97)</code>. Outer border: <code style="color:var(--bio)">rgba(255,255,255,.04)</code>.</div>
+      </div>
+    </div>
+    <div class="code"><span class="c-sel">.wba</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">background</span>: <span class="c-val">rgba(10,22,36,.97)</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">border</span>: <span class="c-val">1px solid rgba(255,255,255,.04)</span>; <span class="c-cmt">/* edge only */</span><br>
+&nbsp;&nbsp;<span class="c-prop">border-left</span>: <span class="c-val">2px solid rgba(0,212,176,.18)</span>; <span class="c-cmt">/* GENESIS authorship */</span><br>
+}<br>
+<span class="c-sel">.wba:hover</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">box-shadow</span>: <span class="c-val">0 0 22px rgba(0,212,176,.07)</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">border-left-color</span>: <span class="c-val">rgba(0,212,176,.38)</span>; <span class="c-cmt">/* no border-color — only accent */</span><br>
+}<br>
+<span class="c-sel">.wba-head</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">background</span>: <span class="c-val">rgba(8,18,32,.88)</span>; <span class="c-cmt">/* no border-bottom */</span><br>
+}</div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Flow Node — Active / Pending</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Active nodes get a bio left accent + ambient glow. Pending nodes recede to 65% opacity. The contrast between active and pending communicates plan state without any labels.</p>
+    <div class="demo" style="padding:1.5rem;">
+      <div class="demo-label">plan nodes</div>
+      <div style="display:flex;align-items:flex-start;gap:0;">
+        <div class="wb-fn-demo active">
+          <div class="wbf-ph" style="color:#a0b4c8;">UNDERSTAND</div>
+          <div class="wbf-met">M.002-SI</div>
+          <div class="wbf-des">Map Φ_EXEC spec — predicates and gaps</div>
+          <div><span class="tag tag-bio">ORCH</span>&nbsp;<span class="tag tag-ready">READY</span></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;padding-top:17px;width:32px;flex-shrink:0;">
+          <svg width="32" height="14" fill="none" overflow="visible"><line x1="0" y1="7" x2="22" y2="7" stroke="rgba(0,201,167,.2)" stroke-dasharray="3 2"/><polygon points="22,7 16,4 16,10" fill="rgba(0,201,167,.28)"/></svg>
+        </div>
+        <div class="wb-fn-demo pending">
+          <div class="wbf-ph" style="color:#7b5fb5;">DESIGN</div>
+          <div class="wbf-met">Council</div>
+          <div class="wbf-des">Formal logic vs empirical predicate debate</div>
+          <div><span class="tag tag-neb">COUNCIL</span>&nbsp;<span class="tag tag-pend">PENDING</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">GENESIS Chat Bubble</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">The <code style="font-family:var(--font-m);font-size:.78rem;color:var(--bio)">::before</code> pseudo-element renders the sender label — no HTML element needed. The label is part of the visual system, not the content structure.</p>
+    <div class="demo" style="padding:1.5rem;display:flex;flex-direction:column;gap:.5rem;">
+      <div class="demo-label">panel C bubbles</div>
+      <div class="bubble-demo bd-genesis">GENESIS renders the sender label via CSS <code style="color:var(--bio);">::before</code>. The bio left accent marks authorship. JetBrains Mono at 11px / 1.75 line-height for all chat content.</div>
+      <div class="bubble-demo bd-user" style="max-width:80%;align-self:flex-end;">User bubbles mirror the pattern with Solar Warmth right accent.</div>
+    </div>
+    <div class="code"><span class="c-sel">.msg.copilot .bubble</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">background</span>: <span class="c-val">rgba(8,18,32,.98)</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">border</span>: <span class="c-val">1px solid rgba(255,255,255,.04)</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">border-left</span>: <span class="c-val">2px solid var(--bio)</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">border-radius</span>: <span class="c-val">1px</span>;<br>
+}<br>
+<span class="c-sel">.msg.copilot .bubble::before</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">content</span>: <span class="c-str">'genesis'</span>; <span class="c-prop">display</span>: <span class="c-val">block</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">font-family</span>: <span class="c-val">var(--ff-m)</span>; <span class="c-prop">font-size</span>: <span class="c-val">7px</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">letter-spacing</span>: <span class="c-val">.15em</span>; <span class="c-prop">text-transform</span>: <span class="c-val">uppercase</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">color</span>: <span class="c-val">var(--bio)</span>; <span class="c-prop">opacity</span>: <span class="c-val">.65</span>; <span class="c-prop">margin-bottom</span>: <span class="c-val">6px</span>;<br>
+}</div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Agent Card — 3-Signal System</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Three signals, no text labels for state or mode. Left border = execution mode. Icon color = run state. Text = repo identity only.</p>
+    <div class="demo" style="padding:1.25rem;">
+      <div class="demo-label">panel A cards</div>
+      <div style="display:flex;flex-direction:column;gap:3px;padding:8px 7px;background:rgba(8,14,24,.72);border-radius:1px;">
+        <div class="acard-demo" style="border-left-color:rgba(0,212,176,.5);">
+          <div class="acd-dot" style="background:var(--bio);box-shadow:0 0 5px rgba(0,212,176,.5);"></div>
+          <span class="acd-name">ov-oss/methods</span>
+        </div>
+        <div class="acard-demo" style="border-left-color:rgba(155,127,212,.5);">
+          <div class="acd-dot" style="background:var(--nebular);box-shadow:0 0 4px rgba(155,127,212,.4);"></div>
+          <span class="acd-name">pv-vidtecci</span>
+        </div>
+        <div class="acard-demo" style="border-left-color:rgba(0,212,176,.5);background:rgba(238,170,98,.025);">
+          <div class="acd-dot" style="background:var(--solar);box-shadow:0 0 5px rgba(238,170,98,.5);"></div>
+          <span class="acd-name">oss-glyphjs</span>
+        </div>
+        <div class="acard-demo" style="border-left-color:rgba(138,155,176,.35);opacity:.65;">
+          <div class="acd-dot" style="background:var(--dim2);opacity:.5;"></div>
+          <span class="acd-name">pv-argent-forge</span>
+        </div>
+      </div>
+      <p style="font-family:var(--font-m);font-size:.65rem;color:var(--dim2);line-height:1.7;margin-top:.9rem;">
+        Left border color = mode&nbsp;&nbsp;<span style="color:var(--bio)">■</span> ORCH&nbsp;&nbsp;<span style="color:var(--nebular)">■</span> COUNCIL&nbsp;&nbsp;<span style="color:var(--dim2)">■</span> TMP<br>
+        Dot color = status&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--bio)">●</span> running&nbsp;&nbsp;<span style="color:var(--solar)">●</span> blocked&nbsp;&nbsp;<span style="color:var(--dim2)">●</span> done<br>
+        Text = identity only
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Alert Card — Panel D Zone 1</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">One card per blocked agent. Solar left accent. Repo name + one-phrase need. Empty by default — blank is itself a signal meaning "all clear."</p>
+    <div class="demo" style="padding:1.25rem;">
+      <div class="demo-label">zone 1 — empty = all clear</div>
+      <div style="min-height:70px;display:flex;flex-direction:column;gap:5px;justify-content:center;background:rgba(6,14,24,.5);padding:10px 8px;border-radius:1px;">
+        <div class="alert-card-demo">
+          <div class="acd-repo">oss-glyphjs</div>
+          <div class="acd-need">awaiting schema decision — rows: Record[] or string[][]?</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Checkpoint Node</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Appears in the whiteboard execution plan flow. Solar left accent marks it as a human-intervention point. Reduced border opacity keeps it present without competing with active flow nodes.</p>
+    <div class="demo" style="padding:1.5rem;">
+      <div class="demo-label">plan flow checkpoint</div>
+      <div class="cp-demo">
+        <div class="cp-lbl">⬡ Checkpoint</div>
+        <div class="cp-txt">Review gap analysis — human approval needed before DESIGN phase</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- § 6 TAGS ─────────────────────────────────────────── -->
+  <section class="guide-section" id="tags">
+    <span class="section-tag">§ 6 — Surfaces</span>
+    <h2 class="section-title">Tags & Badges</h2>
+    <p class="section-lead">Tags use background color fills only — no borders. The fill communicates category. Adding a border around a colored background is a redundant line that adds noise without adding information.</p>
+
+    <h3 class="sub-heading">Execution Mode Tags</h3>
+    <div class="tag-row">
+      <span class="tag tag-bio">ORCH</span>
+      <span class="tag tag-neb">COUNCIL</span>
+      <span class="tag tag-dim">TMP</span>
+      <span class="tag tag-ready">READY</span>
+      <span class="tag tag-pend">PENDING</span>
+    </div>
+
+    <h3 class="sub-heading">Workflow Phase Tags</h3>
+    <div class="tag-row">
+      <span class="tag" style="color:#a0b4c8;background:rgba(160,180,200,.08);">UNDERSTAND</span>
+      <span class="tag" style="color:var(--nebular);background:rgba(155,127,212,.1);">DESIGN</span>
+      <span class="tag" style="color:#8ecfcf;background:rgba(142,207,207,.08);">COMPOSE</span>
+      <span class="tag" style="color:var(--dim);background:rgba(192,208,222,.07);">VALIDATE</span>
+    </div>
+
+    <div class="code"><span class="c-sel">.wb-fn-tag</span> {<br>
+&nbsp;&nbsp;<span class="c-prop">font-family</span>: <span class="c-val">var(--ff-m)</span>; <span class="c-prop">font-size</span>: <span class="c-val">7.5px</span>;<br>
+&nbsp;&nbsp;<span class="c-prop">padding</span>: <span class="c-val">2px 6px</span>; <span class="c-prop">border-radius</span>: <span class="c-val">1px</span>;<br>
+&nbsp;&nbsp;<span class="c-cmt">/* no border property at all */</span><br>
+}<br>
+<span class="c-sel">.wft-orch</span>    { <span class="c-prop">color</span>: <span class="c-val">var(--bio)</span>;     <span class="c-prop">background</span>: <span class="c-val">rgba(0,212,176,.1)</span>; }<br>
+<span class="c-sel">.wft-council</span> { <span class="c-prop">color</span>: <span class="c-val">var(--nebular)</span>; <span class="c-prop">background</span>: <span class="c-val">rgba(155,127,212,.1)</span>; }<br>
+<span class="c-sel">.wft-tmp</span>     { <span class="c-prop">color</span>: <span class="c-val">var(--dim)</span>;     <span class="c-prop">background</span>: <span class="c-val">rgba(192,208,222,.07)</span>; }</div>
+
+    <div class="divider"></div>
+
+    <h3 class="sub-heading">Pills — Navigation Bar Only</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Pills are the exception — they retain a border because they appear against the near-black nav background where a fill alone may not provide sufficient contrast. Do not use pills inside panels.</p>
+    <div style="display:flex;gap:.6rem;align-items:center;">
+      <span class="pill pill-bio">Phase 0</span>
+      <span class="pill pill-dim">Mission Control</span>
+    </div>
+  </section>
+
+  <!-- § 7 TYPE SYSTEM ──────────────────────────────────── -->
+  <section class="guide-section" id="type">
+    <span class="section-tag">§ 7 — Typography</span>
+    <h2 class="section-title">Type System</h2>
+    <p class="section-lead">Three typefaces. Each has a domain. Using the wrong typeface for a content type is a structural error — JetBrains Mono for prose makes prose feel like code. Inter for repo names makes them feel like narrative text.</p>
+
+    <table class="spec-table">
+      <tr><th>Typeface</th><th>Domain</th><th>OS usage</th></tr>
+      <tr>
+        <td>Space Grotesk</td>
+        <td>Structure, identity, hierarchy</td>
+        <td>Panel headers, artifact titles, modal titles, section headings, logo</td>
+      </tr>
+      <tr>
+        <td>Inter</td>
+        <td>Extended reading, body prose</td>
+        <td>Descriptions in artifacts, documentation, anything more than two sentences</td>
+      </tr>
+      <tr>
+        <td>JetBrains Mono</td>
+        <td>Data, code, technical identity</td>
+        <td>All UI metadata: repo names, method IDs, step labels, timestamps, section tags, status labels, all panel headers</td>
+      </tr>
+    </table>
+
+    <div class="callout warn" style="background:rgba(238,170,98,.03);border-color:rgba(238,170,98,.08);border-left-color:var(--solar);">
+      <strong>Default rule:</strong> If it identifies a technical artifact (repo, method, step, timestamp), it uses JetBrains Mono. If it is a title or heading, Space Grotesk. If it is more than two sentences, Inter. When in doubt, default to JetBrains Mono — the OS is a technical environment.
+    </div>
+
+    <h3 class="sub-heading">Section Label Pattern</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">Used to introduce sections and group content without lines. Mono, uppercase, letter-spacing .14–.16em, bio color at 65–75% opacity. Provides visual grouping through typography alone.</p>
+    <div class="demo">
+      <div class="demo-label">section label + heading</div>
+      <div style="padding:.5rem;">
+        <span style="display:block;font-family:var(--font-m);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--bio);opacity:.65;margin-bottom:.4rem;">section label — JetBrains Mono 9.6px</span>
+        <span style="font-family:var(--font-d);font-size:1.15rem;font-weight:600;color:var(--stellar);letter-spacing:-.015em;">Content Heading — Space Grotesk 600</span>
+        <p style="font-size:.875rem;color:var(--dim);margin-top:.4rem;line-height:1.65;font-family:var(--font-b);">Body text follows in Inter. No line, no box — the label + heading + space is the group.</p>
+      </div>
+    </div>
+
+    <h3 class="sub-heading">Chat Typography</h3>
+    <p style="font-size:.875rem;color:var(--dim);line-height:1.65;margin-bottom:1rem;">GENESIS chat bubbles use JetBrains Mono exclusively — the content is technical, not prose. 11px / 1.75 line-height. This is the highest line-height in the OS, intentionally generous for extended reading.</p>
+    <div class="demo">
+      <div class="demo-label">panel C — bubble typography</div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.75;color:var(--dim);">drawing an updated plan on the whiteboard.<br><br>the crux: <span style="color:var(--bio);">δ_EXEC predicate ordering is empirical</span> — no formal proof of completeness. Council must settle formal logic vs. decision-theoretic encoding before M.004-MDES writes anything.<br><br><span style="color:var(--solar);">4 steps · 1 human checkpoint · ~2 sessions</span></p>
+    </div>
+  </section>
+
+  <!-- § 8 ANTI-PATTERNS ───────────────────────────────── -->
+  <section class="guide-section" id="antipatterns">
+    <span class="section-tag">§ 8 — Guidelines</span>
+    <h2 class="section-title">Anti-patterns</h2>
+    <p class="section-lead">These patterns appear regularly and each violates a specific principle. The failure mode is named alongside the rule, so the reasoning is traceable.</p>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Contrast separates</div>
+        <p>Use a <strong>darker header background</strong> on a lighter panel body. The contrast creates the visual boundary. No border needed between them.</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Line on top of contrast</div>
+        <p>Add <strong>border-bottom to .phead</strong> when contrast already separates. The line is redundant — extraneous load by definition (Sweller).</p>
+      </div>
+    </div>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Color carries state</div>
+        <p><strong>Icon color only</strong> for agent status. Bio = running. Solar = blocked. The pre-attentive channel fires in &lt;200ms at zero memory cost.</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Text duplicates color</div>
+        <p>Add <strong>"RUNNING"</strong> next to a bio-colored icon. The color already communicated the state. The text is a conjunction that adds noise, not signal.</p>
+      </div>
+    </div>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Tags need no borders</div>
+        <p>Use <strong>background fill only</strong> for tags. The color category is communicated. The tag reads as a colored chip — complete information, minimal ink.</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Border around colored fill</div>
+        <p>Add a <strong>matching border on every tag</strong>. A background-colored tag with a border is a box drawn around color. The box adds zero information.</p>
+      </div>
+    </div>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Alerts surface to Zone 1</div>
+        <p>Blocked agents inject a <strong>solar alert card to Panel D Zone 1</strong>. The panel is empty when nothing is blocked — emptiness is the "all clear" signal.</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Text log in Panel D</div>
+        <p>A <strong>scrolling event list</strong> in Panel D. Change blindness (Durlach 2004): peripheral text changes are invisible during active work. The log will not be read.</p>
+      </div>
+    </div>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ Left accent = meaning</div>
+        <p>Use a <strong>2px left border with a semantic color</strong>. Bio = GENESIS made this. Solar = you need to act. Every border answers "what does this mean?"</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Full border = decoration</div>
+        <p>Add a <strong>4-side colored border</strong> to a card for visual style. A full border says nothing specific. It draws a box. Boxes are cognitive noise unless they carry meaning.</p>
+      </div>
+    </div>
+
+    <div class="do-dont">
+      <div class="do-block">
+        <div class="do-label">✓ 4 panels maximum</div>
+        <p>New information types get assigned to <strong>one of the four existing panels</strong>. Ask: is this synchronic state (A), spatial content (B), dialogue (C), or a signal (D)?</p>
+      </div>
+      <div class="dont-block">
+        <div class="dont-label">✕ Fifth panel</div>
+        <p>Add a <strong>fifth panel</strong> for a new information type. This exceeds Cowan's 4-chunk limit. The fifth panel will be deprioritized and mentally dropped during active work.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="callout">
+      <strong>The test:</strong> When adding any element, ask — "does this element let the user think more freely about abstract ideas, or does it give them one more thing to parse?" If it's the latter, it doesn't belong in the interface. It belongs in GENESIS's memory.
+    </div>
+  </section>
+
+</main>
+
+<script>
+// sidebar active link tracking
+const sections = document.querySelectorAll('section[id]');
+const links = document.querySelectorAll('.nav-link');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { threshold: 0.25, rootMargin: '-10% 0px -60% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
