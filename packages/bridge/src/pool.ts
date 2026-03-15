@@ -96,7 +96,7 @@ export interface PoolOptions {
   settleDelayMs?: number;
 }
 
-const DEFAULT_MAX_SESSIONS = 5;
+const DEFAULT_MAX_SESSIONS = 10;
 const DEFAULT_MAX_DEPTH = 3;
 const DEFAULT_MAX_AGENTS = 10;
 const DEFAULT_STALE_TIMEOUT_MS = 30 * 60 * 1000;  // 30 minutes

@@ -76,7 +76,7 @@ npm run bridge:stop    # Stop
 |----------|---------|-------------|
 | `PORT` | `3456` | HTTP listen port |
 | `CLAUDE_BIN` | `claude` | Path to Claude Code binary |
-| `MAX_SESSIONS` | `5` | Max concurrent PTY sessions |
+| `MAX_SESSIONS` | `10` | Max concurrent PTY sessions |
 | `SETTLE_DELAY_MS` | `2000` | Response completion debounce |
 | `DEAD_SESSION_TTL_MS` | `300000` | Auto-cleanup TTL for dead sessions (5 min) |
 | `CLAUDE_OAUTH_TOKEN` | *(none)* | Enables subscription usage meters in dashboard |
