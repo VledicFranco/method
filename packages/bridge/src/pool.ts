@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { spawnSession, type PtySession } from './pty-session.js';
+import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -53,6 +54,7 @@ export interface SessionPool {
   list(): SessionStatusInfo[];
   poolStats(): PoolStats;
   removeDead(ttlMs: number): number;
+  getChannels(sessionId: string): SessionChannels;
 }
 
 export interface PoolOptions {
@@ -82,6 +84,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessionMetadata = new Map<string, Record<string, unknown>>();
   const sessionWorkdirs = new Map<string, string>();
   const sessionChains = new Map<string, SessionChainInfo>();
+  const sessionChannels = new Map<string, SessionChannels>();
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -173,12 +176,17 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       const sessionId = randomUUID();
 
+      // PRD 008 / EXP-008-2: Inject session ID into initial prompt
+      const injectedPrompt = initialPrompt
+        ? `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.\n\n${initialPrompt}`
+        : undefined;
+
       const session = spawnSession({
         id: sessionId,
         workdir,
         claudeBin,
         settleDelayMs,
-        initialPrompt,
+        initialPrompt: injectedPrompt,
         spawnArgs,
       });
 
@@ -204,6 +212,15 @@ export function createPool(options?: PoolOptions): SessionPool {
           parentChain.children.push(sessionId);
         }
       }
+
+      // PRD 008: Create channels and emit 'started' event
+      const channels = createSessionChannels();
+      sessionChannels.set(sessionId, channels);
+      appendMessage(channels.events, 'bridge', 'started', {
+        session_id: sessionId,
+        parent_session_id: parentSessionId ?? null,
+        depth: effectiveDepth,
+      });
 
       totalSpawned++;
 
@@ -248,6 +265,15 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       session.kill();
 
+      // PRD 008: Auto-generate 'killed' event
+      const channels = sessionChannels.get(sessionId);
+      if (channels) {
+        appendMessage(channels.events, 'bridge', 'killed', {
+          session_id: sessionId,
+          killed_by: 'api',
+        });
+      }
+
       return { sessionId: session.id, killed: true };
     },
 
@@ -262,6 +288,14 @@ export function createPool(options?: PoolOptions): SessionPool {
         workdir: sessionWorkdirs.get(sessionId) ?? '',
         chain: getChain(sessionId),
       }));
+    },
+
+    getChannels(sessionId: string): SessionChannels {
+      const channels = sessionChannels.get(sessionId);
+      if (!channels) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
+      return channels;
     },
 
     poolStats(): PoolStats {
@@ -288,6 +322,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
             sessionChains.delete(sessionId);
+            sessionChannels.delete(sessionId);
             removed++;
           }
         }

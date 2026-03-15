@@ -228,6 +228,194 @@ app.get('/sessions', async (_request, reply) => {
   );
 });
 
+// ---------- Channels (PRD 008) ----------
+
+import { appendMessage, readMessages, type ChannelMessage } from './channels.js';
+
+/**
+ * POST /sessions/:id/channels/progress — Agent reports progress
+ */
+app.post<{
+  Params: { id: string };
+  Body: { type: string; content: Record<string, unknown>; sender?: string };
+}>('/sessions/:id/channels/progress', async (request, reply) => {
+  const { id } = request.params;
+  const { type, content, sender } = request.body ?? {};
+
+  if (!type || typeof type !== 'string') {
+    return reply.status(400).send({ error: 'Missing required field: type' });
+  }
+
+  try {
+    const channels = pool.getChannels(id);
+    const sequence = appendMessage(channels.progress, sender ?? id, type, content ?? {});
+    return reply.status(201).send({ sequence, acknowledged: true });
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message.includes('not found')) {
+      return reply.status(404).send({ error: message });
+    }
+    return reply.status(500).send({ error: message });
+  }
+});
+
+/**
+ * POST /sessions/:id/channels/events — Agent reports lifecycle events
+ */
+app.post<{
+  Params: { id: string };
+  Body: { type: string; content: Record<string, unknown>; sender?: string };
+}>('/sessions/:id/channels/events', async (request, reply) => {
+  const { id } = request.params;
+  const { type, content, sender } = request.body ?? {};
+
+  if (!type || typeof type !== 'string') {
+    return reply.status(400).send({ error: 'Missing required field: type' });
+  }
+
+  try {
+    const channels = pool.getChannels(id);
+    const sequence = appendMessage(channels.events, sender ?? id, type, content ?? {});
+
+    // Push notification to parent (PRD 008 Component 2)
+    const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale']);
+    if (PUSHABLE_EVENTS.has(type)) {
+      try {
+        const status = pool.status(id);
+        const parentId = status.chain.parent_session_id;
+        if (parentId) {
+          const parentStatus = pool.status(parentId);
+          if (parentStatus.status !== 'dead') {
+            const notification = [
+              `BRIDGE NOTIFICATION — Child agent [${id.substring(0, 8)}] event: ${type}`,
+              status.metadata?.commission_id
+                ? `Commission: ${status.metadata.commission_id} — ${status.metadata.task_summary ?? 'no summary'}`
+                : `Session: ${id.substring(0, 8)}`,
+              `Details: ${JSON.stringify(content ?? {})}`,
+              `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : 'Investigate stale session'}`,
+            ].join('\n');
+
+            // Fire-and-forget — don't await, don't block on response
+            pool.prompt(parentId, notification).catch(() => {
+              // Push notification delivery failure is non-fatal
+            });
+          }
+        }
+      } catch {
+        // Parent lookup failure is non-fatal — session may have been killed
+      }
+    }
+
+    return reply.status(201).send({ sequence, acknowledged: true });
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message.includes('not found')) {
+      return reply.status(404).send({ error: message });
+    }
+    return reply.status(500).send({ error: message });
+  }
+});
+
+/**
+ * GET /sessions/:id/channels/progress — Parent reads child progress
+ */
+app.get<{
+  Params: { id: string };
+  Querystring: { since_sequence?: string; reader_id?: string };
+}>('/sessions/:id/channels/progress', async (request, reply) => {
+  const { id } = request.params;
+  const sinceSequence = parseInt(request.query.since_sequence ?? '0', 10);
+  const readerId = request.query.reader_id;
+
+  try {
+    const channels = pool.getChannels(id);
+    const result = readMessages(channels.progress, sinceSequence, readerId);
+    return reply.status(200).send(result);
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message.includes('not found')) {
+      return reply.status(404).send({ error: message });
+    }
+    return reply.status(500).send({ error: message });
+  }
+});
+
+/**
+ * GET /sessions/:id/channels/events — Parent reads child events
+ */
+app.get<{
+  Params: { id: string };
+  Querystring: { since_sequence?: string; reader_id?: string };
+}>('/sessions/:id/channels/events', async (request, reply) => {
+  const { id } = request.params;
+  const sinceSequence = parseInt(request.query.since_sequence ?? '0', 10);
+  const readerId = request.query.reader_id;
+
+  try {
+    const channels = pool.getChannels(id);
+    const result = readMessages(channels.events, sinceSequence, readerId);
+    return reply.status(200).send(result);
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message.includes('not found')) {
+      return reply.status(404).send({ error: message });
+    }
+    return reply.status(500).send({ error: message });
+  }
+});
+
+/**
+ * GET /channels/events — Cross-session event aggregation
+ */
+app.get<{
+  Querystring: { since_sequence?: string; filter_type?: string };
+}>('/channels/events', async (_request, reply) => {
+  const sinceSequence = parseInt(_request.query.since_sequence ?? '0', 10);
+  const filterType = _request.query.filter_type;
+
+  const sessions = pool.list();
+  const events: Array<{
+    bridge_session_id: string;
+    session_metadata: Record<string, unknown>;
+    message: ChannelMessage;
+  }> = [];
+
+  let globalLastSequence = sinceSequence;
+
+  for (const session of sessions) {
+    try {
+      const channels = pool.getChannels(session.sessionId);
+      const result = readMessages(channels.events, sinceSequence);
+
+      for (const msg of result.messages) {
+        if (filterType && msg.type !== filterType) continue;
+        events.push({
+          bridge_session_id: session.sessionId,
+          session_metadata: {
+            commission_id: (session.metadata as Record<string, unknown> | undefined)?.commission_id,
+            task_summary: (session.metadata as Record<string, unknown> | undefined)?.task_summary,
+            methodology: (session.metadata as Record<string, unknown> | undefined)?.methodology_session_id,
+          } as Record<string, unknown>,
+          message: msg,
+        });
+        if (msg.sequence > globalLastSequence) {
+          globalLastSequence = msg.sequence;
+        }
+      }
+    } catch {
+      // Session may have been cleaned up between list() and getChannels()
+    }
+  }
+
+  // Sort by timestamp
+  events.sort((a, b) => a.message.timestamp.localeCompare(b.message.timestamp));
+
+  return reply.status(200).send({
+    events,
+    last_sequence: globalLastSequence,
+  });
+});
+
 // ---------- Start ----------
 
 async function start() {

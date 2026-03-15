@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPool, type SessionPool, type SessionChainInfo } from '../pool.js';
 import type { PtySession, SessionStatus } from '../pty-session.js';
+import { createSessionChannels, type SessionChannels } from '../channels.js';
 
 /**
  * Create a fake PtySession for testing without spawning a real PTY process.
@@ -48,6 +49,7 @@ function createTestPool(maxSessions = 5) {
   const sessionMetadata = new Map<string, Record<string, unknown>>();
   const sessionWorkdirs = new Map<string, string>();
   const sessionChains = new Map<string, SessionChainInfo>();
+  const sessionChannelsMap = new Map<string, SessionChannels>();
   let totalSpawned = 0;
   const startedAt = new Date();
   let nextId = 0;
@@ -106,6 +108,7 @@ function createTestPool(maxSessions = 5) {
         budget: effectiveBudget,
       };
       sessionChains.set(sessionId, chainInfo);
+      sessionChannelsMap.set(sessionId, createSessionChannels());
 
       if (parentSessionId) {
         const parentChain = sessionChains.get(parentSessionId);
@@ -161,6 +164,14 @@ function createTestPool(maxSessions = 5) {
       }));
     },
 
+    getChannels(sessionId: string): SessionChannels {
+      const channels = sessionChannelsMap.get(sessionId);
+      if (!channels) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
+      return channels;
+    },
+
     poolStats() {
       const allSessions = [...sessions.values()];
       const active = allSessions.filter((s) => s.status !== 'dead').length;
@@ -183,6 +194,7 @@ function createTestPool(maxSessions = 5) {
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
             sessionChains.delete(sessionId);
+            sessionChannelsMap.delete(sessionId);
             removed++;
           }
         }

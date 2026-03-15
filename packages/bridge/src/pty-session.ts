@@ -65,7 +65,11 @@ export function spawnSession(options: SpawnOptions): PtySession {
     cols: 200,
     rows: 50,
     cwd: workdir,
-    env: process.env as Record<string, string>,
+    env: {
+      ...process.env,
+      BRIDGE_URL: process.env.BRIDGE_URL ?? `http://localhost:${process.env.PORT ?? '3456'}`,
+      BRIDGE_SESSION_ID: id,
+    } as Record<string, string>,
   });
 
   // Buffer for accumulating PTY output
