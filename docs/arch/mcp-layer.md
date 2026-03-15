@@ -31,7 +31,7 @@
 | `methodology_load_method` | `{ method_id: string, session_id?: string }` | `loadMethodInSession(REGISTRY, methSession, mid, session, sid)` | PRD 004 Phase 2 |
 | `methodology_transition` | `{ completion_summary?: string, challenge_predicates?: object, session_id?: string }` | `transitionMethodology(REGISTRY, methSession, session, summary, predicates)` | PRD 004 Phase 3 |
 | `bridge_spawn` | `{ workdir, spawn_args?, initial_prompt?, session_id? }` | HTTP proxy | PRD 005 Phase 1 |
-| `bridge_prompt` | `{ bridge_session_id, prompt, timeout_ms? }` | HTTP proxy | PRD 005 Phase 1 |
+| `bridge_prompt` | `{ bridge_session_id, prompt, timeout_ms?, settle_delay_ms? }` | HTTP proxy | PRD 005 Phase 1+3 |
 | `bridge_kill` | `{ bridge_session_id }` | HTTP proxy | PRD 005 Phase 1 |
 | `bridge_list` | `{}` | HTTP proxy | PRD 005 Phase 1 |
 
@@ -43,6 +43,8 @@ PRD 005 Phase 1 introduces four bridge proxy tools (`bridge_spawn`, `bridge_prom
 
 **Configuration:**
 - `BRIDGE_URL` environment variable (default: `http://localhost:3456`)
+
+**Starting the bridge:** `npm run bridge` from the repo root. The launcher script (`scripts/start-bridge.js`) auto-loads `CLAUDE_OAUTH_TOKEN` from `~/.claude/.credentials.json` for subscription usage meters.
 
 **HTTP client:** Node.js built-in `fetch` (Node 18+). No additional HTTP library dependency.
 
