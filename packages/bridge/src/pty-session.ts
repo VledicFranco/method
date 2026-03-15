@@ -13,6 +13,10 @@ export interface PtySession {
   promptCount: number;
   /** Timestamp of the last prompt send or response receipt. */
   lastActivityAt: Date;
+  /** PRD 007: Full PTY output since spawn. */
+  readonly transcript: string;
+  /** PRD 007: Subscribe to live PTY output. Returns unsubscribe function. */
+  onOutput(cb: (data: string) => void): () => void;
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   kill(): void;
 }
@@ -76,9 +80,26 @@ export function spawnSession(options: SpawnOptions): PtySession {
   let outputBuffer = '';
   let dataCallback: ((data: string) => void) | null = null;
 
+  // PRD 007: Full transcript buffer + live output subscribers
+  const MAX_TRANSCRIPT_SIZE = parseInt(process.env.MAX_TRANSCRIPT_SIZE_BYTES ?? '5242880', 10);
+  let transcriptBuffer = '';
+  const outputSubscribers = new Set<(data: string) => void>();
+
   // Listen for PTY data
   ptyProcess.onData((data: string) => {
     outputBuffer += data;
+
+    // PRD 007: Accumulate transcript (with size cap)
+    transcriptBuffer += data;
+    if (transcriptBuffer.length > MAX_TRANSCRIPT_SIZE) {
+      transcriptBuffer = transcriptBuffer.substring(transcriptBuffer.length - MAX_TRANSCRIPT_SIZE);
+    }
+
+    // PRD 007: Notify live output subscribers
+    for (const sub of outputSubscribers) {
+      try { sub(data); } catch { /* subscriber errors are non-fatal */ }
+    }
+
     if (dataCallback) {
       dataCallback(data);
     }
@@ -135,6 +156,15 @@ export function spawnSession(options: SpawnOptions): PtySession {
       lastActivityAt = d;
     },
 
+    get transcript() {
+      return transcriptBuffer;
+    },
+
+    onOutput(cb: (data: string) => void): () => void {
+      outputSubscribers.add(cb);
+      return () => { outputSubscribers.delete(cb); };
+    },
+
     sendPrompt(prompt: string, timeoutMs?: number, settleDelayMsOverride?: number): Promise<{ output: string; timedOut: boolean }> {
       if (status === 'dead') {
         return Promise.reject(new Error(`Session ${id} is dead — cannot send prompt`));
@@ -182,6 +212,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
     kill(): void {
       status = 'dead';
       dataCallback = null;
+      outputSubscribers.clear();
       try {
         ptyProcess.kill();
       } catch {

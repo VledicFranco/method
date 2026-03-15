@@ -243,6 +243,7 @@ export function renderSubscriptionPanel(usage: SubscriptionUsage | null, status:
 function renderChannelsPanel(
   sessions: Array<{
     sessionId: string;
+    nickname: string;
     status: string;
     metadata?: Record<string, unknown>;
   }>,
@@ -262,7 +263,7 @@ function renderChannelsPanel(
 
     try {
       const channels = pool.getChannels(session.sessionId);
-      const shortId = session.sessionId.substring(0, 8);
+      const displayName = session.nickname;
 
       // Progress timeline for this session
       const progressResult = readMessages(channels.progress, 0);
@@ -283,7 +284,7 @@ function renderChannelsPanel(
         progressTimelines.push(`
           <div class="progress-timeline">
             <div class="progress-timeline-header">
-              <span class="mono session-id">${escapeHtml(shortId)}</span>
+              <span class="mono session-id">${escapeHtml(displayName)}</span>
               <span class="progress-count">${progressResult.messages.length} entries</span>
             </div>
             ${rows}
@@ -293,7 +294,7 @@ function renderChannelsPanel(
       // Events for the global feed
       const eventsResult = readMessages(channels.events, 0);
       for (const msg of eventsResult.messages) {
-        allEvents.push({ sessionId: session.sessionId, shortId, message: msg });
+        allEvents.push({ sessionId: session.sessionId, shortId: displayName, message: msg });
       }
     } catch {
       // Session may have been cleaned up
@@ -384,6 +385,8 @@ function summarizeEventContent(content: Record<string, unknown>): string {
 export function renderSessionRows(
   sessions: Array<{
     sessionId: string;
+    nickname: string;
+    purpose: string | null;
     status: string;
     queueDepth: number;
     metadata?: Record<string, unknown>;
@@ -463,9 +466,24 @@ export function renderSessionRows(
         ? `<span class="depth-badge">L${depth}</span>`
         : '';
 
+      const rowId = `row-${shortId}`;
+      const detailId = `detail-${shortId}`;
+
+      // PRD 007: Expanded detail row content
+      const purposeText = session.purpose ? escapeHtml(session.purpose) : '<span style="color:var(--muted);">&mdash;</span>';
+      const spawnedTime = formatTimeAgo(session.lastActivityAt);
+      const tokenDetail = usage
+        ? `in: ${formatTokens(usage.inputTokens)} &middot; out: ${formatTokens(usage.outputTokens)} &middot; cache: ${Math.round(usage.cacheHitRate)}%`
+        : '&mdash;';
+
+      const liveLink = session.status !== 'dead'
+        ? `<a href="/sessions/${escapeHtml(session.sessionId)}/live" class="detail-link">View Live Output</a>`
+        : '';
+      const transcriptLink = `<a href="/sessions/${escapeHtml(session.sessionId)}/transcript" class="detail-link">View Transcript</a>`;
+
       return `
-      <tr>
-        <td class="mono session-id">${indent}${escapeHtml(shortId)}</td>
+      <tr id="${rowId}" class="session-row" onclick="toggleDetail('${detailId}')" style="cursor:pointer;">
+        <td class="mono session-id">${indent}<span class="nickname">${escapeHtml(session.nickname)}</span></td>
         <td><span class="status ${badgeClass}">${escapeHtml(session.status)}</span></td>
         <td class="mono depth-cell" style="text-align:center">${depthBadge}</td>
         <td class="mono workdir">${escapeHtml(workdirShort)}</td>
@@ -473,7 +491,37 @@ export function renderSessionRows(
         <td class="mono prompt-count" style="text-align:center">${session.promptCount}</td>
         <td class="mono tokens" style="text-align:right">${tokensCell}</td>
         <td class="mono" style="text-align:right">${cacheCell}</td>
-        <td class="mono timestamp">${formatTimeAgo(session.lastActivityAt)}</td>
+        <td class="mono timestamp">${spawnedTime}</td>
+      </tr>
+      <tr id="${detailId}" class="detail-row" style="display:none;">
+        <td colspan="9" class="detail-cell">
+          <div class="detail-grid">
+            <div class="detail-field">
+              <span class="detail-label">Purpose</span>
+              <span class="detail-value">${purposeText}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Full ID</span>
+              <span class="detail-value mono" style="font-size:.68rem;color:var(--dim2);">${escapeHtml(session.sessionId)}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Workdir</span>
+              <span class="detail-value mono">${escapeHtml(session.workdir)}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Method</span>
+              <span class="detail-value mono method-sid">${methodSid ? escapeHtml(methodSid) : '&mdash;'}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-label">Tokens</span>
+              <span class="detail-value mono">${tokenDetail}</span>
+            </div>
+          </div>
+          <div class="detail-actions">
+            ${liveLink}
+            ${transcriptLink}
+          </div>
+        </td>
       </tr>`;
     })
     .join('\n');
