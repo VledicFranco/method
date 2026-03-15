@@ -75,14 +75,21 @@ Phone (anywhere)
 
 The home machine joins a Tailscale tailnet. The phone installs Tailscale and joins the same tailnet. WireGuard handles encryption, NAT traversal, and key rotation.
 
-**Setup:**
+**Setup (completed 2026-03-15):**
 ```bash
-# Home machine (one-time)
+# Home machine
 tailscale up --hostname=mission-control
-tailscale cert mission-control.tailnet-name.ts.net
+tailscale cert mission-control.emu-cosmological.ts.net
 ```
 
-**Result:** Phone can reach `https://mission-control.tailnet-name.ts.net` — no firewall holes, no port forwarding, no dynamic DNS.
+**Live configuration:**
+- Tailnet: `emu-cosmological.ts.net`
+- Machine: `mission-control` (100.114.69.42)
+- Phone: `franciscos-s24` (100.70.119.83)
+- Portal URL: `https://mission-control.emu-cosmological.ts.net:4430`
+- Plan: Personal Plus ($5/mo) — HTTPS certs enabled
+
+**Result:** Phone can reach `https://mission-control.emu-cosmological.ts.net:4430` — no firewall holes, no port forwarding, no dynamic DNS.
 
 ### HTTPS
 
