@@ -43,6 +43,8 @@ export interface StaleConfig {
 
 export interface SessionStatusInfo {
   sessionId: string;
+  nickname: string;
+  purpose: string | null;
   status: string;
   queueDepth: number;
   metadata?: Record<string, unknown>;
@@ -73,7 +75,9 @@ export interface SessionPool {
     budget?: Partial<SessionBudget>;
     isolation?: IsolationMode;
     timeout_ms?: number;
-  }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
+    nickname?: string;
+    purpose?: string;
+  }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean };
@@ -81,6 +85,7 @@ export interface SessionPool {
   poolStats(): PoolStats;
   removeDead(ttlMs: number): number;
   getChannels(sessionId: string): SessionChannels;
+  getSession(sessionId: string): PtySession;
   checkStale(): { stale: string[]; killed: string[] };
 }
 
@@ -96,6 +101,25 @@ const DEFAULT_MAX_AGENTS = 10;
 const DEFAULT_STALE_TIMEOUT_MS = 30 * 60 * 1000;  // 30 minutes
 const DEFAULT_KILL_TIMEOUT_MS = 60 * 60 * 1000;   // 60 minutes
 const WORKTREE_DIR = '.claude/worktrees';
+
+// PRD 007: Fallback nickname word list
+const NICKNAME_WORDS = [
+  'alpha', 'bravo', 'cedar', 'drift', 'ember', 'flux', 'grain', 'haze',
+  'iris', 'jade', 'kite', 'lumen', 'mist', 'nova', 'opal', 'prism',
+  'quartz', 'ridge', 'spark', 'tide', 'umbra', 'vale', 'wave', 'xenon',
+  'yield', 'zinc',
+];
+
+// PRD 007: Method short names for methodology-derived nicknames
+const METHOD_SHORT_NAMES: Record<string, string> = {
+  'M1-COUNCIL': 'council',
+  'M1-IMPL': 'impl',
+  'M1-PLAN': 'plan',
+  'M1-REVIEW': 'review',
+  'M1-MDES': 'mdes',
+  'M2-ORCH': 'orch',
+  'M3-TMP': 'tmp',
+};
 
 /**
  * Create a session pool that manages multiple Claude Code PTY sessions.
@@ -118,10 +142,66 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessionWorktrees = new Map<string, WorktreeInfo>();
   const sessionStaleConfigs = new Map<string, StaleConfig>();
   const sessionStaleFlags = new Map<string, boolean>();
+  const sessionNicknames = new Map<string, string>();   // sessionId → nickname
+  const sessionPurposes = new Map<string, string>();     // sessionId → purpose
+  const activeNicknames = new Set<string>();              // uniqueness guard
 
   // Pool-level counters
   let totalSpawned = 0;
   const startedAt = new Date();
+  let nicknameWordIndex = 0;
+  const methodNicknameCounts = new Map<string, number>(); // method-short → next sequence
+
+  /**
+   * PRD 007: Generate a unique nickname for a session.
+   * Priority: explicit > methodology-derived > fallback word list.
+   */
+  function generateNickname(explicit?: string, metadata?: Record<string, unknown>): string {
+    // 1. Explicit nickname — use if unique
+    if (explicit) {
+      const candidate = explicit.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (candidate && !activeNicknames.has(candidate)) {
+        return candidate;
+      }
+      // If collision, append sequence number
+      for (let i = 2; i < 100; i++) {
+        const suffixed = `${candidate}-${i}`;
+        if (!activeNicknames.has(suffixed)) return suffixed;
+      }
+    }
+
+    // 2. Methodology-derived: if metadata has methodology_session_id, try to extract method
+    if (metadata?.methodology_session_id) {
+      const msid = String(metadata.methodology_session_id);
+      // Try to match known method patterns
+      for (const [methodId, shortName] of Object.entries(METHOD_SHORT_NAMES)) {
+        if (msid.includes(methodId) || msid.toLowerCase().includes(shortName)) {
+          const count = (methodNicknameCounts.get(shortName) ?? 0) + 1;
+          methodNicknameCounts.set(shortName, count);
+          const candidate = `${shortName}-${count}`;
+          if (!activeNicknames.has(candidate)) return candidate;
+        }
+      }
+    }
+
+    // 3. Fallback word list
+    for (let attempts = 0; attempts < NICKNAME_WORDS.length; attempts++) {
+      const candidate = NICKNAME_WORDS[nicknameWordIndex % NICKNAME_WORDS.length];
+      nicknameWordIndex++;
+      if (!activeNicknames.has(candidate)) return candidate;
+    }
+
+    // Last resort: word + counter
+    const base = NICKNAME_WORDS[nicknameWordIndex % NICKNAME_WORDS.length];
+    nicknameWordIndex++;
+    for (let i = 2; i < 100; i++) {
+      const candidate = `${base}-${i}`;
+      if (!activeNicknames.has(candidate)) return candidate;
+    }
+
+    // Absolute fallback
+    return `agent-${totalSpawned + 1}`;
+  }
 
   function getChain(sessionId: string): SessionChainInfo {
     return sessionChains.get(sessionId) ?? {
@@ -153,7 +233,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms }): Promise<{ sessionId: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -208,6 +288,10 @@ export function createPool(options?: PoolOptions): SessionPool {
       }
 
       const sessionId = randomUUID();
+
+      // PRD 007: Generate and register nickname
+      const assignedNickname = generateNickname(nickname, metadata);
+      activeNicknames.add(assignedNickname);
 
       // PRD 006 Component 2: Worktree isolation
       const effectiveIsolation: IsolationMode = isolation ?? 'shared';
@@ -266,6 +350,10 @@ export function createPool(options?: PoolOptions): SessionPool {
       sessionWorktrees.set(sessionId, worktreeInfo);
       sessionStaleConfigs.set(sessionId, staleConfig);
       sessionStaleFlags.set(sessionId, false);
+      sessionNicknames.set(sessionId, assignedNickname);
+      if (purpose) {
+        sessionPurposes.set(sessionId, purpose);
+      }
 
       // Record chain info
       const chainInfo: SessionChainInfo = {
@@ -295,7 +383,7 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       totalSpawned++;
 
-      return { sessionId, status: session.status, chain: chainInfo, worktree: worktreeInfo };
+      return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo };
     },
 
     async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
@@ -318,6 +406,8 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       return {
         sessionId: session.id,
+        nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
+        purpose: sessionPurposes.get(sessionId) ?? null,
         status: session.status,
         queueDepth: session.queueDepth,
         metadata: sessionMetadata.get(sessionId),
@@ -396,6 +486,8 @@ export function createPool(options?: PoolOptions): SessionPool {
     list(): SessionStatusInfo[] {
       return [...sessions.entries()].map(([sessionId, session]) => ({
         sessionId: session.id,
+        nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
+        purpose: sessionPurposes.get(sessionId) ?? null,
         status: session.status,
         queueDepth: session.queueDepth,
         metadata: sessionMetadata.get(sessionId),
@@ -418,6 +510,14 @@ export function createPool(options?: PoolOptions): SessionPool {
       return channels;
     },
 
+    getSession(sessionId: string): PtySession {
+      const session = sessions.get(sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
+      return session;
+    },
+
     poolStats(): PoolStats {
       const allSessions = [...sessions.values()];
       const active = allSessions.filter((s) => s.status !== 'dead').length;
@@ -438,6 +538,8 @@ export function createPool(options?: PoolOptions): SessionPool {
         if (session.status === 'dead') {
           // Use lastActivityAt as the "died at" timestamp (it's the last activity before death)
           if (Date.now() - session.lastActivityAt.getTime() > ttlMs) {
+            const nick = sessionNicknames.get(sessionId);
+            if (nick) activeNicknames.delete(nick);
             sessions.delete(sessionId);
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
@@ -446,6 +548,8 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionWorktrees.delete(sessionId);
             sessionStaleConfigs.delete(sessionId);
             sessionStaleFlags.delete(sessionId);
+            sessionNicknames.delete(sessionId);
+            sessionPurposes.delete(sessionId);
             removed++;
           }
         }

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{nickname}} — Live Output</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --void:       #050910;
+  --deep-void:  rgba(2,5,10,.98);
+  --abyssal:    #0e2030;
+  --abyss:      #0b1c2b;
+  --ocean:      #0c2a3c;
+  --bio:        #00d4b0;
+  --bio-bright: #00f0d0;
+  --bio-dim:    rgba(0,212,176,.10);
+  --solar:      #eeaa62;
+  --solar-dim:  rgba(238,170,98,.08);
+  --stellar:    #f4f8fc;
+  --dim:        #c0d0de;
+  --dim2:       #7a90a2;
+  --nebular:    #9b7fd4;
+  --muted:      #4a5c6a;
+  --red:        #e05a5a;
+  --font-d: 'Space Grotesk', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--void);
+  color: var(--stellar);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── AGENT IDENTITY BANNER ───────────────────────── */
+.agent-banner {
+  background: rgba(11,28,43,.55);
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  border-left: 2px solid var(--bio);
+  padding: 1rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.banner-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .4rem;
+}
+
+.banner-nickname {
+  font-family: var(--font-d);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--bio-bright);
+  letter-spacing: -.02em;
+}
+
+.banner-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-m);
+  font-size: .65rem;
+  font-weight: 500;
+  padding: .15rem .5rem;
+  border-radius: 2px;
+}
+.banner-status::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+.banner-status.ready { color: var(--bio); background: var(--bio-dim); }
+.banner-status.ready::before { background: var(--bio); }
+.banner-status.working { color: var(--solar); background: var(--solar-dim); }
+.banner-status.working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
+.banner-status.dead { color: var(--red); background: rgba(224,90,90,.10); }
+.banner-status.dead::before { background: var(--red); opacity:.5; }
+.banner-status.initializing { color: var(--dim2); background: rgba(122,144,162,.08); }
+.banner-status.initializing::before { background: var(--dim2); animation: pulse 2s ease-in-out infinite; }
+
+.banner-id {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--dim2);
+  margin-left: auto;
+}
+
+.banner-purpose {
+  font-family: var(--font-b);
+  font-size: .92rem;
+  color: var(--stellar);
+  margin-bottom: .35rem;
+}
+
+.banner-meta {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim2);
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.banner-meta span { white-space: nowrap; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+/* ── TERMINAL AREA ───────────────────────────────── */
+.terminal-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.terminal {
+  flex: 1;
+  background: var(--deep-void);
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+  font-family: var(--font-m);
+  font-size: .78rem;
+  line-height: 1.65;
+  color: var(--dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal .chunk {
+  animation: fadeSlide .2s ease-out;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.auto-scroll-indicator {
+  position: absolute;
+  bottom: 4.5rem;
+  right: 1.5rem;
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--bio);
+  background: rgba(5,9,16,.9);
+  border: 1px solid rgba(0,212,176,.2);
+  border-radius: 2px;
+  padding: .3rem .6rem;
+  cursor: pointer;
+  display: none;
+}
+.auto-scroll-indicator:hover {
+  background: var(--bio-dim);
+}
+
+/* ── INPUT BAR ───────────────────────────────────── */
+.input-bar {
+  background: rgba(11,28,43,.55);
+  border-top: 1px solid rgba(255,255,255,.05);
+  padding: .75rem 1.5rem;
+  display: flex;
+  gap: .75rem;
+  flex-shrink: 0;
+}
+
+.input-bar input {
+  flex: 1;
+  background: rgba(5,9,16,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  color: var(--stellar);
+  font-family: var(--font-m);
+  font-size: .78rem;
+  padding: .5rem .75rem;
+  outline: none;
+  transition: border-color .2s;
+}
+.input-bar input:focus {
+  border-color: rgba(0,212,176,.3);
+}
+.input-bar input::placeholder {
+  color: var(--muted);
+}
+
+.input-bar button {
+  background: rgba(0,212,176,.1);
+  border: 1px solid rgba(0,212,176,.25);
+  border-radius: 2px;
+  color: var(--bio);
+  font-family: var(--font-m);
+  font-size: .72rem;
+  padding: .5rem 1rem;
+  cursor: pointer;
+  transition: background .2s;
+}
+.input-bar button:hover { background: rgba(0,212,176,.2); }
+.input-bar button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── NAV ─────────────────────────────────────────── */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .5rem 1.5rem;
+  background: rgba(5,9,16,.4);
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  flex-shrink: 0;
+}
+
+.nav-link {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  text-decoration: none;
+  transition: color .2s;
+}
+.nav-link:hover { color: var(--bio); }
+.nav-sep { color: var(--muted); font-size: .7rem; }
+  </style>
+</head>
+<body>
+
+<nav class="nav-bar">
+  <a href="/dashboard" class="nav-link">Dashboard</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-link" style="color:var(--bio);">{{nickname}}</span>
+  <span class="nav-sep">/</span>
+  <span class="nav-link" style="color:var(--stellar);">Live Output</span>
+</nav>
+
+<div class="agent-banner">
+  <div class="banner-top">
+    <span class="banner-nickname">{{nickname}}</span>
+    <span class="banner-status {{statusClass}}">{{status}}</span>
+    <span class="banner-id">{{shortId}} &middot; {{uptime}}</span>
+  </div>
+  <div class="banner-purpose">{{purpose}}</div>
+  <div class="banner-meta">
+    <span>workdir {{workdir}}</span>
+    <span>method {{methodSid}}</span>
+    <span>tokens {{tokens}}</span>
+    <span>cache {{cache}}</span>
+  </div>
+</div>
+
+<div class="terminal-container">
+  <div class="terminal" id="terminal"></div>
+  <div class="auto-scroll-indicator" id="scroll-btn" onclick="resumeScroll()">&#x2193; Auto-scroll paused — click to resume</div>
+</div>
+
+<div class="input-bar">
+  <input type="text" id="prompt-input" placeholder="Send a prompt..." onkeydown="if(event.key==='Enter')sendPrompt()">
+  <button onclick="sendPrompt()" id="send-btn">Send</button>
+</div>
+
+<script>
+const sessionId = '{{sessionId}}';
+const terminal = document.getElementById('terminal');
+const scrollBtn = document.getElementById('scroll-btn');
+let autoScroll = true;
+let eventSource = null;
+
+function stripAnsi(str) {
+  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+}
+
+function appendOutput(text) {
+  const cleaned = stripAnsi(text);
+  if (!cleaned) return;
+  const chunk = document.createElement('span');
+  chunk.className = 'chunk';
+  chunk.textContent = cleaned;
+  terminal.appendChild(chunk);
+  if (autoScroll) {
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+}
+
+function connectSSE() {
+  eventSource = new EventSource('/sessions/' + sessionId + '/stream');
+  eventSource.onmessage = function(e) {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.text) appendOutput(data.text);
+    } catch {}
+  };
+  eventSource.onerror = function() {
+    // Reconnect after 3s on error
+    eventSource.close();
+    setTimeout(connectSSE, 3000);
+  };
+}
+
+terminal.addEventListener('scroll', function() {
+  const atBottom = terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 50;
+  if (!atBottom) {
+    autoScroll = false;
+    scrollBtn.style.display = 'block';
+  } else {
+    autoScroll = true;
+    scrollBtn.style.display = 'none';
+  }
+});
+
+function resumeScroll() {
+  autoScroll = true;
+  scrollBtn.style.display = 'none';
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+async function sendPrompt() {
+  const input = document.getElementById('prompt-input');
+  const btn = document.getElementById('send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    await fetch('/sessions/' + sessionId + '/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: text }),
+    });
+  } catch (e) {
+    appendOutput('\n[Error sending prompt: ' + e.message + ']\n');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send';
+    input.focus();
+  }
+}
+
+connectSSE();
+</script>
+
+</body>
+</html>

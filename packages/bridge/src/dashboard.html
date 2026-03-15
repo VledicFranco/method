@@ -529,6 +529,71 @@ body::after {
 .event-stale { color: var(--dim2); background: rgba(122,144,162,.08); }
 .event-default { color: var(--dim); background: rgba(255,255,255,.05); }
 
+/* ── PRD 007: NICKNAME + EXPANDABLE ROWS ─────────── */
+.nickname {
+  color: var(--bio-bright);
+  font-weight: 600;
+  font-size: .76rem;
+}
+
+.session-row:hover td { cursor: pointer; }
+
+.detail-row td { padding: 0 !important; border-bottom: 1px solid rgba(0,212,176,.08); }
+
+.detail-cell {
+  background: rgba(5,9,16,.6);
+  padding: 1.25rem 1.5rem !important;
+  border-left: 2px solid var(--bio);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem 2rem;
+  margin-bottom: 1rem;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.detail-label {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim2);
+}
+
+.detail-value {
+  font-family: var(--font-b);
+  font-size: .82rem;
+  color: var(--dim);
+}
+
+.detail-actions {
+  display: flex;
+  gap: 1rem;
+  padding-top: .5rem;
+}
+
+.detail-link {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--bio);
+  text-decoration: none;
+  padding: .3rem .7rem;
+  border: 1px solid rgba(0,212,176,.2);
+  border-radius: 2px;
+  transition: background .2s, border-color .2s;
+}
+.detail-link:hover {
+  background: var(--bio-dim);
+  border-color: rgba(0,212,176,.4);
+}
+
   </style>
 </head>
 <body>
@@ -610,7 +675,7 @@ body::after {
   <table class="session-table">
     <thead>
       <tr>
-        <th>Session ID</th>
+        <th>Agent</th>
         <th>Status</th>
         <th style="text-align:center">Depth</th>
         <th>Workdir</th>
@@ -708,7 +773,7 @@ body::after {
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-left">
-      @method/bridge v{{bridge.version}} &middot; PRD-008 MVP
+      @method/bridge v{{bridge.version}} &middot; PRD-007
     </div>
     <div style="display: flex; align-items: center; gap: 1.25rem;">
       <button id="ref-toggle" onclick="document.getElementById('ref-panel').style.display=document.getElementById('ref-panel').style.display==='none'?'block':'none'" style="
@@ -732,6 +797,13 @@ body::after {
   </footer>
 
 </div>
+
+<script>
+function toggleDetail(detailId) {
+  const el = document.getElementById(detailId);
+  if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
 
 </body>
 </html>

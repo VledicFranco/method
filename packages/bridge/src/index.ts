@@ -5,6 +5,9 @@ import { createPool } from './pool.js';
 import { createUsagePoller } from './usage-poller.js';
 import { createTokenTracker } from './token-tracker.js';
 import { registerDashboardRoute } from './dashboard-route.js';
+import { registerLiveOutputRoutes } from './live-output-route.js';
+import { registerTranscriptRoutes } from './transcript-route.js';
+import { createTranscriptReader } from './transcript-reader.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -32,6 +35,10 @@ const tokenTracker = createTokenTracker({
   sessionsDir: CLAUDE_SESSIONS_DIR,
 });
 
+const transcriptReader = createTranscriptReader({
+  sessionsDir: CLAUDE_SESSIONS_DIR,
+});
+
 const BRIDGE_STARTED_AT = new Date();
 
 const app = Fastify({ logger: true });
@@ -41,8 +48,16 @@ const app = Fastify({ logger: true });
 registerDashboardRoute(app, pool, usagePoller, tokenTracker, {
   port: PORT,
   startedAt: BRIDGE_STARTED_AT,
-  version: '0.2.0',
+  version: '0.3.0',
 });
+
+// ---------- Live Output (PRD 007 Phase 2) ----------
+
+registerLiveOutputRoutes(app, pool, tokenTracker);
+
+// ---------- Transcript Browser (PRD 007 Phase 3) ----------
+
+registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
 
 // ---------- Health ----------
 
@@ -53,7 +68,7 @@ app.get('/health', async (_request, reply) => {
     active_sessions: stats.activeSessions,
     max_sessions: stats.maxSessions,
     uptime_ms: Date.now() - BRIDGE_STARTED_AT.getTime(),
-    version: '0.2.0',
+    version: '0.3.0',
   });
 });
 
@@ -73,9 +88,11 @@ app.post<{
     budget?: { max_depth?: number; max_agents?: number; agents_spawned?: number };
     isolation?: 'worktree' | 'shared';
     timeout_ms?: number;
+    nickname?: string;
+    purpose?: string;
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -92,13 +109,18 @@ app.post<{
       budget,
       isolation,
       timeout_ms,
+      nickname,
+      purpose,
     });
 
     // Register session with token tracker
     tokenTracker.registerSession(result.sessionId, workdir, new Date());
 
+    app.log.info(`[${result.nickname}] Session spawned`);
+
     return reply.status(201).send({
       session_id: result.sessionId,
+      nickname: result.nickname,
       status: result.status,
       depth: result.chain.depth,
       parent_session_id: result.chain.parent_session_id,
@@ -171,6 +193,8 @@ app.get<{
     const result = pool.status(id);
     return reply.status(200).send({
       session_id: result.sessionId,
+      nickname: result.nickname,
+      purpose: result.purpose,
       status: result.status,
       queue_depth: result.queueDepth,
       metadata: result.metadata,
@@ -229,6 +253,8 @@ app.get('/sessions', async (_request, reply) => {
   return reply.status(200).send(
     sessions.map((s) => ({
       session_id: s.sessionId,
+      nickname: s.nickname,
+      purpose: s.purpose,
       status: s.status,
       queue_depth: s.queueDepth,
       metadata: s.metadata,
@@ -306,10 +332,10 @@ app.post<{
           const parentStatus = pool.status(parentId);
           if (parentStatus.status !== 'dead') {
             const notification = [
-              `BRIDGE NOTIFICATION — Child agent [${id.substring(0, 8)}] event: ${type}`,
+              `BRIDGE NOTIFICATION — Child agent [${status.nickname}] event: ${type}`,
               status.metadata?.commission_id
                 ? `Commission: ${status.metadata.commission_id} — ${status.metadata.task_summary ?? 'no summary'}`
-                : `Session: ${id.substring(0, 8)}`,
+                : `Session: ${status.nickname} (${id.substring(0, 8)})`,
               `Details: ${JSON.stringify(content ?? {})}`,
               `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : 'Investigate stale session'}`,
             ].join('\n');

@@ -278,7 +278,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "bridge_spawn",
-      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement, worktree isolation, and stale detection (PRD 006).",
+      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement, worktree isolation, and stale detection (PRD 006). Agent identity via nicknames and purpose (PRD 007).",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -298,6 +298,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           session_id: {
             type: "string",
             description: "Optional methodology session ID to correlate with the bridge session",
+          },
+          nickname: {
+            type: "string",
+            description: "Human-readable agent name. Auto-generated if omitted (methodology-derived or word list fallback).",
+          },
+          purpose: {
+            type: "string",
+            description: "Why this agent was spawned (1-2 sentences for operator context).",
           },
           parent_session_id: {
             type: "string",
@@ -688,11 +696,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_spawn": {
-        const { workdir, spawn_args, initial_prompt, session_id, parent_session_id, depth, budget, isolation, timeout_ms } = z.object({
+        const { workdir, spawn_args, initial_prompt, session_id, nickname, purpose, parent_session_id, depth, budget, isolation, timeout_ms } = z.object({
           workdir: z.string(),
           spawn_args: z.array(z.string()).optional(),
           initial_prompt: z.string().optional(),
           session_id: z.string().optional(),
+          nickname: z.string().optional(),
+          purpose: z.string().optional(),
           parent_session_id: z.string().optional(),
           depth: z.number().optional(),
           budget: z.object({
@@ -710,6 +720,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (session_id) {
           body.metadata = { methodology_session_id: session_id };
         }
+        // PRD 007: agent identity
+        if (nickname) body.nickname = nickname;
+        if (purpose) body.purpose = purpose;
         // PRD 006: parent-child chain fields
         if (parent_session_id) body.parent_session_id = parent_session_id;
         if (depth !== undefined) body.depth = depth;
@@ -737,6 +750,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
           const data = await res.json() as {
             session_id: string;
+            nickname: string;
             status: string;
             depth?: number;
             parent_session_id?: string | null;
@@ -747,6 +761,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
           return ok(JSON.stringify({
             bridge_session_id: data.session_id,
+            nickname: data.nickname,
             status: data.status,
             depth: data.depth ?? 0,
             parent_session_id: data.parent_session_id ?? null,
@@ -755,8 +770,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             worktree_path: data.worktree_path ?? null,
             metals_available: data.metals_available ?? true,
             message: data.isolation === 'worktree'
-              ? `Agent spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
-              : "Agent spawned. Call bridge_prompt to send work.",
+              ? `Agent '${data.nickname}' spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
+              : `Agent '${data.nickname}' spawned. Call bridge_prompt to send work.`,
           }, null, 2));
         } catch (e) {
           if (e instanceof TypeError) {
@@ -849,6 +864,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
           const bridgeSessions = await res.json() as Array<{
             session_id: string;
+            nickname: string;
+            purpose: string | null;
             status: string;
             queue_depth: number;
             metadata?: Record<string, unknown>;
@@ -860,6 +877,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
           const formatted = bridgeSessions.map(s => ({
             bridge_session_id: s.session_id,
+            nickname: s.nickname,
+            purpose: s.purpose ?? null,
             status: s.status,
             queue_depth: s.queue_depth,
             metadata: s.metadata ?? {},

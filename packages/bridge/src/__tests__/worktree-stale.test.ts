@@ -34,6 +34,8 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
     set promptCount(n: number) { promptCount = n; },
     get lastActivityAt() { return lastActivityAt; },
     set lastActivityAt(d: Date) { lastActivityAt = d; },
+    get transcript() { return ''; },
+    onOutput(_cb: (data: string) => void) { return () => {}; },
     async sendPrompt(_prompt: string, _timeoutMs?: number, _settleDelayMs?: number) {
       promptCount++;
       lastActivityAt = new Date();
@@ -142,7 +144,7 @@ function createStaleTestPool(maxSessions = 5) {
       }
 
       totalSpawned++;
-      return { sessionId, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE };
+      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -159,6 +161,8 @@ function createStaleTestPool(maxSessions = 5) {
       if (!session) throw new Error(`Session not found: ${sessionId}`);
       return {
         sessionId: session.id,
+        nickname: session.id,
+        purpose: null,
         status: session.status,
         queueDepth: session.queueDepth,
         metadata: sessionMetadata.get(sessionId),
@@ -185,6 +189,8 @@ function createStaleTestPool(maxSessions = 5) {
     list() {
       return [...sessions.entries()].map(([sessionId, session]) => ({
         sessionId: session.id,
+        nickname: session.id,
+        purpose: null,
         status: session.status,
         queueDepth: session.queueDepth,
         metadata: sessionMetadata.get(sessionId),
@@ -201,6 +207,12 @@ function createStaleTestPool(maxSessions = 5) {
       const channels = sessionChannelsMap.get(sessionId);
       if (!channels) throw new Error(`Session not found: ${sessionId}`);
       return channels;
+    },
+
+    getSession(sessionId: string): PtySession {
+      const session = sessions.get(sessionId);
+      if (!session) throw new Error(`Session not found: ${sessionId}`);
+      return session;
     },
 
     poolStats() {
