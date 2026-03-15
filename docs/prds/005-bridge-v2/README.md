@@ -199,141 +199,272 @@ This distinguishes bridge infrastructure errors from methodology domain errors f
 
 ---
 
-### Phase 2: Human Observability Dashboard
+### Phase 2: Human Observability Dashboard + Token Usage
 
-#### `GET /dashboard`
+Phase 2 adds three capabilities: the dashboard UI, subscription usage polling, and per-session token tracking from session logs. All three are served through a single `GET /dashboard` endpoint.
 
-The bridge serves a server-rendered HTML page showing live agent activity. This is a read-only supervision interface for the human operator.
+#### New files
 
-**Template:** A static HTML template file (`packages/bridge/src/dashboard.html`) with placeholder tokens. The route handler reads the template, fills in data, and returns it. No template engine — simple string replacement.
+| File | Responsibility |
+|------|---------------|
+| `packages/bridge/src/dashboard.html` | HTML template with placeholder tokens |
+| `packages/bridge/src/usage-poller.ts` | Polls Anthropic OAuth usage endpoint, caches result |
+| `packages/bridge/src/token-tracker.ts` | Parses Claude Code JSONL session logs for per-session token data |
+| `packages/bridge/src/dashboard-route.ts` | Fastify route handler — assembles data, renders template |
 
-**Auto-refresh:** `<meta http-equiv="refresh" content="5">` — the page reloads every 5 seconds. No WebSocket, no JavaScript framework.
+#### Type definitions
 
-**Content:**
+```typescript
+// ── Subscription usage (from Anthropic OAuth endpoint) ──
 
-```
-+--------------------------------------------------+
-| @method/bridge                    uptime: 2h 14m  |
-| Sessions: 2 active / 5 max       total spawned: 7 |
-+--------------------------------------------------+
-| ID       | Status | Workdir        | Method SID  | Prompts | Last Activity |
-|----------|--------|----------------|-------------|---------|---------------|
-| 56edd62a | ready  | /pv-agi        | council-1   | 4       | 12s ago       |
-| 1dc309d3 | working| /pv-method     | impl-2      | 1       | now           |
-| a3f7bc01 | dead   | /pv-agi        | council-1   | 7       | 3m ago        |
-+--------------------------------------------------+
-```
+type UsageBucket = {
+  utilization: number;      // 0-100
+  resets_at: string | null; // ISO timestamp
+};
 
-**Fields per session:**
-- `ID` — bridge session ID (truncated to 8 chars for display)
-- `Status` — colored: green (ready), yellow (working), red (dead), gray (initializing)
-- `Workdir` — the working directory the agent was spawned in
-- `Method SID` — methodology session ID from metadata (if set via MCP proxy)
-- `Prompts` — count of prompts sent to this session
-- `Last Activity` — relative timestamp of last prompt/response
+type SubscriptionUsage = {
+  five_hour: UsageBucket;
+  seven_day: UsageBucket;
+  seven_day_sonnet: UsageBucket;
+  seven_day_opus: UsageBucket;
+  extra_usage: { enabled: boolean } | null;
+  polled_at: string;        // ISO timestamp of last successful poll
+};
 
-**Bridge health header:**
-- Uptime since bridge started
-- Active / max sessions
-- Total sessions spawned (lifetime counter)
+// ── Per-session token tracking (from JSONL session logs) ──
 
-**Aggregate token usage header:**
-- Total tokens across all sessions (active + dead)
-- Input / output breakdown
-- Aggregate cache hit rate: `sum(cacheReadTokens) / sum(inputTokens + cacheReadTokens)` across all sessions
-- Cache savings: total tokens served from cache
+type SessionTokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  totalTokens: number;      // inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens
+  cacheHitRate: number;     // cacheReadTokens / (inputTokens + cacheReadTokens), 0-100
+};
 
-These aggregates are computed from the per-session token data (see Per-Session Token Usage below). They give the operator an at-a-glance answer to "how much compute has the bridge consumed this run?" and "is caching working?"
+// ── Aggregate (computed from all sessions) ──
 
-**Implementation notes:**
-- Prompt count requires the bridge to track a counter per session (increment on each `prompt()` call)
-- Last activity timestamp requires tracking the last prompt/response time per session
-- Both are lightweight additions to the session state in `pty-session.ts`
+type AggregateTokenUsage = {
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  cacheHitRate: number;     // aggregate across all sessions
+  sessionCount: number;     // sessions with token data available
+};
 
-See `mocks/` directory for visual mockups.
+// ── Extended session info for dashboard ──
 
-#### Subscription Usage Meters
+type DashboardSession = {
+  sessionId: string;
+  status: string;
+  workdir: string;
+  metadata: Record<string, unknown>;
+  promptCount: number;
+  lastActivityAt: string;         // ISO timestamp
+  tokenUsage: SessionTokenUsage | null;  // null if logs not found
+};
 
-The dashboard includes a subscription usage panel showing Claude Code Max quota consumption. This answers the operator's primary question: "Am I about to hit my rate limit?"
+// ── Full dashboard data (assembled by route handler) ──
 
-**Data source:** Anthropic's OAuth usage endpoint:
-
-```
-GET https://api.anthropic.com/api/oauth/usage
-Authorization: Bearer <CLAUDE_OAUTH_TOKEN>
-anthropic-beta: oauth-2025-04-20
-```
-
-**Response fields:**
-- `five_hour.utilization` (0-100%) — 5-hour rolling window burst limit
-- `five_hour.resets_at` — ISO timestamp when the window resets
-- `seven_day.utilization` (0-100%) — 7-day weekly ceiling
-- `seven_day.resets_at` — ISO timestamp when the week resets
-- `seven_day_sonnet.utilization` — 7-day Sonnet-specific bucket
-- `seven_day_opus.utilization` — 7-day Opus-specific bucket
-- `extra_usage` — overflow billing status
-
-**Dashboard rendering:** Horizontal progress bars for each bucket, color-coded by utilization:
-- 0-60%: bioluminescent (green) — healthy
-- 60-85%: solar (amber) — approaching limit
-- 85-100%: red — near/at limit
-
-Reset times shown as relative timestamps ("resets in 2h 14m").
-
-**Configuration:** `CLAUDE_OAUTH_TOKEN` environment variable. When not set, the subscription panel shows "OAuth token not configured" and is non-blocking — the rest of the dashboard works fine.
-
-**Polling:** The bridge polls the endpoint every 60 seconds (configurable via `USAGE_POLL_INTERVAL_MS`, default `60000`). The dashboard displays the most recent cached response. The endpoint is lightweight — Anthropic supports sustained 1/minute polling.
-
-**Prior art:** pv-agent-tavern implements this in `ClaudeCodeProvider.ts` (line 38-78) with a `SubscriptionMeter` React component. The bridge implementation is simpler — server-rendered HTML, no React.
-
-#### Per-Session Token Usage
-
-Each bridge session tracks token consumption by parsing Claude Code's JSONL session logs. This gives the operator per-agent visibility: "How many tokens has this agent consumed? What's the cache hit rate?"
-
-**Data source:** Claude Code writes session logs to `~/.claude/projects/<project-hash>/sessions/` as JSONL files. Each line contains a message event with `usage` fields:
-
-```json
-{
-  "type": "assistant",
-  "message": { ... },
-  "usage": {
-    "input_tokens": 1250,
-    "output_tokens": 340,
-    "cache_creation_input_tokens": 0,
-    "cache_read_input_tokens": 980
-  }
-}
+type DashboardData = {
+  bridge: {
+    port: number;
+    startedAt: string;
+    version: string;
+    uptime: string;              // formatted: "2h 14m"
+    activeSessions: number;
+    maxSessions: number;
+    totalSpawned: number;
+    deadSessions: number;
+  };
+  tokens: AggregateTokenUsage;
+  subscription: SubscriptionUsage | null;  // null if CLAUDE_OAUTH_TOKEN not set
+  sessions: DashboardSession[];
+};
 ```
 
-**Tracking mechanism:**
+#### `GET /dashboard` route handler (`dashboard-route.ts`)
 
-1. When a bridge session is spawned, the bridge records the session's workdir and start time.
-2. After each `prompt()` response is captured, the bridge reads the most recent JSONL log file for that workdir and aggregates `usage` fields from events since the session's start time.
-3. Aggregated metrics per session:
-   - `inputTokens` — total input tokens (uncached)
-   - `outputTokens` — total output tokens
-   - `cacheReadTokens` — total cache hits
-   - `cacheWriteTokens` — total cache creation tokens
-   - `cacheHitRate` — `cacheReadTokens / (inputTokens + cacheReadTokens)` as percentage
-   - `totalTokens` — sum of all token fields
+```typescript
+export function registerDashboardRoute(
+  app: FastifyInstance,
+  pool: Pool,
+  usagePoller: UsagePoller,
+  tokenTracker: TokenTracker,
+): void
+```
 
-**Dashboard rendering:** Token metrics appear in the session table as additional columns:
-- `Tokens` — total tokens (formatted: e.g., "14.2k")
-- `Cache` — cache hit rate as percentage (e.g., "78%")
+The handler:
 
-A session detail view (accessible by clicking a session row) shows the full breakdown:
-- Input tokens (uncached): 1,250
-- Output tokens: 340
-- Cache read (hits): 980
-- Cache write: 0
-- Hit rate: 78%
-- Estimated cost: $0.02 (based on model pricing)
+1. Calls `pool.list()` to get all sessions with their status, metadata, queue depth
+2. For each session, calls `tokenTracker.getUsage(sessionId)` to get per-session token data (returns `null` if unavailable)
+3. Computes aggregate token usage by summing across all sessions that have token data
+4. Calls `usagePoller.getCached()` to get the latest subscription usage (returns `null` if token not configured)
+5. Reads `dashboard.html` template (cached in memory after first read)
+6. Replaces placeholder tokens (`{{bridge.uptime}}`, `{{tokens.totalTokens}}`, `{{sessions}}`, etc.) with rendered HTML
+7. Returns `Content-Type: text/html`
 
-**Log file discovery:** The bridge uses the workdir to derive the project hash that Claude Code uses for its log directory. The hashing algorithm matches Claude Code's internal convention: the project path is hashed to determine the log subdirectory under `~/.claude/projects/`.
+**Template rendering:** The template uses simple `{{key}}` placeholders. The session table rows and subscription meter bars are rendered as HTML strings by the handler and injected into the template. No template engine dependency — `String.prototype.replace()` is sufficient.
 
-**Fallback:** If session logs are not found (Claude Code version doesn't write them, or the path convention changed), the per-session token columns show "—" and a tooltip "Session logs not found." The dashboard remains functional — this is a best-effort enrichment, not a hard dependency.
+#### Subscription usage poller (`usage-poller.ts`)
 
-**Configuration:** `CLAUDE_SESSIONS_DIR` environment variable (default: `~/.claude/projects`). Override if Claude Code stores sessions elsewhere.
+```typescript
+export function createUsagePoller(config: {
+  oauthToken: string | null;
+  pollIntervalMs: number;
+}): UsagePoller
+
+type UsagePoller = {
+  start(): void;                               // begin polling timer
+  stop(): void;                                // clear polling timer
+  getCached(): SubscriptionUsage | null;       // latest result (null if no token or not yet polled)
+};
+```
+
+**Implementation:**
+
+1. If `oauthToken` is null, `start()` is a no-op and `getCached()` always returns null
+2. On start, immediately polls once, then sets `setInterval` at `pollIntervalMs`
+3. Each poll:
+   ```typescript
+   const res = await fetch('https://api.anthropic.com/api/oauth/usage', {
+     headers: {
+       'Authorization': `Bearer ${oauthToken}`,
+       'anthropic-beta': 'oauth-2025-04-20',
+     },
+   });
+   ```
+4. On success, caches the parsed response with a `polled_at` timestamp
+5. On 403 (missing `user:profile` scope), logs a warning once and stops polling
+6. On network error, logs and retries on next interval — does not crash
+
+**Lifecycle:** Created at bridge startup. `start()` called after the HTTP server is listening. `stop()` called on graceful shutdown.
+
+#### Per-session token tracker (`token-tracker.ts`)
+
+```typescript
+export function createTokenTracker(config: {
+  sessionsDir: string;        // default: ~/.claude/projects
+}): TokenTracker
+
+type TokenTracker = {
+  registerSession(sessionId: string, workdir: string, startedAt: Date): void;
+  refreshUsage(sessionId: string): SessionTokenUsage | null;
+  getUsage(sessionId: string): SessionTokenUsage | null;
+  getAggregate(): AggregateTokenUsage;
+};
+```
+
+**Implementation:**
+
+1. `registerSession()` — called by the pool when a session is spawned. Records the workdir and start time.
+
+2. `refreshUsage(sessionId)` — called after each `prompt()` response:
+   a. Derives the Claude Code project hash from the workdir path
+   b. Finds the most recent JSONL file in `{sessionsDir}/{projectHash}/sessions/`
+   c. Reads the file line by line, filtering events with `usage` fields that occurred after `startedAt`
+   d. Sums `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`
+   e. Computes `cacheHitRate = cacheReadTokens / (inputTokens + cacheReadTokens) * 100`
+   f. Caches the result and returns it
+   g. Returns `null` if the log file doesn't exist or can't be parsed
+
+3. `getUsage(sessionId)` — returns the cached result from the last `refreshUsage()` call. Does not re-read the log file.
+
+4. `getAggregate()` — iterates all registered sessions, sums their cached token data:
+   ```typescript
+   const aggregate: AggregateTokenUsage = {
+     totalTokens: 0, inputTokens: 0, outputTokens: 0,
+     cacheReadTokens: 0, cacheWriteTokens: 0,
+     cacheHitRate: 0, sessionCount: 0,
+   };
+   for (const usage of allCachedUsages) {
+     aggregate.totalTokens += usage.totalTokens;
+     aggregate.inputTokens += usage.inputTokens;
+     aggregate.outputTokens += usage.outputTokens;
+     aggregate.cacheReadTokens += usage.cacheReadTokens;
+     aggregate.cacheWriteTokens += usage.cacheWriteTokens;
+     aggregate.sessionCount++;
+   }
+   const totalInput = aggregate.inputTokens + aggregate.cacheReadTokens;
+   aggregate.cacheHitRate = totalInput > 0
+     ? (aggregate.cacheReadTokens / totalInput) * 100
+     : 0;
+   ```
+
+**Project hash derivation:** Claude Code hashes the absolute project path to create the subdirectory name under `~/.claude/projects/`. The bridge must replicate this hashing. The exact algorithm should be verified by inspecting Claude Code's source or by empirical observation (create a session in a known workdir, check which directory appears). If the algorithm changes, the token tracker falls back gracefully (returns `null`).
+
+**Integration with pool:** The pool calls `tokenTracker.registerSession()` in `create()` and `tokenTracker.refreshUsage()` after each `prompt()` resolves. This keeps token data fresh without requiring a separate polling timer.
+
+#### Session state extensions (`pty-session.ts`)
+
+Add two fields to the session state tracked by each `PtySession`:
+
+```typescript
+// Add to PtySession internal state
+promptCount: number;        // incremented on each prompt() call
+lastActivityAt: Date;       // updated on prompt send and response receive
+```
+
+These are exposed via `pool.list()` and `pool.status()` for the dashboard.
+
+#### Dashboard visual layout
+
+See `mocks/dashboard-overview.html` for the full Vidtecci OS design system mockup. Layout summary:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ @method/bridge                              Port 3456 │ v0.2.0 │
+│ Agent Session Dashboard                     Started ...        │
+├─────────────────────────────────────────────────────────────────┤
+│ HEALTH CARDS ROW 1: Bridge                                      │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
+│ │ Active   │ │ Total    │ │ Uptime   │ │ Dead     │            │
+│ │ 2 of 5   │ │ 7        │ │ 2h 14m   │ │ 1        │            │
+│ └──────────┘ └──────────┘ └──────────┘ └──────────┘            │
+├─────────────────────────────────────────────────────────────────┤
+│ HEALTH CARDS ROW 2: Aggregate Tokens                            │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
+│ │ Total    │ │ In / Out │ │ Cache    │ │ Cache    │            │
+│ │ 142.7k   │ │109.7/33k │ │ 75%      │ │ 82.6k   │            │
+│ └──────────┘ └──────────┘ └──────────┘ └──────────┘            │
+├─────────────────────────────────────────────────────────────────┤
+│ SUBSCRIPTION USAGE (if CLAUDE_OAUTH_TOKEN set)                  │
+│ 5-Hour Window   ████████░░░░░░░░░  42%    resets in 3h 18m     │
+│ 7-Day Ceiling   ████░░░░░░░░░░░░░  28%    resets in 4d 11h     │
+│ 7-Day Sonnet    ███░░░░░░░░░░░░░░  19%    resets in 4d 11h     │
+│ 7-Day Opus      █████████████████  87%    resets in 4d 11h     │
+├─────────────────────────────────────────────────────────────────┤
+│ SESSIONS                                  3 total · 2 active   │
+│ ID       │ Status  │ Workdir  │ SID     │ Prm │ Tokens │ Cache │
+│ 56edd62a │ working │ /pv-agi  │ cncl-1  │  4  │ 68.4k  │  78% │
+│ 1dc309d3 │ ready   │ /pv-mthd │ impl-2  │ 12  │ 51.2k  │  82% │
+│ a3f7bc01 │ dead    │ /pv-agi  │ cncl-1  │  7  │ 23.1k  │  54% │
+├─────────────────────────────────────────────────────────────────┤
+│ @method/bridge v0.2.0         Auto-refresh 5s · Usage poll 60s │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Color system** (from Vidtecci Visual Compass):
+- Status: bio/green (ready), solar/amber (working), red (dead), dim/gray (initializing)
+- Subscription meters: bio (0-60%), solar (60-85%), red (85-100%)
+- Cache hit rate: bio (70%+), solar (40-69%), dim (<40%)
+- Token columns show breakdown on hover/sub-line: `in: 52.1k · out: 16.3k`
+
+#### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLAUDE_OAUTH_TOKEN` | *(none)* | OAuth token for subscription usage polling. When unset, subscription panel shows "not configured". |
+| `USAGE_POLL_INTERVAL_MS` | `60000` | Interval between subscription usage polls (ms) |
+| `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base directory for Claude Code JSONL session logs |
+
+**Fallback behavior:** Every data source degrades gracefully:
+- No `CLAUDE_OAUTH_TOKEN` → subscription panel hidden, everything else works
+- Session logs not found → token columns show "—", aggregate excludes that session
+- OAuth endpoint returns 403 → warning logged, polling stops, panel shows "scope error"
+- OAuth endpoint unreachable → last cached value shown with "stale" indicator
 
 ---
 
