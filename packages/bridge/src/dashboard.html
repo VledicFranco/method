@@ -618,6 +618,230 @@ body::after {
   color: var(--bio-bright);
 }
 
+/* ── SPAWN MODAL ───────────────────────────────────── */
+.spawn-btn {
+  background: rgba(0,212,176,.1);
+  border: 1px solid rgba(0,212,176,.25);
+  border-radius: 2px;
+  color: var(--bio);
+  font-family: var(--font-m);
+  font-size: .68rem;
+  letter-spacing: .06em;
+  padding: .45rem 1rem;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.spawn-btn:hover {
+  background: rgba(0,212,176,.2);
+  border-color: rgba(0,212,176,.5);
+  color: var(--bio-bright);
+}
+
+.spawn-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5,9,16,.85);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.spawn-overlay.active { display: flex; }
+
+.spawn-form {
+  background: var(--abyss);
+  border: 1px solid rgba(0,212,176,.15);
+  border-radius: 4px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 520px;
+  position: relative;
+}
+
+.spawn-form-title {
+  font-family: var(--font-d);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.spawn-field {
+  margin-bottom: 1.25rem;
+}
+
+.spawn-label {
+  display: block;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .7;
+  margin-bottom: .4rem;
+}
+
+.spawn-input, .spawn-textarea {
+  width: 100%;
+  background: rgba(5,9,16,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  color: var(--stellar);
+  font-family: var(--font-m);
+  font-size: .78rem;
+  padding: .55rem .75rem;
+  outline: none;
+  transition: border-color .2s;
+}
+.spawn-input:focus, .spawn-textarea:focus {
+  border-color: rgba(0,212,176,.3);
+}
+.spawn-textarea {
+  min-height: 6rem;
+  resize: vertical;
+  font-family: var(--font-b);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+
+.spawn-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.spawn-cancel {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  color: var(--dim2);
+  font-family: var(--font-m);
+  font-size: .68rem;
+  padding: .5rem 1rem;
+  cursor: pointer;
+}
+.spawn-cancel:hover { color: var(--dim); border-color: rgba(255,255,255,.15); }
+
+.spawn-submit {
+  background: rgba(0,212,176,.15);
+  border: 1px solid rgba(0,212,176,.3);
+  border-radius: 2px;
+  color: var(--bio);
+  font-family: var(--font-m);
+  font-size: .68rem;
+  font-weight: 500;
+  padding: .5rem 1.25rem;
+  cursor: pointer;
+  transition: background .2s;
+}
+.spawn-submit:hover { background: rgba(0,212,176,.25); color: var(--bio-bright); }
+.spawn-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+.spawn-error {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--red);
+  margin-top: .75rem;
+  display: none;
+}
+
+/* ── TOUCH-FRIENDLY TARGETS ────────────────────────── */
+.session-table td {
+  min-height: 48px;
+}
+
+.session-row td {
+  padding-top: .85rem !important;
+  padding-bottom: .85rem !important;
+}
+
+.detail-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── MOBILE RESPONSIVE ─────────────────────────────── */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .header-right {
+    text-align: left;
+  }
+
+  .health-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .session-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .channels-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subscription-header {
+    flex-direction: column;
+    gap: .5rem;
+  }
+
+  .meters-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    gap: .3rem;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem 1.5rem;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  /* Reference panel stacks */
+  #ref-panel > div > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .spawn-form {
+    padding: 1.5rem;
+    width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .health-row {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-title {
+    font-size: 1.3rem;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -630,7 +854,8 @@ body::after {
       <h1 class="header-title">@method/<em>bridge</em></h1>
       <div class="header-subtitle">Agent Session Dashboard</div>
     </div>
-    <div class="header-right">
+    <div class="header-right" style="display:flex;align-items:flex-start;gap:1.25rem;">
+      <button class="spawn-btn" onclick="openSpawnModal()">+ Spawn Session</button>
       <div class="header-meta">
         <strong>Port</strong> {{bridge.port}}<br>
         <strong>Started</strong> {{bridge.startedAt}}<br>
@@ -638,6 +863,26 @@ body::after {
       </div>
     </div>
   </header>
+
+  <!-- Spawn Session Modal -->
+  <div class="spawn-overlay" id="spawn-overlay" onclick="if(event.target===this)closeSpawnModal()">
+    <div class="spawn-form">
+      <div class="spawn-form-title">Spawn Session</div>
+      <div class="spawn-field">
+        <label class="spawn-label" for="spawn-workdir">Working Directory</label>
+        <input class="spawn-input" type="text" id="spawn-workdir" placeholder="/path/to/project" value="{{bridge.defaultWorkdir}}">
+      </div>
+      <div class="spawn-field">
+        <label class="spawn-label" for="spawn-prompt">Initial Prompt</label>
+        <textarea class="spawn-textarea" id="spawn-prompt" placeholder="What should the agent do?"></textarea>
+      </div>
+      <div class="spawn-actions">
+        <button class="spawn-cancel" onclick="closeSpawnModal()">Cancel</button>
+        <button class="spawn-submit" id="spawn-submit" onclick="submitSpawn()">Spawn</button>
+      </div>
+      <div class="spawn-error" id="spawn-error"></div>
+    </div>
+  </div>
 
   <!-- Health cards — row 1: bridge -->
   <div class="health-row">
@@ -832,6 +1077,58 @@ function toggleDetail(detailId) {
   const el = document.getElementById(detailId);
   if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
 }
+
+function openSpawnModal() {
+  document.getElementById('spawn-overlay').classList.add('active');
+  document.getElementById('spawn-prompt').focus();
+}
+
+function closeSpawnModal() {
+  document.getElementById('spawn-overlay').classList.remove('active');
+  document.getElementById('spawn-error').style.display = 'none';
+}
+
+function submitSpawn() {
+  var btn = document.getElementById('spawn-submit');
+  var errEl = document.getElementById('spawn-error');
+  var workdir = document.getElementById('spawn-workdir').value.trim();
+  var prompt = document.getElementById('spawn-prompt').value.trim();
+
+  if (!workdir) { errEl.textContent = 'Working directory is required.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Spawning...';
+  errEl.style.display = 'none';
+
+  var body = { workdir: workdir };
+  if (prompt) body.prompt = prompt;
+
+  fetch('/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(function(res) {
+    if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Spawn failed'); });
+    return res.json();
+  })
+  .then(function() {
+    closeSpawnModal();
+    window.location.reload();
+  })
+  .catch(function(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  })
+  .finally(function() {
+    btn.disabled = false;
+    btn.textContent = 'Spawn';
+  });
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeSpawnModal();
+});
 </script>
 
 </body>

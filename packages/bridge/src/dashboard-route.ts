@@ -43,6 +43,7 @@ export function registerDashboardRoute(
     html = html.replace(/\{\{bridge\.totalSpawned\}\}/g, String(stats.totalSpawned));
     html = html.replace(/\{\{bridge\.uptime\}\}/g, formatUptime(config.startedAt));
     html = html.replace(/\{\{bridge\.deadSessions\}\}/g, String(stats.deadSessions));
+    html = html.replace(/\{\{bridge\.defaultWorkdir\}\}/g, escapeHtml(process.cwd()));
 
     // Token placeholders
     html = html.replace(/\{\{tokens\.totalTokens\}\}/g, formatTokens(aggregate.totalTokens));
