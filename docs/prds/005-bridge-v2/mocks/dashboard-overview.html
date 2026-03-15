@@ -461,7 +461,7 @@ body::after {
     </div>
   </header>
 
-  <!-- Health cards -->
+  <!-- Health cards — row 1: bridge -->
   <div class="health-row">
     <div class="health-card accent-bio">
       <div class="health-card-label">Active Sessions</div>
@@ -482,6 +482,30 @@ body::after {
       <div class="health-card-label">Dead Sessions</div>
       <div class="health-card-value dim">1</div>
       <div class="health-card-detail">pending cleanup</div>
+    </div>
+  </div>
+
+  <!-- Health cards — row 2: aggregate token usage -->
+  <div class="health-row">
+    <div class="health-card accent-bio">
+      <div class="health-card-label">Total Tokens</div>
+      <div class="health-card-value bio">142.7k</div>
+      <div class="health-card-detail">across all sessions</div>
+    </div>
+    <div class="health-card accent-solar">
+      <div class="health-card-label">Input / Output</div>
+      <div class="health-card-value dim" style="font-size: 1.4rem;">109.7k <span style="color: var(--muted); font-size: .9rem;">/</span> 33.0k</div>
+      <div class="health-card-detail">in: 109.7k &middot; out: 33.0k</div>
+    </div>
+    <div class="health-card accent-bio">
+      <div class="health-card-label">Cache Hit Rate</div>
+      <div class="health-card-value bio">75%</div>
+      <div class="health-card-detail">82.6k hits / 109.7k input</div>
+    </div>
+    <div class="health-card accent-nebular">
+      <div class="health-card-label">Cache Savings</div>
+      <div class="health-card-value dim">82.6k</div>
+      <div class="health-card-detail">tokens served from cache</div>
     </div>
   </div>
 

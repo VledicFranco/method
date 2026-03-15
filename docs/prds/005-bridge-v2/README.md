@@ -237,6 +237,14 @@ The bridge serves a server-rendered HTML page showing live agent activity. This 
 - Active / max sessions
 - Total sessions spawned (lifetime counter)
 
+**Aggregate token usage header:**
+- Total tokens across all sessions (active + dead)
+- Input / output breakdown
+- Aggregate cache hit rate: `sum(cacheReadTokens) / sum(inputTokens + cacheReadTokens)` across all sessions
+- Cache savings: total tokens served from cache
+
+These aggregates are computed from the per-session token data (see Per-Session Token Usage below). They give the operator an at-a-glance answer to "how much compute has the bridge consumed this run?" and "is caching working?"
+
 **Implementation notes:**
 - Prompt count requires the bridge to track a counter per session (increment on each `prompt()` call)
 - Last activity timestamp requires tracking the last prompt/response time per session
