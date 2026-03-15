@@ -1,0 +1,1 @@
+Phase A integration test complete. Bridge → MCP chain validated.
