@@ -6,6 +6,7 @@ import { createSessionChannels, appendMessage, type SessionChannels } from './ch
 import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
+import { SpawnQueue } from './spawn-queue.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -100,6 +101,8 @@ export interface PoolOptions {
   maxSessions?: number;
   claudeBin?: string;
   settleDelayMs?: number;
+  /** Minimum gap between consecutive spawns (milliseconds). Default: 2000. */
+  minSpawnGapMs?: number;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -140,6 +143,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const claudeBin = options?.claudeBin;
   const settleDelayMs = options?.settleDelayMs;
+  const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
   const sessionMetadata = new Map<string, Record<string, unknown>>();
@@ -415,14 +419,16 @@ export function createPool(options?: PoolOptions): SessionPool {
         await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
 
-      const session = spawnSession({
+      // SpawnQueue enforces MIN_SPAWN_GAP_MS between consecutive spawns
+      // to prevent API rate-limit contention across concurrent callers.
+      const session = await spawnQueue.enqueue(() => Promise.resolve(spawnSession({
         id: sessionId,
         workdir: effectiveWorkdir,
         claudeBin,
         settleDelayMs,
         initialPrompt: activationPrompt,
         spawnArgs,
-      });
+      })));
 
       sessions.set(sessionId, session);
       sessionWorkdirs.set(sessionId, effectiveWorkdir);

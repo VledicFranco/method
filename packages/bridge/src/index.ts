@@ -20,11 +20,13 @@ const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '
 const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000', 10);
 const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
 const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
+const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
   claudeBin: CLAUDE_BIN,
   settleDelayMs: SETTLE_DELAY_MS,
+  minSpawnGapMs: MIN_SPAWN_GAP_MS,
 });
 
 const usagePoller = createUsagePoller({
