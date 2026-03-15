@@ -12,10 +12,18 @@ export type SubscriptionUsage = {
   polled_at: string;        // ISO timestamp of last successful poll
 };
 
+export type UsagePollerStatus =
+  | 'not_configured'  // no token provided
+  | 'polling'         // active and working
+  | 'scope_error'     // 403 — token missing required scope
+  | 'network_error'   // last poll failed, will retry
+  | 'ok';             // has cached data
+
 export type UsagePoller = {
   start(): void;
   stop(): void;
   getCached(): SubscriptionUsage | null;
+  getStatus(): UsagePollerStatus;
 };
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
@@ -28,6 +36,7 @@ export function createUsagePoller(config: {
   let intervalHandle: ReturnType<typeof setInterval> | null = null;
   let warned403 = false;
   let stopped = false;
+  let lastNetworkError = false;
 
   async function poll(): Promise<void> {
     if (!config.oauthToken || stopped) return;
@@ -64,7 +73,9 @@ export function createUsagePoller(config: {
         extra_usage: parseExtraUsage(body),
         polled_at: new Date().toISOString(),
       };
+      lastNetworkError = false;
     } catch (err) {
+      lastNetworkError = true;
       console.warn(`[usage-poller] Network error — will retry on next interval:`, (err as Error).message);
     }
   }
@@ -94,6 +105,14 @@ export function createUsagePoller(config: {
 
     getCached(): SubscriptionUsage | null {
       return cached;
+    },
+
+    getStatus(): UsagePollerStatus {
+      if (!config.oauthToken) return 'not_configured';
+      if (warned403) return 'scope_error';
+      if (lastNetworkError && !cached) return 'network_error';
+      if (cached) return 'ok';
+      return 'polling';
     },
   };
 }

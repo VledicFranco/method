@@ -3,7 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FastifyInstance } from 'fastify';
 import type { SessionPool } from './pool.js';
-import type { UsagePoller, SubscriptionUsage, UsageBucket } from './usage-poller.js';
+import type { UsagePoller, SubscriptionUsage, UsageBucket, UsagePollerStatus } from './usage-poller.js';
 import type { TokenTracker } from './token-tracker.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,7 +50,7 @@ export function registerDashboardRoute(
     html = html.replace(/\{\{tokens\.cacheReadTokens\}\}/g, formatTokens(aggregate.cacheReadTokens));
 
     // Subscription panel
-    html = html.replace(/\{\{subscription\}\}/g, renderSubscriptionPanel(subscriptionUsage));
+    html = html.replace(/\{\{subscription\}\}/g, renderSubscriptionPanel(subscriptionUsage, usagePoller.getStatus()));
 
     // Session rows
     html = html.replace(/\{\{sessions\}\}/g, renderSessionRows(sessions, tokenTracker));
@@ -170,8 +170,49 @@ function renderMeter(label: string, bucket: UsageBucket): string {
       </div>`;
 }
 
-export function renderSubscriptionPanel(usage: SubscriptionUsage | null): string {
-  if (!usage) return '';
+export function renderSubscriptionPanel(usage: SubscriptionUsage | null, status: UsagePollerStatus): string {
+  // Show status messages when usage data isn't available
+  if (!usage) {
+    const statusMessages: Record<string, { label: string; detail: string; color: string }> = {
+      not_configured: {
+        label: 'Not Configured',
+        detail: 'Set CLAUDE_OAUTH_TOKEN or log in with <code>claude</code> to enable subscription meters',
+        color: 'var(--muted)',
+      },
+      scope_error: {
+        label: 'Scope Error (403)',
+        detail: 'OAuth token is missing the <code>user:inference</code> scope — re-authenticate with <code>claude</code>',
+        color: 'var(--red)',
+      },
+      network_error: {
+        label: 'Network Error',
+        detail: 'Cannot reach api.anthropic.com — will retry automatically',
+        color: 'var(--solar)',
+      },
+      polling: {
+        label: 'Loading...',
+        detail: 'First poll in progress',
+        color: 'var(--dim2)',
+      },
+    };
+
+    const msg = statusMessages[status];
+    if (!msg) return '';
+
+    return `
+  <div class="subscription-panel">
+    <div class="subscription-header">
+      <h2 class="subscription-title">Subscription Usage</h2>
+      <div class="subscription-poll" style="color: ${msg.color};">
+        <span class="dot" style="background: ${msg.color};"></span>
+        ${msg.label}
+      </div>
+    </div>
+    <div style="padding: .5rem 0; font-family: var(--font-m); font-size: .72rem; color: var(--dim2);">
+      ${msg.detail}
+    </div>
+  </div>`;
+  }
 
   const polledAt = new Date(usage.polled_at);
   const polledAgo = formatTimeAgo(polledAt);

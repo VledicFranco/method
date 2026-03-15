@@ -7,8 +7,8 @@
   "scripts": {
     "build": "tsc -b",
     "test": "npx tsx --test packages/core/src/__tests__/*.test.ts",
-    "bridge": "npm run build && npm run build --workspace=packages/bridge && node packages/bridge/dist/index.js",
-    "bridge:dev": "npx tsx packages/bridge/src/index.ts",
+    "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
+    "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:stop": "node scripts/kill-port.js"
   },
   "devDependencies": {
