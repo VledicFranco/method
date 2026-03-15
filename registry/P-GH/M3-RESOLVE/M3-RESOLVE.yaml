@@ -1,0 +1,643 @@
+method:
+  id: M3-RESOLVE
+  parent: P-GH
+  name: "Merge Conflict Resolution Method"
+  description: >
+    Resolves merge conflicts in a GitHub pull request. Detects conflicting files,
+    classifies each conflict as mechanical (textual overlap) or semantic (logic
+    divergence), selects a resolution strategy (rebase, merge, cherry-pick, or manual
+    edit), executes the resolution on the actual branch (no worktree isolation), and
+    verifies that build + tests pass with no unintended changes. The core invariant
+    is preserves_intent: the resolution must preserve what both branches intended.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-15"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M3-RESOLVE takes an unmergeable PR and produces a conflict-free branch that
+    preserves the intent of both sides. Five steps: detect conflicting files, analyze
+    each conflict (mechanical vs semantic), choose a resolution strategy, execute
+    the resolution, and verify correctness.
+  who: >
+    One role — resolver. Has read access to both branches and write access to the
+    PR branch. Must understand git operations (rebase, merge, cherry-pick) and the
+    semantic intent of both branches' changes.
+  why: >
+    Merge conflicts block PR merges and delivery. Mechanical conflicts (two people
+    edited adjacent lines) are straightforward but tedious. Semantic conflicts (two
+    branches changed the same logic in incompatible ways) require understanding
+    intent. M3-RESOLVE makes the conflict analysis and resolution strategy explicit,
+    preventing silent data loss from incorrect manual merges.
+  how: >
+    Five-step linear DAG: detect -> analyze -> strategy -> execute -> verify. The
+    execute step works on the actual branch (no worktree isolation) because conflict
+    resolution requires direct branch manipulation (rebase, merge operations). The
+    verify step confirms build + tests pass and no unintended changes were introduced.
+  when_to_use:
+    - "A PR cannot be merged due to git conflicts"
+    - "An automated merge failed and needs manual resolution"
+    - "A rebase is needed to bring a branch up to date with the target"
+  when_not_to_use:
+    - "The PR is mergeable (no conflicts) — use M2-REVIEW instead"
+    - "The challenge is about code quality, not merge conflicts"
+    - "The conflict is in a non-code file that requires human editorial judgment"
+
+domain_theory:
+  id: D_RESOLVE
+  sorts:
+    - name: PullRequest
+      cardinality: singleton_per_execution
+      description: "The unmergeable PR with conflict markers"
+    - name: ConflictSet
+      cardinality: singleton_per_execution
+      description: "The set of files with merge conflicts"
+    - name: ConflictFile
+      cardinality: finite
+      description: "A single file with conflict markers"
+    - name: ConflictType
+      cardinality: finite
+      values: [mechanical, semantic]
+      description: "mechanical: textual overlap (adjacent edits). semantic: logic divergence (incompatible changes)"
+    - name: ResolutionStrategy
+      cardinality: finite
+      values: [rebase, merge, cherry_pick, manual]
+      description: "The strategy for resolving the conflicts"
+    - name: BranchState
+      cardinality: finite
+      description: "The state of the PR branch before and after resolution"
+    - name: ResolutionRecord
+      cardinality: singleton_per_execution
+      description: "The assembled record of what was resolved and how"
+  function_symbols:
+    - name: classify_conflict
+      signature: "ConflictFile -> ConflictType"
+      totality: total
+      description: "Determines whether a file conflict is mechanical or semantic"
+    - name: select_strategy
+      signature: "ConflictSet -> ResolutionStrategy"
+      totality: total
+      description: "Chooses the resolution strategy based on conflict analysis"
+    - name: conflict_count
+      signature: "ConflictSet -> nat"
+      totality: total
+      description: "Number of files in the conflict set"
+  predicates:
+    - name: has_conflicts
+      signature: "PullRequest -> Bool"
+      description: "The PR has merge conflicts and cannot be auto-merged"
+    - name: preserves_intent
+      signature: "ResolutionRecord x BranchState x BranchState -> Bool"
+      description: "The resolution preserves the intent of both the source and target branches"
+    - name: builds_clean
+      signature: "BranchState -> Bool"
+      description: "The branch state compiles without errors"
+    - name: tests_pass
+      signature: "BranchState -> Bool"
+      description: "All tests pass on the branch state"
+    - name: no_unintended_changes
+      signature: "BranchState x BranchState -> Bool"
+      description: "The post-resolution state has no changes beyond what was needed to resolve conflicts"
+    - name: conflict_resolved
+      signature: "ConflictFile -> Bool"
+      description: "The conflict in this file has been resolved (no conflict markers remain)"
+  axioms:
+    - id: Ax-1
+      name: Intent preservation
+      statement: >
+        forall rr : ResolutionRecord, pre : BranchState, post : BranchState.
+        conflict_resolved_all(rr) -> preserves_intent(rr, pre, post)
+      rationale: >
+        The resolution must preserve what both branches intended. This is the core
+        invariant of M3-RESOLVE. A resolution that silently drops changes from either
+        branch violates this axiom even if it produces a clean merge.
+    - id: Ax-2
+      name: Complete resolution
+      statement: >
+        forall cs : ConflictSet. terminal(s) ->
+          forall cf : ConflictFile. cf IN cs -> conflict_resolved(cf)
+      rationale: "All conflicts must be resolved. Partial resolution is not a terminal state."
+    - id: Ax-3
+      name: Build verification
+      statement: "forall s : State. terminal(s) -> builds_clean(s.post_resolution)"
+      rationale: "A resolution that breaks the build is not a valid resolution."
+    - id: Ax-4
+      name: Test verification
+      statement: "forall s : State. terminal(s) -> tests_pass(s.post_resolution)"
+      rationale: "A resolution that breaks tests has likely violated preserves_intent."
+    - id: Ax-5
+      name: No collateral damage
+      statement: >
+        forall s : State. terminal(s) ->
+          no_unintended_changes(s.pre_resolution, s.post_resolution)
+      rationale: "The resolution must not introduce changes beyond conflict resolution."
+  domain_boundary_note: >
+    Excludes: code review (use M2-REVIEW after resolution); implementation work;
+    the content domain of the software being merged; CI/CD pipeline execution;
+    branch policy enforcement. D_RESOLVE tracks conflict resolution state only.
+  initial_state_valid_claim: >
+    A state with PullRequest loaded, has_conflicts = true, no resolution attempted
+    satisfies all axioms: Ax-1 through Ax-5 have antecedents not yet triggered
+    (terminal state not reached). Valid.
+  terminal_state_valid_claim: >
+    A state with all conflicts resolved (Ax-2), intent preserved (Ax-1), build clean
+    (Ax-3), tests passing (Ax-4), no unintended changes (Ax-5), ResolutionRecord
+    assembled. Valid.
+
+roles:
+  - id: resolver
+    description: >
+      Reads both branches, identifies conflicts, classifies them, selects a strategy,
+      executes the resolution, and verifies correctness. Has full read access to both
+      branches and write access to the PR branch. Must understand git operations and
+      the semantic intent of both branches' changes.
+    observation_projection: >
+      pi_resolver = id : Mod(D_RESOLVE) -> Mod(D_RESOLVE) — full visibility. The
+      resolver sees both branches, all conflict files, and the resolution state.
+    authorized_transitions:
+      - "Execute sigma_0: detect conflicts via git/GitHub"
+      - "Execute sigma_1: analyze each conflict file"
+      - "Execute sigma_2: select resolution strategy"
+      - "Execute sigma_3: execute resolution (rebase, merge, cherry-pick, or manual edit)"
+      - "Execute sigma_4: verify build + tests + no unintended changes"
+    not_authorized:
+      - "Modify code beyond what is needed to resolve conflicts"
+      - "Change the PR's target branch"
+      - "Review the PR's logic (that is M2-REVIEW's scope)"
+    coverage_claim: >
+      pi_resolver is identity over Mod(D_RESOLVE) — all resolution state visible.
+      Both branch states, conflict files, and resolution outcomes are observable.
+    authority_claim: >
+      The resolver is authorized to execute all five steps and produce all state
+      transitions required to reach O_RESOLVE. No required transition is unauthorized.
+    role_partition_rationale: >
+      One role because conflict resolution is a single-perspective operation requiring
+      understanding of both branches simultaneously. Splitting into "analyzer" and
+      "executor" roles would require the executor to re-derive intent understanding
+      that the analyzer already has, with no epistemic benefit.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (path graph, trivially acyclic)"
+  formal: "Gamma_RESOLVE = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4}, {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_3, sigma_4)}, sigma_0, sigma_4)"
+
+phases:
+  - id: sigma_0
+    name: "Detect"
+    role: resolver
+    precondition: "PR identified as unmergeable; git and GitHub MCP tools accessible"
+    postcondition: "Conflicting files identified; both branches' changes read"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - pr_number is set and valid
+      - conflict_files is a non-empty list of files with conflicts
+      - base_branch and head_branch are identified
+      - Both branches' recent changes to conflicting files have been read
+      - status = PASS when conflicts detected; status = BLOCKED if PR is actually mergeable
+
+      **Rationale.** Conflict resolution requires understanding what both sides changed.
+      Reading only the conflict markers is insufficient — the resolver needs the full
+      change context from both branches to assess intent.
+
+      **Procedure.**
+      1. Call get_pull_request to confirm unmergeable status
+      2. Attempt a git merge or rebase in a dry-run to identify conflicting files
+      3. For each conflicting file: read the file from both branches
+      4. Record the conflict set with file paths
+
+      **Output schema reference:**
+      - pr_number: the GitHub PR number
+      - conflict_files: list of conflicting file paths
+      - base_branch: the target branch name
+      - head_branch: the source branch name
+      - conflict_count: number of conflicting files
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: pr_number
+          type: integer
+          required: true
+        - name: conflict_files
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: base_branch
+          type: string
+          min_length: 1
+          required: true
+        - name: head_branch
+          type: string
+          min_length: 1
+          required: true
+        - name: conflict_count
+          type: integer
+          min_value: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+    invariants:
+      hard:
+        - "conflict_files has at least 1 entry"
+        - "conflict_count = |conflict_files|"
+        - "status = BLOCKED if the PR is actually mergeable (no conflicts)"
+      soft:
+        - "both branches' changes to each conflicting file have been read"
+
+  - id: sigma_1
+    name: "Analyze"
+    role: resolver
+    precondition: "sigma_0 complete; conflict files identified"
+    postcondition: "Each conflict classified as mechanical or semantic; intent of both branches understood"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - conflict_analysis is a list with one entry per conflict file
+      - Each entry has conflict_type: mechanical or semantic
+      - Each entry has intent_base: what the base branch intended with its changes
+      - Each entry has intent_head: what the head branch intended with its changes
+      - Each entry has overlap_description: where and how the changes overlap
+      - status = PASS when all conflicts analyzed
+
+      **Rationale.** Mechanical conflicts (adjacent line edits) can often be resolved by
+      accepting both changes. Semantic conflicts (incompatible logic changes) require
+      understanding what both branches intended to produce a resolution that preserves
+      both intents. Misclassifying a semantic conflict as mechanical risks silent data loss.
+
+      **Procedure.**
+      1. For each conflict file:
+         a. Read the diff from the base branch's perspective
+         b. Read the diff from the head branch's perspective
+         c. Identify where the changes overlap
+         d. Classify: mechanical (textual proximity, no logic interaction) or
+            semantic (both sides change the same logic path, data structure, or API)
+         e. For each branch: state what the change intends to accomplish
+      2. Record the analysis for each file
+
+      **Output schema reference:**
+      - conflict_analysis: list of {file, conflict_type, intent_base, intent_head, overlap_description}
+      - mechanical_count: number of mechanical conflicts
+      - semantic_count: number of semantic conflicts
+      - status: PASS
+    output_schema:
+      fields:
+        - name: conflict_analysis
+          type: array
+          items: object
+          description: "{file: string, conflict_type: mechanical|semantic, intent_base: string, intent_head: string, overlap_description: string}"
+          min_items: 1
+          required: true
+        - name: mechanical_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: semantic_count
+          type: integer
+          min_value: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "|conflict_analysis| = conflict_count from sigma_0"
+        - "mechanical_count + semantic_count = |conflict_analysis|"
+        - "each entry has non-empty intent_base and intent_head"
+      soft:
+        - "intent descriptions reference specific code changes, not vague goals"
+
+  - id: sigma_2
+    name: "Strategy"
+    role: resolver
+    precondition: "sigma_1 complete; all conflicts analyzed"
+    postcondition: "Resolution strategy selected with rationale"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - strategy is one of: rebase, merge, cherry_pick, manual
+      - strategy_rationale is a non-empty string explaining the choice
+      - per_file_plan lists the resolution approach for each conflict file
+      - status = PASS when strategy is selected
+
+      **Rationale.** The strategy choice affects the git history and the resolution
+      complexity. Rebase produces a linear history but requires resolving conflicts
+      commit-by-commit. Merge preserves both histories but adds a merge commit.
+      Cherry-pick isolates specific commits. Manual edit is the fallback for
+      semantic conflicts that cannot be auto-resolved.
+
+      **Procedure.**
+      1. Evaluate strategy candidates:
+         - rebase: preferred when head branch is behind base and conflicts are mechanical
+         - merge: preferred when preserving both branch histories matters
+         - cherry_pick: preferred when only specific commits need to be brought over
+         - manual: required when semantic conflicts need hand-crafted resolution
+      2. If all conflicts are mechanical: prefer rebase (simplest history)
+      3. If any conflict is semantic: manual resolution is likely needed for those files
+      4. Write per-file plan: for each conflict, which approach will be used
+      5. Record strategy and rationale
+
+      **Output schema reference:**
+      - strategy: one of rebase, merge, cherry_pick, manual
+      - strategy_rationale: explanation of the choice
+      - per_file_plan: list of {file, approach, notes} per conflict file
+      - status: PASS
+    output_schema:
+      fields:
+        - name: strategy
+          type: enum
+          values: [rebase, merge, cherry_pick, manual]
+          required: true
+        - name: strategy_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: per_file_plan
+          type: array
+          items: object
+          description: "{file: string, approach: string, notes: string}"
+          min_items: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "strategy is one of rebase, merge, cherry_pick, manual"
+        - "|per_file_plan| = conflict_count"
+        - "strategy_rationale is non-empty"
+      soft:
+        - "per_file_plan entries for semantic conflicts use manual approach"
+        - "strategy_rationale references the conflict analysis from sigma_1"
+
+  - id: sigma_3
+    name: "Execute"
+    role: resolver
+    precondition: "sigma_2 complete; strategy selected with per-file plan"
+    postcondition: "All conflicts resolved on the actual branch; no conflict markers remain"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Resolution executed on the actual PR branch (NOT in a worktree)
+      - All conflict markers are resolved — no <<<<<<< markers remain in any file
+      - preserves_intent is actively evaluated for each file: both branches' changes
+        are reflected in the resolution
+      - files_resolved lists every file that was resolved with the approach used
+      - commit_sha is the resolution commit hash
+      - status = PASS when all conflicts resolved and committed
+
+      **Rationale.** Conflict resolution works on the actual branch because git operations
+      like rebase and merge manipulate branch state directly. Worktree isolation would
+      add complexity without benefit for merge operations. The preserves_intent check is
+      critical — every resolution must be evaluated against both branches' intent from sigma_1.
+
+      **Procedure.**
+      1. Execute the chosen strategy:
+         - rebase: git rebase base_branch, resolve conflicts as they appear
+         - merge: git merge base_branch, resolve conflicts in the merge commit
+         - cherry_pick: git cherry-pick specific commits, resolve as they appear
+         - manual: edit conflict files directly, choosing correct content from each branch
+      2. For each conflict file:
+         a. Resolve the conflict per the per_file_plan
+         b. Verify: does the resolution preserve intent_base AND intent_head from sigma_1?
+         c. If not: revise the resolution until both intents are preserved
+      3. Verify no conflict markers remain: grep for <<<<<<< across all files
+      4. Commit the resolution
+      5. Push to the PR branch
+
+      **Output schema reference:**
+      - files_resolved: list of {file, approach_used, intent_preserved} objects
+      - commit_sha: the resolution commit hash
+      - conflict_markers_remaining: should be 0
+      - status: PASS
+    output_schema:
+      fields:
+        - name: files_resolved
+          type: array
+          items: object
+          description: "{file: string, approach_used: string, intent_preserved: boolean}"
+          min_items: 1
+          required: true
+        - name: commit_sha
+          type: string
+          min_length: 7
+          required: true
+        - name: conflict_markers_remaining
+          type: integer
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "conflict_markers_remaining = 0"
+        - "every entry in files_resolved has intent_preserved = true"
+        - "|files_resolved| = conflict_count"
+        - "commit_sha is a valid git commit hash"
+      soft:
+        - "commit message describes the conflicts resolved and strategy used"
+
+  - id: sigma_4
+    name: "Verify"
+    role: resolver
+    precondition: "sigma_3 complete; all conflicts resolved and committed"
+    postcondition: "Build passes; tests pass; no unintended changes; branch pushed"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - build_status = PASS: the project builds cleanly after resolution
+      - test_status = PASS: all tests pass (or failures are pre-existing, not introduced)
+      - unintended_changes = 0: no files changed beyond what was needed for conflict resolution
+      - branch_pushed = true: the resolved branch has been pushed to origin
+      - resolution_record assembled with all sigma_0 through sigma_3 outputs
+      - status = PASS when all verification checks pass
+
+      **Rationale.** A conflict resolution that breaks the build or tests has almost
+      certainly violated preserves_intent (Ax-1). The unintended changes check catches
+      resolution operations that accidentally modified files outside the conflict set.
+      Both checks are structural guards on Ax-1 and Ax-5.
+
+      **Procedure.**
+      1. Run the build command and verify clean exit
+      2. Run the test suite and verify all tests pass
+      3. If tests fail: check whether failures are new (introduced by resolution) or pre-existing
+         - New failures: resolution likely violated intent — return to sigma_3
+         - Pre-existing: document and proceed
+      4. Check for unintended changes: git diff against the expected set of files
+      5. Push the resolved branch to origin
+      6. Assemble the resolution_record
+
+      **Output schema reference:**
+      - build_status: PASS or FAIL
+      - test_status: PASS or FAIL (with note if pre-existing failures)
+      - unintended_changes: count of files changed beyond the conflict set
+      - branch_pushed: boolean
+      - resolution_record: complete record object
+      - status: PASS
+    output_schema:
+      fields:
+        - name: build_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: test_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: unintended_changes
+          type: integer
+          min_value: 0
+          required: true
+        - name: branch_pushed
+          type: boolean
+          required: true
+        - name: resolution_record
+          type: object
+          description: "{ pr_number, conflict_count, strategy, files_resolved, commit_sha, build_status, test_status }"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "build_status = PASS (Ax-3)"
+        - "test_status = PASS or failures documented as pre-existing (Ax-4)"
+        - "unintended_changes = 0 (Ax-5)"
+        - "branch_pushed = true"
+      soft:
+        - "resolution_record includes the full conflict analysis from sigma_1"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: conflict files identified with both branches
+        read satisfies pre_sigma_1 which requires sigma_0 complete with conflict files.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: all conflicts classified with intent analysis
+        satisfies pre_sigma_2 which requires all conflicts analyzed.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 subset pre_sigma_3: strategy selected with per-file plan satisfies
+        pre_sigma_3 which requires strategy and plan.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 subset pre_sigma_4: all conflicts resolved and committed satisfies
+        pre_sigma_4 which requires resolution committed.
+  terminal_condition_claim: >
+    post_sigma_4 = build passes, tests pass, no unintended changes, branch pushed,
+    resolution record assembled. This is O_RESOLVE(s).
+  initial_condition_claim: >
+    pre_sigma_0 requires PR identified as unmergeable and git/GitHub tools accessible.
+    This holds when the dispatcher identifies a conflict challenge.
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      post_sigma_1 claims intent of both branches is understood. But "intent" is a
+      semantic judgment — the resolver may misinterpret what a branch's changes were
+      trying to accomplish, especially in unfamiliar code. A misunderstood intent
+      leads to a resolution strategy that silently drops intended behavior.
+    defense_or_revision: >
+      M3-RESOLVE mitigates this through two mechanisms: (1) sigma_4 verifies build
+      and tests pass, which catches many cases where intent was violated; (2) the
+      per-file preserves_intent check in sigma_3 forces the resolver to explicitly
+      evaluate each file against the stated intents, making the judgment auditable.
+      The composability holds structurally; intent accuracy depends on resolver
+      familiarity with the codebase, which the method makes explicit but cannot guarantee.
+
+objective:
+  id: O_RESOLVE
+  formal: >
+    O_RESOLVE(s) =
+      forall cf : ConflictFile. cf IN s.conflict_set -> conflict_resolved(cf)
+      AND builds_clean(s.post_resolution)
+      AND tests_pass(s.post_resolution)
+      AND no_unintended_changes(s.pre_resolution, s.post_resolution)
+      AND preserves_intent(s.resolution_record, s.base_branch, s.head_branch)
+  type: terminal
+  expressible_claim: >
+    O_RESOLVE references conflict_resolved (declared predicate), builds_clean (declared
+    predicate), tests_pass (declared predicate), no_unintended_changes (declared predicate),
+    preserves_intent (declared predicate). All symbols are in Sigma_RESOLVE. O_RESOLVE
+    is expressible as a closed sentence over Mod(D_RESOLVE).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{cf | conflict_resolved(cf) in s1}| <= |{cf | conflict_resolved(cf) in s2}|.
+      States with more resolved conflicts are further toward O_RESOLVE. Terminal states
+      (all resolved, verified) are maximal.
+    well_founded: >
+      Finite conflict set. The measure |{cf | conflict_resolved(cf)}| is bounded above
+      by |conflict_set|. Each resolution step resolves at least one conflict. Well-founded.
+  success_profile:
+    - id: mu_resolution
+      name: conflict_resolution_coverage
+      formula: "|{cf | conflict_resolved(cf)}| / |conflict_set|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_resolution = 1.0 is necessary for O_RESOLVE. All conflicts must be resolved.
+    - id: mu_integrity
+      name: build_and_test_integrity
+      formula: "1 if builds_clean AND tests_pass AND no_unintended_changes else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_integrity = 1 is necessary for O_RESOLVE. A resolution that breaks build
+        or tests or introduces collateral changes has not preserved intent.
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3, sigma_4} | sigma has not executed in s}|"
+  initial: 5
+  final: 0
+  decrease_witness: >
+    Each step execution reduces nu by exactly 1. The DAG is a path graph with no
+    cycles — each step executes exactly once. nu is bounded below by 0 and strictly
+    decreases at each step. Termination is guaranteed after at most 5 step executions.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: 5-step merge conflict resolution. Who: single resolver
+        role. Why: conflicts block merges; incorrect resolution causes data loss. How:
+        linear DAG — detect, analyze, strategy, execute, verify. When: PR has merge conflicts.
+    - gate: G1
+      result: PASS
+      note: >
+        D_RESOLVE = (Sigma_RESOLVE, Ax_RESOLVE). 7 sorts with cardinality. 3 total
+        function symbols. 6 predicates with typed signatures. 5 closed axioms with
+        rationale (including preserves_intent as core invariant). Domain boundary stated.
+        Initial and terminal state membership claimed.
+    - gate: G2
+      result: PASS
+      note: >
+        O_RESOLVE stated as conjunction of Sigma-predicates. Type: terminal. Expressibility
+        claim present. Progress preorder with well-foundedness argument (finite conflict set).
+        Two measures (mu_resolution, mu_integrity) with formulas, ranges, terminal values,
+        and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (resolver) with identity observation projection and explicit authorized/
+        not-authorized transitions. Coverage claim: trivially total. Authority claim: all
+        five steps authorized. Role partition rationale: one role for single-perspective
+        conflict resolution.
+    - gate: G4
+      result: PASS
+      note: >
+        Five steps in path graph (sigma_0 through sigma_4). Each step has pre, post,
+        guidance with constraints-first format, typed output_schema. Four composability
+        claims. Terminal and initial condition claims present. Contrarian challenge on
+        sigma_1->sigma_2: intent misinterpretation; defended by build/test verification
+        and explicit per-file intent check.
+    - gate: G5
+      result: PASS
+      note: >
+        All five steps have finalized guidance in constraints-first format. Each guidance
+        block names all output_schema fields. Adequacy confirmed.
+    - gate: G6
+      result: PASS
+      note: "This file (P-GH/M3-RESOLVE/M3-RESOLVE.yaml). Structurally complete."

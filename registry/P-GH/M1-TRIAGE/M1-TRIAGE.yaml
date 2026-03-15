@@ -1,0 +1,646 @@
+method:
+  id: M1-TRIAGE
+  parent: P-GH
+  name: "Issue Triage Method"
+  description: >
+    Reads a GitHub issue via MCP tools, classifies it by type and scope, checks
+    alignment with the project's essence, and routes it to the appropriate action:
+    commission an agent (trivial/small), draft a PRD (medium/large), escalate to
+    the steering council (essence-touching), or close (won't-fix/duplicate). The
+    method produces a triage decision with rationale and executes the decided action.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-15"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M1-TRIAGE takes a GitHub issue and produces a triage decision: classify the issue
+    by type (bug/feature/question/meta) and scope (trivial/small/medium/large), check
+    alignment with the project essence, and route to one of four actions — commission
+    an agent for immediate work, draft a PRD for larger efforts, escalate to the
+    steering council for essence-touching changes, or close with explanation.
+  who: >
+    One role — triager. Reads the issue, project card, existing PRDs, and council
+    agenda. Has authority to classify, assess, decide, and execute the triage action.
+    LLM agents are the primary execution target.
+  why: >
+    Untriaged issues accumulate and block delivery. Issues routed to the wrong action
+    waste effort: a trivial fix sent through PRD creation delays by days; a large
+    feature commissioned as a quick fix produces incomplete work. M1-TRIAGE makes
+    the routing decision explicit and auditable, with project essence as the guard.
+  how: >
+    Five-step linear DAG: load issue -> classify type -> assess scope and overlap ->
+    decide action -> execute action. Each step has concrete preconditions and
+    postconditions. The decision step uses explicit predicates (serves_essence,
+    overlaps_prd, within_scope) to determine routing.
+  when_to_use:
+    - "A new issue has been opened and needs classification"
+    - "An existing issue has been updated and needs re-triage"
+    - "The issue backlog needs systematic processing"
+  when_not_to_use:
+    - "The issue has already been triaged and needs implementation — use M4-WORK"
+    - "The challenge is about a PR, not an issue — use M2-REVIEW"
+    - "The issue is a merge conflict report — use M3-RESOLVE"
+
+domain_theory:
+  id: D_TRIAGE
+  sorts:
+    - name: Issue
+      cardinality: singleton_per_execution
+      description: "The GitHub issue being triaged — number, title, body, labels, comments"
+    - name: IssueType
+      cardinality: finite
+      values: [bug, feature, question, meta]
+      description: "Classification of the issue's nature"
+    - name: Scope
+      cardinality: finite
+      values: [trivial, small, medium, large]
+      description: "Estimated effort required to address the issue"
+    - name: Action
+      cardinality: finite
+      values: [commission, prd, escalate, close]
+      description: "The triage routing decision"
+    - name: ProjectCard
+      cardinality: singleton_per_execution
+      description: "The project's essence, delivery rules, and governance — from .method/project-card.yaml"
+    - name: PRD
+      cardinality: finite
+      description: "Existing PRD documents that may overlap with the issue"
+    - name: AgendaItem
+      cardinality: finite
+      description: "Items on the steering council agenda that may relate to the issue"
+    - name: TriageDecision
+      cardinality: singleton_per_execution
+      description: "The assembled decision: type, scope, action, rationale"
+  function_symbols:
+    - name: classify_type
+      signature: "Issue -> IssueType"
+      totality: total
+      description: "Determines the issue type from title, body, and labels"
+    - name: assess_scope
+      signature: "Issue -> Scope"
+      totality: total
+      description: "Estimates the effort scope from issue content and codebase context"
+    - name: decide_action
+      signature: "Issue x IssueType x Scope x ProjectCard -> Action"
+      totality: total
+      description: "Routes to action based on type, scope, and essence alignment"
+  predicates:
+    - name: serves_essence
+      signature: "Issue x ProjectCard -> Bool"
+      description: "The issue aligns with the project's stated purpose and invariant"
+    - name: overlaps_prd
+      signature: "Issue x PRD -> Bool"
+      description: "The issue overlaps with an existing PRD's scope"
+    - name: within_scope
+      signature: "Issue x Scope -> Bool"
+      description: "The issue's estimated scope is at or below the given threshold"
+    - name: touches_essence
+      signature: "Issue x ProjectCard -> Bool"
+      description: "The issue would require changes to the project's essence, invariant, or optimize_for"
+    - name: is_duplicate
+      signature: "Issue x Issue -> Bool"
+      description: "Two issues describe the same underlying problem or request"
+    - name: on_agenda
+      signature: "Issue x AgendaItem -> Bool"
+      description: "The issue's topic is already on the steering council agenda"
+  axioms:
+    - id: Ax-1
+      name: Type uniqueness
+      statement: "forall i : Issue. exists! t : IssueType. classify_type(i) = t"
+      rationale: "Each issue receives exactly one type classification."
+    - id: Ax-2
+      name: Scope uniqueness
+      statement: "forall i : Issue. exists! s : Scope. assess_scope(i) = s"
+      rationale: "Each issue receives exactly one scope assessment."
+    - id: Ax-3
+      name: Essence guard
+      statement: "forall i : Issue, pc : ProjectCard. touches_essence(i, pc) -> decide_action(i, _, _, pc) = escalate"
+      rationale: "Issues that touch the project essence must be escalated to the steering council. No other action is permitted for essence-touching issues."
+    - id: Ax-4
+      name: Action determinism
+      statement: "forall i : Issue. exists! a : Action. decide_action(i, classify_type(i), assess_scope(i), pc) = a"
+      rationale: "The triage decision is deterministic given the inputs."
+    - id: Ax-5
+      name: Scope-action alignment
+      statement: >
+        forall i : Issue, pc : ProjectCard.
+        NOT touches_essence(i, pc) ->
+          (within_scope(i, small) -> decide_action(i, _, _, pc) IN {commission, close}) AND
+          (NOT within_scope(i, small) -> decide_action(i, _, _, pc) IN {prd, close})
+      rationale: "Small/trivial issues route to commission or close. Medium/large issues route to PRD or close. Escalate is reserved for essence-touching."
+  domain_boundary_note: >
+    Excludes: execution of the decided action beyond initiation (M4-WORK handles
+    implementation, PRD writing is a separate method); the content domain of the
+    software; PR review; conflict resolution; the full backlog management lifecycle.
+    D_TRIAGE tracks triage state for a single issue only.
+  initial_state_valid_claim: >
+    A state with Issue loaded, no IssueType assigned, no Scope assessed, no Action
+    decided satisfies all axioms: Ax-1 through Ax-5 have antecedents not yet triggered
+    (classification has not occurred). Valid.
+  terminal_state_valid_claim: >
+    A state with IssueType assigned, Scope assessed, Action decided and executed,
+    TriageDecision recorded satisfies all axioms: Ax-1 (one type), Ax-2 (one scope),
+    Ax-3 (if essence-touching then escalated), Ax-4 (one action), Ax-5 (scope-action
+    aligned). Valid.
+
+roles:
+  - id: triager
+    description: >
+      Reads the issue, project card, existing PRDs, and council agenda. Classifies
+      the issue, assesses scope, decides routing action, and initiates that action.
+      Full visibility over all triage-relevant state. Authority to classify, assess,
+      decide, and execute all five steps.
+    observation_projection: >
+      pi_triager = id : Mod(D_TRIAGE) -> Mod(D_TRIAGE) — full visibility. The triager
+      sees the issue, project card, PRDs, and agenda. Required to evaluate serves_essence,
+      overlaps_prd, within_scope, and touches_essence.
+    authorized_transitions:
+      - "Execute sigma_0: load issue via GitHub MCP"
+      - "Execute sigma_1: classify issue type"
+      - "Execute sigma_2: assess scope, check PRD overlap and agenda"
+      - "Execute sigma_3: decide triage action"
+      - "Execute sigma_4: execute decided action (spawn agent, create PRD, escalate, close)"
+    not_authorized:
+      - "Implement the issue (that is M4-WORK's scope)"
+      - "Modify the project card or essence"
+      - "Override the essence guard (Ax-3) for essence-touching issues"
+    coverage_claim: >
+      pi_triager is identity over Mod(D_TRIAGE) — all triage state visible. No
+      dimension of the triage domain is unobservable. The triager sees Issue, ProjectCard,
+      PRDs, AgendaItems, and all classification/assessment/decision state.
+    authority_claim: >
+      The triager is authorized to execute all five steps (sigma_0 through sigma_4)
+      and produce all state transitions required to reach O_TRIAGE. No required
+      transition is unauthorized.
+    role_partition_rationale: >
+      One role because triage is a single-perspective evaluation with no adversarial
+      structure. The triager reads context, classifies, and routes. There is no
+      epistemic separation requirement — full context is beneficial for accurate
+      classification and scope assessment.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 (path graph, trivially acyclic)"
+  formal: "Gamma_TRIAGE = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4}, {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_3, sigma_4)}, sigma_0, sigma_4)"
+
+phases:
+  - id: sigma_0
+    name: "Load Issue"
+    role: triager
+    precondition: "Issue number or URL provided; GitHub MCP tools accessible"
+    postcondition: "Issue fully loaded: title, body, labels, comments, author, creation date available"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - issue_number is set and valid
+      - issue_title, issue_body are non-empty strings loaded from GitHub
+      - issue_labels is a list (may be empty)
+      - issue_comments is a list of comment objects (may be empty)
+      - status = PASS only when issue is fully loaded; status = BLOCKED if GitHub MCP unavailable
+
+      **Rationale.** The triager cannot classify what it has not read. Loading the full
+      issue (including comments, which often contain clarifying context) is the prerequisite
+      for accurate classification.
+
+      **Procedure.**
+      1. Call get_issue with the issue number to retrieve the full issue
+      2. Extract: number, title, body, labels, comments, author, created_at
+      3. If the issue body references other issues, note the cross-references
+      4. Record all fields — do not summarize or filter at this stage
+
+      **Output schema reference:**
+      - issue_number: the GitHub issue number
+      - issue_title: title string
+      - issue_body: body string (may contain markdown)
+      - issue_labels: list of label strings
+      - issue_comments: list of comment objects
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: issue_number
+          type: integer
+          required: true
+        - name: issue_title
+          type: string
+          min_length: 1
+          required: true
+        - name: issue_body
+          type: string
+          required: true
+        - name: issue_labels
+          type: array
+          items: string
+          required: true
+        - name: issue_comments
+          type: array
+          items: object
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+    invariants:
+      hard:
+        - "issue_number is a positive integer"
+        - "issue_title is non-empty"
+        - "status = BLOCKED iff GitHub MCP tools are unavailable"
+      soft:
+        - "issue_body is non-empty (issues without bodies are valid but unusual)"
+
+  - id: sigma_1
+    name: "Classify"
+    role: triager
+    precondition: "sigma_0 complete; issue fully loaded"
+    postcondition: "issue_type assigned as one of bug/feature/question/meta; classification rationale recorded"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - issue_type is one of: bug, feature, question, meta
+      - classification_rationale is a non-empty string explaining the classification
+      - essence_check_result records whether the issue serves or touches the project essence
+      - status = PASS when classification is complete
+
+      **Rationale.** Type classification determines the downstream routing table. A
+      misclassified feature-as-bug gets routed to a fix workflow instead of a planning
+      workflow. The essence check at this stage catches essence-touching issues early
+      before scope assessment.
+
+      **Procedure.**
+      1. Read the project card (.method/project-card.yaml) — focus on essence (purpose, invariant, optimize_for)
+      2. Evaluate issue against type criteria:
+         - bug: reports incorrect behavior of existing functionality
+         - feature: requests new capability or enhancement
+         - question: asks for information, clarification, or guidance
+         - meta: concerns project governance, process, or methodology
+      3. Check serves_essence: does this issue align with the project's stated purpose?
+      4. Check touches_essence: would addressing this issue require changes to purpose, invariant, or optimize_for?
+      5. Record classification with rationale
+
+      **Output schema reference:**
+      - issue_type: one of bug, feature, question, meta
+      - classification_rationale: explanation of why this type was chosen
+      - essence_check_result: object with serves_essence and touches_essence booleans
+      - status: PASS
+    output_schema:
+      fields:
+        - name: issue_type
+          type: enum
+          values: [bug, feature, question, meta]
+          required: true
+        - name: classification_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: essence_check_result
+          type: object
+          required: true
+          fields:
+            - name: serves_essence
+              type: boolean
+              required: true
+            - name: touches_essence
+              type: boolean
+              required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "issue_type is one of bug, feature, question, meta"
+        - "classification_rationale is non-empty"
+        - "essence_check_result contains both serves_essence and touches_essence"
+      soft:
+        - "classification_rationale references specific issue content (quotes or paraphrases)"
+
+  - id: sigma_2
+    name: "Assess"
+    role: triager
+    precondition: "sigma_1 complete; issue_type assigned"
+    postcondition: "scope assessed; PRD overlap checked; agenda overlap checked"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - scope is one of: trivial, small, medium, large
+      - scope_rationale is a non-empty string explaining the assessment
+      - prd_overlaps is a list of overlapping PRD identifiers (may be empty)
+      - agenda_overlaps is a list of overlapping agenda item identifiers (may be empty)
+      - status = PASS when assessment is complete
+
+      **Rationale.** Scope determines whether the issue routes to commission (quick agent
+      work) or PRD (planned effort). PRD overlap prevents duplicate work. Agenda overlap
+      prevents the triager from making decisions the council is already deliberating.
+
+      **Procedure.**
+      1. Estimate scope based on issue content and codebase familiarity:
+         - trivial: typo fix, config change, one-line edit (< 30 min)
+         - small: single-file change, straightforward logic (< 2 hours)
+         - medium: multi-file change, requires design thought (< 1 day)
+         - large: cross-module change, requires architecture consideration (> 1 day)
+      2. Check existing PRDs for overlap: does any PRD already cover this issue's scope?
+      3. Check council agenda: is this topic already under deliberation?
+      4. Record scope assessment with rationale
+
+      **Output schema reference:**
+      - scope: one of trivial, small, medium, large
+      - scope_rationale: explanation of the scope assessment
+      - prd_overlaps: list of overlapping PRD identifiers
+      - agenda_overlaps: list of overlapping agenda item identifiers
+      - status: PASS
+    output_schema:
+      fields:
+        - name: scope
+          type: enum
+          values: [trivial, small, medium, large]
+          required: true
+        - name: scope_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: prd_overlaps
+          type: array
+          items: string
+          required: true
+        - name: agenda_overlaps
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "scope is one of trivial, small, medium, large"
+        - "scope_rationale is non-empty"
+      soft:
+        - "scope_rationale references specific codebase knowledge or analogous past work"
+        - "prd_overlaps and agenda_overlaps are checked, not assumed empty"
+
+  - id: sigma_3
+    name: "Decide"
+    role: triager
+    precondition: "sigma_2 complete; scope assessed; essence check done"
+    postcondition: "action decided with rationale; routing target identified"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - action is one of: commission, prd, escalate, close
+      - action_rationale is a non-empty string explaining the decision
+      - If touches_essence = true from sigma_1: action MUST be escalate (Ax-3 enforced)
+      - If is_duplicate or won't_fix: action = close with specific reason
+      - If scope in {trivial, small} AND NOT touches_essence: action = commission
+      - If scope in {medium, large} AND NOT touches_essence: action = prd
+      - routing_target identifies the specific target (M4-WORK session, PRD path, council, or close reason)
+      - status = PASS when decision is made
+
+      **Rationale.** The decision step is where the essence guard (Ax-3) is enforced.
+      An issue that touches the project essence cannot be commissioned or PRD'd without
+      council review. The scope-action alignment (Ax-5) ensures effort matches complexity.
+
+      **Procedure.**
+      1. Check essence guard first: if touches_essence = true, action = escalate. Stop.
+      2. Check for duplicate: if is_duplicate with an existing issue, action = close.
+      3. Check for won't-fix: if the issue is outside the project niche, action = close.
+      4. Apply scope routing:
+         - trivial/small -> commission (spawn M4-WORK agent)
+         - medium/large -> prd (create or extend a PRD document)
+      5. If prd_overlaps is non-empty: note in rationale, may still be commission if scope is small
+      6. Record action and routing target
+
+      **Output schema reference:**
+      - action: one of commission, prd, escalate, close
+      - action_rationale: explanation of the routing decision
+      - routing_target: identifier of the target (session ID, PRD path, council ref, close reason)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: action
+          type: enum
+          values: [commission, prd, escalate, close]
+          required: true
+        - name: action_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: routing_target
+          type: string
+          min_length: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "action is one of commission, prd, escalate, close"
+        - "if touches_essence = true then action = escalate (Ax-3)"
+        - "action_rationale is non-empty"
+        - "routing_target is non-empty"
+      soft:
+        - "action_rationale references the specific predicates evaluated (serves_essence, within_scope, overlaps_prd)"
+
+  - id: sigma_4
+    name: "Act"
+    role: triager
+    precondition: "sigma_3 complete; action decided"
+    postcondition: "Decided action executed; issue updated with triage result"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - The decided action has been initiated:
+        - commission: M4-WORK agent spawned OR commission prompt generated
+        - prd: PRD draft created or existing PRD updated with issue reference
+        - escalate: council agenda item created or existing item updated
+        - close: issue closed via GitHub MCP with explanatory comment
+      - issue_comment posted via add_issue_comment documenting the triage decision
+      - issue_labels updated to reflect triage result (if applicable)
+      - triage_record assembled with all sigma_0 through sigma_3 outputs
+      - status = PASS when action is executed and issue is updated
+
+      **Rationale.** Triage without action is observation without effect. The issue must
+      be updated on GitHub so other agents and humans can see the triage result. The
+      triage record provides an audit trail.
+
+      **Procedure.**
+      1. Execute the decided action:
+         - commission: spawn M4-WORK via bridge_spawn or generate /commission prompt
+         - prd: create PRD document at docs/prds/ with issue context
+         - escalate: add to .method/council/AGENDA with issue reference
+         - close: call update_issue to close; call add_issue_comment with reason
+      2. Post a triage summary comment on the issue via add_issue_comment
+      3. Update issue labels if the project uses triage labels
+      4. Assemble the triage_record
+
+      **Output schema reference:**
+      - action_executed: the action that was performed
+      - github_comment_posted: boolean indicating comment was posted
+      - triage_record: complete triage record object
+      - status: PASS
+    output_schema:
+      fields:
+        - name: action_executed
+          type: enum
+          values: [commission, prd, escalate, close]
+          required: true
+        - name: github_comment_posted
+          type: boolean
+          required: true
+        - name: triage_record
+          type: object
+          description: "{ issue_number, issue_type, scope, action, rationale, routing_target }"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "action_executed matches sigma_3.action"
+        - "github_comment_posted = true (every triage must leave a trace on the issue)"
+        - "triage_record contains all fields from sigma_0 through sigma_3"
+      soft:
+        - "issue labels updated to reflect triage classification"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: issue fully loaded (title, body, labels, comments)
+        satisfies pre_sigma_1 which requires sigma_0 complete with issue loaded. Identity
+        inclusion — post_sigma_0 provides a superset of pre_sigma_1.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: issue_type assigned satisfies pre_sigma_2 which
+        requires sigma_1 complete with issue_type assigned. The essence_check_result is
+        carried forward for sigma_3.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 subset pre_sigma_3: scope assessed and overlaps checked satisfies
+        pre_sigma_3 which requires sigma_2 complete with scope assessed and essence check
+        done (carried from sigma_1).
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 subset pre_sigma_4: action decided with rationale satisfies
+        pre_sigma_4 which requires sigma_3 complete with action decided. The routing_target
+        from sigma_3 provides the execution target for sigma_4.
+  terminal_condition_claim: >
+    post_sigma_4 = action executed, issue updated, triage_record assembled. This is
+    O_TRIAGE(s). The terminal postcondition is identical to the objective.
+  initial_condition_claim: >
+    pre_sigma_0 requires issue number or URL provided and GitHub MCP tools accessible.
+    This holds when the dispatcher has identified the issue challenge and GitHub MCP
+    is configured. No prior M1-TRIAGE execution is required.
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      post_sigma_1 claims issue_type is correctly assigned. But type classification is
+      a semantic judgment — an issue that reads as a bug may actually be a feature request
+      (the behavior is intended). Misclassification propagates through scope assessment
+      and action routing.
+    defense_or_revision: >
+      M1-TRIAGE mitigates misclassification through three mechanisms: (1) the essence
+      check in sigma_1 catches the most consequential misrouting (essence-touching issues
+      get escalated regardless of type); (2) scope assessment in sigma_2 provides a second
+      signal — a "bug" with large scope should trigger additional scrutiny; (3) the triage
+      comment posted in sigma_4 makes the classification visible for human review. The
+      composability holds structurally; classification accuracy depends on issue quality
+      and triager context, which the method makes auditable but cannot guarantee.
+
+objective:
+  id: O_TRIAGE
+  formal: >
+    O_TRIAGE(s) =
+      exists td : TriageDecision.
+        td.issue_type IN {bug, feature, question, meta}
+        AND td.scope IN {trivial, small, medium, large}
+        AND td.action IN {commission, prd, escalate, close}
+        AND (touches_essence(td.issue, pc) -> td.action = escalate)
+        AND action_executed(td.action)
+        AND github_comment_posted(td.issue)
+  type: terminal
+  expressible_claim: >
+    O_TRIAGE references TriageDecision (declared sort), issue_type values (declared in
+    IssueType sort), scope values (declared in Scope sort), action values (declared in
+    Action sort), touches_essence (declared predicate), action_executed and
+    github_comment_posted (declared predicates). All symbols are in Sigma_TRIAGE.
+    O_TRIAGE is expressible as a closed sentence over Mod(D_TRIAGE).
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{sigma in {sigma_0..sigma_4} | completed(sigma) in s1}| <=
+      |{sigma in {sigma_0..sigma_4} | completed(sigma) in s2}|. States with more
+      completed steps are further toward O_TRIAGE. Terminal states (all completed,
+      action executed) are maximal.
+    well_founded: >
+      Five steps in a linear DAG. The measure |{sigma | completed(sigma)}| is bounded
+      above by 5. Each step execution increases the measure by exactly 1. The preorder
+      is well-founded.
+  success_profile:
+    - id: mu_classification
+      name: classification_completeness
+      formula: "1 if issue_type assigned AND scope assessed else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_classification = 1 is necessary but not sufficient for O_TRIAGE. Classification
+        without action execution does not satisfy the objective.
+    - id: mu_action
+      name: action_execution
+      formula: "1 if action_executed AND github_comment_posted else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_action = 1 is necessary for O_TRIAGE. An issue triaged but not acted upon
+        has no visible effect.
+
+termination:
+  certificate: "nu(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3, sigma_4} | sigma has not executed in s}|"
+  initial: 5
+  final: 0
+  decrease_witness: >
+    Each step execution reduces nu by exactly 1. The DAG is a path graph with no
+    cycles — each step executes exactly once. nu is bounded below by 0 and strictly
+    decreases at each step. Termination is guaranteed after at most 5 step executions.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: 5-step issue triage — load, classify, assess, decide,
+        act. Who: single triager role. Why: untriaged issues block delivery; wrong routing
+        wastes effort. How: linear DAG with essence guard. When: new/updated issues needing
+        classification.
+    - gate: G1
+      result: PASS
+      note: >
+        D_TRIAGE = (Sigma_TRIAGE, Ax_TRIAGE). 8 sorts with cardinality. 3 total function
+        symbols. 6 predicates with typed signatures referencing declared sorts. 5 closed
+        axioms with rationale. Domain boundary stated. Initial and terminal state
+        membership claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_TRIAGE stated as conjunction of Sigma-predicates. Type: terminal. Expressibility
+        claim present. Progress preorder with well-foundedness argument (5-step linear DAG).
+        Two measures (mu_classification, mu_action) with formulas, ranges, terminal values,
+        and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (triager) with identity observation projection and explicit authorized/
+        not-authorized transitions. Coverage claim: trivially total. Authority claim: all
+        five steps authorized. Role partition rationale: one role for single-perspective
+        triage evaluation.
+    - gate: G4
+      result: PASS
+      note: >
+        Five steps in path graph (sigma_0 through sigma_4). Each step has pre, post,
+        guidance with constraints-first format, typed output_schema. Four composability
+        claims. Terminal and initial condition claims present. Contrarian challenge on
+        sigma_1->sigma_2: classification accuracy; defended by essence guard, scope
+        cross-check, and auditable triage comment.
+    - gate: G5
+      result: PASS
+      note: >
+        All five steps have finalized guidance in constraints-first format. Each guidance
+        block explicitly names all output_schema fields. Adequacy confirmed for all steps.
+    - gate: G6
+      result: PASS
+      note: "This file (P-GH/M1-TRIAGE/M1-TRIAGE.yaml). Structurally complete."

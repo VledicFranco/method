@@ -1,0 +1,459 @@
+methodology:
+  id: P-GH
+  name: "GitHub Operations Methodology"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-15"
+  niche: >
+    GitHub-native operations for LLM agent teams — issue triage, PR review with
+    self-fix, merge conflict resolution, and issue execution with full git lifecycle
+    management. All methods are git, GitHub, and multi-agent aware. Operates through
+    GitHub MCP tools (get_issue, get_pull_request, create_pull_request, etc.) and
+    git CLI. Excludes: repository administration, CI/CD pipeline design, release
+    management, GitHub Actions authoring, non-GitHub version control platforms.
+
+navigation:
+  what: >
+    P-GH receives a GitHub operations challenge, classifies it by challenge type
+    and action, and routes it to the appropriate execution method. It does not
+    execute operations directly — it evaluates delta_GH and dispatches. Four
+    challenge types map to four methods covering: issue triage, PR review with
+    self-fix loops, merge conflict resolution, and full issue-to-PR work execution.
+  who: >
+    The dispatcher role — any agent (human or LLM) who receives a GitHub operations
+    challenge and must decide which method to invoke. Typically an orchestrator agent
+    with access to GitHub MCP tools and git CLI.
+  why: >
+    Four structurally different GitHub operations exist, each with distinct
+    input/output signatures, domain theory, and execution models. Sending a triage
+    method to resolve a merge conflict wastes effort. Sending a review method to
+    execute implementation work produces no deliverable. delta_GH externalizes the
+    routing decision into an explicit, auditable function.
+  how: >
+    Evaluate challenge.type and action against the operationalization criteria. Apply
+    delta_GH (4-arm priority stack). challenge.type == "issue" is further split by
+    action: "triage" routes to M1-TRIAGE, "work" routes to M4-WORK.
+  when_to_use:
+    - "A GitHub operations challenge arrives within the niche"
+    - "An issue needs triage, classification, or routing"
+    - "A pull request needs review, potentially with self-fix"
+    - "A PR has merge conflicts that need resolution"
+    - "An issue needs to be implemented with full git lifecycle (branch, implement, PR)"
+  when_not_to_use:
+    - "Repository administration (settings, permissions, webhooks) — outside niche"
+    - "CI/CD pipeline design or GitHub Actions authoring — outside niche"
+    - "Release management or deployment — outside niche"
+    - "Non-GitHub platforms (GitLab, Bitbucket) — outside niche"
+    - "A specific method is already identified — invoke it directly"
+
+domain_theory:
+  id: D_Phi_GH
+  sorts:
+    - name: Challenge
+      cardinality: singleton_per_invocation
+      description: "The GitHub operations task presented to the methodology"
+    - name: ChallengeType
+      cardinality: finite
+      values: [issue, pull_request, conflict]
+      description: "The category of GitHub entity the challenge concerns"
+    - name: Action
+      cardinality: finite
+      values: [triage, work]
+      description: "For issue-type challenges, the requested action (triage vs execute work)"
+    - name: MethodID
+      cardinality: finite
+      values: [M1-TRIAGE, M2-REVIEW, M3-RESOLVE, M4-WORK]
+      description: "Identifier for the selected method"
+    - name: Issue
+      cardinality: unbounded
+      description: "A GitHub issue with number, title, body, labels, and comments"
+    - name: PullRequest
+      cardinality: unbounded
+      description: "A GitHub pull request with number, title, body, diff, and review state"
+    - name: ConflictSet
+      cardinality: finite
+      description: "The set of conflicting files in a PR that cannot be auto-merged"
+    - name: IssueType
+      cardinality: finite
+      values: [bug, feature, question, meta]
+      description: "Classification of issue content"
+    - name: Scope
+      cardinality: finite
+      values: [trivial, small, medium, large]
+      description: "Estimated effort scope of an issue"
+    - name: ReviewVerdict
+      cardinality: finite
+      values: [approve, needs_changes]
+      description: "Outcome of a PR review pass"
+    - name: ConflictType
+      cardinality: finite
+      values: [mechanical, semantic]
+      description: "Whether a conflict is purely textual or involves logic divergence"
+    - name: ResolutionStrategy
+      cardinality: finite
+      values: [rebase, merge, cherry_pick, manual]
+      description: "Strategy for resolving merge conflicts"
+    - name: ExecutionResult
+      cardinality: singleton_per_invocation
+      description: "Terminal output produced by the selected method"
+    - name: State
+      cardinality: singleton_per_invocation
+      description: "Full execution state: { challenge, challenge_type, action, method_selected, result }"
+  function_symbols:
+    - name: classify_type
+      signature: "Challenge -> ChallengeType"
+      totality: total
+      description: "Determines the challenge type (issue, pull_request, conflict)"
+    - name: classify_action
+      signature: "Challenge -> Option(Action)"
+      totality: total
+      description: "For issue challenges, determines the action (triage or work). None for non-issue types."
+    - name: route
+      signature: "ChallengeType x Option(Action) -> MethodID"
+      totality: total
+      description: "Maps challenge type and action to method (delta_GH core logic)"
+    - name: method_selected
+      signature: "State -> Option(MethodID)"
+      totality: total
+      note: "None before classification; Some(M) after delta_GH returns"
+    - name: result_of
+      signature: "State -> Option(ExecutionResult)"
+      totality: total
+      note: "None until selected method completes"
+  predicates:
+    - name: challenge_type
+      signature: "Challenge x ChallengeType"
+      description: "The challenge concerns the given entity type"
+    - name: challenge_action
+      signature: "Challenge x Action"
+      description: "The challenge requests the given action (for issue-type challenges)"
+    - name: dispatched
+      signature: "Challenge x MethodID"
+      description: "The challenge was routed to the named method"
+    - name: is_method_selected
+      signature: "State"
+      description: "method_selected(s) != None"
+    - name: method_completed
+      signature: "State"
+      description: "The selected method has terminated and produced an ExecutionResult"
+    - name: addresses
+      signature: "ExecutionResult x Challenge"
+      description: "Result adequately addresses the challenge; operationalized as method-specific O_M satisfaction"
+  axioms:
+    - id: Ax-1
+      name: Challenge-type uniqueness
+      statement: "forall c : Challenge. exists! t : ChallengeType. challenge_type(c, t)"
+      rationale: "Each challenge has exactly one type. Classification is deterministic."
+    - id: Ax-2
+      name: Routing uniqueness
+      statement: "forall c : Challenge. exists! m : MethodID. dispatched(c, m)"
+      rationale: "Exactly one method selected per challenge. No ambiguous routing."
+    - id: Ax-3
+      name: Routing totality
+      statement: >
+        forall c : Challenge, t : ChallengeType. challenge_type(c, t) ->
+          (t = issue AND challenge_action(c, triage) -> dispatched(c, M1-TRIAGE)) AND
+          (t = pull_request -> dispatched(c, M2-REVIEW)) AND
+          (t = conflict -> dispatched(c, M3-RESOLVE)) AND
+          (t = issue AND challenge_action(c, work) -> dispatched(c, M4-WORK))
+      rationale: >
+        Every challenge type maps to exactly one method. The four arms are mutually
+        exclusive and exhaustive (with issue split by action: triage vs work).
+    - id: Ax-4
+      name: Selection before completion
+      statement: "forall s : State. method_completed(s) -> is_method_selected(s)"
+      rationale: "A method cannot complete without having been selected."
+    - id: Ax-5
+      name: Single dispatch per invocation
+      statement: "forall s : State. |{invocations of delta_GH in this run}| = 1"
+      rationale: "delta_GH fires exactly once per challenge. No re-evaluation at the methodology level."
+  domain_boundary_note: >
+    Excludes: internal execution of the selected method (P-GH sees only the terminal
+    result); repository administration and CI/CD; the content domain of the software
+    being built; release management; execution history across invocations. D_Phi_GH
+    tracks routing state only.
+  initial_state_valid_claim: >
+    A state with Challenge present, method_selected = None, result_of = None,
+    method_completed = false satisfies all axioms: Ax-1 (challenge exists, can be
+    classified), Ax-2 (no dispatch yet — will hold after delta_GH), Ax-3 (not yet
+    applied), Ax-4 (method_completed false — vacuously true), Ax-5 (zero invocations).
+    Valid.
+  terminal_state_valid_claim: >
+    A state with method_selected = Some(M), method_completed = true, result_of =
+    Some(r), addresses(r, challenge) = true satisfies all axioms: Ax-1 (type was
+    classified), Ax-2 (one dispatch), Ax-3 (routing followed the rules), Ax-4
+    (completed -> selected: holds), Ax-5 (one invocation). Valid.
+
+roles:
+  - id: dispatcher
+    description: >
+      The agent (human or LLM) who evaluates delta_GH and invokes the selected
+      method. Holds full D_Phi_GH observability — appropriate given the domain
+      is minimal (routing sorts only, no execution state).
+    observation_projection: >
+      pi_dispatcher = id : Mod(D_Phi_GH) -> Mod(D_Phi_GH) — full visibility over
+      the minimal routing domain. Required to evaluate challenge_type and challenge_action.
+    authorized_transitions:
+      - "Classify challenge: evaluate challenge_type(challenge, t)"
+      - "Evaluate challenge_action(challenge, a) when challenge_type = issue"
+      - "Apply delta_GH: invoke the selected method via retraction pair"
+      - "Record dispatched(challenge, method) before the selected method begins"
+      - "Receive result from completed method"
+    not_authorized:
+      - "Execute GitHub operations directly (method's own roles handle execution)"
+      - "Modify the routing decision after the selected method has begun"
+      - "Override the selected method's domain theory or step structure"
+    coverage_claim: >
+      pi_dispatcher is identity over Mod(D_Phi_GH) — all routing state visible.
+      No dimension of the routing domain is unobservable. The dispatcher sees
+      Challenge, ChallengeType classification, Action, MethodID selection, and
+      ExecutionResult.
+    authority_claim: >
+      The dispatcher holds authority over all delta_GH transitions: classification,
+      routing, dispatch, and result reception. No required routing transition is
+      unauthorized. The selected method's internal transitions are authorized by
+      the method's own roles, not by the dispatcher.
+    role_partition_rationale: >
+      One role because the methodology is a pure routing function. The dispatcher
+      classifies and dispatches — it does not execute. Adding a second role would
+      split classification from dispatch, but both require the same state visibility
+      and produce no epistemic benefit. One role is minimal for a routing methodology.
+
+predicate_operationalization:
+  note: >
+    Each challenge_type value and action must be evaluable by the dispatcher at
+    invocation time. The following criteria provide concrete True/False conditions.
+  predicates:
+    - name: "challenge_type = issue AND action = triage"
+      true_when: >
+        The challenge references a GitHub issue (by number or URL) and the requested
+        operation is to classify, assess scope, and decide on routing (commission,
+        PRD, escalate, or close). The issue has not been triaged yet or needs re-triage.
+      false_when: >
+        The challenge is about a PR, a merge conflict, or the issue already has a clear
+        action assigned and needs implementation.
+    - name: "challenge_type = pull_request"
+      true_when: >
+        The challenge references a GitHub pull request (by number or URL) and the
+        requested operation is to review the PR's changes, potentially fix issues,
+        and merge if approved. The PR exists and has a diff to review.
+      false_when: >
+        The challenge is about an issue (not a PR), or the PR's only problem is merge
+        conflicts (use conflict type instead).
+    - name: "challenge_type = conflict"
+      true_when: >
+        A PR exists that cannot be merged due to git conflicts. The challenge is
+        specifically about resolving the conflicts, not about reviewing the PR's
+        content or logic.
+      false_when: >
+        The PR is mergeable (no conflicts). The challenge is about code review rather
+        than conflict resolution.
+    - name: "challenge_type = issue AND action = work"
+      true_when: >
+        The challenge references a GitHub issue and the requested operation is to
+        implement a solution: create a branch, write code, create a PR. The issue
+        has been triaged (or triage is implicit) and the scope is known.
+      false_when: >
+        The issue needs triage first. The challenge is about an existing PR, not
+        about creating one from an issue.
+  evaluation_order: >
+    1. Is this about a merge conflict in a PR? If yes: conflict.
+    2. Is this about reviewing an existing PR? If yes: pull_request.
+    3. Is this about an issue that needs triage? If yes: issue + triage.
+    4. Is this about an issue that needs implementation? If yes: issue + work.
+
+transition_function:
+  id: delta_GH
+  formal_type: "delta_GH : Mod(D_Phi_GH) -> Option(Method)"
+  evaluation_order: priority_stack
+  note: >
+    Conditions evaluated in strict priority order. First condition that holds
+    determines the selection. Priority order reflects urgency: conflicts block
+    merges, reviews gate quality, triage routes work, work executes.
+  arms:
+    - priority: 1
+      label: conflict
+      condition: "NOT is_method_selected(s) AND challenge_type(challenge, conflict)"
+      returns: "Some(M3-RESOLVE)"
+      rationale: "Merge conflicts block PR merges. Highest priority to unblock delivery."
+    - priority: 2
+      label: review
+      condition: "NOT is_method_selected(s) AND challenge_type(challenge, pull_request)"
+      returns: "Some(M2-REVIEW)"
+      rationale: "PR review gates code quality. Must complete before merging."
+    - priority: 3
+      label: triage
+      condition: "NOT is_method_selected(s) AND challenge_type(challenge, issue) AND challenge_action(challenge, triage)"
+      returns: "Some(M1-TRIAGE)"
+      rationale: "Issue triage routes work — must precede implementation for unclassified issues."
+    - priority: 4
+      label: work
+      condition: "NOT is_method_selected(s) AND challenge_type(challenge, issue) AND challenge_action(challenge, work)"
+      returns: "Some(M4-WORK)"
+      rationale: "Issue implementation — full git lifecycle from issue to merged PR."
+    - priority: 5
+      label: terminate
+      condition: "is_method_selected(s) AND method_completed(s)"
+      returns: "None"
+    - priority: 6
+      label: executing
+      condition: "is_method_selected(s) AND NOT method_completed(s)"
+      returns: "None"
+      note: "Method is running — no re-evaluation until completion."
+
+termination_certificate:
+  id: nu_GH
+  definition: "nu_GH(s) = 1 - |{delta_GH invocations in this run}|"
+  initial_value: 1
+  final_value: 0
+  decrease_witness: >
+    delta_GH fires exactly once per challenge (Ax-5). After the single invocation,
+    a method is selected and executing (arms 5-6 return None). nu_GH decreases from
+    1 to 0. Each selected method carries its own termination certificate — P-GH
+    does not need to guarantee the selected method terminates, only that routing
+    terminates.
+
+retraction_pairs:
+  - id: RP-1
+    to: M1-TRIAGE
+    status: declared
+    embed:
+      signature: "embed_TRIAGE : Mod(D_Phi_GH)[pre-dispatch] -> Mod(D_TRIAGE)"
+      definition: "embed_TRIAGE(s) = { issue := s.challenge.issue, project_card := current_project_card }"
+    project:
+      signature: "project_TRIAGE : Mod(D_TRIAGE)[terminal] -> Mod(D_Phi_GH)[post-method]"
+      definition: "project_TRIAGE(t) = { result := ExecutionResult(t.triage_decision), method_completed := true }"
+    retraction_verification: "project_TRIAGE(embed_TRIAGE(s)).challenge = s.challenge — trivially true"
+  - id: RP-2
+    to: M2-REVIEW
+    status: declared
+    embed:
+      signature: "embed_REVIEW : Mod(D_Phi_GH)[pre-dispatch] -> Mod(D_REVIEW)"
+      definition: "embed_REVIEW(s) = { pull_request := s.challenge.pull_request, project_card := current_project_card }"
+    project:
+      signature: "project_REVIEW : Mod(D_REVIEW)[terminal] -> Mod(D_Phi_GH)[post-method]"
+      definition: "project_REVIEW(t) = { result := ExecutionResult(t.review_report), method_completed := true }"
+    retraction_verification: "project_REVIEW(embed_REVIEW(s)).challenge = s.challenge — trivially true"
+  - id: RP-3
+    to: M3-RESOLVE
+    status: declared
+    embed:
+      signature: "embed_RESOLVE : Mod(D_Phi_GH)[pre-dispatch] -> Mod(D_RESOLVE)"
+      definition: "embed_RESOLVE(s) = { pull_request := s.challenge.pull_request, conflict_set := s.challenge.conflicts }"
+    project:
+      signature: "project_RESOLVE : Mod(D_RESOLVE)[terminal] -> Mod(D_Phi_GH)[post-method]"
+      definition: "project_RESOLVE(t) = { result := ExecutionResult(t.resolution_record), method_completed := true }"
+    retraction_verification: "project_RESOLVE(embed_RESOLVE(s)).challenge = s.challenge — trivially true"
+  - id: RP-4
+    to: M4-WORK
+    status: declared
+    embed:
+      signature: "embed_WORK : Mod(D_Phi_GH)[pre-dispatch] -> Mod(D_WORK)"
+      definition: "embed_WORK(s) = { issue := s.challenge.issue, project_card := current_project_card, codebase := current_codebase }"
+    project:
+      signature: "project_WORK : Mod(D_WORK)[terminal] -> Mod(D_Phi_GH)[post-method]"
+      definition: "project_WORK(t) = { result := ExecutionResult(t.work_record), method_completed := true }"
+    retraction_verification: "project_WORK(embed_WORK(s)).challenge = s.challenge — trivially true"
+
+objective:
+  id: O_Phi_GH
+  formal: >
+    O_Phi_GH(s) =
+      method_completed(s)
+      AND result_of(s) != None
+      AND addresses(result_of(s), s.challenge)
+  type: terminal
+  expressible_claim: >
+    O_Phi_GH references method_completed (declared predicate over State), result_of
+    (declared function symbol State -> Option(ExecutionResult)), addresses (declared
+    predicate over ExecutionResult x Challenge). All symbols are in Sigma_Phi_GH.
+    O_Phi_GH is expressible as a closed sentence over Mod(D_Phi_GH).
+  addresses_operationalization: >
+    addresses(r, c) is operationalized as the selected method's objective O_M being
+    satisfied: O_M(s_final) -> addresses(r, c). This is structural satisfaction of
+    the method's own terminal condition. Each method's O_M is defined in its own
+    domain theory.
+  progress_preorder:
+    name: "leq_Phi_GH"
+    definition: >
+      Total chain over three canonical states:
+        s_0 (challenge received, not classified) < s_1 (method selected, executing)
+        < s_2 (method completed, O_Phi_GH = true).
+      Well-founded: three states, strict total order, s_2 is maximal.
+  success_profile:
+    - id: mu_1
+      name: method_completion
+      formula: "1 if method_completed(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_1 = 1 is necessary for O_Phi_GH. Tracks whether delta_GH successfully
+        dispatched a method and it terminated.
+    - id: mu_2
+      name: result_existence
+      formula: "1 if result_of(s) != None else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_2 = 1 is necessary for O_Phi_GH. A completed method that produces no
+        result is a method-level failure propagated to methodology level.
+
+compilation_record:
+  methodology_gate_adaptation: >
+    P-GH is a methodology Phi = (D_Phi, delta_Phi, O_Phi). M1-MDES gates are
+    adapted: G4 checks delta_GH (transition function), retraction pairs, and
+    termination certificate. G5 checks predicate operationalization for challenge_type
+    values and action values. All other gates apply as-is.
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: 4-arm routing methodology for GitHub operations.
+        Who: single dispatcher role. Why: wrong method selection degrades quality.
+        How: evaluate challenge_type + action -> apply delta_GH -> dispatch. When:
+        GitHub operations challenges within the niche.
+    - gate: G1
+      result: PASS
+      note: >
+        D_Phi_GH = (Sigma_Phi_GH, Ax_Phi_GH). 14 sorts with cardinality (Challenge,
+        ChallengeType with 3 values, Action with 2 values, MethodID with 4 values,
+        Issue, PullRequest, ConflictSet, IssueType with 4 values, Scope with 4 values,
+        ReviewVerdict with 2 values, ConflictType with 2 values, ResolutionStrategy
+        with 4 values, ExecutionResult, State). 5 function symbols with totality.
+        6 predicates with typed signatures referencing declared sorts. 5 closed axioms
+        with rationale. Domain boundary stated. Initial and terminal state membership
+        claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_Phi_GH stated as conjunction of three Sigma-predicates. Type: terminal.
+        Expressibility claim present. addresses operationalized as method-specific O_M
+        satisfaction. Progress preorder as 3-state total chain. Two measures with
+        formulas, ranges, terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        One role (dispatcher) with identity observation projection and explicit
+        authorized/not-authorized transitions. Coverage claim: trivially total.
+        Authority claim: all routing transitions authorized. Role partition rationale:
+        one role is minimal for a pure routing methodology.
+    - gate: G4
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks delta_GH + retraction pairs + termination certificate"
+      note: >
+        delta_GH declared as 6-arm priority stack (4 routing + terminate + executing).
+        Totality: Ax-3 guarantees every challenge type + action maps to a method.
+        Termination certificate nu_GH = 1 with single-invocation decrease witness.
+        Four retraction pairs declared (RP-1 through RP-4) with embed/project signatures
+        and retraction verification claims. All declared at type level.
+    - gate: G5
+      result: PASS
+      gate_adaptation: "Methodology-adapted: checks predicate operationalization"
+      note: >
+        Three challenge_type values and two action values operationalized with True/False
+        conditions and concrete criteria. Evaluation order specified: conflicts first
+        (block merges), then reviews, then triage, then work.
+    - gate: G6
+      result: PASS
+      note: "This file (P-GH/P-GH.yaml). Structurally complete."

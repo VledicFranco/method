@@ -1,0 +1,1000 @@
+method:
+  id: M4-WORK
+  parent: P-GH
+  name: "Issue Work Execution Method"
+  description: >
+    Executes a GitHub issue with full git lifecycle management: reads the issue, sets
+    up a worktree and branch, plans the approach, implements with a bounded build/test
+    loop, commits and pushes, creates a PR linked to the issue, runs M2-REVIEW inline
+    as self-review, applies fixes if needed, and reports completion. This is the most
+    git-aware method in P-GH — every step knows about worktrees, branches, and the PR
+    lifecycle. Branch naming follows the convention fix/issue-{N} or feat/issue-{N}.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-15"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M4-WORK takes a GitHub issue and produces a merged PR that resolves it. Nine steps
+    cover the full lifecycle: load issue, setup worktree + branch, plan approach,
+    implement (bounded loop), commit + push, create PR, self-review via M2-REVIEW,
+    fix loop (conditional), and report completion. The method manages the entire git
+    lifecycle from branch creation to PR merge.
+  who: >
+    Three roles — planner (reads issue and plans), implementor (writes code in worktree),
+    and reporter (creates PR, posts comments, reports completion). In single-agent
+    execution, the same agent plays all three roles with explicit transitions.
+  why: >
+    Issues that are "ready to work" need a complete execution path from issue to merged
+    PR. Without a structured method, agents may skip steps (no branch, no tests, no
+    self-review) or lose track of the git state (working on wrong branch, forgetting to
+    push). M4-WORK makes every git lifecycle step explicit and mandatory.
+  how: >
+    Nine-step DAG with two conditional loops: sigma_3 (implement) has a bounded build/test
+    convergence loop, and sigma_7 (fix loop) re-enters sigma_3 when self-review finds
+    issues (max 3 iterations). The method invokes M2-REVIEW inline at sigma_6 for
+    self-review.
+  when_to_use:
+    - "An issue has been triaged and is ready for implementation"
+    - "A trivial/small issue needs direct execution without PRD"
+    - "An agent has been commissioned to work on a specific issue"
+  when_not_to_use:
+    - "The issue needs triage first — use M1-TRIAGE"
+    - "The issue is medium/large and needs a PRD before implementation"
+    - "The challenge is about an existing PR, not an issue — use M2-REVIEW or M3-RESOLVE"
+
+domain_theory:
+  id: D_WORK
+  sorts:
+    - name: Issue
+      cardinality: singleton_per_execution
+      description: "The GitHub issue being worked on — number, title, body, labels"
+    - name: Worktree
+      cardinality: singleton_per_execution
+      description: "The git worktree created for isolated development"
+    - name: Branch
+      cardinality: singleton_per_execution
+      description: "The feature/fix branch created for this work"
+    - name: Plan
+      cardinality: singleton_per_execution
+      description: "The implementation plan: files to change, approach, estimated scope"
+    - name: SourceFile
+      cardinality: finite
+      description: "A source file in the worktree being modified"
+    - name: PullRequest
+      cardinality: singleton_per_execution
+      description: "The PR created to merge the work"
+    - name: ReviewResult
+      cardinality: finite
+      description: "The result of M2-REVIEW self-review on the created PR"
+    - name: WorkRecord
+      cardinality: singleton_per_execution
+      description: "The complete record of the work execution"
+    - name: IterationCounter
+      cardinality: finite
+      values: [0, 1, 2, 3]
+      description: "Counts self-review fix iterations. Max 3."
+  function_symbols:
+    - name: branch_name
+      signature: "Issue -> Branch"
+      totality: total
+      description: "Generates branch name: fix/issue-{N} for bugs, feat/issue-{N} for features"
+    - name: iteration_count
+      signature: "State -> IterationCounter"
+      totality: total
+      description: "Number of self-review fix iterations completed so far"
+    - name: review_verdict
+      signature: "ReviewResult -> ReviewVerdict"
+      totality: total
+      description: "The verdict from M2-REVIEW self-review"
+  predicates:
+    - name: worktree_active
+      signature: "Worktree -> Bool"
+      description: "The worktree is created and the agent is working within it"
+    - name: branch_exists
+      signature: "Branch -> Bool"
+      description: "The branch has been created in the local repository"
+    - name: branch_pushed
+      signature: "Branch -> Bool"
+      description: "The branch has been pushed to the remote"
+    - name: builds_clean
+      signature: "Worktree -> Bool"
+      description: "The worktree builds without errors"
+    - name: tests_pass
+      signature: "Worktree -> Bool"
+      description: "All tests pass in the worktree"
+    - name: pr_created
+      signature: "PullRequest -> Bool"
+      description: "The PR has been created on GitHub"
+    - name: pr_linked
+      signature: "PullRequest x Issue -> Bool"
+      description: "The PR body contains 'Fixes #N' linking it to the issue"
+    - name: self_reviewed
+      signature: "PullRequest -> Bool"
+      description: "M2-REVIEW has been invoked on the PR"
+    - name: issue_commented
+      signature: "Issue -> Bool"
+      description: "A completion comment has been posted on the issue"
+    - name: completion_reported
+      signature: "WorkRecord -> Bool"
+      description: "bridge_event completed has been called"
+  axioms:
+    - id: Ax-1
+      name: Worktree isolation
+      statement: "forall s : State. implementing(s) -> worktree_active(s.worktree)"
+      rationale: "All implementation work occurs within the worktree. No changes to the main working tree."
+    - id: Ax-2
+      name: Branch naming convention
+      statement: >
+        forall i : Issue, b : Branch. branch_name(i) = b ->
+          (issue_type(i) = bug -> b starts with "fix/issue-") AND
+          (issue_type(i) != bug -> b starts with "feat/issue-")
+      rationale: "Branch naming follows a consistent convention for traceability."
+    - id: Ax-3
+      name: Build before push
+      statement: "forall s : State. branch_pushed(s.branch) -> builds_clean(s.worktree)"
+      rationale: "Code must build before being pushed. Pushing broken code wastes reviewer time."
+    - id: Ax-4
+      name: Test before push
+      statement: "forall s : State. branch_pushed(s.branch) -> tests_pass(s.worktree)"
+      rationale: "Tests must pass before pushing. Pushing with failing tests violates quality gates."
+    - id: Ax-5
+      name: PR-issue linkage
+      statement: "forall pr : PullRequest, i : Issue. pr_created(pr) -> pr_linked(pr, i)"
+      rationale: "Every PR must link to the issue it resolves via 'Fixes #N' in the body."
+    - id: Ax-6
+      name: Self-review required
+      statement: "forall s : State. terminal(s) -> self_reviewed(s.pull_request)"
+      rationale: "Every PR must be self-reviewed via M2-REVIEW before the method terminates."
+    - id: Ax-7
+      name: Fix loop bound
+      statement: "forall s : State. iteration_count(s) <= 3"
+      rationale: "The self-review fix loop is bounded at 3 iterations."
+  domain_boundary_note: >
+    Excludes: issue triage (use M1-TRIAGE); PR review by external reviewers; merge
+    conflict resolution (M3-RESOLVE invoked separately if needed); deployment; the
+    content domain of the software. D_WORK tracks the git lifecycle state for a
+    single issue execution.
+  initial_state_valid_claim: >
+    A state with Issue loaded, no Worktree, no Branch, no Plan, no PR, iteration_count = 0
+    satisfies all axioms: Ax-1 (not implementing — vacuously true), Ax-2 through Ax-7
+    (antecedents not triggered). Valid.
+  terminal_state_valid_claim: >
+    A state with PR created and linked (Ax-5), self-reviewed (Ax-6), builds clean (Ax-3),
+    tests pass (Ax-4), branch pushed, issue commented, completion reported, iteration_count
+    <= 3 (Ax-7). Worktree may be cleaned up. Valid.
+
+roles:
+  - id: planner
+    description: >
+      Reads the issue and codebase context. Creates the implementation plan: which
+      files to change, what approach to take, estimated scope. Does not write production
+      code. Read-only on codebase.
+    observation_projection: >
+      pi_planner sees the issue, codebase structure, and project conventions. Does not
+      see the worktree state (it does not exist yet during planning).
+    authorized_transitions:
+      - "Execute sigma_0: load issue via GitHub MCP"
+      - "Execute sigma_2: read context files, plan approach"
+    not_authorized:
+      - "Write production code"
+      - "Create branches or worktrees"
+      - "Create PRs or post comments"
+
+  - id: implementor
+    description: >
+      Sets up the worktree and branch. Writes production code. Runs build and test
+      loops. Commits and pushes. Has write access to files within the worktree.
+    observation_projection: >
+      pi_implementor sees the issue, plan, worktree state, and build/test results.
+      Full read-write access within the worktree.
+    authorized_transitions:
+      - "Execute sigma_1: create worktree and branch"
+      - "Execute sigma_3: implement with build/test loop"
+      - "Execute sigma_4: commit and push"
+      - "Execute sigma_7: apply fixes from self-review"
+    not_authorized:
+      - "Create PRs or post GitHub comments"
+      - "Modify files outside the worktree"
+      - "Change the implementation plan"
+
+  - id: reporter
+    description: >
+      Creates the PR, invokes self-review, posts comments on the issue, and reports
+      completion via bridge_event. Has GitHub MCP write access.
+    observation_projection: >
+      pi_reporter sees the issue, branch, PR state, and review results. Does not
+      write production code.
+    authorized_transitions:
+      - "Execute sigma_5: create PR via GitHub MCP"
+      - "Execute sigma_6: invoke M2-REVIEW self-review"
+      - "Execute sigma_8: post completion comment, call bridge_event"
+    not_authorized:
+      - "Write production code"
+      - "Modify the worktree"
+      - "Change the implementation plan"
+    coverage_claim: >
+      The union of observation projections across planner, implementor, and reporter
+      covers the full Mod(D_WORK) state space. No dimension of D_WORK is unobservable:
+      Issue (planner + reporter), Worktree/Branch/SourceFile (implementor), Plan (planner
+      + implementor), PR/ReviewResult (reporter), WorkRecord (reporter).
+    authority_claim: >
+      The union of role authorities covers all transitions from initial state to terminal
+      state. Every step is authorized by exactly one role: sigma_0 + sigma_2 (planner),
+      sigma_1 + sigma_3 + sigma_4 + sigma_7 (implementor), sigma_5 + sigma_6 + sigma_8
+      (reporter).
+    role_partition_rationale: >
+      Three roles because planning, implementing, and reporting are epistemically different.
+      The planner reads without writing. The implementor writes without reporting. The
+      reporter publishes without implementing. This prevents the implementor from
+      self-assessing (that goes through M2-REVIEW at sigma_6) and prevents the planner
+      from being influenced by implementation difficulties. In single-agent execution,
+      role transitions are context boundaries.
+
+loop_structure:
+  - name: Build/test convergence loop
+    loop_edge: "sigma_3 -> sigma_3 (internal)"
+    condition: "NOT builds_clean OR NOT tests_pass"
+    termination_certificate:
+      name: nu_build
+      definition: "max_build_iterations - build_iteration_count"
+      type: non-negative integer
+      decrease_witness: >
+        Each build/test iteration increments build_iteration_count. The max is determined
+        by the project card (default 5). nu_build strictly decreases per iteration.
+      termination_condition: "(builds_clean AND tests_pass) OR build_iteration_count >= max_build_iterations"
+      acyclicity_note: >
+        The sigma_3 internal loop is bounded by nu_build. Terminates when build passes
+        and tests pass, or when iteration limit is reached.
+
+  - name: Self-review fix loop
+    loop_edge: "sigma_7 -> sigma_3"
+    condition: "review_verdict = needs_changes AND iteration_count < 3"
+    termination_certificate:
+      name: nu_review
+      definition: "3 - iteration_count"
+      type: non-negative integer
+      decrease_witness: >
+        Each self-review fix iteration increments iteration_count by 1, decreasing
+        nu_review by 1. nu_review is bounded below by 0.
+      termination_condition: "review_verdict = approve OR iteration_count >= 3"
+      acyclicity_note: >
+        The sigma_7 -> sigma_3 edge creates a cycle bounded by nu_review. The loop
+        terminates in at most 3 iterations.
+
+step_dag:
+  topology: >
+    sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 -> sigma_5 -> sigma_6 ->
+    sigma_7 (conditional, loop to sigma_3, max 3) -> sigma_8
+  formal: >
+    Gamma_WORK = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6,
+    sigma_7, sigma_8}, {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3),
+    (sigma_3, sigma_4), (sigma_4, sigma_5), (sigma_5, sigma_6), (sigma_6, sigma_7),
+    (sigma_6, sigma_8), (sigma_7, sigma_3), (sigma_7, sigma_8)}, sigma_0, sigma_8)
+
+phases:
+  - id: sigma_0
+    name: "Load Issue"
+    role: planner
+    precondition: "Issue number provided; GitHub MCP tools accessible"
+    postcondition: "Issue fully loaded with all context needed for planning"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - issue_number is set and valid
+      - issue_title, issue_body are loaded from GitHub
+      - issue_labels is a list (determines branch naming prefix: fix/ vs feat/)
+      - issue_type inferred from labels or content (bug -> fix/, everything else -> feat/)
+      - status = PASS when issue loaded; status = BLOCKED if GitHub MCP unavailable
+
+      **Rationale.** The issue provides the requirements for implementation. Loading
+      the full issue (including comments with clarifying context) is the prerequisite
+      for accurate planning and correct branch naming.
+
+      **Procedure.**
+      1. Call get_issue with the issue number
+      2. Extract: number, title, body, labels, comments
+      3. Determine issue_type: if labels contain "bug" or body describes incorrect behavior -> bug; else feature
+      4. This determines branch naming: fix/issue-{N} for bugs, feat/issue-{N} for features
+
+      **Output schema reference:**
+      - issue_number: the GitHub issue number
+      - issue_title: title string
+      - issue_body: body string
+      - issue_labels: list of label strings
+      - issue_type: inferred type (bug or feature)
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: issue_number
+          type: integer
+          required: true
+        - name: issue_title
+          type: string
+          min_length: 1
+          required: true
+        - name: issue_body
+          type: string
+          required: true
+        - name: issue_labels
+          type: array
+          items: string
+          required: true
+        - name: issue_type
+          type: enum
+          values: [bug, feature]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+    invariants:
+      hard:
+        - "issue_number is a positive integer"
+        - "issue_title is non-empty"
+        - "issue_type determines branch prefix (Ax-2)"
+      soft:
+        - "issue_body is non-empty"
+
+  - id: sigma_1
+    name: "Setup"
+    role: implementor
+    precondition: "sigma_0 complete; issue loaded with type determined"
+    postcondition: "Worktree created; branch created with correct naming convention"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - branch_name follows convention: fix/issue-{N} for bugs, feat/issue-{N} for features (Ax-2)
+      - worktree_path is set to the worktree directory
+      - worktree is created and active (Ax-1)
+      - branch is created from the latest main/master branch
+      - status = PASS when worktree and branch are ready
+
+      **Rationale.** Worktree isolation (Ax-1) ensures implementation does not affect
+      the main working tree. Branch naming convention (Ax-2) provides traceability
+      from branch to issue.
+
+      **Procedure.**
+      1. Determine branch name: fix/issue-{issue_number} or feat/issue-{issue_number}
+      2. Create a new branch from the latest main/master
+      3. Create a git worktree for the branch
+      4. Verify worktree is active and branch exists
+
+      **Output schema reference:**
+      - branch_name: the created branch name
+      - worktree_path: path to the worktree directory
+      - base_branch: the branch this was created from (main/master)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: branch_name
+          type: string
+          min_length: 1
+          required: true
+        - name: worktree_path
+          type: string
+          min_length: 1
+          required: true
+        - name: base_branch
+          type: string
+          min_length: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "branch_name starts with fix/issue- or feat/issue- (Ax-2)"
+        - "worktree is created and active"
+        - "branch is based on latest main/master"
+      soft:
+        - "worktree_path is in a standard location (.worktrees/ or adjacent to repo)"
+
+  - id: sigma_2
+    name: "Plan"
+    role: planner
+    precondition: "sigma_1 complete; worktree and branch ready"
+    postcondition: "Implementation plan written: files to change, approach, estimated changes"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - files_to_change is a non-empty list of file paths that will be modified or created
+      - approach is a non-empty description of the implementation strategy
+      - estimated_scope is one of: trivial, small, medium
+      - context_files_read lists all files read for context
+      - status = PASS when plan is complete
+
+      **Rationale.** Planning before implementing prevents scope creep and directionless
+      coding. The explicit file list creates a scope boundary for sigma_3. Context files
+      read ensures the planner has sufficient understanding before implementation begins.
+
+      **Procedure.**
+      1. Read the issue requirements in detail
+      2. Read relevant context files in the worktree (imports, interfaces, adjacent modules)
+      3. Identify which files need to change and what changes are needed
+      4. Assess scope and write the approach
+      5. If scope appears larger than expected: note for potential escalation
+
+      **Output schema reference:**
+      - files_to_change: list of file paths to modify or create
+      - approach: description of the implementation strategy
+      - estimated_scope: one of trivial, small, medium
+      - context_files_read: list of files read for understanding
+      - status: PASS
+    output_schema:
+      fields:
+        - name: files_to_change
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: approach
+          type: string
+          min_length: 1
+          required: true
+        - name: estimated_scope
+          type: enum
+          values: [trivial, small, medium]
+          required: true
+        - name: context_files_read
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "files_to_change is non-empty"
+        - "approach is non-empty"
+      soft:
+        - "context_files_read includes at least the files adjacent to files_to_change"
+        - "approach references the issue requirements"
+
+  - id: sigma_3
+    name: "Implement"
+    role: implementor
+    precondition: "sigma_2 complete; plan ready; worktree active"
+    postcondition: "Code written; build passes; tests pass (bounded convergence)"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All changes made within the worktree (Ax-1)
+      - files_changed lists actual files modified (may differ from plan)
+      - build_status = PASS: project builds cleanly (Ax-3 prerequisite)
+      - test_status = PASS: all tests pass (Ax-4 prerequisite)
+      - If build or tests fail: bounded convergence loop (edit -> build -> test, max iterations from project card)
+      - divergences lists any deviations from the plan
+      - status = PASS when build and tests pass; status = BLOCKED if convergence loop exhausted
+
+      **Rationale.** The build/test convergence loop is bounded to prevent infinite fix
+      cycles. Build before push (Ax-3) and test before push (Ax-4) are enforced here
+      as prerequisites for sigma_4.
+
+      **Procedure.**
+      1. Working in the worktree, implement the changes per the plan
+      2. Run the build — if it fails, fix and retry (bounded)
+      3. Run the tests — if they fail, fix and retry (bounded)
+      4. If fixing introduces new issues: iterate (edit -> build -> test)
+      5. Record all files changed and any divergences from the plan
+      6. If convergence loop exhausts: status = BLOCKED, report to orchestrator
+
+      **Output schema reference:**
+      - files_changed: list of files actually modified
+      - build_status: PASS or FAIL
+      - test_status: PASS or FAIL
+      - build_iterations: number of build/test cycles needed
+      - divergences: list of deviations from plan
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: files_changed
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: build_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: test_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: build_iterations
+          type: integer
+          min_value: 1
+          required: true
+        - name: divergences
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+    invariants:
+      hard:
+        - "status = PASS requires build_status = PASS AND test_status = PASS"
+        - "all changes within worktree (Ax-1)"
+        - "status = BLOCKED if convergence loop exhausted"
+      soft:
+        - "divergences are documented before proceeding"
+
+  - id: sigma_4
+    name: "Commit + Push"
+    role: implementor
+    precondition: "sigma_3 complete with PASS; build and tests passing"
+    postcondition: "Changes committed to branch; branch pushed to origin"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All changes staged and committed with a descriptive message
+      - Commit message references the issue number
+      - Branch pushed to origin (Ax-3 and Ax-4 prerequisites already verified at sigma_3)
+      - commit_sha is the commit hash
+      - status = PASS when pushed
+
+      **Rationale.** Build and tests must pass before push (Ax-3, Ax-4). These were
+      verified at sigma_3. The commit message references the issue for traceability.
+
+      **Procedure.**
+      1. Stage all changed files
+      2. Commit with message: "fix: [description] (issue #{N})" or "feat: [description] (issue #{N})"
+      3. Push the branch to origin
+      4. Record commit SHA
+
+      **Output schema reference:**
+      - commit_sha: the commit hash
+      - commit_message: the commit message
+      - branch_pushed: boolean (must be true)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: commit_sha
+          type: string
+          min_length: 7
+          required: true
+        - name: commit_message
+          type: string
+          min_length: 1
+          required: true
+        - name: branch_pushed
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "branch_pushed = true"
+        - "commit_message references issue number"
+        - "commit_sha is a valid git hash"
+      soft:
+        - "commit message follows conventional commits format"
+
+  - id: sigma_5
+    name: "Create PR"
+    role: reporter
+    precondition: "sigma_4 complete; branch pushed to origin"
+    postcondition: "PR created on GitHub with issue linkage"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - PR created via create_pull_request GitHub MCP tool
+      - PR body contains "Fixes #{issue_number}" for automatic issue linkage (Ax-5)
+      - PR title is descriptive and references the issue
+      - pr_number is set to the created PR's number
+      - status = PASS when PR is created
+
+      **Rationale.** The "Fixes #N" linkage (Ax-5) ensures GitHub automatically closes
+      the issue when the PR is merged. Creating the PR via MCP tool ensures it is
+      visible on GitHub immediately.
+
+      **Procedure.**
+      1. Call create_pull_request with:
+         - title: descriptive title referencing the issue
+         - body: include "Fixes #{issue_number}" and a summary of changes
+         - head: the branch name from sigma_1
+         - base: the base branch (main/master)
+      2. Record the PR number and URL
+
+      **Output schema reference:**
+      - pr_number: the created PR number
+      - pr_url: the PR URL
+      - pr_title: the PR title
+      - status: PASS
+    output_schema:
+      fields:
+        - name: pr_number
+          type: integer
+          required: true
+        - name: pr_url
+          type: string
+          required: true
+        - name: pr_title
+          type: string
+          min_length: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "PR body contains 'Fixes #{issue_number}' (Ax-5)"
+        - "pr_number is a positive integer"
+      soft:
+        - "PR title is concise and descriptive"
+
+  - id: sigma_6
+    name: "Self-Review"
+    role: reporter
+    precondition: "sigma_5 complete; PR created on GitHub"
+    postcondition: "M2-REVIEW invoked inline on the created PR; review result available"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - M2-REVIEW has been invoked on the created PR (Ax-6)
+      - review_verdict is one of: approve, needs_changes
+      - review_findings lists all findings from M2-REVIEW
+      - If verdict = approve: proceed to sigma_8 (report)
+      - If verdict = needs_changes AND iteration_count < 3: proceed to sigma_7 (fix loop)
+      - If verdict = needs_changes AND iteration_count >= 3: proceed to sigma_8 (report with caveat)
+      - status = PASS when self-review is complete
+
+      **Rationale.** Self-review (Ax-6) catches issues before the PR is seen by external
+      reviewers or merged. Invoking M2-REVIEW inline provides the same structured review
+      as an external review: file:line citations, delivery rule checking, and verdict
+      consistency.
+
+      **Procedure.**
+      1. Invoke M2-REVIEW with the PR number from sigma_5
+      2. M2-REVIEW will: load PR, read files, check delivery rules, produce verdict
+      3. Record the review verdict and findings
+      4. Determine next step based on verdict and iteration_count
+
+      **Output schema reference:**
+      - review_verdict: approve or needs_changes
+      - review_findings: list of findings from M2-REVIEW
+      - next_step: sigma_7 (fix) or sigma_8 (report)
+      - iteration_count: current iteration count
+      - status: PASS
+    output_schema:
+      fields:
+        - name: review_verdict
+          type: enum
+          values: [approve, needs_changes]
+          required: true
+        - name: review_findings
+          type: array
+          items: object
+          description: "Findings from M2-REVIEW with file:line citations"
+          required: true
+        - name: next_step
+          type: enum
+          values: [sigma_7, sigma_8]
+          required: true
+        - name: iteration_count
+          type: integer
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "M2-REVIEW was invoked (Ax-6)"
+        - "next_step = sigma_7 requires review_verdict = needs_changes AND iteration_count < 3"
+        - "next_step = sigma_8 when review_verdict = approve OR iteration_count >= 3"
+      soft:
+        - "review_findings include all findings from M2-REVIEW"
+
+  - id: sigma_7
+    name: "Fix Loop"
+    role: implementor
+    precondition: "sigma_6 review_verdict = needs_changes AND iteration_count < 3"
+    postcondition: "Fixes applied in worktree; build + tests pass; changes pushed; ready for re-review"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Only CRITICAL/HIGH findings from sigma_6 have been addressed
+      - Fixes applied in the worktree (Ax-1)
+      - Build passes (Ax-3) and tests pass (Ax-4) after fixes
+      - Changes committed and pushed to the PR branch
+      - iteration_count incremented by 1
+      - Loop back to sigma_3 for re-implementation if changes are significant,
+        or directly to sigma_6 for re-review if changes are minor
+      - status = PASS when fixes applied and pushed
+
+      **Rationale.** The fix loop addresses self-review findings without starting over.
+      Only CRITICAL/HIGH findings are addressed (same as M2-REVIEW sigma_3). The
+      iteration bound (Ax-7) prevents infinite cycles.
+
+      **Procedure.**
+      1. In the worktree, address each CRITICAL/HIGH finding from sigma_6
+      2. Run build and tests to verify fixes
+      3. Commit and push to the PR branch
+      4. Increment iteration_count
+      5. Loop back to sigma_3 (re-implement + re-commit + re-push + re-review)
+
+      **Output schema reference:**
+      - fixes_applied: count of findings addressed
+      - build_status: PASS after fixes
+      - test_status: PASS after fixes
+      - iteration_count: updated counter
+      - commit_sha: fix commit hash
+      - status: PASS
+    output_schema:
+      fields:
+        - name: fixes_applied
+          type: integer
+          min_value: 1
+          required: true
+        - name: build_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: test_status
+          type: enum
+          values: [PASS, FAIL]
+          required: true
+        - name: iteration_count
+          type: integer
+          min_value: 1
+          max_value: 3
+          required: true
+        - name: commit_sha
+          type: string
+          min_length: 7
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "iteration_count <= 3 (Ax-7)"
+        - "build_status = PASS AND test_status = PASS before push"
+        - "fixes_applied >= 1"
+      soft:
+        - "only CRITICAL/HIGH findings addressed"
+
+  - id: sigma_8
+    name: "Report"
+    role: reporter
+    precondition: "sigma_6 verdict = approve, OR sigma_7 loop exhausted, OR sigma_6 iteration_count >= 3"
+    postcondition: "Issue commented with PR link; bridge_event completed called; work record assembled"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Comment posted on the issue via add_issue_comment with PR link
+      - bridge_event completed called to notify the parent agent
+      - work_record assembled with all outputs from sigma_0 through sigma_7
+      - If final verdict = needs_changes (iterations exhausted): note in comment that
+        manual review is needed
+      - worktree cleaned up (optional but recommended)
+      - status = PASS when report is complete
+
+      **Rationale.** The completion report makes the work visible on GitHub (issue comment)
+      and to the orchestrator (bridge_event). The work record provides a full audit trail.
+
+      **Procedure.**
+      1. Post a comment on the issue via add_issue_comment:
+         - Reference the PR number and URL
+         - Summarize what was implemented
+         - Note the self-review verdict
+         - If iterations exhausted without approval: flag for manual review
+      2. Call bridge_event with type = completed and the work record
+      3. Assemble the work_record
+      4. Clean up the worktree (if applicable)
+
+      **Output schema reference:**
+      - issue_comment_posted: boolean (must be true)
+      - bridge_event_sent: boolean
+      - work_record: complete record object
+      - final_verdict: the last review verdict
+      - status: PASS
+    output_schema:
+      fields:
+        - name: issue_comment_posted
+          type: boolean
+          required: true
+        - name: bridge_event_sent
+          type: boolean
+          required: true
+        - name: work_record
+          type: object
+          description: "{ issue_number, branch_name, pr_number, files_changed, review_verdict, iterations, commit_shas }"
+          required: true
+        - name: final_verdict
+          type: enum
+          values: [approve, needs_changes]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "issue_comment_posted = true"
+        - "work_record contains all fields from sigma_0 through sigma_7"
+      soft:
+        - "bridge_event_sent = true (best effort — bridge may not be running)"
+        - "worktree cleaned up after completion"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: issue loaded with type determines branch naming.
+        pre_sigma_1 requires issue loaded and type determined. Identity inclusion.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: worktree and branch ready satisfies pre_sigma_2
+        which requires worktree active for reading context files.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post_sigma_2 subset pre_sigma_3: plan ready satisfies pre_sigma_3 which requires
+        plan and active worktree. Worktree carried from sigma_1.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 subset pre_sigma_4: build and tests pass satisfies pre_sigma_4
+        which requires PASS status from sigma_3.
+    - edge: "sigma_4 -> sigma_5"
+      claim: >
+        post_sigma_4 subset pre_sigma_5: branch pushed satisfies pre_sigma_5 which
+        requires branch on origin for PR creation.
+    - edge: "sigma_5 -> sigma_6"
+      claim: >
+        post_sigma_5 subset pre_sigma_6: PR created satisfies pre_sigma_6 which requires
+        PR on GitHub for M2-REVIEW invocation.
+    - edge: "sigma_6 -> sigma_7 (conditional)"
+      claim: >
+        post_sigma_6 when verdict = needs_changes AND iteration_count < 3 satisfies
+        pre_sigma_7. The review findings provide fix targets.
+    - edge: "sigma_6 -> sigma_8 (direct)"
+      claim: >
+        post_sigma_6 when verdict = approve OR iteration_count >= 3 satisfies pre_sigma_8.
+    - edge: "sigma_7 -> sigma_3 (loop)"
+      claim: >
+        post_sigma_7 with fixes applied and pushed satisfies pre_sigma_3 for re-implementation.
+        The worktree is still active. Bounded by nu_review.
+    - edge: "sigma_7 -> sigma_8 (exit)"
+      claim: >
+        post_sigma_7 when iteration_count >= 3 satisfies pre_sigma_8.
+  terminal_condition_claim: >
+    post_sigma_8 = issue commented, bridge_event sent, work record assembled. This
+    is O_WORK(s). Terminal when report is complete.
+  initial_condition_claim: >
+    pre_sigma_0 requires issue number and GitHub MCP access. This holds when the
+    dispatcher or M1-TRIAGE commissions work on an issue.
+  contrarian_challenge:
+    weakest_edge: "sigma_6 -> sigma_7"
+    challenge: >
+      Self-review (sigma_6) may approve code that has subtle issues because the same
+      agent implemented and reviewed. The M2-REVIEW invocation provides structure but
+      not independent perspective. An agent's blind spots in implementation may be
+      blind spots in review.
+    defense_or_revision: >
+      M4-WORK mitigates self-review bias through three mechanisms: (1) M2-REVIEW's
+      file:line citation requirement forces the reviewer to re-read code rather than
+      relying on implementation memory; (2) the formal role switch (implementor ->
+      reporter invoking M2-REVIEW) creates a context boundary; (3) the review report
+      is posted as a GitHub comment, making it available for external human review.
+      For high-stakes changes, the orchestrator should commission an independent
+      M2-REVIEW from a separate agent. The composability holds structurally.
+
+objective:
+  id: O_WORK
+  formal: >
+    O_WORK(s) =
+      pr_created(s.pull_request)
+      AND pr_linked(s.pull_request, s.issue)
+      AND self_reviewed(s.pull_request)
+      AND builds_clean(s.worktree)
+      AND tests_pass(s.worktree)
+      AND issue_commented(s.issue)
+      AND completion_reported(s.work_record)
+  type: terminal
+  expressible_claim: >
+    O_WORK references pr_created, pr_linked, self_reviewed, builds_clean, tests_pass,
+    issue_commented, completion_reported — all declared predicates over declared sorts.
+    All symbols are in Sigma_WORK. O_WORK is expressible as a closed sentence over
+    Mod(D_WORK).
+  note: >
+    O_WORK is satisfied when the full lifecycle is complete: PR created and linked,
+    self-reviewed, code builds and tests pass, issue commented, completion reported.
+    A needs_changes final verdict with iterations exhausted is a valid terminal state
+    — the work record documents what was done and what remains.
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff |{sigma in base_steps | completed(sigma) in s1}| <=
+      |{sigma in base_steps | completed(sigma) in s2}| where base_steps =
+      {sigma_0..sigma_6, sigma_8}. States with more completed steps are further
+      toward O_WORK.
+    well_founded: >
+      Eight base steps plus bounded loop iterations (max 3). The measure is bounded
+      above by the total number of possible step executions. Well-founded.
+  success_profile:
+    - id: mu_lifecycle
+      name: git_lifecycle_completeness
+      formula: "1 if branch_exists AND branch_pushed AND pr_created AND pr_linked else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_lifecycle = 1 is necessary for O_WORK. The full git lifecycle (branch ->
+        push -> PR -> link) must be completed.
+    - id: mu_quality
+      name: quality_gate
+      formula: "1 if builds_clean AND tests_pass AND self_reviewed else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_quality = 1 is necessary for O_WORK. Code must build, pass tests, and be
+        self-reviewed before the method terminates.
+    - id: mu_visibility
+      name: completion_visibility
+      formula: "1 if issue_commented AND completion_reported else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_visibility = 1 is necessary for O_WORK. Work must be visible on GitHub
+        (issue comment) and to the orchestrator (bridge_event).
+
+termination:
+  certificate: >
+    nu(s) = (9 - |{sigma in base_steps | completed(sigma)}|) + (3 - iteration_count(s))
+    where base_steps = {sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6, sigma_8}
+  initial: 11
+  final: 0
+  decrease_witness: >
+    Each base step execution reduces the first term by 1. Each fix iteration (sigma_7)
+    reduces the second term by 1 while re-executing sigma_3 through sigma_6. nu strictly
+    decreases because iteration_count is monotonically increasing and base steps are
+    monotonically completed. The maximum path length is 8 base steps + 3 * 5 (three
+    iterations of sigma_3..sigma_7) = 23 step executions, but nu is bounded at 11
+    and decreases to 0.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: full git lifecycle from issue to merged PR. Who: three
+        roles (planner, implementor, reporter). Why: structured execution prevents missed
+        steps. How: 9-step DAG with two bounded loops. When: issue ready for implementation.
+    - gate: G1
+      result: PASS
+      note: >
+        D_WORK = (Sigma_WORK, Ax_WORK). 9 sorts with cardinality. 3 total function
+        symbols. 10 predicates with typed signatures. 7 closed axioms (including worktree
+        isolation, branch naming, build/test before push, PR-issue linkage, self-review
+        required, fix loop bound). Domain boundary stated. Initial and terminal state
+        membership claimed.
+    - gate: G2
+      result: PASS
+      note: >
+        O_WORK stated as conjunction of 7 Sigma-predicates. Type: terminal. Expressibility
+        claim present. Progress preorder with well-foundedness argument. Three measures
+        (mu_lifecycle, mu_quality, mu_visibility) with formulas, ranges, terminal values,
+        and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Three roles (planner, implementor, reporter) with observation projections and
+        explicit authorized/not-authorized transitions. Coverage claim: union of projections
+        covers full Mod(D_WORK). Authority claim: all steps authorized by exactly one role.
+        Role partition rationale: epistemic separation between planning, implementing,
+        and reporting.
+    - gate: G4
+      result: PASS
+      note: >
+        Nine steps with two bounded loops (build convergence and self-review fix). Two
+        loop structures declared with termination certificates. Ten composability claims
+        including conditional and loop edges. Terminal and initial condition claims present.
+        Contrarian challenge on sigma_6->sigma_7: self-review bias; defended by citation
+        requirement, role switch, and external auditability.
+    - gate: G5
+      result: PASS
+      note: >
+        All nine steps have finalized guidance in constraints-first format. Each guidance
+        block names all output_schema fields. Adequacy confirmed.
+    - gate: G6
+      result: PASS
+      note: "This file (P-GH/M4-WORK/M4-WORK.yaml). Structurally complete."

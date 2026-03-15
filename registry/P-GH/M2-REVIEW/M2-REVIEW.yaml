@@ -1,0 +1,771 @@
+method:
+  id: M2-REVIEW
+  parent: P-GH
+  name: "PR Review with Self-Fix Method"
+  description: >
+    Reviews a GitHub pull request by loading the PR diff, reading each changed file,
+    checking delivery rules from the project card, and producing a verdict (approve or
+    needs_changes) with file:line citations. When needs_changes, the method enters a
+    self-fix loop: create a worktree from the PR branch, apply fixes, and re-review
+    (max 3 iterations). Reviews are posted as discussion comments via add_issue_comment
+    (PR number works as issue number), NOT via create_pull_request_review, because the
+    reviewing agent operates under the same GitHub account as the PR author.
+  version: "1.0"
+  status: compiled
+  compilation_date: "2026-03-15"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M2-REVIEW takes a GitHub pull request and produces a review report: load the PR diff,
+    read each changed file in full context, check against delivery rules and project
+    conventions, and produce a verdict with specific file:line citations for every finding.
+    If the verdict is needs_changes, the method can self-fix: create a worktree, apply
+    corrections, and re-review in a bounded loop (max 3 iterations).
+  who: >
+    Two roles — reviewer (reads and evaluates) and fixer (applies corrections in
+    worktree). In single-agent execution, the same agent plays both roles with an
+    explicit role switch at sigma_3. LLM agents are the primary execution target.
+  why: >
+    PRs merged without review accumulate defects. PRs reviewed but not fixed create
+    a back-and-forth cycle that delays delivery. M2-REVIEW combines review and self-fix
+    in a single method, reducing the feedback loop from asynchronous to synchronous.
+    The file:line citation requirement (Ax-1) ensures findings are actionable, not vague.
+  how: >
+    Six-step DAG with a conditional self-fix loop: load PR -> read + check -> verdict ->
+    fix (conditional) -> self-review (loop back to sigma_1, max 3 iterations) -> report
+    + merge. The loop is bounded by the iteration counter.
+  when_to_use:
+    - "A pull request needs code review"
+    - "A self-authored PR needs quality verification before merge"
+    - "An agent-created PR needs automated review with self-fix capability"
+  when_not_to_use:
+    - "The PR has merge conflicts — use M3-RESOLVE first, then M2-REVIEW"
+    - "The challenge is about implementing from an issue — use M4-WORK (which invokes M2-REVIEW internally)"
+    - "The PR is a draft and not ready for review"
+
+domain_theory:
+  id: D_REVIEW
+  sorts:
+    - name: PullRequest
+      cardinality: singleton_per_execution
+      description: "The GitHub PR being reviewed — number, title, body, diff, changed files"
+    - name: ChangedFile
+      cardinality: finite
+      description: "A file modified in the PR, with path and diff hunks"
+    - name: DeliveryRule
+      cardinality: finite
+      description: "A delivery rule from the project card that applies to the changed files"
+    - name: Finding
+      cardinality: unbounded
+      description: "A specific review observation with file:line citation"
+    - name: Severity
+      cardinality: finite
+      values: [CRITICAL, HIGH, MEDIUM, LOW]
+      description: "Finding severity — same scale as M1-IMPL"
+    - name: ReviewVerdict
+      cardinality: finite
+      values: [approve, needs_changes]
+      description: "Overall review outcome"
+    - name: ReviewReport
+      cardinality: singleton_per_execution
+      description: "Assembled findings with verdict"
+    - name: FixAttempt
+      cardinality: finite
+      description: "A self-fix iteration: worktree creation, edits applied, re-review result"
+    - name: IterationCounter
+      cardinality: finite
+      values: [0, 1, 2, 3]
+      description: "Counts self-fix iterations. Max 3."
+  function_symbols:
+    - name: severity_of
+      signature: "Finding -> Severity"
+      totality: total
+    - name: verdict_of
+      signature: "ReviewReport -> ReviewVerdict"
+      totality: total
+    - name: iteration_count
+      signature: "State -> IterationCounter"
+      totality: total
+      description: "Number of self-fix iterations completed so far"
+    - name: file_of
+      signature: "Finding -> ChangedFile"
+      totality: total
+      description: "The file a finding pertains to"
+  predicates:
+    - name: finding_cited
+      signature: "Finding -> Bool"
+      description: "The finding has a specific file:line citation"
+    - name: rule_checked
+      signature: "DeliveryRule x ChangedFile -> Bool"
+      description: "The delivery rule has been checked against the changed file"
+    - name: all_rules_checked
+      signature: "ReviewReport -> Bool"
+      description: "All applicable delivery rules have been checked against all changed files"
+    - name: fix_applied
+      signature: "FixAttempt -> Bool"
+      description: "The fix attempt has been applied to the PR branch"
+    - name: report_posted
+      signature: "ReviewReport -> Bool"
+      description: "The review report has been posted as a GitHub discussion comment"
+    - name: pr_merged
+      signature: "PullRequest -> Bool"
+      description: "The PR has been merged via merge_pull_request"
+  axioms:
+    - id: Ax-1
+      name: Finding citation required
+      statement: "forall f : Finding. finding_cited(f)"
+      rationale: >
+        Every finding must have a specific file:line citation. Uncited findings are
+        opinions, not review results. This is the same citation axiom as M3-PHRV Ax-1.
+    - id: Ax-2
+      name: Delivery rule coverage
+      statement: >
+        forall r : ReviewReport. all_rules_checked(r) ->
+          forall dr : DeliveryRule, cf : ChangedFile. applicable(dr, cf) -> rule_checked(dr, cf)
+      rationale: "Every applicable delivery rule must be checked against every changed file it applies to."
+    - id: Ax-3
+      name: Verdict consistency
+      statement: >
+        forall r : ReviewReport.
+          (verdict_of(r) = approve -> NOT exists f : Finding. severity_of(f) IN {CRITICAL, HIGH}) AND
+          (verdict_of(r) = needs_changes -> exists f : Finding. severity_of(f) IN {CRITICAL, HIGH})
+      rationale: "approve requires no CRITICAL/HIGH findings. needs_changes requires at least one."
+    - id: Ax-4
+      name: Self-fix loop bound
+      statement: "forall s : State. iteration_count(s) <= 3"
+      rationale: "The self-fix loop is bounded at 3 iterations to prevent infinite fix-review cycles."
+    - id: Ax-5
+      name: Comment-based review
+      statement: >
+        forall r : ReviewReport. report_posted(r) ->
+          posted_via_add_issue_comment(r) AND NOT posted_via_create_pull_request_review(r)
+      rationale: >
+        Reviews must be posted as discussion comments (add_issue_comment with PR number),
+        NOT as formal PR reviews (create_pull_request_review), because the reviewing agent
+        operates under the same GitHub account as the PR author. GitHub does not allow
+        self-approval via the review API.
+  domain_boundary_note: >
+    Excludes: implementation of new features (M2-REVIEW fixes existing PR code only);
+    merge conflict resolution (use M3-RESOLVE first); issue triage; the content domain
+    of the software being reviewed. D_REVIEW tracks review and fix state for a single PR.
+  initial_state_valid_claim: >
+    A state with PullRequest loaded, no Findings, no ReviewReport, iteration_count = 0
+    satisfies all axioms: Ax-1 (vacuously true — no Findings), Ax-2 (not yet applied),
+    Ax-3 (vacuously true — no ReviewReport), Ax-4 (0 <= 3), Ax-5 (vacuously true — no
+    report posted). Valid.
+  terminal_state_valid_claim: >
+    A state with ReviewReport assembled, all findings cited (Ax-1), all delivery rules
+    checked (Ax-2), verdict consistent with findings (Ax-3), iteration_count <= 3 (Ax-4),
+    report posted via add_issue_comment (Ax-5). Valid.
+
+roles:
+  - id: reviewer
+    description: >
+      Reads the PR diff and full file context. Checks each changed file against delivery
+      rules from the project card. Produces Findings with file:line citations. Determines
+      verdict. Read-only on the PR branch during review steps.
+    observation_projection: >
+      pi_reviewer = id : Mod(D_REVIEW) -> Mod(D_REVIEW) — full visibility. The reviewer
+      sees the PR, changed files, delivery rules, and all findings.
+    authorized_transitions:
+      - "Execute sigma_0: load PR via GitHub MCP"
+      - "Execute sigma_1: read changed files, check delivery rules, produce findings"
+      - "Execute sigma_2: determine verdict based on findings"
+      - "Execute sigma_4: re-review after self-fix (same as sigma_1)"
+      - "Execute sigma_5: post review report, merge if approved"
+    not_authorized:
+      - "Modify source files during review steps (sigma_0, sigma_1, sigma_2)"
+      - "Post review via create_pull_request_review (same account limitation)"
+      - "Merge without posting the review report first"
+    coverage_claim: >
+      pi_reviewer covers the full review state: PR, changed files, delivery rules,
+      findings, verdict, and report. No review-relevant dimension is unobservable.
+    authority_claim: >
+      The reviewer is authorized for all review steps and the terminal report + merge step.
+      Fix steps are authorized by the fixer role.
+
+  - id: fixer
+    description: >
+      Applies corrections identified by the reviewer. Creates a worktree from the PR
+      branch, makes targeted edits, commits, and pushes. Only active during sigma_3
+      (the fix step). Write access to PR branch files within worktree isolation.
+    observation_projection: >
+      pi_fixer sees the finding list from the reviewer and the PR branch source files.
+      Does not see the reviewer's internal evaluation state — only the actionable findings.
+    authorized_transitions:
+      - "Execute sigma_3: create worktree, apply fixes, commit, push"
+    not_authorized:
+      - "Determine the review verdict"
+      - "Post the review report"
+      - "Merge the PR"
+      - "Make changes beyond the findings identified by the reviewer"
+    coverage_claim: >
+      pi_fixer covers findings and source files — sufficient for targeted fixes.
+    authority_claim: >
+      The fixer is authorized only for sigma_3 (fix execution). All other transitions
+      require the reviewer role.
+    role_partition_rationale: >
+      Two roles because review and fix are epistemically different operations. The
+      reviewer evaluates without writing code; the fixer writes code without evaluating.
+      Separating them prevents the fix step from silently adjusting the verdict. In
+      single-agent execution, the role switch is a context boundary — the agent re-reads
+      findings as input to fixing rather than relying on review-time context.
+
+loop_structure:
+  name: Self-fix re-review loop
+  loop_edge: "sigma_4 -> sigma_1"
+  condition: "verdict_of(current_report) = needs_changes AND iteration_count < 3"
+  termination_certificate:
+    name: nu_fix
+    definition: "3 - iteration_count(s)"
+    type: non-negative integer
+    decrease_witness: >
+      Each self-fix iteration increments iteration_count by 1, decreasing nu_fix by 1.
+      nu_fix is bounded below by 0. When nu_fix = 0, the loop exits regardless of verdict.
+    termination_condition: "iteration_count = 3 OR verdict_of(current_report) = approve"
+    acyclicity_note: >
+      The sigma_4 -> sigma_1 edge creates a cycle. The cycle is bounded by nu_fix:
+      finite, non-negative, strictly decreasing per loop iteration. The loop terminates
+      in at most 3 iterations.
+
+step_dag:
+  topology: "sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 (conditional) -> sigma_4 (loop to sigma_1, max 3) -> sigma_5"
+  formal: >
+    Gamma_REVIEW = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5},
+    {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_2, sigma_5),
+    (sigma_3, sigma_4), (sigma_4, sigma_1), (sigma_4, sigma_5)}, sigma_0, sigma_5)
+
+phases:
+  - id: sigma_0
+    name: "Load PR"
+    role: reviewer
+    precondition: "PR number or URL provided; GitHub MCP tools accessible"
+    postcondition: "PR fully loaded: title, body, diff, changed files list, mergeable status"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - pr_number is set and valid
+      - pr_title, pr_body are loaded from GitHub
+      - changed_files is a non-empty list of file paths with diff information
+      - mergeable_status indicates whether the PR can be merged (no conflicts)
+      - If mergeable_status = conflicted: status = BLOCKED (use M3-RESOLVE first)
+      - status = PASS when PR is fully loaded and mergeable
+
+      **Rationale.** The reviewer cannot evaluate what it has not loaded. The mergeable
+      check prevents reviewing a PR that will need conflict resolution first.
+
+      **Procedure.**
+      1. Call get_pull_request with the PR number
+      2. Call get_pull_request_files to get the list of changed files with diffs
+      3. Check mergeable status — if conflicted, BLOCK with guidance to use M3-RESOLVE
+      4. Record PR metadata: number, title, body, author, base branch, head branch
+
+      **Output schema reference:**
+      - pr_number: the GitHub PR number
+      - pr_title: title string
+      - changed_files: list of {path, status, additions, deletions} objects
+      - mergeable_status: one of mergeable, conflicted, unknown
+      - status: PASS or BLOCKED
+    output_schema:
+      fields:
+        - name: pr_number
+          type: integer
+          required: true
+        - name: pr_title
+          type: string
+          required: true
+        - name: changed_files
+          type: array
+          items: object
+          description: "{path: string, status: string, additions: int, deletions: int}"
+          min_items: 1
+          required: true
+        - name: mergeable_status
+          type: enum
+          values: [mergeable, conflicted, unknown]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+    invariants:
+      hard:
+        - "pr_number is a positive integer"
+        - "changed_files has at least 1 entry"
+        - "status = BLOCKED if mergeable_status = conflicted"
+      soft:
+        - "pr_title is non-empty"
+
+  - id: sigma_1
+    name: "Read + Check"
+    role: reviewer
+    precondition: "sigma_0 complete; PR loaded and mergeable"
+    postcondition: "Every changed file read in full; every applicable delivery rule checked; findings produced with file:line citations"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Every file in changed_files has been read in full context (not just the diff)
+      - Delivery rules from the project card have been loaded and checked against each file
+      - findings is a list of Finding objects (may be empty if no issues found)
+      - Every Finding has a file:line citation (Ax-1 enforced)
+      - Every Finding has severity in {CRITICAL, HIGH, MEDIUM, LOW}
+      - delivery_rules_checked is the count of rules checked
+      - status = PASS when all files read and all rules checked
+
+      **Rationale.** Reading the full file (not just the diff) prevents context-blind review.
+      A change that looks correct in isolation may violate patterns established elsewhere in
+      the file. Delivery rule checking ensures project conventions are enforced systematically.
+
+      **Procedure.**
+      1. Load delivery rules from the project card (.method/project-card.yaml)
+      2. For each file in changed_files:
+         a. Read the full file content (not just the diff hunks)
+         b. For each applicable delivery rule: check compliance
+         c. Review the diff for: correctness, style, test coverage, documentation
+         d. For each issue found: create a Finding with file:line, expected, actual, severity
+      3. Verify every Finding has a file:line citation (Ax-1)
+      4. Record total delivery rules checked
+
+      **Output schema reference:**
+      - findings: list of Finding objects with file:line citations
+      - delivery_rules_checked: count of delivery rules evaluated
+      - files_reviewed: count of files fully read
+      - status: PASS
+    output_schema:
+      fields:
+        - name: findings
+          type: array
+          items: object
+          description: "{file: string, line: int, expected: string, actual: string, severity: CRITICAL|HIGH|MEDIUM|LOW, rule_ref: string}"
+          required: true
+        - name: delivery_rules_checked
+          type: integer
+          min_value: 0
+          required: true
+        - name: files_reviewed
+          type: integer
+          min_value: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "every finding has non-empty file and line fields (Ax-1)"
+        - "every finding has severity in {CRITICAL, HIGH, MEDIUM, LOW}"
+        - "files_reviewed = |changed_files|"
+      soft:
+        - "findings are ordered by file path then line number"
+        - "each finding.rule_ref references a specific delivery rule or convention"
+
+  - id: sigma_2
+    name: "Verdict"
+    role: reviewer
+    precondition: "sigma_1 complete; all files reviewed; findings produced"
+    postcondition: "verdict determined consistent with findings per Ax-3"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - verdict is one of: approve, needs_changes
+      - verdict is consistent with findings per Ax-3:
+        approve: no CRITICAL or HIGH findings
+        needs_changes: at least one CRITICAL or HIGH finding exists
+      - severity_breakdown counts findings per severity level
+      - verdict_rationale is a non-empty summary of the review outcome
+      - status = PASS when verdict is determined
+
+      **Rationale.** The verdict is deterministic given the findings (Ax-3). The reviewer
+      does not exercise judgment about the verdict — only about whether individual issues
+      are findings. This separation (subjective: is this an issue? objective: given the
+      issues, what is the verdict?) prevents verdict inflation.
+
+      **Procedure.**
+      1. Count findings by severity level
+      2. Apply Ax-3:
+         - If any finding has severity CRITICAL or HIGH: verdict = needs_changes
+         - If no finding has severity CRITICAL or HIGH: verdict = approve
+      3. Write verdict_rationale summarizing key findings (or confirming clean review)
+      4. If verdict = needs_changes AND iteration_count < 3: sigma_3 is next (self-fix)
+      5. If verdict = approve OR iteration_count >= 3: sigma_5 is next (report + merge)
+
+      **Output schema reference:**
+      - verdict: one of approve, needs_changes
+      - severity_breakdown: {CRITICAL: int, HIGH: int, MEDIUM: int, LOW: int}
+      - verdict_rationale: summary string
+      - next_step: sigma_3 (fix) or sigma_5 (report)
+      - status: PASS
+    output_schema:
+      fields:
+        - name: verdict
+          type: enum
+          values: [approve, needs_changes]
+          required: true
+        - name: severity_breakdown
+          type: object
+          description: "{CRITICAL: int, HIGH: int, MEDIUM: int, LOW: int}"
+          required: true
+        - name: verdict_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: next_step
+          type: enum
+          values: [sigma_3, sigma_5]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "verdict = approve requires severity_breakdown.CRITICAL = 0 AND severity_breakdown.HIGH = 0 (Ax-3)"
+        - "verdict = needs_changes requires severity_breakdown.CRITICAL + severity_breakdown.HIGH > 0 (Ax-3)"
+        - "next_step = sigma_3 requires verdict = needs_changes AND iteration_count < 3"
+        - "next_step = sigma_5 when verdict = approve OR iteration_count >= 3"
+      soft:
+        - "verdict_rationale mentions the most significant findings by file:line"
+
+  - id: sigma_3
+    name: "Fix"
+    role: fixer
+    precondition: "sigma_2 verdict = needs_changes AND iteration_count < 3"
+    postcondition: "Fixes applied to PR branch via worktree; changes committed and pushed"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - A worktree has been created from the PR branch
+      - Only CRITICAL and HIGH findings have been addressed (MEDIUM/LOW are advisory)
+      - Each fix targets a specific finding from sigma_1/sigma_4 by file:line
+      - fixes_applied is the count of findings addressed
+      - changes committed and pushed to the PR branch
+      - iteration_count incremented by 1
+      - status = PASS when fixes applied and pushed
+
+      **Rationale.** Self-fix targets only CRITICAL/HIGH findings because they are the
+      verdict-blocking issues. Fixing MEDIUM/LOW issues risks scope creep and introduces
+      changes that were not review-flagged as blocking. The worktree provides isolation
+      from any concurrent work on the main branch.
+
+      **Procedure.**
+      1. Create a worktree from the PR's head branch
+      2. For each CRITICAL/HIGH finding from sigma_1 (or sigma_4 on re-review):
+         a. Navigate to the file:line cited in the finding
+         b. Apply the minimal fix that addresses the finding
+         c. Verify the fix does not introduce new issues (build + test)
+      3. Commit all fixes with a descriptive message referencing the findings
+      4. Push to the PR branch
+      5. Increment iteration_count
+      6. Clean up worktree
+
+      **Output schema reference:**
+      - fixes_applied: count of findings addressed
+      - files_modified: list of files changed in the fix
+      - iteration_count: updated iteration counter
+      - commit_sha: the commit hash of the fix
+      - status: PASS
+    output_schema:
+      fields:
+        - name: fixes_applied
+          type: integer
+          min_value: 1
+          required: true
+        - name: files_modified
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: iteration_count
+          type: integer
+          min_value: 1
+          max_value: 3
+          required: true
+        - name: commit_sha
+          type: string
+          min_length: 7
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "fixes_applied >= 1 (at least one fix per iteration)"
+        - "iteration_count <= 3 (Ax-4)"
+        - "commit_sha is a valid git commit hash"
+      soft:
+        - "each fix is minimal — addresses the specific finding, no scope creep"
+        - "commit message references the finding file:line"
+
+  - id: sigma_4
+    name: "Self-Review"
+    role: reviewer
+    precondition: "sigma_3 complete; fixes pushed to PR branch"
+    postcondition: "Re-review complete; new findings produced; loop decision made"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - The PR has been re-loaded with the latest changes (post-fix)
+      - All changed files re-read in full context
+      - New findings produced (may be empty if fixes resolved all issues)
+      - New verdict determined per Ax-3
+      - Loop decision: if needs_changes AND iteration_count < 3, loop to sigma_1;
+        otherwise proceed to sigma_5
+      - status = PASS when re-review is complete
+
+      **Rationale.** Self-review after fixing catches regressions introduced by the fix
+      itself. The re-review uses the same criteria as sigma_1 — this is not a lighter
+      check. The loop bound (Ax-4) prevents infinite fix-review cycles.
+
+      **Procedure.**
+      1. Re-load the PR diff (it has changed after sigma_3's push)
+      2. Execute the same procedure as sigma_1: read all changed files, check rules, produce findings
+      3. Determine verdict per Ax-3
+      4. If verdict = needs_changes AND iteration_count < 3: loop back to sigma_1
+      5. If verdict = approve OR iteration_count >= 3: proceed to sigma_5
+
+      **Output schema reference:**
+      - findings: updated finding list
+      - verdict: updated verdict
+      - loop_decision: continue_fix or proceed_to_report
+      - iteration_count: current iteration count
+      - status: PASS
+    output_schema:
+      fields:
+        - name: findings
+          type: array
+          items: object
+          description: "{file: string, line: int, expected: string, actual: string, severity: CRITICAL|HIGH|MEDIUM|LOW}"
+          required: true
+        - name: verdict
+          type: enum
+          values: [approve, needs_changes]
+          required: true
+        - name: loop_decision
+          type: enum
+          values: [continue_fix, proceed_to_report]
+          required: true
+        - name: iteration_count
+          type: integer
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "loop_decision = continue_fix requires verdict = needs_changes AND iteration_count < 3"
+        - "loop_decision = proceed_to_report when verdict = approve OR iteration_count >= 3"
+        - "every finding has file:line citation (Ax-1)"
+      soft:
+        - "findings from this iteration are compared against previous iteration to detect regressions"
+
+  - id: sigma_5
+    name: "Report + Merge"
+    role: reviewer
+    precondition: "sigma_2 verdict = approve, OR sigma_4 loop_decision = proceed_to_report"
+    postcondition: "Review report posted as discussion comment; PR merged if approved"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - review_report assembled with all findings from the final review pass
+      - Review posted as a discussion comment via add_issue_comment (Ax-5)
+      - NOT posted via create_pull_request_review (same account limitation)
+      - If final verdict = approve: PR merged via merge_pull_request
+      - If final verdict = needs_changes (iteration exhausted): report posted but NOT merged
+      - status = PASS when report is posted (merge is conditional on verdict)
+
+      **Rationale.** The review must be visible on GitHub for auditability. Using
+      add_issue_comment instead of create_pull_request_review is a hard constraint
+      because GitHub does not allow self-approval. Merge is conditional on the final
+      verdict — a PR that exhausts its fix iterations without reaching approve is
+      reported but left for human decision.
+
+      **Procedure.**
+      1. Assemble the review report:
+         - List all findings with file:line citations
+         - Include severity breakdown
+         - State the verdict and rationale
+         - If self-fix iterations occurred: summarize what was fixed and what remains
+      2. Post the report as a discussion comment via add_issue_comment(pr_number, report)
+      3. If verdict = approve: call merge_pull_request
+      4. If verdict = needs_changes: note in the comment that manual intervention is needed
+
+      **Output schema reference:**
+      - review_report: complete report object
+      - comment_posted: boolean (must be true)
+      - pr_merged: boolean (true only if verdict = approve)
+      - final_verdict: the verdict that determined the outcome
+      - status: PASS
+    output_schema:
+      fields:
+        - name: review_report
+          type: object
+          description: "{ findings: array, verdict: string, severity_breakdown: object, summary: string, fix_iterations: int }"
+          required: true
+        - name: comment_posted
+          type: boolean
+          required: true
+        - name: pr_merged
+          type: boolean
+          required: true
+        - name: final_verdict
+          type: enum
+          values: [approve, needs_changes]
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "comment_posted = true (Ax-5 — review must be visible on GitHub)"
+        - "pr_merged = true only if final_verdict = approve"
+        - "review posted via add_issue_comment, NOT create_pull_request_review (Ax-5)"
+      soft:
+        - "review_report.summary is a concise paragraph, not a repetition of all findings"
+        - "if fix iterations occurred, the report documents what was fixed"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post_sigma_0 subset pre_sigma_1: PR loaded with changed_files and mergeable
+        status satisfies pre_sigma_1 which requires PR loaded and mergeable.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post_sigma_1 subset pre_sigma_2: all files reviewed with findings produced
+        satisfies pre_sigma_2 which requires sigma_1 complete with findings.
+    - edge: "sigma_2 -> sigma_3 (conditional)"
+      claim: >
+        post_sigma_2 when verdict = needs_changes AND iteration_count < 3 satisfies
+        pre_sigma_3. The findings from sigma_1 provide the fix targets.
+    - edge: "sigma_2 -> sigma_5 (direct)"
+      claim: >
+        post_sigma_2 when verdict = approve OR iteration_count >= 3 satisfies
+        pre_sigma_5. The review report can be assembled from sigma_1/sigma_2 output.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post_sigma_3 subset pre_sigma_4: fixes applied and pushed satisfies pre_sigma_4
+        which requires fixes pushed to PR branch for re-review.
+    - edge: "sigma_4 -> sigma_1 (loop)"
+      claim: >
+        post_sigma_4 when loop_decision = continue_fix satisfies pre_sigma_1. The PR
+        is reloaded with post-fix state. Bounded by nu_fix.
+    - edge: "sigma_4 -> sigma_5 (exit)"
+      claim: >
+        post_sigma_4 when loop_decision = proceed_to_report satisfies pre_sigma_5.
+  terminal_condition_claim: >
+    post_sigma_5 = review report posted, PR merged (if approved). This is O_REVIEW(s).
+  initial_condition_claim: >
+    pre_sigma_0 requires PR number and GitHub MCP access. This holds when the dispatcher
+    identifies a PR challenge. No prior M2-REVIEW execution required.
+  contrarian_challenge:
+    weakest_edge: "sigma_3 -> sigma_4"
+    challenge: >
+      The self-fix in sigma_3 may introduce new issues not present in the original PR.
+      sigma_4 re-reviews, but the reviewer is the same agent that applied the fix —
+      blind spots in the fix may be blind spots in the re-review.
+    defense_or_revision: >
+      M2-REVIEW mitigates this through three mechanisms: (1) the iteration bound (max 3)
+      prevents infinite divergence; (2) sigma_4 re-reads all changed files from scratch,
+      not just the fix diff, which catches collateral damage; (3) the formal role switch
+      (fixer -> reviewer) creates a context boundary even in single-agent execution —
+      the agent re-enters review mode with fresh findings rather than carrying fix-time
+      assumptions. The composability holds structurally; fix quality depends on agent
+      capability, which the method bounds but cannot guarantee.
+
+objective:
+  id: O_REVIEW
+  formal: >
+    O_REVIEW(s) =
+      report_posted(reviewReport_s)
+      AND all_rules_checked(reviewReport_s)
+      AND (verdict_of(reviewReport_s) = approve -> pr_merged(s.pull_request))
+      AND forall f in reviewReport_s.findings. finding_cited(f)
+  type: terminal
+  expressible_claim: >
+    O_REVIEW references report_posted (declared predicate), all_rules_checked (declared
+    predicate), verdict_of (declared function symbol), pr_merged (declared predicate),
+    finding_cited (declared predicate). All symbols are in Sigma_REVIEW. O_REVIEW is
+    expressible as a closed sentence over Mod(D_REVIEW).
+  note: >
+    O_REVIEW is satisfied when a complete, cited review report is posted and the merge
+    decision is consistent with the verdict. A needs_changes verdict with accurate
+    findings and no merge is a successful M2-REVIEW execution.
+  progress_preorder:
+    definition: >
+      s1 <=_O s2 iff the review progress of s1 is at or below s2, where progress is
+      measured by: files reviewed, findings produced, verdict determined, report posted.
+      Terminal states (report posted, merge decision made) are maximal.
+    well_founded: >
+      Finite file set, bounded iteration count (max 3), finite step count. The measure
+      is bounded above by the total number of review operations possible.
+  success_profile:
+    - id: mu_coverage
+      name: file_review_coverage
+      formula: "|{cf in changed_files | fully_reviewed(cf)}| / |changed_files|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_coverage = 1.0 is necessary for O_REVIEW. Every changed file must be reviewed.
+    - id: mu_posted
+      name: report_posted
+      formula: "1 if report_posted(reviewReport) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_posted = 1 is necessary for O_REVIEW. A review without a posted report is
+        invisible to other agents and humans.
+
+termination:
+  certificate: >
+    nu(s) = (6 - |{sigma in base_steps | completed(sigma)}|) + (3 - iteration_count(s))
+    where base_steps = {sigma_0, sigma_1, sigma_2, sigma_5} (always-executed steps)
+  initial: 7
+  final: 0
+  decrease_witness: >
+    Each base step execution reduces the first term by 1. Each fix iteration reduces the
+    second term by 1 while also completing sigma_3 and sigma_4 (which are iteration-scoped).
+    nu is bounded below by 0. The maximum path length is 6 (no fixes) + 3*2 (three fix
+    iterations of sigma_3 + sigma_4) = 12 step executions, but nu strictly decreases
+    because iteration_count is monotonically increasing.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: PR review with self-fix loop. Who: reviewer + fixer
+        roles. Why: combines review and fix to reduce feedback loops. How: 6-step DAG
+        with conditional fix loop (max 3 iterations). When: PR needs review.
+    - gate: G1
+      result: PASS
+      note: >
+        D_REVIEW = (Sigma_REVIEW, Ax_REVIEW). 9 sorts with cardinality. 4 total function
+        symbols. 6 predicates with typed signatures. 5 closed axioms (including Ax-5 for
+        comment-based review constraint). Domain boundary stated. Initial and terminal
+        state membership claimed.
+    - gate: G2
+      result: PASS
+      note: >
+        O_REVIEW stated as conjunction of Sigma-predicates. Type: terminal. Expressibility
+        claim present. Progress preorder with well-foundedness argument. Two measures
+        (mu_coverage, mu_posted) with formulas, ranges, terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles (reviewer, fixer) with observation projections and explicit authorized/
+        not-authorized transitions. Coverage and authority claims present. Role partition
+        rationale: epistemic separation between evaluation and fixing.
+    - gate: G4
+      result: PASS
+      note: >
+        Six steps with conditional branching and bounded loop. Loop structure declared
+        with termination certificate nu_fix. Seven composability claims including loop
+        edges. Terminal and initial condition claims present. Contrarian challenge on
+        sigma_3->sigma_4: self-fix blind spots; defended by iteration bound, full
+        re-review, and formal role switch.
+    - gate: G5
+      result: PASS
+      note: >
+        All six steps have finalized guidance in constraints-first format. Each guidance
+        block names all output_schema fields. Adequacy confirmed.
+    - gate: G6
+      result: PASS
+      note: "This file (P-GH/M2-REVIEW/M2-REVIEW.yaml). Structurally complete."
