@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@method/bridge — Dashboard</title>
+  <meta http-equiv="refresh" content="5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+/* ═══════════════════════════════════════════════════════
+   @method/bridge Dashboard — PRD 005 Phase 2
+   Design system: Vidtecci OS Design Guide v1.0
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --void:       #050910;
+  --abyssal:    #0e2030;
+  --abyss:      #0b1c2b;
+  --ocean:      #0c2a3c;
+  --bio:        #00d4b0;
+  --bio-bright: #00f0d0;
+  --bio-dim:    rgba(0,212,176,.10);
+  --solar:      #eeaa62;
+  --solar-dim:  rgba(238,170,98,.08);
+  --stellar:    #f4f8fc;
+  --dim:        #c0d0de;
+  --dim2:       #7a90a2;
+  --nebular:    #9b7fd4;
+  --muted:      #4a5c6a;
+  --red:        #e05a5a;
+  --red-dim:    rgba(224,90,90,.10);
+  --yellow:     #e8c95a;
+  --yellow-dim: rgba(232,201,90,.10);
+  --font-d: 'Space Grotesk', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--void);
+  color: var(--stellar);
+  font-family: var(--font-b);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* grain overlay */
+body::after {
+  content: ''; position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999; opacity: .04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 300px;
+}
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 3rem;
+}
+
+/* ── HEADER ─────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(0,212,176,.07);
+}
+
+.header-title {
+  font-family: var(--font-d);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+.header-title em { font-style: normal; color: var(--bio); }
+
+.header-subtitle {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .65;
+  margin-top: .35rem;
+}
+
+.header-right { text-align: right; }
+
+.header-meta {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--dim2);
+  line-height: 1.8;
+}
+.header-meta strong { color: var(--dim); font-weight: 500; }
+
+/* ── HEALTH CARDS ────────────────────────────────────── */
+.health-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.health-card {
+  background: rgba(11,28,43,.55);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 2px;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+}
+
+.health-card-label {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  margin-bottom: .5rem;
+}
+
+.health-card-value {
+  font-family: var(--font-d);
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+
+.health-card-value.bio { color: var(--bio); }
+.health-card-value.solar { color: var(--solar); }
+.health-card-value.dim { color: var(--dim); }
+
+.health-card-detail {
+  font-family: var(--font-m);
+  font-size: .65rem;
+  color: var(--muted);
+  margin-top: .4rem;
+}
+
+.health-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.health-card.accent-bio::before { background: var(--bio); }
+.health-card.accent-solar::before { background: var(--solar); }
+.health-card.accent-nebular::before { background: var(--nebular); }
+.health-card.accent-dim::before { background: var(--muted); }
+
+/* ── SUBSCRIPTION METERS ─────────────────────────────── */
+.subscription-panel {
+  background: rgba(11,28,43,.35);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 2px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+.subscription-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--bio), var(--nebular));
+}
+
+.subscription-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.subscription-title {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.subscription-poll {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.subscription-poll .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--bio);
+  opacity: .6;
+}
+
+.meters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 3rem;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+.meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.meter-label {
+  font-family: var(--font-m);
+  font-size: .68rem;
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.meter-value {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  font-weight: 600;
+}
+.meter-value.healthy { color: var(--bio); }
+.meter-value.warning { color: var(--solar); }
+.meter-value.critical { color: var(--red); }
+
+.meter-bar {
+  height: 6px;
+  background: rgba(255,255,255,.06);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width .3s ease;
+}
+.meter-fill.healthy { background: var(--bio); box-shadow: 0 0 8px rgba(0,212,176,.3); }
+.meter-fill.warning { background: var(--solar); box-shadow: 0 0 8px rgba(238,170,98,.3); }
+.meter-fill.critical { background: var(--red); box-shadow: 0 0 8px rgba(224,90,90,.3); }
+
+.meter-detail {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  color: var(--muted);
+}
+
+/* ── SECTION HEADER ──────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.section-title {
+  font-family: var(--font-d);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.section-tag {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim2);
+}
+
+/* ── SESSION TABLE ───────────────────────────────────── */
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.session-table th {
+  font-family: var(--font-m);
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bio);
+  text-align: left;
+  padding: .6rem .75rem;
+  border-bottom: 1px solid rgba(0,212,176,.12);
+  opacity: .8;
+  white-space: nowrap;
+}
+
+.session-table td {
+  padding: .75rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  color: var(--dim);
+  vertical-align: middle;
+}
+
+.session-table tr:hover td { background: rgba(0,212,176,.02); }
+
+/* status badges */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: var(--font-m);
+  font-size: .7rem;
+  font-weight: 500;
+  padding: .2rem .6rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.status::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-ready { color: var(--bio); background: var(--bio-dim); }
+.status-ready::before { background: var(--bio); }
+
+.status-working { color: var(--solar); background: var(--solar-dim); }
+.status-working::before { background: var(--solar); animation: pulse 1.5s ease-in-out infinite; }
+
+.status-dead { color: var(--red); background: var(--red-dim); }
+.status-dead::before { background: var(--red); opacity: .5; }
+
+.status-init { color: var(--dim2); background: rgba(122,144,162,.08); }
+.status-init::before { background: var(--dim2); animation: pulse 2s ease-in-out infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+/* mono text cells */
+.mono { font-family: var(--font-m); font-size: .72rem; }
+.session-id { color: var(--stellar); font-weight: 500; }
+.workdir { color: var(--nebular); }
+.method-sid { color: var(--bio); opacity: .75; }
+.timestamp { color: var(--dim2); }
+.prompt-count { color: var(--dim); text-align: center; }
+
+/* token cells */
+.tokens { color: var(--dim); text-align: right; }
+.tokens-in { color: var(--dim); }
+.tokens-out { color: var(--solar); opacity: .8; }
+.cache-rate { text-align: right; }
+.cache-rate.good { color: var(--bio); }
+.cache-rate.mid { color: var(--solar); }
+.cache-rate.low { color: var(--dim2); }
+
+/* token detail (mini breakdown under main number) */
+.token-breakdown {
+  font-size: .6rem;
+  color: var(--muted);
+  margin-top: .15rem;
+}
+
+/* ── DIVIDER ─────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,212,176,.12), transparent 70%);
+  margin: 2.5rem 0;
+}
+
+/* ── FOOTER ──────────────────────────────────────────── */
+.footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left {
+  font-family: var(--font-m);
+  font-size: .62rem;
+  color: var(--muted);
+  letter-spacing: .05em;
+}
+
+.footer-refresh {
+  font-family: var(--font-m);
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim2);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.refresh-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--bio);
+  animation: pulse 5s ease-in-out infinite;
+}
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="header-title">@method/<em>bridge</em></h1>
+      <div class="header-subtitle">Agent Session Dashboard</div>
+    </div>
+    <div class="header-right">
+      <div class="header-meta">
+        <strong>Port</strong> {{bridge.port}}<br>
+        <strong>Started</strong> {{bridge.startedAt}}<br>
+        <strong>Version</strong> {{bridge.version}}
+      </div>
+    </div>
+  </header>
+
+  <!-- Health cards — row 1: bridge -->
+  <div class="health-row">
+    <div class="health-card accent-bio">
+      <div class="health-card-label">Active Sessions</div>
+      <div class="health-card-value bio">{{bridge.activeSessions}}</div>
+      <div class="health-card-detail">of {{bridge.maxSessions}} max</div>
+    </div>
+    <div class="health-card accent-solar">
+      <div class="health-card-label">Total Spawned</div>
+      <div class="health-card-value solar">{{bridge.totalSpawned}}</div>
+      <div class="health-card-detail">lifetime</div>
+    </div>
+    <div class="health-card accent-nebular">
+      <div class="health-card-label">Uptime</div>
+      <div class="health-card-value dim">{{bridge.uptime}}</div>
+      <div class="health-card-detail">since {{bridge.startedAt}}</div>
+    </div>
+    <div class="health-card accent-dim">
+      <div class="health-card-label">Dead Sessions</div>
+      <div class="health-card-value dim">{{bridge.deadSessions}}</div>
+      <div class="health-card-detail">pending cleanup</div>
+    </div>
+  </div>
+
+  <!-- Health cards — row 2: aggregate token usage -->
+  <div class="health-row">
+    <div class="health-card accent-bio">
+      <div class="health-card-label">Total Tokens</div>
+      <div class="health-card-value bio">{{tokens.totalTokens}}</div>
+      <div class="health-card-detail">across all sessions</div>
+    </div>
+    <div class="health-card accent-solar">
+      <div class="health-card-label">Input / Output</div>
+      <div class="health-card-value dim" style="font-size: 1.4rem;">{{tokens.inputTokens}} <span style="color: var(--muted); font-size: .9rem;">/</span> {{tokens.outputTokens}}</div>
+      <div class="health-card-detail">in: {{tokens.inputTokens}} &middot; out: {{tokens.outputTokens}}</div>
+    </div>
+    <div class="health-card accent-bio">
+      <div class="health-card-label">Cache Hit Rate</div>
+      <div class="health-card-value bio">{{tokens.cacheHitRate}}%</div>
+      <div class="health-card-detail">{{tokens.cacheReadTokens}} hits / {{tokens.inputTokens}} input</div>
+    </div>
+    <div class="health-card accent-nebular">
+      <div class="health-card-label">Cache Savings</div>
+      <div class="health-card-value dim">{{tokens.cacheReadTokens}}</div>
+      <div class="health-card-detail">tokens served from cache</div>
+    </div>
+  </div>
+
+  <!-- Subscription Usage Meters -->
+  {{subscription}}
+
+  <!-- Session table with token columns -->
+  <div class="section-header">
+    <h2 class="section-title">Sessions</h2>
+    <span class="section-tag">{{bridge.totalSpawned}} total &middot; {{bridge.activeSessions}} active &middot; {{tokens.totalTokens}} tokens</span>
+  </div>
+
+  <table class="session-table">
+    <thead>
+      <tr>
+        <th>Session ID</th>
+        <th>Status</th>
+        <th>Workdir</th>
+        <th style="text-align:center">Queue</th>
+        <th style="text-align:right">Tokens</th>
+        <th style="text-align:right">Cache</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{sessions}}
+    </tbody>
+  </table>
+
+  <div class="section-divider"></div>
+
+  <!-- Session States reference -->
+  <div class="section-header">
+    <h2 class="section-title">Reference</h2>
+    <span class="section-tag">Session states &middot; Cache rate colors</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+    <table class="session-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Visual</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">initializing</td>
+          <td><span class="status status-init">initializing</span></td>
+          <td style="color: var(--dim); font-size: .82rem;">PTY spawned, waiting for prompt marker</td>
+        </tr>
+        <tr>
+          <td class="mono">ready</td>
+          <td><span class="status status-ready">ready</span></td>
+          <td style="color: var(--dim); font-size: .82rem;">Agent idle, waiting for prompt</td>
+        </tr>
+        <tr>
+          <td class="mono">working</td>
+          <td><span class="status status-working">working</span></td>
+          <td style="color: var(--dim); font-size: .82rem;">Processing prompt, output pending</td>
+        </tr>
+        <tr>
+          <td class="mono">dead</td>
+          <td><span class="status status-dead">dead</span></td>
+          <td style="color: var(--dim); font-size: .82rem;">PTY exited or killed</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="session-table">
+      <thead>
+        <tr>
+          <th>Cache Rate</th>
+          <th>Color</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono cache-rate good">&ge; 70%</td>
+          <td style="color: var(--bio);">Bioluminescent</td>
+          <td style="color: var(--dim); font-size: .82rem;">Good cache utilization</td>
+        </tr>
+        <tr>
+          <td class="mono cache-rate mid">40&ndash;69%</td>
+          <td style="color: var(--solar);">Solar</td>
+          <td style="color: var(--dim); font-size: .82rem;">Moderate &mdash; check prompt structure</td>
+        </tr>
+        <tr>
+          <td class="mono cache-rate low">&lt; 40%</td>
+          <td style="color: var(--dim2);">Dim</td>
+          <td style="color: var(--dim); font-size: .82rem;">Low &mdash; prompts may not be caching</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color: var(--muted);">&mdash;</td>
+          <td style="color: var(--muted);">Muted</td>
+          <td style="color: var(--dim); font-size: .82rem;">Session logs not found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-left">
+      @method/bridge v{{bridge.version}} &middot; PRD-005 Phase 2
+    </div>
+    <div class="footer-refresh">
+      <span class="refresh-dot"></span>
+      Auto-refresh 5s &middot; Usage poll 60s
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -27,17 +27,21 @@ The bridge and MCP server are peers. The orchestrating agent calls MCP tools for
 ```
 packages/bridge/
 ├── src/
-│   ├── index.ts          HTTP server (Fastify), route definitions
-│   ├── pty-session.ts    Single PTY session lifecycle (spawn, prompt, kill)
-│   ├── pool.ts           Session pool (Map<id, PtySession>), capacity management
-│   ├── parser.ts         PTY output extraction (●-based parser)
+│   ├── index.ts            HTTP server (Fastify), route definitions
+│   ├── pty-session.ts      Single PTY session lifecycle (spawn, prompt, kill)
+│   ├── pool.ts             Session pool (Map<id, PtySession>), capacity management
+│   ├── parser.ts           PTY output extraction (●-based parser)
+│   ├── usage-poller.ts     Anthropic OAuth subscription usage polling
+│   ├── token-tracker.ts    Per-session JSONL log parsing for token data
+│   ├── dashboard-route.ts  Fastify route handler for GET /dashboard
+│   ├── dashboard.html      HTML template (Vidtecci OS design system)
 │   └── __tests__/
 │       └── parser.test.ts    Parser unit tests
-├── package.json          @method/bridge
+├── package.json            @method/bridge
 └── tsconfig.json
 ```
 
-Four source files, one test file. Each source file has a single responsibility.
+Eight source files, one test file. Each source file has a single responsibility.
 
 ## Type Definitions
 
@@ -104,6 +108,15 @@ Additional fields tracked by PtySession:
 Array<{ session_id: string; status: string; queue_depth: number; metadata?: Record<string, unknown> }>
 ```
 
+#### `GET /dashboard`
+```
+// Response 200
+Content-Type: text/html
+
+Server-rendered HTML dashboard showing pool health, per-session token usage,
+aggregate token metrics, and subscription usage meters. Auto-refreshes every 5s.
+```
+
 ## Output Parser Algorithm
 
 The parser extracts Claude Code's response from raw PTY output. The PTY buffer contains ANSI escape sequences, TUI chrome, cursor movements, and multiple overwrites on the same line.
@@ -161,6 +174,9 @@ All via environment variables with sensible defaults:
 | `CLAUDE_WORKDIR` | `process.cwd()` | Default workdir for new sessions |
 | `SETTLE_DELAY_MS` | `2000` | Debounce interval for response completion detection |
 | `MAX_SESSIONS` | `5` | Maximum concurrent PTY sessions in the pool |
+| `CLAUDE_OAUTH_TOKEN` | `null` | Anthropic OAuth token for subscription usage polling |
+| `USAGE_POLL_INTERVAL_MS` | `60000` | Interval between subscription usage API polls |
+| `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base directory for Claude Code session JSONL logs |
 
 ### Completion Detection
 
