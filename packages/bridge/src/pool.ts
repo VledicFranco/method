@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
-import { createPtyWatcher, parseWatcherConfig, type PtyWatcher } from './pty-watcher.js';
+import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
@@ -55,6 +55,7 @@ export interface SessionStatusInfo {
   chain: SessionChainInfo;
   worktree: WorktreeInfo;
   stale: boolean;
+  waiting_for: string | null;
 }
 
 export interface PoolStats {
@@ -152,6 +153,12 @@ export function createPool(options?: PoolOptions): SessionPool {
   // PRD 010: PTY watcher per session
   const sessionWatchers = new Map<string, PtyWatcher>();
   const sessionOriginalWorkdirs = new Map<string, string>(); // pre-worktree workdir for retro placement
+
+  // OBS-19: Waiting-for-sub-agent detection
+  const sessionWaitingFor = new Map<string, string>();        // sessionId → what it's waiting for
+  const lastAgentToolCallAt = new Map<string, number>();      // sessionId → timestamp of last Agent tool_call
+  const AGENT_TOOL_RE = /\bAgent\b/;
+  const WAITING_WINDOW_MS = 5000;
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -472,6 +479,34 @@ export function createPool(options?: PoolOptions): SessionPool {
         });
       }
 
+      // OBS-19: Detect 'waiting for sub-agent' status
+      // When Agent tool_call is seen in PTY output and ❯ appears within 5s,
+      // mark the session as 'waiting' instead of 'ready'. Revert when the
+      // session starts working again (next prompt received).
+      session.onOutput((data) => {
+        const cleaned = stripAnsiCodes(data);
+
+        // Detect Agent tool call in output
+        if (AGENT_TOOL_RE.test(cleaned)) {
+          lastAgentToolCallAt.set(sessionId, Date.now());
+        }
+
+        // If in waiting state and session starts working, revert to ready
+        if (sessionWaitingFor.has(sessionId) && session.status === 'working') {
+          sessionWaitingFor.delete(sessionId);
+          lastAgentToolCallAt.delete(sessionId);
+        }
+
+        // Detect ready transition (prompt char) — enter waiting if Agent call was recent
+        if (cleaned.includes('❯')) {
+          const callAt = lastAgentToolCallAt.get(sessionId);
+          if (callAt && Date.now() - callAt < WAITING_WINDOW_MS) {
+            sessionWaitingFor.set(sessionId, 'sub-agent');
+            lastAgentToolCallAt.delete(sessionId);
+          }
+        }
+      });
+
       totalSpawned++;
 
       // EXP-OBS02: Queue follow-up prompt for split delivery
@@ -507,11 +542,15 @@ export function createPool(options?: PoolOptions): SessionPool {
         throw new Error(`Session not found: ${sessionId}`);
       }
 
+      // OBS-19: Override status to 'waiting' when session is waiting for a sub-agent
+      const waitingFor = sessionWaitingFor.get(sessionId) ?? null;
+      const effectiveStatus = (waitingFor && session.status === 'ready') ? 'waiting' : session.status;
+
       return {
         sessionId: session.id,
         nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
         purpose: sessionPurposes.get(sessionId) ?? null,
-        status: session.status,
+        status: effectiveStatus,
         queueDepth: session.queueDepth,
         metadata: sessionMetadata.get(sessionId),
         promptCount: session.promptCount,
@@ -522,6 +561,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           isolation: 'shared', worktree_path: null, worktree_branch: null, metals_available: true,
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
+        waiting_for: waitingFor,
       };
     },
 
@@ -590,22 +630,29 @@ export function createPool(options?: PoolOptions): SessionPool {
     },
 
     list(): SessionStatusInfo[] {
-      return [...sessions.entries()].map(([sessionId, session]) => ({
-        sessionId: session.id,
-        nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
-        purpose: sessionPurposes.get(sessionId) ?? null,
-        status: session.status,
-        queueDepth: session.queueDepth,
-        metadata: sessionMetadata.get(sessionId),
-        promptCount: session.promptCount,
-        lastActivityAt: session.lastActivityAt,
-        workdir: sessionWorkdirs.get(sessionId) ?? '',
-        chain: getChain(sessionId),
-        worktree: sessionWorktrees.get(sessionId) ?? {
-          isolation: 'shared' as IsolationMode, worktree_path: null, worktree_branch: null, metals_available: true,
-        },
-        stale: sessionStaleFlags.get(sessionId) ?? false,
-      }));
+      return [...sessions.entries()].map(([sessionId, session]) => {
+        // OBS-19: Override status to 'waiting' when session is waiting for a sub-agent
+        const waitingFor = sessionWaitingFor.get(sessionId) ?? null;
+        const effectiveStatus = (waitingFor && session.status === 'ready') ? 'waiting' : session.status;
+
+        return {
+          sessionId: session.id,
+          nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
+          purpose: sessionPurposes.get(sessionId) ?? null,
+          status: effectiveStatus,
+          queueDepth: session.queueDepth,
+          metadata: sessionMetadata.get(sessionId),
+          promptCount: session.promptCount,
+          lastActivityAt: session.lastActivityAt,
+          workdir: sessionWorkdirs.get(sessionId) ?? '',
+          chain: getChain(sessionId),
+          worktree: sessionWorktrees.get(sessionId) ?? {
+            isolation: 'shared' as IsolationMode, worktree_path: null, worktree_branch: null, metals_available: true,
+          },
+          stale: sessionStaleFlags.get(sessionId) ?? false,
+          waiting_for: waitingFor,
+        };
+      });
     },
 
     getChannels(sessionId: string): SessionChannels {
@@ -658,6 +705,8 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionPurposes.delete(sessionId);
             sessionWatchers.delete(sessionId);
             sessionOriginalWorkdirs.delete(sessionId);
+            sessionWaitingFor.delete(sessionId);
+            lastAgentToolCallAt.delete(sessionId);
             removed++;
           }
         }

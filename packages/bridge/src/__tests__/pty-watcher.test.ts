@@ -9,7 +9,7 @@ import {
   matchError,
   PROMPT_CHAR_RE,
 } from '../pattern-matchers.js';
-import { createPtyWatcher, parseWatcherConfig, type WatcherConfig } from '../pty-watcher.js';
+import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type WatcherConfig } from '../pty-watcher.js';
 import { createSessionChannels, readMessages, type SessionChannels } from '../channels.js';
 import { generateAutoRetro, type AutoRetroInput } from '../auto-retro.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
@@ -485,6 +485,51 @@ describe('parseWatcherConfig', () => {
     );
     assert.equal(config.enabled, false);
     assert.equal(config.patterns.size, 1);
+  });
+});
+
+// ── OBS-19: Agent Tool Call + Waiting State Detection ───────────
+
+describe('OBS-19: Agent tool call detection', () => {
+  it('matchToolCall detects Agent tool', () => {
+    const matches = matchToolCall('Using Agent to spawn sub-agent');
+    const agentMatch = matches.find(m => m.content.tool === 'Agent');
+    assert.ok(agentMatch);
+    assert.equal(agentMatch.content.is_mcp, false);
+    assert.equal(agentMatch.channelTarget, 'progress');
+  });
+
+  it('watcher records Agent tool_call observation', () => {
+    const channels = createSessionChannels();
+    const subscribers = new Set<(data: string) => void>();
+    const subscribe = (cb: (data: string) => void) => {
+      subscribers.add(cb);
+      return () => { subscribers.delete(cb); };
+    };
+    const config: WatcherConfig = {
+      enabled: true,
+      patterns: new Set(['tool_call', 'idle']),
+      rateLimitMs: 0,
+      dedupWindowMs: 0,
+      autoRetro: false,
+      logMatches: false,
+    };
+
+    const watcher = createPtyWatcher('obs19-1', channels, subscribe, config);
+
+    for (const sub of subscribers) sub('Agent tool launched\n');
+
+    const agentObs = watcher.observations.find(
+      o => o.category === 'tool_call' && o.detail.tool === 'Agent',
+    );
+    assert.ok(agentObs, 'Agent tool_call observation should be recorded');
+
+    watcher.detach();
+  });
+
+  it('stripAnsiCodes removes ANSI sequences', () => {
+    assert.equal(stripAnsiCodes('\x1b[1mAgent\x1b[0m'), 'Agent');
+    assert.equal(stripAnsiCodes('plain text'), 'plain text');
   });
 });
 

@@ -138,6 +138,7 @@ function statusBadgeClass(status: string): string {
   switch (status) {
     case 'ready': return 'status-ready';
     case 'working': return 'status-working';
+    case 'waiting': return 'status-waiting';
     case 'dead': return 'status-dead';
     case 'initializing': return 'status-init';
     default: return 'status-init';
