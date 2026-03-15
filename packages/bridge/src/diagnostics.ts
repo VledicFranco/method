@@ -1,6 +1,8 @@
 // ── PRD 012 Phase 1: Diagnostic Instrumentation ─────────────────
 // Per-session timing metrics and stall detection.
 
+import { type AdaptiveSettleDelay } from './adaptive-settle.js';
+
 export interface SessionDiagnostics {
   /** Time from spawn to first PTY output (ms). */
   time_to_first_output_ms: number | null;
@@ -40,10 +42,13 @@ export class DiagnosticsTracker {
   private _longestIdleMs = 0;
   private _idleStartedAt: number | null = null;
   private _permissionPromptDetected = false;
+  /** PRD 012 Phase 2: Optional adaptive settle reference for dynamic metrics. */
+  private readonly _adaptiveSettle: AdaptiveSettleDelay | null;
 
-  constructor(settleDelayMs: number) {
+  constructor(settleDelayMs: number, adaptiveSettle?: AdaptiveSettleDelay | null) {
     this.spawnedAt = Date.now();
     this._settleDelayMs = settleDelayMs;
+    this._adaptiveSettle = adaptiveSettle ?? null;
   }
 
   /** Called on first PTY data chunk. */
@@ -81,7 +86,11 @@ export class DiagnosticsTracker {
 
   /** Called after each prompt response completes. Adds one settle wait to overhead. */
   recordPromptCompletion(): void {
-    this._totalSettleOverheadMs += this._settleDelayMs;
+    // PRD 012 Phase 2: Use adaptive delay if available, otherwise fixed
+    const effectiveDelay = this._adaptiveSettle
+      ? this._adaptiveSettle.delayMs
+      : this._settleDelayMs;
+    this._totalSettleOverheadMs += effectiveDelay;
   }
 
   /** Returns current diagnostics snapshot. */
@@ -102,8 +111,14 @@ export class DiagnosticsTracker {
         : null,
       tool_call_count: this._toolCallCount,
       total_settle_overhead_ms: this._totalSettleOverheadMs,
-      false_positive_settles: this._falsePositiveSettles,
-      current_settle_delay_ms: this._settleDelayMs,
+      // PRD 012 Phase 2: Report false positives from adaptive settle
+      false_positive_settles: this._adaptiveSettle
+        ? this._adaptiveSettle.falsePositiveCount
+        : this._falsePositiveSettles,
+      // PRD 012 Phase 2: Report current adaptive delay if available
+      current_settle_delay_ms: this._adaptiveSettle
+        ? this._adaptiveSettle.delayMs
+        : this._settleDelayMs,
       idle_transitions: this._idleTransitions,
       longest_idle_ms: longestIdle,
       permission_prompt_detected: this._permissionPromptDetected,

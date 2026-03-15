@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import PQueue from 'p-queue';
 import { extractResponse } from './parser.js';
+import { AdaptiveSettleDelay } from './adaptive-settle.js';
 
 export type SessionStatus = 'initializing' | 'ready' | 'working' | 'dead';
 
@@ -22,6 +23,8 @@ export interface PtySession {
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   resize(cols: number, rows: number): void;
   kill(): void;
+  /** PRD 012 Phase 2: Adaptive settle delay instance (null if disabled). */
+  readonly adaptiveSettle: AdaptiveSettleDelay | null;
 }
 
 export interface SpawnOptions {
@@ -31,6 +34,8 @@ export interface SpawnOptions {
   settleDelayMs?: number;
   initialPrompt?: string;
   spawnArgs?: string[];
+  /** PRD 012 Phase 2: Adaptive settle delay instance (enables adaptive algorithm). */
+  adaptiveSettle?: AdaptiveSettleDelay;
 }
 
 const DEFAULT_SETTLE_DELAY_MS = 1000;
@@ -121,6 +126,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
     settleDelayMs = DEFAULT_SETTLE_DELAY_MS,
     initialPrompt,
     spawnArgs,
+    adaptiveSettle = null,
   } = options;
 
   let status: SessionStatus = 'initializing';
@@ -267,10 +273,12 @@ export function spawnSession(options: SpawnOptions): PtySession {
 
         // Wait for response completion via debounce
         const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        const effectiveSettleDelay = settleDelayMsOverride ?? settleDelayMs;
+        // PRD 012 Phase 2: per-prompt override bypasses adaptive; otherwise use adaptive delay
+        const effectiveSettleDelay = settleDelayMsOverride
+          ?? (adaptiveSettle ? adaptiveSettle.delayMs : settleDelayMs);
         const result = await waitForCompletion(outputBuffer, effectiveSettleDelay, timeout, (cb) => {
           dataCallback = cb;
-        }, () => outputBuffer, () => getStatus() === 'dead');
+        }, () => outputBuffer, () => getStatus() === 'dead', adaptiveSettle);
 
         // Extract clean response
         const output = extractResponse(result.buffer);
@@ -307,6 +315,10 @@ export function spawnSession(options: SpawnOptions): PtySession {
         // Already dead — ignore
       }
     },
+
+    get adaptiveSettle(): AdaptiveSettleDelay | null {
+      return adaptiveSettle;
+    },
   };
 
   return session;
@@ -316,6 +328,10 @@ export function spawnSession(options: SpawnOptions): PtySession {
  * Wait for PTY output to settle. Completion is detected when:
  * - No new data arrives for settleDelayMs, AND
  * - The buffer contains ❯ (Claude Code's input prompt)
+ *
+ * PRD 012 Phase 2: When an AdaptiveSettleDelay is provided, the settle
+ * timer uses the adaptive delay and detects false-positive cutoffs
+ * (data arriving within 100ms of settle firing).
  *
  * Returns early if:
  * - Total timeout elapsed
@@ -328,10 +344,12 @@ function waitForCompletion(
   setCallback: (cb: ((data: string) => void) | null) => void,
   getBuffer: () => string,
   isDead: () => boolean,
+  adaptiveSettle?: AdaptiveSettleDelay | null,
 ): Promise<{ buffer: string; timedOut: boolean }> {
   return new Promise((resolve) => {
     let settleTimer: ReturnType<typeof setTimeout> | null = null;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
 
     const cleanup = () => {
       if (settleTimer) clearTimeout(settleTimer);
@@ -343,6 +361,11 @@ function waitForCompletion(
       const buf = getBuffer();
       // Check if buffer ends with the prompt character (possibly with trailing whitespace/ANSI)
       if (buf.includes('❯')) {
+        settled = true;
+        // PRD 012 Phase 2: Record settle timestamp for false-positive detection
+        if (adaptiveSettle) {
+          adaptiveSettle.recordSettleFired();
+        }
         cleanup();
         resolve({ buffer: buf, timedOut: false });
         return;
@@ -352,7 +375,9 @@ function waitForCompletion(
 
     const resetSettle = () => {
       if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(checkSettled, settleDelayMs);
+      // PRD 012 Phase 2: Use adaptive delay if available, otherwise fixed
+      const delay = adaptiveSettle ? adaptiveSettle.delayMs : settleDelayMs;
+      settleTimer = setTimeout(checkSettled, delay);
     };
 
     // Set up data callback
@@ -362,6 +387,14 @@ function waitForCompletion(
         resolve({ buffer: getBuffer(), timedOut: false });
         return;
       }
+
+      // PRD 012 Phase 2: Check for false-positive cutoff
+      // If data arrives right after we declared settled, we cut the response short
+      if (settled && adaptiveSettle) {
+        adaptiveSettle.checkFalsePositive();
+        // Note: the promise already resolved; the backoff applies to the next prompt
+      }
+
       resetSettle();
     });
 
