@@ -77,6 +77,7 @@ export interface SessionPool {
     timeout_ms?: number;
     nickname?: string;
     purpose?: string;
+    persistent?: boolean;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
@@ -233,7 +234,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -323,7 +324,8 @@ export function createPool(options?: PoolOptions): SessionPool {
       };
 
       // PRD 006 Component 4: Stale detection config
-      const staleConfig: StaleConfig = {
+      // PRD 011: persistent sessions skip stale detection entirely
+      const staleConfig: StaleConfig | null = persistent ? null : {
         stale_timeout_ms: timeout_ms ?? DEFAULT_STALE_TIMEOUT_MS,
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
@@ -348,7 +350,9 @@ export function createPool(options?: PoolOptions): SessionPool {
         sessionMetadata.set(sessionId, metadata);
       }
       sessionWorktrees.set(sessionId, worktreeInfo);
-      sessionStaleConfigs.set(sessionId, staleConfig);
+      if (staleConfig) {
+        sessionStaleConfigs.set(sessionId, staleConfig);
+      }
       sessionStaleFlags.set(sessionId, false);
       sessionNicknames.set(sessionId, assignedNickname);
       if (purpose) {
