@@ -19,6 +19,7 @@ const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '6
 const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
 const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000', 10);
 const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
+const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -90,9 +91,10 @@ app.post<{
     timeout_ms?: number;
     nickname?: string;
     purpose?: string;
+    spawn_delay_ms?: number;
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -111,6 +113,7 @@ app.post<{
       timeout_ms,
       nickname,
       purpose,
+      spawn_delay_ms,
     });
 
     // Register session with token tracker
@@ -143,6 +146,129 @@ app.post<{
     } catch { /* not JSON, fall through */ }
     return reply.status(500).send({ error: message });
   }
+});
+
+/**
+ * POST /sessions/batch — Spawn multiple sessions with staggered delays (PRD 012).
+ */
+app.post<{
+  Body: {
+    sessions: Array<{
+      workdir: string;
+      initial_prompt?: string;
+      spawn_args?: string[];
+      metadata?: Record<string, unknown>;
+      parent_session_id?: string;
+      depth?: number;
+      budget?: { max_depth?: number; max_agents?: number; agents_spawned?: number };
+      isolation?: 'worktree' | 'shared';
+      timeout_ms?: number;
+      nickname?: string;
+      purpose?: string;
+    }>;
+    stagger_ms?: number;
+  };
+}>('/sessions/batch', async (request, reply) => {
+  const { sessions: sessionConfigs, stagger_ms } = request.body ?? {};
+
+  if (!Array.isArray(sessionConfigs) || sessionConfigs.length === 0) {
+    return reply.status(400).send({ error: 'Missing required field: sessions (non-empty array)' });
+  }
+
+  const stagger = stagger_ms ?? BATCH_STAGGER_MS;
+  const results: Array<{
+    session_id: string;
+    nickname: string;
+    status: string;
+    depth: number;
+    parent_session_id: string | null;
+    budget: { max_depth: number; max_agents: number; agents_spawned: number };
+    isolation: string;
+    worktree_path: string | null;
+    metals_available: boolean;
+    error?: string;
+  }> = [];
+
+  for (let i = 0; i < sessionConfigs.length; i++) {
+    const cfg = sessionConfigs[i];
+
+    // Stagger delay between spawns (skip delay for the first session)
+    if (i > 0 && stagger > 0) {
+      await new Promise(r => setTimeout(r, stagger));
+    }
+
+    if (!cfg.workdir || typeof cfg.workdir !== 'string') {
+      results.push({
+        session_id: '',
+        nickname: '',
+        status: 'error',
+        depth: 0,
+        parent_session_id: null,
+        budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
+        isolation: 'shared',
+        worktree_path: null,
+        metals_available: true,
+        error: `Session ${i}: missing required field: workdir`,
+      });
+      continue;
+    }
+
+    try {
+      const result = await pool.create({
+        workdir: cfg.workdir,
+        initialPrompt: cfg.initial_prompt,
+        spawnArgs: cfg.spawn_args,
+        metadata: cfg.metadata,
+        parentSessionId: cfg.parent_session_id,
+        depth: cfg.depth,
+        budget: cfg.budget,
+        isolation: cfg.isolation,
+        timeout_ms: cfg.timeout_ms,
+        nickname: cfg.nickname,
+        purpose: cfg.purpose,
+      });
+
+      tokenTracker.registerSession(result.sessionId, cfg.workdir, new Date());
+      app.log.info(`[batch ${i}/${sessionConfigs.length}] [${result.nickname}] Session spawned`);
+
+      results.push({
+        session_id: result.sessionId,
+        nickname: result.nickname,
+        status: result.status,
+        depth: result.chain.depth,
+        parent_session_id: result.chain.parent_session_id,
+        budget: result.chain.budget,
+        isolation: result.worktree.isolation,
+        worktree_path: result.worktree.worktree_path,
+        metals_available: result.worktree.metals_available,
+      });
+    } catch (e) {
+      const message = (e as Error).message;
+      app.log.error(`[batch ${i}/${sessionConfigs.length}] Spawn failed: ${message}`);
+      results.push({
+        session_id: '',
+        nickname: '',
+        status: 'error',
+        depth: 0,
+        parent_session_id: null,
+        budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
+        isolation: 'shared',
+        worktree_path: null,
+        metals_available: true,
+        error: message,
+      });
+    }
+  }
+
+  const spawned = results.filter(r => r.status !== 'error').length;
+  const failed = results.filter(r => r.status === 'error').length;
+
+  return reply.status(201).send({
+    sessions: results,
+    stagger_ms: stagger,
+    spawned,
+    failed,
+  });
 });
 
 /**

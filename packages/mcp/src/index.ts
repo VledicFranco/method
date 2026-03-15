@@ -368,6 +368,79 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "bridge_spawn_batch",
+      description: "Spawn multiple Claude Code agent sessions with staggered delays to prevent API rate limit contention (PRD 012). Each session is spawned stagger_ms apart.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          sessions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                workdir: {
+                  type: "string",
+                  description: "Working directory for the spawned agent",
+                },
+                spawn_args: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Optional CLI arguments",
+                },
+                initial_prompt: {
+                  type: "string",
+                  description: "Optional initial prompt",
+                },
+                session_id: {
+                  type: "string",
+                  description: "Optional methodology session ID",
+                },
+                nickname: {
+                  type: "string",
+                  description: "Human-readable agent name",
+                },
+                purpose: {
+                  type: "string",
+                  description: "Why this agent was spawned",
+                },
+                parent_session_id: {
+                  type: "string",
+                  description: "Bridge session ID of the parent agent",
+                },
+                depth: {
+                  type: "number",
+                  description: "Recursion depth",
+                },
+                budget: {
+                  type: "object",
+                  properties: {
+                    max_depth: { type: "number" },
+                    max_agents: { type: "number" },
+                  },
+                },
+                isolation: {
+                  type: "string",
+                  enum: ["worktree", "shared"],
+                  description: "Isolation mode",
+                },
+                timeout_ms: {
+                  type: "number",
+                  description: "Session stale timeout in milliseconds",
+                },
+              },
+              required: ["workdir"],
+            },
+            description: "Array of session configurations to spawn",
+          },
+          stagger_ms: {
+            type: "number",
+            description: "Delay in milliseconds between each spawn (default: 3000)",
+          },
+        },
+        required: ["sessions"],
+      },
+    },
+    {
       name: "bridge_prompt",
       description: "Send a prompt to a spawned bridge agent and wait for the response.",
       inputSchema: {
@@ -793,6 +866,92 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           message: data.isolation === 'worktree'
             ? `Agent '${data.nickname}' spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
             : `Agent '${data.nickname}' spawned. Call bridge_prompt to send work.`,
+        }, null, 2));
+      }
+
+      case "bridge_spawn_batch": {
+        const { sessions: batchSessions, stagger_ms } = z.object({
+          sessions: z.array(z.object({
+            workdir: z.string(),
+            spawn_args: z.array(z.string()).optional(),
+            initial_prompt: z.string().optional(),
+            session_id: z.string().optional(),
+            nickname: z.string().optional(),
+            purpose: z.string().optional(),
+            parent_session_id: z.string().optional(),
+            depth: z.number().optional(),
+            budget: z.object({
+              max_depth: z.number().optional(),
+              max_agents: z.number().optional(),
+            }).optional(),
+            isolation: z.enum(["worktree", "shared"]).optional(),
+            timeout_ms: z.number().optional(),
+          })),
+          stagger_ms: z.number().optional(),
+        }).parse(args);
+
+        // Build batch request body
+        const batchBody: Record<string, unknown> = {
+          sessions: batchSessions.map(s => {
+            const cfg: Record<string, unknown> = { workdir: s.workdir };
+            if (s.spawn_args) cfg.spawn_args = s.spawn_args;
+            if (s.initial_prompt) cfg.initial_prompt = s.initial_prompt;
+            if (s.session_id) cfg.metadata = { methodology_session_id: s.session_id };
+            if (s.nickname) cfg.nickname = s.nickname;
+            if (s.purpose) cfg.purpose = s.purpose;
+            if (s.parent_session_id) cfg.parent_session_id = s.parent_session_id;
+            if (s.depth !== undefined) cfg.depth = s.depth;
+            if (s.budget) cfg.budget = s.budget;
+            if (s.isolation) cfg.isolation = s.isolation;
+            if (s.timeout_ms !== undefined) cfg.timeout_ms = s.timeout_ms;
+            return cfg;
+          }),
+        };
+        if (stagger_ms !== undefined) batchBody.stagger_ms = stagger_ms;
+
+        const batchRes = await bridgeFetch(`${BRIDGE_URL}/sessions/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(batchBody),
+        });
+
+        const batchData = await batchRes.json() as {
+          sessions: Array<{
+            session_id: string;
+            nickname: string;
+            status: string;
+            depth: number;
+            parent_session_id: string | null;
+            budget: { max_depth: number; max_agents: number; agents_spawned: number };
+            isolation: string;
+            worktree_path: string | null;
+            metals_available: boolean;
+            error?: string;
+          }>;
+          stagger_ms: number;
+          spawned: number;
+          failed: number;
+        };
+
+        const formatted = batchData.sessions.map(s => ({
+          bridge_session_id: s.session_id,
+          nickname: s.nickname,
+          status: s.status,
+          depth: s.depth,
+          parent_session_id: s.parent_session_id,
+          budget: s.budget,
+          isolation: s.isolation,
+          worktree_path: s.worktree_path,
+          metals_available: s.metals_available,
+          ...(s.error ? { error: s.error } : {}),
+        }));
+
+        return ok(JSON.stringify({
+          sessions: formatted,
+          stagger_ms: batchData.stagger_ms,
+          spawned: batchData.spawned,
+          failed: batchData.failed,
+          message: `Batch spawn: ${batchData.spawned} spawned, ${batchData.failed} failed (stagger: ${batchData.stagger_ms}ms)`,
         }, null, 2));
       }
 

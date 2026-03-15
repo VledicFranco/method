@@ -79,6 +79,7 @@ export interface SessionPool {
     nickname?: string;
     purpose?: string;
     persistent?: boolean;
+    spawn_delay_ms?: number;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
@@ -279,7 +280,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -394,6 +395,11 @@ export function createPool(options?: PoolOptions): SessionPool {
           // Short enough to send as-is
           activationPrompt = `${sessionIdPrefix}\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions.`;
         }
+      }
+
+      // PRD 012: Staggered spawn — delay before spawning PTY process
+      if (spawn_delay_ms && spawn_delay_ms > 0) {
+        await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
 
       const session = spawnSession({
