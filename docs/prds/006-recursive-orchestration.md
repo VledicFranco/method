@@ -1,10 +1,12 @@
 # PRD 006 — Recursive Agent Orchestration
 
-**Status:** Draft
-**Date:** 2026-03-14
+**Status:** Implemented
+**Date:** 2026-03-15
+**Previous:** Draft (2026-03-14)
 **Scope:** Recursive session management, worktree isolation, council-to-bridge automation, guardrails
 **Depends on:** PRD 004 (methodology session + routing tools), PRD 005 (bridge + dashboard)
 **Evidence:** Phase A validation (bridge → method MCP chain works), GC-P2SD-006 (git staging conflicts), SESSION-014 (council maturity assessment)
+**Implementation:** Components 1, 3, 4 implemented in prior PRDs. Components 2 (worktree isolation) and 4-partial (stale detection) implemented via bridge commission (commit 470ac56). 154 tests, 16 new. First successful bridge-commissioned implementation with PRD 008 visibility.
 
 ---
 
