@@ -325,17 +325,49 @@ POST /sessions/batch
 
 **Why third:** Requires both diagnostics (to understand failures) and adaptive settle (to reduce overhead). Running the matrix without these would produce the same uninformative results as OBS-17.
 
-### Phase 4: PTY Parser Replacement (C2)
+### Phase 4: Print-Mode Sessions (C2) — REVISED after EXP-012-P4
+
+**Experiment result (2026-03-15):** `--output-format stream-json` does NOT work in interactive PTY mode — it requires `--print`. However, `--print` with `--resume <session_id>` maintains full conversation context across calls. This enables a fundamentally better architecture:
+
+**Replace PTY-based sessions with `--print --resume` sessions for prompted work.**
+
+```
+OLD (PTY mode):
+  spawn PTY → raw terminal → regex parse → empty string 50% of the time
+
+NEW (print mode):
+  --print -p "prompt" --output-format json --resume <session_id>
+  → clean JSON → result field → always works
+```
+
+**Key findings from experiment:**
+- `--print --output-format json` returns `{ result: "answer" }` — clean, structured, never empty
+- `--resume <session_id>` continues an existing conversation — full multi-turn support
+- `--output-format stream-json --verbose` gives real-time streaming with tool calls
+- No settle delay needed — `--print` exits when done, deterministic completion
+- No PTY parsing needed — stdout is structured JSON
+
+**Architecture: dual-mode sessions**
+
+The bridge gains a `mode` field on sessions:
+
+```typescript
+type SessionMode = 'pty' | 'print';
+```
+
+- **`mode: "pty"`** (existing) — persistent PTY process, TUI rendering, live output via xterm.js. Used for: interactive admin sessions, live monitoring, phone portal chat.
+- **`mode: "print"`** (new) — each prompt spawns `claude --print --resume <id>`. Used for: commissions, automated tasks, anything that needs reliable structured output.
 
 **Deliverables:**
-- Phase A experiment: validate `--output-format stream-json` in PTY mode
-- `JsonStreamParser` implementing `ResponseParser` interface
-- Dual-mode detection in `pty-session.ts`
-- PTY watcher JSON-mode detection path
-- Integration tests with real Claude Code JSON output fixtures
-- Migration documentation
+- `PrintSession` class alongside existing `PtySession` — same interface, different backend
+- `mode: "print" | "pty"` field on `POST /sessions` and `bridge_spawn`
+- `PrintSession.sendPrompt()` runs `claude --print --output-format json --resume <session_id> -p "prompt"`, parses JSON, returns `result`
+- For streaming: `--output-format stream-json --verbose` piped to SSE endpoint
+- Bridge auto-selects: commissions default to `print`, admin sessions default to `pty`
+- PTY watcher still works for `pty` sessions. For `print` sessions, tool calls come from JSON `type: "tool_use"` messages — more reliable than regex
+- Backward compatible: existing `pty` sessions unchanged
 
-**Why last:** Parser replacement is the highest-risk, highest-reward component. It depends on Claude Code's `--output-format stream-json` behavior in PTY mode — an external dependency we can't control. Phases 1-3 deliver value regardless of whether this succeeds. If Phase A reveals that structured output doesn't work in PTY mode, the project still succeeds with improved diagnostics, faster settle, and documented concurrency limits.
+**Why this is the right Phase 4:** Print-mode sessions eliminate OBS-03 (empty responses) entirely for commissioned work. The phone portal's `bridge_prompt` would return actual text instead of empty strings. PTY mode is preserved for live output viewing. Both modes coexist.
 
 ---
 
