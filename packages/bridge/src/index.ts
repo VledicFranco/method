@@ -14,6 +14,7 @@ const MAX_SESSIONS = parseInt(process.env.MAX_SESSIONS ?? '5', 10);
 const CLAUDE_OAUTH_TOKEN = process.env.CLAUDE_OAUTH_TOKEN ?? null;
 const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '60000', 10);
 const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
+const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -40,6 +41,19 @@ registerDashboardRoute(app, pool, usagePoller, tokenTracker, {
   port: PORT,
   startedAt: BRIDGE_STARTED_AT,
   version: '0.2.0',
+});
+
+// ---------- Health ----------
+
+app.get('/health', async (_request, reply) => {
+  const stats = pool.poolStats();
+  return reply.status(200).send({
+    status: 'ok',
+    active_sessions: stats.activeSessions,
+    max_sessions: stats.maxSessions,
+    uptime_ms: Date.now() - BRIDGE_STARTED_AT.getTime(),
+    version: '0.2.0',
+  });
 });
 
 // ---------- Routes ----------
@@ -90,17 +104,17 @@ app.post<{
  */
 app.post<{
   Params: { id: string };
-  Body: { prompt: string; timeout_ms?: number };
+  Body: { prompt: string; timeout_ms?: number; settle_delay_ms?: number };
 }>('/sessions/:id/prompt', async (request, reply) => {
   const { id } = request.params;
-  const { prompt, timeout_ms } = request.body ?? {};
+  const { prompt, timeout_ms, settle_delay_ms } = request.body ?? {};
 
   if (!prompt || typeof prompt !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: prompt' });
   }
 
   try {
-    const result = await pool.prompt(id, prompt, timeout_ms);
+    const result = await pool.prompt(id, prompt, timeout_ms, settle_delay_ms);
 
     // Refresh token usage after each prompt
     tokenTracker.refreshUsage(id);
@@ -199,10 +213,47 @@ async function start() {
 
     // Start usage polling after server is listening
     usagePoller.start();
+
+    // Dead session cleanup timer
+    setInterval(() => {
+      const removed = pool.removeDead(DEAD_SESSION_TTL_MS);
+      if (removed > 0) {
+        app.log.info(`Cleaned up ${removed} dead session(s) (TTL: ${DEAD_SESSION_TTL_MS}ms)`);
+      }
+    }, 60_000); // Check every minute
   } catch (err) {
     app.log.error(err);
     process.exit(1);
   }
 }
+
+function gracefulShutdown(signal: string) {
+  app.log.info(`Received ${signal} — shutting down gracefully`);
+
+  // Stop accepting new connections
+  app.close().then(() => {
+    // Stop usage polling
+    usagePoller.stop();
+
+    // Kill all sessions
+    const sessions = pool.list();
+    let killed = 0;
+    for (const session of sessions) {
+      if (session.status !== 'dead') {
+        try {
+          pool.kill(session.sessionId);
+          killed++;
+        } catch { /* already dead */ }
+      }
+    }
+
+    const uptimeMs = Date.now() - BRIDGE_STARTED_AT.getTime();
+    app.log.info(`Shutdown complete: ${killed} sessions killed, uptime ${Math.floor(uptimeMs / 60000)}m`);
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 start();

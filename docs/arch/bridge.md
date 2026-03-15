@@ -63,6 +63,12 @@ Additional fields tracked by PtySession:
 
 ### API Request / Response Types
 
+#### `GET /health`
+```typescript
+// Response 200
+{ status: 'ok'; active_sessions: number; max_sessions: number; uptime_ms: number; version: string }
+```
+
 #### `POST /sessions`
 ```typescript
 // Request
@@ -77,7 +83,7 @@ Additional fields tracked by PtySession:
 #### `POST /sessions/:id/prompt`
 ```typescript
 // Request
-{ prompt: string; timeout_ms?: number }
+{ prompt: string; timeout_ms?: number; settle_delay_ms?: number }
 
 // Response 200
 { output: string; timed_out: boolean }
@@ -85,6 +91,8 @@ Additional fields tracked by PtySession:
 // Error 404 — session not found
 // Error 400 — session is dead
 ```
+
+The optional `settle_delay_ms` parameter overrides the session-level `SETTLE_DELAY_MS` for this single prompt. Use a longer settle delay for prompts that produce large outputs, or a shorter one for quick commands.
 
 #### `GET /sessions/:id/status`
 ```typescript
@@ -177,10 +185,23 @@ All via environment variables with sensible defaults:
 | `CLAUDE_OAUTH_TOKEN` | `null` | Anthropic OAuth token for subscription usage polling |
 | `USAGE_POLL_INTERVAL_MS` | `60000` | Interval between subscription usage API polls |
 | `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base directory for Claude Code session JSONL logs |
+| `DEAD_SESSION_TTL_MS` | `300000` | Time (ms) before dead sessions are auto-removed from the pool |
 
 ### Completion Detection
 
 Response completion is detected via debounce: no new PTY output for `SETTLE_DELAY_MS` milliseconds AND the buffer ends with the `❯` prompt character. This avoids premature extraction while Claude Code is still streaming its response.
+
+### Graceful Shutdown
+
+On `SIGTERM` or `SIGINT`, the bridge:
+1. Stops accepting new HTTP connections (`app.close()`)
+2. Stops the usage poller
+3. Kills all non-dead sessions in the pool
+4. Logs a shutdown summary (sessions killed, uptime) and exits with code 0
+
+### Dead Session Auto-Cleanup
+
+A background timer runs every 60 seconds and removes dead sessions whose `lastActivityAt` exceeds `DEAD_SESSION_TTL_MS` (default 5 minutes). This prevents unbounded memory growth from accumulated dead sessions.
 
 ## Dependencies
 

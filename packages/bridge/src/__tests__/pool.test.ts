@@ -20,7 +20,7 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
     set promptCount(n: number) { promptCount = n; },
     get lastActivityAt() { return lastActivityAt; },
     set lastActivityAt(d: Date) { lastActivityAt = d; },
-    async sendPrompt(_prompt: string, _timeoutMs?: number) {
+    async sendPrompt(_prompt: string, _timeoutMs?: number, _settleDelayMs?: number) {
       promptCount++;
       lastActivityAt = new Date();
       return { output: 'mock response', timedOut: false };
@@ -73,11 +73,11 @@ function createTestPool(maxSessions = 5) {
       return { sessionId, status: session.status };
     },
 
-    async prompt(sessionId, prompt, timeoutMs) {
+    async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
       const session = sessions.get(sessionId);
       if (!session) throw new Error(`Session not found: ${sessionId}`);
       if (session.status === 'dead') throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
-      return session.sendPrompt(prompt, timeoutMs);
+      return session.sendPrompt(prompt, timeoutMs, settleDelayMs);
     },
 
     status(sessionId) {
@@ -124,6 +124,21 @@ function createTestPool(maxSessions = 5) {
         activeSessions: active,
         deadSessions: dead,
       };
+    },
+
+    removeDead(ttlMs: number): number {
+      let removed = 0;
+      for (const [sessionId, session] of sessions.entries()) {
+        if (session.status === 'dead') {
+          if (Date.now() - session.lastActivityAt.getTime() > ttlMs) {
+            sessions.delete(sessionId);
+            sessionMetadata.delete(sessionId);
+            sessionWorkdirs.delete(sessionId);
+            removed++;
+          }
+        }
+      }
+      return removed;
     },
   };
 
@@ -312,6 +327,57 @@ describe('SessionPool', () => {
 
       assert.ok(stats.startedAt.getTime() >= before.getTime());
       assert.ok(stats.startedAt.getTime() <= after.getTime());
+    });
+  });
+
+  describe('removeDead()', () => {
+    it('removes dead sessions older than TTL', async () => {
+      const s1 = await pool.create({ workdir: '/tmp/a' });
+      const s2 = await pool.create({ workdir: '/tmp/b' });
+
+      pool.kill(s1.sessionId);
+
+      // Small delay so that the dead session's lastActivityAt is in the past
+      await new Promise((r) => setTimeout(r, 15));
+
+      // With TTL of 10ms, the dead session (killed >15ms ago) should be removed
+      const removed = pool.removeDead(10);
+      assert.equal(removed, 1);
+
+      // The dead session should no longer be found
+      assert.throws(() => pool.status(s1.sessionId), /not found/);
+
+      // The alive session should still exist
+      const status = pool.status(s2.sessionId);
+      assert.equal(status.status, 'ready');
+    });
+
+    it('does not remove dead sessions younger than TTL', async () => {
+      const s1 = await pool.create({ workdir: '/tmp/a' });
+      pool.kill(s1.sessionId);
+
+      // With a very high TTL, nothing should be removed
+      const removed = pool.removeDead(999_999_999);
+      assert.equal(removed, 0);
+
+      // Session should still exist
+      const status = pool.status(s1.sessionId);
+      assert.equal(status.status, 'dead');
+    });
+
+    it('does not remove alive sessions', async () => {
+      await pool.create({ workdir: '/tmp/a' });
+      await pool.create({ workdir: '/tmp/b' });
+
+      const removed = pool.removeDead(0);
+      assert.equal(removed, 0);
+
+      assert.equal(pool.list().length, 2);
+    });
+
+    it('returns 0 when no sessions exist', () => {
+      const removed = pool.removeDead(0);
+      assert.equal(removed, 0);
     });
   });
 });
