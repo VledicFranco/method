@@ -308,6 +308,33 @@ app.post<{
 });
 
 /**
+ * POST /sessions/:id/resize — Resize the PTY terminal dimensions.
+ */
+app.post<{
+  Params: { id: string };
+  Body: { cols: number; rows: number };
+}>('/sessions/:id/resize', async (request, reply) => {
+  const { id } = request.params;
+  const { cols, rows } = request.body ?? {};
+
+  if (!cols || !rows || typeof cols !== 'number' || typeof rows !== 'number') {
+    return reply.status(400).send({ error: 'Missing required fields: cols (number), rows (number)' });
+  }
+
+  try {
+    const session = pool.getSession(id);
+    session.resize(cols, rows);
+    return reply.status(200).send({ resized: true, cols, rows });
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message.includes('not found')) {
+      return reply.status(404).send({ error: message });
+    }
+    return reply.status(500).send({ error: message });
+  }
+});
+
+/**
  * GET /sessions/:id/status — Get session status and queue depth.
  */
 app.get<{

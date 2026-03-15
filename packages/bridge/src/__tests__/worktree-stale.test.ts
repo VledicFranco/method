@@ -42,6 +42,7 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
       lastActivityAt = new Date();
       return { output: 'mock response', timedOut: false };
     },
+    resize() { /* no-op in test */ },
     kill() {
       status = 'dead';
     },
