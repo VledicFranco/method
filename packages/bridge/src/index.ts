@@ -1,11 +1,19 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import Fastify from 'fastify';
 import { createPool } from './pool.js';
+import { createUsagePoller } from './usage-poller.js';
+import { createTokenTracker } from './token-tracker.js';
+import { registerDashboardRoute } from './dashboard-route.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
 const SETTLE_DELAY_MS = parseInt(process.env.SETTLE_DELAY_MS ?? '2000', 10);
 const MAX_SESSIONS = parseInt(process.env.MAX_SESSIONS ?? '5', 10);
+const CLAUDE_OAUTH_TOKEN = process.env.CLAUDE_OAUTH_TOKEN ?? null;
+const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '60000', 10);
+const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -13,7 +21,26 @@ const pool = createPool({
   settleDelayMs: SETTLE_DELAY_MS,
 });
 
+const usagePoller = createUsagePoller({
+  oauthToken: CLAUDE_OAUTH_TOKEN,
+  pollIntervalMs: USAGE_POLL_INTERVAL_MS,
+});
+
+const tokenTracker = createTokenTracker({
+  sessionsDir: CLAUDE_SESSIONS_DIR,
+});
+
+const BRIDGE_STARTED_AT = new Date();
+
 const app = Fastify({ logger: true });
+
+// ---------- Dashboard ----------
+
+registerDashboardRoute(app, pool, usagePoller, tokenTracker, {
+  port: PORT,
+  startedAt: BRIDGE_STARTED_AT,
+  version: '0.2.0',
+});
 
 // ---------- Routes ----------
 
@@ -34,6 +61,10 @@ app.post<{
       workdir,
       initialPrompt: initial_prompt,
     });
+
+    // Register session with token tracker
+    tokenTracker.registerSession(result.sessionId, workdir, new Date());
+
     return reply.status(201).send({
       session_id: result.sessionId,
       status: result.status,
@@ -63,6 +94,10 @@ app.post<{
 
   try {
     const result = await pool.prompt(id, prompt, timeout_ms);
+
+    // Refresh token usage after each prompt
+    tokenTracker.refreshUsage(id);
+
     return reply.status(200).send({
       output: result.output,
       timed_out: result.timedOut,
@@ -146,6 +181,9 @@ async function start() {
   try {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
+
+    // Start usage polling after server is listening
+    usagePoller.start();
   } catch (err) {
     app.log.error(err);
     process.exit(1);
