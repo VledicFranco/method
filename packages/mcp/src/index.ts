@@ -40,6 +40,24 @@ async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response
   }
 }
 
+async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetchWithRetry(url, init);
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
+    }
+    throw e;
+  }
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: res.statusText })) as Record<string, string>;
+    const msg = [errBody.error, errBody.message].filter(Boolean).join(': ') || res.statusText;
+    throw new Error(`Bridge error: ${msg}`);
+  }
+  return res;
+}
+
 // Session manager — isolates state by session_id
 const sessions = createSessionManager();
 const methodologySessions = createMethodologySessionManager();
@@ -635,7 +653,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "step_validate": {
         const { step_id, output, session_id } = z.object({
           step_id: z.string(),
-          output: z.record(z.unknown()),
+          output: z.record(z.string(), z.unknown()),
           session_id: z.string().optional(),
         }).parse(args);
         const session = sessions.getOrCreate(session_id ?? '__default__');
@@ -659,7 +677,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "methodology_route": {
         const { challenge_predicates, session_id } = z.object({
-          challenge_predicates: z.record(z.boolean()).optional(),
+          challenge_predicates: z.record(z.string(), z.boolean()).optional(),
           session_id: z.string().optional(),
         }).parse(args);
         const sid = session_id ?? '__default__';
@@ -691,7 +709,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "methodology_transition": {
         const { completion_summary, challenge_predicates, session_id } = z.object({
           completion_summary: z.string().optional(),
-          challenge_predicates: z.record(z.boolean()).optional(),
+          challenge_predicates: z.record(z.string(), z.boolean()).optional(),
           session_id: z.string().optional(),
         }).parse(args);
         const sid = session_id ?? '__default__';
@@ -745,53 +763,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // PRD 006 Component 4: stale timeout
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
 
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          });
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            // Surface structured budget errors from bridge
-            if ((errBody as any).error === 'DEPTH_EXCEEDED' || (errBody as any).error === 'BUDGET_EXHAUSTED') {
-              throw new Error(`Budget rejected: ${(errBody as any).message}`);
-            }
-            throw new Error(`Bridge error: ${(errBody as any).error ?? (errBody as any).message ?? res.statusText}`);
-          }
-
-          const data = await res.json() as {
-            session_id: string;
-            nickname: string;
-            status: string;
-            depth?: number;
-            parent_session_id?: string | null;
-            budget?: { max_depth: number; max_agents: number; agents_spawned: number };
-            isolation?: string;
-            worktree_path?: string | null;
-            metals_available?: boolean;
-          };
-          return ok(JSON.stringify({
-            bridge_session_id: data.session_id,
-            nickname: data.nickname,
-            status: data.status,
-            depth: data.depth ?? 0,
-            parent_session_id: data.parent_session_id ?? null,
-            budget: data.budget ?? null,
-            isolation: data.isolation ?? 'shared',
-            worktree_path: data.worktree_path ?? null,
-            metals_available: data.metals_available ?? true,
-            message: data.isolation === 'worktree'
-              ? `Agent '${data.nickname}' spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
-              : `Agent '${data.nickname}' spawned. Call bridge_prompt to send work.`,
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const data = await res.json() as {
+          session_id: string;
+          nickname: string;
+          status: string;
+          depth?: number;
+          parent_session_id?: string | null;
+          budget?: { max_depth: number; max_agents: number; agents_spawned: number };
+          isolation?: string;
+          worktree_path?: string | null;
+          metals_available?: boolean;
+        };
+        return ok(JSON.stringify({
+          bridge_session_id: data.session_id,
+          nickname: data.nickname,
+          status: data.status,
+          depth: data.depth ?? 0,
+          parent_session_id: data.parent_session_id ?? null,
+          budget: data.budget ?? null,
+          isolation: data.isolation ?? 'shared',
+          worktree_path: data.worktree_path ?? null,
+          metals_available: data.metals_available ?? true,
+          message: data.isolation === 'worktree'
+            ? `Agent '${data.nickname}' spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
+            : `Agent '${data.nickname}' spawned. Call bridge_prompt to send work.`,
+        }, null, 2));
       }
 
       case "bridge_prompt": {
@@ -804,33 +806,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const body: Record<string, unknown> = { prompt };
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
 
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/prompt`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          });
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json() as { output: string; timed_out: boolean };
-          const charCount = data.output.length;
-          return ok(JSON.stringify({
-            output: data.output,
-            timed_out: data.timed_out,
-            message: data.timed_out
-              ? "Prompt timed out — partial output returned"
-              : `Response received (${charCount} chars)`,
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const data = await res.json() as { output: string; timed_out: boolean };
+        const charCount = data.output.length;
+        return ok(JSON.stringify({
+          output: data.output,
+          timed_out: data.timed_out,
+          message: data.timed_out
+            ? "Prompt timed out — partial output returned"
+            : `Response received (${charCount} chars)`,
+        }, null, 2));
       }
 
       case "bridge_kill": {
@@ -839,147 +829,99 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           worktree_action: z.enum(["merge", "keep", "discard"]).optional(),
         }).parse(args);
 
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ worktree_action }),
-          });
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worktree_action }),
+        });
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json() as { session_id: string; killed: boolean; worktree_cleaned?: boolean };
-          return ok(JSON.stringify({
-            bridge_session_id: data.session_id,
-            killed: data.killed,
-            worktree_cleaned: data.worktree_cleaned ?? false,
-            message: data.worktree_cleaned ? "Session killed, worktree cleaned" : "Session killed",
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const data = await res.json() as { session_id: string; killed: boolean; worktree_cleaned?: boolean };
+        return ok(JSON.stringify({
+          bridge_session_id: data.session_id,
+          killed: data.killed,
+          worktree_cleaned: data.worktree_cleaned ?? false,
+          message: data.worktree_cleaned ? "Session killed, worktree cleaned" : "Session killed",
+        }, null, 2));
       }
 
       case "bridge_list": {
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions`);
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions`);
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
+        const bridgeSessions = await res.json() as Array<{
+          session_id: string;
+          nickname: string;
+          purpose: string | null;
+          status: string;
+          queue_depth: number;
+          metadata?: Record<string, unknown>;
+          parent_session_id?: string | null;
+          depth?: number;
+          children?: string[];
+          budget?: { max_depth: number; max_agents: number; agents_spawned: number };
+        }>;
 
-          const bridgeSessions = await res.json() as Array<{
-            session_id: string;
-            nickname: string;
-            purpose: string | null;
-            status: string;
-            queue_depth: number;
-            metadata?: Record<string, unknown>;
-            parent_session_id?: string | null;
-            depth?: number;
-            children?: string[];
-            budget?: { max_depth: number; max_agents: number; agents_spawned: number };
-          }>;
+        const formatted = bridgeSessions.map(s => ({
+          bridge_session_id: s.session_id,
+          nickname: s.nickname,
+          purpose: s.purpose ?? null,
+          status: s.status,
+          queue_depth: s.queue_depth,
+          metadata: s.metadata ?? {},
+          methodology_session_id: (s.metadata as any)?.methodology_session_id ?? null,
+          parent_session_id: s.parent_session_id ?? null,
+          depth: s.depth ?? 0,
+          children: s.children ?? [],
+          budget: s.budget ?? null,
+        }));
 
-          const formatted = bridgeSessions.map(s => ({
-            bridge_session_id: s.session_id,
-            nickname: s.nickname,
-            purpose: s.purpose ?? null,
-            status: s.status,
-            queue_depth: s.queue_depth,
-            metadata: s.metadata ?? {},
-            methodology_session_id: (s.metadata as any)?.methodology_session_id ?? null,
-            parent_session_id: s.parent_session_id ?? null,
-            depth: s.depth ?? 0,
-            children: s.children ?? [],
-            budget: s.budget ?? null,
-          }));
-
-          const active = bridgeSessions.filter(s => s.status !== 'dead').length;
-          return ok(JSON.stringify({
-            sessions: formatted,
-            capacity: { active, max: bridgeSessions.length },
-            message: `${active} of ${bridgeSessions.length} sessions active`,
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const active = bridgeSessions.filter(s => s.status !== 'dead').length;
+        return ok(JSON.stringify({
+          sessions: formatted,
+          capacity: { active, max: bridgeSessions.length },
+          message: `${active} of ${bridgeSessions.length} sessions active`,
+        }, null, 2));
       }
 
       case "bridge_progress": {
         const { bridge_session_id, type: progressType, content: progressContent } = z.object({
           bridge_session_id: z.string(),
           type: z.enum(["step_started", "step_completed", "working_on", "sub_agent_spawned"]),
-          content: z.record(z.unknown()).optional(),
+          content: z.record(z.string(), z.unknown()).optional(),
         }).parse(args);
 
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: progressType, content: progressContent ?? {}, sender: bridge_session_id }),
-          });
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: progressType, content: progressContent ?? {}, sender: bridge_session_id }),
+        });
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json() as { sequence: number; acknowledged: boolean };
-          return ok(JSON.stringify({
-            sequence: data.sequence,
-            acknowledged: data.acknowledged,
-            message: `Progress reported: ${progressType}`,
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const data = await res.json() as { sequence: number; acknowledged: boolean };
+        return ok(JSON.stringify({
+          sequence: data.sequence,
+          acknowledged: data.acknowledged,
+          message: `Progress reported: ${progressType}`,
+        }, null, 2));
       }
 
       case "bridge_event": {
         const { bridge_session_id, type: eventType, content: eventContent } = z.object({
           bridge_session_id: z.string(),
           type: z.enum(["completed", "error", "escalation", "budget_warning"]),
-          content: z.record(z.unknown()).optional(),
+          content: z.record(z.string(), z.unknown()).optional(),
         }).parse(args);
 
-        try {
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: eventType, content: eventContent ?? {}, sender: bridge_session_id }),
-          });
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: eventType, content: eventContent ?? {}, sender: bridge_session_id }),
+        });
 
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json() as { sequence: number; acknowledged: boolean };
-          return ok(JSON.stringify({
-            sequence: data.sequence,
-            acknowledged: data.acknowledged,
-            message: `Event reported: ${eventType}`,
-          }, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const data = await res.json() as { sequence: number; acknowledged: boolean };
+        return ok(JSON.stringify({
+          sequence: data.sequence,
+          acknowledged: data.acknowledged,
+          message: `Event reported: ${eventType}`,
+        }, null, 2));
       }
 
       case "bridge_read_progress": {
@@ -988,23 +930,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           since_sequence: z.number().optional(),
         }).parse(args);
 
-        try {
-          const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress${qs}`);
-
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json();
-          return ok(JSON.stringify(data, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/progress${qs}`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
       }
 
       case "bridge_read_events": {
@@ -1013,23 +942,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           since_sequence: z.number().optional(),
         }).parse(args);
 
-        try {
-          const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
-          const res = await fetchWithRetry(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events${qs}`);
-
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json();
-          return ok(JSON.stringify(data, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const qs = since_sequence !== undefined ? `?since_sequence=${since_sequence}` : '';
+        const res = await bridgeFetch(`${BRIDGE_URL}/sessions/${bridge_session_id}/channels/events${qs}`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
       }
 
       case "bridge_all_events": {
@@ -1038,26 +954,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           filter_type: z.string().optional(),
         }).parse(args);
 
-        try {
-          const params = new URLSearchParams();
-          if (since_sequence !== undefined) params.set('since_sequence', String(since_sequence));
-          if (filter_type) params.set('filter_type', filter_type);
-          const qs = params.toString() ? `?${params.toString()}` : '';
-          const res = await fetchWithRetry(`${BRIDGE_URL}/channels/events${qs}`);
-
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(`Bridge error: ${(errBody as any).error ?? res.statusText}`);
-          }
-
-          const data = await res.json();
-          return ok(JSON.stringify(data, null, 2));
-        } catch (e) {
-          if (e instanceof TypeError) {
-            throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
-          }
-          throw e;
-        }
+        const params = new URLSearchParams();
+        if (since_sequence !== undefined) params.set('since_sequence', String(since_sequence));
+        if (filter_type) params.set('filter_type', filter_type);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        const res = await bridgeFetch(`${BRIDGE_URL}/channels/events${qs}`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
       }
 
       default:
