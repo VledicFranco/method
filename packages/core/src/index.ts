@@ -14,3 +14,5 @@ export type { MethodologySessionManager } from './methodology-session.js';
 export type { LlmRequest, LlmUsage, LlmResponse, LlmStreamEvent, LlmProvider } from './strategy/llm-provider.js';
 export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './strategy/artifact-store.js';
 export { InMemoryArtifactStore, createArtifactStore } from './strategy/artifact-store.js';
+export type { GateType, GateConfig, GateContext, GateResult } from './strategy/gates.js';
+export { getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback } from './strategy/gates.js';
