@@ -7,7 +7,7 @@
 **Depends on:** PRD 005 (bridge + dashboard), PRD 007 (live output + transcript), PRD 008 (channels), PRD 010 (PTY watcher)
 **Evidence:** RFC #2 (council session 2026-03-15, 4-1 vote), retro-prd005-phase2 (proposed delta: "extend DR-09 to bridge"), 5 dashboard rendering bugs caught only in manual review
 **Council:** Ad-hoc RFC triage session
-**Implementation:** Phase 1 partially complete — `dashboard-route.test.ts` and `token-tracker.test.ts` exist with JSONL fixtures. `transcript-reader.test.ts` still missing. Phase 2 (state machine + route tests) and Phase 3 (coverage tooling + DR-09 update) not started.
+**Implementation:** Phase 1 complete — `dashboard-route.test.ts`, `token-tracker.test.ts`, and `transcript-reader.test.ts` all exist with JSONL fixtures. Phase 2 partially complete — `usage-poller.test.ts` (49 tests) implemented. Remaining Phase 2: `live-output-route.test.ts`, `transcript-route.test.ts`, `__tests__/helpers.ts`. Phase 3 (coverage tooling + DR-09 update) not started.
 
 ---
 
@@ -211,24 +211,24 @@ No minimum threshold initially. The goal is to establish a baseline, not enforce
 
 ## 3. Implementation Order
 
-### Phase 1: Pure function tests (Priority 1) — PARTIALLY IMPLEMENTED
+### Phase 1: Pure function tests (Priority 1) — IMPLEMENTED
 
 **Deliverables:**
 - [x] `dashboard-route.test.ts` — tests for all formatting helpers and render functions (50+ test cases)
 - [x] `token-tracker.test.ts` — tests for tracker lifecycle, aggregation, project dir derivation
-- [ ] `transcript-reader.test.ts` — tests for JSONL parsing, session listing
-- [x] JSONL fixture files in `__tests__/fixtures/` (`session.jsonl` exists; `transcript.jsonl` still missing)
+- [x] `transcript-reader.test.ts` — 27 tests for JSONL parsing, session listing (PR #26)
+- [x] JSONL fixture files in `__tests__/fixtures/` (`session.jsonl` + `transcript.jsonl`)
 - [x] Export internal helpers that need testing
 
 **Why first:** Highest regression risk (dashboard rendering bugs), pure functions with no dependencies, highest test-to-effort ratio. Every formatting helper is a single-input/single-output function — trivial to test, high value.
 
-### Phase 2: State machine + route handler tests (Priority 2-3)
+### Phase 2: State machine + route handler tests (Priority 2-3) — PARTIALLY IMPLEMENTED
 
 **Deliverables:**
-- `usage-poller.test.ts` — status state machine, bucket parsing, fetch mocking
-- `live-output-route.test.ts` — extracted handler logic tests
-- `transcript-route.test.ts` — renderTurn, summary calculation
-- `__tests__/helpers.ts` — shared mock helpers
+- [x] `usage-poller.test.ts` — 49 tests: status state machine, bucket parsing, fetch mocking (cherry-picked to master)
+- [ ] `live-output-route.test.ts` — extracted handler logic tests
+- [ ] `transcript-route.test.ts` — renderTurn, summary calculation
+- [ ] `__tests__/helpers.ts` — shared mock helpers
 
 **Estimated effort:** 2-3 working sessions
 

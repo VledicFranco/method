@@ -7,7 +7,7 @@
 **Depends on:** PRD 005 (bridge), PRD 010 (PTY watcher)
 **Evidence:** OBS-03 (empty PTY responses), OBS-12 (settle delay compounding), OBS-17 (40% completion at 5 agents), OBS-18 (edit-vs-create reliability gap)
 **Origin:** RFC #1 (council triage — 4-1 vote, highest impact/effort ratio)
-**Implementation:** Phase 0 (staggered batch spawn), Phase 1 (diagnostic instrumentation), and Phase 2 (adaptive settle delay) implemented. Phase 3 (concurrency ceiling testing) and Phase 4 (print-mode sessions) remain unimplemented.
+**Implementation:** Phases 0-2 and 4 implemented. Phase 0 (staggered batch spawn), Phase 1 (diagnostic instrumentation), Phase 2 (adaptive settle delay), Phase 4 (print-mode sessions — LlmProvider, ClaudeCodeProvider, PrintSession, pool mode routing, MCP integration, 41+ tests). Phase 3 (concurrency ceiling testing) remains unimplemented.
 
 ---
 
@@ -327,7 +327,7 @@ POST /sessions/batch
 
 **Why third:** Requires both diagnostics (to understand failures) and adaptive settle (to reduce overhead). Running the matrix without these would produce the same uninformative results as OBS-17.
 
-### Phase 4: Print-Mode Sessions (C2) — REVISED after EXP-012-P4 + CLI research (2026-03-16)
+### Phase 4: Print-Mode Sessions (C2) — IMPLEMENTED (2026-03-17, PR #24)
 
 **Experiment result (2026-03-15):** `--output-format stream-json` does NOT work in interactive PTY mode — it requires `--print`. However, `--print` with `--resume <session_id>` maintains full conversation context across calls. This enables a fundamentally better architecture:
 
