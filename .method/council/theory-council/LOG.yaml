@@ -1,0 +1,226 @@
+log:
+  domain: theory
+  project: pv-method
+  total_sessions: 5
+  total_decisions: 11
+
+sessions:
+  # ═══════════════════════════════════════════════════════
+  # TC-001: Formal grounding of mu_1-3 success metrics
+  # ═══════════════════════════════════════════════════════
+  - id: TC-001
+    date: "2026-03-17"
+    cast: [Axiom, Sable, Quill, Harlan]
+    challenge: "Are the mu_1-3 success metrics formally grounded in D_COUNCIL?"
+
+    debate_summary: >
+      Quill argued mu_1-3 are already defined in M1-COUNCIL.yaml's success_profile
+      section with explicit formulas over domain sorts (Question, Turn, Escalation).
+      The skill addition just surfaced them in the output — no new formal content
+      needed. Sable countered that mu_2's formula (turns_responding_to_counter / total_turns)
+      uses 'responds_to' which IS a declared predicate, so it's expressible — but the
+      threshold (>= 0.8) is arbitrary and has no formal justification beyond EXP-001c
+      empirical data. Harlan noted the skill renders mu_2 as "turns_responding_to_counter_argument"
+      which is semantically equivalent to |{t : Turn | responds_to(t, t') for some t'}| / |Turn|
+      — matching the method's formula exactly.
+
+    decisions:
+      - id: TC-D-001
+        decision: "mu_1-3 are formally expressible over Sigma_COUNCIL. No RFC needed — the skill addition is a rendering of existing formal content."
+        rationale: "All three metrics use sorts, predicates, and function symbols already in D_COUNCIL. The formulas in the success_profile section are the formal definitions; the skill surfaces them."
+        dissent: "Sable: mu_2 threshold (0.8) is empirically derived, not formally justified. Acceptable for now but should be noted as a calibration parameter, not an axiom."
+
+      - id: TC-D-002
+        decision: "Add a calibration note to mu_2: 'Threshold 0.8 derived from EXP-001c agreeableness data. Subject to recalibration.'"
+        rationale: "Sable's point is valid — empirical thresholds should be labeled as such to prevent them from being treated as formal invariants."
+
+    artifacts_produced:
+      - "Domain-internal note: mu_2 threshold is a calibration parameter"
+
+    session_retro:
+      mu_1: 1.0
+      mu_2: 0.9
+      mu_3: 1.0
+
+  # ═══════════════════════════════════════════════════════
+  # TC-002: CMEM-PROTO gap in M1-COUNCIL
+  # ═══════════════════════════════════════════════════════
+  - id: TC-002
+    date: "2026-03-17"
+    cast: [Axiom, Sable, Quill, Harlan]
+    challenge: "Should M1-COUNCIL be recompiled to include CMEM-PROTO, or should council memory remain a protocol extension?"
+
+    debate_summary: >
+      Sable argued for minimality: CMEM-PROTO is a persistence layer, not a
+      reasoning mechanism. D_COUNCIL models debate structure (Turns, Positions,
+      Questions) — adding Memory as a sort would couple the debate theory to
+      a storage concern. Quill countered that memory affects operationalization:
+      when a council resumes from memory, the initial state changes (Characters
+      and prior Positions already exist). The domain theory's initial_state_valid_claim
+      assumes an empty state, which is wrong when resuming. Harlan proposed:
+      don't add Memory to D_COUNCIL — instead, add a precondition variant to
+      sigma_0 that handles the "resume from memory" path, keeping D_COUNCIL clean.
+
+    decisions:
+      - id: TC-D-003
+        decision: "Do NOT add Memory sort to D_COUNCIL. Instead, create an RFC to add a sigma_0 precondition variant for 'resume from prior session' that references CMEM-PROTO state."
+        rationale: "Sable's minimality argument wins: memory is persistence, not debate structure. But Quill correctly identified that the initial state claim needs updating for the resume path."
+        dissent: "Quill: this means CMEM-PROTO remains formally ungrounded — the protocol works but has no domain theory. Acceptable as a protocol but should be tracked."
+
+      - id: TC-D-004
+        decision: "Draft RFC-001: Add resume precondition to M1-COUNCIL sigma_0"
+        rationale: "Cross-domain change (theory + implementation) — meets RFC threshold."
+        status: "RFC drafted, pending domain review"
+
+    artifacts_produced:
+      - ".method/council/rfcs/RFC-001-sigma0-resume.yaml (drafted)"
+
+    session_retro:
+      mu_1: 1.0
+      mu_2: 0.85
+      mu_3: 1.0
+
+  # ═══════════════════════════════════════════════════════
+  # TC-003: Sub-agent spawning reconciliation
+  # ═══════════════════════════════════════════════════════
+  - id: TC-003
+    date: "2026-03-17"
+    cast: [Axiom, Sable, Quill, Harlan]
+    challenge: "The skill implements sub-agent spawning but the method defers it. Reconcile."
+
+    debate_summary: >
+      Harlan (bridge) reported: the skill says "spawn a sub-agent for individual
+      work" while M1-COUNCIL.yaml says "sub-agent spawning mechanics (deferred to
+      future version)." Quill argued the skill is correct — sub-agent spawning works
+      empirically (the bridge uses it) and removing it from the skill would degrade
+      real functionality. Sable argued the method is correct — adding sub-agent
+      spawning to D_COUNCIL requires new sorts (SubAgent, SubTask, Result) and
+      predicates (spawned_by, completed, consumed_by) that significantly expand the
+      domain theory. Axiom proposed: the skill's sub-agent spawning is an OPERATIONAL
+      EXTENSION, not a domain theory violation. The method's "deferred" note means
+      "not yet formally modeled" — it doesn't mean "forbidden." The skill operates
+      at a layer above the formal theory.
+
+    decisions:
+      - id: TC-D-005
+        decision: "Sub-agent spawning in the skill is a valid operational extension. No change to M1-COUNCIL domain theory needed. Add a note to the skill clarifying it operates beyond the formal model's boundary."
+        rationale: "Axiom's layer separation resolves the conflict: D_COUNCIL models debate structure; sub-agent spawning is an execution concern the skill handles operationally."
+        dissent: "Sable: if sub-agents produce Turns that enter the debate, those Turns should be modeled. Current implementation has characters report sub-agent results as their own Turns — acceptable but should be documented."
+
+      - id: TC-D-006
+        decision: "Document in the skill: 'Sub-agent spawning operates beyond D_COUNCIL's formal boundary. Sub-agent results enter the debate as the sponsoring character's Turn.'"
+        rationale: "Makes the execution-theory boundary explicit."
+
+    artifacts_produced:
+      - "Domain-internal note: sub-agent results enter debate as sponsoring character's Turn"
+
+    session_retro:
+      mu_1: 1.0
+      mu_2: 0.8
+      mu_3: 1.0
+
+  # ═══════════════════════════════════════════════════════
+  # TC-004: Multi-council governance — protocol or theory?
+  # ═══════════════════════════════════════════════════════
+  - id: TC-004
+    date: "2026-03-17"
+    cast: [Axiom, Sable, Quill, Harlan]
+    challenge: "Does the council-of-councils model need a domain theory (sorts, axioms) or is STEER-PROTO sufficient?"
+
+    debate_summary: >
+      Sable argued strongly for protocol-only: the multi-council model is a
+      coordination pattern, not a reasoning structure. Domain theories model
+      what happens INSIDE a method execution. Coordination between councils is
+      an inter-method concern — like how P1-EXEC routes to M1-COUNCIL, not
+      something modeled inside M1-COUNCIL's domain theory. Quill countered
+      that the RFC lifecycle has formal properties worth modeling: an RFC has
+      a status DAG (draft → review → decision), reviewers have authority
+      constraints, and the routing has coverage properties (every affected
+      domain must review). These are axiom-worthy. Axiom mediated: the RFC
+      lifecycle could have a minimal domain theory in the future, but it's
+      premature now. The pilot hasn't generated enough data to know which
+      properties matter. Keep it as a protocol; if patterns emerge from
+      the pilot that need formal backing, formalize then.
+
+    decisions:
+      - id: TC-D-007
+        decision: "Multi-council governance stays as protocol (STEER-PROTO extension). No domain theory now. Revisit after pilot evaluation."
+        rationale: "Sable's argument that coordination is inter-method, not intra-method, is correct. Formalization is premature without pilot data."
+        dissent: "Quill: RFC status DAG and review coverage are axiom-worthy properties. Tabled, not rejected — revisit with data."
+
+      - id: TC-D-008
+        decision: "Track 3 properties during pilot for potential future formalization: (1) RFC status DAG acyclicity, (2) review coverage (every affected domain reviews), (3) decision authority (only steering decides on cross-domain RFCs)."
+        rationale: "Data collection for future formalization decision."
+
+    artifacts_produced: []
+
+    session_retro:
+      mu_1: 1.0
+      mu_2: 0.9
+      mu_3: 1.0
+
+  # ═══════════════════════════════════════════════════════
+  # TC-005: Review Ax-7 (diminishing returns halt)
+  # ═══════════════════════════════════════════════════════
+  - id: TC-005
+    date: "2026-03-17"
+    cast: [Axiom, Sable, Quill, Harlan]
+    challenge: "Is Ax-7 (pragmatic diminishing returns halt) sound enough, or does it need strengthening?"
+
+    debate_summary: >
+      Axiom framed: Ax-7 is unusual — it's a "pragmatic axiom" that authorizes
+      termination based on a Leader judgment predicate (diminishing_returns) that
+      is "not formally decidable." This is unlike Ax-1-6 which have crisp formal
+      statements. Sable argued Ax-7 should be strengthened: define diminishing_returns
+      as "the last N turns have not reduced nu_sigma_2" for some configurable N.
+      This gives a formal trigger. Quill pushed back hard: fixing N misses the
+      point. Diminishing returns isn't about turn count — it's about argument
+      novelty. 3 turns that say new things are progress; 10 turns that cycle
+      are not. An LLM Leader is empirically reliable at detecting this (EXP-001c
+      showed 0% false positive rate on Leader-initiated halts). Making it formal
+      would either be too loose (N too small, halts too early) or too tight
+      (N too large, wastes tokens). Harlan proposed a middle ground: keep Ax-7
+      pragmatic but add a MINIMUM turn threshold before it can trigger (e.g.,
+      diminishing_returns requires at least |Questions| * 2 turns have occurred).
+      This prevents premature halts while keeping the judgment-based nature.
+
+    decisions:
+      - id: TC-D-009
+        decision: "Keep Ax-7 pragmatic. Add a minimum-turns guard: diminishing_returns cannot be declared before at least 2 * |Questions| turns have occurred."
+        rationale: "Quill's argument that argument novelty isn't turn-countable is correct. But Harlan's minimum-turns guard prevents the edge case of premature halts on complex challenges."
+        dissent: "Sable: the minimum-turns guard is itself arbitrary (why 2x? why not 3x?). Acceptable as a calibration parameter like mu_2's threshold."
+        position_shifts:
+          - "Sable shifted from 'define diminishing_returns formally' to 'accept pragmatic + guard' because Quill demonstrated that argument novelty detection is empirically reliable but not formalizable without a semantic similarity model"
+
+      - id: TC-D-010
+        decision: "Draft RFC-002: Add minimum-turns guard to Ax-7 in M1-COUNCIL"
+        rationale: "Changes a compiled method axiom — meets RFC threshold for theory changes."
+        status: "RFC drafted, pending steering review"
+
+      - id: TC-D-011
+        decision: "Note Ax-7's minimum-turns threshold (2 * |Questions|) as a calibration parameter, alongside mu_2's 0.8 threshold."
+        rationale: "Consistent treatment of empirically-derived values."
+
+    artifacts_produced:
+      - ".method/council/rfcs/RFC-002-ax7-guard.yaml (drafted)"
+
+    session_retro:
+      mu_1: 1.0
+      mu_2: 0.9
+      mu_3: 1.0
+
+# ═══════════════════════════════════════════════════════
+# PILOT SUMMARY
+# ═══════════════════════════════════════════════════════
+pilot_summary:
+  sessions_run: 5
+  decisions_produced: 11
+  rfcs_drafted: 2
+  position_shifts: 1
+  average_mu_1: 1.0
+  average_mu_2: 0.87
+  average_mu_3: 1.0
+  domain_internal_decisions: 7
+  cross_domain_rfcs: 2
+  theory_gaps_identified: 3
+  theory_gaps_resolved: 3

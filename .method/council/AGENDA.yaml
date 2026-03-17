@@ -1,18 +1,32 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-15"
-  last_session: SESSION-023
+  last_updated: "2026-03-17"
+  last_session: SESSION-024
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
   p0_immediate:
+    - id: AG-037
+      item: "Design Theory Council cast — define TEAM.yaml for the pilot domain council"
+      owner: council
+      status: open
+      added_in: SESSION-024
+      note: "D-040: Pilot one domain council (Theory). Need 3+ members with formal theory, axiom design, type theory expertise. Harlan bridges steering ↔ theory."
+
+    - id: AG-038
+      item: "Draft RFC schema as protocol artifact — lightweight YAML for cross-council review"
+      owner: Harlan
+      status: open
+      added_in: SESSION-024
+      note: "D-041: RFC lifecycle defined. Need formal schema at .method/council/rfcs/ with per-council review fields, domain tags, verdict fields."
+
     - id: AG-035
       item: "Commission PRD 010 implementation — PTY activity auto-detection"
       owner: council
       status: open
       added_in: SESSION-023
-      note: "PRD 010 drafted (docs/prds/010-pty-activity-detection.md). 4 phases, 7 patterns, auto-retro. Ready for M1-IMPL commission."
+      note: "PRD 010 drafted. Deferred from SESSION-024 (governance design took priority). Ready for M1-IMPL commission."
 
   p1_next:
     - id: AG-034

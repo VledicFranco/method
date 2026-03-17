@@ -138,6 +138,10 @@ If the debate was halted on diminishing returns: add a **5. Open Items** section
 - **Cast** — character cards as designed in Phase 2 (name, role, expertise, conviction, blind spot)
 - **Escalation Log** — each escalation to the Product Owner: question, why it was escalated, PO response
 - **Session Metadata** — question count, decisions made, positions updated, escalation count
+- **Success Metrics** (from M1-COUNCIL success profile):
+  - **mu_1 (Question Resolution):** `decided_questions / total_questions` — target: 1.0
+  - **mu_2 (Adversarial Integrity):** `turns_responding_to_counter_argument / total_turns` — threshold: >= 0.8. Below 0.8 signals characters agreed to avoid friction.
+  - **mu_3 (Escalation Precision):** `specific_escalations / total_escalations` — target: 1.0. Every escalation must name a specific question with alternatives, not a vague request for input.
 
 ---
 
