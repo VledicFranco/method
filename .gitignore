@@ -13,3 +13,4 @@ docs/impl/*
 tmp/*
 !tmp/.gitkeep
 .claude/worktrees/
+coverage/

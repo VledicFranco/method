@@ -100,6 +100,22 @@ Full analysis in PRD 012 Phase 4. Key findings:
 - **Loses:** no live TUI, no interactive permissions (must use `bypassPermissions`), no mid-conversation input, no max-turns control.
 - **JSON result:** `{ result, session_id, usage, total_cost_usd, num_turns, permission_denials, stop_reason }`.
 
+### xyflow / React Flow (2026-03-17)
+
+Researched for Strategy DAG visualization. Key findings:
+
+- **What it is:** React-based node graph library (35.7K stars, MIT, 3.6M weekly npm downloads). Custom React components as nodes, dagre/ELK layout, real-time state-driven updates, dark mode, zoom/pan/minimap.
+- **DAG support:** Excellent — dagre integration for directed acyclic graphs, automatic parallelization visualization, conditional edges, priority-based node styling.
+- **Custom nodes:** Any React component — methodology nodes with status badges, gate nodes with pass/fail indicators, script nodes with output previews.
+- **Performance:** Tested to 450 nodes. 50-node Strategy DAGs are trivial.
+- **Problem:** Requires React runtime. Bridge dashboard is server-rendered HTML with no build step.
+- **Integration paths:**
+  - **Path A (CDN):** Load React + ReactFlow via `<script>` tags. ~300KB JS, full interactivity. Moderate architectural departure.
+  - **Path B (Server SVG):** Use dagre in Node.js for layout, generate raw SVG server-side. Zero client JS. Static only. Matches dashboard pattern.
+  - **Path C (Separate SPA):** Vite-built React app at `/pipeline` route. Full features. Requires build pipeline.
+- **Alternative:** Cytoscape.js — vanilla JS, CDN-loadable, dagre plugin, canvas-rendered (less customizable nodes but no React dependency).
+- **Recommendation:** Path B for Phase 1 (static viz), evaluate Path A or Cytoscape.js for Phase 2 (runtime viz).
+
 ---
 
 ## 4. Deferred Ideas (not in Phase 1)
