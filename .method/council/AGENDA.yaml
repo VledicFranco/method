@@ -1,7 +1,7 @@
 agenda:
   project: pv-method
   last_updated: "2026-03-17"
-  last_session: SESSION-029
+  last_session: SESSION-030
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-033
@@ -12,7 +12,7 @@ agenda:
       owner: council
       status: open
       added_in: SESSION-028
-      note: "P3-GOV.yaml v0.1 done + contrarian fixes applied (S029). Methods need: domain theory, roles, step DAG, objective, success profile. Key: M2-REVIEW delegates sigma_2 to M1-COUNCIL via retraction (W7, D-053). Signature inclusion for axioms, retraction for execution."
+      note: "P3-GOV.yaml v0.1 complete (8 axioms, contrarian-reviewed, research-refined). Methods need compilation. S030 added 5 research-backed guidelines: M2-REVIEW max_rounds=3, 5-layer framing, anchoring prevention validated, M5-AUDIT cast design, PAT-003/004 checks. Key: M2-REVIEW delegates sigma_2 to M1-COUNCIL via retraction (W7)."
 
     - id: AG-040
       item: "Review RFC-001 (sigma_0 resume) and RFC-002 (Ax-7 guard) — first P3-GOV pipeline validation"

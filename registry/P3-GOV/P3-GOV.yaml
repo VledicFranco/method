@@ -152,9 +152,32 @@ domain_theory:
     - name: revision_limit_reached
       signature: "RFC"
       description: "revision_count(rfc) >= max_revisions (default 3)"
+  axiom_tiers:
+    description: >
+      Axioms are classified as constitutional (immutable — cannot be amended by an RFC
+      processed through P3-GOV) or statutory (amendable via P3-GOV's own RFC pipeline).
+      This classification implements the self-protection principle: the governance
+      methodology cannot be used to undermine its own safety guarantees.
+      Grounding: ov-research governance-model.md (C3: agents cannot disable own constraints).
+    constitutional: [Ax-GOV-0, Ax-GOV-1, Ax-GOV-3]
+    statutory: [Ax-GOV-2, Ax-GOV-4, Ax-GOV-5, Ax-GOV-6, Ax-GOV-7]
   axioms:
+    - id: Ax-GOV-0
+      name: "Self-protection"
+      tier: constitutional
+      formal: >
+        forall rfc : RFC, ax : Axiom.
+          ax.tier = constitutional ->
+            NOT target(rfc, ax)
+      rationale: >
+        Constitutional axioms cannot be the subject of an RFC processed by P3-GOV.
+        The governance methodology structurally cannot modify its own safety guarantees.
+        This prevents recursive self-justification attacks: an agent cannot propose
+        removing the human gate via the governance pipeline the human gate protects.
+        Grounding: ov-research governance-model.md C3 (self-protection).
     - id: Ax-GOV-1
       name: "Human gate"
+      tier: constitutional
       formal: >
         forall rfc : RFC.
           NOT transition(rfc, handed_off) UNLESS human_approved(rfc)
@@ -165,6 +188,7 @@ domain_theory:
         until the human fires the commission.
     - id: Ax-GOV-2
       name: "Review coverage"
+      tier: statutory
       formal: >
         forall rfc : RFC.
           NOT transition(rfc, steering_review) UNLESS
@@ -175,6 +199,7 @@ domain_theory:
         which councils are relevant — the RFC author sets this, steering validates.
     - id: Ax-GOV-3
       name: "Essence guard"
+      tier: constitutional
       formal: >
         forall rfc : RFC.
           essence_impact(rfc) != none ->
@@ -186,6 +211,7 @@ domain_theory:
         of autonomy mode.
     - id: Ax-GOV-4
       name: "Block resolution"
+      tier: statutory
       formal: >
         forall rfc : RFC, review : Review.
           blocks(review, rfc) ->
@@ -196,6 +222,7 @@ domain_theory:
         they must be resolved by the blocking council.
     - id: Ax-GOV-6
       name: "Entry threshold"
+      tier: statutory
       formal: >
         forall rfc : RFC.
           NOT enter_pipeline(rfc) UNLESS
@@ -206,6 +233,22 @@ domain_theory:
         methodology-level. This makes P3-GOV reusable across projects with different
         governance needs. The project card owns the concrete criteria (e.g., "registry,
         theory, architecture, governance, cross-domain" for pv-method).
+    - id: Ax-GOV-7
+      name: "Verdict aggregation"
+      tier: statutory
+      formal: >
+        forall rfc : RFC, reviews : Set(Review).
+          aggregate_verdicts(reviews) =
+            if exists r in reviews : verdict(r) = block -> blocked
+            else if exists r in reviews : verdict(r) = request_changes -> revision_requested
+            else -> accepted, conditions = union({conditions(r) | r in reviews AND verdict(r) = approve_with_conditions})
+      rationale: >
+        When multiple councils review an RFC and produce different verdicts, the
+        strictest-wins rule applies: any block stops acceptance, any request_changes
+        triggers revision, otherwise all conditions from approve_with_conditions
+        verdicts are unioned. This prevents the weakest review from overriding
+        a stronger one. Grounding: ov-research decision-theory.md (mechanism design —
+        aggregation rules for categorical verdicts avoid Arrow's impossibility).
     - id: Ax-GOV-5
       name: "Revision bound"
       formal: >
@@ -631,6 +674,14 @@ known_wip:
       via signature inclusion (D-053); execution delegated via retraction. M2-REVIEW is
       an adapter that adds RFC-specific framing and verdict production around M1-COUNCIL's
       debate capability. Apply during M2-REVIEW compilation. Contrarian review finding.
+  - id: W8
+    status: open
+    description: >
+      Enforcement gap roadmap (from contrarian review + ov-research enforcement-loop.md).
+      P3-GOV currently has 2 of 4 enforcement layers: Protocol (P3-GOV.yaml) and
+      Workflow (/steering-council skill). Missing: Tool (rfc_advance MCP tool that checks
+      axioms before allowing status transitions) and Verify (postcondition validation on
+      each transition). PRD needed if cooperative compliance proves insufficient.
 
 compilation_record:
   methodology_gate_adaptation: >
@@ -652,7 +703,8 @@ compilation_record:
       note: >
         D_Phi_GOV = (Sigma_Phi_GOV, Ax_Phi_GOV). 9 sorts with cardinality. 6 function
         symbols with totality. 11 predicates with typed signatures referencing declared
-        sorts. 6 closed axioms (Ax-GOV-1 through Ax-GOV-6) with rationale. Domain
+        sorts. 8 closed axioms (Ax-GOV-0 through Ax-GOV-7) with tier classification
+        (constitutional/statutory). Axiom tier system with self-protection (Ax-GOV-0). Domain
         boundary stated. Initial and terminal state membership claimed with axiom-by-
         axiom verification.
     - gate: G2

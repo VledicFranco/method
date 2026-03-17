@@ -1,0 +1,126 @@
+sessions:
+  - id: SESSION-030
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Refine P3-GOV based on ov-research findings"
+    source: "PO directive — integrate 8 findings from ov-research vault scan"
+
+    research_triage:
+      applied_now: 3
+      method_compilation_guidance: 4
+      validation_only: 1
+      findings:
+        - finding: "RFC lifecycle validation"
+          source: "ov-research/knowledge/methodology/rfc-driven-evolution.md"
+          bucket: "validation — 9 real RFCs confirm approach"
+        - finding: "Two-tier governance (constitutional/statutory)"
+          source: "ov-research/knowledge/methodology/governance-model.md"
+          bucket: "applied — D-060 axiom tier classification"
+        - finding: "Decision protocols (voting beats consensus)"
+          source: "ov-research/knowledge/multi-agent/decision-protocols.md"
+          bucket: "AG-044 — M2-REVIEW max_rounds parameter"
+        - finding: "Dissent mechanisms (1.8-2.5x quality)"
+          source: "ov-research/knowledge/multi-agent/dissent-mechanisms.md"
+          bucket: "AG-044 + v0.2 — validates M5-AUDIT, validates pi_council anchoring prevention"
+        - finding: "Session framing (5-layer model)"
+          source: "ov-research/knowledge/multi-agent/session-framing.md"
+          bucket: "AG-044 — M2-REVIEW sigma_0 framing"
+        - finding: "Enforcement loop (4-layer architecture)"
+          source: "ov-research/knowledge/methodology/enforcement-loop.md"
+          bucket: "applied — W8 enforcement roadmap"
+        - finding: "Decision theory (Arrow, Ostrom, mechanism design)"
+          source: "ov-research/knowledge/multi-agent/decision-theory.md"
+          bucket: "applied — D-061 verdict aggregation rule"
+        - finding: "Method defect patterns (PAT-003/004)"
+          source: "ov-research/knowledge/methodology/formal-theory/method-defect-patterns.md"
+          bucket: "AG-044 — compilation-time checks"
+
+    decisions:
+      - id: D-060
+        question: "Should P3-GOV axioms be classified by tier (constitutional vs statutory)?"
+        decision: >
+          Yes. Added axiom tier classification system and Ax-GOV-0 (self-protection).
+          Constitutional: Ax-GOV-0 (self-protection), Ax-GOV-1 (human gate), Ax-GOV-3
+          (essence guard). Statutory: all others. Constitutional axioms cannot be the
+          subject of an RFC processed by P3-GOV — structural prevention of recursive
+          self-justification attacks.
+        status: decided
+        rationale: >
+          Grounded in ov-research governance-model.md C1-C3 framework. C3 (self-protection)
+          maps directly to Ax-GOV-0. Without tier classification, a future RFC could
+          propose removing the human gate — the governance pipeline would process its own
+          safety undermining.
+        for: "All 5 members — Orion (proposed), Harlan (formalized), Reva (self-protection concern)"
+        against: "None"
+        artifacts_modified:
+          - "registry/P3-GOV/P3-GOV.yaml (axiom_tiers section, Ax-GOV-0 added, tier field on all axioms)"
+
+      - id: D-061
+        question: "How should multi-council verdicts be aggregated?"
+        decision: >
+          Added Ax-GOV-7 (verdict aggregation): strictest-wins with union of conditions.
+          Any block -> blocked; any request_changes -> revision; else accepted with
+          union of all conditions. Tier: statutory.
+        status: decided
+        rationale: >
+          Gap identified via ov-research decision-theory.md (Arrow's impossibility for
+          ranked alternatives; categorical verdicts sidestep this). Concrete scenario:
+          Theory Council approves, Architecture Council approves_with_conditions — which
+          conditions apply? Answer: all of them (union). Strictest-wins prevents weakest
+          review from overriding stronger ones.
+        for: "All 5 members — Harlan (formulated), Orion (identified gap), Nika (validated with scenario)"
+        against: "None"
+        artifacts_modified:
+          - "registry/P3-GOV/P3-GOV.yaml (Ax-GOV-7 added)"
+
+    method_compilation_guidance:
+      note: "The following research findings inform AG-044 (method YAML compilation) but do not change P3-GOV.yaml"
+      items:
+        - method: M2-REVIEW
+          finding: "Decision protocols: quality plateaus after 2-3 rounds"
+          guidance: "Add configurable max_rounds parameter to sigma_2 (debate step), default 3"
+          source: "ov-research/knowledge/multi-agent/decision-protocols.md"
+        - method: M2-REVIEW
+          finding: "Session framing: 5-layer frame composition"
+          guidance: "sigma_0 (RFC intake) should follow the 5-layer framing model for council setup"
+          source: "ov-research/knowledge/multi-agent/session-framing.md"
+        - method: M2-REVIEW
+          finding: "Dissent: independent proposals prevent anchoring"
+          guidance: "pi_council observation restriction already prevents anchoring — document as validated"
+          source: "ov-research/knowledge/multi-agent/dissent-mechanisms.md"
+        - method: M5-AUDIT
+          finding: "Dissent: 1.8-2.5x quality improvement from structural dissent"
+          guidance: "M5-AUDIT cast design should use independent proposals + designated contrarian mechanisms"
+          source: "ov-research/knowledge/multi-agent/dissent-mechanisms.md"
+        - method: all
+          finding: "Method defect patterns PAT-003/PAT-004"
+          guidance: "Check each method YAML for undeclared methodology structure and inherited iterative clusters during compilation"
+          source: "ov-research/knowledge/methodology/formal-theory/method-defect-patterns.md"
+
+    open_questions:
+      - "AG-044 still open — now enriched with 5 research-backed method compilation guidelines"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: 0
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.8
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry change: P3-GOV.yaml modified (axiom tiers, Ax-GOV-0, Ax-GOV-7, W8). Draft status."
+        - process: PR-02
+          followed: true
+          note: "No stale items."
+        - process: PR-03
+          followed: true
+          note: "No retro artifacts outside council logs."
+      process_improvement_signal: >
+        Cross-repository research scan (ov-research) produced high-value input: 2 new
+        axioms, 1 structural safety mechanism (tier classification), 5 method compilation
+        guidelines, and validation of 3 existing design choices. Consider making
+        cross-repo knowledge scans a standard pre-compilation step.
+      member_adequacy: true
