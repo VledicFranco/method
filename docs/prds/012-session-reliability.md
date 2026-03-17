@@ -1,11 +1,13 @@
 # PRD 012 — Session Reliability at Scale
 
-**Status:** Draft
+**Status:** Partially implemented
 **Date:** 2026-03-15
+**Previous:** Draft (2026-03-15)
 **Scope:** Adaptive settle delay, PTY parser replacement, concurrency ceiling testing, diagnostic instrumentation
 **Depends on:** PRD 005 (bridge), PRD 010 (PTY watcher)
 **Evidence:** OBS-03 (empty PTY responses), OBS-12 (settle delay compounding), OBS-17 (40% completion at 5 agents), OBS-18 (edit-vs-create reliability gap)
 **Origin:** RFC #1 (council triage — 4-1 vote, highest impact/effort ratio)
+**Implementation:** Phase 0 (staggered batch spawn), Phase 1 (diagnostic instrumentation), and Phase 2 (adaptive settle delay) implemented. Phase 3 (concurrency ceiling testing) and Phase 4 (print-mode sessions) remain unimplemented.
 
 ---
 
@@ -277,42 +279,42 @@ POST /sessions/batch
 
 ## 3. Implementation Order
 
-### Phase 0: Staggered Spawn (C5)
+### Phase 0: Staggered Spawn (C5) — IMPLEMENTED
 
 **Deliverables:**
-- `spawn_delay_ms` field on `POST /sessions` — bridge waits before spawning PTY
-- `POST /sessions/batch` endpoint — accepts array of session configs + `stagger_ms`
-- `bridge_spawn_batch` MCP tool
-- Tests: batch spawn with stagger, verify all sessions initialize sequentially
+- [x] `spawn_delay_ms` field on `POST /sessions` — bridge waits before spawning PTY
+- [x] `POST /sessions/batch` endpoint — accepts array of session configs + `stagger_ms`
+- [x] `bridge_spawn_batch` MCP tool
+- [x] Tests: batch spawn with stagger, verify all sessions initialize sequentially
 
-**Why first:** This is the cheapest, highest-impact fix. Our experiment proved 0/5 → 3/3 with just a 5s stagger. No algorithmic complexity, no parser changes — just a setTimeout between spawns. Delivers immediate value for parallel commissioning.
+**Implementation:** `POST /sessions/batch` in `index.ts`, `bridge_spawn_batch` MCP tool in `mcp/src/index.ts`. Default stagger: 3000ms via `BATCH_STAGGER_MS`.
 
-### Phase 1: Diagnostic Instrumentation (C4)
-
-**Deliverables:**
-- `SessionDiagnostics` interface and tracking in `pty-session.ts` or new `diagnostics.ts`
-- Metrics collection from PTY watcher observations (tool count, idle transitions)
-- Stall classification heuristic
-- Permission prompt detection pattern added to PTY watcher
-- `GET /sessions/:id/status` extended with `diagnostics` field
-- Dashboard diagnostics panel
-- Unit tests for stall classification logic
-
-**Why first:** Diagnostics must exist before concurrency testing (C3) so that stress test results include per-agent breakdowns. Without diagnostics, we repeat the OBS-17 situation — knowing agents failed but not why.
-
-### Phase 2: Adaptive Settle Delay (C1)
+### Phase 1: Diagnostic Instrumentation (C4) — IMPLEMENTED
 
 **Deliverables:**
-- `AdaptiveSettleDelay` class in `packages/bridge/src/adaptive-settle.ts`
-- Integration with `pty-session.ts` response completion detection
-- False-positive detection logic (next-chunk-within-100ms heuristic)
-- Tool-marker reset integration with PTY watcher
-- Configuration via env vars
-- Backward compatibility: `ADAPTIVE_SETTLE_ENABLED=false` preserves current behavior
-- Unit tests with synthetic timing scenarios
-- Integration test: spawn agent, verify response parsing still works with adaptive delay
+- [x] `SessionDiagnostics` interface and tracking in `packages/bridge/src/diagnostics.ts`
+- [x] Metrics collection from PTY watcher observations (tool count, idle transitions)
+- [x] Stall classification heuristic
+- [x] Permission prompt detection pattern added to PTY watcher (`pattern-matchers.ts`)
+- [x] `GET /sessions/:id/status` extended with `diagnostics` field
+- [x] Dashboard diagnostics panel
+- [ ] Unit tests for stall classification logic
 
-**Why second:** After diagnostics reveal the stall patterns, adaptive settle addresses the most mechanical issue — idle overhead. The diagnostics from Phase 1 provide `total_settle_overhead_ms` to measure the improvement.
+**Implementation:** `DiagnosticsTracker` class in `diagnostics.ts` with all 10 metrics fields. Permission prompt pattern via `matchPermissionPrompt()` in `pattern-matchers.ts`. Stall classification heuristic with 4 categories.
+
+### Phase 2: Adaptive Settle Delay (C1) — IMPLEMENTED
+
+**Deliverables:**
+- [x] `AdaptiveSettleDelay` class in `packages/bridge/src/adaptive-settle.ts`
+- [x] Integration with `pty-session.ts` response completion detection
+- [x] False-positive detection logic (next-chunk-within-100ms heuristic)
+- [x] Tool-marker reset integration with PTY watcher
+- [x] Configuration via env vars
+- [x] Backward compatibility: `ADAPTIVE_SETTLE_ENABLED=false` preserves current behavior
+- [ ] Unit tests with synthetic timing scenarios
+- [ ] Integration test: spawn agent, verify response parsing still works with adaptive delay
+
+**Implementation:** `AdaptiveSettleDelay` class with configurable initial (300ms), max (2000ms), floor (200ms) delays. Backoff on false-positive cutoff, reset on tool markers.
 
 ### Phase 3: Concurrency Ceiling Testing (C3)
 

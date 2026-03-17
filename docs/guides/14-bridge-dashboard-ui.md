@@ -26,6 +26,8 @@ GET /dashboard (response)     ←  text/html, auto-refreshes every 5s
 | `packages/bridge/src/token-tracker.ts` | Per-session token data source (from JSONL transcripts) |
 | `packages/bridge/src/pool.ts` | Session list, pool stats, channel data |
 | `packages/bridge/src/pty-watcher.ts` | PTY activity auto-detection (feeds channels) |
+| `packages/bridge/src/diagnostics.ts` | Per-session diagnostic metrics and stall classification (PRD 012) |
+| `packages/bridge/src/adaptive-settle.ts` | Adaptive settle delay algorithm (PRD 012) |
 | `scripts/start-bridge.js` | Launcher — auto-loads OAuth token |
 
 ### Data Flow
@@ -114,7 +116,7 @@ The dashboard follows the **Vidtecci OS Design System**. Reference files are in 
 
 ## Dashboard Panels
 
-The main dashboard has six panels, each with its own data source and rendering logic.
+The main dashboard has seven panels, each with its own data source and rendering logic.
 
 ### 1. Bridge status (health cards)
 
@@ -138,9 +140,15 @@ Data source: `usagePoller`. Requires `CLAUDE_OAUTH_TOKEN`. If unavailable, shows
 
 Tree-ordered by depth (parent-child indentation via `nickname` column). Each row shows nickname, status badge, workdir, method session ID, prompt count, token usage, cache rate, and last activity time.
 
-Clickable rows expand a detail view with: purpose, full session ID, full workdir path, methodology session, detailed token breakdown. Detail view includes links to "View Live Output" (for alive sessions) and "View Transcript".
+Clickable rows expand a detail view with: purpose, full session ID, full workdir path, methodology session, detailed token breakdown, and session diagnostics (PRD 012). Detail view includes links to "View Live Output" (for alive sessions) and "View Transcript".
 
-Data sources: `pool.list()`, `tokenTracker.getUsage(id)`.
+Data sources: `pool.list()`, `tokenTracker.getUsage(id)`, `diagnosticsTracker.snapshot(id)`.
+
+### 4b. Session diagnostics (detail panel)
+
+Per-session diagnostic metrics shown in the expanded detail view (PRD 012). Displays: time to first output, time to first tool call, tool call count, settle overhead, idle transitions, longest idle period, permission prompt detected flag, and stall classification.
+
+Data source: `diagnosticsTracker.snapshot(id)`. See `packages/bridge/src/diagnostics.ts`.
 
 ### 5. Progress timeline
 

@@ -1,11 +1,13 @@
 # PRD 013 — Bridge Test Coverage Extension
 
-**Status:** Draft
+**Status:** Partially implemented
 **Date:** 2026-03-15
+**Previous:** Draft (2026-03-15)
 **Scope:** Unit tests for untested bridge modules, test infrastructure, coverage tooling
 **Depends on:** PRD 005 (bridge + dashboard), PRD 007 (live output + transcript), PRD 008 (channels), PRD 010 (PTY watcher)
 **Evidence:** RFC #2 (council session 2026-03-15, 4-1 vote), retro-prd005-phase2 (proposed delta: "extend DR-09 to bridge"), 5 dashboard rendering bugs caught only in manual review
 **Council:** Ad-hoc RFC triage session
+**Implementation:** Phase 1 partially complete — `dashboard-route.test.ts` and `token-tracker.test.ts` exist with JSONL fixtures. `transcript-reader.test.ts` still missing. Phase 2 (state machine + route tests) and Phase 3 (coverage tooling + DR-09 update) not started.
 
 ---
 
@@ -209,16 +211,14 @@ No minimum threshold initially. The goal is to establish a baseline, not enforce
 
 ## 3. Implementation Order
 
-### Phase 1: Pure function tests (Priority 1)
+### Phase 1: Pure function tests (Priority 1) — PARTIALLY IMPLEMENTED
 
 **Deliverables:**
-- `dashboard-route.test.ts` — tests for all formatting helpers and render functions
-- `token-tracker.test.ts` — tests for tracker lifecycle, aggregation, project dir derivation
-- `transcript-reader.test.ts` — tests for JSONL parsing, session listing
-- JSONL fixture files in `__tests__/fixtures/`
-- Export internal helpers that need testing (add `export` to formatting functions in dashboard-route.ts)
-
-**Estimated effort:** 2 working sessions
+- [x] `dashboard-route.test.ts` — tests for all formatting helpers and render functions (50+ test cases)
+- [x] `token-tracker.test.ts` — tests for tracker lifecycle, aggregation, project dir derivation
+- [ ] `transcript-reader.test.ts` — tests for JSONL parsing, session listing
+- [x] JSONL fixture files in `__tests__/fixtures/` (`session.jsonl` exists; `transcript.jsonl` still missing)
+- [x] Export internal helpers that need testing
 
 **Why first:** Highest regression risk (dashboard rendering bugs), pure functions with no dependencies, highest test-to-effort ratio. Every formatting helper is a single-input/single-output function — trivial to test, high value.
 

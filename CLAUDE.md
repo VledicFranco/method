@@ -15,7 +15,7 @@ npm test
 ```
 packages/
   core/       Pure methodology logic — YAML loader, sessions, theory lookup (zero transport deps)
-  mcp/        MCP server — 23 tools (14 methodology + 9 bridge proxy)
+  mcp/        MCP server — 24 tools (14 methodology + 10 bridge proxy)
   bridge/     HTTP server — PTY session pool, channels, dashboard, token tracking
 registry/     Compiled methodology YAML specs (production artifacts — do not modify casually)
 theory/       Formal theory files (F1-FTH, F4-PHI)
@@ -93,6 +93,11 @@ npm run bridge:stop    # Stop
 | `PTY_WATCHER_DEDUP_WINDOW_MS` | `10000` | Dedup window for repeated observations |
 | `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
 | `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |
+| `BATCH_STAGGER_MS` | `3000` | Default stagger between batch spawns |
+| `ADAPTIVE_SETTLE_ENABLED` | `true` | Enable adaptive settle delay algorithm |
+| `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
+| `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
+| `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
 
 ### Key Bridge Features
 
@@ -110,10 +115,11 @@ npm run bridge:stop    # Stop
 
 ### MCP Proxy Tools
 
-The MCP server exposes 9 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`). All tools include automatic retry (1 retry after 1s on connection error).
+The MCP server exposes 10 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`). All tools include automatic retry (1 retry after 1s on connection error).
 
 **Session management:**
 - `bridge_spawn` — spawn a session (auto-correlates methodology session ID; supports `persistent` flag)
+- `bridge_spawn_batch` — spawn multiple sessions with staggered initialization (prevents API rate limit contention)
 - `bridge_prompt` — send prompt, wait for response
 - `bridge_kill` — kill a session
 - `bridge_list` — list sessions with metadata (includes `stale` flag per session)

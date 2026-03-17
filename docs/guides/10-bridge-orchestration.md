@@ -317,6 +317,75 @@ When a session exits (normal exit, kill, or stale auto-kill), the watcher synthe
 
 Auto-retros are marked `generated_by: pty-watcher` to distinguish them from agent-authored retrospectives. If `.method/retros/` doesn't exist (project doesn't use the method system), the retro is silently skipped.
 
+## Batch Spawn with Stagger (PRD 012)
+
+When spawning multiple agents in parallel, use `bridge_spawn_batch` to stagger initialization. Simultaneous spawns cause API rate limit contention — 0/5 agents completed when spawned at the same instant, but 3/3 completed with 5s stagger.
+
+```
+bridge_spawn_batch({
+  sessions: [
+    { workdir: "/path/to/project", nickname: "impl-1", purpose: "Implement component A" },
+    { workdir: "/path/to/project", nickname: "impl-2", purpose: "Implement component B" },
+    { workdir: "/path/to/project", nickname: "impl-3", purpose: "Write tests" }
+  ],
+  stagger_ms: 3000
+})
+→ {
+    results: [
+      { bridge_session_id: "abc-123", nickname: "impl-1", status: "ready" },
+      { bridge_session_id: "def-456", nickname: "impl-2", status: "ready" },
+      { bridge_session_id: "ghi-789", nickname: "impl-3", status: "ready" }
+    ]
+  }
+```
+
+The default stagger is 3000ms (configurable via `BATCH_STAGGER_MS`). Each session is spawned `stagger_ms` after the previous one. The HTTP endpoint is `POST /sessions/batch`.
+
+## Session Diagnostics (PRD 012)
+
+Every session tracks diagnostic metrics for debugging stalls and failures:
+
+```
+GET /sessions/:id/status
+→ {
+    ...
+    diagnostics: {
+      time_to_first_output_ms: 1200,
+      time_to_first_tool_ms: 3400,
+      tool_call_count: 47,
+      total_settle_overhead_ms: 14100,
+      false_positive_settles: 2,
+      current_settle_delay_ms: 300,
+      idle_transitions: 3,
+      longest_idle_ms: 45000,
+      permission_prompt_detected: false,
+      stall_reason: null
+    }
+  }
+```
+
+**Stall classification:** When a session goes idle without completing, the bridge classifies the cause:
+
+| Classification | Condition |
+|---------------|-----------|
+| `permission_blocked` | No tool calls ever observed — likely hit a permission prompt |
+| `task_complexity` | Tool calls started but agent got stuck in a read-think-stall loop |
+| `resource_contention` | Slow first output AND other agents also slow |
+| `unknown` | None of the above |
+
+The dashboard shows diagnostics per session. Permission prompt detection fires when the PTY watcher sees "Allow ... ? (Y/N)" patterns.
+
+## Adaptive Settle Delay (PRD 012)
+
+The bridge detects response completion by waiting for PTY silence. The adaptive algorithm starts with a short delay (300ms) and backs off only when false-positive cutoffs are detected:
+
+- **Initial delay:** 300ms (vs fixed 1s previously)
+- **Backoff:** 1.5x on false-positive cutoff (response cut short)
+- **Reset:** Returns to initial delay when tool-output markers detected
+- **Cap:** 2000ms maximum, 200ms floor
+
+This reduces idle overhead by 50-70% for tool-heavy agents. Configure via `ADAPTIVE_SETTLE_ENABLED` (default: true), `ADAPTIVE_SETTLE_INITIAL_MS`, `ADAPTIVE_SETTLE_MAX_MS`, `ADAPTIVE_SETTLE_BACKOFF`.
+
 ## Split Prompt Delivery
 
 Long initial prompts (> 500 characters) are automatically split into two messages to prevent agents from treating the instructions as passive context (EXP-OBS02 finding):
@@ -572,6 +641,7 @@ The bridge proxy MCP tools call the bridge HTTP API internally. This section doc
 | MCP Proxy Tool | HTTP Endpoint | Method |
 |----------------|---------------|--------|
 | `bridge_spawn` | `/sessions` | `POST` |
+| `bridge_spawn_batch` | `/sessions/batch` | `POST` |
 | `bridge_prompt` | `/sessions/:id/prompt` | `POST` |
 | `bridge_kill` | `/sessions/:id` | `DELETE` |
 | `bridge_list` | `/sessions` | `GET` |
@@ -681,3 +751,8 @@ Response: `{ "messages": [...], "next_cursor": 5 }`
 | `PTY_WATCHER_DEDUP_WINDOW_MS` | `10000` | Dedup window for repeated observations |
 | `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
 | `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |
+| `BATCH_STAGGER_MS` | `3000` | Default stagger between batch spawns |
+| `ADAPTIVE_SETTLE_ENABLED` | `true` | Enable adaptive settle delay algorithm |
+| `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
+| `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
+| `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
