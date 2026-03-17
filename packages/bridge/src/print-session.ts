@@ -1,6 +1,6 @@
 import PQueue from 'p-queue';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
-import type { LlmResponse, LlmStreamEvent } from './strategy/llm-provider.js';
+import type { LlmResponse } from './strategy/llm-provider.js';
 import type { PtySession, SessionStatus } from './pty-session.js';
 import type { AdaptiveSettleDelay } from './adaptive-settle.js';
 
@@ -78,6 +78,9 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
   // Whether the first prompt has been sent (for --session-id vs --resume)
   let firstPromptSent = false;
 
+  /** Defeats TypeScript's control-flow narrowing for async mutations (kill() during await). */
+  const getStatus = (): SessionStatus => status;
+
   function notifyOutput(data: string): void {
     for (const sub of outputSubscribers) {
       try { sub(data); } catch { /* subscriber errors are non-fatal */ }
@@ -115,7 +118,7 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
       exitCallbacks.push(cb);
     },
 
-    sendPrompt(prompt: string, timeoutMs?: number, _settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
+    sendPrompt(prompt: string, _timeoutMs?: number, _settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
       if (status === 'dead') {
         return Promise.reject(new Error(`Session ${id} is dead — cannot send prompt`));
       }
@@ -171,14 +174,14 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
           notifyOutput(output);
 
           lastActivityAt = new Date();
-          if (status !== 'dead') {
+          if (getStatus() !== 'dead') {
             status = 'ready';
           }
 
           return { output, timedOut: false };
         } catch (err) {
           lastActivityAt = new Date();
-          if (status !== 'dead') {
+          if (getStatus() !== 'dead') {
             status = 'ready';
           }
 
