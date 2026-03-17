@@ -49,6 +49,9 @@ export class ClaudeCodeProvider implements LlmProvider {
     if (request.includePartialMessages) {
       args.push('--include-partial-messages');
     }
+    if (request.allowedTools && request.allowedTools.length > 0) {
+      args.push('--allowedTools', request.allowedTools.join(','));
+    }
     if (request.additionalFlags) {
       args.push(...request.additionalFlags);
     }

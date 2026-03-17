@@ -29,6 +29,8 @@ export interface LlmRequest {
   workdir?: string;
   /** Additional CLI flags */
   additionalFlags?: string[];
+  /** Allowed tools filter (maps to --allowedTools CLI flag) */
+  allowedTools?: string[];
 }
 
 export interface LlmUsage {
