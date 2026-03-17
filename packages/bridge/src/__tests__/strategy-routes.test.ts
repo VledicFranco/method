@@ -5,7 +5,7 @@
  * YAML serialization, and Strategy HTTP routes via Fastify inject().
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
