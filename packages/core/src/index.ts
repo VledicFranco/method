@@ -16,3 +16,5 @@ export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './strategy/
 export { InMemoryArtifactStore, createArtifactStore } from './strategy/artifact-store.js';
 export type { GateType, GateConfig, GateContext, GateResult } from './strategy/gates.js';
 export { getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback } from './strategy/gates.js';
+export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult } from './strategy/strategy-parser.js';
+export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy/strategy-parser.js';
