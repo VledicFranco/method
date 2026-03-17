@@ -38,7 +38,7 @@ export type TranscriptReader = {
  * Derive the Claude Code project directory name from a workdir path.
  * Matches the logic in token-tracker.ts.
  */
-function deriveProjectDirName(workdir: string): string {
+export function deriveProjectDirName(workdir: string): string {
   const abs = resolve(workdir);
   return abs.replace(/:/g, '-').replace(/[\\/]/g, '-').replace(/^-/, '');
 }
