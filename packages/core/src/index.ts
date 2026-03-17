@@ -18,3 +18,5 @@ export type { GateType, GateConfig, GateContext, GateResult } from './strategy/g
 export { getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback } from './strategy/gates.js';
 export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult } from './strategy/strategy-parser.js';
 export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy/strategy-parser.js';
+export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, StrategyExecutionResult, StrategyExecutorConfig } from './strategy/strategy-executor.js';
+export { loadExecutorConfig, StrategyExecutor } from './strategy/strategy-executor.js';
