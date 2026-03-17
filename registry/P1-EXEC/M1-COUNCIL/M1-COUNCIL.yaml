@@ -563,69 +563,121 @@ phases:
     name: "Output"
     role: rho_leader
     precondition: "sigma_2 complete: all Questions resolved OR diminishing_returns halt declared"
-    postcondition: "Artifact exists consolidating Decisions with rationale and minority positions"
+    postcondition: >
+      Two-tier Artifact exists: primary report (executive summary, decisions table,
+      recommendations, key tensions) for human consumption, plus structured appendix
+      (cast, escalation log, session metadata) for reference and machine consumption.
     guidance: |
       **Constraints (what must be true after this step):**
-      - artifact is non-empty: the consolidated output.
-      - The artifact must include: decisions made, key arguments that drove each,
-        and minority positions that were noted but not adopted.
-      - Minority positions are part of the output — they represent knowledge surfaced
-        by the adversarial structure that a single-perspective method would not produce.
+      - report is non-empty: the primary council report in markdown.
+      - The report has four sections: Executive Summary, Decisions Table,
+        Recommendations, and Key Tensions. If sigma_2 halted on diminishing
+        returns, a fifth section (Open Items) lists unresolved questions.
+      - decisions_table has at least 1 entry with all five fields populated.
+      - Each decisions_table entry must contain specific concrete claims in every
+        field — not vague references ("because of X's argument") but the actual
+        argument content ("because API rate limits make batch unviable at 5+ agents").
+      - key_tensions has 2-3 entries, each 2-4 sentences explaining the structural
+        disagreement, which characters held which side, and how it was resolved.
       - positions_updated_count >= 1: at least one position was updated during the
         session (if zero, the council added no value over a single recommendation).
 
       **Rationale:**
-      The Artifact is the method's terminal output. Minority positions are explicitly
-      included because they are the adversarial method's unique contribution — the
-      perspectives a single-agent approach would not have surfaced.
+      The two-tier report serves two audiences: the primary report lets someone who
+      wasn't in the debate act on its outcomes in 60 seconds; the appendix preserves
+      formal traceability for deep-divers and machine consumers. Key Tensions and
+      Position Shifts (embedded in the Decisions Table) capture the adversarial
+      method's unique contribution — insights that arise from the structural
+      disagreements, not from general capability. Without these, the report is just
+      a list of decisions that could have come from a single-agent recommendation.
 
       **Procedure:**
-      1. Consolidate all Decisions from sigma_2 with their rationale.
-      2. For each Decision: record the key arguments from each side.
-      3. Record minority positions — positions that were argued but not adopted.
-      4. If sigma_2 halted on diminishing returns: include unresolved pairs explicitly
-         in the artifact with the Leader's halt rationale. These are not failures — they
-         are questions where continued debate was not productive.
-      5. Count how many character positions were updated during the session.
-      6. Compose the Artifact at the fidelity appropriate to the Challenge (decision
-         memo, architecture proposal, strategy document, etc.).
+      1. Write the Executive Summary: 2-3 sentences covering the challenge, headline
+         decisions, and primary recommendation.
+      2. Build the Decisions Table: one row per resolved Question. For each:
+         - Decision: what was decided (one sentence)
+         - Rationale: the strongest argument that won (one specific sentence)
+         - Dissent/Risk: the strongest counter-argument or minority view (one sentence)
+         - Position Shifts: which characters changed on this question and what specific
+           argument caused it. Format: "{Name} shifted because {concrete argument}".
+           Empty if no shifts on this question.
+      3. Write Recommendations: numbered action items implied by the decisions.
+      4. Write Key Tensions: the 2-3 fundamental disagreements that shaped the debate.
+         Each gets 2-4 sentences: what the tension was, who held which side, how it
+         resolved. These are the core value — the structural disagreements a single
+         perspective would never surface.
+      5. If sigma_2 halted on diminishing returns: add Open Items with unresolved
+         questions and the Leader's halt rationale.
+      6. Build the appendix: cast cards, escalation log, session metadata.
 
       **Output schema reference:**
-      - artifact: the consolidated output document
-      - decisions_summary: array of decision entries with rationale and key arguments
-      - minority_positions: array of positions argued but not adopted
+      - report: markdown string (Executive Summary + Decisions Table + Recommendations + Key Tensions)
+      - decisions_table: structured array (question, decision, rationale, dissent_risk, position_shifts)
+      - key_tensions: array of structural disagreements
+      - recommendations: array of action items
+      - appendix_cast: array of character cards
+      - appendix_escalation_log: array of escalation entries
+      - appendix_metadata: session-level counts
       - positions_updated_count: integer >= 0
     output_schema:
       fields:
-        - name: artifact
+        - name: report
           type: string
-          description: "The consolidated output document"
+          description: "The primary council report in markdown: Executive Summary, Decisions Table, Recommendations, Key Tensions, and optionally Open Items"
           min_length: 1
           required: true
-        - name: decisions_summary
+        - name: decisions_table
           type: array
           items: object
-          description: "{question: string, decision: string, key_arguments: string, dissenting_view: string}"
+          description: "{question: string, decision: string, rationale: string, dissent_risk: string, position_shifts: string[]} — one entry per resolved Question. Each string field must contain a specific concrete claim."
           min_items: 1
           required: true
-        - name: minority_positions
+        - name: key_tensions
+          type: array
+          items: object
+          description: "{tension: string, sides: string, resolution: string} — 2-3 fundamental disagreements that shaped the debate"
+          min_items: 1
+          required: true
+        - name: recommendations
           type: array
           items: string
-          description: "Positions argued but not adopted — the adversarial method's unique output"
+          description: "Action items implied by the decisions — one line each"
           min_items: 0
           required: false
+        - name: appendix_cast
+          type: array
+          items: object
+          description: "{name: string, role: string, expertise: string, conviction: string, blind_spot: string} — character cards from sigma_1"
+          min_items: 3
+          required: true
+        - name: appendix_escalation_log
+          type: array
+          items: object
+          description: "{question: string, escalation: string, po_response: string} — escalations to PO with responses"
+          min_items: 0
+          required: false
+        - name: appendix_metadata
+          type: object
+          description: "{question_count: integer, decisions_made: integer, positions_updated: integer, escalation_count: integer}"
+          required: true
         - name: positions_updated_count
           type: integer
           description: "Number of character positions updated during the session"
           required: true
     invariants:
       hard:
-        - "artifact is non-empty"
-        - "decisions_summary has at least 1 item"
+        - "report is non-empty"
+        - "decisions_table has at least 1 item"
+        - "key_tensions has at least 1 item"
+        - "appendix_cast has at least 3 items (Leader + 2 Contrarians minimum)"
+        - "appendix_metadata is present with all four counts"
         - "positions_updated_count is present"
+        - "every decisions_table entry has non-empty question, decision, rationale, and dissent_risk"
       soft:
         - "positions_updated_count >= 1 (if 0, council added no value)"
-        - "minority_positions is populated if any positions were argued but not adopted"
+        - "recommendations is populated when decisions imply next actions"
+        - "decisions_table entries contain specific claims, not vague references"
+        - "key_tensions has 2-3 entries (fewer suggests shallow debate, more suggests unfocused)"
 
 composability:
   claims:
@@ -648,12 +700,14 @@ composability:
         resolved, all_questions_resolved = true. pre_sigma_3 requires all Questions
         decided, no open Questions. Identity inclusion.
   terminal_condition_claim: >
-    post_sigma_3 produces Artifact with decisions, rationale, minority positions, and
-    positions_updated_count. O_COUNCIL requires: all Questions decided (from sigma_2
-    postcondition, carried through), at least one position updated (checked at sigma_3),
-    Artifact exists (produced at sigma_3), all Characters maintained conviction or
-    updated for named reason (Ax-4 enforced throughout sigma_2). post_sigma_3 implies
-    O_COUNCIL.
+    post_sigma_3 produces two-tier Artifact: primary report (executive summary, decisions
+    table with position shifts, recommendations, key tensions) and structured appendix
+    (cast, escalation log, metadata) with positions_updated_count. O_COUNCIL requires:
+    all Questions decided (from sigma_2 postcondition, carried through), at least one
+    position updated (checked at sigma_3 via positions_updated_count), Artifact exists
+    (produced at sigma_3 as the report + appendix), all Characters maintained conviction
+    or updated for named reason (Ax-4 enforced throughout sigma_2, position shifts in
+    decisions_table provide the evidence). post_sigma_3 implies O_COUNCIL.
   initial_condition_claim: >
     pre_sigma_0 requires Challenge exists. This holds at method invocation: P1-EXEC's
     delta_EXEC passes the Challenge to M1-COUNCIL via embed_COUNCIL.
