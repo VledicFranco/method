@@ -1,0 +1,41 @@
+# Auto-generated retrospective — PTY activity detection (PRD 010)
+# This is a machine-observed retro, not an agent-authored one.
+
+retro:
+  session_id: "fd2cd092-f35e-454e-97ee-09b6738e3d85"
+  nickname: "umbra"
+  generated_by: pty-watcher
+  generated_at: "2026-03-15T10:01:17.572Z"
+
+  timing:
+    spawned_at: "2026-03-15T09:53:40.635Z"
+    terminated_at: "2026-03-15T10:01:17.571Z"
+    duration_minutes: 8
+    active_minutes: 8
+    idle_minutes: 0
+    termination_reason: "killed"
+
+  activity_summary:
+    tool_calls: 13
+    tool_breakdown:
+      - tool: Bash
+        count: 9
+      - tool: Read
+        count: 2
+      - tool: Write
+        count: 2
+    files_touched:
+      - tmp/rfc-recommendations.md
+      - docs/prds/013-bridge-test-coverage.md
+    git_commits: []
+
+  quality:
+    tests_run: false
+    build_succeeded: null
+    errors_observed: 0
+
+  hardest_decision: "(auto-generated — not available)"
+  observations:
+    - "Machine-observed activity profile. See activity_summary for details."
+  card_feedback:
+    essence_feedback: "(auto-generated — not available)"

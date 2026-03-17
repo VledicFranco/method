@@ -1,0 +1,38 @@
+# Auto-generated retrospective — PTY activity detection (PRD 010)
+# This is a machine-observed retro, not an agent-authored one.
+
+retro:
+  session_id: "8ab09f90-6ef8-4f5a-b17c-a6d6a4149fc2"
+  nickname: "drift"
+  generated_by: pty-watcher
+  generated_at: "2026-03-15T10:59:13.016Z"
+
+  timing:
+    spawned_at: "2026-03-15T10:44:33.121Z"
+    terminated_at: "2026-03-15T10:59:13.015Z"
+    duration_minutes: 15
+    active_minutes: 15
+    idle_minutes: 0
+    termination_reason: "killed"
+
+  activity_summary:
+    tool_calls: 13
+    tool_breakdown:
+      - tool: Bash
+        count: 12
+      - tool: Read
+        count: 1
+    files_touched:
+      - packages/bridge/src/live-output.html
+    git_commits: []
+
+  quality:
+    tests_run: false
+    build_succeeded: false
+    errors_observed: 0
+
+  hardest_decision: "(auto-generated — not available)"
+  observations:
+    - "Machine-observed activity profile. See activity_summary for details."
+  card_feedback:
+    essence_feedback: "(auto-generated — not available)"
