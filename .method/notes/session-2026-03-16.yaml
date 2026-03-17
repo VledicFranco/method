@@ -116,10 +116,40 @@ observations:
     observation: "The session naturally flowed: maintenance → audit → improvement → research → design. Each phase built on the prior: the PRD audit revealed what was implemented, the --print research informed the Strategy design, the council used all accumulated knowledge."
     implication: "Long sessions with accumulating context produce better design work than isolated short sessions. Strategy Pipelines should support extended multi-phase workflows."
 
+  - id: OBS-S9
+    category: commission
+    observation: "The /commission skill produced a complete orchestrator prompt in ~2 minutes by reading the project card, PRD spec, routing table, and agenda. The prompt was 250+ lines covering 12 sections. PO reviewed and added requirements: constant commit+push, draft PR immediately, PR comments as implementation journal."
+    implication: "The commission skill produces good first drafts but needs PO refinement for workflow preferences. The 'PR as living artifact' pattern (draft PR on first push, comments as journal) should be a standard commission option."
+
+  - id: OBS-S10
+    category: commission
+    observation: "PO added a key requirement not in the default commission template: 'paste the entire commission prompt as the PR description.' This makes the PR self-documenting — the reviewer has the full spec inline, not a reference to a PRD section. The commissioned agent's implementation notes (PR comments) then form an audit trail against the spec."
+    implication: "Commission prompts should always be embedded in the PR description. This is a process improvement candidate for the commission skill."
+
+  - id: OBS-S11
+    category: process
+    observation: "The proportionality check correctly identified 'how to structure the PRD' as not needing a council (clear best answer). The council session was skipped and replaced with a direct recommendation. This saved time and the three-layer structure (vision + PRD + memory) was better than what a council would have debated."
+    implication: "Proportionality checks prevent council overuse. Track how often they fire and whether the direct recommendations are validated by outcomes."
+
+  - id: OBS-S12
+    category: strategy_preview
+    observation: "This session's workflow is a preview of what Strategy Pipelines would automate: (1) research phase (parallel explore agents), (2) design phase (council session), (3) documentation phase (vision doc + PRD), (4) commission phase (prompt generation), (5) execution phase (agent dispatched). Each phase's output fed the next. Currently manual — Strategy would make it a DAG."
+    implication: "The current session IS a Strategy being executed manually. Use it as the reference workflow when validating PRD 017's design."
+
+  - phase: "Commission and dispatch — PRD 012 Phase 4"
+    items:
+      - "Used /commission skill to generate orchestrator prompt for PRD 012 Phase 4"
+      - "Loaded project card, PRD spec, P2-SD routing table, council agenda"
+      - "Routing evaluation: task_type=implement → M1-IMPL (not multi_task_scope)"
+      - "PO refined: added constant commit+push, draft PR on first push, PR comments as implementation journal, full prompt in PR description"
+      - "Commission prompt: 250+ lines, 12 sections, 5 delivery rules, 9 deliverables"
+      - "Dispatched agent (method TBD — bridge or native Agent)"
+    commits: []  # agent is running, commits will come from the commissioned agent
+
 # ─── Statistics ─────────────────────────────────────────────
 
 stats:
-  commits: 8
+  commits: 9  # 8 prior + 1 session notes
   prds_updated: 5  # 008, 011, 012, 013, 016
   prds_created: 1  # 017
   guides_updated: 3  # 10, 14, 15
@@ -129,4 +159,5 @@ stats:
   memory_files_created: 1
   retro_files_committed: 49
   explore_agents_spawned: 8
-  files_changed: ~30
+  commissions_dispatched: 1  # PRD 012 Phase 4
+  files_changed: ~35
