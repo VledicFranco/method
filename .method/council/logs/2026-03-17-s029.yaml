@@ -1,0 +1,94 @@
+sessions:
+  - id: SESSION-029
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Apply contrarian review feedback to P3-GOV + consider ad-hoc contrarian reviews as governance mechanism"
+    source: "PO directive — use contrarian council findings, note that /council-team joint reviews could be useful for governance"
+
+    contrarian_review_consumed:
+      source: "Ad-hoc /council-team session — 4-member specialist cast (Maren, Dex, Lina, Voss)"
+      findings_count: 7
+      findings_applied: 5
+      findings_deferred: 1
+      findings_rejected: 1
+
+    decisions:
+      - id: D-056
+        question: "Apply contrarian review bug fixes (items 1-4)?"
+        decision: >
+          Applied 4 mechanical fixes: (1) composite termination certificate nu_GOV
+          (Dex's formula), (2) W6 documenting singleton RFC semantics, (3) RFC sort
+          cardinality fixed to singleton_per_pipeline_run, (4) operationalization note
+          on rho_governance (deterministic routing). Item 5 (M2-REVIEW delegates to
+          M1-COUNCIL) recorded as W7 for method compilation.
+        status: decided
+        rationale: "Items 1-3 are bugs. Item 4 is missing documentation. No design debate needed."
+        artifacts_modified:
+          - "registry/P3-GOV/P3-GOV.yaml (4 edits)"
+
+      - id: D-057
+        question: "Create a separate GOV-PROTO operational protocol?"
+        decision: >
+          No. The /steering-council skill is the operational rendering of P3-GOV,
+          same pattern as STEER-PROTO -> /steering-council. The enforcement gap is
+          real but requires runtime (rfc_advance MCP tool), not documentation.
+        status: decided
+        rationale: "Orion: no duplicate artifacts. Reva: skill is the right layer. Nika: enforcement requires runtime, not protocol."
+        for: "All 5 members"
+        against: "Contrarian review's dual-track was reasonable but assumed the skill couldn't serve as operational rendering"
+
+      - id: D-058
+        question: "Should requires_rfc threshold become an axiom?"
+        decision: >
+          Yes — Ax-GOV-6 (entry threshold) as a meta-axiom referencing the project
+          card's rfc_threshold field. The threshold criteria are project-level, not
+          methodology-level. Formal: forall rfc: NOT enter_pipeline(rfc) UNLESS
+          meets_threshold(rfc, project_card.rfc_threshold).
+        status: decided
+        rationale: "Harlan: different projects need different thresholds. Reva: project card owns criteria. Nika: meta-axiom preserves reusability."
+        for: "All 5 members"
+        artifacts_modified:
+          - "registry/P3-GOV/P3-GOV.yaml (Ax-GOV-6 added, W5 resolved)"
+
+      - id: D-059
+        question: "Should ad-hoc contrarian reviews be formalized in P3-GOV?"
+        decision: >
+          Yes — as M5-AUDIT in v0.2, not v0.1. M5-AUDIT designs a fresh adversarial
+          specialist cast per RFC, runs a full joint review, produces findings report.
+          Trigger: novel artifacts or consequential changes. For v0.1, contrarian
+          reviews remain ad-hoc via /council-team.
+        status: decided
+        rationale: "Separate method justified (different domain theory — fresh cast vs standing council). Deferred to v0.2 for MVP discipline."
+        for: "All 5 members"
+        against: "Reva initially concerned about complexity, but the separate-method approach (vs parameter) resolved her concern"
+
+    open_questions:
+      - "AG-044 still open — commission method YAMLs, now informed by contrarian feedback (W7: M2-REVIEW delegates to M1-COUNCIL)"
+      - "rfc_threshold field needs adding to PROJECT-CARD-SCHEMA (follow-on from D-058)"
+      - "M5-AUDIT design for v0.2 — trigger criteria, cast design method, findings schema"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.8
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry change: P3-GOV.yaml modified (bug fixes + Ax-GOV-6). Guide sync not yet needed (draft status)."
+        - process: PR-02
+          followed: true
+          note: "No stale items."
+        - process: PR-03
+          followed: true
+          note: "No retro artifacts outside council logs."
+      process_improvement_signal: >
+        Ad-hoc contrarian reviews proved extremely high-value: found a mathematical
+        bug, 5 design improvements, and a missing axiom in a single session. The
+        steering council's own sessions (S027-S028) missed all of these. This validates
+        the M5-AUDIT concept for v0.2 — specialist adversarial review catches what
+        standing governance misses.
+      member_adequacy: true

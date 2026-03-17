@@ -1,0 +1,690 @@
+methodology:
+  id: P3-GOV
+  name: "Governance Methodology"
+  formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
+  description: >
+    Pipeline methodology whose transition function tracks RFC lifecycle through
+    governance review stages. Receives identified gaps as input, produces
+    human-approved commissions as output. Two output classes: (1) internal
+    decisions — automated under M2-SEMIAUTO with escalation on ambiguity/essence,
+    (2) RFCs — always require human approval before action. The RFC is the primary
+    artifact that crosses the governance-execution boundary.
+  version: "0.1"
+  status: draft
+  compilation_date: "2026-03-17"
+  formal_grounding: "theory/F1-FTH.md §7"
+  design_decisions: "council SESSION-027 D-048, D-049, D-050, D-052; SESSION-028 D-053, D-054"
+  niche: >
+    Formal governance of changes to shared artifacts: registry methods, formal theory,
+    architecture decisions, governance rules, and cross-domain concerns. Produces RFCs
+    as the primary artifact. Human approves final RFC; another methodology (P2-SD,
+    P1-EXEC) executes it. Excludes: gap identification (happens in M1-COUNCIL via
+    P1-EXEC), execution of approved changes, domain-internal decisions that don't
+    touch shared artifacts.
+
+navigation:
+  what: >
+    P3-GOV receives an identified gap or opportunity that requires formal governance
+    review, and routes it through the RFC lifecycle: drafting, domain review, steering
+    review, human approval, and handoff to an execution methodology. It does not
+    identify gaps (that happens in council sessions via P1-EXEC) and does not execute
+    approved changes (that happens via P2-SD or P1-EXEC).
+  who: >
+    Three role types: rho_governance (the agent managing RFC lifecycle — evaluates
+    delta_GOV, dispatches methods), rho_council (council members who draft and review
+    RFCs — varies per method invocation), rho_PO (the human — approves or rejects
+    governance-approved RFCs, has veto authority).
+  why: >
+    Without formal governance, changes to shared artifacts (registry, theory,
+    architecture) happen ad hoc. AG-035 demonstrated this: PRD 010 was implemented
+    outside governance visibility, creating a stale agenda item. P3-GOV links
+    governance decisions to implementation through the RFC pipeline. Ax-GOV-1 (human
+    gate) ensures nothing changes without human approval — making autonomous governance
+    safe because decisions are automated but actions are gated.
+  how: >
+    Evaluate the RFC's current status via delta_GOV. Route to the appropriate method:
+    M1-DRAFT for drafting/revision, M2-REVIEW for council review (parameterized for
+    domain vs steering), M3-APPROVE for human approval, M4-HANDOFF for commission
+    generation. The RFC's status field drives all routing decisions.
+  when_to_invoke:
+    - "A council session identifies a gap that requires formal review (changes to registry, theory, architecture, governance)"
+    - "An RFC exists and needs to advance through the review pipeline"
+    - "A retrospective signal suggests a change that crosses domain boundaries"
+  when_not_to_invoke:
+    - "Domain-internal decisions that don't touch shared artifacts — use council sessions directly"
+    - "Bug fixes, documentation updates, test additions — these don't meet RFC threshold"
+    - "Execution of approved changes — use P2-SD or P1-EXEC"
+    - "Gap identification — use M1-COUNCIL via P1-EXEC"
+
+domain_theory:
+  id: D_Phi_GOV
+  sorts:
+    - name: RFC
+      cardinality: singleton_per_pipeline_run
+      description: >
+        The primary governance artifact — a proposal for changing shared artifacts.
+        One RFC per P3-GOV invocation. Concurrent RFCs require multiple P3-GOV runs
+        managed by the orchestrator (same pattern as P2-SD).
+    - name: Council
+      cardinality: finite
+      description: "A standing decision body (steering, theory, future domain councils)"
+    - name: Review
+      cardinality: unbounded
+      description: "A council's formal verdict on an RFC"
+    - name: Phase
+      cardinality: finite
+      values: [draft, domain_review, steering_review, accepted, rejected, revision_requested, human_approved, handed_off, withdrawn]
+      description: "The RFC lifecycle stage — drives all delta_GOV routing"
+    - name: ReviewVerdict
+      cardinality: finite
+      values: [approve, approve_with_conditions, request_changes, block]
+      description: "A council's verdict on an RFC"
+    - name: HumanDecision
+      cardinality: finite
+      values: [approve, reject, request_changes]
+      description: "The PO's decision on a governance-approved RFC"
+    - name: Commission
+      cardinality: singleton_per_invocation
+      description: "The output artifact: an actionable commission for another methodology"
+    - name: EssenceImpact
+      cardinality: finite
+      values: [none, serves_purpose, touches_invariant, changes_optimize_for]
+      description: "How the RFC relates to the project's essence"
+    - name: State
+      cardinality: singleton_per_invocation
+      description: "Full governance state: { rfc, reviews[], phase, human_decision, commission }"
+  function_symbols:
+    - name: status
+      signature: "RFC -> Phase"
+      totality: total
+      description: "Current lifecycle stage of the RFC"
+    - name: author
+      signature: "RFC -> Council | Agent | Human"
+      totality: total
+      description: "Who proposed the RFC"
+    - name: domain_routing
+      signature: "RFC -> Set(Council)"
+      totality: total
+      description: "Which councils must review this RFC"
+    - name: verdict
+      signature: "Review -> ReviewVerdict"
+      totality: total
+      description: "The reviewing council's verdict"
+    - name: essence_impact
+      signature: "RFC -> EssenceImpact"
+      totality: total
+      description: "The RFC's relationship to the project's essence"
+    - name: revision_count
+      signature: "RFC -> Nat"
+      totality: total
+      description: "Number of times the RFC has been revised (bounded by max_revisions)"
+  predicates:
+    - name: rfc_exists
+      signature: "State"
+      description: "An RFC has been created in this governance session"
+    - name: gap_identified
+      signature: "State"
+      description: "A gap/opportunity has been identified but no RFC exists yet"
+    - name: well_formed
+      signature: "RFC"
+      description: "All required RFC fields populated per RFC-SCHEMA"
+    - name: reviewed_by
+      signature: "RFC x Council"
+      description: "The council has produced a review verdict for this RFC"
+    - name: fully_reviewed
+      signature: "RFC"
+      description: "All councils in domain_routing(rfc) have produced verdicts"
+    - name: governance_approved
+      signature: "RFC"
+      description: "Steering council has accepted the RFC (status = accepted)"
+    - name: human_approved
+      signature: "RFC"
+      description: "The human PO has approved the RFC for execution"
+    - name: blocks
+      signature: "Review x RFC"
+      description: "A council has blocked the RFC — must be resolved before acceptance"
+    - name: commission_ready
+      signature: "RFC"
+      description: "The commission artifact is complete and ready for the human to fire"
+    - name: is_steering_review
+      signature: "Council"
+      description: "The reviewing council is the steering council (triggers Ax-GOV-3)"
+    - name: revision_limit_reached
+      signature: "RFC"
+      description: "revision_count(rfc) >= max_revisions (default 3)"
+  axioms:
+    - id: Ax-GOV-1
+      name: "Human gate"
+      formal: >
+        forall rfc : RFC.
+          NOT transition(rfc, handed_off) UNLESS human_approved(rfc)
+      rationale: >
+        The foundational safety axiom. No RFC reaches execution without explicit
+        human approval. This is what makes autonomous governance safe — councils can
+        debate, identify, propose, and review without risk because nothing happens
+        until the human fires the commission.
+    - id: Ax-GOV-2
+      name: "Review coverage"
+      formal: >
+        forall rfc : RFC.
+          NOT transition(rfc, steering_review) UNLESS
+            forall c in domain_routing(rfc) : reviewed_by(rfc, c)
+      rationale: >
+        Every routed domain council must review before steering decides. Prevents
+        silent skipping of domain expertise. The domain_routing function determines
+        which councils are relevant — the RFC author sets this, steering validates.
+    - id: Ax-GOV-3
+      name: "Essence guard"
+      formal: >
+        forall rfc : RFC.
+          essence_impact(rfc) != none ->
+            steering review MUST include explicit essence check against
+            project_card.essence.{purpose, invariant, optimize_for}
+      rationale: >
+        Essence-touching RFCs get mandatory scrutiny. This is inherited from
+        STEER-PROTO's essence guardianship obligation. Non-negotiable regardless
+        of autonomy mode.
+    - id: Ax-GOV-4
+      name: "Block resolution"
+      formal: >
+        forall rfc : RFC, review : Review.
+          blocks(review, rfc) ->
+            NOT transition(rfc, accepted) UNLESS block_resolved(review, rfc)
+      rationale: >
+        A blocking verdict must be addressed — the blocking council's concern must
+        be resolved in a subsequent review. Blocks cannot be overridden by steering;
+        they must be resolved by the blocking council.
+    - id: Ax-GOV-6
+      name: "Entry threshold"
+      formal: >
+        forall rfc : RFC.
+          NOT enter_pipeline(rfc) UNLESS
+            meets_threshold(rfc, project_card.rfc_threshold)
+      rationale: >
+        Only changes meeting the project's declared RFC threshold should enter P3-GOV.
+        The threshold criteria are project-level (declared in the project card), not
+        methodology-level. This makes P3-GOV reusable across projects with different
+        governance needs. The project card owns the concrete criteria (e.g., "registry,
+        theory, architecture, governance, cross-domain" for pv-method).
+    - id: Ax-GOV-5
+      name: "Revision bound"
+      formal: >
+        forall rfc : RFC.
+          revision_limit_reached(rfc) ->
+            transition(rfc, rejected)
+      rationale: >
+        Prevents infinite revision loops. After max_revisions (default 3) rounds of
+        revision_requested → re-draft → re-review, the RFC is auto-rejected. The
+        proposer can submit a new RFC if the problem persists.
+  domain_boundary_note: >
+    Excludes: the internal execution of methods selected by delta_GOV (P3-GOV sees
+    only terminal results); gap identification (happens in M1-COUNCIL via P1-EXEC);
+    execution of approved changes (happens via P2-SD or P1-EXEC); the content domain
+    of the change being proposed; domain-internal council decisions that don't produce
+    RFCs. D_Phi_GOV tracks RFC lifecycle state only.
+  initial_state_valid_claim: >
+    A state with gap_identified = true, rfc_exists = false satisfies all axioms:
+    Ax-GOV-1 (no RFC exists to transition — vacuously true), Ax-GOV-2 (no RFC to
+    review — vacuously true), Ax-GOV-3 (no RFC — vacuously true), Ax-GOV-4 (no
+    reviews — vacuously true), Ax-GOV-5 (revision_count = 0 — not reached). Valid.
+  terminal_state_valid_claim: >
+    A state with status(rfc) = handed_off satisfies all axioms: Ax-GOV-1 (human
+    approved the RFC before handoff — holds), Ax-GOV-2 (all domain reviews completed
+    before steering review — holds), Ax-GOV-3 (essence check performed if applicable
+    — holds), Ax-GOV-4 (no unresolved blocks — holds), Ax-GOV-5 (revision count
+    within bounds — holds). Valid.
+    Alternative terminal: status(rfc) = rejected OR status(rfc) = withdrawn. Both
+    valid — no transitions required, all axioms vacuously satisfied.
+
+roles:
+  - id: rho_governance
+    description: >
+      The agent managing the RFC lifecycle. Evaluates delta_GOV, dispatches methods,
+      tracks RFC status transitions. Does not participate in debate or review —
+      routes to the appropriate council for that.
+    operationalization_note: >
+      delta_GOV routing is deterministic — status(rfc) is a concrete value, not a
+      judgment call. This role can be automated (shell script or MCP tool) or played
+      by the human directly. It does not require LLM judgment. The role exists for
+      formal authority separation (lifecycle management vs. content review vs. approval),
+      not because the routing requires intelligence.
+    observation_projection: >
+      pi_governance = id : Mod(D_Phi_GOV) -> Mod(D_Phi_GOV) — full methodology
+      state visibility. Required to evaluate RFC status and apply delta_GOV.
+    authorized_transitions:
+      - "Evaluate RFC status and apply delta_GOV"
+      - "Dispatch selected method via retraction pair"
+      - "Update RFC status on method completion"
+      - "Apply Ax-GOV-5 (auto-reject on revision limit)"
+    not_authorized:
+      - "Draft or modify RFC content (M1-DRAFT's role)"
+      - "Produce review verdicts (M2-REVIEW's role)"
+      - "Approve RFCs on behalf of the human (M3-APPROVE's role)"
+      - "Override delta_GOV routing"
+  - id: rho_council
+    description: >
+      Council members who participate in RFC drafting and review. Varies per method
+      invocation — M1-DRAFT uses the authoring council, M2-REVIEW uses the reviewing
+      council. Not a fixed set — different councils participate at different stages.
+    observation_projection: >
+      pi_council : Mod(D_Phi_GOV) -> {rfc, reviews_for_this_council, phase} —
+      restricted to the RFC content and the council's own reviews. Cannot see other
+      councils' pending reviews (prevents anchoring bias).
+    authorized_transitions:
+      - "Draft RFC content (M1-DRAFT)"
+      - "Produce review verdicts (M2-REVIEW)"
+    not_authorized:
+      - "Advance RFC status directly (goes through rho_governance)"
+      - "Approve RFCs (rho_PO only)"
+  - id: rho_PO
+    description: >
+      Product Owner (human). Reviews governance-approved RFCs and makes final
+      approval decision. Has veto authority. The only role that can authorize
+      transition to human_approved status.
+    observation_projection: >
+      pi_PO : Mod(D_Phi_GOV) -> {rfc, all_reviews, essence_check_result, phase} —
+      sees the complete RFC package: proposal, all review verdicts, essence check,
+      minority positions.
+    authorized_transitions:
+      - "Approve RFC (transition to human_approved)"
+      - "Reject RFC (transition to rejected)"
+      - "Request changes (transition to revision_requested)"
+      - "Withdraw RFC at any stage"
+    not_authorized:
+      - "Override review verdicts (councils own their verdicts)"
+      - "Skip the review pipeline (RFC must go through domain + steering review)"
+    coverage_claim: >
+      pi_governance is identity — full coverage. pi_council covers RFC content and
+      council-specific reviews. pi_PO covers the decision-relevant package. Union
+      covers all of D_Phi_GOV. No dimension is unobservable across all three roles.
+    authority_claim: >
+      rho_governance: lifecycle transitions. rho_council: content creation and review.
+      rho_PO: final approval/rejection. Union covers all transitions required to
+      advance from initial state (gap identified) to terminal state (handed_off,
+      rejected, or withdrawn).
+
+transition_function:
+  id: delta_GOV
+  formal_type: "delta_GOV : Mod(D_Phi_GOV) -> Option(Method)"
+  evaluation_order: status_driven
+  note: >
+    delta_GOV routes based on RFC lifecycle status. The Phase sort is the sole
+    discriminator. Each status maps to exactly one method or termination. The
+    domain_review status has sub-routing based on review coverage (fully_reviewed
+    predicate). This is a pipeline transition function — not a priority stack.
+  arms:
+    - label: draft_from_gap
+      condition: "gap_identified(s) AND NOT rfc_exists(s)"
+      returns: "Some(M1-DRAFT)"
+      rationale: "Gap identified, no RFC yet. Draft one."
+    - label: first_domain_review
+      condition: "rfc_exists(s) AND status(rfc) = draft AND well_formed(rfc)"
+      returns: "Some(M2-REVIEW)"
+      routing_note: "Routed to first council in domain_routing(rfc). review_type = domain."
+      rationale: "Well-formed RFC ready for domain review."
+    - label: next_domain_review
+      condition: "rfc_exists(s) AND status(rfc) = domain_review AND NOT fully_reviewed(rfc)"
+      returns: "Some(M2-REVIEW)"
+      routing_note: "Routed to next unreviewed council in domain_routing(rfc). review_type = domain."
+      rationale: "Domain review in progress — route to next unreviewed council."
+    - label: steering_review
+      condition: "rfc_exists(s) AND fully_reviewed(rfc) AND status(rfc) != accepted AND status(rfc) != rejected"
+      returns: "Some(M2-REVIEW)"
+      routing_note: "Routed to steering council. review_type = steering. Essence check mandatory (Ax-GOV-3)."
+      rationale: "All domain reviews complete. Steering council makes final call."
+    - label: human_approval
+      condition: "rfc_exists(s) AND status(rfc) = accepted"
+      returns: "Some(M3-APPROVE)"
+      rationale: "Governance-approved RFC ready for human review."
+    - label: commission
+      condition: "rfc_exists(s) AND status(rfc) = human_approved"
+      returns: "Some(M4-HANDOFF)"
+      rationale: "Human approved. Generate commission for execution methodology."
+    - label: revision
+      condition: "rfc_exists(s) AND status(rfc) = revision_requested AND NOT revision_limit_reached(rfc)"
+      returns: "Some(M1-DRAFT)"
+      routing_note: "Revision mode — RFC fields pre-populated, revision_count incremented."
+      rationale: "Human or reviewer requested changes. Re-enter draft stage."
+    - label: revision_exhausted
+      condition: "rfc_exists(s) AND status(rfc) = revision_requested AND revision_limit_reached(rfc)"
+      returns: "None"
+      routing_note: "RFC auto-rejected per Ax-GOV-5."
+      rationale: "Max revisions reached. Pipeline terminates with rejection."
+    - label: terminal_handoff
+      condition: "rfc_exists(s) AND status(rfc) = handed_off"
+      returns: "None"
+      rationale: "RFC fully processed. Commission ready for human to fire."
+    - label: terminal_rejected
+      condition: "rfc_exists(s) AND status(rfc) = rejected"
+      returns: "None"
+      rationale: "RFC rejected by steering or human. Pipeline terminates."
+    - label: terminal_withdrawn
+      condition: "rfc_exists(s) AND status(rfc) = withdrawn"
+      returns: "None"
+      rationale: "RFC withdrawn by author. Pipeline terminates."
+  completeness_claim: >
+    The conditions partition Mod(D_Phi_GOV) by RFC existence and Phase value.
+    Every valid state either has no RFC (gap_identified only) or has an RFC in exactly
+    one of the 9 Phase values. The 11 arms cover: gap-without-RFC (1), each Phase
+    value (domain_review split into 2 by fully_reviewed, revision_requested split
+    into 2 by revision_limit), and all 3 terminal Phases. Jointly exhaustive.
+
+termination_certificate:
+  id: nu_GOV
+  definition: >
+    nu_GOV(s) = (max_revisions - revision_count(rfc)) * (5 + |domain_routing(rfc)|)
+                + status_distance(s)
+                + remaining_reviews(s)
+    where:
+      status_distance = distance from current Phase to nearest terminal Phase
+        in the Phase DAG: draft(5) → domain_review(4) → steering_review(3)
+        → accepted(2) → human_approved(1) → handed_off(0)
+        rejected(0), withdrawn(0)
+        gap_pre_rfc(6) — before any RFC exists
+      remaining_reviews = |domain_routing(rfc)| - |{c : reviewed_by(rfc, c)}|
+        (0 when no RFC exists)
+  initial_value: "(max_revisions) * (5 + |routing|) + 6 + 0"
+  final_value: 0
+  decrease_witness: >
+    Composite measure with three components. The outer term (max_revisions -
+    revision_count) dominates: each revision cycle costs at most (5 + |routing|)
+    inner measure units, and the outer term decreases by exactly (5 + |routing|)
+    on each revision. Within a cycle, the inner terms strictly decrease:
+
+    M1-DRAFT: status_distance goes from 6 (gap) to 5 (draft), or from
+    revision_requested to draft (inner reset, but outer term decreased). Net
+    decrease: at least 1 within a cycle, or outer-term-dominated on revision.
+
+    M2-REVIEW (domain): remaining_reviews decreases by 1 per invocation.
+    When remaining_reviews hits 0, status_distance also decreases (domain_review
+    → steering_review). Net decrease: at least 1.
+
+    M2-REVIEW (steering): status_distance decreases from 3 to 2 (accepted) or
+    0 (rejected). Net decrease: at least 1.
+
+    M3-APPROVE: status_distance decreases from 2 to 1 (human_approved) or
+    0 (rejected). On request_changes: revision_count increments, outer term
+    decreases by (5 + |routing|), inner terms reset. Net decrease: outer
+    decrease (5 + |routing|) minus inner reset (at most 5 + |routing|) minus
+    current position = net decrease of at least current inner position >= 0.
+    Strictly decreasing because outer term dominates.
+
+    M4-HANDOFF: status_distance from 1 to 0. Terminal. Net decrease: 1.
+
+    Revision bound: Ax-GOV-5 ensures revision_count never exceeds max_revisions.
+    When max_revisions reached, Ax-GOV-5 forces rejection (terminal). The outer
+    term reaches 0, making nu_GOV = status_distance + remaining_reviews, which
+    is still bounded and strictly decreasing toward terminal.
+
+    Worst-case total transitions: max_revisions * (|routing| + 5) + (|routing| + 6).
+  note: >
+    Fixed from v0.1 which had a non-monotonic measure (status_distance + remaining_reviews
+    increased on revision). The composite measure with the outer revision-budget term
+    was identified by contrarian review (Dex, SESSION-028 sub-council).
+    Prior measure was: nu = status_distance + remaining_reviews (BUG: increased on revision).
+    Credit: contrarian review council, 2026-03-17.
+
+retraction_pairs:
+  - id: RP-GOV-1
+    name: Phi_GOV_to_DRAFT
+    trigger: "draft_from_gap or revision arm fires"
+    embed:
+      signature: "embed_DRAFT : Mod(D_Phi_GOV)[pre-dispatch] -> Mod(D_DRAFT)"
+      definition: >
+        embed_DRAFT(s) = {
+          gap := s.gap_description,
+          rfc_schema := RFC-SCHEMA,
+          existing_rfc := s.rfc (if revision mode, else None),
+          revision_count := s.revision_count
+        }
+    project:
+      signature: "project_DRAFT : Mod(D_DRAFT)[terminal] -> Mod(D_Phi_GOV)[post-method]"
+      definition: >
+        project_DRAFT(t) = {
+          rfc := t.rfc,
+          status := draft,
+          rfc_exists := true,
+          revision_count := t.revision_count
+        }
+    retraction_verification: "project_DRAFT(embed_DRAFT(s)).gap = s.gap — trivially true; RFC is appended, not substituted"
+    status: declared
+
+  - id: RP-GOV-2
+    name: Phi_GOV_to_REVIEW
+    trigger: "first_domain_review, next_domain_review, or steering_review arm fires"
+    embed:
+      signature: "embed_REVIEW : Mod(D_Phi_GOV)[pre-dispatch] -> Mod(D_REVIEW)"
+      definition: >
+        embed_REVIEW(s) = {
+          rfc := s.rfc,
+          reviewing_council := next_unreviewed(s) or steering_council,
+          review_type := domain | steering,
+          prior_reviews := s.reviews,
+          project_essence := project_card.essence (if review_type = steering)
+        }
+    project:
+      signature: "project_REVIEW : Mod(D_REVIEW)[terminal] -> Mod(D_Phi_GOV)[post-method]"
+      definition: >
+        project_REVIEW(t) = {
+          reviews := s.reviews ++ [t.review],
+          reviewed_by := s.reviewed_by ++ {t.reviewing_council},
+          status := if fully_reviewed(rfc) then steering_review
+                    else if review_type = steering then
+                      t.verdict in {approve, approve_with_conditions} -> accepted
+                      | t.verdict = reject -> rejected
+                      | t.verdict = request_changes -> revision_requested
+                      | t.verdict = block -> blocked (stays in review)
+                    else domain_review
+        }
+    retraction_verification: "project_REVIEW(embed_REVIEW(s)).rfc = s.rfc — RFC content unchanged by review; review is appended"
+    status: declared
+
+  - id: RP-GOV-3
+    name: Phi_GOV_to_APPROVE
+    trigger: "human_approval arm fires"
+    embed:
+      signature: "embed_APPROVE : Mod(D_Phi_GOV)[pre-dispatch] -> Mod(D_APPROVE)"
+      definition: >
+        embed_APPROVE(s) = {
+          rfc := s.rfc,
+          all_reviews := s.reviews,
+          essence_check_result := extract_essence_check(s.reviews),
+          minority_positions := extract_minority(s.reviews)
+        }
+    project:
+      signature: "project_APPROVE : Mod(D_APPROVE)[terminal] -> Mod(D_Phi_GOV)[post-method]"
+      definition: >
+        project_APPROVE(t) = {
+          human_decision := t.decision,
+          status := t.decision = approve -> human_approved
+                    | t.decision = reject -> rejected
+                    | t.decision = request_changes -> revision_requested
+        }
+    retraction_verification: "project_APPROVE(embed_APPROVE(s)).rfc = s.rfc — trivially true; human decision is appended"
+    status: declared
+
+  - id: RP-GOV-4
+    name: Phi_GOV_to_HANDOFF
+    trigger: "commission arm fires"
+    embed:
+      signature: "embed_HANDOFF : Mod(D_Phi_GOV)[pre-dispatch] -> Mod(D_HANDOFF)"
+      definition: >
+        embed_HANDOFF(s) = {
+          rfc := s.rfc,
+          governance_context := {
+            reviews := s.reviews,
+            essence_check := extract_essence_check(s.reviews),
+            human_decision := s.human_decision,
+            conditions := extract_conditions(s.reviews)
+          }
+        }
+    project:
+      signature: "project_HANDOFF : Mod(D_HANDOFF)[terminal] -> Mod(D_Phi_GOV)[post-method]"
+      definition: >
+        project_HANDOFF(t) = {
+          commission := t.commission,
+          commission_ready := true,
+          status := handed_off
+        }
+    retraction_verification: "project_HANDOFF(embed_HANDOFF(s)).rfc = s.rfc — trivially true; commission is derived from RFC"
+    status: declared
+
+objective:
+  id: O_Phi_GOV
+  formal: >
+    O_Phi_GOV(s) =
+      (status(rfc) = handed_off AND commission_ready(rfc))
+      OR status(rfc) = rejected
+      OR status(rfc) = withdrawn
+  type: terminal
+  expressible_claim: >
+    O_Phi_GOV references status (declared function symbol RFC -> Phase),
+    commission_ready (declared predicate over RFC). All symbols are in Sigma_Phi_GOV.
+    O_Phi_GOV is expressible as a closed sentence over Mod(D_Phi_GOV).
+  addresses_operationalization: >
+    O_Phi_GOV is satisfied when the RFC has reached a terminal state. The successful
+    terminal state (handed_off) means a commission exists and is ready for the human
+    to fire into an execution methodology. The unsuccessful terminal states (rejected,
+    withdrawn) mean the governance pipeline completed without producing a commission.
+    Both are valid completions of the governance lifecycle.
+  progress_preorder:
+    name: "leq_Phi_GOV"
+    definition: >
+      States are ordered by RFC status distance to terminal:
+        s_0 (gap identified) < s_1 (RFC drafted) < s_2 (domain reviews in progress)
+        < s_3 (steering review) < s_4 (governance approved) < s_5 (human approved)
+        < s_6 (handed off, O_Phi_GOV = true).
+      Rejected and withdrawn are terminal (maximal) at any point.
+      Well-founded: finite status set, strict total order on the main path.
+  success_profile:
+    - id: mu_1
+      name: pipeline_progress
+      formula: "1 - (status_distance(s) / max_status_distance)"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks how far the RFC has progressed through the pipeline. 0 at gap
+        identification, 1.0 at handoff. Monotonically increasing on the main path
+        (revision loops temporarily decrease but are bounded by Ax-GOV-5).
+    - id: mu_2
+      name: review_coverage
+      formula: "|{c : reviewed_by(rfc, c)}| / |domain_routing(rfc)|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_2 tracks review completeness. 0 before any reviews, 1.0 when all routed
+        councils have reviewed. Required to reach 1.0 before steering review
+        (Ax-GOV-2). Monotonically increasing within a review cycle.
+    - id: mu_3
+      name: governance_completion
+      formula: "1 if O_Phi_GOV(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        mu_3 = 1 is necessary and sufficient for O_Phi_GOV. Binary measure that
+        transitions from 0 to 1 only at terminal state.
+
+known_wip:
+  - id: W1
+    status: open
+    description: >
+      Method YAMLs (M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF) not yet compiled.
+      P3-GOV.yaml declares the methodology coalgebra; the 4 methods need individual
+      compilation following M1-MDES gate structure and F4-PHI schema. Commission
+      planned (D-054).
+  - id: W2
+    status: open
+    description: >
+      Retraction pairs RP-GOV-1 through RP-GOV-4 are declared at type level but not
+      formally verified. Method domain theories (D_DRAFT, D_REVIEW, D_APPROVE,
+      D_HANDOFF) must be compiled first; then retraction conditions can be verified.
+  - id: W3
+    status: open
+    description: >
+      M2-REVIEW inherits M1-COUNCIL axioms (Ax-3 through Ax-7) via signature inclusion
+      (D-053). The formal signature inclusion from Sigma_COUNCIL into Sigma_REVIEW has
+      not yet been spelled out. Required during M2-REVIEW compilation.
+  - id: W4
+    status: open
+    description: >
+      P3-GOV's interaction model with P1-EXEC and P2-SD is not formalized. They are
+      peer program methodologies — the human chooses when to invoke governance vs
+      execution. No formal routing between them exists yet.
+  - id: W5
+    status: resolved
+    description: >
+      RESOLVED (D-058): Added Ax-GOV-6 (entry threshold) as a meta-axiom referencing
+      the project card's rfc_threshold field. The threshold criteria are project-level,
+      not methodology-level. Remaining work: add rfc_threshold field to PROJECT-CARD-SCHEMA.
+  - id: W6
+    status: open
+    description: >
+      P3-GOV processes one RFC per pipeline run (RFC sort: singleton_per_pipeline_run).
+      Concurrent RFCs require multiple P3-GOV invocations, each tracking one RFC
+      independently. The methodology does not model RFC concurrency — the orchestrator
+      (human or dispatch agent) manages multiple pipeline runs. Same pattern as P2-SD.
+  - id: W7
+    status: open
+    description: >
+      M2-REVIEW should delegate its debate step (sigma_2) to M1-COUNCIL via domain
+      retraction (F1-FTH Definition 6.3), not reimplement the debate. Axioms inherited
+      via signature inclusion (D-053); execution delegated via retraction. M2-REVIEW is
+      an adapter that adds RFC-specific framing and verdict production around M1-COUNCIL's
+      debate capability. Apply during M2-REVIEW compilation. Contrarian review finding.
+
+compilation_record:
+  methodology_gate_adaptation: >
+    P3-GOV is a methodology Phi = (D_Phi, delta_Phi, O_Phi). M1-MDES gates are
+    adapted: G4 checks delta_GOV (transition function), retraction pairs, and
+    termination certificate. G5 checks predicate operationalization for Phase
+    transitions and RFC well-formedness. All other gates apply as-is.
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: pipeline methodology routing RFCs through governance
+        lifecycle. Who: governance agent + council members + human PO. Why: ad-hoc
+        changes to shared artifacts bypass governance (AG-035 case study). How: evaluate
+        RFC status → apply delta_GOV → dispatch method. When: gap identified that
+        meets RFC threshold.
+    - gate: G1
+      result: PASS
+      note: >
+        D_Phi_GOV = (Sigma_Phi_GOV, Ax_Phi_GOV). 9 sorts with cardinality. 6 function
+        symbols with totality. 11 predicates with typed signatures referencing declared
+        sorts. 6 closed axioms (Ax-GOV-1 through Ax-GOV-6) with rationale. Domain
+        boundary stated. Initial and terminal state membership claimed with axiom-by-
+        axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_Phi_GOV stated as disjunction of three conditions (handed_off + commission_ready,
+        rejected, withdrawn). Type: terminal. Expressibility claim present. Progress
+        preorder as 7-state chain with terminal shortcuts. Three measures (mu_1 pipeline
+        progress, mu_2 review coverage, mu_3 governance completion).
+    - gate: G3
+      result: PASS
+      note: >
+        Three roles (rho_governance, rho_council, rho_PO) with observation projections
+        and explicit authorized/not-authorized transitions. Coverage claim: pi_governance
+        is identity (full coverage). Authority claim: union covers all transitions.
+        Role partition rationale: three roles because governance has three distinct
+        authority boundaries (lifecycle management, content/review, approval).
+    - gate: G4
+      result: PASS_WITH_WIP
+      gate_adaptation: "Methodology-adapted: checks delta_GOV + retraction pairs + termination certificate"
+      note: >
+        delta_GOV declared as 11-arm status-driven condition table. Completeness claim
+        present (partitions by Phase values). Termination certificate nu_GOV with
+        revision-bounded decrease witness. Four retraction pairs declared at type level
+        (W2: not yet verified — requires method domain theories). Method YAMLs not
+        yet compiled (W1).
+    - gate: G5
+      result: DEFERRED
+      note: >
+        Predicate operationalization deferred until method YAMLs are compiled.
+        Phase transition predicates (well_formed, fully_reviewed, etc.) need
+        concrete True/False criteria from M1-DRAFT and M2-REVIEW domain theories.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-GOV/P3-GOV.yaml). Structurally complete."

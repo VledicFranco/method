@@ -1,0 +1,85 @@
+sessions:
+  - id: SESSION-028
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Auto — run P0 agenda: compile P3-GOV, resolve M2-REVIEW/M1-COUNCIL relationship"
+
+    decisions:
+      - id: D-053
+        question: "How does M2-REVIEW relate to M1-COUNCIL's debate axioms (Ax-3 through Ax-7)?"
+        decision: >
+          Signature inclusion, not domain retraction or replication. D_REVIEW's signature
+          extends D_COUNCIL's debate-relevant sorts (Character, Turn, Position, Question)
+          via inclusion. Axioms referenced by source, not copied. Updates to M1-COUNCIL
+          axioms automatically propagate to M2-REVIEW.
+        status: decided
+        rationale: >
+          Three options evaluated: (A) domain retraction — over-engineered, M2-REVIEW
+          doesn't delegate to M1-COUNCIL as a sub-method; (B) axiom replication — violates
+          the invariant (multiple sources of truth); (C) signature inclusion — formally
+          sound, no drift, serves the invariant. Option C proposed by Orion, formalized
+          by Harlan as signature inclusion.
+        for: "All 5 members — Harlan (formally sound), Nika (no drift), Orion (proposed), Reva (maintainable), Thane (serves invariant)"
+        against: "None"
+
+      - id: D-054
+        question: "How should P3-GOV compilation be approached?"
+        decision: >
+          Produce P3-GOV.yaml (methodology coalgebra) in this session. The 4 method YAMLs
+          (M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF) are deferred for focused
+          compilation as a commissioned task.
+        status: decided
+        rationale: "P3-GOV.yaml is derivable from S027 decisions. Method YAMLs each need deep compilation work."
+
+      - id: D-055
+        question: "P3-GOV.yaml compilation result"
+        decision: >
+          P3-GOV.yaml produced at registry/P3-GOV/P3-GOV.yaml. Draft status. 9 sorts,
+          6 function symbols, 11 predicates, 5 axioms (Ax-GOV-1 through Ax-GOV-5 — added
+          Ax-GOV-5 revision bound for termination). 11-arm delta_GOV, 4 retraction pairs
+          (declared), termination certificate nu_GOV. Gates G0-G4 pass (G4 with WIP),
+          G5 deferred, G6 pass. YAML validates per DR-13.
+        status: decided
+        rationale: "Follows P1-EXEC and P2-SD patterns. Ax-GOV-5 (revision bound) added to close termination obligation — without it, revision loops could be infinite."
+        artifacts_produced:
+          - "registry/P3-GOV/P3-GOV.yaml"
+          - "registry/P3-GOV/M1-DRAFT/ (directory created)"
+          - "registry/P3-GOV/M2-REVIEW/ (directory created)"
+          - "registry/P3-GOV/M3-APPROVE/ (directory created)"
+          - "registry/P3-GOV/M4-HANDOFF/ (directory created)"
+        new_axiom:
+          id: Ax-GOV-5
+          name: "Revision bound"
+          formal: "forall rfc: revision_limit_reached(rfc) -> transition(rfc, rejected)"
+          rationale: "Prevents infinite revision loops. Default max_revisions = 3. Required for termination certificate."
+
+    open_questions:
+      - "Commission the 4 method YAMLs — single agent or parallel?"
+      - "Should P3-GOV be installed in the project manifest before method compilation?"
+      - "AG-040 (RFC-001/RFC-002 review) — process through P3-GOV pipeline as validation after methods are compiled?"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry change: P3-GOV.yaml created. AG-041 partially resolved. Guide sync not yet needed — P3-GOV is draft status, no operational guide required yet."
+        - process: PR-02
+          followed: true
+          note: "AG-043 resolved in this session (D-053). AG-041 partially resolved (methodology YAML done, methods pending)."
+        - process: PR-03
+          followed: true
+          note: "No retro artifacts produced outside council logs"
+      process_improvement_signal: >
+        Two consecutive sessions (S027-S028) produced a complete methodology design
+        from scratch: domain theory, methods, transition function, retraction pairs,
+        termination certificate, and compiled YAML. This validates that the council is
+        effective at methodology design — the hardest kind of governance work. Consider
+        making methodology design a recognized council session type.
+      member_adequacy: true
