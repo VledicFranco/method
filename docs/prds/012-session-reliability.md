@@ -327,7 +327,7 @@ POST /sessions/batch
 
 **Why third:** Requires both diagnostics (to understand failures) and adaptive settle (to reduce overhead). Running the matrix without these would produce the same uninformative results as OBS-17.
 
-### Phase 4: Print-Mode Sessions (C2) — REVISED after EXP-012-P4
+### Phase 4: Print-Mode Sessions (C2) — REVISED after EXP-012-P4 + CLI research (2026-03-16)
 
 **Experiment result (2026-03-15):** `--output-format stream-json` does NOT work in interactive PTY mode — it requires `--print`. However, `--print` with `--resume <session_id>` maintains full conversation context across calls. This enables a fundamentally better architecture:
 
@@ -342,14 +342,81 @@ NEW (print mode):
   → clean JSON → result field → always works
 ```
 
-**Key findings from experiment:**
-- `--print --output-format json` returns `{ result: "answer" }` — clean, structured, never empty
-- `--resume <session_id>` continues an existing conversation — full multi-turn support
-- `--output-format stream-json --verbose` gives real-time streaming with tool calls
-- No settle delay needed — `--print` exits when done, deterministic completion
-- No PTY parsing needed — stdout is structured JSON
+#### CLI Research Findings (2026-03-16, Claude Code v2.1.77)
 
-**Architecture: dual-mode sessions**
+**What print mode gains over PTY:**
+
+| Capability | `--print` | PTY (interactive) |
+|------------|-----------|-------------------|
+| Structured output (`--output-format json/stream-json/text`) | Yes | No |
+| Budget cap (`--max-budget-usd`) | Yes | No |
+| Fallback model (`--fallback-model`) | Yes | No |
+| Ephemeral sessions (`--no-session-persistence`) | Yes | No |
+| Pre-assigned session IDs (`--session-id <uuid>`) | Yes | No |
+| Session branching (`--fork-session`) | Yes | No |
+| MCP isolation (`--strict-mcp-config`) | Yes | No |
+| Partial message streaming (`--include-partial-messages`) | Yes | No |
+
+**What print mode preserves (no loss vs PTY):**
+- Full tool access — Read, Edit, Bash, Write, Glob, Grep, Agent, all MCP tools
+- Multi-turn via `--resume <session_id>` — full conversation context, cache-efficient (`cache_read_input_tokens` confirmed)
+- `--allowedTools` / `--disallowedTools` — same tool filtering
+- System prompt control — `--system-prompt` (override) and `--append-system-prompt` (additive)
+- All MCP servers connect and all MCP tools available (confirmed with `--verbose` init event)
+- Agentic multi-turn tool-use loops within a single invocation (confirmed `num_turns: 2+`)
+- `--model`, `--effort`, `--agent`, `--add-dir` flags
+
+**What print mode loses vs PTY:**
+- No live TUI — no xterm.js rendering for human observation
+- No interactive permission prompts — must use `--permission-mode bypassPermissions` or `--dangerously-skip-permissions`
+- No mid-conversation user input — each `--print` call is one prompt → one response
+- No max-turns control — only `--max-budget-usd` or tool restrictions limit execution
+
+**JSON output structure** (`--output-format json`):
+
+```json
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 12345,
+  "duration_api_ms": 11000,
+  "num_turns": 3,
+  "result": "The agent's final text response",
+  "stop_reason": "end_turn",
+  "session_id": "uuid",
+  "total_cost_usd": 0.042,
+  "usage": {
+    "input_tokens": 5000,
+    "cache_creation_input_tokens": 2000,
+    "cache_read_input_tokens": 14427,
+    "output_tokens": 800
+  },
+  "modelUsage": { "claude-opus-4-6": { "inputTokens": 5000, "outputTokens": 800, "costUSD": 0.042 } },
+  "permission_denials": []
+}
+```
+
+**Stream-JSON output** (`--output-format stream-json --verbose --include-partial-messages`):
+- `system/init` event: full tool list, MCP server status, model, permission mode, agents, plugins, CLI version
+- `content_block_delta` events: individual token chunks as they arrive
+- `assistant` events: tool use blocks with name, input, result
+- `result` event: final metadata (same fields as JSON output)
+
+**Key flags for bridge integration:**
+
+| Flag | Bridge use |
+|------|-----------|
+| `--session-id <uuid>` | Bridge pre-assigns IDs before spawn |
+| `--resume <session_id>` | Multi-prompt sessions without persistent PTY |
+| `--fork-session` | Conversation branching (retry from checkpoint) |
+| `--max-budget-usd` | Per-session cost cap |
+| `--strict-mcp-config` | Isolate MCP servers per session |
+| `--permission-mode bypassPermissions` | Required for headless tool use |
+| `--no-session-persistence` | Ephemeral throwaway sessions |
+| `--append-system-prompt` | Inject bridge context without overriding CLAUDE.md |
+
+#### Architecture: dual-mode sessions
 
 The bridge gains a `mode` field on sessions:
 
@@ -360,16 +427,34 @@ type SessionMode = 'pty' | 'print';
 - **`mode: "pty"`** (existing) — persistent PTY process, TUI rendering, live output via xterm.js. Used for: interactive admin sessions, live monitoring, phone portal chat.
 - **`mode: "print"`** (new) — each prompt spawns `claude --print --resume <id>`. Used for: commissions, automated tasks, anything that needs reliable structured output.
 
-**Deliverables:**
-- `PrintSession` class alongside existing `PtySession` — same interface, different backend
+#### Deliverables
+
+- `PrintSession` class alongside existing `PtySession` — same `Session` interface, different backend
 - `mode: "print" | "pty"` field on `POST /sessions` and `bridge_spawn`
-- `PrintSession.sendPrompt()` runs `claude --print --output-format json --resume <session_id> -p "prompt"`, parses JSON, returns `result`
-- For streaming: `--output-format stream-json --verbose` piped to SSE endpoint
+- `PrintSession.sendPrompt()` runs `claude --print --output-format json --resume <session_id> -p "prompt" --permission-mode bypassPermissions`, parses JSON, returns `result`
+- Rich metadata extraction: `total_cost_usd`, `num_turns`, `usage` (input/output/cache tokens), `permission_denials`, `duration_ms` — all from the JSON result, no parsing needed
+- For streaming: `--output-format stream-json --verbose --include-partial-messages` piped to SSE endpoint, replaces PTY raw stream for print sessions
+- `--session-id <uuid>` for bridge-controlled session IDs (no post-spawn correlation needed)
+- `--max-budget-usd` passed from session metadata for per-session cost caps
+- `--strict-mcp-config` for MCP isolation when needed
+- `--append-system-prompt` to inject bridge context (session ID, channel URLs) without overriding project CLAUDE.md
 - Bridge auto-selects: commissions default to `print`, admin sessions default to `pty`
-- PTY watcher still works for `pty` sessions. For `print` sessions, tool calls come from JSON `type: "tool_use"` messages — more reliable than regex
+- PTY watcher still works for `pty` sessions. For `print` sessions, tool calls come from stream-json `assistant` events with `type: "tool_use"` — structured, no regex needed
 - Backward compatible: existing `pty` sessions unchanged
 
-**Why this is the right Phase 4:** Print-mode sessions eliminate OBS-03 (empty responses) entirely for commissioned work. The phone portal's `bridge_prompt` would return actual text instead of empty strings. PTY mode is preserved for live output viewing. Both modes coexist.
+#### What this eliminates
+
+| Problem | Current (PTY) | With print mode |
+|---------|--------------|-----------------|
+| OBS-03 (empty responses) | 50% of `bridge_prompt` returns empty | JSON `result` field always populated |
+| Settle delay overhead | 300ms-2s per tool call | No settle delay — process exits on completion |
+| PTY parser fragility | Regex on raw ANSI output | Structured JSON, never ambiguous |
+| Unknown token usage | Estimated from JSONL transcripts | Exact `usage` object per invocation |
+| Unknown cost | Derived from token estimates | Exact `total_cost_usd` per invocation |
+| Permission stalls | Agent waits for y/n indefinitely | `permission_denials` array in result, no stall |
+| Response boundary detection | Heuristic (prompt char + silence) | Deterministic (process exit) |
+
+**Why this is the right Phase 4:** Print-mode sessions eliminate OBS-03 (empty responses) entirely for commissioned work. The phone portal's `bridge_prompt` would return actual text instead of empty strings. PTY mode is preserved for live output viewing. Both modes coexist. The rich metadata (cost, turns, cache tokens, permission denials) enables better diagnostics than the PTY watcher can provide for PTY sessions.
 
 ---
 
@@ -381,9 +466,11 @@ type SessionMode = 'pty' | 'print';
 4. **Stall classification:** Stalled sessions receive a non-null `stall_reason` that matches manual diagnosis in ≥80% of cases
 5. **Concurrency ceiling documented:** Stress test results at 3, 5, 7, 10 agents with completion rates, per-agent diagnostics, and resource usage
 6. **5-agent completion rate ≥80%:** Up from the current 40% baseline (OBS-17)
-7. **Parser probe complete:** Phase A experiment executed with documented findings — either JSON parser shipped or explicit rationale for deferral
-8. **No regression:** Existing single-agent and 2-agent workflows maintain current reliability (no false-positive settle cutoffs introduced)
-9. **Staggered spawn:** `bridge_spawn_batch` with 3s stagger achieves ≥80% completion at 5 agents (up from 0% simultaneous)
+7. **Print-mode sessions work:** `bridge_spawn` with `mode: "print"` returns structured JSON with `result` field on every prompt — zero empty responses
+8. **Print-mode metadata:** Print sessions expose `total_cost_usd`, `num_turns`, `usage` (input/output/cache tokens), `permission_denials` per prompt
+9. **Print-mode streaming:** Print sessions support SSE streaming via `stream-json --verbose` with tool call events
+10. **No regression:** Existing single-agent and 2-agent PTY workflows maintain current reliability (no false-positive settle cutoffs introduced)
+11. **Staggered spawn:** `bridge_spawn_batch` with 3s stagger achieves ≥80% completion at 5 agents (up from 0% simultaneous)
 
 ---
 
@@ -397,7 +484,9 @@ type SessionMode = 'pty' | 'print';
 | `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
 | `SETTLE_DELAY_MS` | `1000` | Fixed settle delay (used when adaptive is disabled) |
 | `DIAGNOSTICS_ENABLED` | `true` | Enable per-session diagnostic metrics |
-| `PTY_PARSER_MODE` | `auto` | Parser mode: `auto` (detect), `json` (force JSON), `regex` (force legacy) |
+| `PRINT_SESSION_DEFAULT` | `false` | Default session mode for `bridge_spawn` when `mode` not specified |
+| `PRINT_PERMISSION_MODE` | `bypassPermissions` | Permission mode for print sessions (must allow headless tool use) |
+| `PRINT_MAX_BUDGET_USD` | *(none)* | Default per-prompt cost cap for print sessions (optional) |
 
 ---
 
@@ -417,11 +506,14 @@ type SessionMode = 'pty' | 'print';
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | **Adaptive settle introduces false-positive cutoffs** — shorter delays cause response truncation | MEDIUM | HIGH | Backoff algorithm self-corrects. `false_positive_settles` metric alerts on elevated rates. Fallback to fixed delay via `ADAPTIVE_SETTLE_ENABLED=false`. |
-| **`--output-format stream-json` incompatible with PTY mode** | HIGH | MEDIUM | Phase A is a blocking experiment. If it fails, C2 is deferred. PRD still delivers C1, C3, C4 independently. |
+| **`--output-format stream-json` incompatible with PTY mode** | ~~HIGH~~ RESOLVED | ~~MEDIUM~~ | Confirmed in EXP-012-P4 and CLI research (2026-03-16): `--output-format` requires `--print`. Architecture revised to dual-mode (PTY for interactive, print for commissions). Not a risk — it's the design. |
 | **Concurrency ceiling is hardware-specific** — results don't generalize | MEDIUM | LOW | Document hardware specs in stress test results. Ceiling is a baseline, not a guarantee. Users tune `MAX_SESSIONS` for their environment. |
 | **Permission prompt detection false positives** — regex matches non-permission text | LOW | LOW | Pattern is specific (`Allow ... ? (y/n)`). False positives only affect the `permission_prompt_detected` flag, not session behavior. |
 | **Stall classification is wrong** — heuristic misdiagnoses cause | MEDIUM | LOW | Classification is advisory, not actionable. Diagnostics expose raw metrics so humans can override the heuristic. Target ≥80% accuracy, not 100%. |
 | **Diagnostic overhead** — tracking metrics slows the bridge | LOW | LOW | Metrics are counters and timestamps — nanosecond cost. No per-chunk allocation. PTY watcher already processes the same data. |
+| **Print-mode `bypassPermissions` is overly broad** — commissioned agents get unrestricted tool access | MEDIUM | MEDIUM | This matches the current PTY behavior where agents auto-approve tools. Scope enforcement (PRD 014) provides the guardrails. `--allowedTools` can further restrict per session. |
+| **Print-mode no max-turns control** — runaway agent can't be stopped by turn count | MEDIUM | LOW | `--max-budget-usd` caps cost. Bridge can also externally timeout and kill the process. No `--max-turns` flag exists in CLI v2.1.77. |
+| **Print-mode process spawn overhead** — each prompt spawns a new `claude` process | MEDIUM | LOW | Process startup is ~1-2s. For commissioned work (prompts minutes apart), this is negligible. For rapid-fire prompting, PTY mode is preferred. Bridge auto-selects mode based on use case. |
 
 ---
 
