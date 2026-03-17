@@ -20,3 +20,5 @@ export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNod
 export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy/strategy-parser.js';
 export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, StrategyExecutionResult, StrategyExecutorConfig } from './strategy/strategy-executor.js';
 export { loadExecutorConfig, StrategyExecutor } from './strategy/strategy-executor.js';
+export type { StrategyRetro } from './strategy/retro-generator.js';
+export { generateRetro, computeCriticalPath, retroToYaml } from './strategy/retro-generator.js';
