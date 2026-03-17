@@ -285,9 +285,7 @@ export function validateStrategyDAG(dag: StrategyDAG): ValidationResult {
  * Returns an error message if a cycle is found, null otherwise.
  */
 function detectCycles(nodes: StrategyNode[]): string | null {
-  const WHITE = 0; // unvisited
-  const GRAY = 1;  // in current DFS path
-  const BLACK = 2; // fully explored
+  const WHITE = 0; // unvisited (GRAY=1, BLACK=2 used in dfs())
 
   const color = new Map<string, number>();
   for (const node of nodes) {

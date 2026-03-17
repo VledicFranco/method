@@ -696,15 +696,6 @@ describe('StrategyExecutor', () => {
   });
 
   it('parallel execution: two independent nodes', async () => {
-    const provider = new MockLlmProvider();
-
-    // Both nodes take 50ms via the mock (real parallelism test)
-    const delayResponse = (result: string, delayMs: number): LlmResponse => {
-      const resp = makeMockResponse({ result });
-      // We override invoke to add delay
-      return resp;
-    };
-
     // Create a provider with built-in delay
     class DelayProvider implements LlmProvider {
       public invocationOrder: string[] = [];
@@ -788,7 +779,7 @@ strategy:
     let callCount = 0;
 
     class RetryProvider implements LlmProvider {
-      async invoke(request: LlmRequest): Promise<LlmResponse> {
+      async invoke(_request: LlmRequest): Promise<LlmResponse> {
         callCount++;
         if (callCount === 1) {
           // First attempt: gate will fail (tests_passed is false)
@@ -916,8 +907,6 @@ strategy:
   });
 
   it('artifact dependency filtering: node receives only declared inputs', async () => {
-    const provider = new MockLlmProvider();
-
     // Track what the second node receives
     let secondNodePrompt = '';
 

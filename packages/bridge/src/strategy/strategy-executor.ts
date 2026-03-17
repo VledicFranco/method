@@ -10,7 +10,7 @@
 import type { LlmProvider, LlmResponse } from './llm-provider.js';
 import type { ArtifactStore, ArtifactBundle } from './artifact-store.js';
 import { createArtifactStore } from './artifact-store.js';
-import type { GateConfig, GateResult, GateContext } from './gates.js';
+import type { GateResult, GateContext } from './gates.js';
 import { evaluateGate, buildRetryFeedback } from './gates.js';
 import type {
   StrategyDAG,
