@@ -119,7 +119,7 @@ export function createUsagePoller(config: {
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function parseBucket(body: Record<string, unknown>, key: string): UsageBucket {
+export function parseBucket(body: Record<string, unknown>, key: string): UsageBucket {
   const bucket = body[key] as Record<string, unknown> | undefined;
   if (!bucket || typeof bucket !== 'object') {
     return { utilization: 0, resets_at: null };
@@ -140,7 +140,7 @@ function parseBucket(body: Record<string, unknown>, key: string): UsageBucket {
   return { utilization, resets_at };
 }
 
-function parseExtraUsage(body: Record<string, unknown>): { enabled: boolean } | null {
+export function parseExtraUsage(body: Record<string, unknown>): { enabled: boolean } | null {
   const extra = body.extra_usage as Record<string, unknown> | undefined;
   if (!extra || typeof extra !== 'object') return null;
   return { enabled: !!extra.enabled };
