@@ -1,0 +1,132 @@
+# Working Session Notes — 2026-03-16/17
+# Agent: Claude Opus 4.6 (1M context)
+# Duration: Extended session (multi-hour)
+# Mode: Interactive with PO — doc maintenance, council sessions, PRD design
+
+session:
+  date: "2026-03-16"
+  continued_into: "2026-03-17"
+  agent: "Claude Opus 4.6 (1M context)"
+  mode: interactive_with_po
+  working_directory: pv-method
+
+# ─── What We Did ────────────────────────────────────────────
+
+work_log:
+  - phase: "Doc maintenance — PRD cross-referencing"
+    items:
+      - "Read PRDs 010, 011, 016; identified relationship gap between 011 and 016"
+      - "Updated PRD 011: status → partially implemented, added Superseded-by header, updated phase checklists"
+      - "Updated PRD 016: status → implemented, added Supersedes header, added relationship table"
+      - "Rewrote Guide 15 (remote access) — was describing pre-PRD-016 world (no auth, no HTTPS, no mobile UI)"
+      - "Updated Guide 15 security model from 2 layers to 4 (added HTTPS + passkey)"
+    commits:
+      - { hash: b1ba71f, msg: "docs(council): update agenda and session log for SESSION-023" }
+      - { hash: 5507150, msg: "docs: cross-reference PRD 011/016, mark 016 implemented, update Guide 15" }
+      - { hash: 7ce9ac7, msg: "docs(retros): add 49 auto-generated retrospectives from 2026-03-15" }
+
+  - phase: "PRD audit — status sync across all PRDs"
+    items:
+      - "Read all 13 PRDs, identified 3 with wrong status"
+      - "Spawned 3 parallel explore agents to check implementation status of PRDs 008, 012-015"
+      - "PRD 008: noted Component 4 (heartbeat) superseded by PRD 010"
+      - "PRD 012: Draft → Partially implemented (Phases 0-2 done: batch stagger, diagnostics, adaptive settle)"
+      - "PRD 013: Draft → Partially implemented (2/3 Phase 1 test files exist)"
+      - "Updated Guide 10 with batch spawn, diagnostics, adaptive settle sections + 5 config vars"
+      - "Updated Guide 14 with diagnostics panel + key files"
+      - "Updated CLAUDE.md: tool count 23→24, added bridge_spawn_batch, added PRD 012 config vars"
+    commits:
+      - { hash: 43af682, msg: "docs: audit PRD statuses, update 008/012/013, sync guides 10/14 and CLAUDE.md" }
+
+  - phase: "M1-COUNCIL output redesign"
+    items:
+      - "Ran council session on improving sigma_3 output (4 characters: Sable, Orion, Vega, Kai)"
+      - "Resolved 3 questions: structure (two-tier report), depth (one sentence per cell, specific claims), format (markdown primary, structured appendix)"
+      - "Updated skill Phase 5 with new report structure"
+      - "Updated M1-COUNCIL.yaml sigma_3: output_schema 4→8 fields, guidance rewritten, invariants expanded"
+      - "Copied skill to .claude/skills/council-team/ in repo, user-level becomes deployment copy"
+    commits:
+      - { hash: 11b4d6a, msg: "feat(council): two-tier report output for M1-COUNCIL sigma_3" }
+
+  - phase: "CLI research — claude --print mode"
+    items:
+      - "Comprehensive research on --print vs interactive PTY (Claude Code v2.1.77)"
+      - "Tested: --resume, --fork-session, --session-id, --strict-mcp-config, --max-budget-usd, --output-format json/stream-json"
+      - "Confirmed: full MCP tool access, multi-turn via --resume, all built-in tools work"
+      - "Documented: gains (structured output, budget caps, session branching), losses (no TUI, no interactive permissions)"
+      - "Updated PRD 012 Phase 4 with full research findings"
+    commits:
+      - { hash: 5cb7ec4, msg: "docs(prd): expand PRD 012 Phase 4 with CLI research on --print mode" }
+
+  - phase: "Strategy Pipelines — council + PRD design"
+    items:
+      - "Deep research on Constellation Engine (Scala DAG execution engine)"
+      - "Read all formal theory (F1-FTH, F4-PHI), full registry (5 methodologies, 32 methods), core/mcp/bridge source"
+      - "Ran 6-member council session (Thane, Kael, Mira, Voss, Lyra, Rune) — 12 questions, 5 position shifts"
+      - "Produced GlyphJS report (tmp/20260316-council-strategy-prd.pdf)"
+      - "Designed CMEM-PROTO (Council Memory Protocol) — persistent cross-session council context"
+      - "Created first memory file for Strategy Pipelines topic"
+      - "Designed three-layer document structure: vision doc + PRD 017 + council memory"
+      - "Wrote vision doc (all ideas + decisions + research + deferred items)"
+      - "Wrote PRD 017 Phase 1 (7 components, 4 sub-phases, 8 success criteria)"
+    commits:
+      - { hash: b12dae0, msg: "feat(protocol): CMEM-PROTO — council memory for cross-session continuity" }
+      - { hash: 8bcc96d, msg: "docs: PRD 017 (Strategy Pipelines) + vision document" }
+
+# ─── Observations ───────────────────────────────────────────
+
+observations:
+  - id: OBS-S1
+    category: process
+    observation: "Parallel explore agents (3 concurrent) were highly effective for PRD audit — each checked a subset of PRDs against the codebase independently. Total research time ~3 min vs ~10 min sequential."
+    implication: "Strategy Pipelines could use this pattern: spawn parallel research agents, gate on completion, merge results."
+
+  - id: OBS-S2
+    category: tool_effectiveness
+    observation: "The council session for Strategy Pipelines ran ~65 turns across 12 questions in a single context window. The 6-member cast maintained distinct voices and genuine disagreements throughout. 5 position shifts occurred naturally."
+    implication: "M1-COUNCIL scales to complex design challenges with large casts. The 6-member cast was not too large — each member contributed distinctly."
+
+  - id: OBS-S3
+    category: process
+    observation: "The proportionality check in the council skill correctly identified that the 'how to structure the PRD' question didn't need a council — it had a clear best answer. Saved ~15 min of unnecessary debate."
+    implication: "Proportionality checks work. They should be preserved even as council usage increases."
+
+  - id: OBS-S4
+    category: context_management
+    observation: "This session loaded the full codebase (theory, registry, core, mcp, bridge, project card) into context via 5 parallel explore agents before the council. Total research ~3 min. The council session benefited from this — references to specific files, interfaces, and patterns were accurate."
+    implication: "Pre-loading domain knowledge before a council session produces higher-quality debate. Could be formalized as a 'research phase' in Strategy execution."
+
+  - id: OBS-S5
+    category: document_design
+    observation: "The three-layer document structure (vision + PRD + council memory) emerged from a direct recommendation, not a council debate. The structure separates concerns cleanly: vision = permanent idea archive, PRD = current scope, memory = debate context."
+    implication: "Not every design decision needs adversarial debate. Some have clear solutions that benefit from direct recommendation."
+
+  - id: OBS-S6
+    category: council_memory
+    observation: "First use of CMEM-PROTO. The memory file for Strategy Pipelines captured 12 decisions, 4 tensions, 5 key insights, and 3 recommendations in ~200 lines of YAML. This is the right granularity — enough to resume a session without re-reading the full report."
+    implication: "Memory files should stay under 300 lines. If they grow beyond that, the topic should be split."
+
+  - id: OBS-S7
+    category: tool_effectiveness
+    observation: "GlyphJS lint caught 4 schema errors on first attempt (steps needed 'content' not 'description', comparison needs 'options'+'features', architecture needs 'children', sequence needs 'actors'). All fixable from schema output. Document was too tall for --continuous PDF (19857px vs 19200px limit) — had to use paginated."
+    implication: "Always lint before export. For long council reports, paginated PDF is the safe default."
+
+  - id: OBS-S8
+    category: process
+    observation: "The session naturally flowed: maintenance → audit → improvement → research → design. Each phase built on the prior: the PRD audit revealed what was implemented, the --print research informed the Strategy design, the council used all accumulated knowledge."
+    implication: "Long sessions with accumulating context produce better design work than isolated short sessions. Strategy Pipelines should support extended multi-phase workflows."
+
+# ─── Statistics ─────────────────────────────────────────────
+
+stats:
+  commits: 8
+  prds_updated: 5  # 008, 011, 012, 013, 016
+  prds_created: 1  # 017
+  guides_updated: 3  # 10, 14, 15
+  council_sessions: 2  # sigma_3 redesign + Strategy Pipelines
+  protocols_created: 1  # CMEM-PROTO
+  vision_docs_created: 1
+  memory_files_created: 1
+  retro_files_committed: 49
+  explore_agents_spawned: 8
+  files_changed: ~30
