@@ -1,11 +1,13 @@
 # PRD 010 — PTY Activity Auto-Detection
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-15
+**Previous:** Draft (2026-03-15)
 **Scope:** Real-time PTY output parsing, auto-channel emission, auto-retrospective generation
 **Depends on:** PRD 008 (channel infrastructure), PRD 005 (bridge + dashboard)
 **Evidence:** OBS-01 (agents don't use channel tools), OBS-02 (agents stall without visibility), OBS-09 (PTY output contains parseable signals), OBS-11 (agents deliver well but silently), PR-03 enforcement gap (0/12 retros placed correctly)
-**Council:** SESSION-022, D-035
+**Council:** SESSION-022 (D-035 scope), SESSION-023 (D-038 confirmation, 7 design gaps resolved)
+**Implementation:** PTY watcher with 7 pattern matchers, auto-channel emission, auto-retro generator, persistent sessions. Bridge config: 10 max sessions, 1s settle delay. OBS-01/09/11 resolved. OBS-12 mitigated (settle delay reduced).
 
 ---
 
@@ -62,11 +64,29 @@ type ObservationCategory =
   | 'idle';
 ```
 
+**Data pipeline:**
+
+Raw PTY chunks arrive via `onOutput`. The watcher processes them through a pipeline:
+
+1. **ANSI strip** — `stripAnsi(chunk)` on the watcher's own copy. Never mutate the shared data that other subscribers (transcript buffer, live output) receive.
+2. **Line buffering** — The watcher maintains a `lineBuffer: string` for handling patterns that span chunks. On each chunk: prepend `lineBuffer` to the cleaned chunk, split by `\n`, process all complete lines through pattern matchers, keep the last incomplete segment as the new `lineBuffer`. Cap `lineBuffer` at 4KB — any line longer than that isn't a parseable signal; truncate from the left.
+3. **Pattern matching** — Run all registered matchers against each complete line.
+4. **Dedup + rate limit** — Filter matches through the emitter's sliding window.
+5. **Channel emission** — Write to session channels via `appendMessage`.
+6. **Observation recording** — Store in the watcher's `observations[]` for auto-retro.
+
 **Lifecycle:**
-1. Pool `create()` spawns a PTY session, then creates a `PtyWatcher` attached via `session.onOutput()`
-2. Watcher buffers incoming data, runs pattern matchers on each chunk (plus a trailing line buffer for patterns that span chunks)
+1. Pool `create()` spawns a PTY session, then creates a `PtyWatcher` attached via `session.onOutput()` AND `session.onExit()`
+2. Watcher buffers incoming data through the pipeline above
 3. On match, watcher calls `appendMessage` on the session's channels and records an `ActivityObservation`
-4. On session kill/death, watcher detaches and hands observations to the auto-retro generator
+4. On session death (via `onExit` callback), watcher collects final observations and triggers the auto-retro generator synchronously before detaching
+
+**Death detection (GAP 1 fix):** The `PtySession` interface must expose an `onExit(cb: (exitCode: number) => void): void` method, mirroring the existing `onOutput` pattern. In `pty-session.ts`, this wraps `ptyProcess.onExit()`. The watcher subscribes to both `onOutput` (for live pattern matching) and `onExit` (for retro generation). This keeps death detection self-contained in the watcher — the pool does not need modification for auto-retro triggering.
+
+```typescript
+// Addition to PtySession interface
+onExit(cb: (exitCode: number) => void): void;
+```
 
 ### Component 2: Pattern Matchers
 
@@ -111,15 +131,22 @@ Each pattern targets a specific, stable signal in Claude Code's PTY output. Per 
 
 **What it detects:** Claude Code tool invocations. Claude Code prints tool names when executing them (e.g., `Read`, `Edit`, `Bash`, `Write`, `Glob`, `Grep`). MCP tool calls appear with their full qualified name (e.g., `mcp__method__step_advance`).
 
-**Heuristic:** Match lines containing known tool name patterns at the start of a tool invocation block.
+**Heuristic:** Tool invocations in Claude Code's TUI appear with specific formatting — they are preceded by the `●` marker or appear within box-drawing TUI chrome. Bare word matching (e.g., `\bRead\b`) produces false positives from agent prose ("Let me Read the file"). The matcher must use contextual patterns that distinguish tool invocations from prose mentions.
 
 ```typescript
-// Built-in tools
-const BUILTIN_TOOL_RE = /\b(Read|Edit|Write|Bash|Glob|Grep|TodoWrite|WebFetch|WebSearch)\b/;
+// Built-in tools — require TUI context (● marker, box-drawing prefix, or line-start tool name followed by colon/parenthesis)
+// The ● marker precedes tool-use blocks in Claude Code's TUI output
+const TOOL_INVOCATION_RE = /(?:●\s*|[│├└─]\s*)(Read|Edit|Write|Bash|Glob|Grep|TodoWrite|WebFetch|WebSearch|Agent|LSP)\b/;
 
-// MCP tools — match the mcp__namespace__tool pattern
+// Alternatively: tool name at line start followed by tool-specific patterns
+// e.g., "Read  /path/to/file" or "Bash  command here"
+const TOOL_LINE_START_RE = /^\s*(Read|Edit|Write|Bash|Glob|Grep)\s{2,}/;
+
+// MCP tools — the mcp__ prefix is unambiguous, no context needed
 const MCP_TOOL_RE = /\b(mcp__\w+__\w+)\b/;
 ```
+
+**Matching strategy:** Try `TOOL_INVOCATION_RE` first (highest confidence — TUI chrome context). Fall back to `TOOL_LINE_START_RE` (medium confidence — structural formatting). Never match bare `\bRead\b` without context. MCP tool names (`mcp__*`) are inherently unambiguous and match without context.
 
 **Channel emission:**
 
@@ -358,11 +385,26 @@ retro:
 
 Retros are saved to `.method/retros/retro-YYYY-MM-DD-NNN.yaml` per PR-03. The generator:
 
-1. Reads the `.method/retros/` directory to find the next sequence number for today
-2. Writes the file with the computed filename
-3. Emits a channel event `{ type: 'retro_generated', content: { path: '...' } }` to the session's events channel
+1. Resolves the retro directory from the session's **original workdir** (see below)
+2. Reads the `.method/retros/` directory to find the next sequence number for today
+3. Writes the file with the computed filename
+4. Emits a channel event `{ type: 'retro_generated', content: { path: '...' } }` to the session's events channel
 
 If the `.method/retros/` directory does not exist (e.g., agent running outside this project), the retro is skipped. Auto-retros are best-effort — failure to write is non-fatal.
+
+**Workdir resolution for worktree sessions (GAP 5 fix):** For sessions using worktree isolation (PRD 006 C2), pool.ts stores `effectiveWorkdir` (the worktree path) in `sessionWorkdirs`. But the auto-retro must write to the **original project's** `.method/retros/`, not the worktree's — the worktree may be discarded after the session.
+
+The pool must store the original workdir separately. Add a `sessionOriginalWorkdirs` map in pool.ts:
+
+```typescript
+const sessionOriginalWorkdirs = new Map<string, string>();
+
+// In create():
+sessionOriginalWorkdirs.set(sessionId, workdir);  // always the original, pre-worktree path
+sessionWorkdirs.set(sessionId, effectiveWorkdir);  // may be worktree path
+```
+
+The auto-retro generator reads from `sessionOriginalWorkdirs` (via a new pool method `getOriginalWorkdir(sessionId)`) to resolve `.method/retros/`. Clean up in `removeDead()` alongside other maps.
 
 ### Relationship to Agent-Authored Retros
 
@@ -457,8 +499,8 @@ Per-session overrides take precedence over environment variables. This allows an
 2. **Git commit visibility:** When an agent commits, `bridge_read_progress` shows the commit hash and message without the agent calling `bridge_event`
 3. **Test result visibility:** When an agent runs tests, `bridge_read_progress` shows pass/fail counts
 4. **Error visibility:** When an agent encounters an error, `bridge_read_events` shows an `error_detected` event
-5. **Dashboard integration:** The dashboard's progress timeline shows auto-detected activity alongside agent-reported activity, distinguished by sender (`pty-watcher` vs session ID)
-6. **Auto-retro generation:** When a commissioned session terminates, a retrospective file exists at `.method/retros/` with correct format and observed data
+5. **Dashboard integration:** The dashboard's progress timeline shows auto-detected activity alongside agent-reported activity. Auto-detected entries (sender = `pty-watcher`) are visually distinguished from agent-reported entries (sender = session ID) — e.g., dimmed color or a `[auto]` prefix. The dashboard collapses duplicate events (same type within 10s window, different sender) into a single entry.
+6. **Auto-retro generation:** When a commissioned session terminates, a retrospective file exists at `.method/retros/` with correct format and observed data. For worktree sessions, the retro is written to the original project's `.method/retros/`, not the worktree's.
 7. **No false positive storms:** Rate limiting prevents more than 12 channel emissions per minute per session under normal operation
 8. **Opt-out works:** Setting `PTY_WATCHER_ENABLED=false` produces zero auto-detected channel messages
 9. **No agent changes:** All 8 criteria above are met without modifying any MCP tool, agent prompt, or commission skill
@@ -496,7 +538,11 @@ PRD 010 is entirely within the `@method/bridge` package. It does not touch `@met
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | **PTY output format changes** between Claude Code versions break pattern matchers | HIGH | MEDIUM | Matchers degrade to false negatives (miss detections), not false positives. No channel noise on format change. Patterns are independently testable — update one matcher when format changes. |
-| **ANSI escape sequences** corrupt regex matches | HIGH | LOW | Strip ANSI escapes from chunks before pattern matching. Standard approach: `/\x1B\[[0-9;]*[a-zA-Z]/g` removal. |
+| **ANSI escape sequences** corrupt regex matches | HIGH | LOW | Watcher strips ANSI from its own copy of each chunk using `strip-ansi` (same library as parser.ts). Stripping happens in the watcher's processing path — never mutates shared subscriber data. |
+| **Tool call false positives** from prose mentions ("Let me Read the file") | HIGH | MEDIUM | Pattern 1 uses contextual matching: require TUI chrome context (`●` marker, box-drawing prefix) or structural formatting (tool name at line start with 2+ spaces). Bare `\bRead\b` without context is never matched. MCP tool names (`mcp__*`) are inherently unambiguous. See Pattern 1 specification. |
 | **Duplicate events** when agent also reports via channels | MEDIUM | LOW | Different sender field (`pty-watcher` vs session ID). Consumers can filter by sender. Dashboard can collapse duplicates within a time window. |
 | **Performance overhead** from running 7 regexes on every PTY chunk | LOW | LOW | PTY chunks are small (typically < 1KB). Regex matching is sub-millisecond. Rate limiting prevents emission storms. |
+| **Line buffer memory** from incomplete lines in PTY chunks | LOW | LOW | Line buffer capped at 4KB. Any incomplete line longer than 4KB is truncated from the left — not a parseable signal. Buffer flushed on `\n`. |
+| **removeDead() races with auto-retro** | LOW | LOW | Auto-retro fires synchronously in the `onExit` callback, before the session enters the dead cleanup window. Observations are stored in the watcher (not channels), so channel cleanup in `removeDead()` doesn't affect retro data. |
 | **Auto-retro file conflicts** when multiple sessions terminate simultaneously | LOW | LOW | Sequence number in filename (`NNN`) is computed at write time with directory scan. Race window is negligible for PTY sessions terminating seconds apart. |
+| **Worktree session retro placement** | MEDIUM | MEDIUM | Auto-retro resolves `.method/retros/` from the session's original workdir (pre-worktree), not the effective worktree path. Pool stores original workdir in a separate `sessionOriginalWorkdirs` map. Worktree may be discarded — retro must land in the real project. |

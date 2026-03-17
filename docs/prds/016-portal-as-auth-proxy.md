@@ -1,9 +1,11 @@
 # PRD 016 — Portal as Auth Proxy: Mobile Bridge Access
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-03-15
+**Previous:** Draft (2026-03-15)
 **Scope:** Strip portal to pure auth + reverse proxy, make bridge dashboard mobile-responsive, eliminate UI duplication
 **Depends on:** PRD 005 (bridge dashboard), PRD 007 (nicknames, live output, transcripts), PRD 011 (Tailscale + portal)
+**Supersedes:** PRD 011 Components 2–3 (chat UI, voice). PRD 011 defined the full remote access vision; this PRD replaced its custom portal UI with the bridge dashboard itself.
 **Evidence:** Phone testing showed bridge live output (xterm.js) works perfectly in mobile browser. Portal's separate chat UI duplicates bridge features and needs separate maintenance.
 
 ---
@@ -126,16 +128,16 @@ This means voice control works from any browser accessing the bridge, not just t
 
 ## 5. Implementation Order
 
-### Phase 1: Strip Portal + Mobile CSS (Components 1-3)
-- Strip portal UI to auth-only
-- Add redirect to `/dashboard` after auth
-- Add mobile media queries to bridge dashboard
-- Add mobile improvements to live output page
-- Test on phone via Tailscale
+### Phase 1: Strip Portal + Mobile CSS (Components 1-3) — IMPLEMENTED
+- [x] Strip portal UI to auth-only
+- [x] Add redirect to `/dashboard` after auth
+- [x] Add mobile media queries to bridge dashboard
+- [x] Add mobile improvements to live output page
+- [x] Test on phone via Tailscale
 
-### Phase 2: Dashboard Spawn + Voice (Components 4-5)
-- Spawn button in dashboard
-- Voice input in live output page
+### Phase 2: Dashboard Spawn + Voice (Components 4-5) — IMPLEMENTED
+- [x] Spawn button in dashboard
+- [x] Voice input in live output page
 
 ## 6. Success Criteria
 
@@ -146,7 +148,16 @@ This means voice control works from any browser accessing the bridge, not just t
 5. All existing desktop dashboard functionality preserved
 6. Voice input works from live output page on phone (Phase 2)
 
-## 7. Out of Scope
+## 7. Relationship to Existing PRDs
+
+| PRD | Relationship |
+|-----|-------------|
+| 005 (Bridge v2) | All bridge endpoints now accessible from phone via proxy |
+| 007 (Bridge UI) | Live output, nicknames, transcripts — all served directly to mobile |
+| **011 (Remote Bridge)** | **Supersedes Components 2–3.** PRD 011 defined the architecture (Tailscale, passkey, persistent sessions). This PRD replaced its custom portal UI with the bridge dashboard. PRD 011's Component 1 (Tailscale) and Component 4 (persistent sessions) remain the foundation. |
+| 010 (PTY auto-detection) | Auto-detected activity visible on mobile via bridge dashboard — no portal UI needed |
+
+## 8. Out of Scope
 
 - PWA manifest / install-to-home-screen (future)
 - Push notifications on phone (future — needs service worker)

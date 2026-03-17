@@ -1,11 +1,13 @@
 # PRD 011 — Remote Bridge: Mission Control from Anywhere
 
-**Status:** Draft (vision)
+**Status:** Partially implemented
 **Date:** 2026-03-15
+**Previous:** Draft (vision) (2026-03-15)
 **Scope:** Secure remote access to the bridge from mobile via voice + text
 **Cross-project:** pv-method (bridge), pv-silky (infra + portal + PWA)
 **Origin:** Council-team debate, SESSION-022 era
 **Depends on:** PRD 005 (bridge), PRD 006 (sessions), PRD 007 (identity/transcripts), PRD 008 (channels)
+**Superseded by:** PRD 016 (Components 2–3). The original vision included a custom chat UI and voice interface in the portal. PRD 016 replaced this with the bridge dashboard as the single UI — the portal was stripped to a pure auth proxy. Components 1 (Tailscale) and 4 (persistent sessions) remain the active foundation.
 
 ---
 
@@ -264,35 +266,35 @@ The admin agent IS the user's remote hands. Whatever you'd do at a terminal, the
 
 ## MVP Scope
 
-### Phase 1: Text chat over Tailscale (minimum viable)
+### Phase 1: Text chat over Tailscale (minimum viable) — IMPLEMENTED
 
 **pv-silky:**
-- [ ] Fastify server with passkey auth (register + verify)
-- [ ] Static PWA: chat UI (text only, no voice yet — despite council recommendation, text-first validates the tunnel)
-- [ ] Reverse proxy to bridge
-- [ ] Tailscale setup documentation
+- [x] Fastify server with passkey auth (register + verify)
+- [x] ~~Static PWA: chat UI~~ → Replaced by bridge dashboard (PRD 016)
+- [x] Reverse proxy to bridge
+- [x] Tailscale setup documentation
 
 **pv-method:**
-- [ ] `persistent: true` flag on bridge_spawn
-- [ ] Skip stale detection for persistent sessions
+- [x] `persistent: true` flag on bridge_spawn
+- [x] Skip stale detection for persistent sessions
 
 **Validation:** From phone browser, authenticate, send a text command, get a response.
 
-### Phase 2: Voice + polish
+### Phase 2: Voice + polish — SUPERSEDED by PRD 016
 
-- [ ] Web Speech API integration (voice input)
-- [ ] SpeechSynthesis integration (voice output)
-- [ ] Push-to-talk UX
+Original plan built voice into the portal's custom chat UI. PRD 016 moved voice input/output into the bridge's live output page instead, eliminating the portal UI entirely.
+
+- [x] Web Speech API integration (voice input) — in bridge live output
+- [x] SpeechSynthesis integration (voice output) — in bridge live output
+- [x] Push-to-talk UX — in bridge live output
 - [ ] Interim transcription display
 - [ ] "Read aloud" for agent responses
 - [ ] Service worker for offline shell caching
 
-**Validation:** From phone, tap mic, speak command, hear response.
-
 ### Phase 3: Full mission control
 
 - [ ] Channel event streaming (live progress from commissioned agents)
-- [ ] Dashboard access from phone (responsive bridge dashboard)
+- [x] Dashboard access from phone (responsive bridge dashboard — PRD 016)
 - [ ] Push notifications (agent completed/errored via service worker)
 - [ ] Session history (past conversations)
 - [ ] Multi-repo navigation (switch between repos via voice)
@@ -350,6 +352,7 @@ The admin agent IS the user's remote hands. Whatever you'd do at a terminal, the
 | 007 (Bridge UI) | Nicknames and purpose appear in chat UI; transcripts accessible |
 | 008 (Visibility) | Channel events stream to phone as status messages in chat |
 | 010 (PTY auto-detection) | Auto-detected activity shows in phone chat without agent cooperation |
+| **016 (Portal as Auth Proxy)** | **Supersedes Components 2–3.** Phone testing proved the bridge dashboard + xterm.js live output work better on mobile than a custom portal UI. PRD 016 stripped the portal to auth-only and made the bridge dashboard mobile-responsive instead. Voice input moved to bridge live output page. |
 
 ---
 

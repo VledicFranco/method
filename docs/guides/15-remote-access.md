@@ -1,30 +1,33 @@
 # Guide 15 — Remote Access via Tailscale
 
-How to access the bridge from a phone or another machine using Tailscale. Covers the network setup, persistent sessions, and known limitations.
+How to access the bridge from a phone or another machine using Tailscale + passkey auth. Covers the full stack: network tunnel, authentication portal, mobile dashboard, voice input, and persistent sessions.
 
 ## What This Gives You
 
-The bridge runs on your desktop machine. Normally you interact with it from the same machine — Claude Code in a terminal, dashboard in a browser. Remote access lets you reach the bridge from anywhere on your Tailscale mesh network: your phone, a laptop, another workstation. You get full access to the HTTP API, the dashboard, live agent output, and the ability to spawn and prompt sessions remotely.
+The bridge runs on your desktop machine. Remote access lets you reach it from anywhere on your Tailscale mesh network: your phone, a laptop, another workstation. You get the full bridge dashboard (mobile-responsive), live agent output via xterm.js, voice input, and the ability to spawn and prompt sessions — all protected by passkey (biometric) authentication.
 
-The long-term vision (PRD 011) adds a dedicated portal with passkey authentication, voice input, and a mobile chat UI via the `pv-silky` project. This guide covers the current setup: direct bridge access over Tailscale.
+The architecture was established by PRD 011 (Tailscale + persistent sessions) and refined by PRD 016 (portal stripped to auth proxy, bridge dashboard made mobile-responsive). The portal (pv-silky) handles authentication and reverse-proxies everything else to the bridge.
 
 ## Architecture
 
 ```
 Phone / Laptop (anywhere)
   └─ Tailscale app (WireGuard tunnel)
-     └─ Browser or curl
-        ↓ HTTP (within Tailscale mesh)
-Home machine: mission-control
-  └─ pv-method bridge (:3456)
-     ├─ GET /dashboard       (observability)
-     ├─ GET /sessions/:id/live  (xterm.js terminal)
-     ├─ POST /sessions       (spawn agents)
-     ├─ POST /sessions/:id/prompt  (send work)
-     └─ ... (full HTTP API)
+     └─ Browser
+        ↓ HTTPS (Tailscale cert)
+pv-silky portal (:4430) on mission-control
+  ├─ /auth/*    → passkey registration/login (WebAuthn)
+  └─ /*         → reverse proxy to bridge (:3456)
+        ↓ localhost
+pv-method bridge (:3456)
+  ├─ GET /dashboard            (mobile-responsive observability)
+  ├─ GET /sessions/:id/live    (xterm.js terminal + voice input)
+  ├─ POST /sessions            (spawn agents)
+  ├─ POST /sessions/:id/prompt (send work)
+  └─ ... (full HTTP API)
 ```
 
-All traffic stays within the Tailscale WireGuard mesh — encrypted end-to-end, no public internet exposure, no port forwarding needed.
+All traffic stays within the Tailscale WireGuard mesh — encrypted end-to-end (WireGuard + HTTPS), no public internet exposure, no port forwarding needed. The portal adds passkey authentication so that Tailscale device compromise alone doesn't grant bridge access.
 
 ## Tailscale Setup
 
@@ -46,14 +49,11 @@ All traffic stays within the Tailscale WireGuard mesh — encrypted end-to-end, 
 
 ### Verifying connectivity
 
-From the remote device, confirm the bridge is reachable:
+From the remote device, confirm the portal is reachable:
 
 ```bash
-# Health check
-curl http://mission-control.emu-cosmological.ts.net:3456/health
-
-# Or by Tailscale IP
-curl http://100.114.69.42:3456/health
+# Health check (through portal proxy)
+curl https://mission-control.emu-cosmological.ts.net:4430/health
 ```
 
 Expected response:
@@ -61,37 +61,43 @@ Expected response:
 { "status": "ok", "sessions": 0, "uptime": "2h 15m" }
 ```
 
-If this works, you can open the dashboard in a browser at the same URL with `/dashboard` appended.
+If this works, open the portal in a browser at `https://mission-control.emu-cosmological.ts.net:4430` — you'll be prompted to authenticate with your passkey, then redirected to the bridge dashboard.
 
 ## Using the Bridge Remotely
 
+### Authentication
+
+On first visit, register a passkey from a trusted device (desktop browser). The portal uses WebAuthn — your credential is bound to the origin and requires biometric verification (fingerprint, Face ID, or security key).
+
+On subsequent visits (including from phone), the portal prompts for your passkey. After authentication, you're redirected to the bridge dashboard. A signed JWT cookie maintains your session.
+
 ### Dashboard
 
-Open in any browser on a tailnet device:
+After auth, the bridge dashboard is served directly through the portal:
 
 ```
-http://mission-control.emu-cosmological.ts.net:3456/dashboard
+https://mission-control.emu-cosmological.ts.net:4430/dashboard
 ```
 
-The dashboard auto-refreshes every 5 seconds. You get the same view as on the local machine: health cards, subscription meters, session table, progress timelines, and event feed.
+The dashboard is mobile-responsive (PRD 016) — health cards reflow to 2-column on narrow screens, session table scrolls horizontally, channel panels stack vertically. Auto-refreshes every 5 seconds.
 
 ### Live agent output
 
 Watch a running agent in real time via xterm.js:
 
 ```
-http://mission-control.emu-cosmological.ts.net:3456/sessions/{session_id}/live
+https://mission-control.emu-cosmological.ts.net:4430/sessions/{session_id}/live
 ```
 
-The live output page renders the agent's raw PTY output with full ANSI support — colors, cursor movement, box-drawing. It also shows session metadata (nickname, status, tokens, cache rate).
+The live output page renders the agent's raw PTY output with full ANSI support — colors, cursor movement, box-drawing. It also shows session metadata (nickname, status, tokens, cache rate). On mobile, the prompt input bar is full-width with a larger font. Voice input is available via the mic button (Web Speech API, on-device).
 
 ### Spawning sessions remotely
 
-Use `curl` or any HTTP client to spawn and prompt agents:
+Use the "Spawn Session" button in the dashboard header, or use `curl` through the portal:
 
 ```bash
-# Spawn a persistent admin session
-curl -X POST http://mission-control.emu-cosmological.ts.net:3456/sessions \
+# Spawn a persistent admin session (through portal proxy)
+curl -X POST https://mission-control.emu-cosmological.ts.net:4430/sessions \
   -H "Content-Type: application/json" \
   -d '{
     "workdir": "/path/to/project",
@@ -101,7 +107,7 @@ curl -X POST http://mission-control.emu-cosmological.ts.net:3456/sessions \
   }'
 
 # Send a prompt
-curl -X POST http://mission-control.emu-cosmological.ts.net:3456/sessions/{session_id}/prompt \
+curl -X POST https://mission-control.emu-cosmological.ts.net:4430/sessions/{session_id}/prompt \
   -H "Content-Type: application/json" \
   -d '{ "prompt": "Run the tests and report results" }'
 ```
@@ -144,62 +150,60 @@ curl -X POST http://mission-control.emu-cosmological.ts.net:3456/sessions/{sessi
 
 ## Known Limitations
 
-### Auth is disabled
+### Both processes need manual start
 
-The bridge has no authentication layer. Anyone on the tailnet can access it. Tailscale's WireGuard encryption and device authorization provide the security boundary — only devices you've approved can join the tailnet, and all traffic is encrypted.
-
-For sensitive environments, PRD 011 specifies a portal layer (`pv-silky`) with WebAuthn passkey authentication on top of the Tailscale tunnel. This is not yet implemented. For now, the threat model assumes the tailnet itself is trusted.
-
-### Portal process needs manual start
-
-The bridge must be running on `mission-control` before you can access it remotely. There is no auto-start mechanism. If the machine reboots or the bridge crashes, you need to start it again:
+Both the bridge and the portal must be running on `mission-control`. There is no auto-start mechanism. If the machine reboots or either process crashes, you need to restart them:
 
 ```bash
 # SSH into mission-control (or use local terminal)
-cd /path/to/pv-method
-npm run bridge
+cd /path/to/pv-method && npm run bridge
+cd /path/to/pv-silky && npm run portal
 ```
 
-Future work: systemd service or startup script for automatic bridge recovery.
+Future work: systemd services or startup scripts for automatic recovery.
 
-### No HTTPS
+### No PWA install / push notifications
 
-The bridge serves plain HTTP. Within the Tailscale mesh, traffic is already encrypted by WireGuard, so HTTPS is redundant for security. However, some browser features (service workers, Web Speech API, clipboard API) require a secure context. If you need HTTPS, PRD 011's portal layer provides it via Tailscale HTTPS certificates.
+The portal does not yet support install-to-home-screen (PWA manifest) or push notifications via service worker. You access it through the browser. Agent completion/error alerts require checking the dashboard manually.
 
-### No mobile-optimized UI
+### Direct bridge access is unauthenticated
 
-The dashboard is designed for desktop browsers. It works on mobile but isn't optimized for small screens. PRD 011's PWA chat interface addresses this with a mobile-first design.
+The bridge itself (port 3456) has no auth. On the local machine this is fine. Over Tailscale, always access through the portal (port 4430) which enforces passkey authentication. Direct bridge access over Tailscale bypasses auth — this is a known gap if a Tailscale device is compromised.
 
 ## Security Model
 
-The current remote access setup has two security layers:
+The remote access stack has four security layers:
 
 | Layer | Mechanism | Protects against |
 |-------|-----------|-----------------|
 | 1. Network | Tailscale WireGuard mesh | Public internet exposure, eavesdropping |
 | 2. Device auth | Tailscale device authorization | Unauthorized devices joining the tailnet |
+| 3. Transport | HTTPS (Tailscale Let's Encrypt cert) | MITM on tailnet, enables secure browser APIs |
+| 4. Authentication | WebAuthn passkey (biometric) | Unauthorized access from compromised tailnet device |
 
-The bridge itself has no authentication — it trusts that anything reaching port 3456 has already passed through Tailscale's security. This is appropriate for a single-user tailnet where you control all devices.
+The portal enforces layers 3-4. The bridge itself (port 3456) has no auth — it trusts localhost. Remote access always goes through the portal (port 4430).
 
 **What this protects against:**
 - Public internet scanning — no ports are exposed, no DNS records point to the bridge
-- Network eavesdropping — WireGuard encrypts all traffic between tailnet devices
-- Unauthorized devices — only devices you've approved in the Tailscale admin console can reach the bridge
+- Network eavesdropping — WireGuard + HTTPS encrypt all traffic
+- Unauthorized devices — only Tailscale-approved devices can reach the portal
+- Tailscale device compromise — passkey requires biometric verification, so a stolen device key alone doesn't grant access
+- Phone theft (locked) — standard phone security applies, no access to Tailscale or browser
 
 **What this does NOT protect against:**
-- Compromise of a tailnet device — if an attacker controls a device on your tailnet, they can access the bridge
-- Home machine compromise — if someone has SSH or local access to `mission-control`, they have bridge access
-- Tailscale account compromise — an attacker who takes over your Tailscale account could add their device
+- Home machine compromise — if someone has SSH or local access to `mission-control`, they have the bridge directly
+- Tailscale account compromise — an attacker could add their device to the tailnet (passkey is the backstop)
+- Phone theft (unlocked) — if biometric is bypassed, passkey verification may pass
 
-For higher security, add the passkey authentication portal from PRD 011 as a defense-in-depth layer.
+## Relationship to PRDs
 
-## Relationship to PRD 011
+**PRD 011** ("Remote Bridge: Mission Control from Anywhere") defined the original vision:
 
-PRD 011 ("Remote Bridge: Mission Control from Anywhere") defines the full vision for remote access:
+1. **Secure tunnel** — Tailscale mesh — implemented
+2. **Web portal with passkey auth** — pv-silky project — implemented
+3. **PWA chat interface** — superseded by PRD 016
+4. **Admin session** — persistent sessions in the bridge — implemented
 
-1. **Secure tunnel** — Tailscale mesh (this guide covers this part)
-2. **Web portal with passkey auth** — `pv-silky` project, not yet implemented
-3. **PWA chat interface** — mobile-first chat with voice input/output, not yet implemented
-4. **Admin session** — persistent sessions in the bridge (this guide covers this part)
+**PRD 016** ("Portal as Auth Proxy") replaced PRD 011's custom chat UI with the bridge dashboard itself. The portal was stripped to a pure auth proxy, and the bridge dashboard was made mobile-responsive. Voice input moved from the portal to the bridge's live output page. This eliminated UI duplication between portal and bridge.
 
-This guide covers what works today — layers 1 and 4. When the portal and PWA are implemented, this guide will be updated with setup instructions for the full stack.
+This guide covers the full implemented stack: Tailscale (PRD 011 C1) + passkey portal (PRD 011 C2 / PRD 016) + mobile-responsive bridge dashboard (PRD 016) + persistent sessions (PRD 011 C4).
