@@ -226,5 +226,39 @@ describe('ClaudeCodeProvider', () => {
 
       assert.ok(!args.includes('--include-partial-messages'));
     });
+
+    it('includes --allowedTools when set', () => {
+      const provider = new ClaudeCodeProvider('claude');
+      const args = provider.buildArgs({
+        prompt: 'test',
+        sessionId: 's1',
+        allowedTools: ['Read', 'Edit', 'Bash'],
+      });
+
+      const idx = args.indexOf('--allowedTools');
+      assert.ok(idx >= 0, '--allowedTools should be present');
+      assert.equal(args[idx + 1], 'Read,Edit,Bash');
+    });
+
+    it('does not include --allowedTools when not set', () => {
+      const provider = new ClaudeCodeProvider('claude');
+      const args = provider.buildArgs({
+        prompt: 'test',
+        sessionId: 's1',
+      });
+
+      assert.ok(!args.includes('--allowedTools'));
+    });
+
+    it('does not include --allowedTools when set to empty array', () => {
+      const provider = new ClaudeCodeProvider('claude');
+      const args = provider.buildArgs({
+        prompt: 'test',
+        sessionId: 's1',
+        allowedTools: [],
+      });
+
+      assert.ok(!args.includes('--allowedTools'));
+    });
   });
 });

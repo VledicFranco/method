@@ -9,6 +9,8 @@ import { registerDashboardRoute } from './dashboard-route.js';
 import { registerLiveOutputRoutes } from './live-output-route.js';
 import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
+import { registerStrategyRoutes } from './strategy/strategy-routes.js';
+import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -658,6 +660,15 @@ app.get<{
     last_sequence: globalLastSequence,
   });
 });
+
+// ---------- Strategy Pipelines (PRD 017) ----------
+
+const STRATEGY_ENABLED = process.env.STRATEGY_ENABLED !== 'false';
+
+if (STRATEGY_ENABLED) {
+  const strategyProvider = new ClaudeCodeProvider(CLAUDE_BIN);
+  registerStrategyRoutes(app, strategyProvider);
+}
 
 // ---------- Start ----------
 

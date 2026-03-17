@@ -598,6 +598,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "strategy_execute",
+      description: "Start a Strategy pipeline execution. Accepts a Strategy YAML definition (inline or file path) and context inputs. Returns an execution ID for tracking. The strategy DAG runs asynchronously — use strategy_status to poll progress.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          strategy_yaml: {
+            type: "string",
+            description: "Inline Strategy YAML content. Provide this OR strategy_path.",
+          },
+          strategy_path: {
+            type: "string",
+            description: "Path to a Strategy YAML file on disk. Provide this OR strategy_yaml.",
+          },
+          context_inputs: {
+            type: "object",
+            description: "Values for strategy.context.inputs (e.g., { prd_path: 'docs/prds/017.md' })",
+          },
+        },
+      },
+    },
+    {
+      name: "strategy_status",
+      description: "Get the status of a Strategy pipeline execution. Returns node statuses, cost, gate results, artifacts, and retro path when complete.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          execution_id: {
+            type: "string",
+            description: "Execution ID returned by strategy_execute",
+          },
+        },
+        required: ["execution_id"],
+      },
+    },
   ],
 }));
 
@@ -1147,6 +1182,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (filter_type) params.set('filter_type', filter_type);
         const qs = params.toString() ? `?${params.toString()}` : '';
         const res = await bridgeFetch(`${BRIDGE_URL}/channels/events${qs}`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "strategy_execute": {
+        const { strategy_yaml, strategy_path, context_inputs } = z.object({
+          strategy_yaml: z.string().optional(),
+          strategy_path: z.string().optional(),
+          context_inputs: z.record(z.string(), z.unknown()).optional(),
+        }).parse(args);
+
+        const body: Record<string, unknown> = {};
+        if (strategy_yaml) body.strategy_yaml = strategy_yaml;
+        if (strategy_path) body.strategy_path = strategy_path;
+        if (context_inputs) body.context_inputs = context_inputs;
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/strategies/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json() as { execution_id: string; status: string };
+        return ok(JSON.stringify({
+          execution_id: data.execution_id,
+          status: data.status,
+          message: `Strategy execution started. Use strategy_status with execution_id to track progress.`,
+        }, null, 2));
+      }
+
+      case "strategy_status": {
+        const { execution_id } = z.object({
+          execution_id: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/strategies/${encodeURIComponent(execution_id)}/status`);
         const data = await res.json();
         return ok(JSON.stringify(data, null, 2));
       }
