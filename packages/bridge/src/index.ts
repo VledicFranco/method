@@ -125,9 +125,10 @@ app.post<{
     nickname?: string;
     purpose?: string;
     spawn_delay_ms?: number;
+    mode?: 'pty' | 'print';
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -147,6 +148,7 @@ app.post<{
       nickname,
       purpose,
       spawn_delay_ms,
+      mode,
     });
 
     // Register session with token tracker
@@ -158,6 +160,7 @@ app.post<{
       session_id: result.sessionId,
       nickname: result.nickname,
       status: result.status,
+      mode: result.mode,
       depth: result.chain.depth,
       parent_session_id: result.chain.parent_session_id,
       budget: result.chain.budget,
@@ -198,6 +201,7 @@ app.post<{
       timeout_ms?: number;
       nickname?: string;
       purpose?: string;
+      mode?: 'pty' | 'print';
     }>;
     stagger_ms?: number;
   };
@@ -213,6 +217,7 @@ app.post<{
     session_id: string;
     nickname: string;
     status: string;
+    mode: string;
     depth: number;
     parent_session_id: string | null;
     budget: { max_depth: number; max_agents: number; agents_spawned: number };
@@ -235,6 +240,7 @@ app.post<{
         session_id: '',
         nickname: '',
         status: 'error',
+        mode: 'pty',
         depth: 0,
         parent_session_id: null,
         budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
@@ -259,15 +265,17 @@ app.post<{
         timeout_ms: cfg.timeout_ms,
         nickname: cfg.nickname,
         purpose: cfg.purpose,
+        mode: cfg.mode,
       });
 
       tokenTracker.registerSession(result.sessionId, cfg.workdir, new Date());
-      app.log.info(`[batch ${i}/${sessionConfigs.length}] [${result.nickname}] Session spawned`);
+      app.log.info(`[batch ${i}/${sessionConfigs.length}] [${result.nickname}] Session spawned (${result.mode})`);
 
       results.push({
         session_id: result.sessionId,
         nickname: result.nickname,
         status: result.status,
+        mode: result.mode,
         depth: result.chain.depth,
         parent_session_id: result.chain.parent_session_id,
         budget: result.chain.budget,
@@ -282,6 +290,7 @@ app.post<{
         session_id: '',
         nickname: '',
         status: 'error',
+        mode: 'pty',
         depth: 0,
         parent_session_id: null,
         budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
@@ -382,6 +391,7 @@ app.get<{
       nickname: result.nickname,
       purpose: result.purpose,
       status: result.status,
+      mode: result.mode,
       queue_depth: result.queueDepth,
       metadata: result.metadata,
       prompt_count: result.promptCount,
@@ -443,6 +453,7 @@ app.get('/sessions', async (_request, reply) => {
       nickname: s.nickname,
       purpose: s.purpose,
       status: s.status,
+      mode: s.mode,
       queue_depth: s.queueDepth,
       metadata: s.metadata,
       prompt_count: s.promptCount,

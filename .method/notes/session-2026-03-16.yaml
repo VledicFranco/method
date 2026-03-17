@@ -143,8 +143,8 @@ observations:
       - "Routing evaluation: task_type=implement → M1-IMPL (not multi_task_scope)"
       - "PO refined: added constant commit+push, draft PR on first push, PR comments as implementation journal, full prompt in PR description"
       - "Commission prompt: 250+ lines, 12 sections, 5 delivery rules, 9 deliverables"
-      - "Dispatched agent via native Agent tool (worktree isolation)"
-    commits: []  # agent is running, commits will come from the commissioned agent on feat branch
+      - "Dispatched agent (method TBD — bridge or native Agent)"
+    commits: []  # agent is running, commits will come from the commissioned agent
 
 # ─── Statistics ─────────────────────────────────────────────
 

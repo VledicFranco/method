@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
+import { createPrintSession } from './print-session.js';
 import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
 import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
@@ -25,6 +26,8 @@ export interface SessionChainInfo {
 }
 
 // ── PRD 006: Worktree isolation types ────────────────────────
+
+export type SessionMode = 'pty' | 'print';
 
 export type IsolationMode = 'worktree' | 'shared';
 export type WorktreeAction = 'merge' | 'keep' | 'discard';
@@ -59,6 +62,8 @@ export interface SessionStatusInfo {
   worktree: WorktreeInfo;
   stale: boolean;
   waiting_for: string | null;
+  /** PRD 012 Phase 4: Session mode — 'pty' for interactive PTY, 'print' for headless --print. */
+  mode: SessionMode;
   /** PRD 012: Per-session diagnostic metrics. */
   diagnostics: SessionDiagnostics | null;
 }
@@ -86,7 +91,8 @@ export interface SessionPool {
     purpose?: string;
     persistent?: boolean;
     spawn_delay_ms?: number;
-  }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }>;
+    mode?: SessionMode;
+  }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean };
@@ -163,6 +169,9 @@ export function createPool(options?: PoolOptions): SessionPool {
 
   // PRD 012: Per-session diagnostics trackers
   const sessionDiagnostics = new Map<string, DiagnosticsTracker>();
+
+  // PRD 012 Phase 4: Session mode tracking
+  const sessionModes = new Map<string, SessionMode>();
 
   // OBS-19: Waiting-for-sub-agent detection
   const sessionWaitingFor = new Map<string, string>();        // sessionId → what it's waiting for
@@ -297,7 +306,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -393,50 +402,82 @@ export function createPool(options?: PoolOptions): SessionPool {
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
 
-      // EXP-OBS02: Split prompt delivery for long initial prompts
-      // Short prompts (<500 chars) work reliably as initial prompts.
-      // Long prompts cause agents to start then stall (OBS-02).
-      // Fix: send short activation as initial, queue full commission as follow-up.
-      const SPLIT_THRESHOLD = 500;
-      const sessionIdPrefix = `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.`;
+      // PRD 012 Phase 4: Determine session mode
+      const effectiveMode: SessionMode = mode ?? (process.env.PRINT_SESSION_DEFAULT === 'true' ? 'print' : 'pty');
 
-      let activationPrompt: string | undefined;
-      let followUpPrompt: string | undefined;
+      let session: PtySession;
 
-      if (initialPrompt) {
-        if (initialPrompt.length > SPLIT_THRESHOLD) {
-          // Split: short init to activate, full commission as follow-up
-          activationPrompt = `${sessionIdPrefix}\n\nYou will receive your full task instructions in the next message. Acknowledge with "ready".`;
-          followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
-        } else {
-          // Short enough to send as-is
-          activationPrompt = `${sessionIdPrefix}\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions.`;
+      if (effectiveMode === 'print') {
+        // PRD 012 Phase 4: Print-mode session — no PTY, no settle delay
+        // Skip split prompt delivery (print mode handles prompts directly)
+        // Skip SpawnQueue (no PTY to rate-limit)
+        // Skip adaptive settle (not needed)
+
+        // PRD 012: Staggered spawn — delay before spawning process
+        if (spawn_delay_ms && spawn_delay_ms > 0) {
+          await new Promise(r => setTimeout(r, spawn_delay_ms));
         }
+
+        const printSession = createPrintSession({
+          id: sessionId,
+          workdir: effectiveWorkdir,
+          claudeBin,
+          initialPrompt: initialPrompt ?? undefined,  // No split delivery needed
+          maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
+          appendSystemPrompt: typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : undefined,
+          permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
+          model: typeof metadata?.model === 'string' ? metadata.model : undefined,
+          spawnArgs,
+        });
+        session = printSession;
+      } else {
+        // Existing PTY-mode logic
+        // EXP-OBS02: Split prompt delivery for long initial prompts
+        // Short prompts (<500 chars) work reliably as initial prompts.
+        // Long prompts cause agents to start then stall (OBS-02).
+        // Fix: send short activation as initial, queue full commission as follow-up.
+        const SPLIT_THRESHOLD = 500;
+        const sessionIdPrefix = `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.`;
+
+        let activationPrompt: string | undefined;
+        let followUpPrompt: string | undefined;
+
+        if (initialPrompt) {
+          if (initialPrompt.length > SPLIT_THRESHOLD) {
+            // Split: short init to activate, full commission as follow-up
+            activationPrompt = `${sessionIdPrefix}\n\nYou will receive your full task instructions in the next message. Acknowledge with "ready".`;
+            followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
+          } else {
+            // Short enough to send as-is
+            activationPrompt = `${sessionIdPrefix}\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions.`;
+          }
+        }
+
+        // PRD 012: Staggered spawn — delay before spawning PTY process
+        if (spawn_delay_ms && spawn_delay_ms > 0) {
+          await new Promise(r => setTimeout(r, spawn_delay_ms));
+        }
+
+        // PRD 012 Phase 2: Create adaptive settle delay if enabled
+        const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
+        const adaptiveSettle = adaptiveEnabled
+          ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
+          : undefined;
+
+        // SpawnQueue enforces MIN_SPAWN_GAP_MS between consecutive spawns
+        session = await spawnQueue.enqueue(() => Promise.resolve(spawnSession({
+          id: sessionId,
+          workdir: effectiveWorkdir,
+          claudeBin,
+          settleDelayMs,
+          initialPrompt: activationPrompt,
+          spawnArgs,
+          adaptiveSettle,
+        })));
       }
-
-      // PRD 012: Staggered spawn — delay before spawning PTY process
-      if (spawn_delay_ms && spawn_delay_ms > 0) {
-        await new Promise(r => setTimeout(r, spawn_delay_ms));
-      }
-
-      // PRD 012 Phase 2: Create adaptive settle delay if enabled
-      const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
-      const adaptiveSettle = adaptiveEnabled
-        ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
-        : undefined;
-
-      // SpawnQueue enforces MIN_SPAWN_GAP_MS between consecutive spawns
-      const session = await spawnQueue.enqueue(() => Promise.resolve(spawnSession({
-        id: sessionId,
-        workdir: effectiveWorkdir,
-        claudeBin,
-        settleDelayMs,
-        initialPrompt: activationPrompt,
-        spawnArgs,
-        adaptiveSettle,
-      })));
 
       sessions.set(sessionId, session);
+      sessionModes.set(sessionId, effectiveMode);
       sessionWorkdirs.set(sessionId, effectiveWorkdir);
       if (metadata) {
         sessionMetadata.set(sessionId, metadata);
@@ -475,106 +516,120 @@ export function createPool(options?: PoolOptions): SessionPool {
         session_id: sessionId,
         parent_session_id: parentSessionId ?? null,
         depth: effectiveDepth,
+        mode: effectiveMode,
       });
 
       // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
-      // PRD 012: Create diagnostics tracker
-      // PRD 012 Phase 2: Pass adaptive settle for dynamic metrics
-      const effectiveSettleDelay = settleDelayMs ?? 1000;
-      const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay, adaptiveSettle);
-      sessionDiagnostics.set(sessionId, diagnosticsTracker);
+      // PRD 012: Create diagnostics tracker (PTY mode only)
+      if (effectiveMode === 'pty') {
+        // PRD 012 Phase 2: Pass adaptive settle for dynamic metrics
+        const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
+        const adaptiveSettle = adaptiveEnabled
+          ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
+          : undefined;
+        const effectiveSettleDelay = settleDelayMs ?? 1000;
+        const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay, adaptiveSettle);
+        sessionDiagnostics.set(sessionId, diagnosticsTracker);
 
-      // PRD 012: Track first PTY output for time_to_first_output_ms
-      let firstOutputRecorded = false;
-      session.onOutput((_data: string) => {
-        if (!firstOutputRecorded) {
-          firstOutputRecorded = true;
-          diagnosticsTracker.recordFirstOutput();
-        }
-      });
-
-      // PRD 010: Create and attach PTY watcher
-      const watcherConfig = parseWatcherConfig(process.env, metadata);
-      if (watcherConfig.enabled) {
-        // PRD 012: Observation callback — feeds diagnostics tracker
-        // PRD 012 Phase 2: Also resets adaptive settle on tool markers
-        const diagnosticsCallback: ObservationCallback = (match, isIdle) => {
-          if (isIdle) {
-            diagnosticsTracker.recordIdleTransition();
-          } else if (match.category === 'tool_call') {
-            diagnosticsTracker.recordToolCall();
-            // PRD 012 Phase 2: Reset adaptive settle on tool-output marker
-            if (adaptiveSettle) {
-              adaptiveSettle.resetOnToolMarker();
-            }
-          } else if (match.category === 'permission_prompt') {
-            diagnosticsTracker.recordPermissionPrompt();
-          } else {
-            // Any non-idle, non-tool activity still ends idle period
-            diagnosticsTracker.recordActivity();
+        // PRD 012: Track first PTY output for time_to_first_output_ms
+        let firstOutputRecorded = false;
+        session.onOutput((_data: string) => {
+          if (!firstOutputRecorded) {
+            firstOutputRecorded = true;
+            diagnosticsTracker.recordFirstOutput();
           }
-        };
-
-        const watcher = createPtyWatcher(
-          sessionId,
-          channels,
-          (cb) => session.onOutput(cb),
-          watcherConfig,
-          diagnosticsCallback,
-        );
-        sessionWatchers.set(sessionId, watcher);
-
-        // On session exit: detach watcher and generate auto-retro
-        session.onExit((_exitCode) => {
-          handleSessionDeath(sessionId, 'exited');
         });
       }
 
-      // OBS-19: Detect 'waiting for sub-agent' status
+      // PRD 010: Create and attach PTY watcher (PTY mode only)
+      if (effectiveMode === 'pty') {
+        const watcherConfig = parseWatcherConfig(process.env, metadata);
+        if (watcherConfig.enabled) {
+          // PRD 012: Observation callback — feeds diagnostics tracker
+          // PRD 012 Phase 2: Also resets adaptive settle on tool markers
+          const diagnosticsTracker = sessionDiagnostics.get(sessionId);
+          const diagnosticsCallback: ObservationCallback = (match, isIdle) => {
+            if (!diagnosticsTracker) return;
+            if (isIdle) {
+              diagnosticsTracker.recordIdleTransition();
+            } else if (match.category === 'tool_call') {
+              diagnosticsTracker.recordToolCall();
+              // PRD 012 Phase 2: Reset adaptive settle on tool-output marker
+              if (session.adaptiveSettle) {
+                session.adaptiveSettle.resetOnToolMarker();
+              }
+            } else if (match.category === 'permission_prompt') {
+              diagnosticsTracker.recordPermissionPrompt();
+            } else {
+              // Any non-idle, non-tool activity still ends idle period
+              diagnosticsTracker.recordActivity();
+            }
+          };
+
+          const watcher = createPtyWatcher(
+            sessionId,
+            channels,
+            (cb) => session.onOutput(cb),
+            watcherConfig,
+            diagnosticsCallback,
+          );
+          sessionWatchers.set(sessionId, watcher);
+
+          // On session exit: detach watcher and generate auto-retro
+          session.onExit((_exitCode) => {
+            handleSessionDeath(sessionId, 'exited');
+          });
+        }
+      }
+
+      // OBS-19: Detect 'waiting for sub-agent' status (PTY mode only)
       // When Agent tool_call is seen in PTY output and ❯ appears within 5s,
       // mark the session as 'waiting' instead of 'ready'. Revert when the
       // session starts working again (next prompt received).
-      session.onOutput((data) => {
-        const cleaned = stripAnsiCodes(data);
+      if (effectiveMode === 'pty') {
+        session.onOutput((data) => {
+          const cleaned = stripAnsiCodes(data);
 
-        // Detect Agent tool call in output
-        if (AGENT_TOOL_RE.test(cleaned)) {
-          lastAgentToolCallAt.set(sessionId, Date.now());
-        }
+          // Detect Agent tool call in output
+          if (AGENT_TOOL_RE.test(cleaned)) {
+            lastAgentToolCallAt.set(sessionId, Date.now());
+          }
 
-        // If in waiting state and session starts working, revert to ready
-        if (sessionWaitingFor.has(sessionId) && session.status === 'working') {
-          sessionWaitingFor.delete(sessionId);
-          lastAgentToolCallAt.delete(sessionId);
-        }
-
-        // Detect ready transition (prompt char) — enter waiting if Agent call was recent
-        if (cleaned.includes('❯')) {
-          const callAt = lastAgentToolCallAt.get(sessionId);
-          if (callAt && Date.now() - callAt < WAITING_WINDOW_MS) {
-            sessionWaitingFor.set(sessionId, 'sub-agent');
+          // If in waiting state and session starts working, revert to ready
+          if (sessionWaitingFor.has(sessionId) && session.status === 'working') {
+            sessionWaitingFor.delete(sessionId);
             lastAgentToolCallAt.delete(sessionId);
           }
-        }
-      });
+
+          // Detect ready transition (prompt char) — enter waiting if Agent call was recent
+          if (cleaned.includes('❯')) {
+            const callAt = lastAgentToolCallAt.get(sessionId);
+            if (callAt && Date.now() - callAt < WAITING_WINDOW_MS) {
+              sessionWaitingFor.set(sessionId, 'sub-agent');
+              lastAgentToolCallAt.delete(sessionId);
+            }
+          }
+        });
+      }
 
       totalSpawned++;
 
-      // EXP-OBS02: Queue follow-up prompt for split delivery
+      // EXP-OBS02: Queue follow-up prompt for split delivery (PTY mode only)
       // The activation prompt is sent by pty-session on first ready.
       // The follow-up is queued via sendPrompt — p-queue ensures ordering.
-      if (followUpPrompt) {
+      if (effectiveMode === 'pty' && initialPrompt && initialPrompt.length > 500) {
+        const followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
         // Small delay to let the activation prompt be sent first
         setTimeout(() => {
-          session.sendPrompt(followUpPrompt!).catch(() => {
+          session.sendPrompt(followUpPrompt).catch(() => {
             // Follow-up delivery failure is non-fatal — agent can be prompted manually
           });
         }, 3000);
       }
 
-      return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo };
+      return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo, mode: effectiveMode };
     },
 
     async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
@@ -641,6 +696,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: waitingFor,
+        mode: sessionModes.get(sessionId) ?? 'pty',
         diagnostics,
       };
     },
@@ -735,6 +791,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           },
           stale: sessionStaleFlags.get(sessionId) ?? false,
           waiting_for: waitingFor,
+          mode: sessionModes.get(sessionId) ?? 'pty',
           diagnostics,
         };
       });
@@ -781,6 +838,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessions.delete(sessionId);
             sessionMetadata.delete(sessionId);
             sessionWorkdirs.delete(sessionId);
+            sessionModes.delete(sessionId);
             sessionChains.delete(sessionId);
             sessionChannels.delete(sessionId);
             sessionWorktrees.delete(sessionId);

@@ -363,6 +363,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "number",
             description: "Session stale timeout in milliseconds. Agent marked stale after this, auto-killed at 2x. Default: 30 minutes.",
           },
+          mode: {
+            type: "string",
+            enum: ["pty", "print"],
+            description: "Session mode: 'pty' for interactive PTY with TUI rendering, 'print' for headless structured JSON output via claude --print. Default: 'pty' (or 'print' if PRINT_SESSION_DEFAULT=true).",
+          },
         },
         required: ["workdir"],
       },
@@ -426,6 +431,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                 timeout_ms: {
                   type: "number",
                   description: "Session stale timeout in milliseconds",
+                },
+                mode: {
+                  type: "string",
+                  enum: ["pty", "print"],
+                  description: "Session mode: 'pty' or 'print'",
                 },
               },
               required: ["workdir"],
@@ -800,7 +810,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_spawn": {
-        const { workdir, spawn_args, initial_prompt, session_id, nickname, purpose, parent_session_id, depth, budget, isolation, timeout_ms } = z.object({
+        const { workdir, spawn_args, initial_prompt, session_id, nickname, purpose, parent_session_id, depth, budget, isolation, timeout_ms, mode } = z.object({
           workdir: z.string(),
           spawn_args: z.array(z.string()).optional(),
           initial_prompt: z.string().optional(),
@@ -815,6 +825,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }).optional(),
           isolation: z.enum(["worktree", "shared"]).optional(),
           timeout_ms: z.number().optional(),
+          mode: z.enum(["pty", "print"]).optional(),
         }).parse(args);
 
         const body: Record<string, unknown> = { workdir };
@@ -835,6 +846,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (isolation) body.isolation = isolation;
         // PRD 006 Component 4: stale timeout
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
+        // PRD 012 Phase 4: session mode
+        if (mode) body.mode = mode;
 
         const res = await bridgeFetch(`${BRIDGE_URL}/sessions`, {
           method: 'POST',
@@ -846,6 +859,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           session_id: string;
           nickname: string;
           status: string;
+          mode?: string;
           depth?: number;
           parent_session_id?: string | null;
           budget?: { max_depth: number; max_agents: number; agents_spawned: number };
@@ -857,6 +871,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           bridge_session_id: data.session_id,
           nickname: data.nickname,
           status: data.status,
+          mode: data.mode ?? 'pty',
           depth: data.depth ?? 0,
           parent_session_id: data.parent_session_id ?? null,
           budget: data.budget ?? null,
@@ -865,7 +880,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           metals_available: data.metals_available ?? true,
           message: data.isolation === 'worktree'
             ? `Agent '${data.nickname}' spawned in worktree: ${data.worktree_path}. Metals MCP NOT available. Call bridge_prompt to send work.`
-            : `Agent '${data.nickname}' spawned. Call bridge_prompt to send work.`,
+            : `Agent '${data.nickname}' spawned (${data.mode ?? 'pty'} mode). Call bridge_prompt to send work.`,
         }, null, 2));
       }
 
@@ -886,6 +901,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }).optional(),
             isolation: z.enum(["worktree", "shared"]).optional(),
             timeout_ms: z.number().optional(),
+            mode: z.enum(["pty", "print"]).optional(),
           })),
           stagger_ms: z.number().optional(),
         }).parse(args);
@@ -904,6 +920,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             if (s.budget) cfg.budget = s.budget;
             if (s.isolation) cfg.isolation = s.isolation;
             if (s.timeout_ms !== undefined) cfg.timeout_ms = s.timeout_ms;
+            if (s.mode) cfg.mode = s.mode;
             return cfg;
           }),
         };
@@ -920,6 +937,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             session_id: string;
             nickname: string;
             status: string;
+            mode?: string;
             depth: number;
             parent_session_id: string | null;
             budget: { max_depth: number; max_agents: number; agents_spawned: number };
@@ -937,6 +955,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           bridge_session_id: s.session_id,
           nickname: s.nickname,
           status: s.status,
+          mode: s.mode ?? 'pty',
           depth: s.depth,
           parent_session_id: s.parent_session_id,
           budget: s.budget,

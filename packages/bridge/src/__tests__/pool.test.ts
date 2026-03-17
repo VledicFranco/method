@@ -131,7 +131,7 @@ function createTestPool(maxSessions = 5) {
 
       totalSpawned++;
 
-      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE };
+      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE, mode: 'pty' as const };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -158,6 +158,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
+        mode: 'pty' as const,
         diagnostics: null,
       };
     },
@@ -184,6 +185,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
+        mode: 'pty' as const,
         diagnostics: null,
       }));
     },
