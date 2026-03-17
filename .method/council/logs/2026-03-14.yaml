@@ -970,3 +970,76 @@ log:
         - "AG-033: Draft PRD 010 (P0)"
         - "AG-034: Context-mode experiment (P1)"
         - "AG-026: ORGANON-PROTO — 2-session deadline (P1)"
+
+    - id: SESSION-023
+      date: "2026-03-15"
+      type: strategic
+      cast: [Thane, Nika, Harlan, Reva, Orion]
+      challenge: "Auto session — agenda P0 (AG-033 PRD 010 scope) + PR-02 stale deadline (AG-026)"
+
+      decisions:
+        - id: D-037
+          item: "AG-026 — ORGANON-PROTO stale deadline"
+          decision: >
+            Archived. Design (D-028: protocol binding) is decided and preserved in
+            SESSION-017 log. Dependency: oss-organon ETHOS.md hasn't stabilized —
+            any YAML we write would need immediate revision. Re-open when ETHOS.md
+            reaches v1.0. This is legitimate deferral (dependency), not procrastination.
+          status: decided
+          for: "Unanimous. ETHOS.md is a moving target. Protocol binding design preserved in D-028."
+          against: "Reva noted archiving a decided design feels wrong — conceded when Orion identified the dependency issue."
+          essence_check: "No essence impact. Archiving a protocol draft doesn't touch purpose, invariant, or optimize_for."
+
+        - id: D-038
+          item: "AG-033 — PRD 010 scope confirmation"
+          decision: >
+            PRD 010 MVP scope confirmed. Four components:
+            (1) PTY activity detector — onOutput() subscriber with pattern matchers
+            for tool calls, git ops, test runs.
+            (2) Auto-emit channel events — working_on progress from detected activity.
+            (3) Auto-retro — bridge writes retro YAML to .method/retros/ on session
+            death. Covers observations (tool/git/test signals), not hardest_decision.
+            (4) Stable signals only — tool names, git commit messages, test pass/fail.
+            Architecture: new ActivityDetector subscribes via PRD 007's onOutput(),
+            writes to PRD 008's channels. Single-agent M1-IMPL commission.
+          status: decided
+          for: >
+            Evidence: 3 prompt-level attempts to get agents to use channels all failed
+            (improvement signal hit threshold). Infrastructure-level detection is the
+            only approach not requiring agent cooperation. Auto-retro addresses PR-03
+            degradation (2/3 recent commissions produced zero retros).
+          against: "None — unanimous on scope. Debate refined architecture (Harlan scoped to stable signals, Orion proposed bridge-authored retros as self-observation)."
+          essence_check: "PTY auto-detection makes methodology execution observable without agent cooperation. Serves purpose. No theory changes. Justified complexity."
+
+        - id: D-039
+          item: "AG-033 — PRD 010 already drafted"
+          decision: >
+            PRD 010 was already drafted at docs/prds/010-pty-activity-detection.md.
+            Comprehensive: 7 patterns, auto-retro spec, 4 implementation phases,
+            9 success criteria, configuration. AG-033 marked done. New AG-035 created
+            for commissioning the implementation.
+          status: decided
+          for: "PRD exists on disk, fully aligned with D-035/D-038 scope."
+          against: "None."
+          essence_check: "No action needed — confirming existing work."
+
+      session_retro:
+        decisions_actionable: true
+        essence_check_genuine: true
+        agenda_delta: -1
+        processes_followed:
+          - { process: PR-01, followed: true, note: "No registry changes" }
+          - { process: PR-02, followed: true, note: "AG-026 stale deadline met — archived with dependency rationale" }
+          - { process: PR-03, followed: true, note: "No retro needed — governance session, not implementation" }
+        process_improvement_signal: "None"
+        member_adequacy: true
+
+      artifacts_produced:
+        - "D-037: AG-026 archived (ETHOS.md dependency)"
+        - "D-038: PRD 010 scope confirmed"
+        - "D-039: AG-033 closed (PRD already drafted), AG-035 created for implementation"
+        - "AGENDA.yaml updated"
+
+      next_agenda_items:
+        - "AG-035: Commission PRD 010 implementation (P0)"
+        - "AG-034: Context-mode prototype experiment (P1)"

@@ -1,19 +1,18 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-14"
-  last_session: SESSION-018
+  last_updated: "2026-03-15"
+  last_session: SESSION-023
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-023
 
   p0_immediate:
-    - id: AG-033
-      item: "Draft PRD 010: PTY activity auto-detection + auto-retro for bridge channels"
+    - id: AG-035
+      item: "Commission PRD 010 implementation — PTY activity auto-detection"
       owner: council
       status: open
-      added_in: SESSION-021
-      promoted_in: SESSION-022
-      note: "OBS-01/02/09: Parse PTY output for tool calls, git ops, test results. Auto-emit channel events. Include auto-retro from activity signals (PR-03 enforcement). D-035."
+      added_in: SESSION-023
+      note: "PRD 010 drafted (docs/prds/010-pty-activity-detection.md). 4 phases, 7 patterns, auto-retro. Ready for M1-IMPL commission."
 
   p1_next:
     - id: AG-034
@@ -26,10 +25,10 @@ agenda:
     - id: AG-026
       item: "Draft ORGANON-PROTO in registry/P0-META/"
       owner: council
-      status: open
+      status: archived
       added_in: SESSION-017
-      sessions_open: 5
-      note: "Protocol binding. PR-02 stale warning — must be addressed within 2 sessions or archived. D-028."
+      resolved_in: SESSION-023
+      note: "Archived: ETHOS.md dependency hasn't stabilized. Design preserved in D-028. Re-open when ETHOS.md v1.0."
 
   governance_health:
     last_assessed: SESSION-022
@@ -101,6 +100,7 @@ agenda:
     - { id: AG-028, resolved_in: SESSION-019, note: "GC-P2SD-005 resolved — 3-point fix: card role_notes + commission skill + CLAUDE.md" }
     - { id: AG-029, resolved_in: SESSION-019, note: "PRD 006 C2/C4 implemented via bridge commission — worktree isolation + stale detection" }
     - { id: AG-030, resolved_in: SESSION-021, note: "Context-mode feasibility report — PR #1 merged. Recommends scoped prototype then PRD 009." }
+    - { id: AG-033, resolved_in: SESSION-023, note: "PRD 010 drafted — 7 patterns, auto-retro, 4 phases, 9 success criteria" }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }
@@ -108,5 +108,6 @@ agenda:
     - { id: AG-008, archived_in: SESSION-006, reason: "M6-MAUD — compile when needed" }
     - { id: AG-011, archived_in: SESSION-008, reason: "PR-02: docs in protocol spec" }
     - { id: AG-004, archived_in: SESSION-010, reason: "Trial criteria already in STEER-PROTO Part 8" }
+    - { id: AG-026, archived_in: SESSION-023, reason: "ETHOS.md dependency unstable. Design preserved in D-028. Re-open at ETHOS v1.0." }
     - { id: AG-031, archived_in: SESSION-021, reason: "OpenViking — methodology context already tiered via MCP tools. Revisit at 3+ agent chain depth." }
     - { id: AG-032, archived_in: SESSION-021, reason: "Playwright MCP — dashboard is static HTML, agents use channel tools. Revisit if dashboard becomes interactive." }
