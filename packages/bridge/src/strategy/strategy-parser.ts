@@ -227,6 +227,16 @@ export function validateStrategyDAG(dag: StrategyDAG): ValidationResult {
     }
   }
 
+  // Check methodology nodes have a non-empty methodology field
+  for (const node of dag.nodes) {
+    if (node.config.type === 'methodology') {
+      const methConfig = node.config as MethodologyNodeConfig;
+      if (!methConfig.methodology || methConfig.methodology.trim() === '') {
+        errors.push(`Node "${node.id}": methodology node must have a non-empty "methodology" field`);
+      }
+    }
+  }
+
   // Check capability references
   for (const node of dag.nodes) {
     if (node.config.type === 'methodology') {

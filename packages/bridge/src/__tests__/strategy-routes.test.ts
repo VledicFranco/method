@@ -451,6 +451,99 @@ describe('saveRetro', () => {
   });
 });
 
+// ── Eviction Tests ─────────────────────────────────────────────
+
+describe('evictStaleExecutions', () => {
+  // We test eviction indirectly via the exported function.
+  // The executions map is module-level, so we exercise it through routes.
+
+  it('eviction function is callable without errors', async () => {
+    const { evictStaleExecutions: evict } = await import('../strategy/strategy-routes.js');
+    // Should not throw even when map is empty
+    evict();
+  });
+});
+
+// ── Retro Gate Matching Tests ──────────────────────────────────
+
+describe('retro gate matching', () => {
+  it('gate matching does not false-positive on substring node IDs', () => {
+    const dag = makeDAG({
+      nodes: [
+        {
+          id: 'a',
+          type: 'methodology',
+          depends_on: [],
+          inputs: [],
+          outputs: ['out_a'],
+          gates: [
+            { type: 'algorithmic', check: 'output.out_a !== undefined', max_retries: 3, timeout_ms: 5000 },
+          ],
+          config: { type: 'methodology', methodology: 'P2-SD', capabilities: [] },
+        },
+        {
+          id: 'analyze',
+          type: 'methodology',
+          depends_on: [],
+          inputs: [],
+          outputs: ['out_analyze'],
+          gates: [
+            { type: 'algorithmic', check: 'output.out_analyze !== undefined', max_retries: 3, timeout_ms: 5000 },
+          ],
+          config: { type: 'methodology', methodology: 'P2-SD', capabilities: [] },
+        },
+      ],
+    });
+
+    // Node "a" has retries, and gate_results include gates for both "a" and "analyze"
+    const result = makeExecutionResult({
+      node_results: {
+        a: {
+          node_id: 'a',
+          status: 'completed',
+          output: {},
+          cost_usd: 0.1,
+          duration_ms: 1000,
+          num_turns: 1,
+          retries: 1,
+          gate_results: [
+            { gate_id: 'a:gate[0]', type: 'algorithmic', passed: false, reason: 'falsy' },
+            { gate_id: 'a:gate[0]', type: 'algorithmic', passed: true, reason: 'truthy' },
+          ],
+        },
+        analyze: {
+          node_id: 'analyze',
+          status: 'completed',
+          output: {},
+          cost_usd: 0.1,
+          duration_ms: 1000,
+          num_turns: 1,
+          retries: 0,
+          gate_results: [
+            { gate_id: 'analyze:gate[0]', type: 'algorithmic', passed: true, reason: 'truthy' },
+          ],
+        },
+      },
+      gate_results: [
+        { gate_id: 'a:gate[0]', type: 'algorithmic', passed: false, reason: 'falsy' },
+        { gate_id: 'a:gate[0]', type: 'algorithmic', passed: true, reason: 'truthy' },
+        { gate_id: 'analyze:gate[0]', type: 'algorithmic', passed: true, reason: 'truthy' },
+      ],
+    });
+
+    const retro = generateRetro(dag, result);
+
+    // Only node "a" had retries, so retries array should have exactly 1 entry
+    assert.equal(retro.retro.gates.retries.length, 1);
+    assert.equal(retro.retro.gates.retries[0].node, 'a');
+
+    // The gate matching for node "a" should NOT have picked up "analyze:gate[0]"
+    // With the old .includes() bug, node "a" would match "analyze:gate[0]" too
+    assert.equal(retro.retro.gates.retries[0].attempts, 2); // 1 retry + 1 initial = 2
+    assert.equal(retro.retro.gates.retries[0].final, 'passed');
+  });
+});
+
 // ── Route Tests (via Fastify inject) ───────────────────────────
 
 describe('Strategy Routes', () => {

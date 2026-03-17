@@ -62,6 +62,13 @@ export function getDefaultTimeout(_type: GateType): number {
 // ── Expression Evaluator (sandboxed) ───────────────────────────
 
 /**
+ * SECURITY NOTE: This is defense-in-depth against accidental misuse, NOT a
+ * security sandbox. Gate expressions are trusted input from Strategy authors.
+ * Known escape vectors: dynamic import(), constructor chain traversal,
+ * uncontrolled `this` binding. OS-level sandboxing is deferred (PRD 017 §7).
+ */
+
+/**
  * Evaluate a gate check expression in a sandboxed scope.
  *
  * The expression receives `output`, `artifacts`, and `execution_metadata`

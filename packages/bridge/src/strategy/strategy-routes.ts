@@ -16,6 +16,9 @@ import type { StrategyDAG } from './strategy-parser.js';
 
 // ── In-memory execution store ──────────────────────────────────
 
+const EXECUTION_TTL_MS = parseInt(process.env.STRATEGY_EXECUTION_TTL_MS ?? '3600000', 10);
+const MAX_EXECUTIONS = parseInt(process.env.STRATEGY_MAX_EXECUTIONS ?? '50', 10);
+
 interface ExecutionEntry {
   execution_id: string;
   strategy_id: string;
@@ -24,12 +27,53 @@ interface ExecutionEntry {
   dag: StrategyDAG;
   status: 'started' | 'running' | 'completed' | 'failed' | 'suspended';
   started_at: string;
+  completed_at?: string;
   result?: StrategyExecutionResult;
   retro_path?: string;
   cost_usd: number;
 }
 
 const executions = new Map<string, ExecutionEntry>();
+
+/**
+ * Evict stale completed executions from the in-memory store.
+ * 1. Remove completed executions older than EXECUTION_TTL_MS.
+ * 2. If the map still exceeds MAX_EXECUTIONS, remove the oldest completed
+ *    executions until within bounds.
+ */
+export function evictStaleExecutions(): void {
+  const now = Date.now();
+
+  // Pass 1: remove completed entries past TTL
+  for (const [id, entry] of executions) {
+    if (isTerminal(entry.status) && entry.completed_at) {
+      const age = now - new Date(entry.completed_at).getTime();
+      if (age > EXECUTION_TTL_MS) {
+        executions.delete(id);
+      }
+    }
+  }
+
+  // Pass 2: if still over capacity, evict oldest completed first
+  if (executions.size > MAX_EXECUTIONS) {
+    const completedEntries = Array.from(executions.entries())
+      .filter(([, e]) => isTerminal(e.status))
+      .sort((a, b) => {
+        const aTime = a[1].completed_at ? new Date(a[1].completed_at).getTime() : 0;
+        const bTime = b[1].completed_at ? new Date(b[1].completed_at).getTime() : 0;
+        return aTime - bTime; // oldest first
+      });
+
+    for (const [id] of completedEntries) {
+      if (executions.size <= MAX_EXECUTIONS) break;
+      executions.delete(id);
+    }
+  }
+}
+
+function isTerminal(status: ExecutionEntry['status']): boolean {
+  return status === 'completed' || status === 'failed' || status === 'suspended';
+}
 
 // ── Route Registration ─────────────────────────────────────────
 
@@ -53,6 +97,9 @@ export function registerStrategyRoutes(
       context_inputs?: Record<string, unknown>;
     };
   }>('/strategies/execute', async (request, reply) => {
+    // Evict stale completed executions before creating a new one
+    evictStaleExecutions();
+
     const { strategy_yaml, strategy_path, context_inputs } = request.body ?? {};
 
     // Resolve YAML content
@@ -116,6 +163,7 @@ export function registerStrategyRoutes(
         entry.status = result.status;
         entry.result = result;
         entry.cost_usd = result.cost_usd;
+        entry.completed_at = new Date().toISOString();
 
         // Generate and save retrospective
         try {
@@ -134,6 +182,7 @@ export function registerStrategyRoutes(
       .catch((e) => {
         entry.status = 'failed';
         entry.result = undefined;
+        entry.completed_at = new Date().toISOString();
         app.log.error(
           `Strategy ${dag.id} execution ${executionId} failed: ${(e as Error).message}`,
         );

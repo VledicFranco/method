@@ -1217,6 +1217,62 @@ strategy:
     );
   });
 
+  it('methodology node with empty methodology field fails validation', () => {
+    const obj: StrategyYaml = {
+      strategy: {
+        id: 'S-EMPTY-METH',
+        name: 'Empty Methodology',
+        version: '1.0',
+        dag: {
+          nodes: [
+            {
+              id: 'bad_node',
+              type: 'methodology',
+              methodology: '',
+              outputs: ['result'],
+            },
+          ],
+        },
+      },
+    };
+
+    const dag = parseStrategyObject(obj);
+    const validation = validateStrategyDAG(dag);
+    assert.equal(validation.valid, false);
+    assert.ok(
+      validation.errors.some((e) => e.includes('non-empty "methodology" field')),
+      `Expected methodology validation error, got: ${validation.errors.join('; ')}`,
+    );
+  });
+
+  it('methodology node with missing methodology field fails validation', () => {
+    const obj: StrategyYaml = {
+      strategy: {
+        id: 'S-MISSING-METH',
+        name: 'Missing Methodology',
+        version: '1.0',
+        dag: {
+          nodes: [
+            {
+              id: 'bad_node',
+              type: 'methodology',
+              // methodology field omitted — parser defaults to ''
+              outputs: ['result'],
+            },
+          ],
+        },
+      },
+    };
+
+    const dag = parseStrategyObject(obj);
+    const validation = validateStrategyDAG(dag);
+    assert.equal(validation.valid, false);
+    assert.ok(
+      validation.errors.some((e) => e.includes('non-empty "methodology" field')),
+      `Expected methodology validation error, got: ${validation.errors.join('; ')}`,
+    );
+  });
+
   it('LLM response without JSON code block is handled gracefully', async () => {
     class PlainTextProvider implements LlmProvider {
       async invoke(): Promise<LlmResponse> {
@@ -1253,5 +1309,86 @@ strategy:
     assert.equal(result.status, 'completed');
     assert.equal(result.node_results['work'].status, 'completed');
     assert.ok(result.node_results['work'].output.result, 'should have raw result');
+  });
+});
+
+// ── Timeout Tests (isolated to avoid cascading cancellations) ──
+
+describe('StrategyExecutor — timeout enforcement', () => {
+  it('provider that completes within timeout succeeds', async () => {
+    // Verify that the timeout race doesn't interfere with normal execution.
+    // Provider resolves in ~10ms, timeout is 5000ms — provider wins the race.
+    class QuickProvider implements LlmProvider {
+      async invoke(_request: LlmRequest): Promise<LlmResponse> {
+        await new Promise((r) => setTimeout(r, 10));
+        return makeMockResponse({
+          result: '```json\n{"fast": true}\n```',
+          total_cost_usd: 0.01,
+        });
+      }
+      async invokeStreaming(): Promise<LlmResponse> {
+        throw new Error('Not implemented');
+      }
+    }
+
+    const config = makeExecutorConfig({ defaultTimeoutMs: 5000 });
+    const executor = new StrategyExecutor(new QuickProvider(), config);
+
+    const yamlStr = `
+strategy:
+  id: S-FAST
+  name: "Fast Test"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: quick_node
+        type: methodology
+        methodology: P2-SD
+        outputs: [result]
+`;
+
+    const dag = parseStrategyYaml(yamlStr);
+    const result = await executor.execute(dag, {});
+
+    assert.equal(result.status, 'completed');
+    assert.equal(result.node_results['quick_node'].status, 'completed');
+  });
+
+  it('provider that rejects immediately is caught as node failure', async () => {
+    // Verify that provider errors (not timeouts) are also properly caught.
+    class FailingProvider implements LlmProvider {
+      async invoke(_request: LlmRequest): Promise<LlmResponse> {
+        throw new Error('Connection refused');
+      }
+      async invokeStreaming(): Promise<LlmResponse> {
+        throw new Error('Not implemented');
+      }
+    }
+
+    const config = makeExecutorConfig({ defaultTimeoutMs: 5000 });
+    const executor = new StrategyExecutor(new FailingProvider(), config);
+
+    const yamlStr = `
+strategy:
+  id: S-FAIL
+  name: "Fail Test"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: fail_node
+        type: methodology
+        methodology: P2-SD
+        outputs: [result]
+`;
+
+    const dag = parseStrategyYaml(yamlStr);
+    const result = await executor.execute(dag, {});
+
+    assert.equal(result.status, 'failed');
+    assert.equal(result.node_results['fail_node'].status, 'failed');
+    assert.ok(
+      result.node_results['fail_node'].error?.includes('Connection refused'),
+      `Expected connection error, got: ${result.node_results['fail_node'].error}`,
+    );
   });
 });

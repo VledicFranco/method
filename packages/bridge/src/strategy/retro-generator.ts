@@ -107,7 +107,7 @@ export function generateRetro(
       if (nodeObj) {
         for (const gate of nodeObj.gates) {
           const gateResults = nr.gate_results.filter(
-            (gr) => gr.gate_id.includes(nr.node_id),
+            (gr) => gr.gate_id.startsWith(nr.node_id + ':'),
           );
           if (gateResults.length > 0) {
             const finalResult = gateResults[gateResults.length - 1];
@@ -179,69 +179,99 @@ export function generateRetro(
 }
 
 /**
- * Compute the critical path through the DAG by total duration.
- * The critical path is the longest path from any root to any leaf,
- * weighted by actual node durations.
+ * Compute the critical path through a parallel DAG by earliest completion time.
+ *
+ * In a parallel DAG where `depends_on` means "waits for ALL deps", the
+ * earliest a node can start is max(earliest_completion_time of all deps).
+ * Its earliest completion time = that start time + own_duration.
+ *
+ * Algorithm:
+ * 1. Process nodes in topological order, computing each node's earliest
+ *    completion time (ECT) = max(ECT of all deps) + own_duration.
+ * 2. The critical path ends at the node with the highest ECT.
+ * 3. Trace back through deps, choosing the dep with the highest ECT at each step.
  */
 export function computeCriticalPath(
   dag: StrategyDAG,
   nodeResults: Record<string, NodeResult>,
 ): string[] {
-  // Build adjacency: for each node, which nodes depend on it (children)
-  const children = new Map<string, string[]>();
+  if (dag.nodes.length === 0) return [];
+
+  const nodeMap = new Map(dag.nodes.map((n) => [n.id, n]));
+
+  // Compute earliest completion time (ECT) for each node in topological order.
+  // ECT(n) = max(ECT(dep) for dep in n.depends_on) + duration(n)
+  // For root nodes (no deps): ECT(n) = duration(n)
+  const ect = new Map<string, number>();
+  // Track which dep contributed the max ECT (for backtracking)
+  const criticalPredecessor = new Map<string, string | null>();
+
+  // Kahn's algorithm for topological processing
+  const inDegree = new Map<string, number>();
+  const dependents = new Map<string, string[]>();
   for (const node of dag.nodes) {
-    if (!children.has(node.id)) {
-      children.set(node.id, []);
-    }
+    inDegree.set(node.id, node.depends_on.length);
+    if (!dependents.has(node.id)) dependents.set(node.id, []);
     for (const dep of node.depends_on) {
-      if (!children.has(dep)) {
-        children.set(dep, []);
+      if (!dependents.has(dep)) dependents.set(dep, []);
+      dependents.get(dep)!.push(node.id);
+    }
+  }
+
+  const queue: string[] = [];
+  for (const [id, deg] of inDegree) {
+    if (deg === 0) queue.push(id);
+  }
+
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    const node = nodeMap.get(nodeId)!;
+    const duration = nodeResults[nodeId]?.duration_ms ?? 0;
+
+    // Earliest start = max ECT among all dependencies
+    let earliestStart = 0;
+    let bestPredecessor: string | null = null;
+
+    for (const dep of node.depends_on) {
+      const depEct = ect.get(dep) ?? 0;
+      if (depEct > earliestStart) {
+        earliestStart = depEct;
+        bestPredecessor = dep;
       }
-      children.get(dep)!.push(node.id);
+    }
+
+    ect.set(nodeId, earliestStart + duration);
+    criticalPredecessor.set(nodeId, bestPredecessor);
+
+    for (const dependent of dependents.get(nodeId) ?? []) {
+      const newDeg = (inDegree.get(dependent) ?? 1) - 1;
+      inDegree.set(dependent, newDeg);
+      if (newDeg === 0) queue.push(dependent);
     }
   }
 
-  // Find root nodes (no dependencies)
-  const roots = dag.nodes
-    .filter((n) => n.depends_on.length === 0)
-    .map((n) => n.id);
-
-  // DFS to find longest path from each root
-  let longestPath: string[] = [];
-  let longestDuration = 0;
-
-  function dfs(nodeId: string, currentPath: string[], currentDuration: number): void {
-    const nr = nodeResults[nodeId];
-    const nodeDuration = nr?.duration_ms ?? 0;
-    const newDuration = currentDuration + nodeDuration;
-    const newPath = [...currentPath, nodeId];
-
-    const nodeChildren = children.get(nodeId) ?? [];
-    if (nodeChildren.length === 0) {
-      // Leaf node — check if this is the longest path
-      if (newDuration > longestDuration) {
-        longestDuration = newDuration;
-        longestPath = newPath;
-      }
-      return;
-    }
-
-    for (const child of nodeChildren) {
-      dfs(child, newPath, newDuration);
+  // Find the node with the highest ECT — that's the end of the critical path
+  let maxEct = -1;
+  let endNode = '';
+  for (const [id, time] of ect) {
+    if (time > maxEct) {
+      maxEct = time;
+      endNode = id;
     }
   }
 
-  for (const root of roots) {
-    dfs(root, [], 0);
+  if (!endNode) return [];
+
+  // Trace back from endNode through critical predecessors
+  const path: string[] = [];
+  let current: string | null = endNode;
+  while (current !== null) {
+    path.push(current);
+    current = criticalPredecessor.get(current) ?? null;
   }
 
-  // If no paths found (empty DAG), return empty
-  if (longestPath.length === 0 && dag.nodes.length > 0) {
-    // Fallback: just return all node IDs
-    return dag.nodes.map((n) => n.id);
-  }
-
-  return longestPath;
+  path.reverse();
+  return path;
 }
 
 /**

@@ -310,9 +310,10 @@ export class StrategyExecutor {
           responseTurns = result.num_turns;
           responseDurationMs = result.duration_ms;
         } else {
-          const result = this.executeScriptNode(
+          const result = await this.executeScriptNode(
             node.config as ScriptNodeConfig,
             inputBundle,
+            node.id,
           );
           nodeOutput = result;
           responseCost = 0;
@@ -480,12 +481,31 @@ export class StrategyExecutor {
       }
     }
 
-    const response: LlmResponse = await this.provider.invoke({
-      prompt,
-      sessionId: `strategy-${dag.id}-${node.id}-${Date.now()}`,
-      maxBudgetUsd: this.config.defaultBudgetUsd,
-      allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
+    const timeoutMs = this.config.defaultTimeoutMs;
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutTimer = setTimeout(
+        () => reject(new Error(`Node "${node.id}" timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      );
+      if (timeoutTimer && typeof timeoutTimer === 'object' && 'unref' in timeoutTimer) {
+        timeoutTimer.unref();
+      }
     });
+    let response: LlmResponse;
+    try {
+      response = await Promise.race([
+        this.provider.invoke({
+          prompt,
+          sessionId: `strategy-${dag.id}-${node.id}-${Date.now()}`,
+          maxBudgetUsd: this.config.defaultBudgetUsd,
+          allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
+        }),
+        timeoutPromise,
+      ]);
+    } finally {
+      if (timeoutTimer !== undefined) clearTimeout(timeoutTimer);
+    }
 
     // Parse output from response
     const output = this.parseNodeOutput(response.result);
@@ -499,12 +519,20 @@ export class StrategyExecutor {
   }
 
   /**
+   * SECURITY NOTE: This is defense-in-depth against accidental misuse, NOT a
+   * security sandbox. Gate expressions are trusted input from Strategy authors.
+   * Known escape vectors: dynamic import(), constructor chain traversal,
+   * uncontrolled `this` binding. OS-level sandboxing is deferred (PRD 017 §7).
+   */
+
+  /**
    * Execute a script node in a sandboxed scope.
    */
-  private executeScriptNode(
+  private async executeScriptNode(
     config: ScriptNodeConfig,
     inputBundle: Record<string, unknown>,
-  ): Record<string, unknown> {
+    nodeId: string,
+  ): Promise<Record<string, unknown>> {
     try {
       // eslint-disable-next-line no-new-func
       const fn = new Function(
@@ -526,7 +554,34 @@ var setImmediate = undefined;
 ${config.script}`,
       );
 
-      const result = fn(inputBundle);
+      // NOTE: Timeout protects against async hangs but cannot interrupt synchronous
+      // infinite loops (would require worker_threads). Acceptable for Phase 1 —
+      // script authors are trusted Strategy authors.
+      const scriptTimeoutMs = this.config.defaultTimeoutMs;
+      const scriptPromise = new Promise<unknown>((resolve, reject) => {
+        try {
+          const result = fn(inputBundle);
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      });
+      let scriptTimer: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        scriptTimer = setTimeout(
+          () => reject(new Error(`Script node "${nodeId}" timed out after ${scriptTimeoutMs}ms`)),
+          scriptTimeoutMs,
+        );
+        if (scriptTimer && typeof scriptTimer === 'object' && 'unref' in scriptTimer) {
+          scriptTimer.unref();
+        }
+      });
+      let result: unknown;
+      try {
+        result = await Promise.race([scriptPromise, timeoutPromise]);
+      } finally {
+        if (scriptTimer !== undefined) clearTimeout(scriptTimer);
+      }
 
       if (result !== null && typeof result === 'object') {
         return result as Record<string, unknown>;
