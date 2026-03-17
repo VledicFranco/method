@@ -143,14 +143,79 @@ observations:
       - "Routing evaluation: task_type=implement → M1-IMPL (not multi_task_scope)"
       - "PO refined: added constant commit+push, draft PR on first push, PR comments as implementation journal, full prompt in PR description"
       - "Commission prompt: 250+ lines, 12 sections, 5 delivery rules, 9 deliverables"
-      - "Dispatched agent (method TBD — bridge or native Agent)"
-    commits: []  # agent is running, commits will come from the commissioned agent
+      - "Dispatched agent via native Agent tool (worktree isolation)"
+      - "Agent used M2-ORCH (3 parallel sub-tasks) + M3-TMP (sequential fixes)"
+      - "Result: PR #24 — 13 files, +2107/-122 lines, 41+ tests, all 9 deliverables"
+    commits:
+      - { hash: 0878f5d, msg: "feat(bridge): print-mode sessions (PRD 012 Phase 4)" }
+
+  - phase: "Parallel commissions — PRD 013 tests"
+    items:
+      - "Commissioned transcript-reader tests (PRD 013 Phase 1 completion) — background agent in worktree"
+      - "Commissioned usage-poller tests (PRD 013 Phase 2 start) — background agent in worktree"
+      - "Both agents completed successfully with PRs"
+      - "transcript-reader: 27 tests, realistic JSONL fixture, PR #26 merged"
+      - "usage-poller: 49 tests, fetch mocking, state machine coverage, cherry-picked to master"
+    commits:
+      - { hash: 8af61e6, msg: "test(bridge): transcript-reader tests + JSONL fixture (PRD 013) (#26)" }
+      - { hash: 9cb4fed, msg: "test(bridge): usage-poller tests with fetch mocking (PRD 013 Phase 2)" }
+
+  - phase: "PR review and merge — cleanup"
+    items:
+      - "Dispatched 2 parallel review agents for PRs #25 and #26"
+      - "PR #26 reviewer: approved, all criteria passed, squash merged"
+      - "PR #25 reviewer: flagged wrong content — branch had print-mode code not usage-poller tests"
+      - "Closed PR #25 (wrong content), found usage-poller commit via git log, cherry-picked to master"
+      - "Dispatched review agent for PR #24 (print-mode sessions) — approved with minor items"
+      - "Merged PR #24 via git squash merge (draft PRs can't merge via GitHub API)"
+      - "Updated PRD 012 and 013 statuses"
+    commits:
+      - { hash: 469b257, msg: "docs: update PRD 012/013 status after implementation" }
+
+  - phase: "xyflow research"
+    items:
+      - "Deep research on xyflow/React Flow library for Strategy DAG visualization"
+      - "Finding: excellent for interactive DAG viz (35.7K stars, MIT, custom React nodes, dagre/ELK layout)"
+      - "Problem: requires React, conflicts with bridge dashboard's no-build-step architecture"
+      - "3 paths: CDN React bootstrap (medium), server-rendered SVG (low), separate SPA (high)"
+      - "Recommendation: Path B (dagre + SVG) for Phase 1, evaluate Path A/C for Phase 2"
+      - "Alternative: Cytoscape.js (vanilla JS, CDN, canvas-rendered, less customizable nodes)"
+
+  - id: OBS-S13
+    category: agent_coordination
+    observation: "The PRD 012 commissioned agent (M2-ORCH) had a sub-agent push directly to master (commit fd52a49) before the feature branch PR existed. Worktree isolation prevented file conflicts but did not prevent pushing to the wrong branch. The commission prompt said 'create a PR' but didn't say 'NEVER push to master.'"
+    implication: "Commission prompts must explicitly forbid pushing to master. Consider a pre-push hook rejecting master pushes from agent sessions. PRD 017 Strategy executor should enforce branch isolation at infrastructure level."
+
+  - id: OBS-S14
+    category: agent_coordination
+    observation: "PR #25 (usage-poller tests) contained print-mode code instead. The usage-poller agent's worktree branch accumulated commits from the PRD 012 agent. Root cause: M2-ORCH sub-agents may have shared branch references or pushed to wrong remotes."
+    implication: "Worktree isolation alone is insufficient — agents need branch-level isolation too. Each commissioned agent should have a unique branch name derived from its session ID, and the bridge should enforce this."
+
+  - id: OBS-S15
+    category: agent_coordination
+    observation: "My session notes commit accidentally went to feat/print-mode-sessions because the PRD 012 agent had switched the main repo's branch. I created a 'planning' worktree to fix this, but only after the issue occurred."
+    implication: "When commissioning agents, the human (or genesis LLM) should immediately switch to a worktree to avoid branch contamination from agents working in the main repo."
+
+  - id: OBS-S16
+    category: agent_coordination
+    observation: "Draft PRs cannot be merged via the GitHub MCP merge_pull_request tool. The review agent approved PR #26 but couldn't mark it as ready-for-review (no update_pull_request MCP tool exists). Had to merge via git squash merge locally."
+    implication: "Need an update_pull_request MCP tool, or commission prompts should instruct agents to create non-draft PRs. Alternatively, the merge workflow should use git operations when MCP tools hit draft limitations."
+
+  - id: OBS-S17
+    category: process
+    observation: "Three parallel commissions (PRD 012 Phase 4 + two PRD 013 tests) ran concurrently. All three produced working code. But the merge/review process was messy — wrong content on PR #25, stray commit on master, branch contamination. The implementation quality was good; the git coordination was poor."
+    implication: "Agent code quality scales well with parallel commissions. Agent git discipline does not. The Strategy executor (PRD 017) should own git operations — agents produce artifacts, the executor handles branching, committing, and PR creation."
+
+  - id: OBS-S18
+    category: tool_effectiveness
+    observation: "The /commission skill produced a prompt that the agent executed successfully (all 9 deliverables, 41+ tests, clean architecture). The PO's refinements (constant push, draft PR, PR comments as journal) were the key additions that made the process traceable."
+    implication: "The commission skill's default prompt structure works. The 'PR as living artifact' pattern should be baked into the default template, not added manually each time."
 
 # ─── Statistics ─────────────────────────────────────────────
 
 stats:
-  commits: 9  # 8 prior + 1 session notes
-  prds_updated: 5  # 008, 011, 012, 013, 016
+  commits: 14
+  prds_updated: 7  # 008, 011, 012 (x2), 013 (x2), 016
   prds_created: 1  # 017
   guides_updated: 3  # 10, 14, 15
   council_sessions: 2  # sigma_3 redesign + Strategy Pipelines
@@ -159,5 +224,9 @@ stats:
   memory_files_created: 1
   retro_files_committed: 49
   explore_agents_spawned: 8
-  commissions_dispatched: 1  # PRD 012 Phase 4
-  files_changed: ~35
+  commissions_dispatched: 3  # PRD 012 Phase 4, PRD 013 transcript-reader, PRD 013 usage-poller
+  review_agents_dispatched: 3  # PR #25, PR #26, PR #24
+  prs_merged: 2  # PR #24, PR #26
+  prs_closed: 1  # PR #25 (wrong content)
+  files_changed: ~50
+  new_test_count: 117  # 41 (print-mode) + 27 (transcript-reader) + 49 (usage-poller)
