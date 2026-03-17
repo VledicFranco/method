@@ -1,0 +1,113 @@
+# Retrospective — PRD 017 Strategy Pipelines (Phase 1)
+# Instance: I2-METHOD | Methodology: P2-SD v2.0 | Method: M1-IMPL
+# Session: 2026-03-17
+
+retro:
+  session_id: "PRD-017-Phase1"
+  methodology: P2-SD
+  method: M1-IMPL
+  instance: I2-METHOD
+  date: "2026-03-17"
+
+  hardest_decision: >
+    Gate expression sandboxing approach. The PRD specifies sandboxed `new Function()`
+    with no access to Node.js globals. The naive approach (passing globals as undefined
+    parameters) fails in strict mode because `eval` and `import` are reserved keywords.
+    The solution: use `var` declarations inside the function body to shadow dangerous
+    globals to undefined, avoiding the strict-mode restriction while still blocking
+    access to `require`, `process`, `fs`, `globalThis`, `eval`, `Function`, and other
+    Node.js internals. This is effective but not an OS-level sandbox — the security
+    boundary is acknowledged as prompt-level per PRD Section 7 (D-008).
+
+  observations:
+    - id: OBS-01
+      type: process
+      observation: >
+        Sequential phasing with strict dependencies (1a → 1b → 1c → 1d) naturally
+        prevented integration bugs. Each phase's tests validated the contract that
+        the next phase would depend on. The 4-phase structure from the PRD was
+        well-designed — no phase needed to be reordered.
+
+    - id: OBS-02
+      type: tooling
+      observation: >
+        The existing LlmProvider/ClaudeCodeProvider from PRD 012 Phase 4 was nearly
+        sufficient for Phase 1a. Only one field needed adding (allowedTools). The
+        interface abstraction proved its value — the entire executor is provider-agnostic,
+        tested with MockLlmProvider, and will work with future providers (Claude API,
+        other LLMs) without modification.
+
+    - id: OBS-03
+      type: architecture
+      observation: >
+        js-yaml was already a dependency in @method/core but not in @method/bridge.
+        Adding it to bridge was necessary for Strategy YAML parsing (DR-03 prevents
+        importing from core for transport reasons). This is the right call — the
+        bridge independently needs YAML parsing for strategy files, not as a
+        pass-through from core.
+
+    - id: OBS-04
+      type: quality
+      observation: >
+        Test count grew from 482 (pre-PRD-017) to 590 — 108 new tests across
+        4 test files. The MockLlmProvider pattern proved highly effective for
+        testing the executor without real CLI invocations. DR-09 (real fixtures)
+        was satisfied with realistic multi-node Strategy YAML in test fixtures.
+
+    - id: OBS-05
+      type: delivery
+      observation: >
+        M2-ORCH was considered for Phase 1a (parallelize ArtifactStore + LlmRequest
+        extension) but the LlmRequest extension was trivial (~5 lines), making
+        parallelization overhead greater than the work itself. Single sub-agent
+        per phase was the right call for all phases.
+
+  card_feedback:
+    essence:
+      purpose_served: true
+      invariant_respected: true
+      notes: >
+        The Strategy system is a higher-order methodology grounded in F1-FTH theory
+        (per council decision D-001). It serves the essence by making methodology
+        execution automated while respecting the theory-first invariant — the executor
+        runs formal methodology invocations, not ad-hoc workflows.
+    delivery_rules:
+      - rule: DR-03
+        respected: true
+        notes: "All strategy code in packages/bridge/src/strategy/. Zero core modifications."
+      - rule: DR-04
+        respected: true
+        notes: "MCP tools strategy_execute and strategy_status are thin wrappers — parse input, call bridge, format output."
+      - rule: DR-07
+        respected: true
+        notes: "strategy_execute grounded in PRD 017's Strategy concept. strategy_status provides execution visibility."
+      - rule: DR-09
+        respected: true
+        notes: "Tests use realistic multi-node Strategy YAML fixtures with gates, dependencies, and capabilities."
+
+  commits:
+    - hash: 3bff90d
+      message: "feat(strategy): ArtifactStore + LlmRequest allowedTools (PRD 017 Phase 1a)"
+    - hash: 22cc4b6
+      message: "feat(strategy): gate framework with sandboxed evaluator (PRD 017 Phase 1b)"
+    - hash: d50357a
+      message: "feat(strategy): DAG executor with topo sort and parallel execution (PRD 017 Phase 1c)"
+    - hash: 42a2f31
+      message: "fix: remove unused variables in strategy executor files"
+    - hash: 7ea8641
+      message: "feat(strategy): MCP tools, HTTP endpoints, retro generator (PRD 017 Phase 1d)"
+    - hash: d11a9f0
+      message: "fix: remove unused beforeEach import in strategy-routes test"
+
+  metrics:
+    files_created: 10
+    files_modified: 5
+    tests_added: 108
+    tests_total: 590
+    test_failures: 0
+    build_status: clean
+
+  pr:
+    number: 27
+    url: "https://github.com/VledicFranco/method/pull/27"
+    status: draft
