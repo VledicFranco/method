@@ -1,0 +1,7 @@
+topics:
+  - id: TOPIC-STRATEGY-PIPELINES
+    name: "Strategy Pipelines — Methodology DAG Automation"
+    file: strategy-pipelines.yaml
+    status: active
+    last_session: "2026-03-16"
+    session_count: 1

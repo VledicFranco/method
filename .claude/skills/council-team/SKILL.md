@@ -17,6 +17,20 @@ A structured creative roleplay where a cast of expert characters debate and solv
 
 **Proportionality check before starting:** Council adds value when (a) the problem has multiple defensible solution philosophies, (b) the decision affects security invariants or is irreversible, or (c) 3+ options exist with non-obvious tradeoffs. For reversible, low-stakes decisions with clear options, use straightforward reasoning instead — council would be pure overhead.
 
+## Phase 0 — Memory Check (CMEM-PROTO)
+
+Before starting, check for existing council memory on the topic:
+
+1. Read `.method/council/memory/INDEX.yaml` (if it exists)
+2. If the topic matches an existing entry (by keyword similarity or explicit reference), load the memory file
+3. When memory is loaded, present to the PO:
+   > *"I found a prior council on this topic: [topic name] ([session_count] sessions, last: [date]). The cast was: [names]. There are [N] standing decisions and [M] open questions. Want to resume with this cast, modify the cast, or start fresh?"*
+4. If resuming: skip Phase 2 (cast design), load the active cast from memory, present standing decisions and open questions as context before Phase 3
+5. If modifying: present the current cast, let the PO make changes, then proceed
+6. If starting fresh or no memory exists: proceed to Phase 1 normally
+
+**After every session (Phase 5 complete):** save or update the topic memory file following CMEM-PROTO lifecycle rules. Update INDEX.yaml. This is mandatory — memory persistence is not optional.
+
 ## Phase 1 — Setup
 
 Ask the user:

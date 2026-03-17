@@ -3,7 +3,7 @@
 
 manifest:
   project: pv-method
-  last_updated: "2026-03-14"
+  last_updated: "2026-03-16"
 
   installed:
     - id: P2-SD
@@ -44,3 +44,12 @@ manifest:
         - council/inbox/
         - council/outbox/
         - council/sub-councils/
+
+    - id: CMEM-PROTO
+      type: protocol
+      version: "0.1"
+      status: draft
+      extends: M1-COUNCIL
+      artifacts:
+        - council/memory/
+        - council/memory/INDEX.yaml

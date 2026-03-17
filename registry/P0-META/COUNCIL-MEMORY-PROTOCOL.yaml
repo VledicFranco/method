@@ -1,0 +1,248 @@
+protocol:
+  id: CMEM-PROTO
+  name: "Council Memory Protocol — Persistent Cross-Session Context for M1-COUNCIL"
+  version: "0.1"
+  status: draft
+  date: "2026-03-16"
+  extends: M1-COUNCIL
+  formal_grounding: "theory/F1-FTH.md"
+
+  installation:
+    description: "What a project needs in .method/ to use this protocol"
+    artifacts:
+      - path: "council/memory/"
+        type: directory
+        required: true
+        description: "Council memory archive. One YAML per topic. Index file tracks all topics."
+        human_input_needed: false
+      - path: "council/memory/INDEX.yaml"
+        type: file
+        required: true
+        description: "Topic index — maps topic IDs to memory files, tracks active/archived status"
+        human_input_needed: false
+        template_note: "Start with: topics: []"
+    manifest_entry: |
+      - id: CMEM-PROTO
+        type: protocol
+        version: "0.1"
+        status: draft
+        extends: M1-COUNCIL
+        artifacts: [council/memory/, council/memory/INDEX.yaml]
+
+  description: >
+    Protocol for persisting council session context across conversations. Each topic
+    gets a memory file that accumulates: the active cast, decisions made, open questions,
+    key tensions, and evolution history of the cast. When a council session resumes a
+    topic, it loads the memory file to restore continuity — the cast, prior decisions,
+    unresolved questions, and accumulated wisdom.
+
+    Designed as a future extension point for M1-COUNCIL: the memory file schema maps
+    to D_COUNCIL sorts (Character, Question, Decision, Artifact) so that a formal
+    M-COUNCIL-MEMORY method could be compiled from this protocol via M2-MDIS.
+
+  rationale: >
+    M1-COUNCIL sessions are stateless — each invocation starts fresh with no knowledge
+    of prior debates on the same topic. This means: (1) cast members are redesigned
+    from scratch even when the same topic recurs, (2) prior decisions are not available
+    as context, (3) position evolution across sessions is lost, (4) the council cannot
+    learn from its own history. CMEM-PROTO solves this by persisting the minimal state
+    needed for meaningful continuation.
+
+  # ─── Memory File Schema ───────────────────────────────────────
+
+  schema:
+    description: >
+      Each topic gets a YAML memory file at council/memory/{topic_id}.yaml.
+      The schema is designed for three consumers: (1) the LLM loading context for
+      a resumed council session, (2) the steering council reviewing council history,
+      (3) a future M-COUNCIL-MEMORY method that formalizes memory operations.
+
+    topic_memory:
+      fields:
+        - name: topic
+          type: object
+          required: true
+          description: "Topic identity and status"
+          fields:
+            - { name: id, type: string, required: true, description: "Unique topic ID (e.g., TOPIC-STRATEGY-PIPELINES)" }
+            - { name: name, type: string, required: true, description: "Human-readable topic name" }
+            - { name: status, type: enum, values: [active, paused, resolved, archived], required: true }
+            - { name: created, type: string, required: true, description: "ISO 8601 date of first session" }
+            - { name: last_session, type: string, required: true, description: "ISO 8601 date of most recent session" }
+            - { name: session_count, type: integer, required: true }
+            - { name: summary, type: string, required: true, description: "2-3 sentence summary of the topic and current state" }
+
+        - name: cast
+          type: object
+          required: true
+          description: "Current council cast for this topic"
+          fields:
+            - name: active
+              type: array
+              items: CharacterCard
+              description: "Currently active cast members"
+            - name: alumni
+              type: array
+              items: CharacterCard
+              description: "Past cast members who were dismissed or rotated out, with reason"
+
+        - name: decisions
+          type: array
+          required: true
+          description: "All decisions made across all sessions on this topic"
+          items:
+            fields:
+              - { name: id, type: string, description: "Decision ID (D-NNN)" }
+              - { name: session, type: string, description: "Session date or ID where decided" }
+              - { name: question, type: string }
+              - { name: decision, type: string }
+              - { name: rationale, type: string }
+              - { name: dissent, type: string, required: false }
+              - { name: position_shifts, type: array, items: string, required: false }
+              - { name: status, type: enum, values: [standing, revised, superseded], required: false }
+              - { name: revised_by, type: string, required: false, description: "ID of decision that supersedes this one" }
+
+        - name: open_questions
+          type: array
+          required: false
+          description: "Unresolved questions carried forward for the next session"
+          items:
+            fields:
+              - { name: question, type: string }
+              - { name: context, type: string, description: "Why this is open, what was discussed" }
+              - { name: positions, type: array, items: string, description: "Known positions from cast members" }
+
+        - name: tensions
+          type: array
+          required: false
+          description: "Persistent tensions that recur across sessions"
+          items:
+            fields:
+              - { name: tension, type: string }
+              - { name: sides, type: string }
+              - { name: history, type: string, description: "How this tension has evolved across sessions" }
+
+        - name: session_log
+          type: array
+          required: true
+          description: "Chronological log of sessions on this topic"
+          items:
+            fields:
+              - { name: date, type: string }
+              - { name: session_id, type: string, required: false }
+              - { name: questions_resolved, type: integer }
+              - { name: decisions_made, type: array, items: string, description: "Decision IDs" }
+              - { name: cast_changes, type: string, required: false, description: "Who was added/removed and why" }
+              - { name: artifact, type: string, required: false, description: "Path to session output (report, GlyphJS doc, etc.)" }
+              - { name: summary, type: string, description: "1-2 sentence session summary" }
+
+        - name: context
+          type: object
+          required: false
+          description: "Accumulated context that informs future sessions"
+          fields:
+            - { name: key_insights, type: array, items: string, description: "Important insights that should not be lost" }
+            - { name: recommendations, type: array, items: string, description: "Standing recommendations from prior sessions" }
+            - { name: references, type: array, items: string, description: "Files, PRDs, docs that are relevant to this topic" }
+
+    character_card:
+      description: "Schema for cast members (maps to D_COUNCIL CharacterCard sort)"
+      fields:
+        - { name: name, type: string, required: true }
+        - { name: role, type: enum, values: [leader, contrarian], required: true }
+        - { name: expertise, type: string, required: true }
+        - { name: conviction, type: string, required: false, description: "Omit for leader (structurally neutral)" }
+        - { name: blind_spot, type: string, required: false, description: "Omit for leader" }
+        - { name: voice, type: string, required: true }
+        - { name: added_in, type: string, required: false, description: "Session date when recruited" }
+        - { name: dismissed_in, type: string, required: false, description: "Session date when dismissed" }
+        - { name: dismissal_reason, type: string, required: false }
+
+  # ─── Index Schema ─────────────────────────────────────────────
+
+  index_schema:
+    description: "council/memory/INDEX.yaml tracks all topics"
+    fields:
+      - name: topics
+        type: array
+        items:
+          fields:
+            - { name: id, type: string }
+            - { name: name, type: string }
+            - { name: file, type: string, description: "Filename relative to council/memory/" }
+            - { name: status, type: enum, values: [active, paused, resolved, archived] }
+            - { name: last_session, type: string }
+            - { name: session_count, type: integer }
+
+  # ─── Lifecycle Rules ──────────────────────────────────────────
+
+  lifecycle:
+    on_session_start:
+      description: >
+        When a council session begins on a topic that has a memory file:
+        1. Load the memory file for the topic
+        2. Restore the active cast (skip Phase 2 unless cast changes needed)
+        3. Present the topic summary, standing decisions, and open questions
+        4. Ask the PO if they want to continue with the current cast or modify it
+    on_session_end:
+      description: >
+        After Phase 5 (Output) of every council session:
+        1. Update or create the topic memory file
+        2. Record all new decisions with IDs
+        3. Update open_questions (remove resolved, add new)
+        4. Update tensions (add new, update history of existing)
+        5. Log the session in session_log
+        6. Update the INDEX.yaml
+        7. Record any cast changes (additions, dismissals)
+    on_cast_change:
+      description: >
+        When a cast member is added or dismissed during a session:
+        1. Move dismissed members from cast.active to cast.alumni with reason
+        2. Add new members to cast.active with added_in date
+        3. Record the change in session_log.cast_changes
+    on_decision_revision:
+      description: >
+        When a prior decision is revisited and changed:
+        1. Mark the original decision as status: revised, revised_by: new_id
+        2. Add the new decision referencing the original
+        3. Record in session_log
+
+  # ─── Formal Grounding ────────────────────────────────────────
+
+  theory_mapping:
+    description: >
+      CMEM-PROTO maps to D_COUNCIL sorts as follows, enabling future compilation
+      into a formal M-COUNCIL-MEMORY method via M2-MDIS:
+
+      topic_memory.cast.active     → Set(CharacterCard)
+      topic_memory.decisions       → Set(Decision)
+      topic_memory.open_questions  → Set(Question) where NOT decided(q)
+      topic_memory.tensions        → Derived from Position evolution (Ax-4 evidence)
+      topic_memory.session_log     → Session execution trace
+
+      The memory file is a materialized view of the council's accumulated state.
+      Loading a memory file is equivalent to initializing D_COUNCIL with prior state
+      rather than the empty initial state.
+
+  # ─── Promotion Path ──────────────────────────────────────────
+
+  promotion_path:
+    current_stage: draft
+    stages:
+      - name: draft
+        description: "Protocol documented. Memory files can be manually created."
+        criteria_to_advance: >
+          At least 3 council sessions on the same topic have used memory files
+          for continuity. Cast persistence works (members survive across sessions).
+          Decisions are successfully referenced from prior sessions.
+      - name: trial
+        description: "Protocol enforced on council-team skill. Memory auto-saved."
+        criteria_to_advance: >
+          At least 10 topics have memory files. At least 2 topics have had cast
+          changes (recruitment or dismissal). At least 1 prior decision was revised
+          in a later session. Memory load time adds < 2s to session startup.
+      - name: promoted
+        description: "Protocol compiled into M-COUNCIL-MEMORY extension method."
+        criteria_to_advance: >
+          Full compilation via M2-MDIS. Domain theory extension of D_COUNCIL with
+          memory sorts. Step DAG for load/save operations. Gates for memory integrity.

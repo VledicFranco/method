@@ -1,0 +1,220 @@
+# Council Memory — Strategy Pipelines
+# Protocol: CMEM-PROTO v0.1
+# Auto-saved after council session 2026-03-16
+
+topic:
+  id: TOPIC-STRATEGY-PIPELINES
+  name: "Strategy Pipelines — Methodology DAG Automation"
+  status: active
+  created: "2026-03-16"
+  last_session: "2026-03-16"
+  session_count: 1
+  summary: >
+    Designing PRD 017 for Strategy Pipelines — executable DAGs that compose methodology
+    invocations, algorithmic gates, and dynamic scripts into automated workflows. A Strategy
+    is formally grounded as a higher-order methodology in F1-FTH. Session 1 resolved all 12
+    design questions; PRD drafting is the next step.
+
+cast:
+  active:
+    - name: Thane
+      role: leader
+      expertise: "Methodology architecture, cross-system composition, F1-FTH theory"
+      voice: "Structural, synthesizing"
+      added_in: "2026-03-16"
+
+    - name: Kael
+      role: contrarian
+      expertise: "Distributed systems, DAG execution engines, pipeline orchestration (Airflow, Temporal, Constellation)"
+      conviction: "The execution engine must be deterministic and observable — every step either succeeds with typed output, fails with a reason, or suspends waiting for input. No silent failures, no untyped data flowing between steps."
+      blind_spot: "May over-engineer execution infrastructure when a simpler loop would suffice"
+      voice: "Systems-precise, engineering-dense"
+      added_in: "2026-03-16"
+
+    - name: Mira
+      role: contrarian
+      expertise: "LLM agent reliability, prompt engineering, bridge operations, commission patterns"
+      conviction: "Agents are unreliable actors — the system must assume every LLM step can fail, stall, or produce garbage, and gate everything algorithmically. The human should never be the reliability bottleneck."
+      blind_spot: "May design for worst-case so aggressively that the happy path becomes needlessly complex"
+      voice: "Pragmatic, evidence-driven"
+      added_in: "2026-03-16"
+
+    - name: Voss
+      role: contrarian
+      expertise: "Formal methodology theory (F1-FTH, F4-PHI), coalgebra, method composition (M5-MCOM)"
+      conviction: "A Strategy is a methodology of methodologies — it must be expressible as a coalgebra over the existing theory, not a new formalism that bypasses it."
+      blind_spot: "May resist practical shortcuts that don't fit the theory even when the theory hasn't caught up"
+      voice: "Formal, principled"
+      added_in: "2026-03-16"
+
+    - name: Lyra
+      role: contrarian
+      expertise: "Reactive systems (Rx, Akka, Constellation), functional programming (effect systems, algebraic types), event-driven architecture, compiler design"
+      conviction: "A Strategy should be a live reactive graph, not a batch pipeline — data flows through it continuously, events trigger recomposition, and the DAG itself is a first-class value that methodologies can transform at runtime."
+      blind_spot: "Underweights operational simplicity — may propose architectures that are intellectually beautiful but hard to debug at 3am"
+      voice: "Electric, cross-pollinating"
+      added_in: "2026-03-16"
+
+    - name: Rune
+      role: contrarian
+      expertise: "Production infrastructure (Kubernetes, Temporal, CI/CD), operational reliability, incident response, system administration"
+      conviction: "Every abstraction layer you add is a layer that breaks at 3am. A Strategy that requires a reactive graph engine, a DAG compiler, and a custom event bus will be less reliable than a bash script that runs steps sequentially and retries on failure."
+      blind_spot: "May kill genuinely valuable ideas too early because the first version looks complex — underweights the compounding returns of good abstractions once they're stable"
+      voice: "Blunt, operational"
+      added_in: "2026-03-16"
+
+  alumni: []
+
+decisions:
+  - id: D-001
+    session: "2026-03-16"
+    question: "What is a Strategy in terms of F1-FTH theory?"
+    decision: "A higher-order methodology whose D_STRATEGY includes MethodologyInvocation, AlgorithmicGate, Artifact, Context as sorts. Transition function selects a frontier of parallel-executable nodes."
+    rationale: "Grounding in F1-FTH means steering council, retros, MCP tools, and session management all work — no parallel governance system."
+    dissent: "F1-FTH §7 only models sequential method selection. Parallel frontier selection is open problem P1."
+    position_shifts:
+      - "Lyra shifted from 'reactive pipeline as new formalism' to 'methodology outside, DAG engine inside' — Voss's governance argument was decisive"
+    status: standing
+
+  - id: D-002
+    session: "2026-03-16"
+    question: "Execution architecture — Constellation vs bridge vs new component?"
+    decision: "Minimal TypeScript DAG executor in the bridge, using Constellation's DagSpec data model as type structure. Interfaces designed for future Constellation port."
+    rationale: "Kael's middle ground — working executor in days, Constellation compatibility preserved without language boundary cost."
+    dissent: "Minimal executor lacks suspension/resumption and dynamic DAG modification. Will need incremental additions."
+    position_shifts:
+      - "Rune shifted from 'topological sort + priority queue only' to accepting Constellation-compatible interfaces — interface compatibility costs nothing"
+    status: standing
+
+  - id: D-003
+    session: "2026-03-16"
+    question: "Step execution model and LLM provider abstraction?"
+    decision: "claude --print --output-format json --resume for all automated steps. Claude-first provider interface with capability flags. Streaming via AsyncIterable."
+    rationale: "Print mode gives deterministic completion, structured JSON, exact cost tracking, zero empty responses."
+    dissent: "Claude-first interface may create awkward abstractions for non-Claude providers lacking resume or tool filtering."
+    status: standing
+
+  - id: D-004
+    session: "2026-03-16"
+    question: "Gate model — types, scope, requeue?"
+    decision: "Two-scope: step gates (embedded, trigger requeue) and strategy gates (DAG nodes, cross-step). Five types: algorithmic, LLM-review, dual-confirm, human-approval, observation."
+    rationale: "Step gates keep DAG clean. Failed gates requeue with failure context (60% vs 20% blind retry success)."
+    dissent: "LLM-review gates are non-deterministic. Dual-confirm doubles LLM cost."
+    position_shifts:
+      - "Kael shifted from 'gates as separate DAG nodes only' to two-scope model — Mira's argument that embedding avoids retry topology complexity"
+    status: standing
+
+  - id: D-005
+    session: "2026-03-16"
+    question: "Methods as functions — input/output contract?"
+    decision: "MethodFunction: (Context, Artifacts) -> (Context', Artifacts', SideReport). Immutable artifact versioning. SideReport as first-class signal channel."
+    rationale: "Functional semantics enable formal postcondition verification and clean DAG composition."
+    dissent: "Artifact immutability increases storage. SideReport has same adoption problem as PRD 008 channels."
+    status: standing
+
+  - id: D-006
+    session: "2026-03-16"
+    question: "DAG node types and parallelization?"
+    decision: "Three node types: methodology (fork points), gate (verification), script (transformation). Automatic parallelization from dependency analysis. Conditional edges. Sub-strategies deferred."
+    rationale: "Three types cover all use cases. Methodologies encapsulate routing internally."
+    dissent: "Without sub-strategies, complex workflows need flat 20+ node DAGs."
+    position_shifts:
+      - "Rune shifted from 'no conditional edges' to accepting them — Mira's scope-routing example"
+    status: standing
+
+  - id: D-007
+    session: "2026-03-16"
+    question: "Event system design?"
+    decision: "Strategy YAML declares all triggers. Phase 1: manual + MCP. Phase 2: webhooks, filesystem, cron."
+    rationale: "Schema future-proofing — Phase 2 adds routers without changing Strategy definitions."
+    dissent: "Without webhook/cron in Phase 1, no true event-driven automation."
+    status: standing
+
+  - id: D-008
+    session: "2026-03-16"
+    question: "Guardrails and security model?"
+    decision: "Artifact immutability with versioning. Capability model for tool access. --allowedTools enforcement. Prompt-level security boundary acknowledged."
+    rationale: "Capability sets more maintainable than per-step tool lists. Immutable artifacts enable rollback."
+    dissent: "Prompt-level enforcement via --allowedTools can be bypassed by Bash. True sandboxing out of scope."
+    status: standing
+
+  - id: D-009
+    session: "2026-03-16"
+    question: "Tool registry?"
+    decision: "Registry in .method/tools.yaml. Strategy references by ID. Static validation at startup. Dynamic discovery Phase 2."
+    rationale: "Explicit declarations make capability requirements auditable and feed retrospectives."
+    dissent: "Static registration requires YAML edits for new tools."
+    status: standing
+
+  - id: D-010
+    session: "2026-03-16"
+    question: "Strategy oversight council?"
+    decision: "Phase 1: algorithmic oversight with configurable rules. Phase 2: LLM council (M1-COUNCIL instance)."
+    rationale: "Algorithmic rules handle 80% deterministically. LLM council needs Phase 1 data to calibrate."
+    dissent: "Algorithmic rules can't adapt to novel failure modes."
+    position_shifts:
+      - "Rune shifted from 'algorithmic only' to accepting Phase 2 LLM council — Voss noted M1-COUNCIL already handles adversarial oversight"
+    status: standing
+
+  - id: D-011
+    session: "2026-03-16"
+    question: "Retrospective format?"
+    decision: "Mandatory Strategy-level retro aggregating per-method retros, gate results, side reports, metrics. Method-attributability analysis. GlyphJS format."
+    rationale: "Cross-method insights (parallelization efficiency, gate effectiveness, critical path) only visible at Strategy level."
+    dissent: "Method-attributability analysis hard to automate reliably."
+    status: standing
+
+  - id: D-012
+    session: "2026-03-16"
+    question: "Visualization?"
+    decision: "Phase 1: static DAG visualization from Strategy YAML. Phase 2: runtime execution visualization with live SSE."
+    rationale: "Static validates design before execution. Runtime needs htmx migration first."
+    dissent: "Without runtime viz, no real-time view of running Strategies."
+    status: standing
+
+open_questions: []
+
+tensions:
+  - tension: "Constellation integration vs build-from-scratch"
+    sides: "Lyra (Constellation's proven model) vs Rune (minimal TypeScript executor)"
+    history: "Session 1: resolved via Kael's middle ground — minimal executor with Constellation-compatible interfaces. Tension will resurface when Phase 3 (Constellation port) is scoped."
+
+  - tension: "Formal theory compliance vs practical execution"
+    sides: "Voss (must be a methodology in F1-FTH) vs Lyra/Kael (execution model needs parallel DAG)"
+    history: "Session 1: resolved — Strategy IS a methodology from governance perspective, but its executor is a DAG engine. F1-FTH §8.1 concurrent extension provides theoretical foundation."
+
+  - tension: "Gate complexity vs reliability payoff"
+    sides: "Mira (gates are the core value, all five types needed) vs Rune (algorithmic gates cover 90%)"
+    history: "Session 1: resolved via phasing — algorithmic + observation in Phase 1, LLM-review + dual-confirm in Phase 2. Mira's retry-with-context evidence (60% vs 20%) was decisive."
+
+  - tension: "Event-driven automation scope"
+    sides: "Lyra (reactive pipeline with webhooks, filesystem, cron) vs Rune (manual + MCP triggers only)"
+    history: "Session 1: resolved via phasing — declare all triggers in schema, implement manual + MCP first. Persistent event router deferred to Phase 2."
+
+session_log:
+  - date: "2026-03-16"
+    questions_resolved: 12
+    decisions_made: [D-001, D-002, D-003, D-004, D-005, D-006, D-007, D-008, D-009, D-010, D-011, D-012]
+    cast_changes: "Initial cast formed: 6 members (Thane, Kael, Mira, Voss, Lyra, Rune)"
+    artifact: "tmp/20260316-council-strategy-prd.pdf"
+    summary: "Founding session. Resolved all 12 design questions for Strategy Pipelines PRD. Architecture: minimal TypeScript DAG executor with Constellation-compatible types. Gate model: two-scope (step + strategy) with five types. LLM provider: claude --print with provider interface. Three phases planned."
+
+context:
+  key_insights:
+    - "Agents following methodology steps via MCP never stall — the step_advance loop keeps them active. This is the foundation for Strategy execution."
+    - "Gates with failure context in retry prompts achieve 60% success vs 20% blind retry (Mira's bridge commission evidence)."
+    - "Constellation Engine has production-ready DAG execution with suspension/resumption, but it's Scala — port to TypeScript or take design patterns only."
+    - "A Strategy must look like a methodology from the outside (governance, retros, MCP) but its executor is a DAG engine (parallelism, gating, events)."
+    - "Print mode (claude --print --resume) eliminates empty responses, gives exact cost/token data, and enables deterministic completion detection."
+
+  recommendations:
+    - "Draft PRD 017 using this session's decisions as the design foundation"
+    - "Implement PRD 012 Phase 4 (print-mode sessions) as a prerequisite — Strategy execution depends on it"
+    - "Start with 3-node Strategy (section → implement → PR) as validation before building the full executor"
+
+  references:
+    - "docs/prds/012-session-reliability.md (Phase 4: print-mode sessions)"
+    - "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml (council method this protocol extends)"
+    - "tmp/20260316-council-strategy-prd.pdf (GlyphJS report from this session)"
+    - "tmp/council-strategy-prd.md (GlyphJS source)"
+    - "Constellation Engine: ../oss-constellation-engine (DAG execution reference)"
