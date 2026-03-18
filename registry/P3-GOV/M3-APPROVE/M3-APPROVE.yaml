@@ -1,0 +1,546 @@
+method:
+  id: M3-APPROVE
+  parent: P3-GOV
+  name: "Human Approval Method"
+  description: >
+    Presents a governance-approved RFC to the human Product Owner with the complete review
+    package (all reviews, essence check, minority positions) and records the human's
+    decision. Implements Ax-GOV-1 (human gate) — the constitutional axiom that no RFC
+    reaches execution without explicit human approval. This is the safety-critical method
+    in P3-GOV: it is the boundary between autonomous governance and authorized action.
+  version: "0.1"
+  status: draft
+  compilation_date: "2026-03-18"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M3-APPROVE takes a governance-approved RFC (status = accepted after steering review)
+    and presents it to the human PO with the full review package. The human makes one of
+    three decisions: approve (proceed to commission), reject (terminate pipeline), or
+    request_changes (send back to M1-DRAFT for revision). The method records the decision
+    with rationale and updates the RFC status accordingly.
+  who: >
+    Two roles: rho_presenter (the agent preparing and presenting the review package) and
+    rho_PO (the human, final decision authority). The agent role is minimal — it assembles
+    information for the human, it does not influence the decision.
+  why: >
+    Ax-GOV-1 is the foundational safety axiom of P3-GOV. Without the human gate, autonomous
+    councils could approve and execute changes to shared artifacts without human awareness.
+    M3-APPROVE makes the human gate operational: it ensures the human sees everything
+    relevant (reviews, essence check, minority positions), records the decision formally,
+    and translates the decision into a status transition that P3-GOV's delta_GOV can route.
+  how: >
+    Three-step linear DAG: sigma_0 (assemble review package), sigma_1 (present to human
+    and record decision), sigma_2 (validate decision and produce status transition).
+  when_to_invoke:
+    - "An RFC has status = accepted (governance-approved by steering review)"
+  when_not_to_invoke:
+    - "The RFC has not completed steering review — use M2-REVIEW first"
+    - "The RFC has already been approved or rejected by the human"
+    - "The RFC is in revision_requested state — use M1-DRAFT for revision"
+
+domain_theory:
+  id: D_APPROVE
+  inherits: D_Phi_GOV
+  inheritance_note: >
+    D_APPROVE inherits RFC, Review, HumanDecision, Phase, EssenceImpact sorts and
+    human_approved, governance_approved predicates from D_Phi_GOV. Adds approval-specific
+    sorts and predicates for review package assembly and decision recording.
+  sorts:
+    - name: RFC
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The governance-approved RFC — inherited from D_Phi_GOV"
+    - name: Review
+      cardinality: finite
+      inherited: true
+      description: "The set of all reviews for this RFC — inherited from D_Phi_GOV"
+    - name: HumanDecision
+      cardinality: finite
+      inherited: true
+      values: [approve, reject, request_changes]
+      description: "The PO's decision values — inherited from D_Phi_GOV"
+    - name: ReviewPackage
+      cardinality: singleton_per_invocation
+      description: >
+        The assembled package presented to the human: RFC content, all review verdicts,
+        essence check result (if applicable), minority positions, and a summary of
+        review conditions. Assembled by the agent, consumed by the human.
+    - name: ApprovalState
+      cardinality: singleton_per_invocation
+      description: "Full approval state: { rfc, reviews, review_package, human_decision, rationale }"
+  function_symbols:
+    - name: human_decision
+      signature: "ApprovalState -> HumanDecision"
+      totality: "partial (undefined until human decides)"
+      description: "The human's decision — populated after sigma_1"
+    - name: decision_rationale
+      signature: "ApprovalState -> String"
+      totality: "partial (undefined until human decides)"
+      description: "Optional rationale provided by the human (PO may choose not to explain)"
+  predicates:
+    - name: governance_approved
+      signature: "RFC"
+      inherited: true
+      description: "RFC passed steering review (status = accepted) — precondition for M3-APPROVE"
+    - name: package_assembled
+      signature: "ApprovalState"
+      description: "The review package has been assembled with all required components"
+    - name: decision_recorded
+      signature: "ApprovalState"
+      description: "The human's decision has been recorded with timestamp"
+    - name: human_approved
+      signature: "RFC"
+      inherited: true
+      description: "The human PO has approved the RFC for execution — inherited from D_Phi_GOV"
+    - name: all_reviews_included
+      signature: "ReviewPackage"
+      description: "The review package includes all domain and steering review verdicts"
+    - name: essence_check_included
+      signature: "ReviewPackage"
+      description: "The review package includes the essence check result (if essence_impact != none)"
+    - name: minority_positions_included
+      signature: "ReviewPackage"
+      description: "The review package includes minority positions from all reviews"
+  axioms:
+    - id: Ax-APPROVE-1
+      name: "Human gate enforcement"
+      formal: >
+        forall s : ApprovalState.
+          terminal(s) -> decision_recorded(s)
+      rationale: >
+        Implements Ax-GOV-1 at the method level. M3-APPROVE cannot exit without recording
+        a human decision. The decision must come from the actual human PO, not from the
+        agent. The agent's role is presentation and recording, not decision-making.
+    - id: Ax-APPROVE-2
+      name: "Complete information"
+      formal: >
+        forall s : ApprovalState.
+          decision_recorded(s) -> package_assembled(s) AND
+            all_reviews_included(s.review_package) AND
+            minority_positions_included(s.review_package)
+      rationale: >
+        The human must see the complete review package before deciding. Incomplete
+        information produces uninformed decisions. The review package must include
+        all reviews (not just the steering verdict), minority positions (dissenting
+        views that the majority overruled), and the essence check (if applicable).
+        This ensures the human has the same information quality as the reviewing councils.
+    - id: Ax-APPROVE-3
+      name: "Decision authority"
+      formal: >
+        forall s : ApprovalState.
+          decision_recorded(s) -> source(s.human_decision) = rho_PO
+      rationale: >
+        Only the human PO can make the approval decision. The agent cannot approve
+        on behalf of the human, auto-approve based on council consensus, or infer
+        approval from silence. This is the structural guarantee behind Ax-GOV-1.
+  domain_boundary_note: >
+    Excludes: RFC content modification (M1-DRAFT's domain); review verdict production
+    (M2-REVIEW's domain); commission generation (M4-HANDOFF's domain); the human's
+    internal decision-making process (only the decision output is recorded). D_APPROVE
+    tracks review package assembly, human decision recording, and status transition.
+
+roles:
+  - id: rho_presenter
+    description: >
+      The agent assembling and presenting the review package. Operates as a neutral
+      information assembler — does not advocate for or against the RFC. Presents
+      the complete package including minority positions and conditions, then records
+      the human's decision without interpretation.
+    observation_projection: >
+      pi_presenter : Mod(D_APPROVE) -> {rfc, all_reviews, essence_check_result,
+      minority_positions, review_conditions, phase} — sees the complete review
+      history. Full visibility is required to assemble the review package correctly.
+    authorized_transitions:
+      - "Assemble review package from all available reviews"
+      - "Present review package to human PO"
+      - "Record human's decision with timestamp"
+      - "Translate decision to status transition"
+    not_authorized:
+      - "Make the approval decision (rho_PO only — Ax-APPROVE-3)"
+      - "Modify the RFC content"
+      - "Filter or editorialize review content (present all reviews faithfully)"
+      - "Auto-approve based on council consensus"
+  - id: rho_PO
+    inherited: true
+    description: >
+      The human Product Owner. Final decision authority. Reviews the assembled package
+      and makes one of three decisions: approve, reject, or request_changes. Has no
+      obligation to explain the decision (rationale is optional). Has veto authority
+      regardless of council consensus. Inherited from D_Phi_GOV.
+    observation_projection: >
+      pi_PO : Mod(D_APPROVE) -> {rfc, all_reviews, essence_check_result,
+      minority_positions, review_conditions, phase} — full package visibility.
+      The PO sees everything the presenter assembled.
+    authorized_transitions:
+      - "Approve RFC (transition to human_approved)"
+      - "Reject RFC (transition to rejected)"
+      - "Request changes (transition to revision_requested)"
+    not_authorized:
+      - "Override individual review verdicts (councils own their verdicts)"
+    coverage_claim: >
+      pi_presenter and pi_PO both have full visibility over D_APPROVE's state. The
+      presenter sees everything to assemble the package; the PO sees everything to
+      make an informed decision. No dimension of D_APPROVE is unobservable.
+    authority_claim: >
+      rho_presenter has authority over package assembly and decision recording.
+      rho_PO has authority over the decision itself. Union covers all transitions
+      from initial state (governance-approved RFC received) to terminal state
+      (decision recorded, status transitioned).
+
+objective:
+  id: O_APPROVE
+  formal: >
+    O_APPROVE(s) =
+      decision_recorded(s)
+      AND package_assembled(s)
+      AND all_reviews_included(s.review_package)
+      AND source(s.human_decision) = rho_PO
+  type: terminal
+  expressible_claim: >
+    O_APPROVE references decision_recorded (declared predicate), package_assembled
+    (declared predicate), all_reviews_included (declared predicate), source (implicit
+    function — the decision must originate from rho_PO). All symbols except source
+    are in Sigma_APPROVE. source is a meta-level claim about decision provenance,
+    enforced by the method's execution structure (sigma_1 requires human interaction).
+  addresses_operationalization: >
+    O_APPROVE is satisfied when the human has seen the complete package and recorded
+    a decision. This matches RP-GOV-3's project function: the projected state has
+    human_decision set and status updated to human_approved, rejected, or
+    revision_requested based on the decision value.
+  progress_preorder:
+    name: "leq_APPROVE"
+    definition: >
+      States ordered by approval progress: s_0 (RFC received) < s_1 (package assembled)
+      < s_2 (decision recorded, O_APPROVE = true).
+    well_founded: "Three-step DAG with no cycles. Finite state space."
+  success_profile:
+    - id: mu_1
+      name: package_completeness
+      formula: "|{component : required_components | included(component)}| / |required_components|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks review package assembly completeness. Required components: RFC content,
+        all review verdicts, essence check result (if applicable), minority positions,
+        review conditions summary. 1.0 when all components assembled.
+    - id: mu_2
+      name: decision_recorded
+      formula: "1 if decision_recorded(s) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        Binary measure: 0 until human decides, 1 after. Necessary and sufficient for
+        the decision component of O_APPROVE.
+
+phases:
+  - id: sigma_0
+    name: "Review Package Assembly"
+    role: rho_presenter
+    precondition: >
+      Governance-approved RFC received via embed_APPROVE. All reviews available
+      (domain + steering). Essence check result available (if applicable).
+    postcondition: >
+      Review package assembled with all required components: RFC summary, all review
+      verdicts with rationale, conditions from approve_with_conditions verdicts,
+      minority positions, essence check result (if applicable).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - review_package contains all required components:
+        (1) rfc_summary: title, problem, proposal, impact (from the RFC)
+        (2) review_verdicts: every review verdict with council name, verdict, rationale
+        (3) conditions_summary: union of all conditions from approve_with_conditions verdicts
+        (4) minority_positions: dissenting views from all review debates
+        (5) essence_check_summary: essence check result (if essence_impact != none)
+      - all_reviews_included = true: no review verdict is omitted
+      - package is neutral: presents information without advocacy for or against
+      - status = PASS when package is complete
+
+      **Rationale:**
+      The human's decision quality depends on information completeness. Omitting a review
+      verdict (especially a minority position or a condition) produces an uninformed decision.
+      The package must be neutral — the agent is an assembler, not an advocate. Any
+      editorializing by the agent corrupts the human gate (Ax-GOV-1).
+
+      **Procedure:**
+      1. Read the RFC from embed_APPROVE input.
+      2. Summarize the RFC: title, problem statement, proposal, impact.
+      3. For each review in all_reviews: extract council name, verdict, rationale, conditions.
+      4. Compile conditions_summary: union of all conditions from approve_with_conditions.
+      5. Extract minority_positions: dissenting views from each review's debate.
+      6. If essence_impact != none: include essence_check_summary from steering review.
+      7. Assemble review_package with all components.
+      8. Verify completeness: all reviews included, all components populated.
+
+      **Output schema reference:**
+      - review_package: object with all 5 components
+      - all_reviews_included: boolean (must be true)
+      - review_count: number of reviews included
+      - status: PASS
+    output_schema:
+      type: psi_APPROVE
+      required_fields:
+        - name: review_package
+          type: object
+          description: "{rfc_summary: object, review_verdicts: array, conditions_summary: array, minority_positions: array, essence_check_summary: object|null}"
+          required: true
+        - name: all_reviews_included
+          type: boolean
+          required: true
+        - name: review_count
+          type: integer
+          min_value: 1
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "all_reviews_included = true"
+        - "review_package contains all 5 components"
+        - "review_count >= 1 (at least steering review exists)"
+        - "Package is neutral — no advocacy language"
+
+  - id: sigma_1
+    name: "Human Decision"
+    role: rho_PO
+    precondition: "Review package assembled (sigma_0 status = PASS)"
+    postcondition: >
+      Human PO has reviewed the package and made a decision: approve, reject, or
+      request_changes. Decision recorded with optional rationale.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - human_decision is one of: approve, reject, request_changes.
+      - decision_source = rho_PO: the decision was made by the human, not inferred by the agent.
+      - decision_rationale is recorded (may be empty if PO declines to explain — the PO
+        has no obligation to justify decisions, per rho_PO role definition).
+      - If request_changes: change_requests lists specific changes the PO wants (these
+        become feedback for M1-DRAFT in the next revision cycle).
+
+      **Rationale:**
+      This is the Ax-GOV-1 enforcement point. The agent presents the package and waits
+      for the human's decision. The agent must not:
+      - Suggest a decision ("Based on the reviews, I recommend...")
+      - Auto-approve ("All reviews are positive, so I'll approve...")
+      - Interpret silence as approval
+      - Prompt the human toward a particular decision
+      The agent's role is to present and record, not to influence.
+
+      **Procedure:**
+      1. Present the review_package to the human PO in a clear, scannable format:
+         - RFC title and one-line summary
+         - Review verdicts table: council | verdict | key rationale
+         - Conditions (if any): bullet list
+         - Minority positions: bullet list
+         - Essence check (if applicable): summary
+      2. Ask the PO: "What is your decision? (approve / reject / request_changes)"
+      3. Record the decision.
+      4. If the PO provides rationale: record it.
+      5. If request_changes: ask for specific change requests and record them.
+
+      **Output schema reference:**
+      - human_decision: HumanDecision value
+      - decision_rationale: string (may be empty)
+      - change_requests: array of strings (if request_changes)
+      - decision_timestamp: ISO 8601 timestamp
+      - status: PASS
+    output_schema:
+      type: psi_APPROVE
+      required_fields:
+        - name: human_decision
+          type: enum
+          values: [approve, reject, request_changes]
+          required: true
+        - name: decision_rationale
+          type: string
+          required: false
+        - name: change_requests
+          type: array
+          items: string
+          description: "Specific changes requested by PO (required if human_decision = request_changes)"
+          required: false
+        - name: decision_timestamp
+          type: string
+          description: "ISO 8601 timestamp of the decision"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "human_decision is a valid HumanDecision value"
+        - "decision_source = rho_PO (structural — this step requires human interaction)"
+        - "If human_decision = request_changes: change_requests is non-empty"
+        - "decision_timestamp is set"
+
+  - id: sigma_2
+    name: "Decision Validation and Status Transition"
+    role: rho_presenter
+    precondition: "Human decision recorded (sigma_1 status = PASS)"
+    postcondition: >
+      Decision validated, status transition produced for project_APPROVE to map back
+      to P3-GOV state. Approval record complete.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - status_transition maps the human's decision to a P3-GOV Phase:
+        approve -> human_approved
+        reject -> rejected
+        request_changes -> revision_requested
+      - approval_record is complete with all fields needed for project_APPROVE.
+      - If request_changes: change_requests are formatted as ReviewFeedback items
+        for M1-DRAFT's next invocation.
+      - decision_recorded = true.
+
+      **Rationale:**
+      This step translates the human's decision into a P3-GOV state transition. The
+      translation is deterministic — there is no interpretation or judgment involved.
+      The approval_record preserves the full context (decision, rationale, change
+      requests, timestamp) for audit trail purposes.
+
+      **Procedure:**
+      1. Map human_decision to status_transition:
+         - approve -> human_approved
+         - reject -> rejected
+         - request_changes -> revision_requested
+      2. Build approval_record: {
+           rfc_id, human_decision, decision_rationale, change_requests,
+           decision_timestamp, review_count, review_package_hash
+         }
+      3. If request_changes: format change_requests as ReviewFeedback items
+         (each with the PO as source and the specific change as content).
+      4. Set decision_recorded = true.
+
+      **Output schema reference:**
+      - status_transition: Phase value (human_approved | rejected | revision_requested)
+      - approval_record: complete record object
+      - decision_recorded: boolean (must be true)
+      - feedback_items: array of ReviewFeedback (if request_changes)
+      - status: PASS
+    output_schema:
+      type: psi_APPROVE
+      required_fields:
+        - name: status_transition
+          type: enum
+          values: [human_approved, rejected, revision_requested]
+          required: true
+        - name: approval_record
+          type: object
+          description: "{rfc_id: string, human_decision: HumanDecision, decision_rationale: string, decision_timestamp: string, review_count: integer}"
+          required: true
+        - name: decision_recorded
+          type: boolean
+          required: true
+        - name: feedback_items
+          type: array
+          items: object
+          description: "{source: rho_PO, content: string} — formatted for M1-DRAFT revision mode"
+          required: false
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "status_transition matches human_decision deterministically"
+        - "decision_recorded = true"
+        - "approval_record contains all required fields"
+        - "If human_decision = request_changes: feedback_items is non-empty"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post(sigma_0): review_package assembled with all components, all_reviews_included
+        = true satisfies pre(sigma_1): review package assembled. The human receives the
+        complete package for decision-making.
+      status: trivially_compositional
+
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post(sigma_1): human_decision recorded with timestamp satisfies pre(sigma_2):
+        human decision recorded. sigma_2 translates the decision to a status transition.
+      status: trivially_compositional
+
+    - edge: "sigma_2 -> O_APPROVE (TERMINAL)"
+      claim: >
+        post(sigma_2): decision_recorded = true, approval_record complete, status_transition
+        produced satisfies O_APPROVE: decision_recorded AND package_assembled AND
+        all_reviews_included AND source = rho_PO. All conjuncts established.
+      status: terminal_conditional_on_pass
+
+  initial_condition_claim: >
+    pre(sigma_0) requires governance-approved RFC and all reviews via embed_APPROVE.
+    This holds at method invocation: delta_GOV dispatches M3-APPROVE via RP-GOV-3
+    when status(rfc) = accepted, providing rfc, all_reviews, essence_check_result,
+    and minority_positions.
+
+  contrarian_challenge:
+    weakest_edge: "sigma_0 -> sigma_1"
+    challenge: >
+      sigma_0 assembles the review package, but the human might not engage meaningfully
+      — they might auto-approve without reading, or the presentation format might obscure
+      important minority positions.
+    defense_or_revision: >
+      The method cannot force the human to engage deeply — that is outside the formal
+      system's control. However, sigma_0's constraints ensure the package is complete
+      and neutrally presented, and sigma_1's guidance explicitly prohibits the agent from
+      suggesting a decision or prompting toward approval. The structural guarantee is:
+      the human has access to all information needed for an informed decision. Whether
+      they use it is a human agency question, not a method deficiency. Ax-APPROVE-2
+      (complete information) is the strongest guarantee the method can provide.
+
+termination:
+  certificate: "nu_APPROVE(s) = |{sigma in {sigma_0, sigma_1, sigma_2} | sigma has not executed in s}|"
+  initial: 3
+  final: 0
+  decrease_witness: >
+    Three-step linear DAG with no cycles. Each step executes once. sigma_1 requires
+    human interaction — it blocks until the human responds, but does not loop.
+    The method terminates in exactly 3 steps regardless of the human's decision value.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: present governance-approved RFC to human, record decision.
+        Who: rho_presenter (agent) + rho_PO (human). Why: Ax-GOV-1 (human gate) enforcement.
+        How: 3-step linear DAG (assemble, present, validate). When: RFC has status = accepted.
+    - gate: G1
+      result: PASS
+      note: >
+        D_APPROVE inherits from D_Phi_GOV. 5 sorts (3 inherited, 2 new), 2 function
+        symbols (partial — populated after human decides), 7 predicates (3 inherited).
+        3 axioms enforcing human gate, complete information, and decision authority.
+        Domain boundary stated.
+    - gate: G2
+      result: PASS
+      note: >
+        O_APPROVE stated as conjunction of decision_recorded, package_assembled,
+        all_reviews_included, decision source. Expressibility claim present (with
+        meta-level note on source). Progress preorder over 3-step DAG. Two measures
+        (package_completeness, decision_recorded binary).
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles: rho_presenter (agent, assembles and records) and rho_PO (human,
+        decides). Clear authority separation — agent cannot decide, human cannot
+        be bypassed. Coverage: both roles have full visibility. Authority: union
+        covers all transitions.
+    - gate: G4
+      result: PASS
+      note: >
+        Three steps in linear DAG. Three composability claims including terminal
+        condition. Initial condition references RP-GOV-3 embed. Contrarian challenge
+        on sigma_0 -> sigma_1 (human engagement quality) defended by complete
+        information guarantee (Ax-APPROVE-2). Termination: linear DAG, no loops,
+        exactly 3 steps.
+    - gate: G5
+      result: PASS
+      note: >
+        All three steps have constraints-first guidance. sigma_0 covers all review
+        package components. sigma_1 includes explicit anti-influence rules for the
+        agent. sigma_2 includes deterministic decision-to-status mapping.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-GOV/M3-APPROVE/M3-APPROVE.yaml). Structurally complete."
