@@ -1,0 +1,795 @@
+method:
+  id: M2-REVIEW
+  parent: P3-GOV
+  name: "Council Review Method"
+  description: >
+    Receives a well-formed RFC and produces a review verdict. Parameterized for domain
+    review (review_type = domain) or steering review (review_type = steering). The debate
+    step (sigma_2) delegates to M1-COUNCIL via domain retraction (F1-FTH Definition 6.3)
+    — M2-REVIEW is an adapter that adds RFC-specific framing and verdict production
+    around M1-COUNCIL's debate capability. M1-COUNCIL axioms (Ax-3 through Ax-7) are
+    inherited via signature inclusion (D-053), not duplicated.
+  version: "0.1"
+  status: draft
+  compilation_date: "2026-03-18"
+  formal_grounding: "theory/F1-FTH.md"
+  design_decisions: "W7 (M1-COUNCIL delegation), D-053 (signature inclusion), S030 guidelines"
+
+navigation:
+  what: >
+    M2-REVIEW takes a well-formed RFC and produces a ReviewVerdict (approve,
+    approve_with_conditions, request_changes, block). The review is conducted by a
+    council whose debate is managed by M1-COUNCIL (delegated via retraction). M2-REVIEW
+    adds three capabilities around M1-COUNCIL: (1) RFC-specific framing using the 5-layer
+    model, (2) parameterized behavior for domain vs steering review, (3) verdict
+    production with aggregation rules.
+  who: >
+    rho_reviewer (specialized from rho_council): the reviewing council. In domain review
+    mode, this is a domain-specific council (theory, implementation, quality). In steering
+    review mode, this is the steering council with mandatory essence check authority.
+    The council's internal structure (Leader + Contrarians + PO) is managed by M1-COUNCIL.
+  why: >
+    RFC quality depends on adversarial review — a single reviewer produces approval bias.
+    M1-COUNCIL already provides the adversarial debate mechanism with anti-capitulation
+    axioms (Ax-3, Ax-4). M2-REVIEW reuses that capability rather than reimplementing it,
+    adding only the RFC-specific framing and verdict extraction that M1-COUNCIL lacks.
+    This respects the DRY principle at the methodology level and ensures debate quality
+    is consistent across all uses of M1-COUNCIL.
+  how: >
+    Four-step linear DAG: sigma_0 (RFC intake and framing per 5-layer model), sigma_1
+    (council setup — cast design for the RFC's domain), sigma_2 (debate via M1-COUNCIL
+    delegation), sigma_3 (verdict production and aggregation). sigma_2 is a delegation
+    step — it embeds into M1-COUNCIL's domain and projects back the debate results.
+  when_to_invoke:
+    - "A well-formed RFC needs domain review (first_domain_review or next_domain_review arm)"
+    - "All domain reviews are complete and steering review is needed (steering_review arm)"
+  when_not_to_invoke:
+    - "The RFC is not well-formed — send back to M1-DRAFT"
+    - "The RFC has already been reviewed by this council"
+    - "The RFC is in a terminal state (accepted, rejected, withdrawn)"
+
+domain_theory:
+  id: D_REVIEW
+  inherits: D_Phi_GOV
+  inheritance_note: >
+    D_REVIEW inherits RFC, Review, ReviewVerdict, Phase, EssenceImpact, Council sorts
+    and reviewed_by, fully_reviewed, governance_approved, blocks predicates from D_Phi_GOV.
+    Additionally inherits M1-COUNCIL axioms (Ax-3 through Ax-7) via signature inclusion
+    (D-053) — these govern the debate step sigma_2. M2-REVIEW does NOT duplicate
+    M1-COUNCIL axioms; it references them via the delegation retraction pair.
+  signature_inclusion:
+    source: D_COUNCIL
+    target: D_REVIEW
+    included_axioms: [Ax-3, Ax-4, Ax-5, Ax-6, Ax-7]
+    mechanism: >
+      Sigma_COUNCIL is included in Sigma_REVIEW via the delegation retraction pair
+      RP-REVIEW-COUNCIL. During sigma_2 execution, D_REVIEW's state is embedded into
+      Mod(D_COUNCIL) where Ax-3 through Ax-7 apply. The axioms are not restated in
+      D_REVIEW — they are enforced by M1-COUNCIL during delegated execution.
+  sorts:
+    - name: RFC
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The RFC under review — inherited from D_Phi_GOV"
+    - name: Review
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The review verdict being produced — inherited from D_Phi_GOV"
+    - name: ReviewVerdict
+      cardinality: finite
+      inherited: true
+      values: [approve, approve_with_conditions, request_changes, block]
+      description: "Verdict values — inherited from D_Phi_GOV"
+    - name: Council
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The reviewing council — inherited from D_Phi_GOV"
+    - name: ReviewType
+      cardinality: finite
+      values: [domain, steering]
+      description: "Whether this is a domain review or steering review — drives behavior parameterization"
+    - name: EssenceCheckResult
+      cardinality: singleton_per_invocation
+      description: >
+        The result of the essence check (steering review only). Contains: serves_purpose
+        assessment, invariant_respected assessment, optimize_for_aligned assessment,
+        and overall_result (pass/fail/conditional).
+    - name: FramingContext
+      cardinality: singleton_per_invocation
+      description: >
+        The 5-layer framing context prepared for M1-COUNCIL delegation: (1) context,
+        (2) constraints, (3) question, (4) success criteria, (5) cast selection hints.
+        Source: S030 session-framing.md guideline.
+    - name: ReviewState
+      cardinality: singleton_per_invocation
+      description: "Full review state: { rfc, council, review_type, framing, debate_result, verdict }"
+  function_symbols:
+    - name: review_type
+      signature: "ReviewState -> ReviewType"
+      totality: total
+      description: "Whether this invocation is a domain or steering review"
+    - name: verdict
+      signature: "Review -> ReviewVerdict"
+      totality: total
+      inherited: true
+      description: "The reviewing council's verdict — inherited from D_Phi_GOV"
+    - name: max_rounds
+      signature: "ReviewState -> Nat"
+      totality: total
+      description: >
+        Maximum debate rounds for sigma_2 (default 3). Configurable per invocation.
+        Research: decision quality plateaus after 2-3 rounds (S030 decision-protocols.md).
+    - name: essence_impact
+      signature: "RFC -> EssenceImpact"
+      totality: total
+      inherited: true
+      description: "The RFC's essence impact classification — inherited from D_Phi_GOV"
+  predicates:
+    - name: well_formed
+      signature: "RFC"
+      inherited: true
+      description: "RFC meets all RFC-SCHEMA requirements — precondition from M1-DRAFT"
+    - name: framed
+      signature: "ReviewState"
+      description: "The 5-layer framing context has been prepared for council delegation"
+    - name: debate_complete
+      signature: "ReviewState"
+      description: "M1-COUNCIL delegation has completed — debate results available"
+    - name: verdict_produced
+      signature: "ReviewState"
+      description: "A ReviewVerdict has been extracted from the debate results"
+    - name: essence_checked
+      signature: "ReviewState"
+      description: "Essence check has been performed (steering review only — Ax-GOV-3)"
+    - name: blocks
+      signature: "Review x RFC"
+      inherited: true
+      description: "This review blocks the RFC — inherited from D_Phi_GOV"
+    - name: reviewed_by
+      signature: "RFC x Council"
+      inherited: true
+      description: "The council has produced a review — inherited from D_Phi_GOV"
+    - name: anchoring_prevented
+      signature: "ReviewState"
+      description: >
+        The reviewing council cannot see other councils' pending reviews.
+        Structurally enforced by pi_council observation restriction (inherited from
+        D_Phi_GOV role definition). Validated per S030 dissent-mechanisms.md.
+  axioms:
+    - id: Ax-REVIEW-1
+      name: "Verdict obligation"
+      formal: >
+        forall s : ReviewState.
+          terminal(s) -> verdict_produced(s)
+      rationale: >
+        M2-REVIEW must produce a verdict. A review that exits without a verdict has
+        failed its retraction contract — project_REVIEW requires a verdict to update
+        P3-GOV's review tracking.
+    - id: Ax-REVIEW-2
+      name: "Essence check obligation (steering)"
+      formal: >
+        forall s : ReviewState.
+          review_type(s) = steering AND terminal(s) -> essence_checked(s)
+      rationale: >
+        Implements Ax-GOV-3 at the method level. Steering reviews MUST include an
+        explicit essence check. This is constitutional — cannot be waived by the
+        reviewing council. The essence check evaluates the RFC against
+        project_card.essence.{purpose, invariant, optimize_for}.
+    - id: Ax-REVIEW-3
+      name: "Debate delegation"
+      formal: >
+        forall s : ReviewState.
+          debate_complete(s) ->
+            exists council_session : Mod(D_COUNCIL).
+              O_COUNCIL(council_session) AND
+              embed_COUNCIL(s) produced council_session
+      rationale: >
+        The debate step (sigma_2) MUST delegate to M1-COUNCIL — it does not
+        reimplement debate. This is W7: M2-REVIEW is an adapter around M1-COUNCIL.
+        M1-COUNCIL's axioms (Ax-3 through Ax-7) are enforced during the delegated
+        session, guaranteeing adversarial integrity without M2-REVIEW needing to
+        restate them.
+    - id: Ax-REVIEW-4
+      name: "Round bound"
+      formal: >
+        forall s : ReviewState.
+          debate_rounds(s) <= max_rounds(s)
+      rationale: >
+        The debate is bounded by max_rounds (default 3). Research shows decision quality
+        plateaus after 2-3 rounds (S030 decision-protocols.md). This is passed to
+        M1-COUNCIL as a constraint on sigma_2's iteration count.
+  domain_boundary_note: >
+    Excludes: the internal debate dynamics (managed by M1-COUNCIL via delegation);
+    RFC content authorship (M1-DRAFT's domain); human approval decisions (M3-APPROVE's
+    domain); commission generation (M4-HANDOFF's domain). D_REVIEW tracks RFC intake,
+    framing, delegation, and verdict extraction. The debate itself is D_COUNCIL's domain.
+
+roles:
+  - id: rho_reviewer
+    specializes: rho_council
+    description: >
+      The reviewing council, specialized from rho_council for the review context.
+      In domain review: a domain-specific council (theory, implementation, quality).
+      In steering review: the steering council with essence check authority. The
+      council's internal structure (Leader + Contrarians + PO) is managed by
+      M1-COUNCIL during the delegated sigma_2 step.
+    observation_projection: >
+      pi_reviewer : Mod(D_REVIEW) -> {rfc, review_type, prior_reviews_for_this_council,
+      project_essence (if steering), framing_context} — sees the RFC and review context.
+      Does NOT see other councils' pending reviews (anti-anchoring, inherited from
+      pi_council in D_Phi_GOV, validated per S030 dissent-mechanisms.md).
+    authorized_transitions:
+      - "Frame the RFC for council review (sigma_0)"
+      - "Design review council cast (sigma_1)"
+      - "Conduct debate via M1-COUNCIL delegation (sigma_2)"
+      - "Extract verdict from debate results (sigma_3)"
+      - "Perform essence check (steering review, sigma_3)"
+    not_authorized:
+      - "Modify RFC content (M1-DRAFT's authority)"
+      - "Advance RFC status in P3-GOV pipeline (rho_governance's authority)"
+      - "Override other councils' verdicts"
+      - "Skip essence check in steering review (Ax-REVIEW-2, constitutional)"
+    coverage_claim: >
+      pi_reviewer covers all of D_REVIEW: RFC content, review type, framing context,
+      debate results (via M1-COUNCIL delegation), verdict. The anti-anchoring restriction
+      (cannot see other councils' pending reviews) is a deliberate observability constraint,
+      not a coverage gap — it prevents bias, not blindness.
+    authority_claim: >
+      rho_reviewer has authority over all transitions from initial state (RFC received)
+      to terminal state (verdict produced). The M1-COUNCIL delegation in sigma_2 is
+      authorized — the reviewing council invokes M1-COUNCIL as a sub-method.
+
+objective:
+  id: O_REVIEW
+  formal: >
+    O_REVIEW(s) =
+      verdict_produced(s)
+      AND (review_type(s) = steering -> essence_checked(s))
+      AND debate_complete(s)
+      AND reviewed_by(s.rfc, s.council)
+  type: terminal
+  expressible_claim: >
+    O_REVIEW references verdict_produced (declared predicate), review_type (declared
+    function symbol), essence_checked (declared predicate), debate_complete (declared
+    predicate), reviewed_by (inherited predicate). All symbols are in Sigma_REVIEW.
+    O_REVIEW is expressible as a closed sentence over Mod(D_REVIEW).
+  addresses_operationalization: >
+    O_REVIEW is satisfied when a verdict exists, essence was checked (if steering),
+    the debate completed via M1-COUNCIL, and the review is recorded. This matches
+    RP-GOV-2's project function: the projected state appends the review to P3-GOV's
+    review set and updates status based on verdict and review coverage.
+  progress_preorder:
+    name: "leq_REVIEW"
+    definition: >
+      States ordered by review progress: s_0 (RFC received) < s_1 (framed) <
+      s_2 (council designed) < s_3 (debate complete) < s_4 (verdict produced,
+      O_REVIEW = true).
+    well_founded: "Four-step DAG with no cycles. Finite state space."
+  success_profile:
+    - id: mu_1
+      name: review_progress
+      formula: "|{sigma in {sigma_0..sigma_3} | completed(sigma)}| / 4"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks step completion progress. Linear increase through the 4-step DAG.
+        1.0 when all steps complete.
+    - id: mu_2
+      name: debate_quality
+      formula: "Delegated to M1-COUNCIL's mu_2 (adversarial_integrity) during sigma_2"
+      range: "[0, 1]"
+      threshold: ">= 0.8"
+      proxy_claim: >
+        Debate quality is M1-COUNCIL's responsibility. M2-REVIEW inherits the measure
+        via delegation. mu_2 >= 0.8 means the debate maintained adversarial integrity
+        (characters responded to counter-arguments rather than agreeing).
+
+phases:
+  - id: sigma_0
+    name: "RFC Intake and Framing"
+    role: rho_reviewer
+    precondition: >
+      Well-formed RFC received via embed_REVIEW. review_type (domain | steering)
+      specified. In steering mode: project_essence available.
+    postcondition: >
+      5-layer framing context prepared for M1-COUNCIL delegation. RFC analyzed for
+      review-relevant dimensions. In steering mode: essence impact identified for
+      mandatory essence check.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - framing_context contains all 5 layers:
+        (1) context: what the RFC proposes and why it needs review
+        (2) constraints: what the reviewing council must consider (axioms, delivery rules, prior reviews)
+        (3) question: the specific question for the council ("Should this RFC be approved, and under what conditions?")
+        (4) success_criteria: what a good review verdict looks like (specific, actionable, with rationale)
+        (5) cast_selection_hints: expertise domains relevant to this RFC's content area
+      - review_dimensions lists the specific aspects the council should evaluate
+        (technical soundness, architectural fit, essence alignment, etc.)
+      - In steering mode: essence_impact is identified from the RFC's impact.essence_impact field
+        and project_card.essence is loaded for Ax-GOV-3 check in sigma_3.
+      - prior_reviews_summary captures relevant context from prior domain reviews
+        (steering mode only — domain reviewers don't see other reviews per anti-anchoring).
+      - status = PASS when framing is complete.
+
+      **Rationale:**
+      The 5-layer framing model (S030 session-framing.md) produces better council outcomes
+      than unstructured RFC handoff. Layer 2 (constraints) is critical — it tells the council
+      what they cannot ignore (constitutional axioms, delivery rules). Layer 5 (cast selection
+      hints) helps M1-COUNCIL's sigma_1 design domain-appropriate characters.
+      Anti-anchoring: domain reviewers see only the RFC and their own framing, not prior
+      reviews from other councils. Steering reviewers see all prior domain reviews (they
+      need them for aggregation). This is structurally enforced by embed_REVIEW.
+
+      **Procedure:**
+      1. Read the RFC from embed_REVIEW input.
+      2. Identify review_type (domain or steering).
+      3. Build the 5-layer framing context:
+         Layer 1 (context): Summarize what the RFC proposes and its governance history.
+         Layer 2 (constraints): List applicable axioms, delivery rules, and any
+           constitutional constraints (Ax-GOV-0, Ax-GOV-1, Ax-GOV-3 if essence-touching).
+         Layer 3 (question): "Should RFC-NNN be approved? Under what conditions?"
+         Layer 4 (success_criteria): "A good verdict is specific (names what to change),
+           actionable (the drafter can act on it), and grounded (cites specific concerns)."
+         Layer 5 (cast_selection_hints): Which expertise domains are relevant?
+           (e.g., formal theory, TypeScript implementation, registry structure)
+      4. List review_dimensions: the specific aspects to evaluate.
+      5. In steering mode: load project_card.essence and note the essence_impact.
+      6. In steering mode: summarize prior domain review verdicts.
+
+      **Output schema reference:**
+      - framing_context: object with 5 layers
+      - review_dimensions: array of aspects to evaluate
+      - essence_impact: EssenceImpact value (from RFC)
+      - prior_reviews_summary: string (steering mode; empty in domain mode)
+      - status: PASS
+    output_schema:
+      type: psi_REVIEW
+      required_fields:
+        - name: framing_context
+          type: object
+          description: "{context: string, constraints: string, question: string, success_criteria: string, cast_selection_hints: string[]}"
+          required: true
+        - name: review_dimensions
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: essence_impact
+          type: enum
+          values: [none, serves_purpose, touches_invariant, changes_optimize_for]
+          required: true
+        - name: prior_reviews_summary
+          type: string
+          required: false
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "framing_context has all 5 layers populated"
+        - "review_dimensions has at least 1 entry"
+        - "In steering mode: prior_reviews_summary is non-empty"
+
+  - id: sigma_1
+    name: "Council Setup"
+    role: rho_reviewer
+    precondition: "Framing complete (sigma_0 status = PASS)"
+    postcondition: >
+      Council cast designed for the RFC's domain. Cast hints from sigma_0's framing
+      layer 5 inform character design. The challenge for M1-COUNCIL is formulated
+      from sigma_0's framing layer 3.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - council_challenge is formulated: the specific question for M1-COUNCIL's sigma_0,
+        derived from sigma_0's framing_context.question.
+      - cast_hints are prepared: expertise domains from framing_context.cast_selection_hints,
+        plus review_dimensions from sigma_0.
+      - max_rounds is set (default 3, configurable per invocation).
+      - In steering mode: at least one cast member should have governance/essence expertise.
+      - delegation_config is complete: all parameters needed for M1-COUNCIL invocation.
+
+      **Rationale:**
+      M2-REVIEW does not design the council cast directly — that is M1-COUNCIL's sigma_1.
+      Instead, M2-REVIEW prepares the challenge formulation and cast hints that M1-COUNCIL
+      will use. This separation respects W7: M2-REVIEW frames, M1-COUNCIL debates.
+
+      **Procedure:**
+      1. Formulate the council challenge from framing_context.question. Make it specific
+         to the RFC: "Review RFC-NNN: [title]. Evaluate [review_dimensions]. Produce a
+         verdict with specific rationale."
+      2. Prepare cast hints from framing_context.cast_selection_hints and review_dimensions.
+      3. Set max_rounds (default 3 per S030 decision-protocols.md).
+      4. In steering mode: add governance expertise to cast hints (someone who can evaluate
+         essence alignment, axiom compliance, constitutional constraints).
+      5. Package delegation_config: { challenge, cast_hints, max_rounds, review_type }.
+
+      **Output schema reference:**
+      - council_challenge: string (the challenge for M1-COUNCIL)
+      - cast_hints: array of expertise domains
+      - max_rounds: integer (default 3)
+      - delegation_config: object with all M1-COUNCIL parameters
+      - status: PASS
+    output_schema:
+      type: psi_REVIEW
+      required_fields:
+        - name: council_challenge
+          type: string
+          min_length: 1
+          required: true
+        - name: cast_hints
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: max_rounds
+          type: integer
+          min_value: 1
+          default: 3
+          required: true
+        - name: delegation_config
+          type: object
+          description: "{challenge: string, cast_hints: string[], max_rounds: integer, review_type: string}"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "council_challenge is non-empty and RFC-specific"
+        - "max_rounds >= 1 (default 3)"
+        - "delegation_config contains all fields needed for M1-COUNCIL invocation"
+
+  - id: sigma_2
+    name: "Council Debate (M1-COUNCIL delegation)"
+    role: rho_reviewer
+    precondition: "Council setup complete (sigma_1 status = PASS); delegation_config ready"
+    postcondition: >
+      M1-COUNCIL has executed and produced O_COUNCIL: all questions decided, at least
+      one position updated, artifact exists. The debate results are available for
+      verdict extraction in sigma_3.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - debate_complete = true: M1-COUNCIL has reached O_COUNCIL.
+      - council_artifact exists: the M1-COUNCIL output (decisions, key tensions,
+        position shifts, minority positions).
+      - debate_rounds <= max_rounds: the debate did not exceed the configured bound.
+      - M1-COUNCIL axioms (Ax-3 through Ax-7) were enforced during the delegated session
+        — this is guaranteed by M1-COUNCIL's own compilation, not checked by M2-REVIEW.
+
+      **This step is a DELEGATION step (W7 / PAT-003 declared methodology invocation):**
+      sigma_2 does not reimplement M1-COUNCIL's debate. It invokes M1-COUNCIL via the
+      delegation retraction pair RP-REVIEW-COUNCIL:
+
+        embed_COUNCIL : Mod(D_REVIEW)[sigma_1 complete] -> Mod(D_COUNCIL)
+        embed_COUNCIL(s) = {
+          challenge := s.council_challenge,
+          cast_hints := s.cast_hints,
+          max_rounds := s.max_rounds
+        }
+
+        project_COUNCIL : Mod(D_COUNCIL)[O_COUNCIL] -> Mod(D_REVIEW)[sigma_2 complete]
+        project_COUNCIL(t) = {
+          council_artifact := t.artifact,
+          decisions := t.decisions,
+          key_tensions := t.key_tensions,
+          position_shifts := t.position_shifts,
+          debate_complete := true
+        }
+
+      The executing agent runs M1-COUNCIL's full 4-step DAG (sigma_0 through sigma_3)
+      as a sub-session. M2-REVIEW resumes at sigma_3 when M1-COUNCIL completes.
+
+      **Rationale:**
+      W7 requires delegation, not reimplementation. M1-COUNCIL has compiled axioms (Ax-3
+      through Ax-7) that guarantee adversarial integrity, position non-repetition, conviction
+      stability, turn progress, escalation authority boundaries, and diminishing returns halt.
+      Reimplementing these in M2-REVIEW would (a) duplicate axioms (violating DRY at
+      methodology level), (b) risk incomplete enforcement, (c) make M2-REVIEW responsible
+      for debate quality it cannot guarantee without M1-COUNCIL's structure.
+
+      **Procedure:**
+      1. Invoke M1-COUNCIL with delegation_config from sigma_1.
+      2. M1-COUNCIL executes: sigma_0 (setup), sigma_1 (cast design using cast_hints),
+         sigma_2 (debate bounded by max_rounds), sigma_3 (output).
+      3. On M1-COUNCIL completion: extract council_artifact, decisions, key_tensions,
+         position_shifts from M1-COUNCIL's terminal output.
+      4. Set debate_complete = true.
+
+      **Termination (PAT-003 declared delegation):**
+      sigma_2 terminates when M1-COUNCIL reaches O_COUNCIL. M1-COUNCIL's own termination
+      certificate guarantees this (nu_COUNCIL with nu_sigma_2 bounded by Ax-5, plus
+      max_rounds constraint from Ax-REVIEW-4). This is a declared methodology invocation,
+      not an undeclared iterative cluster.
+
+      **Output schema reference:**
+      - debate_complete: boolean (must be true)
+      - council_artifact: the M1-COUNCIL output artifact
+      - decisions: array of council decisions
+      - key_tensions: array of structural disagreements
+      - position_shifts: array of position changes during debate
+      - status: PASS
+    output_schema:
+      type: psi_REVIEW
+      required_fields:
+        - name: debate_complete
+          type: boolean
+          required: true
+        - name: council_artifact
+          type: object
+          description: "M1-COUNCIL output: report, decisions_table, key_tensions, recommendations, appendix"
+          required: true
+        - name: decisions
+          type: array
+          items: object
+          description: "{question: string, decision: string, rationale: string, dissent_risk: string}"
+          min_items: 1
+          required: true
+        - name: key_tensions
+          type: array
+          items: object
+          description: "{tension: string, sides: string, resolution: string}"
+          min_items: 0
+          required: true
+        - name: position_shifts
+          type: array
+          items: string
+          min_items: 0
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "debate_complete = true"
+        - "council_artifact is non-empty (M1-COUNCIL reached O_COUNCIL)"
+        - "decisions has at least 1 entry (at least one review question was decided)"
+
+  - id: sigma_3
+    name: "Verdict Production"
+    role: rho_reviewer
+    precondition: "Debate complete (sigma_2 status = PASS); council_artifact available"
+    postcondition: >
+      ReviewVerdict produced with rationale, conditions (if approve_with_conditions),
+      and minority positions. In steering mode: essence check completed (Ax-REVIEW-2).
+      Verdict follows aggregation rules (Ax-GOV-7) when applicable.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - verdict is one of: approve, approve_with_conditions, request_changes, block.
+      - verdict_rationale is non-empty: specific rationale grounded in the council debate.
+      - conditions is populated if verdict = approve_with_conditions: specific, actionable
+        conditions the RFC must meet.
+      - minority_positions captures dissenting views from the debate (from M1-COUNCIL's
+        key_tensions and position_shifts).
+      - In steering mode: essence_check_result is populated with assessment against
+        project_card.essence.{purpose, invariant, optimize_for} (Ax-REVIEW-2 / Ax-GOV-3).
+      - In steering mode with essence_impact != none: essence_check_result.overall_result
+        must be explicitly stated (pass/fail/conditional).
+      - review_record is complete: all fields needed for project_REVIEW to update P3-GOV state.
+
+      **Verdict extraction from M1-COUNCIL output:**
+      The council artifact contains decisions and key_tensions. The verdict is derived from
+      the council's consensus (or lack thereof):
+      - If the council unanimously recommends approval: verdict = approve
+      - If the council recommends approval with specific concerns: verdict = approve_with_conditions
+      - If the council identifies issues requiring RFC revision: verdict = request_changes
+      - If the council identifies a fundamental flaw or safety concern: verdict = block
+      The verdict MUST be grounded in specific council decisions, not general impressions.
+
+      **Verdict aggregation (Ax-GOV-7, steering mode):**
+      When steering review follows domain reviews, the steering council considers all
+      prior domain verdicts. Aggregation follows strictest-wins:
+      - Any domain block -> steering must address the block (cannot override)
+      - Any domain request_changes -> steering should acknowledge revision needs
+      - Domain approve_with_conditions -> conditions are unioned
+      The steering council makes its own independent verdict but must not weaken
+      the aggregate of domain verdicts.
+
+      **Essence check procedure (steering mode, Ax-GOV-3):**
+      1. Read project_card.essence: purpose, invariant, optimize_for.
+      2. For each essence dimension, assess the RFC:
+         - Does this RFC serve the project's purpose? (yes/no/conditional + rationale)
+         - Does this RFC respect the project's invariant? (yes/no/conditional + rationale)
+         - Does this RFC align with what the project optimizes for? (yes/no/conditional + rationale)
+      3. Set overall_result: pass (all yes), fail (any no on invariant), conditional (otherwise).
+      4. If essence_impact = touches_invariant and the invariant assessment is "no": verdict MUST be block.
+
+      **Procedure:**
+      1. Read council_artifact from sigma_2.
+      2. Extract the council's recommendation from decisions and key_tensions.
+      3. Determine verdict based on the council's consensus.
+      4. Write verdict_rationale citing specific council decisions.
+      5. If approve_with_conditions: list specific, actionable conditions.
+      6. Extract minority_positions from key_tensions and position_shifts.
+      7. In steering mode: perform essence check (Ax-REVIEW-2).
+      8. In steering mode: apply verdict aggregation with prior domain reviews (Ax-GOV-7).
+      9. Produce review_record with all fields.
+
+      **Output schema reference:**
+      - verdict: ReviewVerdict value
+      - verdict_rationale: string with specific rationale
+      - conditions: array of conditions (if approve_with_conditions)
+      - minority_positions: array of dissenting views
+      - essence_check_result: object (steering mode only)
+      - review_record: complete review object for P3-GOV
+      - status: PASS
+    output_schema:
+      type: psi_REVIEW
+      required_fields:
+        - name: verdict
+          type: enum
+          values: [approve, approve_with_conditions, request_changes, block]
+          required: true
+        - name: verdict_rationale
+          type: string
+          min_length: 1
+          required: true
+        - name: conditions
+          type: array
+          items: string
+          description: "Specific, actionable conditions (required if verdict = approve_with_conditions)"
+          required: false
+        - name: minority_positions
+          type: array
+          items: object
+          description: "{character: string, position: string, rationale: string}"
+          min_items: 0
+          required: true
+        - name: essence_check_result
+          type: object
+          description: "{serves_purpose: string, invariant_respected: string, optimize_for_aligned: string, overall_result: pass|fail|conditional}"
+          required: false
+        - name: review_record
+          type: object
+          description: "{council: string, date: string, verdict: ReviewVerdict, conditions: string[], rationale: string, positions: object[]}"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "verdict is a valid ReviewVerdict value"
+        - "verdict_rationale is non-empty and cites specific council decisions"
+        - "If verdict = approve_with_conditions: conditions is non-empty"
+        - "In steering mode: essence_check_result is populated (Ax-REVIEW-2)"
+        - "In steering mode with essence_impact = touches_invariant and invariant_respected = no: verdict = block"
+        - "review_record contains all fields needed for project_REVIEW"
+
+delegation:
+  id: RP-REVIEW-COUNCIL
+  name: "M2-REVIEW to M1-COUNCIL delegation"
+  trigger: "sigma_2 execution"
+  target: M1-COUNCIL
+  formal_grounding: "F1-FTH Definition 6.3 (domain retraction)"
+  embed:
+    signature: "embed_COUNCIL : Mod(D_REVIEW)[sigma_1 complete] -> Mod(D_COUNCIL)"
+    definition: >
+      embed_COUNCIL(s) = {
+        challenge := s.council_challenge,
+        cast_hints := s.cast_hints,
+        max_rounds := s.max_rounds
+      }
+  project:
+    signature: "project_COUNCIL : Mod(D_COUNCIL)[O_COUNCIL] -> Mod(D_REVIEW)[sigma_2 complete]"
+    definition: >
+      project_COUNCIL(t) = {
+        council_artifact := t.artifact,
+        decisions := t.decisions_table,
+        key_tensions := t.key_tensions,
+        position_shifts := extract_shifts(t.decisions_table),
+        debate_complete := true
+      }
+  retraction_verification: >
+    project_COUNCIL(embed_COUNCIL(s)).rfc is not in Mod(D_COUNCIL) — the RFC is external
+    context provided to the council challenge, not modified by M1-COUNCIL. The RFC
+    passes through unchanged. The debate produces a verdict recommendation, not RFC
+    modifications.
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post(sigma_0): framing_context with 5 layers, review_dimensions identified,
+        essence_impact classified satisfies pre(sigma_1): framing complete. sigma_0
+        provides all context needed for council setup.
+      status: trivially_compositional
+
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post(sigma_1): delegation_config complete with challenge, cast_hints, max_rounds
+        satisfies pre(sigma_2): council setup complete, delegation_config ready.
+      status: trivially_compositional
+
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post(sigma_2): debate_complete = true, council_artifact available, decisions
+        extracted satisfies pre(sigma_3): debate complete, council_artifact available.
+        M1-COUNCIL's O_COUNCIL guarantees the artifact exists and all questions decided.
+      status: conditional_on_O_COUNCIL
+
+    - edge: "sigma_3 -> O_REVIEW (TERMINAL)"
+      claim: >
+        post(sigma_3): verdict_produced, essence_checked (if steering), review_record
+        complete satisfies O_REVIEW. All conjuncts of O_REVIEW are established at
+        sigma_3 completion.
+      status: terminal_conditional_on_pass
+
+  initial_condition_claim: >
+    pre(sigma_0) requires well-formed RFC received via embed_REVIEW and review_type
+    specified. This holds at method invocation: delta_GOV dispatches M2-REVIEW via
+    RP-GOV-2 with embed_REVIEW providing rfc, reviewing_council, review_type,
+    prior_reviews, and project_essence (if steering).
+
+  contrarian_challenge:
+    weakest_edge: "sigma_2 -> sigma_3"
+    challenge: >
+      sigma_2 delegates to M1-COUNCIL, which produces an O_COUNCIL artifact. But
+      M1-COUNCIL's output is a general debate artifact (decisions, tensions, recommendations)
+      — it does not produce a ReviewVerdict directly. The sigma_3 verdict extraction depends
+      on interpreting M1-COUNCIL's output as a governance verdict, which requires judgment.
+    defense_or_revision: >
+      The verdict extraction in sigma_3 is explicitly guided: the framing in sigma_0 ensures
+      M1-COUNCIL's challenge is formulated as a review question ("Should this RFC be approved?"),
+      so the council's decisions directly address the verdict question. The extraction rules
+      in sigma_3's guidance are deterministic: unanimous approval -> approve, specific concerns
+      -> approve_with_conditions, issues requiring revision -> request_changes, fundamental
+      flaw -> block. The composability holds because sigma_0's framing constrains M1-COUNCIL's
+      output space to be verdict-extractable.
+
+termination:
+  certificate: "nu_REVIEW(s) = |{sigma in {sigma_0, sigma_1, sigma_2, sigma_3} | sigma has not executed in s}|"
+  initial: 4
+  final: 0
+  decrease_witness: >
+    Four-step linear DAG with no cycles. sigma_0, sigma_1, sigma_3 each execute once.
+    sigma_2 delegates to M1-COUNCIL, which has its own termination guarantee
+    (nu_COUNCIL, Ax-5 decrease witness, plus max_rounds bound from Ax-REVIEW-4).
+    sigma_2 terminates when M1-COUNCIL reaches O_COUNCIL. Total termination guaranteed
+    by composition of M2-REVIEW's linear DAG with M1-COUNCIL's bounded termination.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: RFC review producing ReviewVerdict via council debate.
+        Who: rho_reviewer (domain or steering council). Why: adversarial review prevents
+        approval bias; delegates to M1-COUNCIL for debate quality. How: 4-step DAG with
+        sigma_2 delegation to M1-COUNCIL. When: well-formed RFC needs domain or steering
+        review.
+    - gate: G1
+      result: PASS
+      note: >
+        D_REVIEW inherits from D_Phi_GOV with M1-COUNCIL signature inclusion (D-053).
+        8 sorts (5 inherited, 3 new), 4 function symbols (2 inherited), 8 predicates
+        (4 inherited). 4 method-level axioms. M1-COUNCIL axioms inherited via delegation,
+        not duplicated (W7). Domain boundary stated.
+    - gate: G2
+      result: PASS
+      note: >
+        O_REVIEW stated as conjunction of verdict_produced, essence_checked (conditional),
+        debate_complete, reviewed_by. Expressibility claim present. Progress preorder over
+        4-step DAG. Two measures (review_progress, debate_quality delegated to M1-COUNCIL).
+    - gate: G3
+      result: PASS
+      note: >
+        One role (rho_reviewer, specializing rho_council). Full coverage of D_REVIEW
+        with documented anti-anchoring observability constraint. Authority covers all
+        transitions including M1-COUNCIL delegation.
+    - gate: G4
+      result: PASS
+      note: >
+        Four steps in linear DAG. sigma_2 is a PAT-003 declared delegation to M1-COUNCIL
+        with explicit retraction pair RP-REVIEW-COUNCIL. Four composability claims including
+        terminal condition. Initial condition references RP-GOV-2 embed. Contrarian challenge
+        on sigma_2 -> sigma_3 (verdict extraction from debate) defended by sigma_0 framing.
+        Termination: linear DAG composed with M1-COUNCIL's bounded termination.
+    - gate: G5
+      result: PASS
+      note: >
+        All four steps have constraints-first guidance. sigma_0 implements 5-layer framing
+        (S030). sigma_2 documents the delegation mechanism with embed/project definitions.
+        sigma_3 includes verdict extraction rules, aggregation rules (Ax-GOV-7), and
+        essence check procedure (Ax-GOV-3). max_rounds parameter documented (S030).
+    - gate: G6
+      result: PASS
+      note: "This file (P3-GOV/M2-REVIEW/M2-REVIEW.yaml). Structurally complete."
