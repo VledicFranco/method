@@ -1,0 +1,567 @@
+method:
+  id: M4-HANDOFF
+  parent: P3-GOV
+  name: "Commission Handoff Method"
+  description: >
+    Generates an actionable commission from a human-approved RFC with full governance
+    context. The commission is the output artifact of P3-GOV — it crosses the boundary
+    from governance to execution. The commission is designed for consumption by another
+    methodology (P2-SD or P1-EXEC) and includes governance traceability: which councils
+    reviewed, what conditions were set, what the human approved, and what constraints
+    the executing agent must respect.
+  version: "0.1"
+  status: draft
+  compilation_date: "2026-03-18"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M4-HANDOFF takes a human-approved RFC and produces a commission: a structured
+    prompt for a fresh agent session that will execute the approved change via P2-SD
+    or P1-EXEC. The commission includes the RFC content, governance context (reviews,
+    conditions, essence check), execution constraints, and traceability references.
+    The commission is ready for the human to fire — M4-HANDOFF does not execute it.
+  who: >
+    rho_commission_author (specialized from rho_governance): the agent generating the
+    commission. Operates under full D_Phi_GOV visibility to include all governance
+    context in the commission.
+  why: >
+    The commission is the governance-execution boundary artifact. Without it, approved
+    RFCs sit in accepted state indefinitely — the decision was made but no one acts on
+    it. A well-structured commission ensures: (1) the executing agent has all context
+    needed, (2) governance conditions are carried into execution as constraints,
+    (3) the human can trace from commission back to RFC, reviews, and approval.
+  how: >
+    Three-step linear DAG: sigma_0 (extract execution requirements from RFC and reviews),
+    sigma_1 (compose commission with governance context and constraints), sigma_2
+    (validate commission completeness and produce final artifact).
+  when_to_invoke:
+    - "An RFC has status = human_approved (human has approved the RFC for execution)"
+  when_not_to_invoke:
+    - "The RFC has not been human-approved — use M3-APPROVE first"
+    - "The RFC was rejected or withdrawn — pipeline terminates, no commission needed"
+    - "The commission has already been generated for this RFC"
+
+domain_theory:
+  id: D_HANDOFF
+  inherits: D_Phi_GOV
+  inheritance_note: >
+    D_HANDOFF inherits RFC, Commission, Phase, Review sorts and human_approved,
+    commission_ready predicates from D_Phi_GOV. Adds commission-specific sorts and
+    predicates for execution requirement extraction and commission composition.
+  sorts:
+    - name: RFC
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The human-approved RFC — inherited from D_Phi_GOV"
+    - name: Commission
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The output commission artifact — inherited from D_Phi_GOV"
+    - name: GovernanceContext
+      cardinality: singleton_per_invocation
+      description: >
+        The full governance history for traceability: all reviews with verdicts,
+        essence check result, human decision with rationale, conditions from
+        approve_with_conditions verdicts. Received via embed_HANDOFF.
+    - name: ExecutionRequirement
+      cardinality: finite
+      description: >
+        A specific requirement for the executing agent, derived from the RFC's
+        proposal, review conditions, and governance constraints. Each requirement
+        is actionable and verifiable.
+    - name: HandoffState
+      cardinality: singleton_per_invocation
+      description: "Full handoff state: { rfc, governance_context, requirements, commission }"
+  function_symbols:
+    - name: target_methodology
+      signature: "HandoffState -> {P2-SD, P1-EXEC}"
+      totality: total
+      description: >
+        Which execution methodology should handle the commission. Determined by
+        the nature of the RFC: implementation changes -> P2-SD, organizational/process
+        changes -> P1-EXEC.
+    - name: priority
+      signature: "HandoffState -> {P0, P1, P2}"
+      totality: total
+      description: "Commission priority derived from RFC's governance history and essence impact"
+  predicates:
+    - name: human_approved
+      signature: "RFC"
+      inherited: true
+      description: "The RFC has been approved by the human PO — precondition for M4-HANDOFF"
+    - name: requirements_extracted
+      signature: "HandoffState"
+      description: "Execution requirements have been extracted from the RFC and reviews"
+    - name: commission_composed
+      signature: "HandoffState"
+      description: "The commission artifact has been composed with all sections"
+    - name: commission_ready
+      signature: "RFC"
+      inherited: true
+      description: "The commission is complete and ready for the human to fire — inherited from D_Phi_GOV"
+    - name: conditions_carried
+      signature: "Commission"
+      description: >
+        All conditions from approve_with_conditions review verdicts are included
+        as execution constraints in the commission
+    - name: traceability_complete
+      signature: "Commission"
+      description: >
+        The commission includes references to: RFC id, all review sessions,
+        human approval record, and governance axioms that constrain execution
+  axioms:
+    - id: Ax-HANDOFF-1
+      name: "Commission completeness"
+      formal: >
+        forall s : HandoffState.
+          terminal(s) -> commission_ready(s.rfc) AND commission_composed(s)
+      rationale: >
+        M4-HANDOFF must produce a complete commission. An incomplete commission
+        means the governance pipeline ran to completion but produced nothing
+        actionable — the effort was wasted.
+    - id: Ax-HANDOFF-2
+      name: "Condition carriage"
+      formal: >
+        forall s : HandoffState.
+          commission_composed(s) -> conditions_carried(s.commission)
+      rationale: >
+        Governance conditions from approve_with_conditions verdicts must be carried
+        into the commission as execution constraints. If conditions are dropped at
+        handoff, the governance review was meaningless — the executing agent won't
+        know about conditions it should respect.
+    - id: Ax-HANDOFF-3
+      name: "Traceability"
+      formal: >
+        forall s : HandoffState.
+          commission_composed(s) -> traceability_complete(s.commission)
+      rationale: >
+        Every commission must be traceable back to its governance origin: which RFC,
+        which reviews, which human decision. This enables post-execution audit: did
+        the executing agent respect the governance constraints? Were conditions met?
+        Without traceability, governance becomes disconnected from execution.
+  domain_boundary_note: >
+    Excludes: the execution of the commission (that happens via P2-SD or P1-EXEC);
+    RFC content creation (M1-DRAFT's domain); review verdict production (M2-REVIEW's
+    domain); human approval (M3-APPROVE's domain). D_HANDOFF tracks requirement
+    extraction, commission composition, and traceability. It does not execute.
+
+roles:
+  - id: rho_commission_author
+    specializes: rho_governance
+    description: >
+      The agent generating the commission from the approved RFC. Has full visibility
+      over the governance history (inherited from rho_governance's pi_governance = id).
+      Translates governance decisions into actionable execution instructions.
+    observation_projection: >
+      pi_commission_author : Mod(D_HANDOFF) -> Mod(D_HANDOFF) — full visibility
+      (inherited from pi_governance = id). Required to include all governance context
+      in the commission.
+    authorized_transitions:
+      - "Extract execution requirements from RFC and reviews"
+      - "Compose commission with governance context"
+      - "Determine target methodology (P2-SD or P1-EXEC)"
+      - "Set commission priority"
+      - "Validate commission completeness"
+      - "Produce final commission artifact"
+    not_authorized:
+      - "Execute the commission (human fires it into execution methodology)"
+      - "Modify the RFC content"
+      - "Override governance conditions"
+      - "Change the human's approval decision"
+    coverage_claim: >
+      pi_commission_author has full visibility (identity projection). All dimensions
+      of D_HANDOFF are observable. This is necessary because the commission must
+      faithfully represent the complete governance context.
+    authority_claim: >
+      rho_commission_author has authority over all transitions from initial state
+      (human-approved RFC received) to terminal state (commission produced). Single-role
+      method with full authority over commission generation.
+
+objective:
+  id: O_HANDOFF
+  formal: >
+    O_HANDOFF(s) =
+      commission_ready(s.rfc)
+      AND commission_composed(s)
+      AND conditions_carried(s.commission)
+      AND traceability_complete(s.commission)
+  type: terminal
+  expressible_claim: >
+    O_HANDOFF references commission_ready (inherited predicate), commission_composed
+    (declared predicate), conditions_carried (declared predicate), traceability_complete
+    (declared predicate). All symbols are in Sigma_HANDOFF. O_HANDOFF is expressible
+    as a closed sentence over Mod(D_HANDOFF).
+  addresses_operationalization: >
+    O_HANDOFF is satisfied when a complete, traceable commission exists with all
+    governance conditions carried as execution constraints. This matches RP-GOV-4's
+    project function: the projected state has commission = t.commission,
+    commission_ready = true, status = handed_off.
+  progress_preorder:
+    name: "leq_HANDOFF"
+    definition: >
+      States ordered by commission progress: s_0 (RFC received) < s_1 (requirements
+      extracted) < s_2 (commission composed) < s_3 (commission validated, O_HANDOFF = true).
+    well_founded: "Three-step DAG with no cycles. Finite state space."
+  success_profile:
+    - id: mu_1
+      name: requirement_coverage
+      formula: "|{r : ExecutionRequirement | included_in_commission(r)}| / |{r : ExecutionRequirement}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks how many extracted requirements are included in the commission.
+        1.0 when all requirements (from RFC proposal, review conditions, governance
+        constraints) are represented in the commission.
+    - id: mu_2
+      name: commission_completeness
+      formula: "1 if commission_ready(rfc) else 0"
+      range: "{0, 1}"
+      terminal: "1"
+      proxy_claim: >
+        Binary measure: 0 until commission is complete and validated, 1 after.
+        Necessary and sufficient for the commission_ready component of O_HANDOFF.
+
+phases:
+  - id: sigma_0
+    name: "Execution Requirement Extraction"
+    role: rho_commission_author
+    precondition: >
+      Human-approved RFC received via embed_HANDOFF. Governance context available:
+      reviews, essence check, human decision, conditions.
+    postcondition: >
+      Execution requirements extracted from RFC proposal, review conditions, and
+      governance constraints. Target methodology identified. Priority determined.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - requirements is a non-empty list of specific, actionable execution requirements.
+      - Each requirement has: id, description, source (RFC proposal | review condition |
+        governance constraint), verification_criteria (how to check it was met).
+      - target_methodology is determined: P2-SD (for implementation changes) or
+        P1-EXEC (for organizational/process changes).
+      - priority is set based on essence impact and governance urgency.
+      - conditions_from_reviews lists all conditions from approve_with_conditions verdicts.
+      - governance_constraints lists constraints from constitutional axioms (Ax-GOV-0,
+        Ax-GOV-1, Ax-GOV-3) that apply to execution.
+
+      **Rationale:**
+      Requirement extraction is the translation step: governance decisions (expressed in
+      RFC and review language) become execution instructions (expressed in commission
+      language). Every review condition must become a verifiable execution requirement —
+      otherwise the condition was governance theater.
+
+      **Procedure:**
+      1. Read the RFC proposal — extract what needs to change (artifacts, code, config).
+      2. Read all review conditions — extract specific requirements from each.
+      3. Read governance constraints:
+         - Ax-GOV-0: if the change touches constitutional axioms, execution must not modify them
+         - Ax-GOV-1: the commission itself must respect the human gate pattern
+         - Ax-GOV-3: if essence-touching, execution must include an essence validation step
+      4. For each requirement: write verification_criteria (how to check it was met).
+      5. Determine target_methodology:
+         - Implementation changes (code, registry YAML, architecture) -> P2-SD
+         - Organizational/process changes (governance rules, council composition) -> P1-EXEC
+      6. Set priority: P0 (essence-touching or blocking other work), P1 (normal),
+         P2 (low urgency).
+
+      **Output schema reference:**
+      - requirements: array of {id, description, source, verification_criteria}
+      - target_methodology: P2-SD or P1-EXEC
+      - priority: P0 | P1 | P2
+      - conditions_from_reviews: array of conditions
+      - governance_constraints: array of applicable constraints
+      - status: PASS
+    output_schema:
+      type: psi_HANDOFF
+      required_fields:
+        - name: requirements
+          type: array
+          items: object
+          description: "{id: string, description: string, source: string, verification_criteria: string}"
+          min_items: 1
+          required: true
+        - name: target_methodology
+          type: enum
+          values: [P2-SD, P1-EXEC]
+          required: true
+        - name: priority
+          type: enum
+          values: [P0, P1, P2]
+          required: true
+        - name: conditions_from_reviews
+          type: array
+          items: string
+          required: true
+        - name: governance_constraints
+          type: array
+          items: string
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "requirements has at least 1 entry"
+        - "Each requirement has verification_criteria"
+        - "conditions_from_reviews includes all conditions from approve_with_conditions verdicts"
+        - "target_methodology is determined"
+
+  - id: sigma_1
+    name: "Commission Composition"
+    role: rho_commission_author
+    precondition: "Requirements extracted (sigma_0 status = PASS)"
+    postcondition: >
+      Commission composed with all sections: objective, context, requirements,
+      constraints, governance traceability, delivery rules, and target methodology
+      binding. Commission follows the /commission skill format.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - commission_draft contains all required sections:
+        (1) objective: what the executing agent must achieve (from RFC proposal)
+        (2) context: governance history summary (reviews, conditions, human decision)
+        (3) requirements: specific execution requirements (from sigma_0)
+        (4) constraints: governance constraints + review conditions as hard constraints
+        (5) traceability: RFC id, review session ids, human approval record reference
+        (6) delivery_rules: applicable DRs from project-card (determined by target_methodology)
+        (7) methodology_binding: target methodology, task_type, routing hints
+        (8) essence_context: project essence for the executing agent to respect
+      - conditions_carried = true: all review conditions appear as commission constraints
+      - traceability_complete = true: all governance references are included
+
+      **Rationale:**
+      The commission format must be consumable by the executing methodology. P2-SD expects
+      a task with methodology binding, delivery rules, and file scope. P1-EXEC expects
+      a task with process changes and governance context. The commission bridges these
+      formats — it includes enough governance context for traceability and enough execution
+      context for actionability.
+
+      **Procedure:**
+      1. Write objective section from RFC proposal (1-3 sentences: what must change).
+      2. Write context section: summarize governance history in 3-5 sentences.
+         Include: which councils reviewed, what the verdict was, what conditions exist,
+         what the human decided.
+      3. Write requirements section: numbered list from sigma_0's requirements array.
+      4. Write constraints section:
+         - Governance constraints from sigma_0
+         - Review conditions as hard constraints (these MUST be met)
+         - Applicable delivery rules from project-card
+      5. Write traceability section:
+         - RFC id and title
+         - Review session references (council name, session id, verdict)
+         - Human approval reference (timestamp, decision)
+      6. Write delivery_rules section: applicable DRs based on target_methodology
+         and RFC content area.
+      7. Write methodology_binding:
+         - methodology: P2-SD or P1-EXEC (from sigma_0)
+         - task_type: implement, review, architecture, etc. (from RFC content)
+         - routing hints for delta dispatch
+      8. Write essence_context: copy project_card.essence for the executing agent.
+
+      **Output schema reference:**
+      - commission_draft: object with all 8 sections
+      - conditions_carried: boolean (must be true)
+      - traceability_complete: boolean (must be true)
+      - status: PASS
+    output_schema:
+      type: psi_HANDOFF
+      required_fields:
+        - name: commission_draft
+          type: object
+          description: "{objective: string, context: string, requirements: array, constraints: array, traceability: object, delivery_rules: array, methodology_binding: object, essence_context: object}"
+          required: true
+        - name: conditions_carried
+          type: boolean
+          required: true
+        - name: traceability_complete
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "commission_draft contains all 8 required sections"
+        - "conditions_carried = true (Ax-HANDOFF-2)"
+        - "traceability_complete = true (Ax-HANDOFF-3)"
+
+  - id: sigma_2
+    name: "Commission Validation"
+    role: rho_commission_author
+    precondition: "Commission composed (sigma_1 status = PASS)"
+    postcondition: >
+      Commission validated: all sections present, conditions carried, traceability
+      complete, methodology binding correct. Final commission artifact produced.
+      commission_ready(rfc) = true.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - commission_valid = true: all validation checks pass.
+      - validation_results lists each check with PASS/FAIL result.
+      - commission_artifact is the final commission ready for the human to fire.
+      - commission_ready = true.
+      - If any check fails: status = BLOCKED, return to sigma_1 for fixes.
+
+      **Validation checks:**
+      1. All 8 sections present and non-empty
+      2. requirements count matches sigma_0's extracted requirements count
+      3. conditions_carried: every condition from approve_with_conditions appears
+         in the constraints section
+      4. traceability: RFC id, all review session ids, human approval reference present
+      5. methodology_binding: target methodology matches sigma_0's determination
+      6. delivery_rules: at least DR-01 and DR-08 included (registry integrity and
+         theory alignment are always applicable)
+      7. essence_context: purpose, invariant, optimize_for all present
+      8. No dangling references: all referenced RFCs, sessions, reviews exist in
+         governance context
+
+      **Rationale:**
+      Commission validation is the exit gate for the entire P3-GOV pipeline. A commission
+      with missing conditions means governance review was bypassed in effect. A commission
+      without traceability means the governance trail is broken. Validation catches these
+      before the commission is fired.
+
+      **Procedure:**
+      1. Run each validation check against the commission draft.
+      2. Record results in validation_results.
+      3. If all pass: set commission_valid = true, produce commission_artifact,
+         set commission_ready = true.
+      4. If any fail: set status = BLOCKED, list failing checks.
+
+      **Output schema reference:**
+      - commission_valid: boolean (must be true for PASS)
+      - validation_results: array of {check, result} entries
+      - commission_artifact: the final commission object
+      - commission_ready: boolean (must be true)
+      - status: PASS or BLOCKED
+    output_schema:
+      type: psi_HANDOFF
+      required_fields:
+        - name: commission_valid
+          type: boolean
+          required: true
+        - name: validation_results
+          type: array
+          items: object
+          description: "{check: string, result: PASS|FAIL}"
+          min_items: 8
+          required: true
+        - name: commission_artifact
+          type: object
+          description: "The final commission object ready for execution methodology"
+          required: true
+        - name: commission_ready
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "commission_valid = true for status = PASS"
+        - "validation_results has at least 8 entries (one per check)"
+        - "all validation_results show result = PASS for commission_valid = true"
+        - "commission_ready = true for status = PASS"
+        - "commission_artifact is complete and consumable by target methodology"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post(sigma_0): requirements extracted, target_methodology determined, conditions
+        and governance_constraints listed satisfies pre(sigma_1): requirements extracted.
+        sigma_0 provides all inputs needed for commission composition.
+      status: trivially_compositional
+
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post(sigma_1): commission_draft with all 8 sections, conditions_carried = true,
+        traceability_complete = true satisfies pre(sigma_2): commission composed.
+        sigma_2 validates what sigma_1 produced.
+      status: trivially_compositional
+
+    - edge: "sigma_2 -> O_HANDOFF (TERMINAL)"
+      claim: >
+        post(sigma_2) when status = PASS: commission_ready = true, commission_valid = true,
+        conditions_carried = true (from sigma_1), traceability_complete = true (from sigma_1)
+        satisfies O_HANDOFF: commission_ready AND commission_composed AND conditions_carried
+        AND traceability_complete. All conjuncts established.
+      status: terminal_conditional_on_pass
+
+  initial_condition_claim: >
+    pre(sigma_0) requires human-approved RFC and governance context via embed_HANDOFF.
+    This holds at method invocation: delta_GOV dispatches M4-HANDOFF via RP-GOV-4
+    when status(rfc) = human_approved, providing rfc and governance_context with
+    reviews, essence_check, human_decision, and conditions.
+
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      sigma_1 composes the commission, but the commission format is not formally
+      specified — it depends on what the target methodology (P2-SD or P1-EXEC) expects.
+      Different methodologies may require different commission formats, and M4-HANDOFF
+      has no formal interface contract with the target methodology.
+    defense_or_revision: >
+      The commission format is designed to be methodology-agnostic at the structural level:
+      objective, context, requirements, constraints are universal. The methodology_binding
+      section provides routing hints specific to the target methodology. Both P2-SD and
+      P1-EXEC process task descriptions with context and constraints — the commission is
+      a superset of what either requires. The formal interface contract is W4 (P3-GOV
+      interaction model with P2-SD and P1-EXEC) — acknowledged as open (known_wip W4 in
+      P3-GOV.yaml). The commission works pragmatically even without the formal contract
+      because it includes all information either methodology could need.
+
+termination:
+  certificate: "nu_HANDOFF(s) = |{sigma in {sigma_0, sigma_1, sigma_2} | sigma has not executed in s}|"
+  initial: 3
+  final: 0
+  decrease_witness: >
+    Three-step linear DAG with no cycles. Each step executes once. sigma_2 may send
+    back to sigma_1 for commission fixes if validation fails, but this is bounded by
+    the finite set of 8 validation checks (each fixable in one pass). The internal
+    fix loop terminates because each fix addresses a specific failing check.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: generate actionable commission from human-approved RFC.
+        Who: rho_commission_author (specialized from rho_governance). Why: governance
+        decisions need translation to execution instructions with traceability.
+        How: 3-step linear DAG (extract, compose, validate). When: RFC has status =
+        human_approved.
+    - gate: G1
+      result: PASS
+      note: >
+        D_HANDOFF inherits from D_Phi_GOV. 5 sorts (3 inherited, 2 new), 2 function
+        symbols, 6 predicates (2 inherited). 3 axioms enforcing commission completeness,
+        condition carriage, and traceability. Domain boundary stated.
+    - gate: G2
+      result: PASS
+      note: >
+        O_HANDOFF stated as conjunction of commission_ready, commission_composed,
+        conditions_carried, traceability_complete. Expressibility claim present.
+        Progress preorder over 3-step DAG. Two measures (requirement_coverage,
+        commission_completeness binary).
+    - gate: G3
+      result: PASS
+      note: >
+        One role (rho_commission_author, specializing rho_governance). Full visibility
+        (identity projection inherited from pi_governance). Authority covers all
+        transitions from initial to terminal state.
+    - gate: G4
+      result: PASS
+      note: >
+        Three steps in linear DAG. Three composability claims including terminal
+        condition. Initial condition references RP-GOV-4 embed. Contrarian challenge
+        on sigma_1 -> sigma_2 (commission format compatibility with target methodology)
+        acknowledged as open (W4) but pragmatically addressed. Termination: linear
+        DAG with bounded internal fix loop.
+    - gate: G5
+      result: PASS
+      note: >
+        All three steps have constraints-first guidance. sigma_0 includes governance
+        constraint extraction with specific axiom references. sigma_1 covers all 8
+        commission sections. sigma_2 includes 8 specific validation checks enumerated.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-GOV/M4-HANDOFF/M4-HANDOFF.yaml). Structurally complete."

@@ -1,0 +1,577 @@
+method:
+  id: M1-DRAFT
+  parent: P3-GOV
+  name: "RFC Drafting Method"
+  description: >
+    Receives a gap description (or an existing RFC in revision mode) and produces a
+    well-formed RFC per RFC-SCHEMA. Two modes: initial drafting (gap -> RFC) and revision
+    (existing RFC + review feedback -> revised RFC). The RFC is the primary artifact that
+    crosses the governance-execution boundary — it must be precise enough for council
+    review and human approval.
+  version: "0.1"
+  status: draft
+  compilation_date: "2026-03-18"
+  formal_grounding: "theory/F1-FTH.md"
+
+navigation:
+  what: >
+    M1-DRAFT takes an identified gap or opportunity (from a council session via P1-EXEC)
+    and produces a well-formed RFC conforming to RFC-SCHEMA. In revision mode, it receives
+    an existing RFC with review feedback and produces a revised RFC addressing the feedback.
+    Output: a single RFC YAML artifact with all required fields populated.
+  who: >
+    rho_drafter (specialized from rho_council): the agent drafting the RFC. May consult
+    domain expertise but produces a single-author RFC. The drafter operates under
+    pi_council observation projection — sees the gap description and RFC-SCHEMA but not
+    other councils' pending reviews.
+  why: >
+    The RFC is the control artifact of P3-GOV — every downstream method (review, approval,
+    handoff) operates on it. A poorly drafted RFC wastes council review cycles and may
+    pass governance review despite being imprecise. M1-DRAFT ensures the RFC meets
+    structural and content quality gates before entering the review pipeline.
+  how: >
+    Three-step linear DAG: sigma_0 (analyze gap and frame the RFC), sigma_1 (draft RFC
+    fields per RFC-SCHEMA), sigma_2 (validate well-formedness and produce final artifact).
+    In revision mode, sigma_0 additionally ingests review feedback and the existing RFC.
+  when_to_invoke:
+    - "A gap has been identified that meets the project's RFC threshold (Ax-GOV-6)"
+    - "A review has requested changes (revision mode) — revision_count < max_revisions"
+  when_not_to_invoke:
+    - "The gap does not meet RFC threshold — handle via normal council sessions"
+    - "An RFC already exists and needs review, not drafting — use M2-REVIEW"
+    - "revision_limit_reached — RFC should be auto-rejected per Ax-GOV-5"
+
+domain_theory:
+  id: D_DRAFT
+  inherits: D_Phi_GOV
+  inheritance_note: >
+    D_DRAFT inherits RFC, Phase, EssenceImpact sorts and well_formed predicate from
+    D_Phi_GOV. Adds draft-specific sorts and predicates for gap analysis and RFC
+    construction. The well_formed predicate is the key output — M1-DRAFT's terminal
+    state must satisfy well_formed(rfc).
+  sorts:
+    - name: Gap
+      cardinality: singleton_per_invocation
+      description: >
+        The identified gap or opportunity that motivates the RFC. Provided by the
+        P3-GOV orchestrator via embed_DRAFT. Contains: description, source (which
+        council session identified it), and threshold justification.
+    - name: RFC
+      cardinality: singleton_per_invocation
+      inherited: true
+      description: "The RFC being drafted — inherited from D_Phi_GOV"
+    - name: Phase
+      cardinality: finite
+      inherited: true
+      description: "RFC lifecycle phase — inherited from D_Phi_GOV"
+    - name: EssenceImpact
+      cardinality: finite
+      inherited: true
+      description: "How the RFC relates to project essence — inherited from D_Phi_GOV"
+    - name: ReviewFeedback
+      cardinality: finite
+      description: >
+        In revision mode: the set of change requests and conditions from prior reviews.
+        Empty in initial draft mode. Each feedback item traces to a specific review verdict.
+    - name: DraftState
+      cardinality: singleton_per_invocation
+      description: "Full draft state: { gap, rfc, mode, revision_count, feedback }"
+  function_symbols:
+    - name: mode
+      signature: "DraftState -> {initial, revision}"
+      totality: total
+      description: "Whether this is an initial draft or a revision of an existing RFC"
+    - name: revision_count
+      signature: "DraftState -> Nat"
+      totality: total
+      description: "Number of prior revisions (0 for initial draft)"
+    - name: feedback_items
+      signature: "DraftState -> Set(ReviewFeedback)"
+      totality: total
+      description: "Set of review feedback items to address (empty for initial draft)"
+  predicates:
+    - name: gap_analyzed
+      signature: "DraftState"
+      description: "The gap has been analyzed — problem, scope, and impact understood"
+    - name: well_formed
+      signature: "RFC"
+      inherited: true
+      description: "All required RFC fields populated per RFC-SCHEMA — inherited from D_Phi_GOV"
+      operationalization: >
+        well_formed(rfc) = true iff all of the following hold:
+        (1) rfc.id is set (RFC-NNN format), (2) rfc.title is non-empty,
+        (3) rfc.problem is 1-3 sentences describing what problem this solves,
+        (4) rfc.proposal is 1-5 sentences describing the proposed change,
+        (5) rfc.alternatives has >= 1 entry (at least one alternative was considered),
+        (6) rfc.impact.artifacts_changed is non-empty,
+        (7) rfc.impact.councils_affected is non-empty,
+        (8) rfc.impact.essence_impact is one of the EssenceImpact values,
+        (9) rfc.threshold_justification explains why this change meets RFC threshold,
+        (10) rfc.domains is non-empty (which domain councils should review).
+    - name: feedback_addressed
+      signature: "ReviewFeedback x RFC"
+      description: "A specific feedback item has been addressed in the revised RFC"
+    - name: all_feedback_addressed
+      signature: "DraftState"
+      description: "All feedback items have been addressed (revision mode only)"
+      operationalization: >
+        all_feedback_addressed(s) = true iff forall f in feedback_items(s) :
+        feedback_addressed(f, s.rfc). In initial draft mode, vacuously true
+        (feedback_items is empty).
+    - name: threshold_met
+      signature: "RFC"
+      description: "The RFC's threshold_justification demonstrates it meets Ax-GOV-6"
+  axioms:
+    - id: Ax-DRAFT-1
+      name: "Well-formedness obligation"
+      formal: >
+        forall s : DraftState.
+          terminal(s) -> well_formed(s.rfc)
+      rationale: >
+        M1-DRAFT's entire purpose is producing a well-formed RFC. A draft that exits
+        without well_formed = true has failed its retraction contract — project_DRAFT
+        requires well_formed(rfc) to satisfy P3-GOV's first_domain_review precondition.
+    - id: Ax-DRAFT-2
+      name: "Feedback coverage (revision mode)"
+      formal: >
+        forall s : DraftState.
+          mode(s) = revision AND terminal(s) -> all_feedback_addressed(s)
+      rationale: >
+        In revision mode, every feedback item from prior reviews must be addressed.
+        "Addressed" means the revised RFC either incorporates the change or provides
+        explicit rationale for not incorporating it. Silently ignoring feedback wastes
+        review cycles and may trigger the same feedback again, burning revision budget
+        (Ax-GOV-5).
+    - id: Ax-DRAFT-3
+      name: "Threshold justification"
+      formal: >
+        forall rfc : RFC.
+          well_formed(rfc) -> threshold_met(rfc)
+      rationale: >
+        Every RFC must justify why it meets the project's RFC threshold (Ax-GOV-6).
+        This is structural — it forces the drafter to articulate why this change
+        requires governance review rather than normal execution. Prevents threshold
+        inflation (everything becoming an RFC).
+  domain_boundary_note: >
+    Excludes: the content domain of the proposed change (M1-DRAFT tracks RFC structure,
+    not whether the proposal is technically sound — that's M2-REVIEW's job); review
+    verdict production; human approval decisions; commission generation. D_DRAFT tracks
+    gap analysis and RFC construction only.
+
+roles:
+  - id: rho_drafter
+    specializes: rho_council
+    description: >
+      The agent drafting the RFC. Specializes rho_council for the drafting context.
+      Analyzes the gap, frames the RFC, populates all RFC-SCHEMA fields, and validates
+      well-formedness. In revision mode, additionally ingests review feedback and
+      produces a revised RFC addressing all feedback items.
+    observation_projection: >
+      pi_drafter : Mod(D_DRAFT) -> {gap, rfc_schema, existing_rfc (if revision),
+      feedback (if revision), revision_count, project_card.essence} — sees the gap
+      description, RFC-SCHEMA template, and in revision mode the existing RFC and
+      review feedback. Does not see other councils' pending reviews (inherited from
+      pi_council anti-anchoring restriction).
+    authorized_transitions:
+      - "Analyze gap and identify problem/scope/impact"
+      - "Draft RFC fields per RFC-SCHEMA"
+      - "In revision mode: address review feedback items"
+      - "Validate well-formedness against RFC-SCHEMA"
+      - "Produce final RFC artifact"
+    not_authorized:
+      - "Advance RFC status beyond draft (rho_governance manages status transitions)"
+      - "Produce review verdicts (M2-REVIEW's role)"
+      - "Skip feedback items in revision mode (Ax-DRAFT-2)"
+    coverage_claim: >
+      pi_drafter covers all of D_DRAFT: gap description, RFC under construction,
+      mode, revision_count, feedback items. The drafter has full visibility over the
+      drafting domain. No dimension of D_DRAFT is unobservable.
+    authority_claim: >
+      rho_drafter has authority over all transitions required to move from initial state
+      (gap received) to terminal state (well-formed RFC produced). The drafter creates
+      and modifies the RFC — no other role participates in M1-DRAFT.
+
+objective:
+  id: O_DRAFT
+  formal: >
+    O_DRAFT(s) =
+      well_formed(s.rfc)
+      AND (mode(s) = revision -> all_feedback_addressed(s))
+      AND threshold_met(s.rfc)
+  type: terminal
+  expressible_claim: >
+    O_DRAFT references well_formed (declared predicate over RFC), mode (declared
+    function symbol DraftState -> {initial, revision}), all_feedback_addressed
+    (declared predicate over DraftState), threshold_met (declared predicate over RFC).
+    All symbols are in Sigma_DRAFT. O_DRAFT is expressible as a closed sentence
+    over Mod(D_DRAFT).
+  addresses_operationalization: >
+    O_DRAFT is satisfied when the RFC is well-formed per RFC-SCHEMA, all review
+    feedback has been addressed (in revision mode), and the RFC's threshold
+    justification is present. This matches RP-GOV-1's project function: the
+    projected state has rfc_exists = true, status = draft, and well_formed(rfc).
+  progress_preorder:
+    name: "leq_DRAFT"
+    definition: >
+      States ordered by RFC completeness: s_0 (gap received, no RFC fields populated)
+      < s_1 (gap analyzed) < s_2 (RFC fields populated) < s_3 (well-formed RFC produced,
+      O_DRAFT = true). Monotonically increasing within a single invocation.
+    well_founded: "Three-step DAG with no cycles. Finite state space."
+  success_profile:
+    - id: mu_1
+      name: field_completeness
+      formula: "|{f : RFC-SCHEMA field | populated(f)}| / |{f : RFC-SCHEMA field | required(f)}|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks RFC field population progress. 0 at start, 1.0 when all required
+        fields are populated. Monotonically increasing through the drafting steps.
+    - id: mu_2
+      name: feedback_coverage
+      formula: "|{f : ReviewFeedback | feedback_addressed(f, rfc)}| / |feedback_items(s)|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_2 tracks feedback address progress in revision mode. Vacuously 1.0 in
+        initial draft mode (empty denominator treated as complete). Required to reach
+        1.0 for O_DRAFT in revision mode.
+
+phases:
+  - id: sigma_0
+    name: "Gap Analysis"
+    role: rho_drafter
+    precondition: >
+      Gap description received via embed_DRAFT. In revision mode: existing RFC and
+      review feedback also received. RFC-SCHEMA available as reference.
+    postcondition: >
+      Gap analyzed: problem statement identified, scope determined, impact areas
+      assessed, essence impact classified. In revision mode: all feedback items
+      cataloged with planned responses.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - problem_statement is non-empty: 1-3 sentences describing the problem the RFC will solve.
+      - scope is stated: what artifacts/domains are affected.
+      - essence_impact_assessment is one of: none, serves_purpose, touches_invariant, changes_optimize_for.
+      - In revision mode: feedback_catalog lists every feedback item with planned response
+        (incorporate, reject with rationale, or partially incorporate).
+      - threshold_check = true: the gap meets the project's RFC threshold criteria.
+      - status = BLOCKED if the gap does not meet RFC threshold (Ax-GOV-6).
+
+      **Rationale:**
+      Gap analysis prevents drafting an RFC for a change that doesn't need governance review
+      (below threshold) or drafting an RFC that is vague about what problem it solves. The
+      essence_impact_assessment drives downstream review behavior — if the RFC touches the
+      invariant, M2-REVIEW's steering review will require an explicit essence check (Ax-GOV-3).
+      In revision mode, cataloging feedback before drafting prevents silent omissions.
+
+      **Procedure:**
+      1. Read the gap description from embed_DRAFT input.
+      2. Identify the concrete problem: what is broken, missing, or suboptimal?
+      3. Determine scope: which artifacts (registry, theory, architecture, governance) are affected?
+      4. Classify essence impact by checking against project_card.essence:
+         - Does this serve the project's purpose? (serves_purpose)
+         - Does this touch the project's invariant? (touches_invariant)
+         - Does this change what the project optimizes for? (changes_optimize_for)
+         - None of the above? (none)
+      5. Verify RFC threshold: does this change touch registry, theory, architecture,
+         governance, or cross-domain concerns? If not, status = BLOCKED.
+      6. In revision mode: read all review feedback items. For each, state the planned
+         response (incorporate, reject with rationale, partially incorporate).
+
+      **Output schema reference:**
+      - problem_statement: 1-3 sentences
+      - scope: list of affected artifacts/domains
+      - essence_impact_assessment: EssenceImpact value
+      - threshold_check: boolean (must be true for PASS)
+      - feedback_catalog: array of {item, planned_response} (revision mode; empty in initial)
+      - status: PASS or BLOCKED
+    output_schema:
+      type: psi_DRAFT
+      required_fields:
+        - name: problem_statement
+          type: string
+          min_length: 1
+          required: true
+        - name: scope
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: essence_impact_assessment
+          type: enum
+          values: [none, serves_purpose, touches_invariant, changes_optimize_for]
+          required: true
+        - name: threshold_check
+          type: boolean
+          required: true
+        - name: feedback_catalog
+          type: array
+          items: object
+          description: "{item: string, planned_response: string, action: incorporate|reject|partial}"
+          required: false
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "problem_statement is non-empty"
+        - "scope has at least 1 entry"
+        - "threshold_check = true for status = PASS"
+        - "status = BLOCKED if threshold_check = false"
+        - "In revision mode: feedback_catalog has one entry per feedback item received"
+
+  - id: sigma_1
+    name: "RFC Composition"
+    role: rho_drafter
+    precondition: "Gap analyzed (sigma_0 status = PASS); threshold verified"
+    postcondition: >
+      All RFC-SCHEMA fields populated: id, title, author, date, status, domains,
+      threshold_justification, problem, proposal, alternatives, impact. In revision
+      mode: all feedback items addressed in the revised content.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - rfc_draft contains all required RFC-SCHEMA fields populated.
+      - rfc_draft.problem matches sigma_0's problem_statement (consistency check).
+      - rfc_draft.alternatives has >= 1 entry: at least one alternative was considered
+        and rejected with rationale. This is not optional — alternatives force the drafter
+        to demonstrate that the proposal is the best option, not just the first one considered.
+      - rfc_draft.impact.artifacts_changed is specific: file paths or artifact names, not
+        vague categories.
+      - rfc_draft.impact.councils_affected lists the domain councils that must review.
+      - rfc_draft.impact.essence_impact matches sigma_0's essence_impact_assessment.
+      - rfc_draft.threshold_justification explains why this change meets RFC threshold.
+      - In revision mode: every feedback_catalog item with action = incorporate is reflected
+        in the revised RFC content. Items with action = reject have explicit rationale in
+        the RFC (e.g., as a note in alternatives or a revision_notes field).
+
+      **Rationale:**
+      RFC-SCHEMA compliance is the precondition for M2-REVIEW. A draft missing required
+      fields will be sent back, consuming a revision cycle (Ax-GOV-5 revision budget).
+      The alternatives requirement is structural — it forces genuine consideration of
+      other approaches, not just advocating for the first idea. The specificity requirements
+      (file paths in artifacts_changed, named councils) prevent vague RFCs that cannot
+      be effectively reviewed.
+
+      **Procedure:**
+      1. Assign RFC id (RFC-NNN format, next available number).
+      2. Write title: short descriptive title (< 80 chars).
+      3. Write problem: 1-3 sentences from sigma_0's problem_statement.
+      4. Write proposal: 1-5 sentences describing the concrete change.
+      5. Write alternatives: at least one alternative considered and rejected with rationale.
+      6. Fill impact section:
+         - artifacts_changed: specific file paths or artifact names
+         - councils_affected: which domain councils must review
+         - essence_impact: from sigma_0's assessment
+      7. Write threshold_justification: why this change requires RFC review.
+      8. Set domains: list of domain councils for routing.
+      9. In revision mode: for each feedback item, modify the relevant RFC field.
+         For rejected feedback: add rationale in the RFC body or revision_notes.
+
+      **Output schema reference:**
+      - rfc_draft: complete RFC object per RFC-SCHEMA
+      - fields_populated: count of required fields set
+      - feedback_addressed_count: count of feedback items addressed (revision mode)
+      - status: PASS
+    output_schema:
+      type: psi_DRAFT
+      required_fields:
+        - name: rfc_draft
+          type: object
+          description: "Complete RFC per RFC-SCHEMA: id, title, author, date, status, domains, threshold_justification, problem, proposal, alternatives, impact"
+          required: true
+        - name: fields_populated
+          type: integer
+          min_value: 0
+          required: true
+        - name: feedback_addressed_count
+          type: integer
+          min_value: 0
+          required: false
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+      hard_invariants:
+        - "rfc_draft contains all required RFC-SCHEMA fields"
+        - "rfc_draft.alternatives has >= 1 entry"
+        - "rfc_draft.impact.artifacts_changed is non-empty"
+        - "rfc_draft.impact.councils_affected is non-empty"
+        - "rfc_draft.problem is consistent with sigma_0 problem_statement"
+        - "rfc_draft.impact.essence_impact matches sigma_0 essence_impact_assessment"
+        - "In revision mode: feedback_addressed_count = |feedback_catalog|"
+
+  - id: sigma_2
+    name: "Well-Formedness Validation"
+    role: rho_drafter
+    precondition: "RFC fields populated (sigma_1 status = PASS)"
+    postcondition: >
+      RFC validated against RFC-SCHEMA: all required fields present, all constraints
+      satisfied, well_formed(rfc) = true. Final RFC artifact produced.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - well_formed = true: the RFC passes all 10 well-formedness checks (see
+        well_formed predicate operationalization in domain_theory).
+      - validation_results lists each check with PASS/FAIL result.
+      - If any check fails: status = BLOCKED, the drafter must return to sigma_1
+        to fix the failing field (this is an internal fix, not a revision cycle).
+      - rfc_artifact is the final RFC YAML ready for M2-REVIEW.
+      - In revision mode: all_feedback_addressed = true (Ax-DRAFT-2).
+
+      **Rationale:**
+      Well-formedness validation is the exit gate for M1-DRAFT. project_DRAFT maps the
+      terminal state back to P3-GOV with rfc_exists = true and status = draft. If
+      well_formed is false, the first_domain_review arm of delta_GOV cannot fire
+      (its condition requires well_formed(rfc)). This step is the structural guarantee
+      that M1-DRAFT's output is usable by downstream methods.
+
+      **Procedure:**
+      1. Run each well-formedness check against the RFC draft:
+         (1) id set in RFC-NNN format
+         (2) title non-empty
+         (3) problem is 1-3 sentences
+         (4) proposal is 1-5 sentences
+         (5) alternatives has >= 1 entry
+         (6) impact.artifacts_changed non-empty
+         (7) impact.councils_affected non-empty
+         (8) impact.essence_impact is valid EssenceImpact value
+         (9) threshold_justification non-empty
+         (10) domains non-empty
+      2. Record each check result in validation_results.
+      3. If all pass: set well_formed = true, produce rfc_artifact.
+      4. If any fail: set status = BLOCKED, list failing checks.
+      5. In revision mode: verify all_feedback_addressed by checking each
+         feedback_catalog item against the RFC content.
+
+      **Output schema reference:**
+      - well_formed: boolean (must be true for PASS)
+      - validation_results: array of {check, result} entries
+      - rfc_artifact: the final RFC YAML object
+      - all_feedback_addressed: boolean (revision mode; true in initial mode)
+      - status: PASS or BLOCKED
+    output_schema:
+      type: psi_DRAFT
+      required_fields:
+        - name: well_formed
+          type: boolean
+          required: true
+        - name: validation_results
+          type: array
+          items: object
+          description: "{check: string, result: PASS|FAIL}"
+          min_items: 10
+          required: true
+        - name: rfc_artifact
+          type: object
+          description: "The final RFC YAML object conforming to RFC-SCHEMA"
+          required: true
+        - name: all_feedback_addressed
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, BLOCKED]
+          required: true
+      hard_invariants:
+        - "well_formed = true for status = PASS"
+        - "validation_results has exactly 10 entries (one per well-formedness check)"
+        - "all validation_results show result = PASS for well_formed = true"
+        - "all_feedback_addressed = true for status = PASS in revision mode (Ax-DRAFT-2)"
+        - "rfc_artifact is a complete RFC per RFC-SCHEMA"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post(sigma_0): problem_statement non-empty, scope identified, essence_impact_assessment
+        classified, threshold_check = true satisfies pre(sigma_1): gap analyzed, threshold
+        verified. sigma_0's output provides the foundation for RFC composition.
+      status: trivially_compositional
+
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post(sigma_1): rfc_draft with all required RFC-SCHEMA fields populated satisfies
+        pre(sigma_2): RFC fields populated. sigma_1 produces the draft; sigma_2 validates it.
+      status: trivially_compositional
+
+    - edge: "sigma_2 -> O_DRAFT (TERMINAL)"
+      claim: >
+        post(sigma_2) when status = PASS: well_formed = true, all_feedback_addressed = true
+        (revision mode), rfc_artifact produced. O_DRAFT requires well_formed(rfc) AND
+        (mode = revision -> all_feedback_addressed) AND threshold_met(rfc). well_formed
+        implies threshold_met (Ax-DRAFT-3). post(sigma_2) implies O_DRAFT.
+      status: terminal_conditional_on_pass
+
+  initial_condition_claim: >
+    pre(sigma_0) requires gap description received via embed_DRAFT. This holds at method
+    invocation: delta_GOV dispatches M1-DRAFT via RP-GOV-1 with embed_DRAFT providing
+    gap, rfc_schema, existing_rfc (if revision), and revision_count.
+
+  contrarian_challenge:
+    weakest_edge: "sigma_1 -> sigma_2"
+    challenge: >
+      sigma_1 produces an rfc_draft object, but the well-formedness checks in sigma_2
+      may fail — sigma_1's postcondition says "all fields populated" but doesn't guarantee
+      the content quality (e.g., problem might be vague, alternatives might be weak).
+    defense_or_revision: >
+      sigma_2 is designed to catch exactly this case. When validation fails (status = BLOCKED),
+      the drafter returns to sigma_1 to fix failing fields. This is an internal fix loop within
+      M1-DRAFT, not a P3-GOV revision cycle (doesn't increment revision_count). The sigma_1 ->
+      sigma_2 edge is compositional because sigma_2 handles the failure case gracefully — it
+      doesn't require sigma_1's output to be perfect, only present.
+
+termination:
+  certificate: "nu_DRAFT(s) = |{sigma in {sigma_0, sigma_1, sigma_2} | sigma has not executed in s}|"
+  initial: 3
+  final: 0
+  decrease_witness: >
+    Three-step linear DAG with no cycles. Each step executes once. sigma_2 may send
+    the drafter back to sigma_1 for field fixes, but this is bounded by the finite
+    number of well-formedness checks (10 checks, each fixable in one pass). The
+    internal fix loop terminates because each fix addresses a specific failing check
+    and the check set is finite and enumerated.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: RFC drafting from gap description. Who: rho_drafter
+        (specialized from rho_council). Why: well-formed RFCs prevent review cycle waste.
+        How: three-step linear DAG (analyze, compose, validate). When: gap meets RFC
+        threshold or revision requested.
+    - gate: G1
+      result: PASS
+      note: >
+        D_DRAFT inherits from D_Phi_GOV. 6 sorts (3 inherited, 3 new), 3 function
+        symbols, 5 predicates (1 inherited with operationalization), 3 axioms.
+        Domain boundary stated. well_formed operationalized with 10 concrete checks
+        per RFC-SCHEMA.
+    - gate: G2
+      result: PASS
+      note: >
+        O_DRAFT stated as conjunction of well_formed, feedback coverage, and threshold.
+        Expressibility claim present. Progress preorder over 3-step DAG. Two measures
+        (field_completeness, feedback_coverage).
+    - gate: G3
+      result: PASS
+      note: >
+        One role (rho_drafter, specializing rho_council). Full coverage of D_DRAFT.
+        Authority covers all transitions from initial to terminal state. Single-role
+        method — coverage and authority are trivial.
+    - gate: G4
+      result: PASS
+      note: >
+        Three steps in linear DAG. Three composability claims including terminal
+        condition. Initial condition claim references RP-GOV-1 embed. Contrarian
+        challenge on sigma_1 -> sigma_2 (content quality) defended by sigma_2's
+        validation-and-fix design. Termination certificate: linear DAG, bounded
+        internal fix loop.
+    - gate: G5
+      result: PASS
+      note: >
+        All three steps have constraints-first guidance. Each guidance block covers
+        all output_schema fields by name. sigma_0 guidance includes revision mode
+        handling. sigma_2 guidance includes all 10 well-formedness checks enumerated.
+    - gate: G6
+      result: PASS
+      note: "This file (P3-GOV/M1-DRAFT/M1-DRAFT.yaml). Structurally complete."
