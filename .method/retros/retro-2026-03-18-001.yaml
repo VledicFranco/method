@@ -1,0 +1,97 @@
+retro:
+  id: retro-2026-03-18-001
+  session_type: compilation
+  methodology: P2-SD v2.0
+  method: M1-IMPL
+  instance: I2-METHOD
+  date: "2026-03-18"
+  scope: "P3-GOV method YAML compilation: M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF"
+  commission_source: "SESSION-031 D-064 (steering council)"
+
+  hardest_decision: >
+    M2-REVIEW sigma_2 delegation design. The question was how much of M1-COUNCIL's
+    structure to expose vs encapsulate. W7 requires delegation, not reimplementation —
+    but the adapter pattern (frame -> delegate -> extract verdict) required careful
+    design of the embed/project functions for RP-REVIEW-COUNCIL. The challenge: M1-COUNCIL
+    produces a general debate artifact (decisions, tensions, recommendations), not a
+    ReviewVerdict directly. The verdict extraction in sigma_3 depends on sigma_0's
+    framing constraining M1-COUNCIL's output space to be verdict-extractable. This is
+    a composability claim that relies on the 5-layer framing model working as intended —
+    it cannot be formally verified, only pragmatically validated through execution.
+
+  observations:
+    - id: OBS-1
+      type: pattern
+      observation: >
+        The 4 methods have a consistent structural pattern: 3-step linear DAGs (M1-DRAFT,
+        M3-APPROVE, M4-HANDOFF) and one 4-step DAG (M2-REVIEW, which has the delegation
+        step). Total: 13 phases across 4 methods. The structural simplicity is a feature —
+        governance methods should have minimal internal complexity because the pipeline
+        (P3-GOV's delta_GOV) provides the iteration structure via revision cycles.
+
+    - id: OBS-2
+      type: design_insight
+      observation: >
+        The delegation pattern (M2-REVIEW -> M1-COUNCIL) is more structurally complex
+        than the other 3 methods combined. It required: a retraction pair
+        (RP-REVIEW-COUNCIL), signature inclusion specification, explicit PAT-003
+        declaration, and a composability argument about framing constraining output space.
+        This validates the W7 concern — reimplementing debate would have been simpler
+        locally but would have duplicated M1-COUNCIL's 7 axioms and lost adversarial
+        integrity guarantees. The delegation complexity is justified by axiom reuse.
+
+    - id: OBS-3
+      type: cross_method_consistency
+      observation: >
+        Constitutional axiom enforcement is distributed across methods: Ax-GOV-0 is
+        structural (the governance pipeline cannot process RFCs targeting constitutional
+        axioms), Ax-GOV-1 is enforced by M3-APPROVE (human gate), Ax-GOV-3 is enforced
+        by M2-REVIEW sigma_3 (essence check in steering review). The statutory axioms
+        (Ax-GOV-2, Ax-GOV-4, Ax-GOV-5, Ax-GOV-6, Ax-GOV-7) are enforced by P3-GOV's
+        delta_GOV routing, not by individual methods — they are pipeline-level constraints.
+
+    - id: OBS-4
+      type: known_gap
+      observation: >
+        W4 (P3-GOV interaction model with P2-SD and P1-EXEC) remains open. M4-HANDOFF's
+        commission format works pragmatically but the formal interface contract between
+        governance and execution methodologies is not specified. This is the next
+        compilation priority after the methods themselves are validated.
+
+  card_feedback:
+    essence_alignment: >
+      This compilation directly serves the project's purpose ("the registry of methods IS
+      the product") by adding 4 new method YAMLs. It respects the invariant (theory is
+      source of truth — all methods faithfully implement P3-GOV.yaml's retraction pairs
+      and transition arms). It aligns with optimize_for (faithfulness to the methodology
+      coalgebra, simplicity in method structure, registry integrity via DR-13 validation).
+    delivery_rule_feedback:
+      - rule: DR-02
+        feedback: >
+          DR-02's section checklist was essential for structural consistency. All 4 methods
+          follow the same section structure. The `composability` key name (vs
+          `composability_claims`) caused an initial YAML parsing error — the M1-COUNCIL
+          reference uses `composability.claims` as the structure. DR-02 should be more
+          explicit about the exact key hierarchy.
+      - rule: DR-13
+        feedback: >
+          DR-13 validation caught the YAML structural error immediately. Running validation
+          after every method compilation (not just at the end) was critical for fast feedback.
+
+  proposed_deltas:
+    - id: DELTA-1
+      type: known_wip_update
+      description: >
+        W1 (method YAMLs not yet compiled) can be marked resolved. W2 (retraction pairs
+        declared but not verified) can be partially resolved — the method domain theories
+        now exist, enabling retraction verification. W3 (M2-REVIEW signature inclusion)
+        is addressed in M2-REVIEW.yaml's domain_theory.signature_inclusion section.
+        W7 (M2-REVIEW delegation) is addressed by M2-REVIEW's delegation section.
+    - id: DELTA-2
+      type: process_improvement
+      description: >
+        The compilation order (M1-DRAFT -> M2-REVIEW -> M3-APPROVE -> M4-HANDOFF) was
+        optimal: it follows the pipeline order, and each method could reference the
+        previous method's output as its input (e.g., M2-REVIEW references M1-DRAFT's
+        well_formed predicate operationalization). Future compilations of pipeline
+        methodologies should follow pipeline order.
