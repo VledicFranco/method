@@ -1,0 +1,93 @@
+# RFC Schema — Council-of-Councils Review Mechanism
+# Established: SESSION-025 (2026-03-17)
+# Part of the multi-council governance model (D-040, D-041, D-042)
+
+schema_version: "1.0"
+
+description: >
+  Lightweight YAML schema for cross-council review of significant changes.
+  RFCs are required when a change touches: registry methods, formal theory,
+  architecture decisions, governance rules, or cross-domain concerns.
+  Everything else goes through normal P1-EXEC / P2-SD execution.
+
+template: |
+  rfc:
+    id: "RFC-NNN"
+    title: "Short descriptive title"
+    author: "Who proposed this (person, council, or agent)"
+    date: "YYYY-MM-DD"
+    status: draft | domain_review | steering_review | accepted | rejected | withdrawn
+    domains: [theory, implementation, quality, governance]
+    threshold_justification: "Why this change needs RFC review (must be one of: registry, theory, architecture, governance, cross-domain)"
+
+    problem: "What problem does this solve? (1-3 sentences)"
+    proposal: "What are you proposing? (1-5 sentences)"
+    alternatives:
+      - "Alternative 1 considered and why it was rejected"
+      - "Alternative 2 considered and why it was rejected"
+    impact:
+      artifacts_changed: ["list of files/specs affected"]
+      councils_affected: ["which domain councils need to review"]
+      essence_impact: "none | serves_purpose | touches_invariant | changes_optimize_for"
+
+    reviews: []
+    # Each review entry:
+    #   - council: "Theory Council" | "Steering Council" | etc.
+    #     date: "YYYY-MM-DD"
+    #     session: "TC-NNN" | "SESSION-NNN"
+    #     verdict: approve | approve_with_conditions | request_changes | block
+    #     conditions: "If approve_with_conditions — what must change"
+    #     rationale: "Why this verdict (specific argument, not vague)"
+    #     positions:
+    #       - name: "Council member"
+    #         position: "Their individual position"
+
+    decision:
+      outcome: pending | accepted | rejected | revision_requested
+      rationale: "Final reasoning from steering council"
+      decided_in: "SESSION-NNN"
+
+lifecycle:
+  stages:
+    - name: draft
+      description: "Author creates RFC, fills all fields, sets status: draft"
+      next: domain_review
+
+    - name: domain_review
+      description: "RFC routed to councils listed in domains[]. Each council reviews and produces a verdict."
+      routing: "Author sets domains[]. Steering council validates routing — may add missing domains."
+      next: steering_review
+
+    - name: steering_review
+      description: "Steering council sees all domain reviews, performs essence check, makes final call."
+      essence_check: "Mandatory — does the RFC serve purpose, respect invariant, align with optimize_for?"
+      next: "accepted | rejected | revision_requested"
+
+    - name: accepted
+      description: "RFC approved. Becomes a commission or agenda item for implementation."
+
+    - name: rejected
+      description: "RFC rejected with rationale. Author may revise and resubmit as new RFC."
+
+    - name: revision_requested
+      description: "RFC sent back to author with specific change requests from reviewers."
+      next: domain_review
+
+    - name: withdrawn
+      description: "Author withdraws RFC. Recorded but not actioned."
+
+threshold:
+  requires_rfc:
+    - "Changes to registry method YAML files (compiled methods are production artifacts)"
+    - "Changes to formal theory files (theory/)"
+    - "Architecture decisions (new packages, dependency changes, API surface changes)"
+    - "Governance rule changes (processes, autonomy settings, council composition)"
+    - "Cross-domain changes (affects artifacts owned by multiple councils)"
+  does_not_require_rfc:
+    - "Bug fixes within a single domain"
+    - "Documentation updates"
+    - "Test additions"
+    - "Domain-internal refinements (e.g., Theory Council adding operationalization notes)"
+    - "Normal P2-SD delivery work"
+
+file_location: ".method/council/rfcs/RFC-NNN-{slug}.yaml"

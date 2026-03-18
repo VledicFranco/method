@@ -1,0 +1,36 @@
+agenda:
+  domain: theory
+  last_updated: "2026-03-17"
+  last_session: null
+
+  p0_immediate:
+    - id: TC-AG-001
+      item: "Formal grounding of mu_1-3 success metrics added to council-team skill"
+      owner: Quill
+      status: open
+      note: "mu_1 (question resolution), mu_2 (adversarial integrity), mu_3 (escalation precision) were added to the skill's appendix but have no formal derivation from D_COUNCIL. Need to verify they are expressible over the domain theory's signature."
+
+    - id: TC-AG-002
+      item: "CMEM-PROTO gap — protocol installed but M1-COUNCIL not recompiled to include it"
+      owner: Sable
+      status: open
+      note: "The skill has Phase 0 (memory check) and the manifest has CMEM-PROTO v0.1 installed, but M1-COUNCIL.yaml's domain theory doesn't reference council memory. Need an RFC or domain-internal fix."
+
+    - id: TC-AG-003
+      item: "Sub-agent spawning — skill implements what method explicitly defers"
+      owner: Harlan
+      status: open
+      note: "M1-COUNCIL domain_boundary_note says 'sub-agent spawning mechanics (deferred to future version)' but the skill says 'spawn a sub-agent for individual work.' Need to reconcile."
+
+  p1_next:
+    - id: TC-AG-004
+      item: "Multi-council governance formalization — does the council-of-councils model need a domain theory?"
+      owner: Axiom
+      status: open
+      note: "SESSION-024 created the multi-council model. Is this a protocol (like STEER-PROTO) or does it need formal grounding (sorts, predicates, axioms for RFC routing)?"
+
+    - id: TC-AG-005
+      item: "Review M1-COUNCIL Ax-7 (diminishing returns) — is the pragmatic axiom sound?"
+      owner: Sable
+      status: open
+      note: "Ax-7 is self-described as 'pragmatic, not formally decidable.' The termination certificate depends on it as an escape hatch. Is this adequate or does it need strengthening?"

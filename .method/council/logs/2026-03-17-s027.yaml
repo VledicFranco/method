@@ -1,0 +1,185 @@
+sessions:
+  - id: SESSION-027
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Design council governance methodology — decisions automated, actions via human-approved RFCs"
+    source: "PO directive — formalize governance as a methodology. RFCs are the primary artifact. Human approves final RFC, another methodology executes it."
+
+    decisions:
+      - id: D-048
+        question: "What is the structure of the governance methodology?"
+        decision: >
+          Design P3-GOV as a pipeline methodology whose phases track RFC lifecycle.
+          Two output classes: (1) internal decisions — automated under M2-SEMIAUTO
+          with escalation on ambiguity/essence, (2) RFCs — always require human approval
+          before action. The RFC is the primary artifact that crosses the governance-execution boundary.
+        status: decided
+        rationale: >
+          Phases derived from empirical pilot (S024-S026): Identify → Propose → Review →
+          Decide → Approve → Handoff. Two-tiered authority preserves both council autonomy
+          and human control. Descriptive of what already works, formalized.
+        for: "All 5 members — phases map directly to observed pilot behavior"
+        against: "None"
+        phases:
+          - "1. Identify — gap or opportunity surfaces"
+          - "2. Propose — RFC drafted with problem, proposal, alternatives, impact, routing"
+          - "3. Review — domain councils produce review verdicts; steering performs essence check"
+          - "4. Decide — steering council final call; iteration loop to Review on revision"
+          - "5. Approve — human PO reviews governance-approved RFC"
+          - "6. Handoff — approved RFC becomes commission for another methodology"
+
+      - id: D-049
+        question: "Where does this methodology live — program level or method level?"
+        decision: >
+          Program-level methodology: P3-GOV. Sits alongside P1-EXEC and P2-SD as an
+          independent program methodology. Projects can install any combination. P3-GOV
+          orchestrates M1-COUNCIL instances and produces RFCs as its primary artifact.
+        status: decided
+        rationale: >
+          Independence test (Nika): Can you use P3-GOV without P2-SD? Yes. Can you use
+          P2-SD without P3-GOV? Yes. They're parallel, not nested. Governance can exist
+          without delivery, so it's not a delivery method.
+        for: "Orion (parallel concerns), Nika (independence test), Reva (installable independently), Thane (coordinates across methods)"
+        against: "Harlan initially wanted M-series (method within P2-SD)"
+        position_shifts:
+          - "Harlan shifted from M-series to P-series because Nika's independence test was conclusive"
+
+      - id: D-050
+        question: "What is P3-GOV's domain theory?"
+        decision: >
+          Minimal domain theory with 4 sorts: RFC, Council, Review, Phase.
+          Phase values: {draft, domain_review, steering_review, accepted, rejected,
+          revision_requested, human_approved, handed_off, withdrawn}.
+          Four axioms: Ax-GOV-1 (human gate), Ax-GOV-2 (review coverage),
+          Ax-GOV-3 (essence guard), Ax-GOV-4 (block resolution).
+        status: decided
+        rationale: >
+          Sable's minimality (4 sorts via Harlan bridge). Gap and Decision removed —
+          Gap is a precondition to RFC creation, Decision is modeled in D_COUNCIL.
+          Ax-GOV-1 (human gate) is the strongest expression of PO's constraint:
+          no RFC reaches execution without human approval.
+        for: "All members — Sable minimality, Quill human gate, Nika coverage axiom"
+        against: "Orion wanted a Mutation sort for traceability — tabled for v0.2"
+        axioms:
+          - id: Ax-GOV-1
+            name: "Human gate"
+            formal: "forall rfc: not transition(rfc, handed_off) unless human_approved(rfc)"
+            note: "No RFC reaches execution without human approval"
+          - id: Ax-GOV-2
+            name: "Review coverage"
+            formal: "forall rfc: not transition(rfc, steering_review) unless forall c in domain_routing(rfc): reviewed_by(rfc, c)"
+            note: "Every routed council must review before steering decides"
+          - id: Ax-GOV-3
+            name: "Essence guard"
+            formal: "forall rfc where essence_impact(rfc) != none: steering must perform explicit essence check"
+            note: "Essence-touching RFCs get mandatory scrutiny"
+          - id: Ax-GOV-4
+            name: "Block resolution"
+            formal: "forall rfc, review: blocks(review, rfc) -> not transition(rfc, accepted) unless block resolved"
+            note: "Blocks must be addressed, not overridden"
+
+      - id: D-051
+        question: "AG-035 — PRD 010 stale item (4 sessions)"
+        decision: "Close AG-035. PRD 010 already implemented on master (ba58fe6). Item was stale because implementation proceeded outside governance flow."
+        status: decided
+        rationale: "PR-02 requires resolution at 3+ sessions. Work confirmed done via git log. Good case study for P3-GOV — if PRD 010 had gone through RFC pipeline, agenda and implementation would have been linked."
+
+      - id: D-052
+        question: "What are P3-GOV's MVP methods?"
+        decision: >
+          Four MVP methods covering the full RFC lifecycle:
+          M1-DRAFT (draft/revise RFC from gap), M2-REVIEW (council reviews RFC — parameterized
+          for domain vs steering, with essence check mandatory for steering), M3-APPROVE
+          (human approval gate — Ax-GOV-1 operationalized), M4-HANDOFF (convert approved RFC
+          into commission for another methodology).
+          delta_GOV routes based on RFC status — 10-arm condition table covering all Phase values.
+          Termination: nu tracks status distance to terminal + remaining reviews, bounded by
+          max revision count (default 3).
+        status: decided
+        rationale: >
+          4 methods map to 4 empirically observed activities from the Theory Council pilot.
+          M2-REVIEW parameterization avoids method duplication (domain vs steering use same
+          step DAG with conditional essence check). M3-APPROVE is the operational home of
+          Ax-GOV-1 (human gate). M4-HANDOFF bridges governance → execution by including
+          governance context in the commission.
+        for: "All 5 members"
+        against: "Orion wanted M0-IDENTIFY for gap discovery — accepted that gaps come from regular council sessions (M1-COUNCIL in P1-EXEC), P3-GOV receives them as input"
+        methods:
+          - id: M1-DRAFT
+            purpose: "Draft/revise an RFC from an identified gap"
+            steps: ["Gap analysis", "Proposal + alternatives", "Impact + routing"]
+            output: "Well-formed RFC YAML"
+            key_axiom: "well_formed(rfc) → status(rfc) = draft"
+          - id: M2-REVIEW
+            purpose: "Council reviews an RFC and produces a verdict"
+            steps: ["RFC intake", "Domain analysis", "Adversarial debate (M1-COUNCIL axioms)", "Verdict consolidation"]
+            output: "Review verdict (approve/approve_with_conditions/request_changes/block)"
+            parameter: "review_type in {domain, steering} — essence check mandatory for steering"
+            key_axiom: "verdict_produced(rfc, council) → reviewed_by(rfc, council)"
+          - id: M3-APPROVE
+            purpose: "Present governance-approved RFC to human for final approval"
+            steps: ["Present RFC + all verdicts + essence check", "Human decision"]
+            output: "human_decided(rfc) in {approve, reject, request_changes}"
+            key_axiom: "Ax-GOV-1 operationalized: not transition(rfc, human_approved) unless human_decided = approve"
+          - id: M4-HANDOFF
+            purpose: "Convert approved RFC into commission for another methodology"
+            steps: ["RFC extraction", "Commission composition with governance context", "Routing recommendation"]
+            output: "Commission artifact with governance context"
+            key_axiom: "not commission_ready(rfc) unless human_approved(rfc)"
+        transition_function:
+          id: delta_GOV
+          arms:
+            - condition: "gap_identified AND NOT rfc_exists"
+              returns: "Some(M1-DRAFT)"
+            - condition: "status(rfc) = draft"
+              returns: "Some(M2-REVIEW) [first unreviewed domain council]"
+            - condition: "status(rfc) = domain_review AND NOT fully_reviewed(rfc)"
+              returns: "Some(M2-REVIEW) [next unreviewed domain council]"
+            - condition: "fully_reviewed(rfc) AND status != steering_review"
+              returns: "Some(M2-REVIEW) [review_type = steering]"
+            - condition: "status(rfc) = accepted"
+              returns: "Some(M3-APPROVE)"
+            - condition: "status(rfc) = human_approved"
+              returns: "Some(M4-HANDOFF)"
+            - condition: "status(rfc) = revision_requested"
+              returns: "Some(M1-DRAFT) [revision mode]"
+            - condition: "status(rfc) = handed_off"
+              returns: "None"
+            - condition: "status(rfc) = rejected"
+              returns: "None"
+            - condition: "status(rfc) = withdrawn"
+              returns: "None"
+          termination: "nu = remaining_reviews + status_distance_to_terminal. Bounded by max_revision_count = 3."
+
+    open_questions:
+      - "P3-GOV compilation — full method YAML following F4-PHI schema. D-048/D-049/D-050/D-052 provide the design. Commission or next session?"
+      - "How does P3-GOV interact with P1-EXEC routing? Peer methodologies — human chooses when to invoke governance vs execution."
+      - "RFC-001 and RFC-002 — first candidates to validate the P3-GOV pipeline once compiled."
+      - "Multi-methodology project cards — manifest.yaml needs to support P3-GOV alongside P2-SD."
+      - "Retraction pairs — how do M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF retract to D_GOV? Need formal declarations."
+      - "M2-REVIEW reuse of M1-COUNCIL axioms — does M2-REVIEW embed M1-COUNCIL via domain retraction, or replicate the axioms?"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: 0
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes this session"
+        - process: PR-02
+          followed: true
+          note: "AG-035 resolved (closed). AG-037/038 resolved (done in S025). 3 new items added."
+        - process: PR-03
+          followed: true
+          note: "No retro artifacts produced outside council logs"
+      process_improvement_signal: >
+        This session produced 5 decisions (D-048 through D-052) designing a complete
+        methodology from scratch. Longest single-session design effort. The council
+        is effective at methodology design — the Theory Council bridge (Harlan) brought
+        domain theory rigor that would have taken multiple sessions without it.
+      member_adequacy: true

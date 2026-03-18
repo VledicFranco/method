@@ -1,0 +1,112 @@
+sessions:
+  - id: SESSION-025
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Setup Theory Council cast and RFC schema"
+    decisions:
+      - id: D-043
+        decision: "Theory Council cast approved: Axiom (leader), Sable (minimality contrarian), Quill (operationalization contrarian), Harlan (bridge)"
+        status: decided
+        rationale: "Cast covers formal verification, domain theory minimality, LLM execution fidelity, and type systems — all disciplines needed to guard the invariant."
+      - id: D-044
+        decision: "RFC schema approved — lightweight YAML with per-council review fields, status lifecycle, threshold criteria"
+        status: decided
+        rationale: "Schema is council-count-agnostic and lightweight enough to not become bureaucratic overhead."
+    open_questions: []
+    artifacts_produced:
+      - ".method/council/theory-council/TEAM.yaml"
+      - ".method/council/rfcs/RFC-SCHEMA.yaml"
+      - ".method/council/theory-council/AGENDA.yaml"
+
+  - id: SESSION-026
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Evaluate Theory Council pilot — 5 sessions completed. Should we continue, expand, or revert?"
+
+    pilot_data:
+      sessions_run: 5
+      decisions_produced: 11
+      rfcs_drafted: 2
+      position_shifts: 1
+      average_mu_1: 1.0
+      average_mu_2: 0.87
+      average_mu_3: 1.0
+      theory_gaps_identified_and_resolved: 3
+      overhead: "5 compressed sessions — each focused on a single theory question. No context overflow."
+
+    evaluation_criteria:
+      better_axiom_reviews:
+        verdict: "YES"
+        evidence: >
+          TC-005 (Ax-7 review) produced a minimum-turns guard that the steering
+          council had never considered in 23 prior sessions. Sable's minimality
+          challenge forced a sharper definition. Quill's operationalization check
+          prevented over-formalization. The steering council's prior Ax-7 discussions
+          (if any) never surfaced this improvement.
+      rfc_caught_issues:
+        verdict: "YES"
+        evidence: >
+          TC-002 identified that M1-COUNCIL's initial_state_valid_claim is wrong
+          when resuming from CMEM-PROTO memory — a gap the steering council missed
+          when installing CMEM-PROTO. RFC-001 (sigma_0 resume precondition) was
+          drafted. TC-003 clarified the sub-agent spawning boundary — the steering
+          council had the skill/method disagreement in its diff analysis but hadn't
+          resolved it. The Theory Council resolved it in one session.
+      overhead_justified:
+        verdict: "YES, marginally"
+        evidence: >
+          5 sessions, 11 decisions. The steering council produced 39 decisions in
+          23 sessions (~1.7/session). The Theory Council produced 11 in 5 (~2.2/session).
+          Higher decision density because sessions are tightly scoped to one theory
+          question each. Overhead is low because domain-internal decisions don't need
+          steering approval, and RFCs (2 out of 11) route through normally.
+
+    decisions:
+      - id: D-045
+        decision: "Theory Council pilot SUCCEEDS. Continue as a permanent domain council."
+        status: decided
+        rationale: "All three evaluation criteria met: better axiom reviews (Ax-7 guard), RFC caught issues (sigma_0 resume gap, sub-agent boundary), overhead justified (2.2 decisions/session vs 1.7)."
+        for: "Orion: vindicated the multi-council model. Harlan: bridge role worked — carried theory decisions to implementation context. Reva: RFC schema worked — 2 RFCs drafted through the pipeline."
+        against: "Nika: the 5 sessions were compressed into one conversation — real-world overhead may be higher when each session is a separate Claude Code invocation. Fair concern, but the decision density data still holds."
+        position_shifts:
+          - "Nika shifted from skeptical to supportive because the Theory Council resolved 3 theory gaps the steering council had flagged but not addressed in 23 sessions"
+
+      - id: D-046
+        decision: "Do NOT expand to additional domain councils yet. Theory Council is sufficient for pv-method's current scale. Re-evaluate when a second domain generates recurring questions that the steering council can't handle efficiently."
+        status: decided
+        rationale: "Reva's DX concern: each council is overhead. One domain council is the right amount for a project with one human PO. Add more only when empirically needed."
+        for: "Avoids premature scaling of governance structure."
+        against: "Orion argued for an Implementation Council, but accepted the wait — the Theory Council's success doesn't prove a second council would have equal impact."
+
+      - id: D-047
+        decision: "Process the 2 drafted RFCs (RFC-001: sigma_0 resume, RFC-002: Ax-7 guard) through steering review in the next session."
+        status: decided
+        rationale: "Both are cross-domain changes that need steering approval per the RFC schema."
+
+    open_questions:
+      - "When should the next domain council be activated? What's the trigger threshold?"
+      - "Should the Theory Council have a regular cadence or remain on-demand?"
+
+    artifacts_produced: []
+    next_agenda_items:
+      - "Review and decide RFC-001 (sigma_0 resume precondition)"
+      - "Review and decide RFC-002 (Ax-7 minimum-turns guard)"
+      - "AG-035: Commission PRD 010 (carried forward again)"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes"
+        - process: PR-02
+          followed: true
+          note: "AG-035 carried forward with explicit rationale (3rd session — approaching stale threshold)"
+      process_improvement_signal: "AG-035 has been deferred for 3 sessions. PR-02 stale threshold hit. Must be resolved next session or archived."
+      member_adequacy: true

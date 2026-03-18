@@ -1,18 +1,25 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-15"
-  last_session: SESSION-023
+  last_updated: "2026-03-17"
+  last_session: SESSION-030
   mode: steady-state
   cadence: "weekly or on-demand"
-  next_health_review: SESSION-023
+  next_health_review: SESSION-033
 
   p0_immediate:
-    - id: AG-035
-      item: "Commission PRD 010 implementation — PTY activity auto-detection"
+    - id: AG-044
+      item: "Commission compilation of P3-GOV method YAMLs (M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF)"
       owner: council
       status: open
-      added_in: SESSION-023
-      note: "PRD 010 drafted (docs/prds/010-pty-activity-detection.md). 4 phases, 7 patterns, auto-retro. Ready for M1-IMPL commission."
+      added_in: SESSION-028
+      note: "P3-GOV.yaml v0.1 complete (8 axioms, contrarian-reviewed, research-refined). Methods need compilation. S030 added 5 research-backed guidelines: M2-REVIEW max_rounds=3, 5-layer framing, anchoring prevention validated, M5-AUDIT cast design, PAT-003/004 checks. Key: M2-REVIEW delegates sigma_2 to M1-COUNCIL via retraction (W7)."
+
+    - id: AG-040
+      item: "Review RFC-001 (sigma_0 resume) and RFC-002 (Ax-7 guard) — first P3-GOV pipeline validation"
+      owner: council
+      status: open
+      added_in: SESSION-027
+      note: "Two RFCs from Theory Council pilot. Process through P3-GOV pipeline after method YAMLs compiled."
 
   p1_next:
     - id: AG-034
@@ -31,29 +38,29 @@ agenda:
       note: "Archived: ETHOS.md dependency hasn't stabilized. Design preserved in D-028. Re-open when ETHOS.md v1.0."
 
   governance_health:
-    last_assessed: SESSION-022
-    sessions_since_processes_installed: 16
-    next_review: SESSION-027
+    last_assessed: SESSION-028
+    sessions_since_processes_installed: 22
+    next_review: SESSION-033
 
     process_health:
       PR-01:
+        times_followed: 8
+        times_skipped: 0
+        times_triggered: 3
+        verdict: healthy
+        note: "S028: P3-GOV.yaml created in registry. Guide sync not yet needed (draft status). Trigger counted."
+      PR-02:
         times_followed: 7
         times_skipped: 0
-        times_triggered: 2
+        times_triggered: 5
         verdict: healthy
-        note: "No registry changes since SESSION-014"
-      PR-02:
-        times_followed: 5
-        times_skipped: 0
-        times_triggered: 4
-        verdict: healthy
-        note: "AG-026 at 5 sessions — stale warning issued, 2-session deadline"
+        note: "AG-035 resolved at 4 sessions (S027). AG-043 resolved in 1 session. Process working as intended."
       PR-03:
         times_followed: 3
         times_skipped: 2
         times_triggered: 2
-        verdict: degraded
-        note: "PRD 007 and AG-030 agents didn't produce retros. Commission prompt has instructions but agents ignore them. PRD 010 will address via auto-retro."
+        verdict: improved
+        note: "PRD 010 auto-retro now implemented on master. Signal addressed. No new violations since S023."
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
@@ -63,20 +70,26 @@ agenda:
       - signal: "Commissioned agents don't use channel tools despite prompt instructions"
         count: 3
         action_threshold: 3
-        status: threshold_met
-        source: "SESSION-019 (PRD 006), SESSION-021 (PRD 007 + AG-030)"
-        action: "PRD 010 — auto-detect from PTY instead of relying on agent cooperation"
+        status: resolved
+        source: "SESSION-019, SESSION-021"
+        action: "PRD 010 implemented — auto-detect from PTY. Signal resolved."
       - signal: "Commissioned agents don't produce retros despite prompt instructions"
         count: 2
         action_threshold: 3
+        status: resolved
+        source: "SESSION-021"
+        action: "PRD 010 auto-retro implemented. Signal resolved."
+      - signal: "Governance design sessions produce decisions but no implementation artifacts"
+        count: 2
+        action_threshold: 3
         status: accumulating
-        source: "SESSION-021 (PRD 007, AG-030)"
-        action: "PRD 010 — auto-retro from PTY activity signals"
+        source: "SESSION-024 (multi-council design), SESSION-027 (P3-GOV design)"
+        action: "Pair governance design sessions with commissions for resulting protocol/method updates"
 
     retro_quality:
-      sessions_with_retro: 12
+      sessions_with_retro: 18
       sessions_without: 7
-      actionable_signals_produced: 5
+      actionable_signals_produced: 7
       rote_retros: 0
 
   done:
@@ -101,6 +114,12 @@ agenda:
     - { id: AG-029, resolved_in: SESSION-019, note: "PRD 006 C2/C4 implemented via bridge commission — worktree isolation + stale detection" }
     - { id: AG-030, resolved_in: SESSION-021, note: "Context-mode feasibility report — PR #1 merged. Recommends scoped prototype then PRD 009." }
     - { id: AG-033, resolved_in: SESSION-023, note: "PRD 010 drafted — 7 patterns, auto-retro, 4 phases, 9 success criteria" }
+    - { id: AG-035, resolved_in: SESSION-027, note: "PRD 010 implemented on master (ba58fe6). Closed — stale because work proceeded outside governance flow." }
+    - { id: AG-037, resolved_in: SESSION-025, note: "Theory Council TEAM.yaml created" }
+    - { id: AG-038, resolved_in: SESSION-025, note: "RFC schema created at .method/council/rfcs/RFC-SCHEMA.yaml" }
+    - { id: AG-039, resolved_in: SESSION-027, note: "P3-GOV designed: pipeline methodology, program-level, 4-sort domain theory, 4 axioms" }
+    - { id: AG-041, resolved_in: SESSION-028, note: "P3-GOV.yaml compiled (draft). Methodology coalgebra done. Method YAMLs pending (AG-044)." }
+    - { id: AG-043, resolved_in: SESSION-028, note: "Signature inclusion — M2-REVIEW references M1-COUNCIL axioms, not copies (D-053)." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

@@ -1,0 +1,64 @@
+sessions:
+  - id: SESSION-024
+    date: "2026-03-17"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Design a council-of-councils governance model with domain-specific sub-councils and RFC routing"
+    source: "PO proposal — multi-council architecture with formal theory, QA, business, architecture groups"
+
+    decisions:
+      - id: D-040
+        question: "Should pv-method adopt multi-council, and which domain councils?"
+        decision: "Pilot one domain council (Theory Council) alongside steering council. Design RFC mechanism for N councils. Evaluate after 5 sessions."
+        status: decided
+        rationale: "Specialist bodies produce better specialist decisions (Orion), but 4x governance overhead is premature for one project (Nika). Tiered activation (Harlan) plus RFC routing (Reva) gives the structural value without the overhead."
+        for: "Theory Council is the most distinct from steering's generalist mandate; project invariant ('theory is source of truth') makes theory review highest-stakes domain"
+        against: "Nika argued ad-hoc sub-councils with STEER-PROTO Part 7.5 already handle this. Reva argued the RFC pipeline matters more than council count."
+        position_shifts:
+          - "Orion shifted from 4 persistent councils to 1 pilot + RFC, because Nika's 4x overhead argument and Harlan's tiered activation showed full multi-council is premature"
+          - "Nika shifted from 'keep single council only' to 'one pilot + evaluate', because Harlan's argument about persistent memory (sub-councils start cold every time) showed value in at least one standing specialist body"
+
+      - id: D-041
+        question: "How should RFCs route through councils — lifecycle and threshold?"
+        decision: "RFC lifecycle: Draft → Domain Review(s) → Steering Review → Decision → Implementation. RFC threshold: changes to registry, theory, architecture, governance, or cross-domain concerns. Lightweight YAML schema with per-council review fields."
+        status: decided
+        rationale: "Standard software RFC lifecycle adapted for council architecture. Domain councils produce review verdicts; steering council makes final call. Councils can both review AND originate RFCs."
+        for: "Structured review prevents changes that violate the invariant from landing silently. Lightweight YAML schema (Reva) avoids bureaucratic overhead."
+        against: "Risk of bureaucratic bottleneck if RFC threshold is too low. Mitigated by limiting RFCs to registry/theory/architecture/governance/cross-domain changes only."
+
+      - id: D-042
+        question: "Authority model — when does a domain council advise vs. decide?"
+        decision: "Three-tier authority: (1) RFC decisions — domain councils advise, steering decides, PO has veto. (2) Domain-internal work — domain council decides autonomously if no shared artifacts change. (3) Advice requests — use inbox/outbox, no RFC overhead. If a domain council blocks an RFC, steering must address it."
+        status: decided
+        rationale: "Preserves PO authority and steering council's essence guardianship role while giving domain councils meaningful autonomy within their expertise boundary."
+        for: "Clear authority boundaries prevent both over-governance (everything needs steering approval) and under-governance (domain councils making cross-concern decisions unilaterally)"
+        against: "Nika noted the boundary 'does it change shared artifacts?' requires judgment calls — may need refinement after pilot"
+
+    open_questions:
+      - "Theory Council cast design — who are the members? (Deferred to next session or dedicated setup)"
+      - "RFC schema — needs formal definition as a protocol artifact"
+      - "Bridge member model — Harlan proposed sitting on both councils. What are the rules for bridge membership?"
+      - "How does this compose with CMEM-PROTO? Does each council get its own memory?"
+
+    artifacts_produced: []
+    next_agenda_items:
+      - "Design Theory Council cast (TEAM definition)"
+      - "Draft RFC schema as protocol artifact"
+      - "Commission PRD 010 (deferred from this session)"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: 0
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes this session"
+        - process: PR-02
+          followed: true
+          note: "No stale items — AG-035 deferred with explicit rationale"
+      process_improvement_signal: "Council sessions on governance design are high-value but produce no implementation artifacts. Consider pairing governance sessions with a commission for the resulting protocol updates."
+      member_adequacy: true
