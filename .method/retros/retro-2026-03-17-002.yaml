@@ -1,0 +1,116 @@
+# Retrospective — DR-03 Strategy Refactor (bridge → core)
+# Instance: I2-METHOD | Methodology: P2-SD v2.0 | Method: M1-IMPL
+# Session: 2026-03-17
+
+retro:
+  session_id: "DR03-STRATEGY-REFACTOR"
+  methodology: P2-SD
+  method: M1-IMPL
+  instance: I2-METHOD
+  date: "2026-03-17"
+
+  hardest_decision: >
+    Deciding the retro-generator split boundary. The file has four functions:
+    generateRetro(), computeCriticalPath(), retroToYaml() (all pure), and
+    saveRetro() (uses node:fs). The cleanest split was extracting saveRetro()
+    into a new retro-writer.ts in bridge, rather than keeping the entire file
+    in bridge and re-exporting pure functions. This creates a new file but
+    properly enforces the DR-03 boundary — the core copy has zero fs imports.
+
+  observations:
+    - id: OBS-01
+      type: process
+      observation: >
+        The 7-phase sequential approach was over-cautious for this mechanical
+        refactor. Phases 1-4 (move leaf deps → move executor) were identical
+        patterns: copy file, replace with re-export, update core index.ts, build.
+        Batching these into 2 sub-agents (source moves + test/barrel) was the
+        right optimization. A single sub-agent for all 7 phases would have been
+        even faster with no additional risk.
+
+    - id: OBS-02
+      type: architecture
+      observation: >
+        Bridge previously had zero dependency on core. This refactor adds the
+        first bridge→core reference. This is architecturally correct — bridge
+        is the transport layer for core's pure logic. The MCP→core and
+        bridge→core dependency arrows now both point inward, matching the
+        hexagonal architecture intent.
+
+    - id: OBS-03
+      type: tooling
+      observation: >
+        The TypeScript project references system (`tsconfig.json` references +
+        workspace package deps) handled the cross-package imports cleanly.
+        The pattern from MCP→core (tsconfig reference + package.json dep)
+        transferred directly to bridge→core with zero issues.
+
+    - id: OBS-04
+      type: quality
+      observation: >
+        Backward compatibility re-exports in bridge strategy files ensure
+        nothing breaks during transition. The barrel index.ts files in both
+        core and bridge provide clean import paths. The re-export approach
+        means PR #27 and PR #28 can be merged in either order without
+        breaking imports.
+
+    - id: OBS-05
+      type: architecture
+      observation: >
+        The strategy-parser.ts move revealed a naming collision: core already
+        exports a `ValidationResult` type from types.ts. The sub-agent renamed
+        the strategy parser's type to `StrategyValidationResult` in core and
+        added a backward-compatible alias in bridge. This was the right call —
+        domain-specific prefixes prevent future collisions.
+
+  card_feedback:
+    essence:
+      purpose_served: true
+      invariant_respected: true
+      notes: >
+        This refactor directly serves the essence: pure methodology execution
+        logic belongs in core (the product), not in the transport layer (the
+        delivery mechanism). DR-03 is now properly enforced for strategy code.
+    delivery_rules:
+      - rule: DR-03
+        respected: true
+        notes: >
+          grep for transport deps in core/strategy/ returns zero matches.
+          Core has zero new transport dependencies after the move.
+      - rule: DR-04
+        respected: true
+        notes: "MCP tools unchanged — still proxy to bridge HTTP endpoints."
+      - rule: DR-09
+        respected: true
+        notes: "Tests moved with source files. All use inline YAML fixtures."
+
+  commits:
+    - hash: d4e123e
+      message: "chore: add bridge→core dependency for strategy refactor"
+    - hash: 6bf227a
+      message: "refactor(core): move llm-provider and artifact-store to @method/core (Phase 1)"
+    - hash: d54d48e
+      message: "refactor(core): move gates to @method/core (Phase 2)"
+    - hash: 32b1789
+      message: "refactor(core): move strategy-parser to @method/core (Phase 3)"
+    - hash: 5a1923b
+      message: "refactor(core): move strategy-executor to @method/core (Phase 4)"
+    - hash: 7dfa5c9
+      message: "refactor(core): split retro-generator (Phase 5)"
+    - hash: 42fa4b0
+      message: "refactor(core): move pure strategy tests from bridge to core (Phase 6)"
+    - hash: "2599628"
+      message: "refactor(core): barrel exports for strategy modules (Phase 7)"
+
+  metrics:
+    files_created: 9
+    files_modified: 12
+    tests_added: 0
+    tests_total: 596
+    test_failures: 0
+    build_status: clean
+
+  pr:
+    number: 28
+    url: "https://github.com/VledicFranco/method/pull/28"
+    status: ready_for_review
