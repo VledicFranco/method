@@ -1,7 +1,7 @@
 agenda:
   project: pv-method
   last_updated: "2026-03-19"
-  last_session: SESSION-034
+  last_session: SESSION-035
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-038
@@ -74,14 +74,14 @@ agenda:
       note: >
 
     - id: AG-053
-      item: "Extend DR-09 test coverage to bridge modules"
-      owner: council
+      item: "Commission bridge test coverage — dashboard-route, token-tracker, usage-poller"
+      owner: PO
       status: open
       added_in: SESSION-034
       note: >
-        Retro signal (2 retros): dashboard-route, token-tracker, usage-poller have zero
-        unit tests. DR-09 currently only addresses core YAML testing. Source:
-        retro-2026-03-14-002, retro-prd005-phase2.
+        D-084: Promoted to P1 immediate. 4/5 council members ranked first. Zero unit
+        tests on 3 bridge modules. Commission a sub-agent: coverage target, file list,
+        no design decisions needed. Source: retro-2026-03-14-002, retro-prd005-phase2.
 
     - id: AG-054
       item: "Add M1-IMPL wave structure guidance for multi-task phases"
@@ -95,13 +95,13 @@ agenda:
     - id: AG-055
       item: "Establish delta review process for retro-proposed rule changes"
       owner: council
-      status: open
+      status: done
       added_in: SESSION-034
+      resolved_in: SESSION-035
       note: >
-        Pattern finding: 9 proposed deltas across retros, only 3 acted on. No visible
-        gate for accepting proposed deltas into the project card or registry. The manual
-        aggregation step is the bottleneck. Consider lightweight protocol or council
-        standing agenda item.
+        D-083: STEER-PROTO extended with delta triage phase. Accumulator at
+        .method/council/pending-deltas.yaml. Threshold trigger >= 3. Mandatory
+        dispositions. 6 backlogged deltas seeded into accumulator.
 
     - id: AG-056
       item: "PTY watcher enrichment — build/test result detection"
@@ -212,6 +212,7 @@ agenda:
     - { id: AG-046, resolved_in: SESSION-034, note: "PRs #27 and #28 closed with comments. Content on master." }
     - { id: AG-047, resolved_in: SESSION-034, note: "PR #31 already merged (2026-03-19). M1-COUNCIL v1.2 on master." }
     - { id: AG-052, resolved_in: SESSION-034, note: "Routing parity audit complete. All 6 methodologies verified. Ax-1 updated with routable/delegable taxonomy. No gaps found beyond the documented ADVREV delegation-only design." }
+    - { id: AG-055, resolved_in: SESSION-035, note: "Delta triage phase added to STEER-PROTO. Accumulator created. 6 backlogged deltas seeded. D-083." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

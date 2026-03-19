@@ -1,0 +1,99 @@
+sessions:
+  - id: SESSION-035
+    date: "2026-03-19"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    mode: isolated
+    challenge: "Retro signal triage — delta review process + agenda item prioritization"
+    source: "70-retro pattern analysis, 6 unacted proposed deltas, 4 new agenda items"
+
+    decisions:
+      - id: D-083
+        question: "How should pv-method handle retro-proposed rule changes?"
+        decision: >
+          Extend STEER-PROTO with a delta triage phase. Accumulator file at
+          .method/council/pending-deltas.yaml. Threshold trigger: >= 3 pending
+          deltas auto-agendas triage as P0 in next council session. Three mandatory
+          dispositions: accepted (with card/registry commit), deferred (reason +
+          re-review session), rejected (reason). Significant changes (essence,
+          method structure) escalate to P3-GOV RFC.
+        status: decided
+        rationale: >
+          All 5 members agreed: gap is structural (not awareness), threshold-triggered
+          (not calendar-based), mandatory disposition (no silent drops). Thane's
+          STEER-PROTO extension with Harlan's mandatory-disposition and Nika's
+          threshold trigger. Standalone protocol rejected as overkill by all 5.
+        for: "All 5"
+        against: "None"
+        position_shifts: []
+        note: "Converged in Round 1 — no response round needed. Mechanism disagreement was on where the rule lives, not whether it's needed."
+
+      - id: D-084
+        question: "Priority order for AG-053, AG-054, AG-056?"
+        decision: >
+          AG-053 (bridge test coverage) is P1 immediate — commission now. AG-054
+          (M1-IMPL wave structure) needs scoping before commissioning — add to next
+          council session. AG-056 (PTY watcher enrichment) deferred until delta flow
+          works.
+        status: decided
+        rationale: >
+          4/5 members ranked AG-053 first (Thane, Nika, Harlan, Orion). Reva
+          dissented, ranking AG-054 first because wave structure affects every
+          implementation session. Council accepted Reva's concern: AG-054 is
+          important but needs a concrete problem statement before commissioning.
+        for: "Thane, Nika, Harlan, Orion"
+        against: "Reva (AG-054 first — wave structure has wider blast radius)"
+        position_shifts: []
+
+      - id: D-085
+        question: "AG-054 scoping — what does M1-IMPL wave structure need?"
+        decision: >
+          AG-054 needs a problem statement before commissioning: which failure mode
+          does it address (mis-sequencing, thrashing, partial completion rollback)?
+          Add to next council session for scoping. Not ready for blind delegation.
+        status: decided
+        rationale: "Orion and Harlan both flagged: 'wave structure' is vague enough to produce unbounded work or a one-page guide."
+        for: "All 5"
+        against: "None"
+
+    artifacts_produced:
+      - ".method/council/pending-deltas.yaml (delta accumulator with 6 backlogged entries)"
+
+    open_questions: []
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: false
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.75
+        mu_3_escalation_precision: 1.0
+      note: >
+        Converged in Round 1 on the delta process — all 5 members independently arrived
+        at threshold-triggered triage extending STEER-PROTO. Only genuine disagreement
+        was priority order (4-1 split, Reva dissenting on AG-054 vs AG-053). Essence
+        check was not genuinely tested this session — none of the decisions touch
+        purpose/invariant/optimize_for. mu_2 at 0.75 reflects quick convergence without
+        needing counter-argument rounds.
+      isolation_metrics:
+        mode: isolated
+        agents_spawned: 5
+        rounds: 1
+        position_shifts: 0
+        convergence_round: 1
+        note: "Fast convergence — the question had clear constraints. Isolation may not have added value over synthetic for this session."
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes."
+        - process: PR-02
+          followed: true
+          note: "AG-055 resolved (1 session)."
+        - process: PR-03
+          followed: true
+          note: "N/A."
+      process_improvement_signal: >
+        Isolated mode on low-controversy questions (all 5 converge in Round 1) may not
+        justify the cost. Consider a proportionality check: use isolated for decisions
+        with genuine uncertainty, synthetic for operational triage.
+      member_adequacy: true

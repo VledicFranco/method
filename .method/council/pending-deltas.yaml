@@ -1,0 +1,54 @@
+# Delta Accumulator — STEER-PROTO Extension (SESSION-035, D-083)
+#
+# Retros with proposed_deltas append entries here. When count >= 3 pending,
+# the next steering council session MUST triage before other agenda items.
+#
+# Dispositions: accepted (+ artifact reference), deferred (+ reason + re-review session), rejected (+ reason)
+# Significant deltas (essence-touching, method structure) escalate to P3-GOV RFC.
+
+pending:
+  # Backlog from retro analysis (70 retros scanned, 6 unacted proposals)
+
+  - id: DELTA-001
+    source: retro-prd005-phase2
+    proposed: "Extend DR-09 to require unit tests for bridge modules, not just core YAML"
+    priority: medium
+    status: pending
+    date_proposed: "2026-03-14"
+
+  - id: DELTA-002
+    source: retro-prd002-impl
+    proposed: "Add wave structure guidance to M1-IMPL Phase B for multi-task phases (dependency-aware sequencing)"
+    priority: medium
+    status: pending
+    date_proposed: "2026-03-14"
+
+  - id: DELTA-003
+    source: retro-prd005-phase1
+    proposed: "New DR for bridge HTTP API: expose pool stats and session metadata via health endpoint"
+    priority: low
+    status: pending
+    date_proposed: "2026-03-14"
+
+  - id: DELTA-004
+    source: retro-t1x-valgaps-20260314
+    proposed: "DR-03 exemption: Scala-only repos where TypeScript core pattern does not apply"
+    priority: low
+    status: pending
+    date_proposed: "2026-03-14"
+
+  - id: DELTA-005
+    source: retro-t1x-valgaps-20260314
+    proposed: "DR-04 trivial disjointness escape hatch: skip dispatch overhead for trivially disjoint tasks"
+    priority: low
+    status: pending
+    date_proposed: "2026-03-14"
+
+  - id: DELTA-006
+    source: retro-t1x-valgaps-20260314
+    proposed: "M1-COUNCIL proportionality heuristic: add explicit guidance for when council overhead is not justified"
+    priority: medium
+    status: pending
+    date_proposed: "2026-03-14"
+
+resolved: []
