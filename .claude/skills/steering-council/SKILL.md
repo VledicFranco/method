@@ -1,8 +1,8 @@
 ---
 name: steering-council
-description: Run a project steering council session. Champions the project's essence, reviews retro signals, steers priorities, and ensures all work serves the project's ultimate goals. Use for project direction decisions, essence health checks, retro signal review, roadmap assessment, or any governance question. Trigger phrases: "steering council", "project direction", "essence check", "council session", "governance".
+description: Run a project steering council session. Champions the project's essence, reviews retro signals, steers priorities, and ensures all work serves the project's ultimate goals. Supports --isolated flag for sub-agent execution (EXP-002). Use for project direction decisions, essence health checks, retro signal review, roadmap assessment, or any governance question. Trigger phrases: "steering council", "project direction", "essence check", "council session", "governance".
 disable-model-invocation: true
-argument-hint: [agenda item, challenge, or "auto" for autonomous agenda review]
+argument-hint: "[--isolated] [agenda item, challenge, or 'auto' for autonomous agenda review]"
 ---
 
 # Steering Council
@@ -14,6 +14,12 @@ argument-hint: [agenda item, challenge, or "auto" for autonomous agenda review]
 A persistent project governance council that ensures all work serves the project's
 essence (purpose, invariant, optimize_for). The council reviews priorities, steers
 direction, and catches drift before it compounds.
+
+**Two execution modes:**
+- **Synthetic (default):** You inhabit all council members in a single context window. Cheaper (~1x tokens). Good for most governance sessions.
+- **Isolated (`--isolated` flag):** Each council member runs as a separate sub-agent with its own context window. Communication via shared transcript file. ~3x tokens but ~2x quality on adversarial metrics (EXP-002). Use for essence-touching decisions, irreversible commitments, or when the synthetic council has been converging too fast.
+
+**Mode detection:** If `$ARGUMENTS` contains `--isolated`, strip the flag before processing the remaining arguments. Steps 0-2 and 4-5 always run in the parent context (governance bookkeeping). Only Step 3 (Debate & Decide) changes execution mode.
 
 **When to use:**
 - Project direction decisions with multiple defensible options
@@ -80,11 +86,106 @@ with 0 triggers for 10+ sessions (review for removal)? Is the next health review
 
 ### Step 3 — Debate & Decide
 
+**If running in synthetic mode (default):** follow Step 3A.
+**If running in isolated mode (`--isolated`):** follow Step 3B.
+
+Both modes enforce the same M1-COUNCIL axioms and governance rules. Only the execution architecture differs.
+
+#### Step 3A — Synthetic Debate (default)
+
 Run structured adversarial debate following M1-COUNCIL axioms:
 - **Ax-3:** No position repetition without responding to a counter-argument
 - **Ax-4:** Position updates only when counter-argument is acknowledged
 - **Ax-5:** Every turn resolves at least one (Character, Question) pair
 - **Ax-7:** Leader halts on diminishing returns — records unresolved items
+
+#### Step 3B — Isolated Debate (`--isolated`)
+
+Each council member runs as a **separate sub-agent** with its own context window. The parent (you) orchestrates turn order, enforces axioms, checks convergence, runs essence checks, and relays escalations to the PO.
+
+> **Evidence:** EXP-002 showed isolated agents produce 2x position shifts, +43% counter-arguments, and reversed conviction trajectories. The key mechanism: members cannot anchor on each other's reasoning during their own deliberation.
+
+> **Cost warning:** ~3x tokens. Worth it for essence-touching, irreversible, or high-stakes governance decisions.
+
+**Setup:**
+
+1. Create the transcript file at `tmp/steering-debate-transcript.md` with:
+   ```
+   # Steering Council Debate Transcript — SESSION-{NNN}
+   **Agenda:** {framed agenda items from Step 2}
+   **Cast:** {member names and roles from TEAM.yaml}
+   **Mode:** Isolated (EXP-002)
+   **Essence:** {purpose, invariant, optimize_for from project card}
+   ---
+   ```
+
+**Per agenda item — Opening Positions (parallel, genuine independence):**
+
+2. For each agenda item (or batch of related items), spawn ALL council members **simultaneously** using `run_in_background: true`. Each agent receives ONLY:
+   - Their character card from TEAM.yaml (name, expertise, conviction, blind spot, voice)
+   - The specific agenda item framing from Step 2
+   - The project essence (purpose, invariant, optimize_for)
+   - Instruction: "You are {Name} on the pv-method steering council. State your position on this agenda item. Be specific — propose a concrete decision. Consider: does your position serve the project's purpose? Does it respect the invariant? Is it consistent with optimize_for? Return your position as text."
+
+   **Critical:** Do NOT give agents access to the transcript during opening positions. Independence must be genuine.
+
+3. When all agents complete, collect their positions and append ALL to the transcript:
+   ```
+   ## {Agenda Item ID} — Opening Positions
+
+   ### {Member Name} ({Role})
+   {position text}
+   ```
+
+4. Present a brief summary to the PO. Note convergences, divergences, and any essence concerns raised.
+
+**Response Rounds (sequential, each sees prior responses):**
+
+5. For each subsequent round, run members **one at a time, sequentially**. For each member:
+   - Spawn a fresh sub-agent with:
+     - Their character card
+     - The project essence
+     - Instruction: "Read the transcript at `tmp/steering-debate-transcript.md`. You are {Name}. Respond to the latest round on the current agenda item. Counter specific claims. If shifting your position, name the argument. If holding, explain what counter-argument would be needed. Flag any essence concerns. Return your response as text."
+   - Append their response to the transcript.
+
+   **Turn order rotation:** Rotate who goes first each round to prevent framing anchoring.
+
+6. After all members respond, **read the transcript yourself** and check:
+   - Are positions still shifting? (stable for 2 rounds → converged)
+   - New arguments appearing? (restated only → diminishing returns, Ax-7)
+   - Any position repetition without counter-argument response? (flag for Ax-3)
+   - Any member requesting PO input? (relay as escalation)
+
+   Max 4 rounds per agenda item.
+
+**Leader Synthesis (after each round):**
+
+7. Spawn the Leader agent with:
+   - Instruction: "Read the transcript. Write synthesis: (1) where the council agrees, (2) where they disagree, (3) what question needs answering next. (4) Essence check: does the emerging consensus serve purpose, respect invariant, align with optimize_for? If debate has converged, state the decision."
+   - Append synthesis to transcript.
+
+**Escalations:**
+
+8. If any member raises an essence concern or requests PO input, present it:
+   > *"[Member name] to Product Owner (via isolated debate): [specific question]. Essence concern: [which field]. Context: [brief context]."*
+
+   After PO responds, append to transcript and continue.
+
+**Decision Capture (per agenda item):**
+
+9. When an agenda item converges, spawn the Leader one final time:
+   - Instruction: "Read the full transcript. For agenda item {ID}: state the decision, rationale (strongest argument that won), dissent (strongest counter-argument), and position shifts (who shifted, what argument caused it). Perform final essence check. Return as text."
+   - **Capture immediately** to LOG.yaml before moving to the next agenda item. Do NOT batch.
+
+10. Move to the next agenda item and repeat from step 2.
+
+**Axiom enforcement in isolated mode:**
+- **Ax-3 (non-repetition):** Parent checks after each round. If a member restates without addressing a counter, prompt them: "In the transcript, {Name} restated on X without addressing Y's counter about Z. Respond to that point or declare final."
+- **Ax-4 (conviction stability):** Enforced by response instruction: "If shifting, name the argument."
+- **Ax-5 (turn progress):** Parent checks: did this round resolve any (Member, Question) pairs? Flag empty rounds.
+- **Ax-7 (diminishing returns):** Parent's convergence check. Halt if 2 consecutive rounds produce no new arguments.
+
+#### Governance rules (both modes)
 
 **Sub-council spawning:** When the council encounters a question that exceeds its expertise, any member can propose spawning a sub-council. The Leader checks proportionality:
 1. Does the question require expertise the standing council lacks? (Can't a member research instead?)
@@ -185,3 +286,10 @@ generating work faster than executing it.
 - Do not batch LOG.yaml updates at session end — capture incrementally
 - Do not keep members who no longer match the project's discipline needs
 - Do not let the agenda grow unboundedly — close items aggressively
+
+**Isolated mode additional anti-patterns:**
+- Do not give agents access to the transcript during opening positions — independence must be genuine
+- Do not run response turns in parallel — sequential order required so each member sees prior responses
+- Do not skip the parent convergence check between rounds — the parent enforces Ax-3/Ax-7
+- Do not batch decision capture across agenda items — capture each decision to LOG.yaml before moving to the next item (context windows can run out)
+- Do not let agents modify the transcript directly — they return text, the parent appends
