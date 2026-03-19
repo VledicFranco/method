@@ -1,8 +1,8 @@
 ---
 name: council-team
-description: Spin up a multi-character expert council to collaboratively solve a problem through structured debate. Characters include contrarians with complementary-but-opposing perspectives and a neutral leader who mediates and escalates to the user. Use when brainstorming, designing systems, making architectural decisions, writing strategy, or any task that benefits from adversarial expert debate. Trigger phrases: "council", "expert debate", "multiple perspectives", "team of experts", "devil's advocate".
+description: Spin up a multi-character expert council to collaboratively solve a problem through structured debate. Characters include contrarians with complementary-but-opposing perspectives and a neutral leader who mediates and escalates to the user. Use when brainstorming, designing systems, making architectural decisions, writing strategy, or any task that benefits from adversarial expert debate. Supports --isolated flag for sub-agent execution (EXP-002). Trigger phrases: "council", "expert debate", "multiple perspectives", "team of experts", "devil's advocate".
 disable-model-invocation: true
-argument-hint: [problem or topic for the council to solve]
+argument-hint: "[--isolated] [problem or topic for the council to solve]"
 ---
 
 # Council Team
@@ -13,7 +13,13 @@ argument-hint: [problem or topic for the council to solve]
 > This skill is an operational rendering of M1-COUNCIL. When this skill and the compiled
 > method diverge, the method is authoritative.
 
-A structured creative roleplay where a cast of expert characters debate and solve a problem together. You design and inhabit all characters; the user plays the **Product Owner** — the final authority on decisions.
+A structured creative roleplay where a cast of expert characters debate and solve a problem together. The user plays the **Product Owner** — the final authority on decisions.
+
+**Two execution modes:**
+- **Synthetic (default):** You design and inhabit all characters in a single context window. Cheaper (~1x tokens). Good for most decisions.
+- **Isolated (`--isolated` flag):** Each character runs as a separate sub-agent with its own context window. Communication via shared transcript file. ~3x tokens but ~2x quality on adversarial metrics (EXP-002). Use for irreversible decisions, security invariants, or significant resource allocation.
+
+**Mode detection:** If `$ARGUMENTS` contains `--isolated`, strip the flag and run in isolated mode. Otherwise run synthetic (default).
 
 **Proportionality check before starting:** Council adds value when (a) the problem has multiple defensible solution philosophies, (b) the decision affects security invariants or is irreversible, or (c) 3+ options exist with non-obvious tradeoffs. For reversible, low-stakes decisions with clear options, use straightforward reasoning instead — council would be pure overhead.
 
@@ -68,6 +74,11 @@ After presenting the cast, ask:
 
 ## Phase 3 — Session Loop
 
+**If running in synthetic mode (default):** follow Phase 3A below.
+**If running in isolated mode (`--isolated`):** follow Phase 3B below.
+
+### Phase 3A — Synthetic Session Loop (default)
+
 Run the council as an ongoing conversation. Characters speak in turn, labeled by name.
 
 **Rules for characters:**
@@ -87,6 +98,97 @@ Run the council as an ongoing conversation. Characters speak in turn, labeled by
 
 **Escalation format:**
 > *"[Leader name] to Product Owner: [specific question]. The contrarians are split on X because Y. What should we prioritize?"*
+
+### Phase 3B — Isolated Session Loop (`--isolated`)
+
+Each character runs as a **separate sub-agent** with its own context window. Communication happens only through a shared transcript file. The parent (you) orchestrates turn order, checks convergence, and relays escalations to the PO.
+
+> **Evidence:** EXP-002 showed isolated agents produce 2x position shifts, +43% counter-arguments, reversed conviction trajectories (genuine uncertainty absorption), and more balanced persuasion dynamics. The key mechanism: characters cannot anchor on each other's reasoning during their own deliberation.
+
+> **Cost warning:** Isolated mode uses ~3x tokens (one inference per character per turn vs one inference for all). Worth it for high-stakes decisions.
+
+**Setup:**
+
+1. Create the transcript file at `tmp/council-debate-transcript.md` with:
+   ```
+   # Council Debate Transcript
+   **Problem:** {problem statement from Phase 1}
+   **Cast:** {character names and roles from Phase 2}
+   **Mode:** Isolated (EXP-002)
+   ---
+   ```
+
+**Round 1 — Opening Positions (parallel, genuine independence):**
+
+2. Spawn ALL character agents **simultaneously** using `run_in_background: true`. Each agent receives ONLY:
+   - Their character card (name, expertise, conviction, blind spot, voice)
+   - The problem statement
+   - Instruction: "Write your opening position on this problem. Be specific. Take a clear stance. Return your position as text — do NOT read any file."
+
+   **Critical:** Do NOT give agents access to the transcript file during opening positions. Independence must be genuine — no agent sees any other agent's reasoning. This is the single highest-impact mechanism from EXP-001/EXP-002.
+
+3. When all agents complete, collect their opening positions and append ALL of them to the transcript file:
+   ```
+   ## Round 1 — Opening Positions
+
+   ### {Character Name} ({Role})
+   {opening position text}
+   ```
+
+4. Present a brief summary of opening positions to the PO. Note convergences and divergences.
+
+**Rounds 2+ — Responses (sequential, each sees prior responses):**
+
+5. For each subsequent round, run characters **one at a time, sequentially**. For each character:
+   - Spawn a fresh sub-agent with:
+     - Their character card
+     - Instruction: "Read the transcript at `tmp/council-debate-transcript.md`. You are {Name}. Respond to the latest round's arguments. Counter specific claims. If you're shifting your position, name the argument that changed your mind. If you're holding, explain what counter-argument would be needed. Return your response as text."
+   - When the agent returns, append their response to the transcript:
+     ```
+     ### {Character Name} ({Role}) — Round {N}
+     {response text}
+     ```
+
+   **Turn order rotation:** Rotate who goes first each round. Round 2: contrarian A first. Round 3: contrarian B first. Round 4: leader first. This prevents one character from always setting the framing.
+
+6. After all characters in a round have responded, **read the transcript yourself** and check:
+   - Are positions still shifting? (If all positions are stable for 2 rounds → converged)
+   - Are new arguments appearing? (If only restated positions → diminishing returns)
+   - Any character requesting PO input? (Relay as escalation)
+
+   If converged or diminishing returns: proceed to synthesis. Max 5 rounds.
+
+**Leader Synthesis (after each round):**
+
+7. Spawn the Leader agent with:
+   - Their character card
+   - Instruction: "Read the transcript at `tmp/council-debate-transcript.md`. You are the Leader. Write a synthesis: (1) where the council agrees, (2) where they disagree, (3) what question needs answering next. If debate has converged, say so. Return your synthesis as text."
+   - Append synthesis to transcript.
+
+**Escalations:**
+
+8. If any character's response includes a question for the PO, present it:
+   > *"[Character name] to Product Owner (via isolated debate): [specific question]. Context: [brief context from transcript]."*
+
+   After PO responds, append the response to the transcript and continue the next round.
+
+**Final Decisions:**
+
+9. When the debate converges (Leader synthesis says so, or max rounds reached), spawn the Leader agent one final time:
+   - Instruction: "Read the full transcript at `tmp/council-debate-transcript.md`. Produce final decisions with per-character conviction percentages. For each decision: which characters agree, which dissent, and what specific argument was decisive. Return as text."
+   - This output feeds into Phase 5 (Output).
+
+**Axiom enforcement in isolated mode:**
+- **Ax-3 (non-repetition):** The parent checks after each round. If a character's response restates a position without responding to a new counter-argument, prompt them in the next round: "In the transcript, {Name} restated their position on X without addressing Y's counter-argument about Z. Respond to that specific point or declare your position final."
+- **Ax-4 (conviction stability):** Enforced by the response instruction: "If you're shifting, name the argument."
+- **Ax-5 (turn progress):** The parent checks: did this round resolve any (Character, Question) pairs? If a round produces zero resolutions, flag it.
+- **Ax-7 (diminishing returns):** The parent's convergence check after each round. Halt if 2 consecutive rounds produce no new arguments.
+
+**Implementation notes:**
+- Use fresh agent spawns (not SendMessage continuation) — simpler, and the transcript file carries all context
+- Each agent prompt should explicitly say "Do NOT read or modify files other than what is specified"
+- The transcript file is append-only — agents return text, the parent appends it
+- If a character needs to do research (read code, check files), include that in their spawn prompt — they can use tools within their own context
 
 ---
 
@@ -154,3 +256,10 @@ If the debate was halted on diminishing returns: add a **5. Open Items** section
 - Do not let characters update positions without naming the counter-argument that persuaded them
 - Do not produce empty turns — every turn must resolve at least one (Character, Question) pair
 - Do not continue debate past diminishing returns — the Leader's halt authority exists to prevent cycling
+
+**Isolated mode additional anti-patterns:**
+- Do not give agents access to the transcript file during opening positions — independence must be genuine
+- Do not run all response turns in parallel — sequential order is required so each agent sees prior responses in that round
+- Do not skip the parent convergence check between rounds — the parent is the only one who can detect diminishing returns across the whole transcript
+- Do not use more than 2 iteration rounds without PO confirmation — diminishing returns compound with cost
+- Do not let agents modify the transcript file directly — they return text, the parent appends. This prevents ordering conflicts and ensures clean turn structure
