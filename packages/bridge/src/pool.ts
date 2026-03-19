@@ -102,6 +102,8 @@ export interface SessionPool {
   getChannels(sessionId: string): SessionChannels;
   getSession(sessionId: string): PtySession;
   checkStale(): { stale: string[]; killed: string[] };
+  /** Return OS PIDs of all live child processes managed by this pool. */
+  childPids(): number[];
 }
 
 export interface PoolOptions {
@@ -916,6 +918,16 @@ export function createPool(options?: PoolOptions): SessionPool {
       }
 
       return { stale: staleIds, killed: killedIds };
+    },
+
+    childPids(): number[] {
+      const pids: number[] = [];
+      for (const [, session] of sessions.entries()) {
+        if (session.status !== 'dead' && session.pid !== null) {
+          pids.push(session.pid);
+        }
+      }
+      return pids;
     },
   };
 }

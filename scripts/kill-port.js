@@ -1,52 +1,130 @@
 #!/usr/bin/env node
-// Kill the bridge process AND any orphaned Claude Code PTY sessions.
-// Cross-platform: works on Windows and Unix.
+// Stop the bridge and clean up its child processes.
+// Uses graceful shutdown API first, then PID-targeted fallback.
+// NEVER kills all claude.exe — only processes tracked by the bridge.
 
 import { execSync } from 'node:child_process';
+import { readFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const port = process.env.PORT || '3456';
+const PID_FILE = join(tmpdir(), `method-bridge-${port}.pids`);
 
-// Step 1: Kill the bridge process
-try {
-  if (process.platform === 'win32') {
-    const out = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf-8' });
-    const pid = out.trim().split(/\s+/).pop();
-    if (pid && pid !== '0') {
-      execSync(`taskkill /F /PID ${pid}`, { stdio: 'inherit' });
-      console.log(`Bridge stopped (PID ${pid})`);
-    } else {
-      console.log('Bridge not running');
-    }
-  } else {
+/**
+ * Read PIDs from the bridge's PID file.
+ * Returns empty array if file doesn't exist.
+ */
+function readPidFile() {
+  try {
+    const content = readFileSync(PID_FILE, 'utf-8');
+    return content.trim().split('\n').map(Number).filter(n => n > 0);
+  } catch {
+    return [];
+  }
+}
+
+function removePidFile() {
+  try { unlinkSync(PID_FILE); } catch { /* already gone */ }
+}
+
+/**
+ * Kill specific PIDs. Returns count of successfully killed processes.
+ */
+function killPids(pids) {
+  let killed = 0;
+  for (const pid of pids) {
     try {
-      execSync(`lsof -ti:${port} | xargs kill 2>/dev/null`, { stdio: 'inherit' });
-      console.log('Bridge stopped');
+      if (process.platform === 'win32') {
+        // Verify the process is a bridge child before killing
+        try {
+          const info = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: 'utf-8', stdio: 'pipe' });
+          if (!info.includes('claude') && !info.includes('cmd.exe') && !info.includes('conhost')) {
+            console.log(`  Skipping PID ${pid} — not a bridge child (${info.trim().substring(0, 60)})`);
+            continue;
+          }
+        } catch { continue; /* process already dead */ }
+        execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'pipe' });
+      } else {
+        // Verify process identity on Linux
+        try {
+          const comm = execSync(`cat /proc/${pid}/comm 2>/dev/null || ps -p ${pid} -o comm=`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
+          if (!comm.includes('claude') && !comm.includes('bash') && !comm.includes('sh')) {
+            console.log(`  Skipping PID ${pid} — not a bridge child (${comm})`);
+            continue;
+          }
+        } catch { continue; /* process already dead */ }
+        execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: 'pipe' });
+      }
+      killed++;
     } catch {
-      console.log('Bridge not running');
+      // Process already dead — that's fine
     }
   }
-} catch {
-  console.log('Bridge not running');
+  return killed;
 }
 
-// Step 2: Kill orphaned Claude Code processes spawned by the bridge
+// Step 1: Try graceful shutdown via API
+let gracefulSuccess = false;
 try {
-  if (process.platform === 'win32') {
-    // Find claude.exe processes (PTY sessions spawned by bridge)
-    const result = execSync('tasklist /FI "IMAGENAME eq claude.exe" /FO CSV /NH', { encoding: 'utf-8' });
-    const lines = result.trim().split('\n').filter(l => l.includes('claude.exe'));
-    if (lines.length > 0) {
-      execSync('taskkill /F /IM claude.exe', { stdio: 'inherit' });
-      console.log(`Killed ${lines.length} orphaned Claude Code process(es)`);
-    }
-  } else {
-    const result = execSync('pgrep -f "claude" 2>/dev/null || true', { encoding: 'utf-8' });
-    const pids = result.trim().split('\n').filter(Boolean);
-    if (pids.length > 0) {
-      execSync(`kill ${pids.join(' ')} 2>/dev/null || true`, { stdio: 'inherit' });
-      console.log(`Killed ${pids.length} orphaned Claude Code process(es)`);
+  execSync(`curl -sf -X POST http://localhost:${port}/shutdown`, {
+    stdio: 'pipe',
+    timeout: 3000,
+  });
+  console.log('Graceful shutdown requested — waiting for bridge to stop...');
+
+  // Wait up to 5s for the bridge to exit
+  for (let i = 0; i < 10; i++) {
+    try {
+      execSync(`curl -sf http://localhost:${port}/health`, { stdio: 'pipe', timeout: 1000 });
+      // Still alive — wait
+      execSync('node -e "setTimeout(()=>{},500)"', { stdio: 'pipe' });
+    } catch {
+      // Health check failed — bridge is down
+      gracefulSuccess = true;
+      console.log('Bridge stopped gracefully');
+      break;
     }
   }
+
+  if (!gracefulSuccess) {
+    console.log('Graceful shutdown timed out — force-killing bridge process');
+  }
 } catch {
-  // No orphaned processes — that's fine
+  // Bridge not reachable — may not be running, or already dead
 }
+
+// Step 2: Force-kill bridge process if graceful shutdown failed
+if (!gracefulSuccess) {
+  try {
+    if (process.platform === 'win32') {
+      const out = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf-8' });
+      const pid = out.trim().split(/\s+/).pop();
+      if (pid && pid !== '0') {
+        execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'inherit' });
+        console.log(`Bridge force-stopped (PID ${pid})`);
+      } else {
+        console.log('Bridge not running');
+      }
+    } else {
+      try {
+        execSync(`lsof -ti:${port} | xargs kill 2>/dev/null`, { stdio: 'inherit' });
+        console.log('Bridge force-stopped');
+      } catch {
+        console.log('Bridge not running');
+      }
+    }
+  } catch {
+    console.log('Bridge not running');
+  }
+}
+
+// Step 3: Kill orphaned child processes using PID file (targeted, not nuclear)
+const childPids = readPidFile();
+if (childPids.length > 0) {
+  const killed = killPids(childPids);
+  if (killed > 0) {
+    console.log(`Killed ${killed} orphaned child process(es) (PIDs: ${childPids.join(', ')})`);
+  }
+}
+removePidFile();

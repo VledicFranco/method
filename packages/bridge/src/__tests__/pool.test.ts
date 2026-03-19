@@ -34,6 +34,7 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
       status = 'dead';
     },
     adaptiveSettle: null,
+    pid: null,
   };
 }
 
@@ -236,6 +237,10 @@ function createTestPool(maxSessions = 5) {
 
     checkStale() {
       return { stale: [], killed: [] };
+    },
+
+    childPids() {
+      return [];
     },
   };
 

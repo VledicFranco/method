@@ -1,6 +1,7 @@
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
 import { createPool } from './pool.js';
 import { createUsagePoller } from './usage-poller.js';
@@ -47,11 +48,25 @@ const transcriptReader = createTranscriptReader({
 
 const BRIDGE_STARTED_AT = new Date();
 
+// ── PID file: tracks child process PIDs so external scripts can clean up without nuking all claude.exe ──
+
+const PID_FILE_PATH = join(tmpdir(), `method-bridge-${PORT}.pids`);
+
+function writePidFile(): void {
+  try {
+    const pids = pool.childPids();
+    writeFileSync(PID_FILE_PATH, pids.join('\n') + '\n', { encoding: 'utf-8', mode: 0o600 });
+  } catch { /* PID file write failure is non-fatal */ }
+}
+
+function removePidFile(): void {
+  try { unlinkSync(PID_FILE_PATH); } catch { /* already gone */ }
+}
+
 const app = Fastify({ logger: true });
 
 // ---------- PWA static files ----------
 
-import { readFileSync } from 'node:fs';
 const __pwaDirname = dirname(fileURLToPath(import.meta.url));
 
 app.get('/manifest.json', async (_req, reply) => {
@@ -155,6 +170,7 @@ app.post<{
 
     // Register session with token tracker
     tokenTracker.registerSession(result.sessionId, workdir, new Date());
+    writePidFile();
 
     app.log.info(`[${result.nickname}] Session spawned`);
 
@@ -306,6 +322,7 @@ app.post<{
 
   const spawned = results.filter(r => r.status !== 'error').length;
   const failed = results.filter(r => r.status === 'error').length;
+  writePidFile();
 
   return reply.status(201).send({
     sessions: results,
@@ -430,6 +447,7 @@ app.delete<{
 
   try {
     const result = pool.kill(id, worktree_action);
+    writePidFile();
     return reply.status(200).send({
       session_id: result.sessionId,
       killed: result.killed,
@@ -661,6 +679,21 @@ app.get<{
   });
 });
 
+// ---------- Shutdown (graceful via API) ----------
+
+/**
+ * POST /shutdown — Trigger graceful shutdown from external scripts.
+ * Preferred over force-killing the process, so sessions get cleaned up properly.
+ */
+app.post('/shutdown', async (request, reply) => {
+  const ip = request.ip;
+  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+    return reply.status(403).send({ error: 'Shutdown only allowed from localhost' });
+  }
+  reply.status(200).send({ status: 'shutting_down' });
+  setImmediate(() => gracefulShutdown('API'));
+});
+
 // ---------- Strategy Pipelines (PRD 017) ----------
 
 const STRATEGY_ENABLED = process.env.STRATEGY_ENABLED !== 'false';
@@ -724,6 +757,9 @@ function gracefulShutdown(signal: string) {
       }
     }
 
+    // Clean up PID file — no children left
+    removePidFile();
+
     const uptimeMs = Date.now() - BRIDGE_STARTED_AT.getTime();
     app.log.info(`Shutdown complete: ${killed} sessions killed, uptime ${Math.floor(uptimeMs / 60000)}m`);
 
@@ -734,6 +770,7 @@ function gracefulShutdown(signal: string) {
   // Force exit after 5s if graceful shutdown hangs
   setTimeout(() => {
     app.log.warn('Graceful shutdown timed out — forcing exit');
+    removePidFile();
     process.exit(1);
   }, 5000);
 }

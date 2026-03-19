@@ -96,6 +96,8 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
   const session: PtySession & { readonly printMetadata: PrintMetadata | null } = {
     id,
 
+    get pid() { return null; },
+
     get status() { return status; },
     set status(s: SessionStatus) { status = s; },
 
