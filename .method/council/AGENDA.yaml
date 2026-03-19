@@ -1,7 +1,7 @@
 agenda:
   project: pv-method
   last_updated: "2026-03-19"
-  last_session: SESSION-033
+  last_session: SESSION-034
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-038
@@ -17,15 +17,26 @@ agenda:
         precondition (RFC-001) + Ax-7 minimum-turns guard (RFC-002). Once merged,
         RFC files transition to handed_off.
 
-    - id: AG-049
-      item: "Add --isolated flag to /council-team and /steering-council skills (EXP-002)"
-      owner: PO
+    - id: AG-052
+      item: "Routing parity audit — fix Ax-1 totality, classify routable vs delegable, regression gate"
+      owner: council
       status: open
-      added_in: SESSION-033
+      added_in: SESSION-034
       note: >
-        D-074: Skill-level change (prompt, not registry). Default synthetic, display
-        cost warning (~3x tokens). Uses sub-agent blackboard pattern from EXP-002.
-        Parallel opening positions, sequential response rounds, shared transcript file.
+        D-079/D-080: Ax-1 claims totality over MethodChoice including ADVREV, but
+        delta_EXEC only routes to COUNCIL/ORCH/TMP. Fix Ax-1 scope, classify all
+        methods as routable vs delegable across all compiled methodologies, scan for
+        other delegation-mode gaps, specify regression gate for G4. One session.
+
+    - id: AG-045
+      item: "E2E strategy pipeline validation — real ClaudeCodeProvider on P3-GOV M1-DRAFT"
+      owner: council
+      status: open
+      added_in: SESSION-031
+      note: >
+        Promoted to P0b (D-079). Sequenced immediately after AG-052 (routing audit).
+        Real claude --print on real RFC through DAG executor. Fix what breaks.
+        D-065 original spec still applies: 2-node minimum strategy YAML.
 
   p1_next:
     - id: AG-045
@@ -166,6 +177,7 @@ agenda:
     - { id: AG-044, resolved_in: SESSION-032, note: "P3-GOV methods compiled (PR #30 merged). Council reviewed D-066. 4 methods, 7 dimensions, all PASS." }
     - { id: AG-040, resolved_in: SESSION-032, note: "First P3-GOV pipeline validation. RFC-001 + RFC-002 processed: domain review, steering review, human approval. Commission ready (AG-047)." }
     - { id: AG-048, resolved_in: SESSION-033, note: "Substantially resolved by M4-ADVREV compilation under P1-EXEC. Delegation to P3-GOV/M2-REVIEW, P2-SD/M3-PHRV, P-GH/M2-REVIEW. Residual M4-HANDOFF stress-test → AG-050 (P2)." }
+    - { id: AG-049, resolved_in: SESSION-034, note: "--isolated flag implemented for /council-team and /steering-council. First isolated session ran (SESSION-034). EXP-002 D-074." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

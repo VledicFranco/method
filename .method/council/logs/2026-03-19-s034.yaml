@@ -1,0 +1,138 @@
+sessions:
+  - id: SESSION-034
+    date: "2026-03-19"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    mode: isolated
+    challenge: "Priority repacking — what's P0 after M4-ADVREV, EXP-002 triage, isolated flag?"
+    source: "PO-requested auto agenda review. First isolated-mode steering council (EXP-002)."
+
+    decisions:
+      - id: D-079
+        question: "What is P0 after M4-ADVREV compilation and EXP-002 triage?"
+        decision: >
+          P0a: Routing parity audit (1 session). Fix Ax-1 totality claim in P1-EXEC to
+          reflect 3-arm routing + ADVREV delegation-only status. Classify all methods
+          across compiled methodologies as routable vs delegable. Cross-registry scan for
+          other delegation-mode methods with the same gap. Regression gate: no future
+          compilation passes G4 without routing parity verification.
+          P0b: End-to-end strategy pipeline validation (immediately after audit). Real
+          LLM provider (claude --print) on real P3-GOV M1-DRAFT with real RFC. Fix
+          what breaks.
+        status: decided
+        rationale: >
+          Harlan identified that Ax-1 claims totality of select_method over MethodChoice
+          (which includes ADVREV), but delta_EXEC only routes to COUNCIL/ORCH/TMP. This
+          is theory diverging from itself — not implementation diverging from theory. A
+          passing e2e test on a spec with a totality violation confers false confidence.
+          Audit fixes the foundation; e2e validates the superstructure.
+        for: "All 5 (after Round 2 convergence)"
+        against: "None (Harlan's argument moved Reva, Nika, Orion from e2e-first to audit-first)"
+        position_shifts:
+          - character: Reva
+            from: "MCP tools + guides first"
+            to: "Audit → e2e, tools parallel"
+            argument: "Harlan: Ax-1 totality violation is a faithfulness violation against the invariant"
+          - character: Nika
+            from: "E2E first"
+            to: "Audit → e2e"
+            argument: "Harlan: passing e2e on incomplete totality claim = false confidence"
+          - character: Orion
+            from: "E2E first"
+            to: "Audit → e2e (with taxonomy)"
+            argument: "Pattern prediction: every delegation-mode method creates this gap"
+          - character: Thane
+            from: "E2E first"
+            to: "Audit → e2e (Orion's taxonomy scope)"
+            argument: "Council convergence + theory-vs-itself is stronger than impl-vs-theory"
+
+      - id: D-080
+        question: "What scope for the routing audit?"
+        decision: >
+          Orion's taxonomic scope (Option 2): (a) fix Ax-1 formal statement, (b) classify
+          all methods as routable vs delegable, (c) cross-registry delegation scan,
+          (d) regression gate specification. One session, concrete checklist output.
+        status: decided
+        rationale: >
+          Orion elevated Harlan's finding to a pattern: delegation-mode routing is a new
+          invocation category the theory doesn't account for. The taxonomy is cheap (finite
+          methodologies) and directly informs e2e test design and future guides.
+        for: "All 5"
+        against: "None"
+
+      - id: D-081
+        question: "P1 parallelism — what runs alongside e2e?"
+        decision: >
+          P1 parallel: MCP tool gap closure for strategy pipelines and P3-GOV.
+          P1 after e2e: Guides for M4-ADVREV, P3-GOV, strategy pipelines — written
+          from real failure data, not assumptions.
+        status: decided
+        rationale: >
+          Nika's argument won on guides timing: "guides written before empirical failure
+          data explain the happy path no one takes." Reva accepted the delay (one session,
+          not months). Tools are mechanical (expose what exists) and can proceed in parallel.
+        for: "Nika, Orion, Thane, Harlan"
+        against: "Reva (wanted guides in parallel, conceded on timing)"
+
+      - id: D-082
+        question: "Disposition of existing agenda items?"
+        decision: >
+          AG-045 (strategy smoke test): promoted to P0b, sequenced after audit.
+          AG-049 (isolated flag): resolved — implemented this session.
+          AG-046 (orphaned PRs): remains P1, PO action.
+          AG-047 (PR #31): remains P1, PO action.
+        status: decided
+        for: "All 5"
+        against: "None"
+
+    key_finding:
+      id: FINDING-ADVREV-ROUTING
+      description: >
+        Ax-1 in P1-EXEC claims totality of select_method over MethodChoice = {COUNCIL,
+        ORCH, TMP, ADVREV}, but delta_EXEC arms 1-3 only route to COUNCIL, ORCH, TMP.
+        ADVREV is declared in the sort but unreachable via predicate evaluation. RP-5
+        trigger says "direct invocation" — the intent is delegation-only, but the axiom
+        doesn't reflect this. Theory diverges from itself.
+      discovered_by: Harlan
+      severity: soundness
+      fix_approach: "Narrow Ax-1 scope + routing taxonomy (routable vs delegable)"
+
+    open_questions:
+      - "AG-047: PR #31 merge — PO action pending"
+      - "AG-046: Close PRs #27, #28 — PO action pending"
+
+    transcript_location: "tmp/steering-debate-transcript.md"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.92
+        mu_3_escalation_precision: 1.0
+      isolation_metrics:
+        mode: isolated
+        agents_spawned: 10
+        rounds: 2
+        position_shifts: 4
+        convergence_round: 2
+        note: >
+          First isolated-mode steering council. 4 position shifts in 2 rounds.
+          Harlan's Ax-1 finding was independently derived by reading the actual YAML —
+          this specific finding was NOT caught in the earlier synthetic M4-ADVREV council
+          session that introduced the gap. Strong signal for isolation quality.
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes this session (audit is next session's work)."
+        - process: PR-02
+          followed: true
+          note: "AG-049 resolved (1 session). No stale items."
+        - process: PR-03
+          followed: true
+          note: "No retro-producing sessions to check."
+      process_improvement_signal: >
+        Isolated mode produced a finding (Ax-1 totality violation) that the synthetic
+        council earlier in the same conversation missed. The cost (~10 agent spawns) is
+        justified for governance sessions where spec integrity is at stake.
+      member_adequacy: true
