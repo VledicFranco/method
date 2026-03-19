@@ -243,6 +243,13 @@ project_card:
         that scope. Out-of-scope changes must be reported back, not committed.
         When in doubt about a registry change, check the method's compilation_record
         to understand what gates it passed.
+      scope_enforcement: >
+        Orchestrator prompts MUST explicitly list which files/directories the sub-agent
+        may modify (allowed_paths). Sub-agents that touch files outside allowed_paths
+        create cherry-pick merge overhead and risk silent corruption of governance
+        artifacts. Evidence: 4 retros documented scope drift (retro-prd004, retro-prd008,
+        retro-t1x-valgaps, retro-2026-03-18-001). PRD 014 specifies infrastructure-level
+        enforcement via pre-commit hooks + PTY watcher scope_violation events.
     reviewer:
       note: >
         Review has two dimensions: code quality (standard) and registry integrity

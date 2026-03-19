@@ -72,6 +72,46 @@ agenda:
       status: open
       added_in: SESSION-033
       note: >
+
+    - id: AG-053
+      item: "Extend DR-09 test coverage to bridge modules"
+      owner: council
+      status: open
+      added_in: SESSION-034
+      note: >
+        Retro signal (2 retros): dashboard-route, token-tracker, usage-poller have zero
+        unit tests. DR-09 currently only addresses core YAML testing. Source:
+        retro-2026-03-14-002, retro-prd005-phase2.
+
+    - id: AG-054
+      item: "Add M1-IMPL wave structure guidance for multi-task phases"
+      owner: council
+      status: open
+      added_in: SESSION-034
+      note: >
+        Retro signal (2 retros): Phase B with 7+ tasks needs dependency-aware wave
+        organization guidance. Currently agents improvise. Source: retro-prd002-impl.
+
+    - id: AG-055
+      item: "Establish delta review process for retro-proposed rule changes"
+      owner: council
+      status: open
+      added_in: SESSION-034
+      note: >
+        Pattern finding: 9 proposed deltas across retros, only 3 acted on. No visible
+        gate for accepting proposed deltas into the project card or registry. The manual
+        aggregation step is the bottleneck. Consider lightweight protocol or council
+        standing agenda item.
+
+    - id: AG-056
+      item: "PTY watcher enrichment — build/test result detection"
+      owner: council
+      status: open
+      added_in: SESSION-034
+      note: >
+        Auto-generated retros (49 from 2026-03-15) are low-signal for quality metrics.
+        Build success and test results not reliably captured. Enrich with semantic
+        parsing: did tests pass? did build succeed? did git commits land?
         D-075: (a) pv-method governance question (compare against 32 sessions of
         synthetic data), (b) technical architecture question (constrained solution space).
         Required before method-level isolation parameterization.
