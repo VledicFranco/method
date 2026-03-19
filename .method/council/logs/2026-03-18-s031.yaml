@@ -1,0 +1,107 @@
+sessions:
+  - id: SESSION-031
+    date: "2026-03-18"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: auto
+    source: "Scheduled — steady-state, AG-044 at PR-02 stale threshold"
+
+    decisions:
+      - id: D-062
+        question: "Should orphaned PRs #27 and #28 be closed?"
+        decision: >
+          Close PR #27 (PRD 017 Phase 1) and PR #28 (DR-03 refactor). Both PRs'
+          content is already on master (bdd6012 and 730c245 respectively). Merged
+          directly to master outside GitHub's PR merge mechanism.
+        status: decided
+        rationale: "Content confirmed on master via git log. PRs are orphaned — closing prevents confusion."
+        for: "All 5"
+        against: "None"
+
+      - id: D-063
+        question: "What is the status of PR #24 (print-mode sessions, PRD 012 Phase 4)?"
+        decision: >
+          PR #24's core deliverables (LlmProvider, ClaudeCodeProvider, PrintSession)
+          were subsumed by PRD 017's implementation. Remaining scope (pool mode routing,
+          streaming, bridge_spawn integration) is a DX enhancement. Demote to P1. Keep
+          PR open — revisit after P3-GOV compilation and Strategy Phase 2.
+        status: decided
+        rationale: "Core value delivered via PRD 017. Remaining items are valuable but not blocking."
+        for: "All 5 — Reva (DX value), Nika (not blocking), Thane (prioritization)"
+        against: "None"
+
+      - id: D-064
+        question: "How should P3-GOV method YAMLs (AG-044) be compiled?"
+        decision: >
+          Commission a single agent via M1-IMPL to compile M1-DRAFT, M2-REVIEW,
+          M3-APPROVE, and M4-HANDOFF method YAMLs. Sequential compilation within
+          one agent for cross-method consistency. Commission includes S030's 5
+          research-backed guidelines and structural references from existing methods.
+        status: decided
+        rationale: >
+          AG-044 at PR-02 stale threshold (3 sessions). Methods have output dependencies
+          requiring consistent design. Single-agent prevents schema drift between methods.
+          S030 research findings must be explicitly included — they're in session logs,
+          not discoverable from registry alone.
+        for: "All 5 — Harlan (registry integrity), Nika (consistency), Orion (self-referential test), Reva (research inclusion)"
+        against: "None"
+        commission:
+          task: "Compile P3-GOV method YAMLs (M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF)"
+          governance_context: >
+            AG-044 at PR-02 stale threshold (3 sessions). Blocks AG-040 (RFC pipeline
+            validation). S030 provided 5 research-backed compilation guidelines.
+            Constitutional axioms (Ax-GOV-0, Ax-GOV-1, Ax-GOV-3) must be structurally enforced.
+          routing_recommendation: "M1-IMPL (single agent, sequential compilation for consistency)"
+          key_inputs:
+            - "registry/P3-GOV/P3-GOV.yaml — methodology coalgebra (source of truth)"
+            - "S030 method_compilation_guidance — 5 items (M2-REVIEW max_rounds, framing, anchoring, M5-AUDIT cast, PAT checks)"
+            - "registry/P1-EXEC/M1-COUNCIL.yaml — structural reference for method YAML format"
+            - "registry/P2-SD/M1-IMPL.yaml — structural reference"
+          constraints:
+            - "Each method YAML must pass DR-13 validation"
+            - "M2-REVIEW must delegate sigma_2 to M1-COUNCIL via retraction (W7), not duplicate axioms"
+            - "Check each method for PAT-003 and PAT-004 defects"
+            - "Registry integrity: new files in registry/P3-GOV/ with proper parent reference"
+          prompt_generated: false
+          prompt_location: "Generate via /commission when PO approves"
+
+      - id: D-065
+        question: "What is the next step for Strategy Pipelines after Phase 1?"
+        decision: >
+          Run a smoke test before any Phase 2 work: a 2-node Strategy YAML with one
+          real ClaudeCodeProvider invocation and one script node, executed via
+          strategy_execute. Validates the end-to-end integration path. Add as P1 agenda item.
+        status: decided
+        rationale: >
+          All existing tests use MockLlmProvider. ClaudeCodeProvider has never been
+          tested against a real Strategy execution with claude --print. Foundation
+          validation before building Phase 2 features.
+        for: "Nika (empirical validation), Harlan (integration test), Reva (foundation first)"
+        against: "Orion (prefers jumping to P3-GOV Strategy definition, conceded)"
+
+    open_questions:
+      - "AG-044 awaiting PO approval to fire the commission"
+      - "PR #24 remaining scope — revisit timeline TBD"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: +1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes this session."
+        - process: PR-02
+          followed: true
+          note: "AG-044 at 3-session threshold — addressed with commission spec (D-064)."
+        - process: PR-03
+          followed: true
+          note: "No retro artifacts produced outside council logs."
+      process_improvement_signal: >
+        Commission phasing is too granular for mechanical refactors. Two retro observations
+        (retro-2026-03-17-001 OBS-05, retro-2026-03-17-002 OBS-01) flag over-cautious
+        phasing. Count: 2, threshold: 3. Not yet actionable.
+      member_adequacy: true

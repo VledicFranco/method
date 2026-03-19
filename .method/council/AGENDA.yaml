@@ -1,27 +1,51 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-17"
-  last_session: SESSION-030
+  last_updated: "2026-03-18"
+  last_session: SESSION-032
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-033
 
   p0_immediate:
-    - id: AG-044
-      item: "Commission compilation of P3-GOV method YAMLs (M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF)"
-      owner: council
+    - id: AG-047
+      item: "Review PR #31 — M1-COUNCIL v1.2 (RFC-001 + RFC-002 implementation)"
+      owner: PO
       status: open
-      added_in: SESSION-028
-      note: "P3-GOV.yaml v0.1 complete (8 axioms, contrarian-reviewed, research-refined). Methods need compilation. S030 added 5 research-backed guidelines: M2-REVIEW max_rounds=3, 5-layer framing, anchoring prevention validated, M5-AUDIT cast design, PAT-003/004 checks. Key: M2-REVIEW delegates sigma_2 to M1-COUNCIL via retraction (W7)."
+      added_in: SESSION-032
+      note: >
+        Commission fired and completed. PR #31 ready for review. sigma_0 resume
+        precondition (RFC-001) + Ax-7 minimum-turns guard (RFC-002). Once merged,
+        RFC files transition to handed_off.
 
-    - id: AG-040
-      item: "Review RFC-001 (sigma_0 resume) and RFC-002 (Ax-7 guard) — first P3-GOV pipeline validation"
+    - id: AG-048
+      item: "Design M5-REFINE — dynamic advisor/synthesizer refinement method for P3-GOV"
       owner: council
       status: open
-      added_in: SESSION-027
-      note: "Two RFCs from Theory Council pilot. Process through P3-GOV pipeline after method YAMLs compiled."
+      added_in: SESSION-032
+      note: >
+        Integrate /review-advisors and /review-synthesizers into P3-GOV as a reusable
+        refinement method. Invoked before M2-REVIEW (refine RFC) and/or after M4-HANDOFF
+        (stress-test commission). Dynamic advisor cast tailored per artifact. Statutory
+        addition — does not touch constitutional axioms (Ax-GOV-0 safe).
 
   p1_next:
+    - id: AG-045
+      item: "Strategy Pipelines smoke test — real ClaudeCodeProvider end-to-end validation"
+      owner: council
+      status: open
+      added_in: SESSION-031
+      note: >
+        D-065: 2-node Strategy YAML with one real claude --print invocation and one
+        script node. Validates integration path before Phase 2 work. All existing
+        tests use MockLlmProvider.
+
+    - id: AG-046
+      item: "Close orphaned PRs #27 and #28"
+      owner: PO
+      status: open
+      added_in: SESSION-031
+      note: "D-062: Content on master (bdd6012, 730c245). Close with note. PO action."
+
     - id: AG-034
       item: "Context-mode prototype experiment (from AG-030 feasibility report)"
       owner: council
@@ -29,38 +53,30 @@ agenda:
       added_in: SESSION-021
       note: "PR #1 merged. Benefits from PRD 010 richer channel data. Install MCP-only, test, measure 4 criteria."
 
-    - id: AG-026
-      item: "Draft ORGANON-PROTO in registry/P0-META/"
-      owner: council
-      status: archived
-      added_in: SESSION-017
-      resolved_in: SESSION-023
-      note: "Archived: ETHOS.md dependency hasn't stabilized. Design preserved in D-028. Re-open when ETHOS.md v1.0."
-
   governance_health:
     last_assessed: SESSION-028
-    sessions_since_processes_installed: 22
+    sessions_since_processes_installed: 24
     next_review: SESSION-033
 
     process_health:
       PR-01:
-        times_followed: 8
+        times_followed: 9
         times_skipped: 0
         times_triggered: 3
         verdict: healthy
-        note: "S028: P3-GOV.yaml created in registry. Guide sync not yet needed (draft status). Trigger counted."
+        note: "S031: No registry changes. Count incremented (followed without trigger)."
       PR-02:
-        times_followed: 7
+        times_followed: 8
         times_skipped: 0
-        times_triggered: 5
+        times_triggered: 6
         verdict: healthy
-        note: "AG-035 resolved at 4 sessions (S027). AG-043 resolved in 1 session. Process working as intended."
+        note: "S031: AG-044 at 3-session threshold — addressed with commission spec (D-064). Process working."
       PR-03:
-        times_followed: 3
+        times_followed: 4
         times_skipped: 2
         times_triggered: 2
         verdict: improved
-        note: "PRD 010 auto-retro now implemented on master. Signal addressed. No new violations since S023."
+        note: "No new violations. PRD 010 auto-retro in place."
 
     improvement_signals:
       - signal: "Essence check proportionality for execution sessions"
@@ -85,9 +101,15 @@ agenda:
         status: accumulating
         source: "SESSION-024 (multi-council design), SESSION-027 (P3-GOV design)"
         action: "Pair governance design sessions with commissions for resulting protocol/method updates"
+      - signal: "Commission phasing too granular for mechanical refactors"
+        count: 2
+        action_threshold: 3
+        status: accumulating
+        source: "retro-2026-03-17-001 OBS-05, retro-2026-03-17-002 OBS-01"
+        action: "Revise commission phasing heuristics: single-agent single-pass for mechanical work"
 
     retro_quality:
-      sessions_with_retro: 18
+      sessions_with_retro: 19
       sessions_without: 7
       actionable_signals_produced: 7
       rote_retros: 0
@@ -120,6 +142,8 @@ agenda:
     - { id: AG-039, resolved_in: SESSION-027, note: "P3-GOV designed: pipeline methodology, program-level, 4-sort domain theory, 4 axioms" }
     - { id: AG-041, resolved_in: SESSION-028, note: "P3-GOV.yaml compiled (draft). Methodology coalgebra done. Method YAMLs pending (AG-044)." }
     - { id: AG-043, resolved_in: SESSION-028, note: "Signature inclusion — M2-REVIEW references M1-COUNCIL axioms, not copies (D-053)." }
+    - { id: AG-044, resolved_in: SESSION-032, note: "P3-GOV methods compiled (PR #30 merged). Council reviewed D-066. 4 methods, 7 dimensions, all PASS." }
+    - { id: AG-040, resolved_in: SESSION-032, note: "First P3-GOV pipeline validation. RFC-001 + RFC-002 processed: domain review, steering review, human approval. Commission ready (AG-047)." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

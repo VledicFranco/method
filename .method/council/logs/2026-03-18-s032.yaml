@@ -1,0 +1,197 @@
+sessions:
+  - id: SESSION-032
+    date: "2026-03-18"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "Review PR #30 — P3-GOV method YAML compilation (AG-044)"
+    source: "S031 D-064 commission output, PO-requested council review"
+
+    review_dimensions:
+      - "Faithfulness to P3-GOV.yaml retraction pairs and transition arms"
+      - "W7 delegation correctness in M2-REVIEW"
+      - "Constitutional axiom structural enforcement (Ax-GOV-0, Ax-GOV-1, Ax-GOV-3)"
+      - "Cross-method output/input schema consistency"
+      - "DR-02 structural completeness"
+      - "PAT-003/PAT-004 defect checks"
+      - "S030 research guideline application"
+
+    method_verdicts:
+      M1-DRAFT:
+        verdict: PASS
+        highlights:
+          - "RP-GOV-1 faithfulness verified — embed/project match"
+          - "well_formed predicate operationalized with 10 concrete checks"
+          - "3 axioms minimal and complete for drafting scope"
+        findings:
+          - severity: minor
+            note: "sigma_2 → sigma_1 internal fix loop has informal termination (10 checks). Tighten in v0.2."
+        pat_003: PASS
+        pat_004: PASS
+
+      M2-REVIEW:
+        verdict: PASS
+        highlights:
+          - "W7 delegation correctly implemented via RP-REVIEW-COUNCIL retraction pair"
+          - "M1-COUNCIL axioms inherited via signature inclusion (D-053), not duplicated"
+          - "5-layer framing (S030) in sigma_0, max_rounds=3 in Ax-REVIEW-4"
+          - "Ax-GOV-3 enforced via Ax-REVIEW-2 with structural block on invariant violation"
+          - "Anti-anchoring validated per S030 dissent-mechanisms.md"
+          - "Contrarian challenge on sigma_2→sigma_3 well-defended by sigma_0 framing constraint"
+        findings:
+          - severity: cosmetic
+            note: "Delegation pair declared both inline in sigma_2 guidance and in top-level delegation section — slight redundancy."
+        pat_003: PASS
+        pat_004: PASS
+
+      M3-APPROVE:
+        verdict: PASS
+        highlights:
+          - "Strongest human gate enforcement in the system"
+          - "Ax-APPROVE-1 (decision recorded), Ax-APPROVE-2 (complete info), Ax-APPROVE-3 (decision source)"
+          - "Explicit anti-influence rules in sigma_1 guidance"
+          - "Honest contrarian challenge acknowledging limits of formal system over human engagement"
+        findings: []
+        pat_003: PASS
+        pat_004: PASS
+
+      M4-HANDOFF:
+        verdict: PASS
+        highlights:
+          - "RP-GOV-4 faithfulness verified"
+          - "8-section commission format aligns with /commission skill"
+          - "Ax-HANDOFF-2 (condition carriage) + Ax-HANDOFF-3 (traceability)"
+          - "W4 (interface contract) honestly acknowledged as open in contrarian challenge"
+        findings:
+          - severity: open_wip
+            note: "W4 (P3-GOV ↔ P2-SD/P1-EXEC interface) remains unformalized."
+        pat_003: PASS
+        pat_004: PASS
+
+    cross_method_consistency:
+      verdict: PASS
+      data_flow_verified: true
+      revision_loop_verified: true
+      note: >
+        Full data flow traced: M1-DRAFT → M2-REVIEW → M3-APPROVE → M4-HANDOFF.
+        Revision feedback path verified: M3-APPROVE feedback_items → M1-DRAFT
+        sigma_0 feedback_catalog. Bounded by Ax-GOV-5.
+
+    # ─── P3-GOV Pipeline Run (AG-040) ─────────────────────
+    p3_gov_pipeline:
+      note: "First P3-GOV pipeline validation — two RFCs processed through compiled methods"
+      rfcs_processed:
+        - id: RFC-001
+          title: "Add resume precondition to M1-COUNCIL sigma_0"
+          file: ".method/council/rfcs/RFC-001-sigma0-resume.yaml"
+          domain_review:
+            council: "Theory Council"
+            session: TC-002
+            verdict: approve
+          steering_review:
+            session: SESSION-032
+            verdict: approve_with_conditions
+            conditions:
+              - "Commission specifies concrete resume precondition"
+              - "M1-COUNCIL version bump to v1.2"
+          human_decision: approve
+          status: human_approved
+
+        - id: RFC-002
+          title: "Add minimum-turns guard to Ax-7 in M1-COUNCIL"
+          file: ".method/council/rfcs/RFC-002-ax7-guard.yaml"
+          domain_review:
+            council: "Theory Council"
+            session: TC-005
+            verdict: approve
+          steering_review:
+            session: SESSION-032
+            verdict: approve
+          human_decision: approve
+          status: human_approved
+
+      commission:
+        note: >
+          Both RFCs modify M1-COUNCIL.yaml. Combined into a single commission for
+          efficiency. Target methodology: P2-SD, task_type: implement, method: M1-IMPL.
+        task: "Implement RFC-001 and RFC-002 changes to M1-COUNCIL.yaml"
+        target_methodology: P2-SD
+        routing: M1-IMPL
+        constraints:
+          - "RFC-001 condition: specify concrete resume precondition for sigma_0"
+          - "RFC-001 condition: version bump M1-COUNCIL to v1.2"
+          - "RFC-002: add minimum-turns guard to Ax-7 formal statement"
+          - "RFC-002: tag 2*|Questions| as calibration parameter"
+          - "DR-01: preserve compilation status"
+          - "DR-08: theory is source of truth"
+          - "DR-13: validate YAML after edit"
+        traceability:
+          rfcs: [RFC-001, RFC-002]
+          reviews: [TC-002, TC-005, SESSION-032]
+          human_approval: SESSION-032
+        prompt_generated: false
+        prompt_location: "Generate via /commission when PO is ready to fire"
+
+    decisions:
+      - id: D-066
+        question: "Should PR #30 (P3-GOV method YAML compilation) be approved for merge?"
+        decision: >
+          Approved. All 4 methods pass review on all 7 dimensions. AG-044 resolved.
+          PR #30 merged. Three non-blocking findings documented for v0.2.
+        status: decided
+        rationale: >
+          Methods faithfully implement P3-GOV.yaml retraction pairs and transition arms.
+          W7 delegation correctly implemented with formal retraction pair. Constitutional
+          axioms structurally enforced. Cross-method schemas consistent. S030 research
+          guidelines applied. PAT-003/PAT-004 clean. DR-02 structurally complete.
+        for: "All 5"
+        against: "None"
+        findings_for_v02:
+          - "M1-DRAFT: formalize sigma_2→sigma_1 internal fix loop termination"
+          - "M2-REVIEW: cosmetic delegation section redundancy"
+          - "M4-HANDOFF: W4 interface contract remains open"
+
+      - id: D-067
+        question: "Should RFC-001 (sigma_0 resume precondition) be approved?"
+        decision: >
+          Approved with conditions: (1) commission specifies concrete resume precondition,
+          (2) M1-COUNCIL version bump to v1.2. Human PO approved.
+        status: decided
+        rationale: "Fixes formally incorrect initial_state_valid_claim. Minimal scope. Precedent for CMEM-PROTO interaction."
+        for: "All 5 + PO"
+        against: "None"
+
+      - id: D-068
+        question: "Should RFC-002 (Ax-7 minimum-turns guard) be approved?"
+        decision: >
+          Approved unconditionally. Additive guard on Ax-7, preserves pragmatic nature,
+          2*|Questions| tagged as calibration parameter. Human PO approved.
+        status: decided
+        rationale: "Clean axiom extension. Low risk. Calibration treatment already specified."
+        for: "All 5 + PO"
+        against: "None"
+
+    open_questions:
+      - "Commission ready for RFC-001 + RFC-002 combined implementation — fire when PO is ready"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -1
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.9
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry change: 4 new method YAMLs in registry/P3-GOV/. Guide sync check: no existing P3-GOV guide to update (draft status). When methods reach compiled status, a guide will be needed."
+        - process: PR-02
+          followed: true
+          note: "AG-044 resolved (open since S028, 4 sessions). PR-02 stale threshold was met and addressed."
+        - process: PR-03
+          followed: true
+          note: "Commission agent produced retro at .method/retros/retro-2026-03-18-001.yaml."
+      process_improvement_signal: >
+        Council review of commissioned work is proportionate for governance-critical methods.
+        The focused review format (single-item session, structured dimensions) was efficient —
+        7 review dimensions covered in one session with clear verdicts per method.
+      member_adequacy: true
