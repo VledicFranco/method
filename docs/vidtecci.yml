@@ -1,0 +1,56 @@
+# Vidtecci — Life at all scales
+# Bioluminescent organisms on deep void. Carbon Based Lifeforms meets Aperture precision.
+# Source: pv-vidtecci/docs/design-guides/visual-compass.md (v1.0, 2026-03-09)
+base: dark
+variables:
+  # ── Core colors ────────────────────────────────────────────
+  --glyph-bg: '#080e14'              # Deep Void — the dark life glows against
+  --glyph-text: '#f0f4f8'            # Stellar White — clean signal against void
+  --glyph-text-muted: '#8a9bb0'      # Dim White — secondary text, captions
+  --glyph-heading: '#f0f4f8'         # Stellar White — headings live on dark
+  --glyph-link: '#00c9a7'            # Bioluminescent — life's light signature
+  --glyph-link-hover: '#00e5cc'      # Bright Cyan — hover emphasis
+  --glyph-border: '#0d1f2d'          # Abyssal Blue — depth before light
+  --glyph-border-strong: '#0a2a3a'   # Ocean Deep — subtle section dividers
+  --glyph-surface: '#0d1f2d'         # Abyssal Blue — cards, panels
+  --glyph-surface-raised: '#0a2a3a'  # Ocean Deep — raised cards
+
+  # ── Accent (Bioluminescent) ──────────────────────────────────
+  --glyph-accent: '#00c9a7'          # Primary — organic glow, not cyberpunk LED
+  --glyph-accent-hover: '#00e5cc'    # Bright Cyan — live elements
+  --glyph-accent-subtle: '#0d1f2d'   # Abyssal Blue — subtle accent backgrounds
+  --glyph-accent-muted: '#1a6b5a'    # Deep Cellular — large surface organic
+  --glyph-text-on-accent: '#080e14'  # Deep Void — text on bioluminescent
+
+  # ── Code ───────────────────────────────────────────────────
+  --glyph-code-bg: '#0d1f2d'         # Abyssal Blue — code lives in depth
+  --glyph-code-text: '#8a9bb0'       # Dim White — code is equal, not subordinated
+
+  # ── Effects ────────────────────────────────────────────────
+  --glyph-shadow-sm: '0 1px 3px rgba(0,0,0,0.5)'
+  --glyph-shadow-md: '0 4px 12px rgba(0,0,0,0.65)'
+  --glyph-shadow-lg: '0 8px 30px rgba(0,0,0,0.75)'
+  --glyph-focus-ring: '0 0 0 2px #00c9a7'
+
+  # ── Semantic states ────────────────────────────────────────
+  --glyph-color-success: '#00c9a7'   # Bioluminescent — life, health, active
+  --glyph-color-warning: '#e8a45a'   # Solar Warmth — human attention
+  --glyph-color-error: '#e05a5a'     # Error red — from bridge dashboard
+  --glyph-color-info: '#7b5fb5'      # Nebular — depth, council activity
+
+  # ── Palette ────────────────────────────────────────────────
+  --glyph-palette-color-1: '#00c9a7'  # Bioluminescent
+  --glyph-palette-color-2: '#e8a45a'  # Solar Warmth
+  --glyph-palette-color-3: '#7b5fb5'  # Nebular
+  --glyph-palette-color-4: '#e05a5a'  # Error/critical
+  --glyph-palette-color-5: '#00e5cc'  # Bright Cyan
+  --glyph-palette-color-6: '#c4823a'  # Deep Amber
+  --glyph-palette-color-7: '#1a6b5a'  # Deep Cellular
+  --glyph-palette-color-8: '#0a2a3a'  # Ocean Deep
+  --glyph-palette-color-9: '#e8c95a'  # Warning yellow
+  --glyph-palette-color-10: '#9b7fd4' # Nebular bright
+
+  # ── Misc ───────────────────────────────────────────────────
+  --glyph-tooltip-bg: 'rgba(8, 14, 20, 0.95)'
+  --glyph-tooltip-text: '#f0f4f8'
+  --glyph-rating-star-fill: '#e8a45a' # Solar Warmth — human signal
