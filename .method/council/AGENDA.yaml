@@ -7,26 +7,16 @@ agenda:
   next_health_review: SESSION-038
 
   p0_immediate:
-    - id: AG-047
-      item: "Review PR #31 — M1-COUNCIL v1.2 (RFC-001 + RFC-002 implementation)"
-      owner: PO
-      status: open
-      added_in: SESSION-032
-      note: >
-        Commission fired and completed. PR #31 ready for review. sigma_0 resume
-        precondition (RFC-001) + Ax-7 minimum-turns guard (RFC-002). Once merged,
-        RFC files transition to handed_off.
-
     - id: AG-052
       item: "Routing parity audit — fix Ax-1 totality, classify routable vs delegable, regression gate"
       owner: council
-      status: open
+      status: done
       added_in: SESSION-034
+      resolved_in: SESSION-034
       note: >
-        D-079/D-080: Ax-1 claims totality over MethodChoice including ADVREV, but
-        delta_EXEC only routes to COUNCIL/ORCH/TMP. Fix Ax-1 scope, classify all
-        methods as routable vs delegable across all compiled methodologies, scan for
-        other delegation-mode gaps, specify regression gate for G4. One session.
+        Audit complete: all 6 methodologies verified. Ax-1 rationale updated to document
+        routable vs delegable taxonomy. No other gaps found. P2-SD (7/7), P-GH (4/4),
+        P3-DISPATCH (3/3), P3-GOV (4 methods over 9 phases), P0-META (7/7) all clean.
 
     - id: AG-045
       item: "E2E strategy pipeline validation — real ClaudeCodeProvider on P3-GOV M1-DRAFT"
@@ -52,9 +42,10 @@ agenda:
     - id: AG-046
       item: "Close orphaned PRs #27 and #28"
       owner: PO
-      status: open
+      status: done
       added_in: SESSION-031
-      note: "D-062: Content on master (bdd6012, 730c245). Close with note. PO action."
+      resolved_in: SESSION-034
+      note: "Closed with comments. Content was on master."
 
     - id: AG-034
       item: "Context-mode prototype experiment (from AG-030 feasibility report)"
@@ -178,6 +169,9 @@ agenda:
     - { id: AG-040, resolved_in: SESSION-032, note: "First P3-GOV pipeline validation. RFC-001 + RFC-002 processed: domain review, steering review, human approval. Commission ready (AG-047)." }
     - { id: AG-048, resolved_in: SESSION-033, note: "Substantially resolved by M4-ADVREV compilation under P1-EXEC. Delegation to P3-GOV/M2-REVIEW, P2-SD/M3-PHRV, P-GH/M2-REVIEW. Residual M4-HANDOFF stress-test → AG-050 (P2)." }
     - { id: AG-049, resolved_in: SESSION-034, note: "--isolated flag implemented for /council-team and /steering-council. First isolated session ran (SESSION-034). EXP-002 D-074." }
+    - { id: AG-046, resolved_in: SESSION-034, note: "PRs #27 and #28 closed with comments. Content on master." }
+    - { id: AG-047, resolved_in: SESSION-034, note: "PR #31 already merged (2026-03-19). M1-COUNCIL v1.2 on master." }
+    - { id: AG-052, resolved_in: SESSION-034, note: "Routing parity audit complete. All 6 methodologies verified. Ax-1 updated with routable/delegable taxonomy. No gaps found beyond the documented ADVREV delegation-only design." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

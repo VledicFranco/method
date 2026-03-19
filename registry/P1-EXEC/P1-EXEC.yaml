@@ -144,7 +144,19 @@ domain_theory:
           (adversarial_pressure_beneficial(c) -> select_method(p) = COUNCIL)
           AND (NOT adversarial_pressure_beneficial(c) AND decomposable_before_execution(c) -> select_method(p) = ORCH)
           AND (NOT adversarial_pressure_beneficial(c) AND NOT decomposable_before_execution(c) -> select_method(p) = TMP)
-      rationale: "Every challenge maps to exactly one method. The three arms are mutually exclusive and exhaustive."
+      rationale: >
+        Every challenge maps to exactly one routable method via predicate evaluation.
+        The three arms are mutually exclusive and exhaustive over the routable subset
+        {COUNCIL, ORCH, TMP} of MethodChoice. M4-ADVREV is a delegation-only method
+        (RP-5) — invoked by parent methods via retraction or direct load, not by
+        delta_EXEC predicate evaluation. Ax-1's quantifier ranges over predicate-driven
+        routing; delegation-mode invocation is outside its scope. See routing_taxonomy.
+      routing_taxonomy_note: >
+        SESSION-034 D-080 routing parity audit. MethodChoice has two invocation modes:
+        (a) Routable: reachable via delta_EXEC predicate evaluation — {COUNCIL, ORCH, TMP}.
+        (b) Delegable: invoked via retraction pairs or direct methodology_load_method —
+        {ADVREV}. Ax-1 covers mode (a) only. This distinction applies wherever a method
+        is added to a methodology's sort but invoked by composition rather than routing.
     - id: Ax-2
       name: Bounded invocation count
       formal: >
