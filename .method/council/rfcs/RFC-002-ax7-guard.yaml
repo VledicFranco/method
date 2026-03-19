@@ -1,0 +1,74 @@
+rfc:
+  id: "RFC-002"
+  title: "Add minimum-turns guard to Ax-7 in M1-COUNCIL"
+  author: "Theory Council (TC-005, decisions TC-D-009, TC-D-010)"
+  date: "2026-03-17"
+  status: human_approved
+  domains: [theory]
+  threshold_justification: >
+    Changes a compiled method axiom (Ax-7 in M1-COUNCIL). Axiom modifications to
+    compiled methods are registry changes that meet RFC threshold for theory changes.
+
+  problem: >
+    Ax-7 (pragmatic diminishing returns halt) authorizes the Leader to terminate debate
+    based on a judgment predicate (diminishing_returns) that is not formally decidable.
+    Edge case: premature halts on complex challenges where the Leader incorrectly assesses
+    diminishing returns before all Questions have been adequately explored. While EXP-001c
+    shows 0% false-positive rate empirically, no structural guard prevents early termination
+    on a challenge with many Questions.
+
+  proposal: >
+    Add a minimum-turns guard to Ax-7: diminishing_returns cannot be declared before at
+    least 2 * |Questions| turns have occurred. The formal statement becomes:
+    "diminishing_returns(s) -> |{t : Turn}| >= 2 * |{q : Question}|". This preserves
+    Ax-7's pragmatic, judgment-based nature while preventing premature halts. The
+    2 * |Questions| threshold is a calibration parameter (like mu_2's 0.8 threshold),
+    not a formal invariant.
+
+  alternatives:
+    - >
+      Formalize diminishing_returns entirely — rejected because argument novelty is not
+      turn-countable without a semantic similarity model (Quill's argument, TC-005). The
+      LLM Leader's judgment is empirically reliable (EXP-001c) and any formal replacement
+      would either be too loose (halts too early) or too tight (wastes tokens).
+    - >
+      Keep Ax-7 unchanged — rejected because the edge case of premature halts on complex
+      multi-question challenges is real, even if unobserved in current data. The minimum-turns
+      guard is a cheap structural safety net.
+
+  impact:
+    artifacts_changed:
+      - "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml (Ax-7 formal statement, calibration note)"
+    councils_affected: [theory]
+    essence_impact: serves_purpose
+
+  reviews:
+    - council: "Theory Council"
+      date: "2026-03-17"
+      session: "TC-005"
+      verdict: approve
+      conditions: ""
+      rationale: "Pragmatic + guard is the right balance. Argument novelty isn't formalizable. Minimum-turns guard prevents premature halts without over-constraining."
+      positions:
+        - name: Quill
+          position: "Argument novelty detection is empirically reliable but not formalizable — keep pragmatic"
+        - name: Sable
+          position: "Shifted to pragmatic + guard after Quill's demonstration. 2x threshold is calibration, not principled."
+        - name: Harlan
+          position: "Proposed the minimum-turns guard as middle ground"
+    - council: "Steering Council"
+      date: "2026-03-18"
+      session: "SESSION-032"
+      verdict: approve
+      conditions: ""
+      rationale: "Clean axiom extension. Additive guard, doesn't change Ax-7's judgment nature. Calibration parameter treatment already specified. Low risk."
+      positions:
+        - name: Harlan
+          position: "Termination certificate unaffected — guard is precondition only"
+        - name: Nika
+          position: "2x multiplier should be tagged as calibration parameter (already in proposal)"
+
+  decision:
+    outcome: accepted
+    rationale: "Approved by PO. Theory + steering review complete. No conditions."
+    decided_in: "SESSION-032"

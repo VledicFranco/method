@@ -1,0 +1,79 @@
+rfc:
+  id: "RFC-001"
+  title: "Add resume precondition to M1-COUNCIL sigma_0"
+  author: "Theory Council (TC-002, decision TC-D-004)"
+  date: "2026-03-17"
+  status: human_approved
+  domains: [theory, implementation]
+  threshold_justification: >
+    Cross-domain change affecting a compiled method's precondition (M1-COUNCIL sigma_0)
+    and the domain theory's initial_state_valid_claim (D_COUNCIL). Touches registry
+    method YAML and formal theory — meets RFC threshold.
+
+  problem: >
+    M1-COUNCIL's sigma_0 initial state assumes an empty state (no characters, no prior
+    positions). When a council resumes from memory via CMEM-PROTO, characters and prior
+    positions already exist. The domain theory's initial_state_valid_claim is wrong for
+    the resume path — it claims the initial state has no Characters or Positions, which
+    is false when resuming from a prior session.
+
+  proposal: >
+    Add a precondition variant to sigma_0 that handles "resume from prior session." The
+    variant references CMEM-PROTO state (existing Characters, prior Positions, historical
+    context) without adding a Memory sort to D_COUNCIL. sigma_0 gains a branching
+    precondition: fresh start (current behavior) vs. resume from memory (new path). The
+    initial_state_valid_claim is updated to cover both cases.
+
+  alternatives:
+    - >
+      Add Memory sort to D_COUNCIL — rejected because memory is a persistence concern,
+      not debate structure. Coupling D_COUNCIL to storage would violate the domain boundary
+      (TC-D-003: "memory is persistence, not debate structure"). D_COUNCIL models Turns,
+      Positions, Questions — not where they came from.
+    - >
+      Keep current sigma_0 and ignore the resume path — rejected because the
+      initial_state_valid_claim would remain formally incorrect. An agent following
+      M1-COUNCIL strictly would treat a resumed council as having no prior context,
+      potentially re-debating settled questions.
+
+  impact:
+    artifacts_changed:
+      - "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml (sigma_0 precondition, initial_state_valid_claim)"
+    councils_affected: [theory, steering]
+    essence_impact: serves_purpose
+
+  reviews:
+    - council: "Theory Council"
+      date: "2026-03-17"
+      session: "TC-002"
+      verdict: approve
+      conditions: ""
+      rationale: "Cross-domain change correctly scoped. Memory stays out of D_COUNCIL (TC-D-003). sigma_0 precondition variant is the right approach."
+      positions:
+        - name: Sable
+          position: "Minimality wins — memory is persistence, not debate structure"
+        - name: Quill
+          position: "Resume path changes initial state — must be modeled, but sigma_0 variant suffices"
+        - name: Harlan
+          position: "sigma_0 precondition variant keeps D_COUNCIL clean"
+    - council: "Steering Council"
+      date: "2026-03-18"
+      session: "SESSION-032"
+      verdict: approve_with_conditions
+      conditions: >
+        (1) Commission must specify the concrete resume precondition (what sigma_0
+        checks when CMEM-PROTO state exists). (2) M1-COUNCIL version bump to v1.2,
+        compilation_record updated.
+      rationale: "Minimal scope, fixes formally incorrect initial_state_valid_claim. Precedent-setting for CMEM-PROTO interaction with compiled methods."
+      positions:
+        - name: Thane
+          position: "Clean proposal, architecturally sound"
+        - name: Harlan
+          position: "Low registry risk — one file, two sections"
+        - name: Nika
+          position: "Resume path needs concrete operationalization in the commission"
+
+  decision:
+    outcome: accepted
+    rationale: "Approved by PO. Theory + steering review complete. Two conditions from steering."
+    decided_in: "SESSION-032"
