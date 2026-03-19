@@ -36,8 +36,24 @@ function killPids(pids) {
   for (const pid of pids) {
     try {
       if (process.platform === 'win32') {
-        execSync(`taskkill /F /PID ${pid}`, { stdio: 'pipe' });
+        // Verify the process is a bridge child before killing
+        try {
+          const info = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: 'utf-8', stdio: 'pipe' });
+          if (!info.includes('claude') && !info.includes('cmd.exe') && !info.includes('conhost')) {
+            console.log(`  Skipping PID ${pid} — not a bridge child (${info.trim().substring(0, 60)})`);
+            continue;
+          }
+        } catch { continue; /* process already dead */ }
+        execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'pipe' });
       } else {
+        // Verify process identity on Linux
+        try {
+          const comm = execSync(`cat /proc/${pid}/comm 2>/dev/null || ps -p ${pid} -o comm=`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
+          if (!comm.includes('claude') && !comm.includes('bash') && !comm.includes('sh')) {
+            console.log(`  Skipping PID ${pid} — not a bridge child (${comm})`);
+            continue;
+          }
+        } catch { continue; /* process already dead */ }
         execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: 'pipe' });
       }
       killed++;
@@ -62,7 +78,7 @@ try {
     try {
       execSync(`curl -sf http://localhost:${port}/health`, { stdio: 'pipe', timeout: 1000 });
       // Still alive — wait
-      execSync(process.platform === 'win32' ? 'timeout /t 1 /nobreak >nul' : 'sleep 0.5', { stdio: 'pipe' });
+      execSync('node -e "setTimeout(()=>{},500)"', { stdio: 'pipe' });
     } catch {
       // Health check failed — bridge is down
       gracefulSuccess = true;
@@ -85,7 +101,7 @@ if (!gracefulSuccess) {
       const out = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf-8' });
       const pid = out.trim().split(/\s+/).pop();
       if (pid && pid !== '0') {
-        execSync(`taskkill /F /PID ${pid}`, { stdio: 'inherit' });
+        execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'inherit' });
         console.log(`Bridge force-stopped (PID ${pid})`);
       } else {
         console.log('Bridge not running');

@@ -55,7 +55,7 @@ const PID_FILE_PATH = join(tmpdir(), `method-bridge-${PORT}.pids`);
 function writePidFile(): void {
   try {
     const pids = pool.childPids();
-    writeFileSync(PID_FILE_PATH, pids.join('\n') + '\n', 'utf-8');
+    writeFileSync(PID_FILE_PATH, pids.join('\n') + '\n', { encoding: 'utf-8', mode: 0o600 });
   } catch { /* PID file write failure is non-fatal */ }
 }
 
@@ -685,9 +685,12 @@ app.get<{
  * POST /shutdown — Trigger graceful shutdown from external scripts.
  * Preferred over force-killing the process, so sessions get cleaned up properly.
  */
-app.post('/shutdown', async (_request, reply) => {
+app.post('/shutdown', async (request, reply) => {
+  const ip = request.ip;
+  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+    return reply.status(403).send({ error: 'Shutdown only allowed from localhost' });
+  }
   reply.status(200).send({ status: 'shutting_down' });
-  // Trigger graceful shutdown after response is sent
   setImmediate(() => gracefulShutdown('API'));
 });
 

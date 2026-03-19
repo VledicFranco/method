@@ -35,8 +35,24 @@ let alreadyDead = 0;
 for (const pid of childPids) {
   try {
     if (process.platform === 'win32') {
-      execSync(`taskkill /F /PID ${pid}`, { stdio: 'pipe' });
+      // Verify the process is a bridge child before killing
+      try {
+        const info = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: 'utf-8', stdio: 'pipe' });
+        if (!info.includes('claude') && !info.includes('cmd.exe') && !info.includes('conhost')) {
+          console.log(`  Skipping PID ${pid} — not a bridge child (${info.trim().substring(0, 60)})`);
+          continue;
+        }
+      } catch { continue; /* process already dead */ }
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'pipe' });
     } else {
+      // Verify process identity on Linux
+      try {
+        const comm = execSync(`cat /proc/${pid}/comm 2>/dev/null || ps -p ${pid} -o comm=`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
+        if (!comm.includes('claude') && !comm.includes('bash') && !comm.includes('sh')) {
+          console.log(`  Skipping PID ${pid} — not a bridge child (${comm})`);
+          continue;
+        }
+      } catch { continue; /* process already dead */ }
       execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: 'pipe' });
     }
     killed++;
