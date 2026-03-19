@@ -14,7 +14,8 @@ method:
   compilation_date: "2026-03-18"
   evolution_note: >
     v1.2: RFC-001 (sigma_0 resume precondition for CMEM-PROTO) and RFC-002 (Ax-7
-    minimum-turns guard). Both additive changes approved by Steering Council SESSION-032
+    minimum-turns guard). RFC-001 adds sigma_0 resume precondition (additive). RFC-002
+    strengthens Ax-7 with minimum-turns guard (modification). Changes approved by Steering Council SESSION-032
     (D-067, D-068) with Theory Council reviews TC-002, TC-005.
   formal_grounding: "theory/F1-FTH.md"
   derived_from: ".claude/skills/council-team/SKILL.md"
@@ -217,7 +218,11 @@ domain_theory:
         Empirically, each Question requires at least two Turns of substantive debate (initial
         positions + at least one counter-argument exchange) before diminishing returns can be
         reliably assessed. Like mu_2's 0.8 threshold, this value is derived from observation
-        of council sessions and may be adjusted as evidence accumulates.
+        of council sessions and may be adjusted as evidence accumulates. sigma_2's precondition
+        guarantees |Questions| >= 1, so the minimum threshold is always >= 2. The guard cannot
+        be vacuously satisfied at zero Questions. External round bounds (e.g., M2-REVIEW
+        max_rounds) may terminate debate before the threshold is reached. External bounds take
+        precedence — the guard constrains voluntary diminishing_returns only.
       formal_status: >
         Ax-7 is a pragmatic axiom — diminishing_returns is a Leader judgment predicate,
         not formally decidable. sigma_2_terminates is an operational predicate meaning the
@@ -240,7 +245,9 @@ domain_theory:
     Excludes: the content domain of the challenge (D_COUNCIL tracks debate structure, not
     subject matter); tool availability; the internal reasoning process of characters (only
     their Turns and Positions are observable); execution history across sessions; sub-agent
-    spawning mechanics (deferred to future version).
+    spawning mechanics (deferred to future version). Session-scoped Turn semantics
+    (partitioning the Turn carrier set across sessions) are not modeled — the current
+    resume integration treats prior-session state as initial conditions.
   initial_state_valid_claim:
     fresh: >
       A state with Challenge present, no Characters, no Questions, no Turns, no Positions,
@@ -251,8 +258,14 @@ domain_theory:
       but no new Turns in this session satisfies all axioms: Ax-1 holds if the restored cast
       has >= 2 contrarians (guaranteed by prior session's sigma_1 postcondition preserved in
       memory). Ax-2 holds if exactly one leader is restored. Ax-3 through Ax-6 have false
-      antecedents for the current session (no new Turns yet). Prior session Turns are not
-      in scope — axioms apply to the current session's Turn set. Valid.
+      antecedents for the current session (no new Turns yet). Pragmatic scoping: Characters
+      and Positions loaded from CMEM-PROTO are treated as initial context, not as Turn-derived
+      state. Axioms Ax-1 through Ax-7 are evaluated only over Turns produced in the current
+      session. Prior Turns are not members of the carrier set; the Positions they established
+      are initial conditions. Formal session-scoping of the Turn sort is deferred to a future
+      theory revision (see domain_boundary_note). Assumption: the prior session completed
+      normally (on_session_end fired). If the prior session was interrupted, loaded state may
+      be incomplete — PO verifies state accuracy during resume scope confirmation. Valid.
   terminal_state_valid_claim: >
     A state with k+1 Characters (1 Leader, k >= 2 Contrarians), all Questions decided,
     all (Character, Question) pairs resolved, at least one position_updated, Artifact
@@ -362,6 +375,11 @@ phases:
       If the challenge is ambiguous, characters will be designed for the wrong domain
       and the debate will not produce useful decisions.
 
+      **Branch selection:** If the PO requests continuation of a prior topic, check
+      `.method/council/memory/INDEX.yaml` for a matching entry. If found, take the resume
+      path. If not found or PO does not request continuation, take the fresh path. The PO
+      decides — the agent does not auto-detect.
+
       **Procedure (fresh start):**
       1. If challenge text was provided, use it directly.
       2. Otherwise ask: "What should the council solve?"
@@ -370,11 +388,17 @@ phases:
 
       **Procedure (resume from CMEM-PROTO):**
       1. Read the CMEM-PROTO memory file for the topic (council/memory/{topic_id}.yaml).
+         If the memory file is missing, unreadable, or fails YAML parse: report the error
+         to PO and fall back to the fresh path.
       2. Populate Characters from memory: restore active cast members from cast.active.
-      3. Set prior Positions from the memory file's decisions and open_questions.
+      3. Load prior context from the memory file's decisions and open_questions. Characters
+         re-affirm or update their positions explicitly at the start of sigma_2, grounded
+         in this loaded context.
       4. Determine if the challenge is new or a continuation:
          - Continuation: present the topic summary, standing decisions, and open questions
-           to the PO. Ask if they want to continue with the current cast or modify it.
+           to the PO. Restate the challenge for this session in one sentence, incorporating
+           the continuation context. Confirm with PO. This becomes the challenge_statement.
+           Ask if they want to continue with the current cast or modify it.
          - New challenge on existing topic: state the new challenge, note relevant prior
            context, and proceed to scope confirmation as in the fresh path.
       5. Confirm scope with PO before proceeding (same gate as fresh path).
@@ -402,7 +426,9 @@ phases:
   - id: sigma_1
     name: "Cast Design"
     role: rho_leader
-    precondition: "Challenge confirmed; Council empty"
+    precondition:
+      fresh: "Challenge confirmed; Council empty"
+      resume: "Challenge confirmed; Council populated from CMEM-PROTO with restored Characters; PO presented with cast for re-approval"
     postcondition: >
       Council has Leader (1) + Contrarians (k >= 2) with complete CharacterCards;
       PO has approved the cast (cast_approved for all Characters)
@@ -443,6 +469,14 @@ phases:
          knowledge, but different prescriptions.
       4. Present the cast to PO. Ask: "Any changes to the lineup before we begin?"
       5. Apply PO modifications if any. Set cast_approved = true.
+
+      **Procedure (resume from CMEM-PROTO):**
+      1. Present the restored cast to PO: names, roles, convictions, blind spots.
+      2. Note any potential misfit between the prior cast's expertise and the current challenge.
+      3. Ask PO: "Keep the current cast, modify it, or redesign from scratch?"
+      4. If keep: set cast_approved = true for all restored Characters.
+      5. If modify: apply PO's changes, re-verify Ax-1 (>= 2 contrarians, 1 leader), set cast_approved.
+      6. If redesign: discard restored cast, run the fresh procedure above.
 
       **Output schema reference:**
       - leader: CharacterCard object
@@ -534,9 +568,11 @@ phases:
       - New Questions being proposed are refinements of already-decided Questions
       The Leader MUST NOT declare diminishing_returns until the minimum-turns threshold
       is met. This prevents premature halts before each Question has been debated.
-      When halting: the Leader states the halt rationale, records which pairs remain
-      unresolved, and proceeds to sigma_3. Unresolved pairs appear in the Artifact
-      as explicitly unresolved items — they are not silently dropped.
+      When declaring diminishing_returns, the Leader must state the current Turn count
+      and Question count in the halt rationale (e.g., '14 Turns across 6 Questions,
+      threshold 12 met'). The Leader records which pairs remain unresolved, and proceeds
+      to sigma_3. Unresolved pairs appear in the Artifact as explicitly unresolved
+      items — they are not silently dropped.
 
       **Termination (PAT-003A hybrid step):**
       This step has internal convergence dynamics governed by an embedded measure:
@@ -722,10 +758,13 @@ composability:
   claims:
     - edge: "sigma_0 -> sigma_1"
       claim: >
-        post_sigma_0 establishes Challenge stated precisely with scope_confirmed = true.
-        pre_sigma_1 requires Challenge confirmed and Council empty. post_sigma_0 is a
-        superset (additionally establishes scope confirmation). Council is empty because
-        sigma_0 does not create Characters.
+        Fresh path: post(sigma_0) establishes Challenge with scope confirmed, Council empty.
+        pre(sigma_1, fresh) requires Challenge confirmed and Council empty. Satisfied.
+        Resume path: post(sigma_0) establishes Challenge with scope confirmed, Council
+        populated from CMEM-PROTO with restored Characters and Positions.
+        pre(sigma_1, resume) requires Challenge confirmed and Council populated from
+        CMEM-PROTO. Satisfied. Both paths are compositional.
+      status: compositional_both_paths
     - edge: "sigma_1 -> sigma_2"
       claim: >
         post_sigma_1 establishes Council with Leader + Contrarians (k >= 2), all
@@ -749,7 +788,9 @@ composability:
     decisions_table provide the evidence). post_sigma_3 implies O_COUNCIL.
   initial_condition_claim: >
     pre_sigma_0 requires Challenge exists. This holds at method invocation: P1-EXEC's
-    delta_EXEC passes the Challenge to M1-COUNCIL via embed_COUNCIL.
+    delta_EXEC passes the Challenge to M1-COUNCIL via embed_COUNCIL. On the resume path,
+    pre_sigma_0 additionally requires CMEM-PROTO state for the topic. Detection and routing
+    between paths is internal to sigma_0 (the agent checks for existing memory files).
   contrarian_challenge:
     weakest_edge: "sigma_1 -> sigma_2"
     challenge: >
@@ -834,6 +875,9 @@ termination:
     Ax-5 guarantees each Turn reduces nu_sigma_2 by >= 1. Ax-3 prevents stalling. nu_sigma_2
     is bounded above by |Characters| x |Questions| (both finite). sigma_2 terminates when
     nu_sigma_2 = 0, then nu decreases by 1 (sigma_2 done). Total termination guaranteed.
+    nu_sigma_2 = 0 always terminates sigma_2 regardless of the minimum-turns guard. The
+    Ax-7 minimum-turns guard constrains only the diminishing_returns pragmatic escape, not
+    the formal termination condition via full pair resolution.
 
 selection_profile:
   positive_indicators:
@@ -910,8 +954,9 @@ compilation_record:
         with hard/soft invariants. Three composability claims. Terminal and initial condition
         claims present. Contrarian challenge on sigma_1->sigma_2 (Question derivation from
         Challenge) defended by sigma_0 scope confirmation. DAG trivially acyclic.
-        v1.2: sigma_0 precondition now branches for fresh/resume paths (RFC-001). Guidance
-        includes resume procedure for CMEM-PROTO state loading.
+        v1.2: sigma_0 precondition now branches for fresh/resume paths (RFC-001). sigma_1
+        precondition branches for fresh/resume. Composability verified for both paths.
+        Guidance includes resume procedure for CMEM-PROTO state loading.
     - gate: G5
       result: PASS
       note: >

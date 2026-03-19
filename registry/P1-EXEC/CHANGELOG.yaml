@@ -1,8 +1,23 @@
 changelog:
   methodology_id: P1-EXEC
-  current_version: "1.1"
+  current_version: "1.2"
 
   entries:
+    - version: "M1-COUNCIL v1.2"
+      date: "2026-03-18"
+      type: method_evolution
+      method: M1-COUNCIL
+      changes:
+        - "RFC-001: sigma_0 precondition branches for fresh/resume paths (CMEM-PROTO integration)"
+        - "RFC-001: initial_state_valid_claim covers both fresh and resume initial states"
+        - "RFC-002: Ax-7 gains minimum-turns guard |Turns| >= 2 * |Questions|"
+        - "RFC-002: 2*|Questions| threshold tagged as calibration parameter"
+      evidence:
+        rfcs: [RFC-001, RFC-002]
+        sessions: [SESSION-032]
+        theory_reviews: [TC-002, TC-005]
+        decisions: [D-067, D-068]
+
     - version: "1.1"
       date: "2026-03-14"
       type: methodology
