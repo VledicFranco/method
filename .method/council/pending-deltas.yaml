@@ -6,49 +6,49 @@
 # Dispositions: accepted (+ artifact reference), deferred (+ reason + re-review session), rejected (+ reason)
 # Significant deltas (essence-touching, method structure) escalate to P3-GOV RFC.
 
-pending:
-  # Backlog from retro analysis (70 retros scanned, 6 unacted proposals)
+pending: []
 
+resolved:
   - id: DELTA-001
     source: retro-prd005-phase2
     proposed: "Extend DR-09 to require unit tests for bridge modules, not just core YAML"
-    priority: medium
-    status: pending
-    date_proposed: "2026-03-14"
+    disposition: accepted
+    disposition_session: SESSION-036
+    artifact: "project-card.yaml DR-14 (new rule for bridge module testing)"
+    note: "DR-09 is YAML-specific. Added DR-14 for bridge modules instead of extending DR-09."
 
   - id: DELTA-002
     source: retro-prd002-impl
-    proposed: "Add wave structure guidance to M1-IMPL Phase B for multi-task phases (dependency-aware sequencing)"
-    priority: medium
-    status: pending
-    date_proposed: "2026-03-14"
+    proposed: "Add wave structure guidance to M1-IMPL Phase B for multi-task phases"
+    disposition: deferred
+    disposition_session: SESSION-036
+    reason: "Needs scoping — which failure mode? (D-085). Re-review after AG-054 scoping."
+    re_review: SESSION-038
 
   - id: DELTA-003
     source: retro-prd005-phase1
     proposed: "New DR for bridge HTTP API: expose pool stats and session metadata via health endpoint"
-    priority: low
-    status: pending
-    date_proposed: "2026-03-14"
+    disposition: rejected
+    disposition_session: SESSION-036
+    reason: "Health endpoint exists and works. Pool stats available via GET /sessions. No DR needed."
 
   - id: DELTA-004
     source: retro-t1x-valgaps-20260314
     proposed: "DR-03 exemption: Scala-only repos where TypeScript core pattern does not apply"
-    priority: low
-    status: pending
-    date_proposed: "2026-03-14"
+    disposition: rejected
+    disposition_session: SESSION-036
+    reason: "DR-03 is pv-method project-scoped. Other projects define their own delivery rules via their own project cards."
 
   - id: DELTA-005
     source: retro-t1x-valgaps-20260314
     proposed: "DR-04 trivial disjointness escape hatch: skip dispatch overhead for trivially disjoint tasks"
-    priority: low
-    status: pending
-    date_proposed: "2026-03-14"
+    disposition: rejected
+    disposition_session: SESSION-036
+    reason: "Conflates DR-04 (MCP thin wrapper) with P2-SD methodology dispatch. Delta targets the wrong artifact."
 
   - id: DELTA-006
     source: retro-t1x-valgaps-20260314
     proposed: "M1-COUNCIL proportionality heuristic: add explicit guidance for when council overhead is not justified"
-    priority: medium
-    status: pending
-    date_proposed: "2026-03-14"
-
-resolved: []
+    disposition: rejected
+    disposition_session: SESSION-036
+    reason: "Already implemented in P1-EXEC.yaml predicate_operationalization.proportionality_heuristic (lines 347-356)."

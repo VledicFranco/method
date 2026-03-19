@@ -198,6 +198,19 @@ project_card:
       affects_roles: [architect]
       protocol: horizontal_documentation
 
+    # --- Bridge module testing ---
+    - id: DR-14
+      rule: >
+        Bridge modules that manage session state, token budgets, or external API
+        interactions (token-tracker, usage-poller, adaptive-settle, spawn-queue)
+        must have unit tests covering their core logic paths. Dashboard and
+        live-output routes should have at least smoke tests verifying they render
+        without errors. Bridge test gaps are safety-net debt — silent regressions
+        in session management corrupt agent execution.
+      applies_to: [M1-IMPL, M2-DIMPL]
+      affects_roles: [impl_sub_agent]
+      evolution_source: "SESSION-036 DELTA-001 (retro-prd005-phase2, retro-2026-03-14-002)"
+
   processes:
     description: >
       Trigger-action pairs enforced by the steering council during Step 4 (Capture).
