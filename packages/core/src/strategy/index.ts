@@ -16,8 +16,8 @@ export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNod
 export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy-parser.js';
 
 // Strategy Executor
-export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, StrategyExecutionResult, StrategyExecutorConfig } from './strategy-executor.js';
-export { loadExecutorConfig, StrategyExecutor } from './strategy-executor.js';
+export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, ExecutionStateSnapshot, StrategyExecutionResult, StrategyExecutorConfig } from './strategy-executor.js';
+export { StrategyExecutor } from './strategy-executor.js';
 
 // Retro Generator (pure logic only — saveRetro stays in bridge)
 export type { StrategyRetro } from './retro-generator.js';

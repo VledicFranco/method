@@ -29,7 +29,7 @@ export interface StrategyRetro {
       nodes_total: number;
       nodes_completed: number;
       nodes_failed: number;
-      parallelization_efficiency: number;
+      speedup_ratio: number;
     };
     cost: {
       total_usd: number;
@@ -71,11 +71,11 @@ export function generateRetro(
   // Build critical path
   const criticalPath = computeCriticalPath(dag, result.node_results);
 
-  // Compute parallelization efficiency = actual_time / sequential_time
+  // Compute speedup ratio = sequential_time / actual_time (>1.0 means parallelism helped)
   const sequentialTime = Object.values(result.node_results)
     .reduce((sum, nr) => sum + nr.duration_ms, 0);
-  const parallelizationEfficiency = sequentialTime > 0
-    ? Math.min(result.duration_ms / sequentialTime, 1.0)
+  const speedupRatio = result.duration_ms > 0
+    ? sequentialTime / result.duration_ms
     : 1.0;
 
   // Count completed / failed nodes
@@ -159,7 +159,7 @@ export function generateRetro(
         nodes_total: dag.nodes.length,
         nodes_completed: nodesCompleted,
         nodes_failed: nodesFailed,
-        parallelization_efficiency: Math.round(parallelizationEfficiency * 100) / 100,
+        speedup_ratio: Math.round(speedupRatio * 100) / 100,
       },
       cost: {
         total_usd: result.cost_usd,

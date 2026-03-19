@@ -81,6 +81,13 @@ export class ClaudeCodeProvider implements LlmProvider {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
+      // AbortSignal support: kill the child process if the signal fires
+      if (request.signal) {
+        request.signal.addEventListener('abort', () => {
+          child.kill();
+        }, { once: true });
+      }
+
       let stdout = '';
       let stderr = '';
 

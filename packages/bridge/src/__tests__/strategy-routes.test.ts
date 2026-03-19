@@ -157,23 +157,22 @@ describe('generateRetro', () => {
     assert.equal(retro.retro.execution_summary.nodes_failed, 0);
   });
 
-  it('calculates parallelization_efficiency correctly', () => {
+  it('calculates speedup_ratio correctly', () => {
     const dag = makeDAG();
     // sequential_time = 5000 + 15000 + 50 = 20050
     // actual_time = 20050
-    // efficiency = 20050 / 20050 = 1.0
+    // speedup_ratio = 20050 / 20050 = 1.0
     const result = makeExecutionResult();
     const retro = generateRetro(dag, result);
-    assert.equal(retro.retro.execution_summary.parallelization_efficiency, 1.0);
+    assert.equal(retro.retro.execution_summary.speedup_ratio, 1.0);
 
     // Now test with better parallelization: actual_time < sequential_time
     const parallelResult = makeExecutionResult({
       duration_ms: 10000, // Faster than sequential
     });
     const parallelRetro = generateRetro(dag, parallelResult);
-    // 10000 / 20050 ≈ 0.4988
-    assert.ok(parallelRetro.retro.execution_summary.parallelization_efficiency < 1.0);
-    assert.ok(parallelRetro.retro.execution_summary.parallelization_efficiency > 0.0);
+    // 20050 / 10000 ≈ 2.01 — speedup > 1.0 means parallelism helped
+    assert.ok(parallelRetro.retro.execution_summary.speedup_ratio > 1.0);
   });
 
   it('populates cost per-node breakdown', () => {

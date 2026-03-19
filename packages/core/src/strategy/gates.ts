@@ -88,11 +88,24 @@ export async function evaluateGateExpression(
   const frozenArtifacts = deepFreeze({ ...context.artifacts });
   const frozenMeta = deepFreeze({ ...context.execution_metadata });
 
-  // Race the evaluation against a timeout
-  return Promise.race([
-    evaluateInSandbox(expression, frozenOutput, frozenArtifacts, frozenMeta),
-    timeoutPromise(timeoutMs),
-  ]);
+  // Race the evaluation against a timeout, clearing the timer on completion
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutP = new Promise<{ passed: boolean; reason: string }>((resolve) => {
+    timer = setTimeout(() => {
+      resolve({ passed: false, reason: 'Gate expression timed out' });
+    }, timeoutMs);
+    if (timer && typeof timer === 'object' && 'unref' in timer) {
+      timer.unref();
+    }
+  });
+  try {
+    return await Promise.race([
+      evaluateInSandbox(expression, frozenOutput, frozenArtifacts, frozenMeta),
+      timeoutP,
+    ]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 /** Internal: run the expression via new Function() with blocked globals */
@@ -144,21 +157,6 @@ return (${expression});`,
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       resolve({ passed: false, reason: `Expression error: ${message}` });
-    }
-  });
-}
-
-/** Internal: returns a failing result after timeoutMs */
-function timeoutPromise(ms: number): Promise<{ passed: boolean; reason: string }> {
-  return new Promise((resolve) => {
-    // Note: this setTimeout is the real one from the outer closure, not the
-    // shadowed one inside the sandbox. The sandbox cannot access it.
-    const timer = setTimeout(() => {
-      resolve({ passed: false, reason: 'Gate expression timed out' });
-    }, ms);
-    // Ensure the timer doesn't keep the process alive
-    if (timer && typeof timer === 'object' && 'unref' in timer) {
-      timer.unref();
     }
   });
 }

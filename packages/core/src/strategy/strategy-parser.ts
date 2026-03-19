@@ -166,13 +166,14 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
     };
   });
 
+  // Strategy gates are single-shot by design — retries at strategy level would require re-running nodes
   const strategy_gates: StrategyGate[] = (s.dag.strategy_gates ?? []).map((sg) => ({
     id: sg.id,
     depends_on: sg.depends_on,
     gate: {
       type: sg.type,
       check: sg.check,
-      max_retries: sg.max_retries ?? getDefaultRetries(sg.type),
+      max_retries: 0,
       timeout_ms: sg.timeout_ms ?? getDefaultTimeout(sg.type),
     },
   }));
