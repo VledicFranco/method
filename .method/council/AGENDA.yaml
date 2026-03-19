@@ -1,10 +1,10 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-18"
-  last_session: SESSION-032
+  last_updated: "2026-03-19"
+  last_session: SESSION-033
   mode: steady-state
   cadence: "weekly or on-demand"
-  next_health_review: SESSION-033
+  next_health_review: SESSION-038
 
   p0_immediate:
     - id: AG-047
@@ -17,16 +17,15 @@ agenda:
         precondition (RFC-001) + Ax-7 minimum-turns guard (RFC-002). Once merged,
         RFC files transition to handed_off.
 
-    - id: AG-048
-      item: "Design M5-REFINE — dynamic advisor/synthesizer refinement method for P3-GOV"
-      owner: council
+    - id: AG-049
+      item: "Add --isolated flag to /council-team and /steering-council skills (EXP-002)"
+      owner: PO
       status: open
-      added_in: SESSION-032
+      added_in: SESSION-033
       note: >
-        Integrate /review-advisors and /review-synthesizers into P3-GOV as a reusable
-        refinement method. Invoked before M2-REVIEW (refine RFC) and/or after M4-HANDOFF
-        (stress-test commission). Dynamic advisor cast tailored per artifact. Statutory
-        addition — does not touch constitutional axioms (Ax-GOV-0 safe).
+        D-074: Skill-level change (prompt, not registry). Default synthetic, display
+        cost warning (~3x tokens). Uses sub-agent blackboard pattern from EXP-002.
+        Parallel opening positions, sequential response rounds, shared transcript file.
 
   p1_next:
     - id: AG-045
@@ -53,26 +52,48 @@ agenda:
       added_in: SESSION-021
       note: "PR #1 merged. Benefits from PRD 010 richer channel data. Install MCP-only, test, measure 4 criteria."
 
+  p2_later:
+    - id: AG-050
+      item: "M4-HANDOFF commission stress-test via strategy DAG composition"
+      owner: council
+      status: open
+      added_in: SESSION-033
+      note: >
+        Residual from AG-048. After M4-HANDOFF produces a commission, optionally run
+        M4-ADVREV as a strategy node to stress-test the commission before firing.
+        Strategy-level composition, not method embedding (D-077). Depends on strategy
+        pipelines Phase 2 maturity.
+
+    - id: AG-051
+      item: "EXP-002 replication plan — 2 runs on different problem types"
+      owner: council
+      status: open
+      added_in: SESSION-033
+      note: >
+        D-075: (a) pv-method governance question (compare against 32 sessions of
+        synthetic data), (b) technical architecture question (constrained solution space).
+        Required before method-level isolation parameterization.
+
   governance_health:
-    last_assessed: SESSION-028
-    sessions_since_processes_installed: 24
-    next_review: SESSION-033
+    last_assessed: SESSION-033
+    sessions_since_processes_installed: 25
+    next_review: SESSION-038
 
     process_health:
       PR-01:
+        times_followed: 10
+        times_skipped: 0
+        times_triggered: 4
+        verdict: healthy
+        note: "S033: M4-ADVREV compiled + M1-COUNCIL/M3-PHRV/P-GH M2-REVIEW/P3-GOV M2-REVIEW updated. Registry changes — guide sync deferred (trial status, no existing guides for new methods)."
+      PR-02:
         times_followed: 9
         times_skipped: 0
-        times_triggered: 3
+        times_triggered: 7
         verdict: healthy
-        note: "S031: No registry changes. Count incremented (followed without trigger)."
-      PR-02:
-        times_followed: 8
-        times_skipped: 0
-        times_triggered: 6
-        verdict: healthy
-        note: "S031: AG-044 at 3-session threshold — addressed with commission spec (D-064). Process working."
+        note: "S033: AG-048 resolved (open since S032, 1 session). No stale items."
       PR-03:
-        times_followed: 4
+        times_followed: 5
         times_skipped: 2
         times_triggered: 2
         verdict: improved
@@ -144,6 +165,7 @@ agenda:
     - { id: AG-043, resolved_in: SESSION-028, note: "Signature inclusion — M2-REVIEW references M1-COUNCIL axioms, not copies (D-053)." }
     - { id: AG-044, resolved_in: SESSION-032, note: "P3-GOV methods compiled (PR #30 merged). Council reviewed D-066. 4 methods, 7 dimensions, all PASS." }
     - { id: AG-040, resolved_in: SESSION-032, note: "First P3-GOV pipeline validation. RFC-001 + RFC-002 processed: domain review, steering review, human approval. Commission ready (AG-047)." }
+    - { id: AG-048, resolved_in: SESSION-033, note: "Substantially resolved by M4-ADVREV compilation under P1-EXEC. Delegation to P3-GOV/M2-REVIEW, P2-SD/M3-PHRV, P-GH/M2-REVIEW. Residual M4-HANDOFF stress-test → AG-050 (P2)." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

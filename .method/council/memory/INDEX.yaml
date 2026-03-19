@@ -5,3 +5,10 @@ topics:
     status: active
     last_session: "2026-03-16"
     session_count: 1
+
+  - id: TOPIC-REVIEW-PIPELINE
+    name: "Adversarial Review Pipeline — Formalizing /review-pipeline as M4-ADVREV"
+    file: review-pipeline.yaml
+    status: active
+    last_session: "2026-03-19"
+    session_count: 1

@@ -1,0 +1,1137 @@
+method:
+  id: M4-ADVREV
+  parent: P1-EXEC
+  name: "Adversarial Review Pipeline Method"
+  description: >
+    Structured adversarial review where parallel contrarian advisors independently attack an
+    artifact from complementary dimensions, followed by parallel synthesizers who defend, refine,
+    and sequence the findings into an Action Plan with consensus. The pipeline produces two
+    artifacts: a Review Report (adversarial findings) and an Action Plan (prioritized response).
+    Parameterized via retraction input for mandatory review dimensions, domain constraints, and
+    artifact type — enabling any parent method to delegate review execution while preserving
+    domain-specific coverage guarantees. Also invocable standalone for ad-hoc review.
+  version: "0.1"
+  status: trial
+  compilation_date: "2026-03-19"
+  formal_grounding: "theory/F1-FTH.md"
+  derived_from: ".claude/skills/review-pipeline/SKILL.md"
+  council_evidence: ".method/council/memory/review-pipeline.yaml (TOPIC-REVIEW-PIPELINE, 6 decisions)"
+  empirical_evidence:
+    - id: EXP-002
+      title: "Context Isolation and Disagreement Quality in LLM Multi-Agent Debate"
+      location: "ov-research/experiments/EXP-002-context-isolation"
+      relevance: >
+        EXP-002 validates M4-ADVREV's parallel-isolation architecture. Isolated agents
+        (separate context windows) produce 2x position shifts, +43% counter-arguments,
+        and qualitatively reversed conviction trajectories vs synthetic single-context
+        execution. M4-ADVREV's Ax-3 (advisor independence) is the formalization of this
+        isolation pattern. The research confirms that preventing advisors from seeing
+        each other's findings is not just a design choice but an empirically validated
+        quality mechanism. SESSION-033 D-076.
+
+navigation:
+  what: >
+    M4-ADVREV takes an artifact and produces an adversarial Review Report followed by a
+    consensus-driven Action Plan. Phase A spawns 3-5 parallel contrarian advisors who
+    independently attack the artifact from complementary dimensions (no debate, no
+    consensus-seeking — value is in divergence). Phase B spawns 3-4 parallel synthesizers
+    with fixed posture archetypes (Defender, Pragmatist, Strategist, Integrator) who
+    independently respond to the findings. The output is an Action Plan with per-finding
+    consensus decisions: accept, accept-with-refinement, defer, acknowledge, reject, merge.
+  who: >
+    Two role types: rho_orchestrator (single agent that designs casts, dispatches sub-agents,
+    and produces the final artifacts) and rho_PO (the human or parent method — provides the
+    artifact and receives the Action Plan). Advisors and synthesizers are sub-agents spawned
+    by the orchestrator — they are not method roles but ephemeral execution units.
+  why: >
+    Single-perspective review produces approval bias: one agent finds what it expects to find.
+    Multi-perspective review via debate (M1-COUNCIL) forces convergence, which can suppress
+    divergent insights. M4-ADVREV's parallel-isolation architecture ensures advisors cannot
+    influence each other and synthesizers are contrarian to the reviews, not to the artifact.
+    The two-phase structure (attack → defend) ensures findings are both adversarial and
+    proportional.
+  how: >
+    Seven-step DAG: target identification → cast design (with mandatory dimension coverage) →
+    parallel advisor dispatch → advisor collection and Review Report → parallel synthesizer
+    dispatch → consensus matrix and Action Plan → iteration check (optional re-review after
+    fixes). Advisors and synthesizers execute as parallel sub-agents. The pipeline produces
+    structured artifacts with finding IDs for traceability.
+  when_to_use:
+    - "An artifact has real stakes — a design, RFC, PR, data model, or implementation that could fail in ways not obvious from a single perspective"
+    - "A parent method needs review execution delegated (P2-SD/M3-PHRV, P-GH/M2-REVIEW, P3-GOV/M2-REVIEW in domain mode)"
+    - "A strategy pipeline includes a review gate between methodology nodes"
+    - "The PO requests adversarial multi-perspective critique before shipping, merging, or committing to a design"
+  when_not_to_use:
+    - "Trivial artifacts where single-perspective review is sufficient — the overhead of 7-9 parallel agents is not justified"
+    - "When structured debate with convergence is needed — use M1-COUNCIL instead (divergence architecture is wrong for that)"
+    - "P3-GOV steering reviews — these require M1-COUNCIL debate for essence alignment, not parallel isolation"
+    - "Mid-implementation feedback — use M1-IMPL confidence-raising steps instead"
+
+domain_theory:
+  id: D_ADVREV
+  sorts:
+    - name: Artifact
+      cardinality: singleton_per_execution
+      description: "The artifact under review — file path(s), type, and content"
+    - name: ArtifactType
+      cardinality: finite
+      values: [rfc, pr, data_model, architecture, implementation, design, policy, method_candidate, other]
+      description: "Classification of the artifact being reviewed"
+    - name: ReviewDimension
+      cardinality: finite
+      description: "A specific aspect to evaluate — tailored per artifact from its risk surface"
+    - name: MandatoryDimension
+      cardinality: finite
+      description: "A dimension that the advisor cast MUST cover — provided via retraction input from parent methods"
+    - name: Advisor
+      cardinality: "finite, 3-5"
+      description: "A contrarian reviewer with a specific dimension and attack posture"
+    - name: Synthesizer
+      cardinality: "finite, 3-4"
+      description: "A response agent with a fixed posture archetype (Defender, Pragmatist, Strategist, Integrator)"
+    - name: SynthesizerPosture
+      cardinality: finite
+      values: [defender, pragmatist, strategist, integrator]
+      description: "Fixed posture archetypes for synthesizers"
+    - name: Finding
+      cardinality: unbounded
+      description: "A specific review observation with section/line citation, severity, and proposed mitigation"
+    - name: FindingID
+      cardinality: unbounded
+      description: "Globally unique finding identifier: F-{advisor_initial}-{N}"
+    - name: Severity
+      cardinality: finite
+      values: [CRITICAL, HIGH, MEDIUM, LOW]
+      description: "Finding severity"
+    - name: AdvisorVerdict
+      cardinality: finite
+      values: [approve, approve_with_conditions, reject]
+      description: "Per-advisor verdict on the artifact"
+    - name: ResponseAction
+      cardinality: finite
+      values: [accept, accept_with_refinement, defer, acknowledge, reject, merge]
+      description: "Per-finding response action chosen by each synthesizer"
+    - name: ConsensusAction
+      cardinality: finite
+      values: [accept, accept_with_refinement, defer, acknowledge, reject, merge, disputed]
+      description: "Consensus response action across all synthesizers (includes disputed when no majority)"
+    - name: ReviewReport
+      cardinality: singleton_per_execution
+      description: "Phase A output: all advisor findings with convergence analysis"
+    - name: ActionPlan
+      cardinality: singleton_per_execution
+      description: "Phase B output: consensus-driven response with implementation checklist"
+    - name: IterationCounter
+      cardinality: finite
+      values: [0, 1, 2]
+      description: "Counts re-review iterations. Max 2."
+    - name: DomainConstraint
+      cardinality: finite
+      description: "Domain-specific constraints from parent method retraction input"
+    - name: RetractionInput
+      cardinality: singleton_per_execution
+      description: >
+        The parameterization provided by a parent method via retraction projection:
+        artifact, mandatory_dimensions, domain_constraints, severity_criteria, success_predicate.
+        Empty when invoked standalone.
+  function_symbols:
+    - name: severity_of
+      signature: "Finding -> Severity"
+      totality: total
+    - name: finding_id
+      signature: "Finding -> FindingID"
+      totality: total
+      description: "Globally unique ID: F-{advisor_initial}-{N}"
+    - name: advisor_of
+      signature: "Finding -> Advisor"
+      totality: total
+      description: "Which advisor produced this finding"
+    - name: dimension_of
+      signature: "Advisor -> ReviewDimension"
+      totality: total
+      description: "The review dimension assigned to this advisor"
+    - name: posture_of
+      signature: "Synthesizer -> SynthesizerPosture"
+      totality: total
+    - name: consensus_action
+      signature: "Finding -> ConsensusAction"
+      totality: total
+      description: "The consensus response action for this finding across all synthesizers"
+    - name: iteration_count
+      signature: "State -> IterationCounter"
+      totality: total
+    - name: advisor_count
+      signature: "State -> Nat"
+      totality: total
+      description: "Number of advisors in the cast (3-5)"
+    - name: synthesizer_count
+      signature: "State -> Nat"
+      totality: total
+      description: "Number of synthesizers in the cast (3-4)"
+  predicates:
+    - name: finding_cited
+      signature: "Finding"
+      description: "The finding has a specific section/file:line citation"
+    - name: finding_has_mitigation
+      signature: "Finding"
+      description: "The finding proposes a specific mitigation"
+    - name: dimension_covered
+      signature: "MandatoryDimension"
+      description: "At least one advisor in the cast covers this mandatory dimension"
+    - name: all_mandatory_covered
+      signature: "State"
+      description: "Every MandatoryDimension from the retraction input is assigned to at least one advisor"
+    - name: advisors_dispatched
+      signature: "State"
+      description: "All advisors have been launched as parallel sub-agents"
+    - name: advisors_collected
+      signature: "State"
+      description: "All advisor results have been received"
+    - name: synthesizers_dispatched
+      signature: "State"
+      description: "All synthesizers have been launched as parallel sub-agents"
+    - name: synthesizers_collected
+      signature: "State"
+      description: "All synthesizer results have been received"
+    - name: review_report_complete
+      signature: "ReviewReport"
+      description: "The review report contains all findings, convergence analysis, and severity breakdown"
+    - name: action_plan_complete
+      signature: "ActionPlan"
+      description: "The action plan contains per-finding consensus, implementation checklist, and deferred items"
+    - name: consensus_reached
+      signature: "Finding"
+      description: ">= 3 synthesizers agree on the response action for this finding"
+    - name: is_standalone
+      signature: "State"
+      description: "Invoked without a parent method — no retraction input, mandatory_dimensions empty"
+    - name: is_delegated
+      signature: "State"
+      description: "Invoked by a parent method via retraction — retraction input contains mandatory_dimensions and constraints"
+  axioms:
+    - id: Ax-1
+      name: Finding citation required
+      formal: "forall f : Finding. finding_cited(f)"
+      rationale: >
+        Every finding must have a specific citation: file:line for source code, section reference
+        for documents, key-path for YAML. Uncited findings are opinions, not review results.
+        Consistent with M3-PHRV Ax-1 and P-GH/M2-REVIEW Ax-1.
+    - id: Ax-2
+      name: Mandatory dimension coverage
+      formal: "forall s : State. is_delegated(s) -> all_mandatory_covered(s)"
+      rationale: >
+        When invoked via retraction from a parent method, every mandatory dimension in the
+        retraction input must be assigned to at least one advisor. This preserves domain-specific
+        coverage guarantees (e.g., P-GH Ax-2 delivery rule coverage, M3-PHRV PRD checklist)
+        through the delegation boundary. When invoked standalone, this axiom is vacuously true.
+    - id: Ax-3
+      name: Advisor independence
+      formal: >
+        forall a1, a2 : Advisor. a1 != a2 ->
+          NOT observes(a1, findings_of(a2)) AND NOT observes(a2, findings_of(a1))
+      rationale: >
+        Advisors execute in parallel isolation. No advisor sees another advisor's findings
+        during its review. The value of M4-ADVREV is in divergent perspectives — if advisors
+        could see each other, they would anchor on early findings.
+    - id: Ax-4
+      name: Synthesizer-advisor separation
+      formal: >
+        forall syn : Synthesizer, a : Advisor.
+          NOT same_execution_context(syn, a)
+      rationale: >
+        Synthesizers are contrarian to the REVIEWS, not to the artifact. They must not share
+        execution context with advisors. The phase boundary (Phase A complete before Phase B
+        starts) enforces this structurally.
+    - id: Ax-5
+      name: Consensus rules
+      formal: >
+        forall f : Finding.
+          (|{syn | response(syn, f) = A}| >= 3 -> consensus_action(f) = A) AND
+          (NOT exists A. |{syn | response(syn, f) = A}| >= 3 ->
+            consensus_action(f) = most_conservative({response(syn, f) | syn in synthesizers}))
+      rationale: >
+        Consensus requires >= 3 synthesizers agreeing on the same action. When no majority
+        exists, the most conservative action wins (accept > accept_with_refinement > defer >
+        acknowledge > reject) and the finding is marked as disputed. The PO resolves disputes.
+      conservatism_order: "accept > accept_with_refinement > defer > acknowledge > reject"
+      note: "merge votes resolved first — merged findings inherit the parent's consensus"
+    - id: Ax-6
+      name: Iteration bound
+      formal: "forall s : State. iteration_count(s) <= 2"
+      rationale: >
+        The re-review loop (sigma_6 → sigma_2) is bounded at 2 iterations. Diminishing returns
+        after round 2 — consistent with M1-COUNCIL's diminishing returns detection (Ax-7).
+    - id: Ax-7
+      name: Finding mitigation required
+      formal: "forall f : Finding. severity_of(f) IN {CRITICAL, HIGH} -> finding_has_mitigation(f)"
+      rationale: >
+        Every CRITICAL or HIGH finding must propose a specific mitigation. Findings that
+        identify problems without proposing solutions are not actionable. MEDIUM and LOW
+        findings may omit mitigations.
+  domain_boundary_note: >
+    Excludes: the content domain of the artifact (D_ADVREV tracks review structure, not
+    the subject matter); fixing found issues (M4-ADVREV produces an Action Plan, it does
+    not apply fixes); debate with convergence (use M1-COUNCIL for that); the internal
+    logic of each advisor/synthesizer (they are sub-agents with their own reasoning).
+  initial_state_valid_claim: >
+    A state with Artifact loaded, no Findings, no ReviewReport, no ActionPlan,
+    iteration_count = 0, mandatory dimensions from retraction input (or empty if standalone)
+    satisfies all axioms: Ax-1 (vacuously — no Findings), Ax-2 (not yet evaluated — cast
+    not designed), Ax-3 (no advisors dispatched), Ax-4 (no synthesizers dispatched),
+    Ax-5 (no consensus computed), Ax-6 (0 <= 2), Ax-7 (vacuously — no Findings). Valid.
+  terminal_state_valid_claim: >
+    A state with all findings cited (Ax-1), all mandatory dimensions covered (Ax-2),
+    advisors ran in isolation (Ax-3), synthesizers separate from advisors (Ax-4),
+    consensus computed per rules (Ax-5), iteration_count <= 2 (Ax-6), CRITICAL/HIGH
+    findings have mitigations (Ax-7), ReviewReport and ActionPlan complete. Valid.
+
+roles:
+  - id: rho_orchestrator
+    description: >
+      The agent running the adversarial review pipeline. Designs advisor and synthesizer
+      casts, dispatches sub-agents in parallel, collects results, computes consensus, and
+      produces the Review Report and Action Plan. Does NOT perform the review itself — the
+      orchestrator's job is cast design, dispatch, collection, and synthesis.
+    observation_projection: >
+      pi_orchestrator = id : Mod(D_ADVREV) -> Mod(D_ADVREV) — full visibility. The
+      orchestrator sees the artifact, retraction input, all advisor findings, all synthesizer
+      responses, and computed consensus. Required for cast design and synthesis.
+    authorized_transitions:
+      - "Execute sigma_0: identify and read the target artifact"
+      - "Execute sigma_1: design advisor cast with mandatory dimension coverage"
+      - "Execute sigma_2: dispatch advisors as parallel sub-agents"
+      - "Execute sigma_3: collect advisor results and produce Review Report"
+      - "Execute sigma_4: dispatch synthesizers as parallel sub-agents"
+      - "Execute sigma_5: compute consensus matrix and produce Action Plan"
+      - "Execute sigma_6: evaluate iteration decision"
+    not_authorized:
+      - "Perform the review directly (advisors do the review)"
+      - "Respond to findings directly (synthesizers do the response)"
+      - "Override synthesizer consensus (PO resolves disputes)"
+      - "Apply fixes from the Action Plan (that is the implementer's job)"
+    coverage_claim: >
+      pi_orchestrator is the identity — full state visibility. Required because the
+      orchestrator must see all advisor findings (for the Review Report), all synthesizer
+      responses (for the consensus matrix), and the retraction input (for mandatory
+      dimension enforcement).
+    authority_claim: >
+      rho_orchestrator has authority over all seven steps. Sub-agent dispatch (sigma_2,
+      sigma_4) is authorized — advisors and synthesizers are ephemeral execution units
+      spawned by the orchestrator, not separate method roles.
+
+  - id: rho_PO
+    description: >
+      Product Owner (human) or parent method. Provides the artifact (and retraction input
+      if delegated). Receives the Action Plan. Resolves disputed findings. Decides whether
+      to apply fixes or re-review.
+    observation_projection: >
+      pi_PO : Mod(D_ADVREV) -> {artifact, review_report, action_plan, disputed_findings}
+      — sees the artifact and output artifacts, plus any findings needing human resolution.
+    authorized_transitions:
+      - "Provide artifact and retraction input (creates initial state)"
+      - "Resolve disputed findings"
+      - "Approve or adjust the Action Plan"
+      - "Request re-review (triggers sigma_6 iteration)"
+      - "Terminate session"
+    not_authorized:
+      - "Override advisor findings"
+      - "Override synthesizer consensus (except for disputed findings)"
+      - "Design the advisor or synthesizer cast"
+    coverage_claim: >
+      pi_PO covers artifact, review_report, action_plan, and disputed findings. Does not
+      cover internal orchestration state (cast design, dispatch details) — those are
+      rho_orchestrator's domain.
+    authority_claim: >
+      rho_PO holds authority over artifact provision, dispute resolution, Action Plan
+      approval, and iteration decisions. Union with rho_orchestrator covers all transitions.
+    role_partition_rationale: >
+      Two roles because orchestration and artifact ownership are distinct concerns. The
+      orchestrator designs casts and manages the pipeline; the PO owns the artifact and
+      makes final decisions on disputed findings. In standalone invocation, the PO is the
+      human user. In delegated invocation, the parent method acts as PO.
+
+step_dag:
+  topology: >
+    sigma_0 -> sigma_1 -> sigma_2 -> sigma_3 -> sigma_4 -> sigma_5 -> sigma_6
+    (with sigma_6 -> sigma_2 conditional loop, max 2 iterations)
+  formal: >
+    Gamma_ADVREV = ({sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6},
+    {(sigma_0, sigma_1), (sigma_1, sigma_2), (sigma_2, sigma_3), (sigma_3, sigma_4),
+    (sigma_4, sigma_5), (sigma_5, sigma_6), (sigma_6, sigma_2)}, sigma_0, sigma_6)
+
+loop_structure:
+  name: Re-review loop
+  loop_edge: "sigma_6 -> sigma_2"
+  condition: "PO requests re-review AND iteration_count < 2"
+  termination_certificate:
+    name: nu_iter
+    definition: "2 - iteration_count(s)"
+    type: non-negative integer
+    decrease_witness: >
+      Each re-review iteration increments iteration_count by 1, decreasing nu_iter by 1.
+      nu_iter is bounded below by 0. When nu_iter = 0, the loop exits regardless.
+    termination_condition: "iteration_count = 2 OR PO does not request re-review"
+
+phases:
+  - id: sigma_0
+    name: "Target Identification"
+    role: rho_orchestrator
+    precondition: >
+      Artifact path or description provided (via argument or retraction input).
+      If delegated: retraction input contains mandatory_dimensions, domain_constraints,
+      severity_criteria.
+    postcondition: >
+      Artifact fully read and understood. Risk surface assessed. Artifact type classified.
+      Retraction input parsed (if delegated).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - artifact_path is set and the artifact has been read in full
+      - artifact_type is classified (rfc, pr, data_model, architecture, etc.)
+      - risk_surface is a list of the artifact's key risk areas (what could go wrong)
+      - mandatory_dimensions is populated from retraction input (empty if standalone)
+      - domain_constraints is populated from retraction input (empty if standalone)
+      - Proportionality check: confirm the artifact warrants adversarial review (3-5 parallel
+        agents is overhead only justified for high-stakes artifacts)
+
+      **Rationale:**
+      The cast design in sigma_1 depends on understanding the artifact's actual content and
+      risk surface. Generic advisors ("the security person") produce generic findings. The
+      artifact must be read before the cast is designed — this is the same principle as
+      M1-COUNCIL reading the challenge before designing the cast.
+
+      **Procedure:**
+      1. Resolve the artifact from the argument or retraction input.
+      2. Read the artifact thoroughly.
+      3. Classify the artifact type.
+      4. Assess the risk surface: what are the key areas where this artifact could fail?
+      5. Parse retraction input (if delegated): extract mandatory_dimensions, domain_constraints.
+      6. Proportionality check: if the artifact is trivial, exit with a recommendation to
+         use single-perspective review instead.
+
+      **Output schema reference:**
+      - artifact_path: file path(s) of the artifact
+      - artifact_type: ArtifactType classification
+      - risk_surface: list of risk areas
+      - mandatory_dimensions: list from retraction input (or empty)
+      - domain_constraints: list from retraction input (or empty)
+      - proportional: boolean (true if adversarial review is warranted)
+      - status: PASS or EXIT (if not proportional)
+    output_schema:
+      fields:
+        - name: artifact_path
+          type: string
+          required: true
+        - name: artifact_type
+          type: enum
+          values: [rfc, pr, data_model, architecture, implementation, design, policy, method_candidate, other]
+          required: true
+        - name: risk_surface
+          type: array
+          items: string
+          min_items: 1
+          required: true
+        - name: mandatory_dimensions
+          type: array
+          items: string
+          required: true
+        - name: domain_constraints
+          type: array
+          items: string
+          required: true
+        - name: proportional
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [PASS, EXIT]
+          required: true
+    invariants:
+      hard:
+        - "artifact has been read in full (not just filename)"
+        - "risk_surface has at least 1 entry"
+        - "status = EXIT if proportional = false"
+      soft:
+        - "risk_surface entries are specific to this artifact, not generic categories"
+
+  - id: sigma_1
+    name: "Advisor Cast Design"
+    role: rho_orchestrator
+    precondition: "sigma_0 complete; artifact read; risk surface assessed; proportional = true"
+    postcondition: >
+      Advisor cast of 3-5 members designed with complementary, non-overlapping dimensions.
+      All mandatory dimensions from retraction input are covered (Ax-2). Each advisor has
+      a name, dimension, and contrarian angle.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - advisors is a list of 3-5 advisor definitions
+      - Each advisor has: name, dimension, contrarian_angle
+      - Advisor dimensions are complementary and non-overlapping
+      - Every mandatory_dimension from sigma_0 is assigned to at least one advisor (Ax-2)
+      - Dimensions are tailored to this specific artifact's risk surface (from sigma_0),
+        not generic categories
+      - Finding ID convention established: F-{first letter of advisor name}-{N}
+
+      **Dimension selection heuristic — pick 3-5 from the artifact's risk surface:**
+
+      | Artifact Type | Common Dimensions |
+      |---------------|-------------------|
+      | RFC / Architecture | Security, Scale/Performance, Operations/Day-2, Simplicity/YAGNI, Data Integrity |
+      | PR / Code Change | Correctness, Edge Cases, Performance, API Surface/Compatibility, Test Coverage |
+      | Data Model | Consistency, Query Patterns, Migration Risk, Access Control, Schema Evolution |
+      | API Design | Ergonomics, Backward Compatibility, Error Handling, Security, Performance |
+      | Process / Policy | Enforceability, Escape Hatches, Cognitive Load, Failure Modes, Incentive Alignment |
+      | Method Candidate | Formal Completeness, Guidance Adequacy, Composability, Termination, DX |
+
+      **Mandatory dimension enforcement (Ax-2):**
+      If mandatory_dimensions is non-empty, each mandatory dimension must be assigned to at
+      least one advisor. Mandatory dimensions may be grouped with related risk-surface
+      dimensions when the grouping is natural and doesn't dilute coverage.
+
+      **Procedure:**
+      1. Review the risk surface from sigma_0.
+      2. Select 3-5 dimensions that cover the risk surface.
+      3. Check mandatory_dimensions: ensure each is assigned to at least one advisor.
+      4. Design each advisor: name, dimension, contrarian angle (one-line attack posture).
+      5. Verify non-overlap: no two advisors should find the same issues.
+      6. Establish finding ID convention per advisor initial.
+
+      **Output schema reference:**
+      - advisors: list of advisor definitions
+      - mandatory_coverage: mapping of mandatory dimensions to assigned advisors
+      - finding_id_convention: mapping of advisor names to their ID prefix
+      - status: PASS
+    output_schema:
+      fields:
+        - name: advisors
+          type: array
+          items: object
+          description: "{name: string, dimension: string, contrarian_angle: string}"
+          min_items: 3
+          max_items: 5
+          required: true
+        - name: mandatory_coverage
+          type: object
+          description: "{dimension: string, assigned_to: string} — one entry per mandatory dimension"
+          required: true
+        - name: finding_id_convention
+          type: object
+          description: "{advisor_name: string, prefix: string} — e.g., Kira -> F-K"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "3 <= |advisors| <= 5"
+        - "every mandatory_dimension has at least one assigned advisor (Ax-2)"
+        - "advisor dimensions are non-overlapping"
+        - "each advisor has a unique finding ID prefix"
+      soft:
+        - "dimensions are tailored to this artifact, not generic"
+        - "contrarian angles are specific attack postures, not vague concerns"
+
+  - id: sigma_2
+    name: "Advisor Dispatch"
+    role: rho_orchestrator
+    precondition: "sigma_1 complete; advisor cast designed"
+    postcondition: "All advisors launched as parallel sub-agents; each advisor has the artifact and its specific review instructions"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All advisors are dispatched as parallel background sub-agents
+      - Each advisor receives: identity (name, dimension, contrarian role), target artifact
+        path(s), scope (their specific dimension — what to focus on, what to ignore),
+        domain_constraints (if delegated), and the mandatory output format
+      - Advisors execute in isolation — no advisor sees another's findings (Ax-3)
+      - status = PASS when all advisors are dispatched
+
+      **Advisor prompt template:**
+      Each advisor is prompted with:
+      - Identity: name, dimension, contrarian angle
+      - Target: artifact path(s) to read
+      - Scope: specific review dimension with 5-8 focus questions
+      - Domain constraints: any constraints from the parent method
+      - Output format: mandatory structured format with F-{initial}-{N} finding IDs,
+        severity, section citations, descriptions, attack scenarios, proposed mitigations
+
+      **Critical:** Advisors must return the structured format with finding IDs. The
+      synthesizers consume these IDs. The Review Report depends on them.
+
+      **Procedure:**
+      1. For each advisor in sigma_1.advisors:
+         a. Construct the advisor prompt from the template
+         b. Launch as a parallel background sub-agent (Agent tool)
+      2. All advisors launch concurrently — do not wait for one before launching the next.
+
+      **Output schema reference:**
+      - dispatched_advisors: list of dispatched advisor IDs
+      - status: PASS
+    output_schema:
+      fields:
+        - name: dispatched_advisors
+          type: array
+          items: object
+          description: "{name: string, agent_id: string, dimension: string}"
+          min_items: 3
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "all advisors from sigma_1 are dispatched"
+        - "advisors are dispatched in parallel, not sequentially"
+        - "each advisor prompt includes the mandatory output format"
+      soft:
+        - "advisor prompts include 5-8 focus questions tailored to their dimension"
+
+  - id: sigma_3
+    name: "Advisor Collection and Review Report"
+    role: rho_orchestrator
+    precondition: "sigma_2 complete; all advisors dispatched"
+    postcondition: >
+      All advisor results collected. Review Report assembled with: all findings (with
+      F-{X}-{N} IDs), convergence matrix, converging themes, severity-sorted listing.
+      All findings satisfy Ax-1 (cited) and Ax-7 (CRITICAL/HIGH have mitigations).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All advisor results have been received
+      - Each advisor's findings have been parsed with F-{X}-{N} IDs preserved
+      - All findings satisfy Ax-1: specific section/file:line citation
+      - All CRITICAL/HIGH findings satisfy Ax-7: specific proposed mitigation
+      - convergence_matrix identifies themes raised by multiple advisors
+      - converging_themes has 3-5 themes with: what, who raised it, why it matters
+      - all_findings is a flat list sorted by severity (CRITICAL first)
+      - severity_breakdown counts findings per level
+      - Review Report written to file: tmp/review-report-{artifact-slug}-{date}.md
+
+      **Collection procedure:**
+      1. As each advisor completes, present a concise summary to the PO:
+         - Advisor name, dimension, verdict
+         - CRITICAL/HIGH/MEDIUM/LOW finding counts with one-line summaries
+      2. After ALL advisors complete:
+         a. Parse all findings, preserving F-{X}-{N} IDs
+         b. Build convergence matrix: which themes appear across multiple advisors
+         c. Identify 3-5 converging themes
+         d. Sort all findings by severity
+         e. Compute severity_breakdown
+         f. Assemble and write the Review Report
+
+      **Output schema reference:**
+      - review_report: complete ReviewReport object
+      - all_findings: flat array of all findings sorted by severity
+      - convergence_matrix: theme × advisor matrix
+      - severity_breakdown: {CRITICAL: int, HIGH: int, MEDIUM: int, LOW: int}
+      - total_findings: integer count
+      - status: PASS
+    output_schema:
+      fields:
+        - name: review_report
+          type: object
+          description: "Complete Review Report with findings, convergence, and severity analysis"
+          required: true
+        - name: all_findings
+          type: array
+          items: object
+          description: "{id: FindingID, advisor: string, severity: Severity, title: string, section: string, description: string, mitigation: string}"
+          required: true
+        - name: convergence_matrix
+          type: array
+          items: object
+          description: "{theme: string, advisors: string[], max_severity: Severity, finding_ids: FindingID[]}"
+          required: true
+        - name: severity_breakdown
+          type: object
+          description: "{CRITICAL: int, HIGH: int, MEDIUM: int, LOW: int}"
+          required: true
+        - name: total_findings
+          type: integer
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "all advisor results collected (advisors_collected = true)"
+        - "every finding has a unique F-{X}-{N} ID"
+        - "every finding has a section/file:line citation (Ax-1)"
+        - "every CRITICAL/HIGH finding has a proposed mitigation (Ax-7)"
+        - "severity_breakdown sums to total_findings"
+        - "Review Report written to tmp/"
+      soft:
+        - "convergence_matrix has at least 1 theme when total_findings >= 5"
+        - "findings sorted by severity (CRITICAL first)"
+
+  - id: sigma_4
+    name: "Synthesizer Dispatch"
+    role: rho_orchestrator
+    precondition: "sigma_3 complete; Review Report assembled"
+    postcondition: "All synthesizers launched as parallel sub-agents; each gets ALL findings and the original artifact"
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Synthesizer cast designed with 3-4 members using the fixed posture archetypes:
+        Defender, Pragmatist, Strategist, Integrator
+      - All synthesizers dispatched as parallel background sub-agents
+      - Each synthesizer receives: identity (name, posture, response angle), the Review
+        Report (ALL findings), and the original artifact path(s)
+      - Synthesizers are contrarian to the REVIEWS, not to the artifact (Ax-4)
+      - status = PASS when all synthesizers dispatched
+
+      **Fixed posture archetypes:**
+      | Posture | Role |
+      |---------|------|
+      | Defender | Pushes back on overreach, concedes genuine gaps |
+      | Pragmatist | Accepts valid concerns, proposes lighter fixes |
+      | Strategist | Sequences: fix-now vs defer-to-PRD vs ops-runbook |
+      | Integrator | Merges overlapping findings, spots contradictions |
+
+      **Synthesizer prompt template:**
+      Each synthesizer is prompted with:
+      - Identity: name, posture, response angle
+      - Inputs: Review Report path AND original artifact path(s)
+      - Instructions: for EACH finding (by F-{X}-{N} ID), choose a response action
+        (accept, accept-with-refinement, defer, acknowledge, reject, merge) and justify
+      - Output format: mandatory structured format with per-finding responses
+
+      **Procedure:**
+      1. Design 3-4 synthesizers with adapted names for the domain.
+      2. For each synthesizer: construct prompt, launch as parallel background sub-agent.
+      3. All synthesizers launch concurrently.
+
+      **Output schema reference:**
+      - synthesizers: list of synthesizer definitions
+      - dispatched_synthesizers: list of dispatched synthesizer IDs
+      - status: PASS
+    output_schema:
+      fields:
+        - name: synthesizers
+          type: array
+          items: object
+          description: "{name: string, posture: SynthesizerPosture, response_angle: string}"
+          min_items: 3
+          max_items: 4
+          required: true
+        - name: dispatched_synthesizers
+          type: array
+          items: object
+          description: "{name: string, agent_id: string, posture: string}"
+          min_items: 3
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "3 <= |synthesizers| <= 4"
+        - "each synthesizer has a posture from the fixed archetypes"
+        - "all synthesizers dispatched in parallel"
+        - "each synthesizer receives ALL findings, not a subset"
+      soft:
+        - "synthesizer names adapted to the artifact's domain"
+
+  - id: sigma_5
+    name: "Consensus Matrix and Action Plan"
+    role: rho_orchestrator
+    precondition: "sigma_4 complete; all synthesizers dispatched"
+    postcondition: >
+      All synthesizer results collected. Consensus matrix computed per Ax-5.
+      Action Plan assembled with: Fix Now, Defer, Acknowledge, Reject, Merged sections,
+      Implementation Checklist, and Deferred Items Summary. Action Plan written to file.
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - All synthesizer results have been received
+      - consensus_matrix contains one row per finding with votes from all synthesizers
+      - Consensus computed per Ax-5: >= 3 agree = consensus; else most conservative wins + disputed flag
+      - merge votes resolved first: merged findings inherit parent's consensus
+      - Refinements resolved: when multiple synthesizers propose refinements, pick the simplest
+      - action_plan assembled with: Fix Now, Defer, Acknowledge, Reject, Merged sections
+      - implementation_checklist is an ordered list of all changes from Fix Now and Acknowledge
+      - Action Plan written to file: tmp/action-plan-{artifact-slug}-{date}.md
+      - status = PASS when Action Plan is complete
+
+      **Consensus rules (Ax-5):**
+      - >= 3 synthesizers agree on the action -> that action wins
+      - No majority -> most conservative action wins, marked as disputed
+      - Conservatism order: accept > accept-with-refinement > defer > acknowledge > reject
+      - merge votes resolved first: if merged, finding inherits parent's consensus
+
+      **Collection procedure:**
+      1. As each synthesizer completes, present a concise summary:
+         - Name, posture, action breakdown table, key insight
+      2. After ALL synthesizers complete:
+         a. Resolve merge votes first
+         b. For each non-merged finding: tally votes, apply consensus rules
+         c. For refinements: compare proposals, pick simplest that addresses core risk
+         d. Assemble Action Plan sections
+         e. Create implementation checklist (ordered changes)
+         f. Write Action Plan to file
+
+      **Action Plan sections:**
+      - Fix Now: findings with consensus accept or accept-with-refinement
+      - Defer: findings with consensus defer, grouped by target
+      - Acknowledge: findings with consensus acknowledge (notes to add, not fixes)
+      - Reject: findings with consensus reject
+      - Merged: findings merged into other findings
+      - Implementation Checklist: ordered list of all changes
+      - Deferred Items Summary: table of deferred items for downstream work
+
+      **Output schema reference:**
+      - consensus_matrix: per-finding vote tally with consensus action
+      - action_plan: complete ActionPlan object
+      - action_summary: {fix_now: int, defer: int, acknowledge: int, reject: int, merge: int, disputed: int}
+      - implementation_checklist: ordered list of changes
+      - status: PASS
+    output_schema:
+      fields:
+        - name: consensus_matrix
+          type: array
+          items: object
+          description: "{finding_id: FindingID, votes: {synthesizer: ResponseAction}[], consensus: ConsensusAction, disputed: boolean}"
+          required: true
+        - name: action_plan
+          type: object
+          description: "Complete Action Plan with all sections"
+          required: true
+        - name: action_summary
+          type: object
+          description: "{fix_now: int, defer: int, acknowledge: int, reject: int, merge: int, disputed: int}"
+          required: true
+        - name: implementation_checklist
+          type: array
+          items: object
+          description: "{finding_id: FindingID, change: string, section: string}"
+          required: true
+        - name: status
+          type: enum
+          values: [PASS]
+          required: true
+    invariants:
+      hard:
+        - "all synthesizer results collected (synthesizers_collected = true)"
+        - "consensus_matrix has one row per non-merged finding"
+        - "consensus computed per Ax-5 rules"
+        - "disputed findings flagged for PO resolution"
+        - "Action Plan written to tmp/"
+        - "implementation_checklist covers all Fix Now and Acknowledge findings"
+      soft:
+        - "implementation_checklist items ordered by dependency and section"
+        - "deferred items grouped by target"
+
+  - id: sigma_6
+    name: "Iteration Check"
+    role: rho_orchestrator
+    precondition: "sigma_5 complete; Action Plan produced"
+    postcondition: >
+      PO has reviewed the Action Plan summary. Either: (a) session terminates (PO approves
+      or does not request re-review), or (b) fixes are applied and the pipeline loops back
+      to sigma_2 for re-review (iteration_count < 2).
+    guidance: |
+      **Constraints (what must be true after this step):**
+      - Action Plan summary presented to PO:
+        Phase A: {N} advisors produced {M} findings ({C} CRITICAL, {H} HIGH, {M} MEDIUM, {L} LOW)
+        Phase B: {N} synthesizers produced consensus on {M} findings
+        Fix now: {N}, Defer: {N}, Acknowledge: {N}, Reject: {N}, Merge: {N}, Disputed: {N}
+      - PO decides: approve the Action Plan, adjust decisions, or request re-review after fixes
+      - If PO approves: session terminates (status = COMPLETE)
+      - If PO requests re-review AND iteration_count < 2:
+        - Apply Fix Now changes to the artifact
+        - Increment iteration_count
+        - Loop back to sigma_2 with the SAME advisor cast
+        - Advisors check their original findings: "Was it fixed? Partially? New issues?"
+      - If PO requests re-review AND iteration_count >= 2: session terminates (Ax-6 bound)
+      - status = COMPLETE (terminal) or ITERATE (loop)
+
+      **Iteration support:**
+      When re-reviewing after fixes:
+      1. Re-read the artifact (now with fixes applied)
+      2. Re-launch the SAME advisor cast, but instruct them to check original findings
+      3. Skip Phase B synthesizers if all findings are resolved
+      4. Run Phase B only on remaining/new findings
+
+      **Procedure:**
+      1. Present Action Plan summary to PO.
+      2. Ask: "Want to adjust any decisions before applying fixes? Or should I proceed?"
+      3. If PO approves: status = COMPLETE, session terminates.
+      4. If PO requests re-review:
+         a. Check iteration_count < 2 (Ax-6)
+         b. Apply Fix Now changes
+         c. Increment iteration_count
+         d. Loop to sigma_2
+
+      **Output schema reference:**
+      - decision: COMPLETE or ITERATE
+      - iteration_count: current iteration count
+      - fixes_applied: boolean (true if re-review requested and fixes applied)
+      - status: COMPLETE or ITERATE
+    output_schema:
+      fields:
+        - name: decision
+          type: enum
+          values: [COMPLETE, ITERATE]
+          required: true
+        - name: iteration_count
+          type: integer
+          min_value: 0
+          max_value: 2
+          required: true
+        - name: fixes_applied
+          type: boolean
+          required: true
+        - name: status
+          type: enum
+          values: [COMPLETE, ITERATE]
+          required: true
+    invariants:
+      hard:
+        - "iteration_count <= 2 (Ax-6)"
+        - "decision = ITERATE requires iteration_count < 2"
+        - "decision = COMPLETE is final — no further iterations"
+      soft:
+        - "PO is presented with the Action Plan summary before deciding"
+
+composability:
+  claims:
+    - edge: "sigma_0 -> sigma_1"
+      claim: >
+        post(sigma_0): artifact read, risk surface assessed, mandatory_dimensions parsed
+        satisfies pre(sigma_1): artifact understood, risk surface available for cast design.
+    - edge: "sigma_1 -> sigma_2"
+      claim: >
+        post(sigma_1): advisor cast designed with mandatory coverage satisfies pre(sigma_2):
+        cast available for dispatch. Ax-2 verified at sigma_1 completion.
+    - edge: "sigma_2 -> sigma_3"
+      claim: >
+        post(sigma_2): all advisors dispatched satisfies pre(sigma_3): advisors running,
+        results incoming. sigma_3 waits for all to complete.
+    - edge: "sigma_3 -> sigma_4"
+      claim: >
+        post(sigma_3): Review Report complete with all findings satisfies pre(sigma_4):
+        findings available for synthesizer dispatch. Ax-4 enforced by phase boundary.
+    - edge: "sigma_4 -> sigma_5"
+      claim: >
+        post(sigma_4): all synthesizers dispatched satisfies pre(sigma_5): synthesizers
+        running, results incoming. sigma_5 waits for all to complete.
+    - edge: "sigma_5 -> sigma_6"
+      claim: >
+        post(sigma_5): Action Plan complete satisfies pre(sigma_6): plan available for
+        PO review and iteration decision.
+    - edge: "sigma_6 -> sigma_2 (loop)"
+      claim: >
+        post(sigma_6) when decision = ITERATE: fixes applied, iteration_count incremented,
+        iteration_count < 2 satisfies pre(sigma_2): advisors available for re-dispatch.
+        Bounded by nu_iter.
+  terminal_condition_claim: >
+    post(sigma_6) when decision = COMPLETE: Review Report and Action Plan exist,
+    all findings cited (Ax-1), mandatory dimensions covered (Ax-2), consensus computed
+    (Ax-5). This is O_ADVREV.
+  initial_condition_claim: >
+    pre(sigma_0) requires artifact path or retraction input. This holds when the
+    PO provides an artifact directly or when a parent method invokes M4-ADVREV via
+    retraction pair with the artifact in the embed.
+  contrarian_challenge:
+    weakest_edge: "sigma_3 -> sigma_4"
+    challenge: >
+      The phase boundary between advisors (Phase A) and synthesizers (Phase B) ensures
+      separation (Ax-4), but synthesizers receive the Review Report which is assembled
+      by the orchestrator. If the orchestrator introduces bias in the convergence analysis
+      (overweighting certain themes, mischaracterizing findings), the synthesizers respond
+      to a distorted picture.
+    defense_or_revision: >
+      M4-ADVREV mitigates this through two mechanisms: (1) the Review Report includes ALL
+      raw findings with their original F-{X}-{N} IDs, not just the convergence summary —
+      synthesizers can (and must) read the individual findings, not just the themes;
+      (2) the Review Report is written to a file (tmp/review-report-{slug}-{date}.md) which
+      creates an auditable artifact that the PO can inspect for orchestrator bias. The
+      convergence analysis is a convenience, not the authoritative input — the raw findings are.
+
+retraction_pairs:
+  - id: RP-ADVREV-STANDALONE
+    name: "Standalone invocation"
+    trigger: "Direct invocation via MCP tool, skill command, or strategy node"
+    embed:
+      signature: "embed_STANDALONE : {artifact_path, artifact_type} -> Mod(D_ADVREV)"
+      definition: >
+        embed_STANDALONE(input) = {
+          artifact := read(input.artifact_path),
+          artifact_type := input.artifact_type,
+          mandatory_dimensions := [],
+          domain_constraints := [],
+          is_standalone := true,
+          is_delegated := false
+        }
+    project:
+      signature: "project_STANDALONE : Mod(D_ADVREV)[O_ADVREV] -> {review_report, action_plan}"
+      definition: >
+        project_STANDALONE(t) = {
+          review_report := t.review_report,
+          action_plan := t.action_plan,
+          total_findings := t.total_findings,
+          action_summary := t.action_summary
+        }
+    retraction_verification: "Trivially holds — standalone invocation has no parent state to preserve."
+    status: verified
+
+  - id: RP-ADVREV-DELEGATED
+    name: "Parent method delegation (generic)"
+    trigger: "Parent method invokes M4-ADVREV via retraction pair"
+    embed:
+      signature: "embed_ADVREV : Mod(D_parent) -> Mod(D_ADVREV)"
+      definition: >
+        embed_ADVREV(s) = {
+          artifact := s.artifact_under_review,
+          artifact_type := s.artifact_type,
+          mandatory_dimensions := s.mandatory_dimensions,
+          domain_constraints := s.domain_constraints,
+          severity_criteria := s.severity_criteria (optional),
+          success_predicate := s.success_predicate (optional),
+          is_standalone := false,
+          is_delegated := true
+        }
+    project:
+      signature: "project_ADVREV : Mod(D_ADVREV)[O_ADVREV] -> Mod(D_parent)[post-review]"
+      definition: >
+        project_ADVREV(t) = {
+          review_report := t.review_report,
+          action_plan := t.action_plan,
+          review_verdict := derive_verdict(t.action_summary),
+          total_findings := t.total_findings,
+          severity_breakdown := t.severity_breakdown,
+          consensus_summary := t.action_summary,
+          review_complete := true
+        }
+      derive_verdict_note: >
+        derive_verdict maps the Action Plan summary to a verdict compatible with the
+        parent method's domain: if any CRITICAL findings in Fix Now -> needs_changes;
+        if only MEDIUM/LOW in Fix Now -> conditional; if no Fix Now findings -> approve.
+        Parent methods may override this derivation.
+    retraction_verification: >
+      project_ADVREV(embed_ADVREV(s)).artifact = s.artifact_under_review — the artifact
+      passes through unchanged. The review produces new artifacts (report, plan) that are
+      appended, not substituted. The mandatory_dimensions constraint (Ax-2) ensures
+      domain-specific coverage survives the delegation.
+    status: verified
+
+objective:
+  id: O_ADVREV
+  formal: >
+    O_ADVREV(s) =
+      review_report_complete(s.review_report)
+      AND action_plan_complete(s.action_plan)
+      AND (is_delegated(s) -> all_mandatory_covered(s))
+      AND forall f in s.all_findings. finding_cited(f)
+      AND forall f in s.all_findings. severity_of(f) IN {CRITICAL, HIGH} -> finding_has_mitigation(f)
+  type: terminal
+  expressible_claim: >
+    O_ADVREV references review_report_complete (declared predicate), action_plan_complete
+    (declared predicate), is_delegated (declared predicate), all_mandatory_covered (declared
+    predicate), finding_cited (declared predicate), severity_of (declared function symbol),
+    finding_has_mitigation (declared predicate). All symbols are in Sigma_ADVREV.
+    O_ADVREV is expressible as a closed sentence over Mod(D_ADVREV).
+  note: >
+    O_ADVREV is satisfied when both the Review Report and Action Plan are complete, all
+    domain-specific coverage guarantees are met, and all findings are properly cited and
+    mitigated. The quality of the review depends on advisor cast design (which is
+    constrained by Ax-2 but ultimately depends on orchestrator judgment), but the
+    structural guarantees (citation, coverage, consensus) are formally enforced.
+  progress_preorder:
+    name: "leq_ADVREV"
+    definition: >
+      States ordered by pipeline progress: s_0 (artifact loaded) < s_1 (cast designed) <
+      s_2 (advisors dispatched) < s_3 (Review Report complete) < s_4 (synthesizers dispatched)
+      < s_5 (Action Plan complete) < s_6 (iteration resolved, O_ADVREV = true).
+    well_founded: "Seven-step DAG with bounded loop (max 2 iterations). Finite state space."
+  success_profile:
+    - id: mu_1
+      name: pipeline_progress
+      formula: "|{sigma in {sigma_0..sigma_6} | completed(sigma)}| / 7"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_1 tracks step completion through the 7-step DAG. 1.0 when all steps complete.
+    - id: mu_2
+      name: finding_quality
+      formula: "|{f | finding_cited(f) AND (severity_of(f) NOT IN {CRITICAL,HIGH} OR finding_has_mitigation(f))}| / |all_findings|"
+      range: "[0, 1]"
+      terminal: "1.0"
+      proxy_claim: >
+        mu_2 tracks the proportion of findings that meet quality requirements (Ax-1, Ax-7).
+        1.0 when all findings are cited and all CRITICAL/HIGH findings have mitigations.
+    - id: mu_3
+      name: consensus_rate
+      formula: "|{f | consensus_reached(f)}| / |{f | NOT merged(f)}|"
+      range: "[0, 1]"
+      terminal: ">= 0.7"
+      proxy_claim: >
+        mu_3 tracks the proportion of non-merged findings with clear consensus (>= 3
+        synthesizers agree). Below 0.7 suggests the synthesizer cast may need adjustment
+        or the findings are genuinely ambiguous.
+
+termination:
+  certificate: >
+    nu(s) = (7 - |{sigma in base_steps | completed(sigma)}|) + (2 - iteration_count(s))
+    where base_steps = {sigma_0, sigma_1, sigma_2, sigma_3, sigma_4, sigma_5, sigma_6}
+  initial: 9
+  final: 0
+  decrease_witness: >
+    Each base step execution reduces the first term by 1. Each iteration reduces the
+    second term by 1 while re-executing sigma_2 through sigma_6. nu is bounded below
+    by 0. The maximum path length is 7 (no iterations) + 2*5 (two iterations of
+    sigma_2 through sigma_6) = 17 step executions, but nu strictly decreases because
+    iteration_count is monotonically increasing.
+
+compilation_record:
+  gates:
+    - gate: G0
+      result: PASS
+      note: >
+        Navigation complete. What: adversarial review via parallel advisors + synthesizers.
+        Who: rho_orchestrator + rho_PO. Why: parallel isolation prevents anchoring; two-phase
+        structure ensures findings are both adversarial and proportional. How: 7-step DAG
+        with bounded re-review loop. When: high-stakes artifacts needing multi-perspective
+        review. When not: trivial artifacts, structured debate needs (M1-COUNCIL), steering
+        reviews (M1-COUNCIL).
+    - gate: G1
+      result: PASS
+      note: >
+        D_ADVREV = (Sigma_ADVREV, Ax_ADVREV). 18 sorts with cardinality. 9 function symbols
+        with totality. 13 predicates with typed signatures referencing declared sorts. 7 closed
+        axioms (Ax-1 through Ax-7) with rationale. Domain boundary stated. Initial and terminal
+        state membership in Mod(D_ADVREV) claimed with axiom-by-axiom verification.
+    - gate: G2
+      result: PASS
+      note: >
+        O_ADVREV stated as conjunction of Sigma-predicates. Type: terminal. Expressibility
+        claim present. Progress preorder over 7-step DAG with well-foundedness argument.
+        Three measures (pipeline_progress, finding_quality, consensus_rate) with formulas,
+        ranges, terminal values, and proxy claims.
+    - gate: G3
+      result: PASS
+      note: >
+        Two roles (rho_orchestrator, rho_PO) with observation projections and explicit
+        authorized/not-authorized transitions. Coverage and authority claims present.
+        Role partition rationale: orchestration vs artifact ownership. Sub-agents (advisors,
+        synthesizers) are ephemeral execution units, not method roles.
+    - gate: G4
+      result: PASS
+      note: >
+        Seven steps with bounded re-review loop. Loop structure declared with termination
+        certificate nu_iter. Seven composability claims including loop edge. Terminal and
+        initial condition claims present. Contrarian challenge on sigma_3 -> sigma_4
+        (orchestrator bias in convergence analysis) defended by raw-findings availability
+        and auditable file artifact. Two retraction pairs (standalone, delegated) with
+        verification.
+    - gate: G5
+      result: PASS
+      note: >
+        All seven steps have finalized guidance in constraints-first format. Each guidance
+        block names all output_schema fields. Adequacy confirmed: sigma_0 covers artifact
+        loading and retraction parsing; sigma_1 covers cast design with mandatory dimensions;
+        sigma_2 covers advisor dispatch with prompt template; sigma_3 covers collection and
+        Review Report; sigma_4 covers synthesizer design and dispatch; sigma_5 covers
+        consensus and Action Plan; sigma_6 covers iteration decision.
+    - gate: G6
+      result: PASS
+      note: "This file (P1-EXEC/M4-ADVREV/M4-ADVREV.yaml). Structurally complete."

@@ -1,0 +1,140 @@
+sessions:
+  - id: SESSION-033
+    date: "2026-03-19"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    challenge: "EXP-002 research triage + AG-048 resolution + governance health review"
+    source: "PO research report (EXP-002 context isolation), prior session M4-ADVREV compilation, scheduled health review"
+
+    context:
+      - "EXP-002: Context isolation vs synthetic agents — 2x quality at 3x cost"
+      - "M4-ADVREV compiled earlier this session under P1-EXEC (TOPIC-REVIEW-PIPELINE, 6 decisions)"
+      - "AG-048 (M5-REFINE) potentially resolved by M4-ADVREV"
+      - "Governance health review due (scheduled SESSION-033)"
+
+    decisions:
+      - id: D-073
+        question: "Should M1-COUNCIL compiled method change to support isolation execution mode?"
+        decision: >
+          No. Axioms (Ax-3 through Ax-7) are mode-independent — they apply equally under
+          synthetic and isolated execution. Isolation is an execution architecture choice,
+          not a method modification. Add known_wip W5 referencing EXP-002.
+        status: decided
+        rationale: >
+          Harlan's analysis: Ax-3 (position non-repetition), Ax-4 (conviction stability),
+          Ax-5 (turn progress), Ax-6 (escalation boundaries), Ax-7 (diminishing returns) all
+          apply regardless of whether characters share a context window. "Turn" means something
+          different (one agent per turn vs one inference for all) but the axiom semantics hold.
+        for: "Nika, Harlan, Reva, Orion (shifted)"
+        against: "None (Orion initially wanted method-level parameterization, shifted after axiom independence analysis)"
+        position_shifts:
+          - character: Orion
+            from: "Method-level execution_mode parameter"
+            to: "Skill-level flag + known_wip entry"
+            argument: "Harlan showed axioms are mode-independent — isolation is runtime, not theory"
+
+      - id: D-074
+        question: "Should /council-team and /steering-council skills get --isolated flag?"
+        decision: >
+          Yes. Add flag, default synthetic, display cost warning (~3x tokens). Human decides
+          per invocation (Reva Option 1). Uses sub-agent blackboard pattern from EXP-002.
+        status: decided
+        rationale: >
+          Prompt-level change is reversible. 2x quality improvement at 3x cost is worth it
+          for high-stakes decisions. Three options evaluated: (1) human flag, (2) automatic
+          escalation, (3) method parameterization. Option 1 chosen — cheapest, gathers data.
+        for: "All 5"
+        against: "None"
+
+      - id: D-075
+        question: "What replication is needed before method-level changes?"
+        decision: >
+          2+ replications on different problem types. Use pv-method governance as one target.
+          (a) pv-method governance question (compare against 32 sessions synthetic baseline),
+          (b) technical architecture question (constrained solution space).
+        status: decided
+        rationale: >
+          N=1 with known confounds: turn length asymmetry (2x), round count difference (5 vs 3),
+          same model same day. Method registry changes need higher evidence bar than skill changes.
+        for: "Nika, Harlan, Reva"
+        against: "None (Orion accepted after Nika noted confound severity)"
+        position_shifts:
+          - character: Orion
+            from: "Ship method changes now based on qualitative reversal"
+            to: "Accept 2+ replication requirement"
+            argument: "Nika's point about turn length confound — longer turns may explain some quality improvement"
+
+      - id: D-076
+        question: "Does M4-ADVREV need changes from EXP-002?"
+        decision: >
+          No. M4-ADVREV already uses isolation natively (Ax-3 advisor independence).
+          Add EXP-002 as supporting evidence in the method YAML.
+        status: decided
+        rationale: >
+          M4-ADVREV's parallel isolated advisors are the exact pattern EXP-002 validated.
+          The research confirms that advisor independence (Ax-3) is empirically grounded.
+        for: "All 5"
+        against: "None"
+
+      - id: D-077
+        question: "Is AG-048 (M5-REFINE) resolved by M4-ADVREV?"
+        decision: >
+          Substantially yes. Close AG-048. M4-ADVREV provides the adversarial review engine
+          with delegation support for P3-GOV/M2-REVIEW, P2-SD/M3-PHRV, P-GH/M2-REVIEW.
+          Residual: M4-HANDOFF stress-test as strategy-level composition → AG-050 (P2).
+        status: decided
+        rationale: >
+          AG-048's core intent was making adversarial review available to P3-GOV. M4-ADVREV
+          covers this via alternative_delegation in P3-GOV/M2-REVIEW. M4-HANDOFF use case is
+          strategy-level (review node after handoff node in DAG), not method embedding — doesn't
+          change M4-HANDOFF's termination condition.
+        for: "All 5"
+        against: "None"
+        position_shifts:
+          - character: Harlan
+            from: "AG-048 not fully resolved — M4-HANDOFF gap"
+            to: "Resolved — M4-HANDOFF is strategy-level"
+            argument: "Nika's point that review isn't part of M4-HANDOFF's termination condition"
+
+      - id: D-078
+        question: "Governance health status?"
+        decision: >
+          All processes healthy. No signals at threshold. Next review: SESSION-038 (5 sessions).
+        status: decided
+        rationale: >
+          PR-01/02/03 all healthy. "Design → no artifacts" signal improving organically (M4-ADVREV
+          session produced immediate implementation). "Commission phasing" at 2/3 — watching.
+        for: "All 5"
+        against: "None"
+
+    open_questions:
+      - "AG-047: PR #31 (M1-COUNCIL v1.2) — PO review pending"
+      - "AG-049: --isolated flag implementation for skills — PO action"
+
+    artifacts_produced:
+      - "M1-COUNCIL.yaml W5 entry (EXP-002 known_wip)"
+      - "M4-ADVREV.yaml empirical_evidence section (EXP-002)"
+      - "AGENDA.yaml updated (AG-048 closed, AG-049/050/051 opened, health review done)"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: 0
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.85
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry changes (M4-ADVREV new, M1-COUNCIL/M3-PHRV/P-GH M2-REVIEW/P3-GOV M2-REVIEW updated, P1-EXEC updated). Guide sync deferred — new methods at trial status, no existing guides to update."
+        - process: PR-02
+          followed: true
+          note: "AG-048 resolved (1 session, well within threshold)."
+        - process: PR-03
+          followed: true
+          note: "No retro-producing sessions to check."
+      process_improvement_signal: >
+        Research triage sessions are efficient — structured findings with clear hypotheses
+        make council evaluation fast. The EXP-002 report format (setup, results, limitations,
+        recommendations) maps well to council agenda items.
+      member_adequacy: true

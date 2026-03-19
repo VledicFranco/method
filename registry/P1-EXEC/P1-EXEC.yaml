@@ -4,8 +4,8 @@ methodology:
   formal_type: "Phi = (D_Phi, delta_Phi, O_Phi)"
   description: >
     Methodology that receives a user challenge and selects the appropriate execution
-    method — M1-COUNCIL, M2-ORCH, or M3-TMP — then runs that method to completion
-    and returns the result. Externalizes method-selection logic into a defined
+    method — M1-COUNCIL, M2-ORCH, M3-TMP, or M4-ADVREV — then runs that method to
+    completion and returns the result. Externalizes method-selection logic into a defined
     transition function delta_EXEC rather than leaving selection implicit or ad-hoc.
   version: "1.1"
   status: compiled
@@ -54,7 +54,7 @@ domain_theory:
       description: "Evaluated properties of a Challenge relevant to method selection"
     - name: MethodChoice
       cardinality: finite
-      values: [COUNCIL, ORCH, TMP]
+      values: [COUNCIL, ORCH, TMP, ADVREV]
       description: "The selected execution method"
     - name: ExecutionResult
       cardinality: singleton_per_execution
@@ -423,6 +423,28 @@ retraction_pairs:
       definition: "project_TMP(t) = { result := ExecutionResult(t.final_response), method_completed := true }"
     retraction_verification: "project_TMP(embed_TMP(s)).challenge = s.challenge — trivially true"
     status: verified
+  - id: RP-5
+    name: Phi_EXEC_to_ADVREV
+    trigger: "Direct invocation via methodology_load_method or parent method delegation"
+    embed:
+      signature: "embed_ADVREV : Mod(D_Phi_EXEC)[pre-dispatch] -> Mod(D_ADVREV)"
+      definition: "embed_ADVREV(s) = { artifact := s.challenge.artifact, artifact_type := s.challenge.artifact_type, mandatory_dimensions := [], domain_constraints := [] }"
+      note: "When invoked via P1-EXEC routing, mandatory_dimensions is empty (standalone mode). Parent methods that delegate directly provide their own mandatory_dimensions."
+    project:
+      signature: "project_ADVREV : Mod(D_ADVREV)[terminal] -> Mod(D_Phi_EXEC)[post-method]"
+      definition: >
+        project_ADVREV(t) = {
+          result := ExecutionResult({
+            review_report: t.review_report,
+            action_plan: t.action_plan,
+            total_findings: t.total_findings,
+            action_summary: t.action_summary
+          }),
+          method_completed := true
+        }
+    retraction_verification: "project_ADVREV(embed_ADVREV(s)).challenge.artifact = s.challenge.artifact — trivially true"
+    status: verified
+
   - id: RP-4
     name: ORCH_rejected_to_TMP
     trigger: "fallback fires: method_selected = ORCH AND orch_sigma_0_rejected"
@@ -511,14 +533,14 @@ routing_feedback:
     fields:
       - name: method_used
         type: enum
-        values: [M1-COUNCIL, M2-ORCH, M3-TMP]
+        values: [M1-COUNCIL, M2-ORCH, M3-TMP, M4-ADVREV]
         description: "The method delta_EXEC selected"
       - name: routing_would_repeat
         type: boolean
         description: "PO judgment: given the result, would you have chosen the same method?"
       - name: better_alternative
         type: enum
-        values: [M1-COUNCIL, M2-ORCH, M3-TMP, none]
+        values: [M1-COUNCIL, M2-ORCH, M3-TMP, M4-ADVREV, none]
         description: "If routing_would_repeat = false: which method would have been better?"
         required: false
       - name: predicate_miscalibration

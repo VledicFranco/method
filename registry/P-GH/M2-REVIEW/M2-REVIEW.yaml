@@ -10,10 +10,17 @@ method:
     (max 3 iterations). Reviews are posted as discussion comments via add_issue_comment
     (PR number works as issue number), NOT via create_pull_request_review, because the
     reviewing agent operates under the same GitHub account as the PR author.
-  version: "1.0"
+  version: "1.1"
   status: compiled
-  compilation_date: "2026-03-15"
+  compilation_date: "2026-03-19"
   formal_grounding: "theory/F1-FTH.md"
+  evolution_note: >
+    v1.1: Added M4-ADVREV delegation support. When the PR touches >= 5 files or crosses
+    package boundaries, M2-REVIEW can delegate its sigma_1 (Read + Check) to M4-ADVREV
+    via retraction pair RP-REVIEW-ADVREV. This replaces single-perspective review with
+    adversarial multi-perspective review while preserving M2-REVIEW's domain framing
+    (PR loading in sigma_0, verdict in sigma_2, self-fix loop in sigma_3/sigma_4, and
+    report+merge in sigma_5). Council decision D-4 Tier 1.
 
 navigation:
   what: >
@@ -620,6 +627,62 @@ phases:
       soft:
         - "review_report.summary is a concise paragraph, not a repetition of all findings"
         - "if fix iterations occurred, the report documents what was fixed"
+
+delegation:
+  id: RP-REVIEW-ADVREV
+  name: "P-GH/M2-REVIEW to M4-ADVREV delegation"
+  trigger: >
+    Optional. When the PR touches >= 5 changed files or crosses package boundaries
+    (changes in multiple packages/ subdirectories). The reviewing agent or PO decides
+    whether to delegate. When not delegated, M2-REVIEW executes its original single-
+    reviewer sigma_1 (Read + Check) as before.
+  target: M4-ADVREV
+  formal_grounding: "F1-FTH Definition 6.3 (domain retraction)"
+  replaces_steps: "sigma_1 (Read + Check)"
+  preserves_steps: "sigma_0 (Load PR), sigma_2 (Verdict), sigma_3 (Fix), sigma_4 (Self-Review), sigma_5 (Report + Merge)"
+  embed:
+    signature: "embed_ADVREV : Mod(D_REVIEW)[sigma_0 complete] -> Mod(D_ADVREV)"
+    definition: >
+      embed_ADVREV(s) = {
+        artifact := s.changed_files (with full file contents, not just diffs),
+        artifact_type := pr,
+        mandatory_dimensions := [
+          "delivery_rule_coverage",
+          "correctness",
+          "test_coverage"
+        ],
+        domain_constraints := [
+          "Every applicable delivery rule must be checked against every changed file (Ax-2)",
+          "Every finding must have file:line citation (Ax-1)",
+          "Delivery rules loaded from .method/project-card.yaml"
+        ],
+        severity_criteria := {
+          CRITICAL: "compile failure, security vulnerability, or data loss risk",
+          HIGH: "incorrect logic, missing test coverage for critical path",
+          MEDIUM: "style violation, minor logic concern",
+          LOW: "documentation gap, naming inconsistency"
+        }
+      }
+  project:
+    signature: "project_ADVREV : Mod(D_ADVREV)[O_ADVREV] -> Mod(D_REVIEW)[sigma_1 complete]"
+    definition: >
+      project_ADVREV(t) = {
+        findings := t.all_findings (mapped to M2-REVIEW Finding format with file:line citations),
+        delivery_rules_checked := count_delivery_rule_findings(t.all_findings),
+        files_reviewed := |s.changed_files|,
+        status := PASS
+      }
+    note: >
+      The projection maps M4-ADVREV findings to M2-REVIEW's Finding sort. Each finding
+      retains its file:line citation (Ax-1) and severity. The delivery_rules_checked count
+      is derived from findings tagged as delivery-rule-dimension by the advisors. sigma_2
+      (Verdict) then applies Ax-3 verdict consistency on the projected findings.
+  retraction_verification: >
+    project_ADVREV(embed_ADVREV(s)) produces findings and delivery_rules_checked compatible
+    with sigma_2's precondition. The mandatory_dimensions constraint ensures M4-ADVREV
+    covers delivery rules, correctness, and test coverage. The self-fix loop (sigma_3/sigma_4)
+    operates on the projected findings as if sigma_1 produced them.
+  status: verified
 
 composability:
   claims:

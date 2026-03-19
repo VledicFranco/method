@@ -1,0 +1,63 @@
+topic:
+  id: TOPIC-REVIEW-PIPELINE
+  name: "Adversarial Review Pipeline — Formalizing /review-pipeline as M4-ADVREV"
+  status: active
+  session_count: 1
+  last_session: "2026-03-19"
+  cast:
+    - { name: Thane, role: leader, domain: "methodology architecture, composition theory" }
+    - { name: Harlan, role: contrarian, domain: "compilation gates, type systems, faithfulness" }
+    - { name: Reva, role: contrarian, domain: "DX, agent ergonomics, commission design" }
+    - { name: Orion, role: contrarian, domain: "self-modification, protocol promotion, lifecycle" }
+    - { name: Voss, role: contrarian, domain: "F1-FTH, domain retraction pairs, coalgebra" }
+
+  decisions:
+    - id: D-1
+      question: "Registry placement"
+      decision: "Compiled method M4-ADVREV under P1-EXEC, status: trial"
+      rationale: "Has step DAG structure (not protocol-eligible). Generic execution primitive (not domain-specific). Trial status allows evolution."
+      dissent: "Orion initially proposed protocol-first; shifted after Harlan showed protocols lack step DAG enforcement."
+
+    - id: D-2
+      question: "Composition model"
+      decision: "Parameterized retraction pairs. Parent methods provide artifact + mandatory_dimensions + constraints. M4-ADVREV returns action plan + consensus verdict. Also invocable standalone."
+      rationale: "Follows M1-COUNCIL precedent. Retraction pairs are the theory's composition mechanism. Standalone preserves ad-hoc usage."
+      dissent: "Risk: retraction input schema must be rich enough for all domain constraints. Mitigated by mandatory_dimensions field."
+
+    - id: D-3
+      question: "Granularity"
+      decision: "Single method with advisors + synthesizers as phases in one step DAG"
+      rationale: "Synthesizers depend on advisor output (coupled format). No routing decision. Iteration loop requires shared context."
+      dissent: "None — unanimous."
+
+    - id: D-4
+      question: "Embedding scope"
+      decision: >
+        Tier 1 (delegate): M3-PHRV, P-GH/M2-REVIEW.
+        Tier 2 (alternative mode): P3-GOV/M2-REVIEW for domain reviews.
+        Tier 3 (strategy-level): any artifact-producing method.
+        Deferred: P0-META/M1-MDES.
+      rationale: "Tier 1 are pure review methods. P3-GOV steering reviews need M1-COUNCIL debate. Compilation gates too high-stakes for trial method."
+      dissent: "Orion challenged Tier 1 mandatory coverage — resolved by mandatory_dimensions mechanism."
+
+    - id: D-5
+      question: "Mandatory dimensions"
+      decision: "Retraction input includes mandatory_dimensions[]. M4-ADVREV cast design step must cover all. Axiom-enforced."
+      rationale: "Preserves domain-specific coverage guarantees (P-GH Ax-2, M3-PHRV PRD checklist) through delegation boundary."
+      dissent: "Risk: mandatory dimensions may exceed 3-5 advisor slots. Mitigate by allowing dimension grouping."
+
+    - id: D-6
+      question: "Relationship to existing methods"
+      decision: "Existing review methods become policy wrappers around M4-ADVREV. Keep domain framing, axioms, termination conditions."
+      rationale: "Clean separation: policy (what to check) vs engine (how to check). Future methods get adversarial review for free."
+      dissent: "None."
+
+  open_questions: []
+
+  key_tensions:
+    - tension: "Formalization vs flexibility"
+      resolution: "status: trial on compiled method — formal structure with explicit lifecycle signal"
+    - tension: "Generic engine vs domain guarantees"
+      resolution: "mandatory_dimensions mechanism — parent methods declare required coverage"
+    - tension: "Replace vs compose"
+      resolution: "Existing methods become policy wrappers invoking M4-ADVREV as execution engine"

@@ -7,11 +7,18 @@ method:
     M2-DIMPL, M3-PHRV evaluates the delivered work against the PhaseDoc,
     architecture docs, and PRD. Produces a ReviewReport with per-finding citations
     (file:line) and an overall verdict. Read-only — M3-PHRV does not modify source.
-  version: "1.0"
+  version: "1.1"
   status: compiled
-  compilation_date: "2026-03-14"
+  compilation_date: "2026-03-19"
   formal_grounding: "theory/F1-FTH.md"
   source: "M1-IMPL Reviewer role (lines 215-221); P2-SD delta_SD arm 4"
+  evolution_note: >
+    v1.1: Added M4-ADVREV delegation support. When the phase artifact is high-stakes
+    (>= 5 acceptance criteria or touches architecture), M3-PHRV can delegate its sigma_1
+    (Criteria Audit) and sigma_2 (Architecture Assessment) to M4-ADVREV via retraction
+    pair RP-PHRV-ADVREV. This replaces single-perspective review with adversarial
+    multi-perspective review while preserving M3-PHRV's domain framing (acceptance criteria
+    enumeration in sigma_0, verdict production in sigma_3). Council decision D-4 Tier 1.
 
 navigation:
   what: >
@@ -461,6 +468,61 @@ composability:
       expected, actual) creates a verifiable audit trail that downstream consumers (M3-MEVO,
       human reviewers) can inspect. The composability holds structurally; semantic adequacy
       depends on reviewer diligence, which the method cannot guarantee but can make auditable.
+
+delegation:
+  id: RP-PHRV-ADVREV
+  name: "M3-PHRV to M4-ADVREV delegation"
+  trigger: >
+    Optional. When the phase artifact is high-stakes: |acceptance_criteria| >= 5 OR
+    sigma_0 identifies architecture-touching changes. The orchestrating agent or PO
+    decides whether to delegate. When not delegated, M3-PHRV executes its original
+    single-reviewer steps (sigma_1, sigma_2) as before.
+  target: M4-ADVREV
+  formal_grounding: "F1-FTH Definition 6.3 (domain retraction)"
+  replaces_steps: "sigma_1 (Criteria Audit) and sigma_2 (Architecture Assessment)"
+  preserves_steps: "sigma_0 (Orient) and sigma_3 (Report)"
+  embed:
+    signature: "embed_ADVREV : Mod(D_PHRV)[sigma_0 complete] -> Mod(D_ADVREV)"
+    definition: >
+      embed_ADVREV(s) = {
+        artifact := s.phase_artifacts,
+        artifact_type := implementation,
+        mandatory_dimensions := [
+          "acceptance_criteria_coverage",
+          "architecture_alignment",
+          "delivery_rule_compliance"
+        ],
+        domain_constraints := [
+          "Each finding must trace to a specific acceptance criterion (Ax-4)",
+          "Every acceptance criterion must be evaluated (Ax-2)",
+          "Architecture docs from sigma_0.architecture_docs must be checked"
+        ],
+        severity_criteria := {
+          CRITICAL: "compile failure or missing implementation",
+          HIGH: "runtime behavior impact or incorrect logic",
+          MEDIUM: "underspecified or partially met",
+          LOW: "documentation gap or style violation"
+        }
+      }
+  project:
+    signature: "project_ADVREV : Mod(D_ADVREV)[O_ADVREV] -> Mod(D_PHRV)[sigma_2 complete]"
+    definition: >
+      project_ADVREV(t) = {
+        criteria_results := derive_criteria_results(t.action_plan, s.acceptance_criteria),
+        architecture_findings := filter_architecture(t.all_findings),
+        architecture_aligned := |filter_architecture(t.all_findings)| == 0
+      }
+    derive_note: >
+      derive_criteria_results maps M4-ADVREV findings back to M3-PHRV acceptance criteria
+      using the finding-criterion linkage enforced by Ax-4. Each acceptance criterion gets
+      a MET or GAP result based on whether any M4-ADVREV findings reference it.
+      filter_architecture extracts findings tagged as architecture-dimension by the advisors.
+  retraction_verification: >
+    project_ADVREV(embed_ADVREV(s)) produces criteria_results and architecture_findings
+    compatible with sigma_3's precondition. The mandatory_dimensions constraint ensures
+    M4-ADVREV covers acceptance criteria, architecture, and delivery rules. sigma_3 can
+    assemble the ReviewReport from the projected output.
+  status: verified
 
 objective:
   id: O_PHRV

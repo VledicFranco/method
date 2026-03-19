@@ -9,11 +9,11 @@ method:
     — M2-REVIEW is an adapter that adds RFC-specific framing and verdict production
     around M1-COUNCIL's debate capability. M1-COUNCIL axioms (Ax-3 through Ax-7) are
     inherited via signature inclusion (D-053), not duplicated.
-  version: "0.1"
+  version: "0.2"
   status: draft
-  compilation_date: "2026-03-18"
+  compilation_date: "2026-03-19"
   formal_grounding: "theory/F1-FTH.md"
-  design_decisions: "W7 (M1-COUNCIL delegation), D-053 (signature inclusion), S030 guidelines"
+  design_decisions: "W7 (M1-COUNCIL delegation), D-053 (signature inclusion), S030 guidelines, TOPIC-REVIEW-PIPELINE D-4 (M4-ADVREV alternative mode)"
 
 navigation:
   what: >
@@ -683,6 +683,71 @@ delegation:
     context provided to the council challenge, not modified by M1-COUNCIL. The RFC
     passes through unchanged. The debate produces a verdict recommendation, not RFC
     modifications.
+
+alternative_delegation:
+  id: RP-REVIEW-ADVREV
+  name: "M2-REVIEW to M4-ADVREV alternative delegation (domain reviews only)"
+  trigger: >
+    Domain reviews only (review_type = domain). When the RFC's content is primarily
+    technical (code architecture, implementation design, data model) rather than
+    governance/process, M4-ADVREV's parallel-isolation architecture may surface more
+    diverse findings than M1-COUNCIL's convergent debate. The PO or orchestrator
+    chooses between M1-COUNCIL (debate, convergence) and M4-ADVREV (parallel isolation,
+    divergence) at sigma_2. Steering reviews ALWAYS use M1-COUNCIL — they require the
+    debate structure for essence alignment discussion.
+  target: M4-ADVREV
+  formal_grounding: "F1-FTH Definition 6.3 (domain retraction)"
+  replaces_steps: "sigma_2 (Council Debate) — replaces M1-COUNCIL delegation with M4-ADVREV delegation"
+  preserves_steps: "sigma_0 (RFC Intake), sigma_1 (Council Setup), sigma_3 (Verdict Production)"
+  constraint: "review_type = domain ONLY. Steering reviews MUST use M1-COUNCIL (Ax-REVIEW-2 requires essence debate)."
+  embed:
+    signature: "embed_ADVREV : Mod(D_REVIEW)[sigma_1 complete] -> Mod(D_ADVREV)"
+    definition: >
+      embed_ADVREV(s) = {
+        artifact := s.rfc,
+        artifact_type := rfc,
+        mandatory_dimensions := derive_from_review_dimensions(s.review_dimensions),
+        domain_constraints := [
+          "Review against the RFC's stated problem, proposed solution, and impact assessment",
+          "Evaluate technical soundness within the RFC's domain",
+          "Check for unintended consequences on adjacent systems"
+        ],
+        severity_criteria := {
+          CRITICAL: "fundamental flaw that invalidates the proposal",
+          HIGH: "significant concern requiring RFC revision",
+          MEDIUM: "concern addressable via conditions on approval",
+          LOW: "suggestion for improvement, not blocking"
+        }
+      }
+  project:
+    signature: "project_ADVREV : Mod(D_ADVREV)[O_ADVREV] -> Mod(D_REVIEW)[sigma_2 complete]"
+    definition: >
+      project_ADVREV(t) = {
+        council_artifact := {
+          type: "advrev_report",
+          review_report: t.review_report,
+          action_plan: t.action_plan
+        },
+        decisions := derive_decisions_from_action_plan(t.action_plan),
+        key_tensions := derive_tensions_from_convergence(t.convergence_matrix),
+        position_shifts := [],
+        debate_complete := true
+      }
+    derive_note: >
+      derive_decisions_from_action_plan maps M4-ADVREV consensus actions to M2-REVIEW
+      decision format. Each Fix Now finding becomes a decision with rationale from the
+      consensus matrix. derive_tensions_from_convergence maps converging themes to
+      M2-REVIEW key_tensions format. position_shifts is empty because M4-ADVREV uses
+      parallel isolation, not debate — there are no position updates to track.
+  retraction_verification: >
+    project_ADVREV(embed_ADVREV(s)) produces council_artifact, decisions, key_tensions,
+    and debate_complete compatible with sigma_3's precondition. sigma_3 can extract a
+    ReviewVerdict from the projected decisions using the same extraction rules.
+    The M4-ADVREV action_summary maps to verdict: any CRITICAL Fix Now -> block,
+    HIGH Fix Now -> request_changes, only MEDIUM/LOW -> approve_with_conditions,
+    nothing -> approve. position_shifts is empty — sigma_3 notes this in the verdict
+    rationale.
+  status: verified
 
 composability:
   claims:

@@ -908,6 +908,20 @@ known_wip:
       The Leader flags repetition based on unchanged prescription + justification.
       Formal definition (semantic similarity model) remains open for future versions
       but the pragmatic operationalization is sufficient for LLM execution.
+  - id: W5
+    status: open
+    description: >
+      Context isolation execution mode. EXP-002 (ov-research, 2026-03-19) found that
+      running council characters as isolated sub-agents (separate context windows,
+      shared transcript file) produces 2x position shifts, +43% counter-arguments, and
+      qualitatively reversed conviction trajectories vs synthetic single-context execution.
+      M1-COUNCIL axioms (Ax-3 through Ax-7) are mode-independent — they apply equally
+      under both synthetic and isolated execution (SESSION-033 D-073, Harlan's analysis).
+      Isolation is an execution architecture choice, not a method modification. The
+      /council-team skill implements the --isolated flag (D-074). Method-level
+      parameterization deferred pending 2+ replications on different problem types (D-075).
+    evidence: "ov-research/experiments/EXP-002-context-isolation"
+    council_decisions: [D-073, D-074, D-075]
 
 compilation_record:
   gates:
