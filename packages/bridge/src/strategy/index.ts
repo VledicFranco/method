@@ -7,7 +7,7 @@ export type {
   ArtifactVersion, ArtifactBundle, ArtifactStore,
   GateType, GateConfig, GateContext, GateResult,
   StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult,
-  NodeStatus, NodeResult, OversightEvent, ExecutionState, StrategyExecutionResult, StrategyExecutorConfig,
+  NodeStatus, NodeResult, OversightEvent, ExecutionState, ExecutionStateSnapshot, StrategyExecutionResult, StrategyExecutorConfig,
   StrategyRetro,
 } from '@method/core';
 
@@ -15,9 +15,12 @@ export {
   InMemoryArtifactStore, createArtifactStore,
   getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback,
   parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort,
-  loadExecutorConfig, StrategyExecutor,
+  StrategyExecutor,
   generateRetro, computeCriticalPath, retroToYaml,
 } from '@method/core';
+
+// loadExecutorConfig lives in bridge (DR-03: env access in bridge only)
+export { loadExecutorConfig } from './strategy-routes.js';
 
 // Backward-compatible alias (bridge's strategy-parser.ts used this name)
 export type { StrategyValidationResult as ValidationResult } from '@method/core';

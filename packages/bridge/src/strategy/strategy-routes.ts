@@ -9,8 +9,21 @@ import { promises as fs } from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { LlmProvider } from './llm-provider.js';
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
-import { StrategyExecutor, loadExecutorConfig } from './strategy-executor.js';
+import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig, StrategyExecutionResult } from './strategy-executor.js';
+
+/** Build executor config from environment variables with defaults (DR-03: env access in bridge only) */
+export function loadExecutorConfig(): StrategyExecutorConfig {
+  return {
+    maxParallel: parseInt(process.env.STRATEGY_MAX_PARALLEL ?? '3', 10),
+    defaultGateRetries: parseInt(process.env.STRATEGY_DEFAULT_GATE_RETRIES ?? '3', 10),
+    defaultTimeoutMs: parseInt(process.env.STRATEGY_DEFAULT_TIMEOUT_MS ?? '600000', 10),
+    defaultBudgetUsd: process.env.STRATEGY_DEFAULT_BUDGET_USD
+      ? parseFloat(process.env.STRATEGY_DEFAULT_BUDGET_USD)
+      : undefined,
+    retroDir: process.env.STRATEGY_RETRO_DIR ?? '.method/retros',
+  };
+}
 import { generateRetro, saveRetro } from './retro-generator.js';
 import type { StrategyDAG } from './strategy-parser.js';
 
@@ -31,6 +44,7 @@ interface ExecutionEntry {
   result?: StrategyExecutionResult;
   retro_path?: string;
   cost_usd: number;
+  error?: string;
 }
 
 const executions = new Map<string, ExecutionEntry>();
@@ -182,6 +196,7 @@ export function registerStrategyRoutes(
       .catch((e) => {
         entry.status = 'failed';
         entry.result = undefined;
+        entry.error = (e as Error).message;
         entry.completed_at = new Date().toISOString();
         app.log.error(
           `Strategy ${dag.id} execution ${executionId} failed: ${(e as Error).message}`,
@@ -215,7 +230,7 @@ export function registerStrategyRoutes(
       strategy_name: entry.strategy_name,
       status: entry.status,
       started_at: entry.started_at,
-      cost_usd: entry.cost_usd,
+      cost_usd: state ? state.cost_usd : entry.cost_usd,
     };
 
     if (state) {
@@ -248,6 +263,10 @@ export function registerStrategyRoutes(
 
     if (entry.retro_path) {
       response.retro_path = entry.retro_path;
+    }
+
+    if (entry.error && entry.status === 'failed') {
+      response.error = entry.error;
     }
 
     return reply.status(200).send(response);

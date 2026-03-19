@@ -281,7 +281,7 @@ strategy:
     assert.deepEqual(dag.strategy_gates[0].depends_on, ['work']);
     assert.equal(dag.strategy_gates[0].gate.type, 'algorithmic');
     assert.equal(dag.strategy_gates[0].gate.check, 'artifacts.result !== undefined');
-    assert.equal(dag.strategy_gates[0].gate.max_retries, 3); // default
+    assert.equal(dag.strategy_gates[0].gate.max_retries, 0); // forced to 0: strategy gates are single-shot
   });
 });
 

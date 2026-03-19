@@ -59,6 +59,22 @@ export interface ExecutionState {
   oversight_events: OversightEvent[];
 }
 
+/** Snapshot returned by getState() — artifacts is a frozen ArtifactBundle instead of a live store */
+export interface ExecutionStateSnapshot {
+  strategy_id: string;
+  strategy_name: string;
+  status: 'running' | 'completed' | 'failed' | 'suspended';
+  node_status: Map<string, NodeStatus>;
+  node_results: Map<string, NodeResult>;
+  artifacts: ArtifactBundle;
+  gate_results: GateResult[];
+  cost_usd: number;
+  started_at: string;
+  completed_at?: string;
+  levels: string[][];
+  oversight_events: OversightEvent[];
+}
+
 export interface StrategyExecutionResult {
   strategy_id: string;
   status: 'completed' | 'failed' | 'suspended';
@@ -82,18 +98,7 @@ export interface StrategyExecutorConfig {
   retroDir: string;
 }
 
-/** Build executor config from environment variables with defaults */
-export function loadExecutorConfig(): StrategyExecutorConfig {
-  return {
-    maxParallel: parseInt(process.env.STRATEGY_MAX_PARALLEL ?? '3', 10),
-    defaultGateRetries: parseInt(process.env.STRATEGY_DEFAULT_GATE_RETRIES ?? '3', 10),
-    defaultTimeoutMs: parseInt(process.env.STRATEGY_DEFAULT_TIMEOUT_MS ?? '600000', 10),
-    defaultBudgetUsd: process.env.STRATEGY_DEFAULT_BUDGET_USD
-      ? parseFloat(process.env.STRATEGY_DEFAULT_BUDGET_USD)
-      : undefined,
-    retroDir: process.env.STRATEGY_RETRO_DIR ?? '.method/retros',
-  };
-}
+// loadExecutorConfig() moved to @method/bridge (DR-03: core has zero transport/env deps)
 
 // ── Executor ────────────────────────────────────────────────────
 
@@ -171,7 +176,7 @@ export class StrategyExecutor {
           chunk.map((nodeId) => this.executeNode(dag, nodeMap.get(nodeId)!)),
         );
 
-        // Process results
+        // Process results — accumulate costs and gate results from all settled nodes
         for (let j = 0; j < results.length; j++) {
           const result = results[j];
           const nodeId = chunk[j];
@@ -192,8 +197,12 @@ export class StrategyExecutor {
             };
             this.state!.node_status.set(nodeId, 'failed');
             this.state!.node_results.set(nodeId, nodeResult);
+          } else {
+            // Accumulate cost and gate results from the completed NodeResult
+            const nr = result.value;
+            this.state!.cost_usd += nr.cost_usd;
+            this.state!.gate_results.push(...nr.gate_results);
           }
-          // Fulfilled results are already recorded in executeNode
         }
       }
 
@@ -257,17 +266,26 @@ export class StrategyExecutor {
     };
   }
 
-  /** Returns a snapshot of current execution state (for status endpoints) */
-  getState(): ExecutionState | null {
-    return this.state;
+  /** Returns a shallow-copy snapshot of current execution state (for status endpoints) */
+  getState(): ExecutionStateSnapshot | null {
+    if (!this.state) return null;
+    return {
+      ...this.state,
+      node_status: new Map(this.state.node_status),
+      node_results: new Map(this.state.node_results),
+      artifacts: this.state.artifacts.snapshot(),
+      gate_results: [...this.state.gate_results],
+      oversight_events: [...this.state.oversight_events],
+    };
   }
 
   // ── Private: Node Execution ─────────────────────────────────
 
   /**
    * Execute a single node with gate evaluation and retry logic.
+   * Returns the NodeResult — callers accumulate costs and gate results after Promise.allSettled.
    */
-  private async executeNode(dag: StrategyDAG, node: StrategyNode): Promise<void> {
+  private async executeNode(dag: StrategyDAG, node: StrategyNode): Promise<NodeResult> {
     this.state!.node_status.set(node.id, 'running');
 
     const startTime = Date.now();
@@ -349,7 +367,6 @@ export class StrategyExecutor {
               gateContext,
             );
             lastGateResults.push(gateResult);
-            this.state!.gate_results.push(gateResult);
 
             if (!gateResult.passed) {
               allGatesPassed = false;
@@ -361,6 +378,10 @@ export class StrategyExecutor {
                   attempt + 1,
                   maxRetries,
                 );
+                // If output was a parse fallback (raw text), warn the node to produce JSON
+                if (nodeOutput._parse_fallback) {
+                  retryFeedback = 'Note: node output was not valid JSON and was wrapped as { result: <raw text> }. Ensure the node produces JSON output.\n\n' + retryFeedback;
+                }
               }
               break; // Stop evaluating remaining gates
             }
@@ -401,8 +422,7 @@ export class StrategyExecutor {
       };
       this.state!.node_status.set(node.id, 'failed');
       this.state!.node_results.set(node.id, nodeResult);
-      this.state!.cost_usd += totalCost;
-      return;
+      return nodeResult;
     }
 
     const finalStatus: NodeStatus = allGatesPassed ? 'completed' : 'gate_failed';
@@ -420,7 +440,6 @@ export class StrategyExecutor {
 
     this.state!.node_status.set(node.id, finalStatus);
     this.state!.node_results.set(node.id, nodeResult);
-    this.state!.cost_usd += totalCost;
 
     // Store outputs in artifact store
     if (finalStatus === 'completed') {
@@ -429,6 +448,8 @@ export class StrategyExecutor {
         this.state!.artifacts.put(outputName, value, node.id);
       }
     }
+
+    return nodeResult;
   }
 
   /**
@@ -482,10 +503,14 @@ export class StrategyExecutor {
     }
 
     const timeoutMs = this.config.defaultTimeoutMs;
+    const abortController = new AbortController();
     let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutTimer = setTimeout(
-        () => reject(new Error(`Node "${node.id}" timed out after ${timeoutMs}ms`)),
+        () => {
+          abortController.abort();
+          reject(new Error(`Node "${node.id}" timed out after ${timeoutMs}ms`));
+        },
         timeoutMs,
       );
       if (timeoutTimer && typeof timeoutTimer === 'object' && 'unref' in timeoutTimer) {
@@ -500,6 +525,7 @@ export class StrategyExecutor {
           sessionId: `strategy-${dag.id}-${node.id}-${Date.now()}`,
           maxBudgetUsd: this.config.defaultBudgetUsd,
           allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
+          signal: abortController.signal,
         }),
         timeoutPromise,
       ]);
@@ -670,8 +696,8 @@ ${config.script}`,
       }
       return { result: parsed };
     } catch {
-      // Return the raw text as a result field
-      return { result };
+      // Return the raw text as a result field with parse fallback flag
+      return { result, _parse_fallback: true };
     }
   }
 

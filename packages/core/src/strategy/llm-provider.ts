@@ -31,6 +31,8 @@ export interface LlmRequest {
   additionalFlags?: string[];
   /** Allowed tools filter (maps to --allowedTools CLI flag) */
   allowedTools?: string[];
+  /** Abort signal for cancelling in-flight invocations (e.g., on timeout) */
+  signal?: AbortSignal;
 }
 
 export interface LlmUsage {
