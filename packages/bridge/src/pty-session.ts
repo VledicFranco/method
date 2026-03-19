@@ -7,6 +7,8 @@ export type SessionStatus = 'initializing' | 'ready' | 'working' | 'dead';
 
 export interface PtySession {
   readonly id: string;
+  /** OS process ID of the outer PTY shell (null for print-mode sessions). */
+  readonly pid: number | null;
   status: SessionStatus;
   /** Number of prompts queued (including the one currently in-flight). */
   queueDepth: number;
@@ -212,6 +214,10 @@ export function spawnSession(options: SpawnOptions): PtySession {
 
   const session: PtySession = {
     id,
+
+    get pid() {
+      return ptyProcess.pid;
+    },
 
     get status() {
       return status;
