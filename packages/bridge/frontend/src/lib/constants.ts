@@ -6,6 +6,7 @@ export const ROUTES = {
   STRATEGIES: '/app/strategies',
   STRATEGY_DETAIL: '/app/strategies/:id',
   TRIGGERS: '/app/triggers',
+  TRIGGER_DETAIL: '/app/triggers/:id',
   GOVERNANCE: '/app/governance',
   ANALYTICS: '/app/analytics',
   REGISTRY: '/app/registry',
@@ -45,4 +46,5 @@ export const NAV_ITEMS = [
   { label: 'Triggers', path: '/app/triggers', icon: 'Zap' },
   { label: 'Governance', path: '/app/governance', icon: 'Shield' },
   { label: 'Analytics', path: '/app/analytics', icon: 'BarChart3' },
+  { label: 'Registry', path: '/app/registry', icon: 'BookOpen' },
 ] as const;
