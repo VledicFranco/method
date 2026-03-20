@@ -39,6 +39,7 @@ export function registerTriggerRoutes(
   const dir = strategyDir ?? TRIGGERS_STRATEGY_DIR;
 
   // ── GET /triggers — List all registered triggers with status and stats ──
+  // PRD 019.4: Extended to return trigger_config fields for the frontend UI
 
   app.get<{
     Querystring: { strategy_id?: string };
@@ -60,6 +61,7 @@ export function registerTriggerRoutes(
         max_concurrent: t.max_concurrent,
         active_executions: t.active_executions,
         stats: t.stats,
+        trigger_config: t.trigger_config,
       })),
       paused: router.isPaused,
       total: triggers.length,
@@ -68,16 +70,58 @@ export function registerTriggerRoutes(
   });
 
   // ── GET /triggers/history — Global trigger fire history ──
+  // PRD 019.4: Extended with trigger_id query param for per-trigger filtering
 
   app.get<{
-    Querystring: { limit?: string };
+    Querystring: { limit?: string; trigger_id?: string };
   }>('/triggers/history', async (request, reply) => {
     const limit = request.query.limit ? parseInt(request.query.limit, 10) : undefined;
-    const history = router.getHistory(limit);
+    let history = router.getHistory(limit);
+
+    // Filter by trigger_id if provided
+    if (request.query.trigger_id) {
+      history = history.filter((e) => e.trigger_id === request.query.trigger_id);
+    }
 
     return reply.status(200).send({
       events: history,
       count: history.length,
+    });
+  });
+
+  // ── GET /triggers/:id — Single trigger detail ──
+  // PRD 019.4: New endpoint for trigger detail slide-over and deep links
+
+  app.get<{
+    Params: { id: string };
+  }>('/triggers/:id', async (request, reply) => {
+    const { id } = request.params;
+
+    // Find the trigger in registrations
+    const triggers = router.getStatus();
+    const trigger = triggers.find((t) => t.trigger_id === id);
+
+    if (!trigger) {
+      return reply.status(404).send({ error: `Trigger not found: ${id}` });
+    }
+
+    // Get recent fires for this trigger
+    const allHistory = router.getHistory();
+    const recentFires = allHistory
+      .filter((e) => e.trigger_id === id)
+      .slice(-10);
+
+    return reply.status(200).send({
+      trigger_id: trigger.trigger_id,
+      strategy_id: trigger.strategy_id,
+      strategy_path: trigger.strategy_path,
+      type: trigger.trigger_config.type,
+      enabled: trigger.enabled,
+      max_concurrent: trigger.max_concurrent,
+      active_executions: trigger.active_executions,
+      stats: trigger.stats,
+      trigger_config: trigger.trigger_config,
+      recent_fires: recentFires,
     });
   });
 

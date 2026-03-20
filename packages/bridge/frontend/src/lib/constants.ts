@@ -6,6 +6,7 @@ export const ROUTES = {
   STRATEGIES: '/app/strategies',
   STRATEGY_DETAIL: '/app/strategies/:id',
   TRIGGERS: '/app/triggers',
+  TRIGGER_DETAIL: '/app/triggers/:id',
   GOVERNANCE: '/app/governance',
   ANALYTICS: '/app/analytics',
   REGISTRY: '/app/registry',

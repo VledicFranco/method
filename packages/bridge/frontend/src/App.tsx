@@ -94,6 +94,7 @@ export function App() {
             <Route path="/app/sessions" element={<Sessions />} />
             <Route path="/app/strategies" element={<Strategies />} />
             <Route path="/app/triggers" element={<Triggers />} />
+            <Route path="/app/triggers/:id" element={<Triggers />} />
             <Route path="/app/governance" element={<Governance />} />
             <Route path="/app/analytics" element={<Analytics />} />
             <Route path="/app/registry" element={<Registry />} />
