@@ -11,6 +11,8 @@ export interface LlmRequest {
   sessionId: string;
   /** Resume an existing conversation */
   resumeSessionId?: string;
+  /** Start a fresh session with this ID (for context refresh) */
+  refreshSessionId?: string;
   /** Maximum budget in USD for this invocation */
   maxBudgetUsd?: number;
   /** Additional system prompt appended to project CLAUDE.md */
