@@ -126,7 +126,7 @@ Repositories/ (root project)
 - Phase 2 will introduce Genesis agent with: spawning, session management, initialization prompt, polling loop, and MCP tools
 
 **5. Event Aggregation**
-- All events (from all projects) are accumulated at root level (`.method/genesis-events.yaml` or in-memory store)
+- All events (from all projects) are accumulated at root level
 - **Event schema:** Each event is tagged with `project_id` (relative path) for isolation filtering
 
   ```typescript
@@ -138,7 +138,8 @@ Repositories/ (root project)
   }
   ```
 
-- Event log capped at 10K events; oldest events pruned on overflow (respects project_id isolation — does not preferentially delete events from one project)
+- **Phase 1 Event Durability:** Events stored in-memory only (no persistence to disk). Event log capped at 10K events; oldest events pruned on overflow (FIFO). Events are not preserved across bridge restarts.
+- **Phase 2+ Event Durability:** Persistent `.method/genesis-events.yaml` with disk sync after each poll cycle, enabling event replay and Genesis session recovery after restarts.
 - Sessions belong to specific projects; queries for project A cannot see project B's events
 - Genesis (Phase 2) will consume events via `project_read_events(project_id?)` to filter by project or get all
 
@@ -188,6 +189,11 @@ MAX_PROJECTS=50                             # safety limit on auto-discovery
 6. Load project config from each `.method/project-config.yaml`
 7. Initialize route handlers with project context
 
+**Initialization Failure Handling:**
+- If `.method/` creation fails for any project (permissions, disk full, etc.): log error, mark project with `init_failed: true` in registry, and **continue discovery** (do not abort for other projects)
+- Failed projects are visible in `/projects` list with error details
+- User can manually fix the issue and retry via `POST /projects/:id/init-retry` (which attempts `.method/` creation again)
+
 **Optional re-scan:** `POST /projects/rescan` allows manual re-discovery (useful if new repos added after bridge startup)
 
 ### 4.2 Project Model
@@ -227,6 +233,11 @@ project_config:
 - If present: bridge loads and validates (id must match expected relative path)
 - Per-project `.method/project-config.yaml` is committed to git; human edits `name`, `description`, `owner` as needed
 - Root `.method/project-config.yaml` (at ROOT_DIR) is similar but `id` is "" or "root"
+
+**Configuration Reload Behavior:**
+- Phase 1: Configuration is loaded at bridge startup and cached in-memory. If user edits `.method/project-config.yaml` directly, bridge restart is required for changes to take effect.
+- Manual reload API: `POST /projects/:id/reload` reloads that project's config from disk (non-blocking, async). If config is invalid, previous version retained.
+- Hot reload (bridge watches `.method/` for changes automatically): Phase 2 feature.
 
 ### 4.3 Genesis Agent Architecture
 
