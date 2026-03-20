@@ -1,0 +1,123 @@
+rfc:
+  id: "RFC-003"
+  title: "Anti-capitulation invariant + isolated execution mode"
+  author: "Lysica (ov-research experiments EXP-002, EXP-003)"
+  date: "2026-03-19"
+  status: draft
+  domains: [theory, implementation]
+  threshold_justification: >
+    Changes to registry method YAML (M1-COUNCIL): new axiom (Ax-8), new execution mode
+    (isolated sub-agents), new monitoring heuristic (conviction trajectory direction).
+    Backed by two empirical experiments with quantified effect sizes.
+
+  problem: >
+    M1-COUNCIL's anti-capitulation behavior depends on the dual clause "defend your
+    positions" + "acknowledge good counter-arguments" in character prompts, but this
+    clause is not protected as an axiom — it can be silently modified or halved. EXP-003
+    proves that removing either half produces a distinct failure mode: defend-only
+    produces stubbornness (56% position rigidity, +86.8% mean conviction), acknowledge-only
+    produces capitulation (1 event per 3 debates, all-decline conviction pattern in 2/3
+    problems). Additionally, EXP-002 proves that isolated sub-agents produce 43-233%
+    stronger disagreement than synthetic debate, but no execution mode switch exists in
+    the method or skill.
+
+  proposal: >
+    Three changes to M1-COUNCIL v1.2: (1) Add Ax-8 requiring both anti-capitulation
+    halves in every character prompt — neither may be removed independently. (2) Add an
+    isolated execution mode where characters run as separate sub-agents communicating via
+    shared transcript file, recommended for high-stakes decisions. (3) Add conviction
+    trajectory direction as a Leader monitoring signal — all-rising = stubbornness risk,
+    all-falling-steeply = capitulation risk, mixed-moderate-decline = healthy.
+
+  alternatives:
+    - >
+      Do nothing — rely on the existing Ax-3/Ax-4 enforcement to catch failures after
+      they occur. Rejected because Ax-3/Ax-4 detect the symptom (restating, ungrounded
+      updates) but not the cause (missing half of the anti-capitulation clause). Prevention
+      is cheaper than detection.
+    - >
+      Make isolated mode the default instead of opt-in. Rejected because isolated mode
+      costs ~3x and synthetic mode with structural mechanisms is sufficient for routine
+      decisions (EXP-001 showed 1.8-2.5x improvement even without isolation).
+    - >
+      Add conviction monitoring without the axiom change. Rejected because monitoring
+      without the structural guarantee means the failure mode can still occur — monitoring
+      detects it but doesn't prevent it. The axiom prevents it by construction.
+
+  impact:
+    artifacts_changed:
+      - "registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml (axiom addition, execution mode, monitoring)"
+      - ".claude/skills/council-team/SKILL.md (skill rendering of the above)"
+      - "~/.claude/skills/council-team/SKILL.md (deployed copy)"
+    councils_affected:
+      - "Theory Council (new axiom needs formal grounding)"
+      - "Steering Council (method change approval)"
+    essence_impact: "serves_purpose — strengthens the adversarial integrity that is M1-COUNCIL's core value proposition"
+
+  evidence:
+    - experiment: EXP-002
+      location: "ov-research/experiments/EXP-002-context-isolation/"
+      finding: >
+        Isolated sub-agents produce +43% counter-arguments, 2x position shifts, 2x unique
+        proposals, opposite conviction trajectories (downward = genuine uncertainty absorption)
+        vs synthetic agents. N=1 per condition.
+    - experiment: EXP-003
+      location: "ov-research/experiments/EXP-003-anti-capitulation/"
+      finding: >
+        Dual anti-capitulation clause is strictly necessary. Defend-only: 56% position
+        rigidity, lowest shifts (2.3), highest mean conviction (86.8%). Acknowledge-only:
+        only capitulation event in experiment, all-decline conviction in 2/3 problems,
+        lowest mean conviction (68.3%). Both clauses together: zero capitulation, widest
+        conviction spread (17.7pp), moderate shifts (4.0) — conditional updating. N=3
+        problems per condition (9 total deliberations).
+
+  proposed_changes:
+    - change: "New axiom Ax-8"
+      detail: >
+        Ax-8 (Anti-Capitulation Clause Integrity): Every character prompt in sigma_1
+        (cast design) must contain both a position-defense instruction and a
+        counter-argument-acknowledgment instruction. Neither clause may be removed,
+        weakened, or made conditional independently of the other. The two clauses are
+        interactive — their combined effect (conditional updating) is not achievable by
+        either clause alone.
+      rationale: "EXP-003: defend-only → stubbornness, acknowledge-only → capitulation"
+
+    - change: "Isolated execution mode"
+      detail: >
+        Add an execution_mode parameter to sigma_2 (debate loop): synthetic (default,
+        current behavior) or isolated (separate sub-agent per character, shared transcript
+        file). In isolated mode: (a) opening positions are generated in parallel by
+        independent agents (genuine Independent Proposals), (b) response rounds are
+        sequential with each agent reading the shared transcript, (c) the Leader agent
+        delivers final decisions after reading the complete transcript. Recommended for
+        decisions that are irreversible, affect security invariants, or involve >$50K
+        resource allocation.
+      rationale: "EXP-002: 43-233% improvement across all metrics. Cost ~3x, justified for high-stakes."
+
+    - change: "Conviction trajectory monitoring"
+      detail: >
+        Add to the Leader's Ax-7 diminishing-returns assessment: if all characters are
+        gaining conviction mid-debate, flag potential stubbornness (defend-only failure
+        mode). If all characters are losing conviction rapidly, flag potential capitulation
+        (acknowledge-only failure mode). Healthy pattern: mixed direction with moderate
+        overall decline. This is a monitoring signal, not a halt condition — the Leader
+        uses it alongside the existing argument-novelty check.
+      rationale: "EXP-002 + EXP-003: conviction direction reliably distinguishes genuine deliberation from failure modes."
+
+  reviews:
+    - council: "Steering Council"
+      session: SESSION-037
+      verdict: approve_with_conditions
+      conditions:
+        - "Ax-8 accepted — implement in M1-COUNCIL v1.3"
+        - "Isolated mode in method rejected — D-073/D-088, skill-level sufficient"
+        - "Conviction monitoring accepted at skill level only — D-089"
+
+  decision:
+    outcome: approve_with_conditions
+    rationale: >
+      Ax-8 backed by EXP-003 (9 deliberations, clear mechanism). Isolation in method
+      rejected per D-073 reaffirmed (axioms mode-independent, skill handles it, N=1
+      insufficient for method-level changes per D-075). Conviction monitoring mode-dependent
+      (Reva's argument) — only genuine in isolated mode, belongs in skill --isolated section.
+    decided_in: SESSION-037

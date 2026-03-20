@@ -1,0 +1,109 @@
+sessions:
+  - id: SESSION-037
+    date: "2026-03-19"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    mode: synthetic
+    challenge: "RFC-003 review — anti-capitulation invariant + isolated mode + conviction monitoring"
+    source: "External RFC from Lysica (ov-research EXP-002, EXP-003)"
+
+    rfc_reviewed:
+      id: RFC-003
+      title: "Anti-capitulation invariant + isolated execution mode"
+      author: "Lysica (ov-research)"
+      verdict: approve_with_conditions
+      conditions:
+        - "Ax-8 accepted — implement in M1-COUNCIL v1.3"
+        - "Isolated mode in method rejected — D-073 reaffirmed, skill-level sufficient"
+        - "Conviction monitoring accepted at skill level only — add to --isolated sections"
+
+    decisions:
+      - id: D-087
+        question: "Should Ax-8 (anti-capitulation clause integrity) be added to M1-COUNCIL?"
+        decision: >
+          Accept. Add Ax-8 requiring both anti-capitulation halves (position-defense +
+          counter-argument-acknowledgment) in every character prompt. Neither may be removed
+          independently. G5 verifies sigma_1 guidance contains both instructions.
+        status: decided
+        rationale: >
+          EXP-003: 9 deliberations across 3 problem types. Defend-only → 56% position
+          rigidity, +86.8% mean conviction (stubbornness). Acknowledge-only → capitulation
+          event, all-decline conviction (capitulation). Both together → zero capitulation,
+          widest conviction spread, conditional updating. Additive axiom, cheap to enforce.
+        for: "All 5"
+        against: "None"
+        position_shifts: []
+
+      - id: D-088
+        question: "Should isolated execution mode be added to M1-COUNCIL method YAML?"
+        decision: >
+          Reject. D-073 holds — axioms are mode-independent, isolation is execution
+          architecture. EXP-003 evidence is about anti-capitulation clauses, not isolation.
+          Replication bar (D-075, 2+ runs) still not met for isolation. Skill already
+          implements --isolated flag.
+        status: decided
+        rationale: >
+          Harlan: evidence maps are EXP-003 → Ax-8, EXP-002 → isolation. The RFC bundles
+          them but the evidence for each is independent. Nika: bundling strengthens the
+          package but doesn't change the isolation evidence, which is still N=1.
+        for: "All 5 (Orion conceded coherence argument)"
+        against: "None"
+        position_shifts:
+          - character: Orion
+            from: "Package coherence argument for bundled acceptance"
+            to: "Accept Q2 rejection — skill handles it"
+            argument: "Harlan: adding isolation to method YAML doesn't change agent behavior, just duplicates the skill"
+
+      - id: D-089
+        question: "Should conviction trajectory monitoring be added to Ax-7?"
+        decision: >
+          Accept as skill-level enhancement to --isolated sections. Reject as Ax-7
+          modification. Conviction monitoring is mode-dependent (only reliable in
+          isolated mode where agents independently report conviction). Not appropriate
+          for the method's formal axiom.
+        status: decided
+        rationale: >
+          Reva: in synthetic mode, conviction is self-referential (one mind rating its
+          own characters). In isolated mode, each agent independently reports conviction.
+          The signal's value depends on execution mode. Nika: Ax-7 is already the most
+          pragmatic axiom — don't overload it with another judgment call.
+        for: "All 5 (Orion shifted)"
+        against: "None"
+        position_shifts:
+          - character: Orion
+            from: "Add to method as general monitoring"
+            to: "Skill-level only for isolated mode"
+            argument: "Reva: conviction monitoring is mode-dependent, only genuine in isolated mode"
+
+    commission:
+      task: "Implement RFC-003 accepted changes: Ax-8 in M1-COUNCIL v1.3 + conviction monitoring in skill --isolated sections"
+      governance_context: "RFC-003 partially approved (D-087/D-088/D-089). Ax-8 is additive. Isolation mode in method explicitly rejected (D-073/D-088). Conviction monitoring skill-level only."
+      routing_recommendation: "Two parallel commissions: (1) M1-COUNCIL v1.3 Ax-8, (2) skill updates for conviction monitoring"
+      prompt_generated: true
+      prompt_location: "Fired directly via sub-agents"
+
+    open_questions: []
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: 0
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.82
+        mu_3_escalation_precision: 1.0
+      note: >
+        RFC review session. D-088 tested prior decision D-073 — council reaffirmed
+        without wavering. Orion's position shifts on Q2 and Q3 were genuine concessions
+        to specific arguments (Harlan's evidence-mapping, Reva's mode-dependency).
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "Registry change (M1-COUNCIL v1.3) commissioned — guide sync needed when complete."
+        - process: PR-02
+          followed: true
+          note: "No stale items."
+        - process: PR-03
+          followed: true
+          note: "N/A."
+      process_improvement_signal: "RFC review sessions work well in synthetic mode — clear structure, bounded scope."
+      member_adequacy: true
