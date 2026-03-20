@@ -288,4 +288,44 @@ export function registerStrategyRoutes(
 
     return reply.status(200).send(list);
   });
+
+  /**
+   * GET /api/strategies/:id/dag — Return the parsed DAG structure for the visualizer.
+   * Includes node definitions, edges (depends_on), strategy gates, and capabilities.
+   */
+  app.get<{
+    Params: { id: string };
+  }>('/api/strategies/:id/dag', async (request, reply) => {
+    const { id } = request.params;
+    const entry = executions.get(id);
+
+    if (!entry) {
+      return reply.status(404).send({ error: `Execution not found: ${id}` });
+    }
+
+    const dag = entry.dag;
+
+    return reply.status(200).send({
+      id: dag.id,
+      name: dag.name,
+      version: dag.version,
+      nodes: dag.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        depends_on: node.depends_on,
+        inputs: node.inputs,
+        outputs: node.outputs,
+        gates: node.gates,
+        config: node.config,
+      })),
+      strategy_gates: dag.strategy_gates.map((sg) => ({
+        id: sg.id,
+        depends_on: sg.depends_on,
+        gate: sg.gate,
+      })),
+      capabilities: dag.capabilities,
+      oversight_rules: dag.oversight_rules,
+      context_inputs: dag.context_inputs,
+    });
+  });
 }

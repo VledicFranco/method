@@ -11,6 +11,7 @@ import { registerLiveOutputRoutes } from './live-output-route.js';
 import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
+import { registerStrategyVizRoutes } from './strategy/strategy-viz-route.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
 import { setOnMessageHook } from './channels.js';
@@ -733,6 +734,10 @@ if (STRATEGY_ENABLED) {
   const strategyProvider = new ClaudeCodeProvider(CLAUDE_BIN);
   registerStrategyRoutes(app, strategyProvider);
 }
+
+// ---------- Strategy Visualizer (PRD 018 Phase 2b-viz) ----------
+
+registerStrategyVizRoutes(app);
 
 // ---------- Event Triggers (PRD 018) ----------
 
