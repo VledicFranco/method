@@ -1,0 +1,30 @@
+retro:
+  strategy_id: S-PERF-FILE-WATCH
+  generated_by: strategy-executor
+  generated_at: '2026-03-20T12:51:12.982Z'
+  timing:
+    started_at: '2026-03-20T12:51:12.981Z'
+    completed_at: '2026-03-20T12:51:12.982Z'
+    duration_minutes: 0
+    critical_path:
+      - count_files
+  execution_summary:
+    nodes_total: 1
+    nodes_completed: 1
+    nodes_failed: 0
+    speedup_ratio: 0
+  cost:
+    total_usd: 0
+    per_node:
+      - node: count_files
+        cost_usd: 0
+  gates:
+    total: 1
+    passed: 1
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events: []
+  artifacts_produced:
+    - id: result
+      producer: count_files

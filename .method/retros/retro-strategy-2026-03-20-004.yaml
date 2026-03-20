@@ -1,0 +1,35 @@
+retro:
+  strategy_id: S-SMOKE-001
+  generated_by: strategy-executor
+  generated_at: '2026-03-20T14:43:01.541Z'
+  timing:
+    started_at: '2026-03-20T14:41:58.989Z'
+    completed_at: '2026-03-20T14:43:01.541Z'
+    duration_minutes: 1.04
+    critical_path:
+      - summarize
+      - extract
+  execution_summary:
+    nodes_total: 2
+    nodes_completed: 2
+    nodes_failed: 0
+    speedup_ratio: 1
+  cost:
+    total_usd: 0.25460350000000004
+    per_node:
+      - node: summarize
+        cost_usd: 0.25460350000000004
+      - node: extract
+        cost_usd: 0
+  gates:
+    total: 2
+    passed: 2
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events: []
+  artifacts_produced:
+    - id: summary
+      producer: summarize
+    - id: report
+      producer: extract
