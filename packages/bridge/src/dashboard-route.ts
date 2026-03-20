@@ -7,6 +7,7 @@ import type { UsagePoller, SubscriptionUsage, UsageBucket, UsagePollerStatus } f
 import type { TokenTracker } from './token-tracker.js';
 import { readMessages, type ChannelMessage } from './channels.js';
 import type { SessionDiagnostics } from './diagnostics.js';
+import type { TriggerRegistration, TriggerEvent } from './triggers/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -19,12 +20,19 @@ function loadTemplate(): string {
   return templateCache;
 }
 
+export interface TriggerDataProvider {
+  getStatus(): TriggerRegistration[];
+  getHistory(limit?: number): TriggerEvent[];
+  isPaused: boolean;
+}
+
 export function registerDashboardRoute(
   app: FastifyInstance,
   pool: SessionPool,
   usagePoller: UsagePoller,
   tokenTracker: TokenTracker,
   config: { port: number; startedAt: Date; version: string },
+  triggerProvider?: TriggerDataProvider | null,
 ): void {
   app.get('/dashboard', async (_request, reply) => {
     const sessions = pool.list();
@@ -60,6 +68,9 @@ export function registerDashboardRoute(
 
     // Channel data for each session (PRD 008)
     html = html.replace(/\{\{channels\}\}/g, renderChannelsPanel(sessions, pool));
+
+    // PRD 018 Phase 2a-4: Trigger status panel
+    html = html.replace(/\{\{triggers\}\}/g, renderTriggerPanel(triggerProvider ?? null));
 
     return reply.type('text/html').send(html);
   });
@@ -369,6 +380,7 @@ function eventIconClass(type: string): string {
     case 'started': return 'event-started';
     case 'killed': return 'event-killed';
     case 'stale': return 'event-stale';
+    case 'trigger_fired': return 'event-trigger-fired';
     default: return 'event-default';
   }
 }
@@ -541,4 +553,126 @@ export function renderSessionRows(
       </tr>`;
     })
     .join('\n');
+}
+
+// ── PRD 018 Phase 2a-4: Trigger Panel Rendering ──────────────────
+
+/**
+ * Determine the color-coded CSS class for a trigger based on its state.
+ * Green = active + healthy, Yellow = active + errors, Gray = disabled, Red = paused
+ */
+export function triggerStatusClass(
+  enabled: boolean,
+  paused: boolean,
+  errors: number,
+): string {
+  if (paused) return 'trigger-paused';
+  if (!enabled) return 'trigger-disabled';
+  if (errors > 0) return 'trigger-warning';
+  return 'trigger-active';
+}
+
+/**
+ * Render the trigger status panel for the dashboard.
+ * Includes: maintenance mode banner, trigger status table, fire history timeline.
+ */
+export function renderTriggerPanel(provider: TriggerDataProvider | null): string {
+  if (!provider) {
+    return `
+    <div class="trigger-panel" id="trigger-panel">
+      <div class="section-header">
+        <h2 class="section-title">Event Triggers</h2>
+        <span class="section-tag">disabled</span>
+      </div>
+      <div style="color: var(--muted); padding: 1rem; font-size: .82rem;">
+        Trigger system is not enabled. Set <code>TRIGGERS_ENABLED=true</code> to activate.
+      </div>
+    </div>`;
+  }
+
+  const triggers = provider.getStatus();
+  const history = provider.getHistory(20);
+  const paused = provider.isPaused;
+
+  const activeTriggers = triggers.filter(t => t.enabled && !paused);
+  const totalFires = triggers.reduce((sum, t) => sum + t.stats.total_fires, 0);
+
+  // Maintenance mode banner
+  const maintenanceBanner = paused
+    ? `<div class="trigger-maintenance-banner">MAINTENANCE MODE — All triggers paused</div>`
+    : '';
+
+  // Trigger status table
+  const triggerRows = triggers.length > 0
+    ? triggers.map(t => {
+        const statusCls = triggerStatusClass(t.enabled, paused, t.stats.errors);
+        const statusLabel = paused ? 'paused' : (t.enabled ? 'active' : 'disabled');
+        const lastFired = t.stats.last_fired_at
+          ? formatTimeAgo(new Date(t.stats.last_fired_at))
+          : '&mdash;';
+        const stratId = escapeHtml(t.strategy_id);
+        const trigType = escapeHtml(t.trigger_config.type);
+
+        return `
+          <tr>
+            <td class="mono" style="color: var(--stellar); font-weight: 500;">${stratId}</td>
+            <td class="mono">${trigType}</td>
+            <td><span class="trigger-status ${statusCls}">${statusLabel}</span></td>
+            <td class="mono timestamp">${lastFired}</td>
+            <td class="mono" style="text-align:center">${t.stats.total_fires}</td>
+            <td class="mono" style="text-align:center; ${t.stats.errors > 0 ? 'color: var(--red);' : 'color: var(--dim2);'}">${t.stats.errors}</td>
+          </tr>`;
+      }).join('')
+    : `<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 1.5rem;">No triggers registered</td></tr>`;
+
+  // Fire history timeline
+  const historyRows = history.length > 0
+    ? history.slice().reverse().map(e => {
+        const time = new Date(e.timestamp).toLocaleTimeString('en-US', {
+          hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+        return `
+          <div class="progress-entry">
+            <span class="progress-time">${escapeHtml(time)}</span>
+            <span class="progress-type" style="color: var(--bio);">${escapeHtml(e.strategy_id)}</span>
+            <span class="progress-detail">${escapeHtml(e.trigger_type)} (${e.debounced_count} event${e.debounced_count !== 1 ? 's' : ''})</span>
+          </div>`;
+      }).join('')
+    : '<div style="color: var(--muted); padding: .5rem 0; font-size: .82rem;">No recent fires</div>';
+
+  return `
+    <div class="trigger-panel" id="trigger-panel">
+      ${maintenanceBanner}
+      <div class="section-header">
+        <h2 class="section-title">Event Triggers</h2>
+        <span class="section-tag">${activeTriggers.length} active &middot; ${totalFires} total fires</span>
+      </div>
+
+      <div class="channels-grid" style="margin-top: 1rem;">
+        <div class="channel-section">
+          <table class="session-table" style="font-size: .8rem;">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Fired</th>
+                <th style="text-align:center">Fires</th>
+                <th style="text-align:center">Errors</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${triggerRows}
+            </tbody>
+          </table>
+        </div>
+        <div class="channel-section">
+          <div class="section-header">
+            <h2 class="section-title" style="font-size: .9rem;">Fire History</h2>
+            <span class="section-tag">${history.length} recent</span>
+          </div>
+          ${historyRows}
+        </div>
+      </div>
+    </div>`;
 }

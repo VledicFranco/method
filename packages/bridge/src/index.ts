@@ -85,11 +85,19 @@ app.get('/icon-512.svg', async (_req, reply) => {
 
 // ---------- Dashboard ----------
 
+// PRD 018 Phase 2a-4: triggerRouter is created later; pass a lazy provider
+// that resolves at request time (dashboard route handler is async per-request)
+const triggerDataProvider = {
+  getStatus: () => triggerRouter?.getStatus() ?? [],
+  getHistory: (limit?: number) => triggerRouter?.getHistory(limit) ?? [],
+  get isPaused() { return triggerRouter?.isPaused ?? false; },
+};
+
 registerDashboardRoute(app, pool, usagePoller, tokenTracker, {
   port: PORT,
   startedAt: BRIDGE_STARTED_AT,
   version: '0.3.0',
-});
+}, triggerDataProvider);
 
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
@@ -495,7 +503,7 @@ app.get('/sessions', async (_request, reply) => {
 
 // ---------- Channels (PRD 008) ----------
 
-import { appendMessage, readMessages, type ChannelMessage } from './channels.js';
+import { appendMessage, readMessages, createSessionChannels, type ChannelMessage } from './channels.js';
 
 /**
  * POST /sessions/:id/channels/progress — Agent reports progress
@@ -672,6 +680,27 @@ app.get<{
     }
   }
 
+  // PRD 018 Phase 2a-4: Include trigger_fired events from global trigger channel
+  try {
+    const triggerResult = readMessages(triggerChannels.events, sinceSequence);
+    for (const msg of triggerResult.messages) {
+      if (filterType && msg.type !== filterType) continue;
+      events.push({
+        bridge_session_id: 'triggers',
+        session_metadata: {
+          trigger_id: (msg.content as Record<string, unknown>)?.trigger_id,
+          strategy_id: (msg.content as Record<string, unknown>)?.strategy_id,
+        } as Record<string, unknown>,
+        message: msg,
+      });
+      if (msg.sequence > globalLastSequence) {
+        globalLastSequence = msg.sequence;
+      }
+    }
+  } catch {
+    // Trigger channel read failure is non-fatal
+  }
+
   // Sort by timestamp
   events.sort((a, b) => a.message.timestamp.localeCompare(b.message.timestamp));
 
@@ -710,6 +739,9 @@ if (STRATEGY_ENABLED) {
 const TRIGGERS_ENABLED = process.env.TRIGGERS_ENABLED !== 'false';
 const TRIGGERS_STRATEGY_DIR = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
 
+// PRD 018 Phase 2a-4: Global channel for trigger_fired events (visible in GET /channels/events)
+const triggerChannels = createSessionChannels();
+
 let triggerRouter: TriggerRouter | null = null;
 
 if (TRIGGERS_ENABLED) {
@@ -720,6 +752,21 @@ if (TRIGGERS_ENABLED) {
       info: (msg) => app.log.info(msg),
       warn: (msg) => app.log.warn(msg),
       error: (msg) => app.log.error(msg),
+    },
+    // PRD 018 Phase 2a-4: Emit trigger_fired events to the global trigger channel
+    onTriggerFired: (event) => {
+      appendMessage(
+        triggerChannels.events,
+        event.strategy_id,
+        'trigger_fired',
+        {
+          trigger_id: event.trigger_id,
+          trigger_type: event.trigger_type,
+          strategy_id: event.strategy_id,
+          debounced_count: event.debounced_count,
+          payload: event.payload,
+        },
+      );
     },
   });
 

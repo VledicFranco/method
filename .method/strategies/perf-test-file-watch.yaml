@@ -1,0 +1,63 @@
+# PRD 018 Phase 2a-4: Performance test strategy for file_watch trigger
+#
+# Test procedure (manual):
+#   1. Start the bridge: npm run bridge:dev
+#   2. Create a temp directory: mkdir -p /tmp/trigger-perf-test
+#   3. Register this strategy: POST /triggers/reload
+#   4. Rapidly create 100 files:
+#      for i in $(seq 1 100); do touch /tmp/trigger-perf-test/test-$i.txt; done
+#   5. Check fire count: GET /triggers (verify total_fires <= ceil(100/10) = 10)
+#
+# Success criterion (PRD 018 #8):
+#   100 rapid file creates produce at most ceil(100/10) = 10 trigger fires.
+#   With trailing debounce (500ms window), most rapid creates collapse into
+#   fewer batches. The max_batch_size=10 hard cap ensures bounded batch count.
+
+strategy:
+  id: S-PERF-FILE-WATCH
+  name: "Performance Test: File Watch Debounce"
+  version: "1.0"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths:
+        - "tmp/trigger-perf-test/*.txt"
+      events: [create]
+      debounce_ms: 500
+      debounce_strategy: trailing
+      max_batch_size: 10
+      max_concurrent: 1
+
+  context:
+    inputs:
+      - { name: trigger_event, type: object }
+
+  dag:
+    nodes:
+      - id: count_files
+        type: script
+        script: |
+          const event = inputs.trigger_event || {};
+          const files = event.changed_files || [];
+          return {
+            file_count: files.length,
+            debounced_count: event.debounced_count || 0,
+            perf_test: 'MEASURED'
+          };
+        inputs: [trigger_event]
+        outputs: [result]
+
+    strategy_gates:
+      - id: perf_check
+        depends_on: [count_files]
+        type: algorithmic
+        check: "artifacts.result && artifacts.result.perf_test === 'MEASURED'"
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 0.50", action: warn_human }
+
+  outputs:
+    - type: channel_event
+      target: bridge

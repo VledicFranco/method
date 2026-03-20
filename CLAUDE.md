@@ -98,6 +98,17 @@ npm run bridge:stop    # Stop
 | `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
 | `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
 | `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
+| `TRIGGERS_ENABLED` | `true` | Master switch for the event trigger system (PRD 018) |
+| `TRIGGERS_STRATEGY_DIR` | `.method/strategies` | Directory to scan for Strategy YAML files with event triggers |
+| `TRIGGERS_SCAN_ON_STARTUP` | `true` | Auto-register triggers from strategy files on bridge start |
+| `TRIGGERS_DEFAULT_DEBOUNCE_MS` | `5000` | Default debounce window when not specified in trigger YAML |
+| `TRIGGERS_MAX_BATCH_SIZE` | `10` | Max events per debounce batch before forced fire |
+| `TRIGGERS_HISTORY_SIZE` | `200` | Max trigger fire events retained in memory |
+| `TRIGGERS_GIT_POLL_INTERVAL_MS` | `5000` | Fallback polling interval for git commit detection |
+| `TRIGGERS_FILE_WATCH_RECURSIVE` | `true` | Enable recursive file watching |
+| `TRIGGERS_WEBHOOK_MAX_PAYLOAD_BYTES` | `1048576` | Max webhook payload size (1 MB) |
+| `TRIGGERS_MAX_WATCHERS` | `50` | Max total active file/git watchers (prevents inotify exhaustion) |
+| `TRIGGERS_LOG_FIRES` | `true` | Log trigger fires to stdout |
 
 ### Key Bridge Features
 
