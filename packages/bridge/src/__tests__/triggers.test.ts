@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 
+import { createHmac } from 'node:crypto';
 import { DebounceEngine } from '../triggers/debounce.js';
 import { minimatch } from '../triggers/glob-match.js';
 import { FileWatchTrigger } from '../triggers/file-watch-trigger.js';
@@ -28,6 +29,7 @@ import { scanAndRegisterTriggers } from '../triggers/startup-scan.js';
 import { ScheduleTrigger, parseCron, cronMatches, nextCronFire } from '../triggers/schedule-trigger.js';
 import { PtyWatcherTrigger } from '../triggers/pty-watcher-trigger.js';
 import { ChannelEventTrigger } from '../triggers/channel-event-trigger.js';
+import { WebhookTrigger } from '../triggers/webhook-trigger.js';
 import { evaluateSandboxedExpression } from '../triggers/sandbox-eval.js';
 import type { TimerInterface, DebouncedTriggerFire } from '../triggers/types.js';
 
@@ -2280,6 +2282,577 @@ strategy:
 
     await new Promise((r) => setTimeout(r, 200));
     assert.equal(execCalls.length, 0, 'should not fire when paused');
+
+    await router.shutdown();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 15. WEBHOOK TRIGGER (Phase 2a-3)
+// ═══════════════════════════════════════════════════════════════
+
+describe('WebhookTrigger', () => {
+  const WEBHOOK_SECRET = 'test-webhook-secret-123';
+
+  function makeSignature(body: string, secret: string): string {
+    return 'sha256=' + createHmac('sha256', secret).update(body).digest('hex');
+  }
+
+  it('fires with valid HMAC signature', () => {
+    // Set env var for the test
+    const envKey = 'TEST_WEBHOOK_SECRET_1';
+    process.env[envKey] = WEBHOOK_SECRET;
+
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+      secret_env: envKey,
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    const body = JSON.stringify({ action: 'completed', repo: 'test' });
+    const sig = makeSignature(body, WEBHOOK_SECRET);
+
+    const result = trigger.handleWebhook(
+      JSON.parse(body),
+      body,
+      { 'x-hub-signature-256': sig, 'content-type': 'application/json' },
+    );
+
+    assert.equal(result.status, 200);
+    assert.equal((result.body as any).accepted, true);
+    assert.equal(events.length, 1);
+    assert.ok(events[0].webhook_payload);
+    assert.ok(events[0].webhook_headers);
+
+    delete process.env[envKey];
+  });
+
+  it('rejects invalid HMAC signature', () => {
+    const envKey = 'TEST_WEBHOOK_SECRET_2';
+    process.env[envKey] = WEBHOOK_SECRET;
+
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+      secret_env: envKey,
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    const body = JSON.stringify({ action: 'completed' });
+    const badSig = 'sha256=0000000000000000000000000000000000000000000000000000000000000000';
+
+    const result = trigger.handleWebhook(
+      JSON.parse(body),
+      body,
+      { 'x-hub-signature-256': badSig },
+    );
+
+    assert.equal(result.status, 401);
+    assert.ok((result.body as any).error?.includes('Invalid HMAC'));
+    assert.equal(events.length, 0, 'should not fire with invalid signature');
+
+    delete process.env[envKey];
+  });
+
+  it('rejects missing signature when secret_env is configured', () => {
+    const envKey = 'TEST_WEBHOOK_SECRET_3';
+    process.env[envKey] = WEBHOOK_SECRET;
+
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+      secret_env: envKey,
+    });
+
+    trigger.start(() => {});
+
+    const body = JSON.stringify({ action: 'completed' });
+    const result = trigger.handleWebhook(
+      JSON.parse(body),
+      body,
+      { 'content-type': 'application/json' },
+    );
+
+    assert.equal(result.status, 401);
+    assert.ok((result.body as any).error?.includes('Missing X-Hub-Signature-256'));
+
+    delete process.env[envKey];
+  });
+
+  it('accepts webhook without secret_env (no HMAC required)', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/open',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    const body = JSON.stringify({ action: 'push' });
+    const result = trigger.handleWebhook(
+      JSON.parse(body),
+      body,
+      { 'content-type': 'application/json' },
+    );
+
+    assert.equal(result.status, 200);
+    assert.equal(events.length, 1);
+  });
+
+  it('applies filter expression to payload', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/filtered',
+      filter: "payload.action === 'completed'",
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    // Passes filter
+    const body1 = JSON.stringify({ action: 'completed' });
+    const result1 = trigger.handleWebhook(JSON.parse(body1), body1, {});
+    assert.equal(result1.status, 200);
+    assert.equal((result1.body as any).accepted, true);
+    assert.equal(events.length, 1);
+
+    // Fails filter
+    const body2 = JSON.stringify({ action: 'started' });
+    const result2 = trigger.handleWebhook(JSON.parse(body2), body2, {});
+    assert.equal(result2.status, 200);
+    assert.equal((result2.body as any).accepted, false);
+    assert.equal(events.length, 1, 'should not fire when filter rejects');
+  });
+
+  it('returns 503 when trigger is not active', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+    });
+
+    // Not started
+    const result = trigger.handleWebhook({}, '{}', {});
+    assert.equal(result.status, 503);
+  });
+
+  it('has correct type and path', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/my-hook',
+      methods: ['POST', 'PUT'],
+    });
+
+    assert.equal(trigger.type, 'webhook');
+    assert.equal(trigger.path, '/triggers/webhook/my-hook');
+    assert.deepEqual(trigger.methods, ['POST', 'PUT']);
+  });
+
+  it('defaults methods to POST', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+    });
+
+    assert.deepEqual(trigger.methods, ['POST']);
+  });
+
+  it('reports correct active state', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+    });
+
+    assert.equal(trigger.active, false);
+    trigger.start(() => {});
+    assert.equal(trigger.active, true);
+    trigger.stop();
+    assert.equal(trigger.active, false);
+  });
+
+  it('sanitizes sensitive headers from context', () => {
+    const trigger = new WebhookTrigger({
+      type: 'webhook',
+      path: '/triggers/webhook/test',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    const body = JSON.stringify({ data: true });
+    trigger.handleWebhook(
+      JSON.parse(body),
+      body,
+      {
+        'content-type': 'application/json',
+        'authorization': 'Bearer secret-token',
+        'x-hub-signature-256': 'sha256=abc',
+        'x-custom': 'safe-value',
+      },
+    );
+
+    assert.equal(events.length, 1);
+    const headers = events[0].webhook_headers as Record<string, string>;
+    assert.ok(!headers['authorization'], 'should exclude authorization header');
+    assert.ok(!headers['x-hub-signature-256'], 'should exclude signature header');
+    assert.equal(headers['x-custom'], 'safe-value', 'should include custom headers');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 16. TRIGGER PARSER — Webhook Type (Phase 2a-3)
+// ═══════════════════════════════════════════════════════════════
+
+describe('TriggerParser (Phase 2a-3 webhook)', () => {
+  it('parses webhook trigger', () => {
+    const yamlStr = `
+strategy:
+  id: S-WEBHOOK
+  name: "Webhook Test"
+  version: "1.0"
+  triggers:
+    - type: webhook
+      path: "/triggers/webhook/S-WEBHOOK"
+      secret_env: "WEBHOOK_SECRET_CODE_REVIEW"
+      filter: "payload.action === 'completed'"
+      methods: [POST, PUT]
+      debounce_ms: 3000
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yamlStr);
+    assert.equal(result.event_triggers.length, 1);
+    assert.equal(result.event_triggers[0].type, 'webhook');
+    if (result.event_triggers[0].type === 'webhook') {
+      assert.equal(result.event_triggers[0].path, '/triggers/webhook/S-WEBHOOK');
+      assert.equal(result.event_triggers[0].secret_env, 'WEBHOOK_SECRET_CODE_REVIEW');
+      assert.equal(result.event_triggers[0].filter, "payload.action === 'completed'");
+      assert.deepEqual(result.event_triggers[0].methods, ['POST', 'PUT']);
+      assert.equal(result.event_triggers[0].debounce_ms, 3000);
+    }
+  });
+
+  it('skips webhook trigger without path field', () => {
+    const yamlStr = `
+strategy:
+  id: S-WEBHOOK-BAD
+  name: "Bad Webhook"
+  version: "1.0"
+  triggers:
+    - type: webhook
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yamlStr);
+    assert.equal(result.event_triggers.length, 0);
+  });
+
+  it('hasEventTriggers detects webhook', () => {
+    assert.ok(hasEventTriggers(`
+strategy:
+  id: S-HAS-WH
+  triggers:
+    - type: webhook
+      path: "/triggers/webhook/test"
+`));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 17. TRIGGER ROUTER — Webhook Integration (Phase 2a-3)
+// ═══════════════════════════════════════════════════════════════
+
+describe('TriggerRouter (Phase 2a-3 webhook)', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'trigger-router-2a3-test-'));
+  });
+
+  afterEach(() => {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup */ }
+  });
+
+  function writeStrategy(filename: string, content: string): string {
+    const filePath = join(tmpDir, filename);
+    writeFileSync(filePath, content, 'utf-8');
+    return filePath;
+  }
+
+  it('registers webhook trigger from YAML', async () => {
+    const stratPath = writeStrategy('webhook.yaml', `
+strategy:
+  id: S-WEBHOOK-ROUTER
+  name: "Webhook Router Test"
+  version: "1.0"
+  triggers:
+    - type: webhook
+      path: "/triggers/webhook/S-WEBHOOK-ROUTER"
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async () => ({ execution_id: 'mock' }),
+    });
+
+    const regs = await router.registerStrategy(stratPath);
+    assert.equal(regs.length, 1);
+    assert.equal(regs[0].trigger_config.type, 'webhook');
+
+    // getWebhookTriggers returns the webhook watcher
+    const webhooks = router.getWebhookTriggers();
+    assert.equal(webhooks.length, 1);
+    assert.equal(webhooks[0].watcher.path, '/triggers/webhook/S-WEBHOOK-ROUTER');
+
+    await router.shutdown();
+  });
+
+  it('webhook trigger fires executor on valid handleWebhook', async () => {
+    const execCalls: Array<{ strategyPath: string; contextInputs: Record<string, unknown> }> = [];
+
+    const stratPath = writeStrategy('webhook-e2e.yaml', `
+strategy:
+  id: S-WH-E2E
+  name: "Webhook E2E"
+  version: "1.0"
+  triggers:
+    - type: webhook
+      path: "/triggers/webhook/S-WH-E2E"
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (strategyPath, contextInputs) => {
+        execCalls.push({ strategyPath, contextInputs });
+        return { execution_id: 'wh-exec-001' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Get the webhook watcher and directly send a webhook
+    const webhooks = router.getWebhookTriggers();
+    assert.equal(webhooks.length, 1);
+
+    const body = JSON.stringify({ ref: 'refs/heads/master', commits: [{ id: 'abc123' }] });
+    const result = webhooks[0].watcher.handleWebhook(JSON.parse(body), body, {});
+
+    assert.equal(result.status, 200);
+
+    // Wait for debounce + async execution
+    await new Promise((r) => setTimeout(r, 200));
+
+    assert.ok(execCalls.length > 0, 'executor should have been called');
+    const triggerEvent = execCalls[0].contextInputs.trigger_event as Record<string, unknown>;
+    assert.equal(triggerEvent.trigger_type, 'webhook');
+    assert.ok(triggerEvent.webhook_payload);
+
+    await router.shutdown();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 18. HOT RELOAD (Phase 2a-3)
+// ═══════════════════════════════════════════════════════════════
+
+describe('Hot Reload (Phase 2a-3)', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'hot-reload-test-'));
+  });
+
+  afterEach(() => {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup */ }
+  });
+
+  function createRouter(): TriggerRouter {
+    return new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async () => ({ execution_id: 'mock' }),
+    });
+  }
+
+  it('adds new strategy files on reload', async () => {
+    const router = createRouter();
+
+    // Start with empty directory
+    let result = await router.reloadStrategies(tmpDir);
+    assert.equal(result.added.length, 0);
+
+    // Add a strategy file
+    writeFileSync(join(tmpDir, 'new.yaml'), `
+strategy:
+  id: S-NEW-HOT
+  name: "New Hot"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    result = await router.reloadStrategies(tmpDir);
+    assert.equal(result.added.length, 1);
+    assert.ok(result.added.includes('S-NEW-HOT'));
+    assert.equal(router.getStatus().length, 1);
+
+    await router.shutdown();
+  });
+
+  it('removes deleted strategy files on reload', async () => {
+    const router = createRouter();
+
+    // Create initial file
+    const filePath = join(tmpDir, 'removable.yaml');
+    writeFileSync(filePath, `
+strategy:
+  id: S-REMOVABLE
+  name: "Removable"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    // Initial registration
+    await router.registerStrategy(filePath);
+    assert.equal(router.getStatus().length, 1);
+
+    // Delete the file
+    rmSync(filePath);
+
+    // Reload should remove the strategy
+    const result = await router.reloadStrategies(tmpDir);
+    assert.equal(result.removed.length, 1);
+    assert.ok(result.removed.includes('S-REMOVABLE'));
+    assert.equal(router.getStatus().length, 0);
+
+    await router.shutdown();
+  });
+
+  it('updates changed strategy files on reload', async () => {
+    const router = createRouter();
+
+    const filePath = join(tmpDir, 'updatable.yaml');
+    writeFileSync(filePath, `
+strategy:
+  id: S-UPDATABLE
+  name: "Updatable"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    await router.registerStrategy(filePath);
+    assert.equal(router.getStatus().length, 1);
+
+    // Modify the file (add a second trigger)
+    writeFileSync(filePath, `
+strategy:
+  id: S-UPDATABLE
+  name: "Updatable v2"
+  version: "2.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+    - type: file_watch
+      paths: ["docs/*.md"]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const result = await router.reloadStrategies(tmpDir);
+    assert.equal(result.updated.length, 1);
+    assert.ok(result.updated.includes('S-UPDATABLE'));
+    // After update, should have 2 triggers
+    assert.equal(router.getStatus().length, 2);
+
+    await router.shutdown();
+  });
+
+  it('handles non-existent directory on reload', async () => {
+    const router = createRouter();
+
+    const result = await router.reloadStrategies(join(tmpDir, 'nonexistent'));
+    assert.equal(result.added.length, 0);
+    assert.equal(result.removed.length, 0);
+    assert.equal(result.errors.length, 0);
+
+    await router.shutdown();
+  });
+
+  it('reports errors for invalid YAML on reload', async () => {
+    const router = createRouter();
+
+    // Write a valid strategy first
+    writeFileSync(join(tmpDir, 'good.yaml'), `
+strategy:
+  id: S-GOOD-RELOAD
+  name: "Good"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    // Write an invalid file that will fail hasEventTriggers (silently skipped)
+    writeFileSync(join(tmpDir, 'bad.yaml'), `invalid yaml [broken`);
+
+    const result = await router.reloadStrategies(tmpDir);
+    // The good file should be added
+    assert.ok(result.added.includes('S-GOOD-RELOAD'));
 
     await router.shutdown();
   });

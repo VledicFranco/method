@@ -1,15 +1,19 @@
 /**
- * PRD 018: Event Triggers — TriggerRouter (Phase 2a-1)
+ * PRD 018: Event Triggers — TriggerRouter (Phase 2a-1 + Phase 2a-3)
  *
  * Central coordinator managing watcher lifecycle. Registers strategies,
  * creates watchers for event triggers, debounces events, and invokes
  * strategy execution when triggers fire.
  *
+ * Phase 2a-3 additions: WebhookTrigger support, hot reload, management API support.
+ *
  * Architectural constraint (DR-03): lives entirely in @method/bridge.
  * Invokes POST /strategies/execute via internal HTTP call.
  */
 
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import yaml from 'js-yaml';
 import { DebounceEngine } from './debounce.js';
 import { FileWatchTrigger } from './file-watch-trigger.js';
@@ -17,6 +21,8 @@ import { GitCommitTrigger } from './git-commit-trigger.js';
 import { ScheduleTrigger } from './schedule-trigger.js';
 import { PtyWatcherTrigger, type PtyObservation } from './pty-watcher-trigger.js';
 import { ChannelEventTrigger, type ChannelMessageEvent } from './channel-event-trigger.js';
+import { WebhookTrigger } from './webhook-trigger.js';
+import { hasEventTriggers } from './trigger-parser.js';
 import type {
   TriggerConfig,
   TriggerRegistration,
@@ -30,6 +36,7 @@ import type {
   ScheduleTriggerConfig,
   PtyWatcherTriggerConfig,
   ChannelEventTriggerConfig,
+  WebhookTriggerConfig,
   DebounceConfig,
 } from './types.js';
 import { realTimers } from './types.js';
@@ -96,6 +103,8 @@ interface InternalRegistration extends TriggerRegistration {
 export class TriggerRouter {
   private readonly registrations = new Map<string, InternalRegistration>();
   private readonly history: TriggerEvent[] = [];
+  /** Stores content hashes per strategy ID for hot reload change detection */
+  private readonly contentHashes = new Map<string, string>();
   private readonly options: Required<Pick<TriggerRouterOptions, 'baseDir' | 'bridgeUrl' | 'maxWatchers' | 'historySize' | 'logFires'>> & {
     timer: TimerInterface;
     logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
@@ -137,6 +146,8 @@ export class TriggerRouter {
     }
 
     const strategyId = raw.strategy.id;
+    // Store content hash for hot reload change detection
+    this.contentHashes.set(strategyId, createHash('sha256').update(yamlContent).digest('hex'));
     const rawTriggers = raw.strategy.triggers ?? [];
 
     if (!Array.isArray(rawTriggers)) {
@@ -156,12 +167,6 @@ export class TriggerRouter {
 
       // Skip non-event triggers (manual, mcp_tool)
       if (!EVENT_TRIGGER_TYPES.has(triggerType)) {
-        triggerIndex++;
-        continue;
-      }
-
-      // Skip webhook — Phase 2a-3
-      if (triggerType === 'webhook') {
         triggerIndex++;
         continue;
       }
@@ -230,6 +235,7 @@ export class TriggerRouter {
     }
 
     if (toRemove.length > 0) {
+      this.contentHashes.delete(strategyId);
       this.options.logger.info(
         `Unregistered ${toRemove.length} trigger(s) for strategy ${strategyId}`,
       );
@@ -327,6 +333,7 @@ export class TriggerRouter {
     }
     this.registrations.clear();
     this.totalWatcherCount = 0;
+    this.contentHashes.clear();
     this.options.logger.info('TriggerRouter shut down');
   }
 
@@ -370,6 +377,134 @@ export class TriggerRouter {
         }
       }
     }
+  }
+
+  // ── Webhook Route Integration (Phase 2a-3) ──────────────────
+
+  /**
+   * Get all registered webhook triggers. Used by the route registration
+   * layer to create/update Fastify routes.
+   */
+  getWebhookTriggers(): Array<{ triggerId: string; watcher: WebhookTrigger }> {
+    const result: Array<{ triggerId: string; watcher: WebhookTrigger }> = [];
+    for (const [id, reg] of this.registrations) {
+      if (reg.trigger_config.type === 'webhook' && reg.watcher instanceof WebhookTrigger) {
+        result.push({ triggerId: id, watcher: reg.watcher });
+      }
+    }
+    return result;
+  }
+
+  // ── Hot Reload (Phase 2a-3) ────────────────────────────────
+
+  /**
+   * Hot reload: re-scan a strategy directory and reconcile registrations.
+   * - New strategy files → register
+   * - Changed strategy files → unregister old, register new
+   * - Deleted strategy files → unregister
+   *
+   * @returns Summary of changes: { added, updated, removed, errors }
+   */
+  async reloadStrategies(
+    strategyDir: string,
+  ): Promise<{ added: string[]; updated: string[]; removed: string[]; errors: Array<{ file: string; error: string }> }> {
+    const resolvedDir = resolve(strategyDir);
+    const result = {
+      added: [] as string[],
+      updated: [] as string[],
+      removed: [] as string[],
+      errors: [] as Array<{ file: string; error: string }>,
+    };
+
+    if (!existsSync(resolvedDir)) {
+      this.options.logger.warn(`Strategy directory not found for reload: ${resolvedDir}`);
+      return result;
+    }
+
+    // Read current files
+    let files: string[];
+    try {
+      files = readdirSync(resolvedDir).filter(
+        (f) => f.endsWith('.yaml') || f.endsWith('.yml'),
+      );
+    } catch (err) {
+      this.options.logger.error(`Failed to read strategy directory for reload: ${(err as Error).message}`);
+      return result;
+    }
+
+    // Build map of current file → strategy ID + content hash
+    const currentFiles = new Map<string, { strategyId: string; contentHash: string }>();
+    for (const file of files) {
+      const filePath = join(resolvedDir, file);
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        if (!hasEventTriggers(content)) continue;
+
+        const raw = yaml.load(content) as { strategy?: { id?: string } };
+        if (!raw?.strategy?.id) continue;
+
+        currentFiles.set(filePath, {
+          strategyId: raw.strategy.id,
+          contentHash: createHash('sha256').update(content).digest('hex'),
+        });
+      } catch (err) {
+        result.errors.push({ file, error: (err as Error).message });
+      }
+    }
+
+    // Build map of existing registrations by strategy ID → strategy path
+    const existingStrategies = new Map<string, string>();
+    for (const reg of this.registrations.values()) {
+      existingStrategies.set(reg.strategy_id, reg.strategy_path);
+    }
+
+    // Get set of strategy IDs from current files
+    const currentStrategyIds = new Set<string>();
+    for (const { strategyId } of currentFiles.values()) {
+      currentStrategyIds.add(strategyId);
+    }
+
+    // 1. Remove strategies whose files no longer exist
+    for (const [strategyId] of existingStrategies) {
+      if (!currentStrategyIds.has(strategyId)) {
+        this.unregisterStrategy(strategyId);
+        result.removed.push(strategyId);
+      }
+    }
+
+    // 2. Add new or update changed strategies
+    for (const [filePath, { strategyId, contentHash }] of currentFiles) {
+      const existingPath = existingStrategies.get(strategyId);
+
+      if (!existingPath) {
+        // New strategy
+        try {
+          await this.registerStrategy(filePath);
+          result.added.push(strategyId);
+        } catch (err) {
+          result.errors.push({ file: filePath, error: (err as Error).message });
+        }
+      } else {
+        // Check if content changed using stored hash
+        const existingHash = this.contentHashes.get(strategyId);
+        if (existingHash !== contentHash) {
+          try {
+            this.unregisterStrategy(strategyId);
+            await this.registerStrategy(filePath);
+            result.updated.push(strategyId);
+          } catch (err) {
+            result.errors.push({ file: filePath, error: (err as Error).message });
+          }
+        }
+      }
+    }
+
+    this.options.logger.info(
+      `Reload complete: ${result.added.length} added, ${result.updated.length} updated, ` +
+      `${result.removed.length} removed, ${result.errors.length} error(s)`,
+    );
+
+    return result;
   }
 
   // ── Internal ──────────────────────────────────────────────────
@@ -457,6 +592,25 @@ export class TriggerRouter {
         };
       }
 
+      case 'webhook': {
+        const path = raw.path as string | undefined;
+        if (!path || typeof path !== 'string') {
+          this.options.logger.warn('webhook trigger missing required "path" field');
+          return null;
+        }
+        return {
+          type: 'webhook',
+          path,
+          secret_env: raw.secret_env as string | undefined,
+          filter: raw.filter as string | undefined,
+          methods: raw.methods as string[] | undefined,
+          debounce_ms: raw.debounce_ms as number | undefined,
+          debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+          max_concurrent: raw.max_concurrent as number | undefined,
+          max_batch_size: raw.max_batch_size as number | undefined,
+        };
+      }
+
       default:
         return null;
     }
@@ -511,6 +665,9 @@ export class TriggerRouter {
 
       case 'channel_event':
         return new ChannelEventTrigger(config as ChannelEventTriggerConfig);
+
+      case 'webhook':
+        return new WebhookTrigger(config as WebhookTriggerConfig);
 
       default:
         return null;

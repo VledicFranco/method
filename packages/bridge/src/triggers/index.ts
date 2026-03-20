@@ -1,5 +1,5 @@
 /**
- * PRD 018: Event Triggers — Module Exports (Phase 2a-1 + Phase 2a-2)
+ * PRD 018: Event Triggers — Module Exports (Phase 2a-1 + Phase 2a-2 + Phase 2a-3)
  */
 
 export { TriggerRouter } from './trigger-router.js';
@@ -12,6 +12,7 @@ export { PtyWatcherTrigger } from './pty-watcher-trigger.js';
 export type { PtyObservation } from './pty-watcher-trigger.js';
 export { ChannelEventTrigger } from './channel-event-trigger.js';
 export type { ChannelMessageEvent } from './channel-event-trigger.js';
+export { WebhookTrigger } from './webhook-trigger.js';
 export { evaluateSandboxedExpression } from './sandbox-eval.js';
 
 export { DebounceEngine } from './debounce.js';
@@ -22,6 +23,8 @@ export type { ParsedStrategyTriggers } from './trigger-parser.js';
 
 export { scanAndRegisterTriggers } from './startup-scan.js';
 export type { ScanResult } from './startup-scan.js';
+
+export { registerTriggerRoutes } from './trigger-routes.js';
 
 export type {
   TriggerType,
@@ -39,6 +42,7 @@ export type {
   ScheduleTriggerConfig,
   PtyWatcherTriggerConfig,
   ChannelEventTriggerConfig,
+  WebhookTriggerConfig,
 } from './types.js';
 
 export { realTimers } from './types.js';

@@ -69,6 +69,18 @@ export interface ChannelEventTriggerConfig {
   max_batch_size?: number;
 }
 
+export interface WebhookTriggerConfig {
+  type: 'webhook';
+  path: string;
+  secret_env?: string;
+  filter?: string;
+  methods?: string[];
+  debounce_ms?: number;
+  debounce_strategy?: 'leading' | 'trailing';
+  max_concurrent?: number;
+  max_batch_size?: number;
+}
+
 export interface ManualTriggerConfig {
   type: 'manual';
 }
@@ -84,6 +96,7 @@ export type TriggerConfig =
   | ScheduleTriggerConfig
   | PtyWatcherTriggerConfig
   | ChannelEventTriggerConfig
+  | WebhookTriggerConfig
   | ManualTriggerConfig
   | McpToolTriggerConfig;
 
