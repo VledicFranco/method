@@ -25,6 +25,10 @@ import { GitCommitTrigger } from '../triggers/git-commit-trigger.js';
 import { TriggerRouter } from '../triggers/trigger-router.js';
 import { parseStrategyTriggers, hasEventTriggers } from '../triggers/trigger-parser.js';
 import { scanAndRegisterTriggers } from '../triggers/startup-scan.js';
+import { ScheduleTrigger, parseCron, cronMatches, nextCronFire } from '../triggers/schedule-trigger.js';
+import { PtyWatcherTrigger } from '../triggers/pty-watcher-trigger.js';
+import { ChannelEventTrigger } from '../triggers/channel-event-trigger.js';
+import { evaluateSandboxedExpression } from '../triggers/sandbox-eval.js';
 import type { TimerInterface, DebouncedTriggerFire } from '../triggers/types.js';
 
 // ── Mock Timer ──────────────────────────────────────────────────
@@ -1275,6 +1279,1007 @@ strategy:
 
     assert.equal(result.scanned, 1);
     assert.equal(result.registered, 1);
+
+    await router.shutdown();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 8. CRON PARSER (Phase 2a-2)
+// ═══════════════════════════════════════════════════════════════
+
+describe('Cron Parser', () => {
+  it('parses "* * * * *" (every minute)', () => {
+    const cron = parseCron('* * * * *');
+    assert.equal(cron.minute.values.size, 60);
+    assert.equal(cron.hour.values.size, 24);
+    assert.equal(cron.dayOfMonth.values.size, 31);
+    assert.equal(cron.month.values.size, 12);
+    assert.equal(cron.dayOfWeek.values.size, 7);
+  });
+
+  it('parses step expressions (*/15)', () => {
+    const cron = parseCron('*/15 * * * *');
+    assert.deepEqual([...cron.minute.values].sort((a, b) => a - b), [0, 15, 30, 45]);
+  });
+
+  it('parses ranges (1-5)', () => {
+    const cron = parseCron('0 9-17 * * *');
+    assert.ok(cron.minute.values.has(0));
+    assert.equal(cron.minute.values.size, 1);
+    assert.deepEqual([...cron.hour.values].sort((a, b) => a - b), [9, 10, 11, 12, 13, 14, 15, 16, 17]);
+  });
+
+  it('parses range with step (1-10/3)', () => {
+    const cron = parseCron('1-10/3 * * * *');
+    assert.deepEqual([...cron.minute.values].sort((a, b) => a - b), [1, 4, 7, 10]);
+  });
+
+  it('parses comma-separated values (1,15,30)', () => {
+    const cron = parseCron('0,15,30,45 * * * *');
+    assert.deepEqual([...cron.minute.values].sort((a, b) => a - b), [0, 15, 30, 45]);
+  });
+
+  it('parses specific cron expression (0 */6 * * *)', () => {
+    const cron = parseCron('0 */6 * * *');
+    assert.ok(cron.minute.values.has(0));
+    assert.equal(cron.minute.values.size, 1);
+    assert.deepEqual([...cron.hour.values].sort((a, b) => a - b), [0, 6, 12, 18]);
+  });
+
+  it('throws on invalid field count', () => {
+    assert.throws(() => parseCron('* * *'), /expected 5 fields/i);
+  });
+
+  it('throws on out-of-range value', () => {
+    assert.throws(() => parseCron('60 * * * *'), /invalid cron value/i);
+  });
+
+  it('throws on invalid step', () => {
+    assert.throws(() => parseCron('*/0 * * * *'), /invalid cron step/i);
+  });
+
+  describe('cronMatches', () => {
+    it('matches a date at midnight UTC on January 1 (Sunday)', () => {
+      const cron = parseCron('0 0 1 1 0');
+      // 2023-01-01 is a Sunday
+      const date = new Date('2023-01-01T00:00:00Z');
+      assert.ok(cronMatches(cron, date));
+    });
+
+    it('does not match wrong minute', () => {
+      const cron = parseCron('30 * * * *');
+      const date = new Date('2023-01-01T00:15:00Z');
+      assert.ok(!cronMatches(cron, date));
+    });
+  });
+
+  describe('nextCronFire', () => {
+    it('finds the next minute for "* * * * *"', () => {
+      const cron = parseCron('* * * * *');
+      const from = new Date('2023-06-15T10:30:45Z');
+      const next = nextCronFire(cron, from);
+      assert.ok(next);
+      assert.equal(next!.getUTCMinutes(), 31);
+      assert.equal(next!.getUTCHours(), 10);
+    });
+
+    it('finds the next matching time for "0 */6 * * *"', () => {
+      const cron = parseCron('0 */6 * * *');
+      const from = new Date('2023-06-15T07:00:00Z');
+      const next = nextCronFire(cron, from);
+      assert.ok(next);
+      assert.equal(next!.getUTCMinutes(), 0);
+      assert.equal(next!.getUTCHours(), 12);
+    });
+
+    it('rolls over to next day when needed', () => {
+      const cron = parseCron('0 9 * * *');
+      const from = new Date('2023-06-15T10:00:00Z');
+      const next = nextCronFire(cron, from);
+      assert.ok(next);
+      assert.equal(next!.getUTCHours(), 9);
+      assert.equal(next!.getUTCDate(), 16);
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 9. SCHEDULE TRIGGER (Phase 2a-2)
+// ═══════════════════════════════════════════════════════════════
+
+describe('ScheduleTrigger', () => {
+  it('fires at the correct cron time using mock timer', () => {
+    const timer = createMockTimer();
+    const events: Record<string, unknown>[] = [];
+
+    const trigger = new ScheduleTrigger(
+      { type: 'schedule', cron: '* * * * *' },
+      { timer },
+    );
+
+    trigger.start((payload) => events.push(payload));
+    assert.ok(trigger.active);
+
+    // The mock timer starts at 1000000ms (epoch ~16.67 minutes).
+    // nextCronFire calculates the next minute boundary from that time.
+    // Advance to that boundary — we need to advance enough to hit the next minute.
+    // Advance 60 seconds to guarantee hitting the next minute boundary
+    timer.advance(60 * 1000);
+
+    assert.ok(events.length >= 1, 'should fire at least once within 60s advance');
+    assert.ok(events[0].cron_expression);
+    assert.ok(events[0].fired_at);
+
+    trigger.stop();
+    assert.ok(!trigger.active);
+  });
+
+  it('does not fire when stopped', () => {
+    const timer = createMockTimer();
+    const events: Record<string, unknown>[] = [];
+
+    const trigger = new ScheduleTrigger(
+      { type: 'schedule', cron: '* * * * *' },
+      { timer },
+    );
+
+    trigger.start((payload) => events.push(payload));
+    trigger.stop();
+
+    timer.advance(120 * 1000);
+    assert.equal(events.length, 0, 'should not fire after stop');
+  });
+
+  it('has correct type', () => {
+    const trigger = new ScheduleTrigger({ type: 'schedule', cron: '0 * * * *' });
+    assert.equal(trigger.type, 'schedule');
+  });
+
+  it('fires multiple times for every-minute cron', () => {
+    const timer = createMockTimer();
+    const events: Record<string, unknown>[] = [];
+
+    const trigger = new ScheduleTrigger(
+      { type: 'schedule', cron: '* * * * *' },
+      { timer },
+    );
+
+    trigger.start((payload) => events.push(payload));
+
+    // Advance 3 minutes — should fire at least 2 times
+    timer.advance(3 * 60 * 1000);
+
+    assert.ok(events.length >= 2, `expected >= 2 fires, got ${events.length}`);
+    trigger.stop();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 10. SANDBOXED EXPRESSION EVALUATOR (Phase 2a-2)
+// ═══════════════════════════════════════════════════════════════
+
+describe('Sandboxed Expression Evaluator', () => {
+  it('evaluates truthy expression', () => {
+    const result = evaluateSandboxedExpression('detail.failed > 0', {
+      detail: { failed: 3, passed: 10 },
+    });
+    assert.equal(result.result, true);
+    assert.equal(result.error, undefined);
+  });
+
+  it('evaluates falsy expression', () => {
+    const result = evaluateSandboxedExpression('detail.failed > 0', {
+      detail: { failed: 0, passed: 10 },
+    });
+    assert.equal(result.result, false);
+    assert.equal(result.error, undefined);
+  });
+
+  it('handles complex boolean expressions', () => {
+    const result = evaluateSandboxedExpression(
+      'event.type === "error" && event.content.severity === "high"',
+      { event: { type: 'error', content: { severity: 'high' } } },
+    );
+    assert.equal(result.result, true);
+  });
+
+  it('returns false with error for invalid expressions', () => {
+    const result = evaluateSandboxedExpression('this is not valid js!!!', {});
+    assert.equal(result.result, false);
+    assert.ok(result.error, 'should have error message');
+  });
+
+  it('blocks access to process', () => {
+    const result = evaluateSandboxedExpression('typeof process !== "undefined"', {});
+    assert.equal(result.result, false);
+  });
+
+  it('blocks access to require', () => {
+    const result = evaluateSandboxedExpression('typeof require !== "undefined"', {});
+    assert.equal(result.result, false);
+  });
+
+  it('handles optional chaining', () => {
+    const result = evaluateSandboxedExpression('event.session_metadata?.strategy_id !== undefined', {
+      event: { session_metadata: { strategy_id: 'S-TEST' } },
+    });
+    assert.equal(result.result, true);
+  });
+
+  it('handles missing properties gracefully', () => {
+    const result = evaluateSandboxedExpression('event.session_metadata?.strategy_id !== undefined', {
+      event: {},
+    });
+    assert.equal(result.result, false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 11. PTY WATCHER TRIGGER (Phase 2a-2)
+// ═══════════════════════════════════════════════════════════════
+
+describe('PtyWatcherTrigger', () => {
+  it('fires when observation matches pattern', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'test_result',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleObservation({
+      category: 'test_result',
+      detail: { passed: 10, failed: 2, runner: 'node' },
+      session_id: 'sess-001',
+    });
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].category, 'test_result');
+    assert.equal(events[0].session_id, 'sess-001');
+  });
+
+  it('does not fire for non-matching pattern', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'test_result',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleObservation({
+      category: 'git_commit',
+      detail: { hash: 'abc123' },
+      session_id: 'sess-001',
+    });
+
+    assert.equal(events.length, 0);
+  });
+
+  it('applies condition expression to filter', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'test_result',
+      condition: 'detail.failed > 0',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    // Passes condition
+    trigger.handleObservation({
+      category: 'test_result',
+      detail: { passed: 10, failed: 2 },
+      session_id: 'sess-001',
+    });
+
+    // Fails condition
+    trigger.handleObservation({
+      category: 'test_result',
+      detail: { passed: 10, failed: 0 },
+      session_id: 'sess-002',
+    });
+
+    assert.equal(events.length, 1, 'should only fire when condition is true');
+    assert.equal(events[0].session_id, 'sess-001');
+  });
+
+  it('does not fire when inactive', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'test_result',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+    trigger.stop();
+
+    trigger.handleObservation({
+      category: 'test_result',
+      detail: { passed: 10 },
+      session_id: 'sess-001',
+    });
+
+    assert.equal(events.length, 0);
+  });
+
+  it('has correct type', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'error',
+    });
+    assert.equal(trigger.type, 'pty_watcher');
+  });
+
+  it('handles invalid condition gracefully', () => {
+    const trigger = new PtyWatcherTrigger({
+      type: 'pty_watcher',
+      pattern: 'test_result',
+      condition: 'this is not valid!!',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleObservation({
+      category: 'test_result',
+      detail: { passed: 10 },
+      session_id: 'sess-001',
+    });
+
+    assert.equal(events.length, 0, 'should not fire with invalid condition');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 12. CHANNEL EVENT TRIGGER (Phase 2a-2)
+// ═══════════════════════════════════════════════════════════════
+
+describe('ChannelEventTrigger', () => {
+  it('fires when event type matches', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['completed', 'error'],
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'sess-001',
+      type: 'completed',
+      content: { result: 'success' },
+      session_id: 'sess-001',
+    });
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].event_type, 'completed');
+    assert.equal(events[0].session_id, 'sess-001');
+  });
+
+  it('does not fire for non-matching event type', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['completed', 'error'],
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'sess-001',
+      type: 'started',
+      content: {},
+    });
+
+    assert.equal(events.length, 0);
+  });
+
+  it('applies filter expression', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['completed'],
+      filter: 'event.content.strategy_id !== undefined',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    // Has strategy_id — should pass filter
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'completed',
+      content: { strategy_id: 'S-TEST' },
+    });
+
+    // No strategy_id — should be filtered out
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'completed',
+      content: { result: 'success' },
+    });
+
+    assert.equal(events.length, 1, 'should only fire when filter passes');
+  });
+
+  it('does not fire when inactive', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['error'],
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+    trigger.stop();
+
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'sess-001',
+      type: 'error',
+      content: {},
+    });
+
+    assert.equal(events.length, 0);
+  });
+
+  it('has correct type', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['error'],
+    });
+    assert.equal(trigger.type, 'channel_event');
+  });
+
+  it('handles invalid filter gracefully', () => {
+    const trigger = new ChannelEventTrigger({
+      type: 'channel_event',
+      event_types: ['completed'],
+      filter: 'invalid syntax!!!',
+    });
+
+    const events: Record<string, unknown>[] = [];
+    trigger.start((payload) => events.push(payload));
+
+    trigger.handleChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'completed',
+      content: {},
+    });
+
+    assert.equal(events.length, 0, 'should not fire with invalid filter');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 13. TRIGGER PARSER — Phase 2a-2 Types
+// ═══════════════════════════════════════════════════════════════
+
+describe('TriggerParser (Phase 2a-2 types)', () => {
+  it('parses schedule trigger', () => {
+    const yaml = `
+strategy:
+  id: S-SCHED
+  name: "Schedule Test"
+  version: "1.0"
+  triggers:
+    - type: schedule
+      cron: "0 */6 * * *"
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 1);
+    assert.equal(result.event_triggers[0].type, 'schedule');
+    if (result.event_triggers[0].type === 'schedule') {
+      assert.equal(result.event_triggers[0].cron, '0 */6 * * *');
+    }
+  });
+
+  it('parses pty_watcher trigger', () => {
+    const yaml = `
+strategy:
+  id: S-PTY
+  name: "PTY Watcher Test"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+      pattern: "test_result"
+      condition: "detail.failed > 0"
+      debounce_ms: 15000
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 1);
+    assert.equal(result.event_triggers[0].type, 'pty_watcher');
+    if (result.event_triggers[0].type === 'pty_watcher') {
+      assert.equal(result.event_triggers[0].pattern, 'test_result');
+      assert.equal(result.event_triggers[0].condition, 'detail.failed > 0');
+      assert.equal(result.event_triggers[0].debounce_ms, 15000);
+    }
+  });
+
+  it('parses channel_event trigger', () => {
+    const yaml = `
+strategy:
+  id: S-CHAN
+  name: "Channel Event Test"
+  version: "1.0"
+  triggers:
+    - type: channel_event
+      event_types: [completed, error, escalation]
+      filter: "event.session_metadata?.strategy_id !== undefined"
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 1);
+    assert.equal(result.event_triggers[0].type, 'channel_event');
+    if (result.event_triggers[0].type === 'channel_event') {
+      assert.deepEqual(result.event_triggers[0].event_types, ['completed', 'error', 'escalation']);
+      assert.equal(result.event_triggers[0].filter, "event.session_metadata?.strategy_id !== undefined");
+    }
+  });
+
+  it('skips schedule trigger without cron field', () => {
+    const yaml = `
+strategy:
+  id: S-SCHED-BAD
+  name: "Bad Schedule"
+  version: "1.0"
+  triggers:
+    - type: schedule
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 0);
+  });
+
+  it('skips pty_watcher trigger without pattern field', () => {
+    const yaml = `
+strategy:
+  id: S-PTY-BAD
+  name: "Bad PTY"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 0);
+  });
+
+  it('skips channel_event trigger without event_types field', () => {
+    const yaml = `
+strategy:
+  id: S-CHAN-BAD
+  name: "Bad Channel"
+  version: "1.0"
+  triggers:
+    - type: channel_event
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`;
+    const result = parseStrategyTriggers(yaml);
+    assert.equal(result.event_triggers.length, 0);
+  });
+
+  it('hasEventTriggers detects schedule/pty_watcher/channel_event', () => {
+    assert.ok(hasEventTriggers(`
+strategy:
+  id: S-HAS
+  triggers:
+    - type: schedule
+      cron: "* * * * *"
+`));
+
+    assert.ok(hasEventTriggers(`
+strategy:
+  id: S-HAS
+  triggers:
+    - type: pty_watcher
+      pattern: error
+`));
+
+    assert.ok(hasEventTriggers(`
+strategy:
+  id: S-HAS
+  triggers:
+    - type: channel_event
+      event_types: [completed]
+`));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 14. TRIGGER ROUTER — Phase 2a-2 Integration
+// ═══════════════════════════════════════════════════════════════
+
+describe('TriggerRouter (Phase 2a-2)', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'trigger-router-2a2-test-'));
+  });
+
+  afterEach(() => {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup */ }
+  });
+
+  function writeStrategy(filename: string, content: string): string {
+    const filePath = join(tmpDir, filename);
+    writeFileSync(filePath, content, 'utf-8');
+    return filePath;
+  }
+
+  it('registers schedule trigger from YAML', async () => {
+    const stratPath = writeStrategy('sched.yaml', `
+strategy:
+  id: S-SCHED-ROUTER
+  name: "Schedule Router Test"
+  version: "1.0"
+  triggers:
+    - type: schedule
+      cron: "* * * * *"
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const timer = createMockTimer();
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      timer,
+      executor: async () => ({ execution_id: 'mock' }),
+    });
+
+    const regs = await router.registerStrategy(stratPath);
+    assert.equal(regs.length, 1);
+    assert.equal(regs[0].trigger_config.type, 'schedule');
+
+    await router.shutdown();
+  });
+
+  it('registers pty_watcher trigger from YAML', async () => {
+    const stratPath = writeStrategy('pty.yaml', `
+strategy:
+  id: S-PTY-ROUTER
+  name: "PTY Router Test"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+      pattern: test_result
+      condition: "detail.failed > 0"
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async () => ({ execution_id: 'mock' }),
+    });
+
+    const regs = await router.registerStrategy(stratPath);
+    assert.equal(regs.length, 1);
+    assert.equal(regs[0].trigger_config.type, 'pty_watcher');
+
+    await router.shutdown();
+  });
+
+  it('registers channel_event trigger from YAML', async () => {
+    const stratPath = writeStrategy('chan.yaml', `
+strategy:
+  id: S-CHAN-ROUTER
+  name: "Channel Router Test"
+  version: "1.0"
+  triggers:
+    - type: channel_event
+      event_types: [completed, error]
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async () => ({ execution_id: 'mock' }),
+    });
+
+    const regs = await router.registerStrategy(stratPath);
+    assert.equal(regs.length, 1);
+    assert.equal(regs[0].trigger_config.type, 'channel_event');
+
+    await router.shutdown();
+  });
+
+  it('onObservation forwards to pty_watcher triggers and fires executor', async () => {
+    const execCalls: Array<{ strategyPath: string; contextInputs: Record<string, unknown> }> = [];
+
+    const stratPath = writeStrategy('pty-e2e.yaml', `
+strategy:
+  id: S-PTY-E2E
+  name: "PTY E2E"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+      pattern: test_result
+      condition: "detail.failed > 0"
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (strategyPath, contextInputs) => {
+        execCalls.push({ strategyPath, contextInputs });
+        return { execution_id: 'pty-exec-001' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Send observation that matches
+    router.onObservation({
+      category: 'test_result',
+      detail: { passed: 8, failed: 2, runner: 'node' },
+      session_id: 'sess-123',
+    });
+
+    // Wait for debounce (50ms) + async execution
+    await new Promise((r) => setTimeout(r, 200));
+
+    assert.ok(execCalls.length > 0, 'executor should have been called');
+    const trigger_event = execCalls[0].contextInputs.trigger_event as Record<string, unknown>;
+    assert.equal(trigger_event.trigger_type, 'pty_watcher');
+    assert.equal(trigger_event.category, 'test_result');
+    assert.equal(trigger_event.session_id, 'sess-123');
+
+    await router.shutdown();
+  });
+
+  it('onObservation does not fire for non-matching observations', async () => {
+    const execCalls: Array<Record<string, unknown>> = [];
+
+    const stratPath = writeStrategy('pty-no-match.yaml', `
+strategy:
+  id: S-PTY-NOMATCH
+  name: "PTY No Match"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+      pattern: test_result
+      condition: "detail.failed > 0"
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (_p, ctx) => {
+        execCalls.push(ctx);
+        return { execution_id: 'mock' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Wrong category
+    router.onObservation({
+      category: 'git_commit',
+      detail: { hash: 'abc' },
+      session_id: 'sess-001',
+    });
+
+    // Right category but condition fails
+    router.onObservation({
+      category: 'test_result',
+      detail: { passed: 10, failed: 0 },
+      session_id: 'sess-002',
+    });
+
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal(execCalls.length, 0, 'executor should not have been called');
+
+    await router.shutdown();
+  });
+
+  it('onChannelMessage forwards to channel_event triggers and fires executor', async () => {
+    const execCalls: Array<{ strategyPath: string; contextInputs: Record<string, unknown> }> = [];
+
+    const stratPath = writeStrategy('chan-e2e.yaml', `
+strategy:
+  id: S-CHAN-E2E
+  name: "Channel E2E"
+  version: "1.0"
+  triggers:
+    - type: channel_event
+      event_types: [completed, error]
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (strategyPath, contextInputs) => {
+        execCalls.push({ strategyPath, contextInputs });
+        return { execution_id: 'chan-exec-001' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Send matching channel event
+    router.onChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'completed',
+      content: { result: 'success' },
+      session_id: 'sess-456',
+    });
+
+    await new Promise((r) => setTimeout(r, 200));
+
+    assert.ok(execCalls.length > 0, 'executor should have been called');
+    const trigger_event = execCalls[0].contextInputs.trigger_event as Record<string, unknown>;
+    assert.equal(trigger_event.trigger_type, 'channel_event');
+    assert.equal(trigger_event.event_type, 'completed');
+
+    await router.shutdown();
+  });
+
+  it('onChannelMessage does not fire for non-matching event types', async () => {
+    const execCalls: Array<Record<string, unknown>> = [];
+
+    const stratPath = writeStrategy('chan-no-match.yaml', `
+strategy:
+  id: S-CHAN-NOMATCH
+  name: "Channel No Match"
+  version: "1.0"
+  triggers:
+    - type: channel_event
+      event_types: [completed, error]
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (_p, ctx) => {
+        execCalls.push(ctx);
+        return { execution_id: 'mock' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Non-matching event type
+    router.onChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'started',
+      content: {},
+    });
+
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal(execCalls.length, 0, 'executor should not have been called');
+
+    await router.shutdown();
+  });
+
+  it('pausing prevents onObservation and onChannelMessage from firing', async () => {
+    const execCalls: Array<Record<string, unknown>> = [];
+
+    const stratPath = writeStrategy('paused.yaml', `
+strategy:
+  id: S-PAUSED
+  name: "Paused Test"
+  version: "1.0"
+  triggers:
+    - type: pty_watcher
+      pattern: error
+      debounce_ms: 50
+    - type: channel_event
+      event_types: [error]
+      debounce_ms: 50
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (_p, ctx) => {
+        execCalls.push(ctx);
+        return { execution_id: 'mock' };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+    router.pauseAll();
+
+    router.onObservation({
+      category: 'error',
+      detail: { message: 'crash' },
+      session_id: 'sess-001',
+    });
+
+    router.onChannelMessage({
+      channel_name: 'events',
+      sender: 'bridge',
+      type: 'error',
+      content: {},
+    });
+
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal(execCalls.length, 0, 'should not fire when paused');
 
     await router.shutdown();
   });

@@ -14,6 +14,9 @@ import yaml from 'js-yaml';
 import { DebounceEngine } from './debounce.js';
 import { FileWatchTrigger } from './file-watch-trigger.js';
 import { GitCommitTrigger } from './git-commit-trigger.js';
+import { ScheduleTrigger } from './schedule-trigger.js';
+import { PtyWatcherTrigger, type PtyObservation } from './pty-watcher-trigger.js';
+import { ChannelEventTrigger, type ChannelMessageEvent } from './channel-event-trigger.js';
 import type {
   TriggerConfig,
   TriggerRegistration,
@@ -24,6 +27,9 @@ import type {
   DebouncedTriggerFire,
   FileWatchTriggerConfig,
   GitCommitTriggerConfig,
+  ScheduleTriggerConfig,
+  PtyWatcherTriggerConfig,
+  ChannelEventTriggerConfig,
   DebounceConfig,
 } from './types.js';
 import { realTimers } from './types.js';
@@ -154,8 +160,8 @@ export class TriggerRouter {
         continue;
       }
 
-      // Only handle Phase 2a-1 types
-      if (triggerType !== 'file_watch' && triggerType !== 'git_commit') {
+      // Skip webhook — Phase 2a-3
+      if (triggerType === 'webhook') {
         triggerIndex++;
         continue;
       }
@@ -324,6 +330,48 @@ export class TriggerRouter {
     this.options.logger.info('TriggerRouter shut down');
   }
 
+  // ── External event hooks (Phase 2a-2) ───────────────────────
+
+  /**
+   * PRD 018 Phase 2a-2: Forward a PTY watcher observation to all registered
+   * pty_watcher triggers. Called by the pool's diagnosticsCallback wrapper.
+   */
+  onObservation(observation: PtyObservation): void {
+    if (this.paused) return;
+
+    for (const reg of this.registrations.values()) {
+      if (!reg.enabled || reg.trigger_config.type !== 'pty_watcher') continue;
+      const watcher = reg.watcher;
+      if (watcher && watcher.active && watcher instanceof PtyWatcherTrigger) {
+        try {
+          watcher.handleObservation(observation);
+        } catch {
+          // Non-fatal — individual watcher errors shouldn't affect others
+        }
+      }
+    }
+  }
+
+  /**
+   * PRD 018 Phase 2a-2: Forward a channel message to all registered
+   * channel_event triggers. Called by the channels.ts onMessage hook.
+   */
+  onChannelMessage(message: ChannelMessageEvent): void {
+    if (this.paused) return;
+
+    for (const reg of this.registrations.values()) {
+      if (!reg.enabled || reg.trigger_config.type !== 'channel_event') continue;
+      const watcher = reg.watcher;
+      if (watcher && watcher.active && watcher instanceof ChannelEventTrigger) {
+        try {
+          watcher.handleChannelMessage(message);
+        } catch {
+          // Non-fatal — individual watcher errors shouldn't affect others
+        }
+      }
+    }
+  }
+
   // ── Internal ──────────────────────────────────────────────────
 
   private parseTriggerConfig(raw: Record<string, unknown>): TriggerConfig | null {
@@ -352,6 +400,56 @@ export class TriggerRouter {
           type: 'git_commit',
           branch_pattern: raw.branch_pattern as string | undefined,
           path_pattern: raw.path_pattern as string | undefined,
+          debounce_ms: raw.debounce_ms as number | undefined,
+          debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+          max_concurrent: raw.max_concurrent as number | undefined,
+          max_batch_size: raw.max_batch_size as number | undefined,
+        };
+      }
+
+      case 'schedule': {
+        const cron = raw.cron as string | undefined;
+        if (!cron || typeof cron !== 'string') {
+          this.options.logger.warn('schedule trigger missing required "cron" field');
+          return null;
+        }
+        return {
+          type: 'schedule',
+          cron,
+          debounce_ms: raw.debounce_ms as number | undefined,
+          debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+          max_concurrent: raw.max_concurrent as number | undefined,
+          max_batch_size: raw.max_batch_size as number | undefined,
+        };
+      }
+
+      case 'pty_watcher': {
+        const pattern = raw.pattern as string | undefined;
+        if (!pattern || typeof pattern !== 'string') {
+          this.options.logger.warn('pty_watcher trigger missing required "pattern" field');
+          return null;
+        }
+        return {
+          type: 'pty_watcher',
+          pattern,
+          condition: raw.condition as string | undefined,
+          debounce_ms: raw.debounce_ms as number | undefined,
+          debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+          max_concurrent: raw.max_concurrent as number | undefined,
+          max_batch_size: raw.max_batch_size as number | undefined,
+        };
+      }
+
+      case 'channel_event': {
+        const eventTypes = raw.event_types as string[] | undefined;
+        if (!eventTypes || !Array.isArray(eventTypes) || eventTypes.length === 0) {
+          this.options.logger.warn('channel_event trigger missing required "event_types" field');
+          return null;
+        }
+        return {
+          type: 'channel_event',
+          event_types: eventTypes,
+          filter: raw.filter as string | undefined,
           debounce_ms: raw.debounce_ms as number | undefined,
           debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
           max_concurrent: raw.max_concurrent as number | undefined,
@@ -402,6 +500,17 @@ export class TriggerRouter {
         return new GitCommitTrigger(config as GitCommitTriggerConfig, this.options.baseDir, {
           timer: this.options.timer,
         });
+
+      case 'schedule':
+        return new ScheduleTrigger(config as ScheduleTriggerConfig, {
+          timer: this.options.timer,
+        });
+
+      case 'pty_watcher':
+        return new PtyWatcherTrigger(config as PtyWatcherTriggerConfig);
+
+      case 'channel_event':
+        return new ChannelEventTrigger(config as ChannelEventTriggerConfig);
 
       default:
         return null;

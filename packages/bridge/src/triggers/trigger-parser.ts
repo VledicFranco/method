@@ -133,11 +133,49 @@ function parseSingleTrigger(
         max_batch_size: raw.max_batch_size as number | undefined,
       };
 
-    // Phase 2a-2+ types — parsed but not yet supported
-    case 'schedule':
+    case 'schedule': {
+      const cron = raw.cron as string | undefined;
+      if (!cron || typeof cron !== 'string') return null;
+      return {
+        type: 'schedule',
+        cron,
+        debounce_ms: raw.debounce_ms as number | undefined,
+        debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+        max_concurrent: raw.max_concurrent as number | undefined,
+        max_batch_size: raw.max_batch_size as number | undefined,
+      };
+    }
+
+    case 'pty_watcher': {
+      const pattern = raw.pattern as string | undefined;
+      if (!pattern || typeof pattern !== 'string') return null;
+      return {
+        type: 'pty_watcher',
+        pattern,
+        condition: raw.condition as string | undefined,
+        debounce_ms: raw.debounce_ms as number | undefined,
+        debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+        max_concurrent: raw.max_concurrent as number | undefined,
+        max_batch_size: raw.max_batch_size as number | undefined,
+      };
+    }
+
+    case 'channel_event': {
+      const eventTypes = raw.event_types as string[] | undefined;
+      if (!eventTypes || !Array.isArray(eventTypes) || eventTypes.length === 0) return null;
+      return {
+        type: 'channel_event',
+        event_types: eventTypes,
+        filter: raw.filter as string | undefined,
+        debounce_ms: raw.debounce_ms as number | undefined,
+        debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+        max_concurrent: raw.max_concurrent as number | undefined,
+        max_batch_size: raw.max_batch_size as number | undefined,
+      };
+    }
+
+    // Phase 2a-3+ types — parsed but not yet supported
     case 'webhook':
-    case 'pty_watcher':
-    case 'channel_event':
       return null;
 
     default:

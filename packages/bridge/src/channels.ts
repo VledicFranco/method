@@ -105,6 +105,30 @@ export function createSessionChannels(): SessionChannels {
   };
 }
 
+// ── PRD 018 Phase 2a-2: onMessage hook for trigger system ────
+
+/**
+ * Callback invoked on every appendMessage call.
+ * Used by the TriggerRouter to subscribe to channel events.
+ */
+export type OnMessageCallback = (info: {
+  channel_name: string;
+  sender: string;
+  type: string;
+  content: Record<string, unknown>;
+  session_id?: string;
+}) => void;
+
+let _onMessageHook: OnMessageCallback | null = null;
+
+/**
+ * Set the global onMessage hook. Only one hook is active at a time.
+ * Pass null to remove the hook.
+ */
+export function setOnMessageHook(hook: OnMessageCallback | null): void {
+  _onMessageHook = hook;
+}
+
 /**
  * Append a message to a channel. Returns the sequence number.
  */
@@ -113,6 +137,7 @@ export function appendMessage(
   sender: string,
   type: string,
   content: Record<string, unknown>,
+  session_id?: string,
 ): number {
   const ring = rings.get(channel)!;
   const last = ring.last();
@@ -128,6 +153,21 @@ export function appendMessage(
 
   // O(1) push — ring buffer handles eviction internally
   ring.push(message);
+
+  // PRD 018: Invoke onMessage hook for trigger system
+  if (_onMessageHook) {
+    try {
+      _onMessageHook({
+        channel_name: channel.name,
+        sender,
+        type,
+        content,
+        session_id,
+      });
+    } catch {
+      // Hook errors are non-fatal — never break channel append
+    }
+  }
 
   return sequence;
 }
