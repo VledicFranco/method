@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Method Bridge — Sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VIDTECCI THEME — Narrative Flow: Sessions Page
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --void: #080e14;
+  --abyss: #0d1f2d;
+  --abyss-light: #122a3a;
+  --bio: #00c9a7;
+  --bio-dim: rgba(0, 201, 167, 0.15);
+  --bio-glow: rgba(0, 201, 167, 0.3);
+  --solar: #e8a45a;
+  --solar-dim: rgba(232, 164, 90, 0.15);
+  --cyan: #00e5cc;
+  --cyan-dim: rgba(0, 229, 204, 0.15);
+  --error: #e05a5a;
+  --error-dim: rgba(224, 90, 90, 0.15);
+  --nebular: #7b5fb5;
+  --nebular-dim: rgba(123, 95, 181, 0.15);
+  --text: #f0f4f8;
+  --text-dim: #8a9bb0;
+  --text-muted: #5a6b7e;
+  --border: rgba(138, 155, 176, 0.12);
+  --border-hover: rgba(138, 155, 176, 0.25);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --nav-height: 56px;
+  --content-max: 960px;
+  --panel-width: 480px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── NAVIGATION BAR ─── */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 32px;
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-logo .logo-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--bio);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--void);
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--bio);
+  border-radius: 1px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-link:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-link.active {
+  color: var(--bio);
+}
+
+.nav-link.active::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.nav-search:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-search kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+.nav-bell {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-bell:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.nav-bell .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--error);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid var(--void);
+}
+
+.nav-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nebular), var(--bio));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.nav-avatar:hover {
+  box-shadow: 0 0 0 2px var(--bio-dim);
+}
+
+/* ─── MAIN CONTENT ─── */
+
+.main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* ─── SEARCH & FILTER BAR ─── */
+
+.search-filter-bar {
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeSlideDown 0.4s ease 0.1s forwards;
+}
+
+@keyframes fadeSlideDown {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.search-input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.search-input-wrap svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input:focus {
+  border-color: var(--bio);
+  box-shadow: 0 0 0 3px var(--bio-dim), 0 0 20px -4px var(--bio-glow);
+}
+
+.search-hint {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+}
+
+.search-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.sort-dropdown {
+  padding: 10px 14px;
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a9bb0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+  min-width: 160px;
+}
+
+.sort-dropdown:hover,
+.sort-dropdown:focus {
+  border-color: var(--border-hover);
+}
+
+.sort-dropdown option {
+  background: var(--abyss);
+  color: var(--text);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.filter-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.filter-chip:active {
+  transform: scale(0.96);
+}
+
+.filter-chip.active {
+  background: var(--bio-dim);
+  border-color: rgba(0, 201, 167, 0.4);
+  color: var(--bio);
+}
+
+.filter-chip .chip-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.batch-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.batch-btn.kill {
+  color: var(--error);
+  border-color: rgba(224, 90, 90, 0.3);
+  background: var(--error-dim);
+}
+
+.batch-btn.kill:hover {
+  background: rgba(224, 90, 90, 0.25);
+  border-color: rgba(224, 90, 90, 0.5);
+}
+
+.batch-btn.prompt {
+  color: var(--bio);
+  border-color: rgba(0, 201, 167, 0.3);
+  background: var(--bio-dim);
+}
+
+.batch-btn.prompt:hover {
+  background: rgba(0, 201, 167, 0.25);
+  border-color: rgba(0, 201, 167, 0.5);
+}
+
+/* ─── SESSION CARDS ─── */
+
+.sessions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.session-group-header:first-child {
+  margin-top: 0;
+}
+
+.group-connector {
+  width: 2px;
+  height: 16px;
+  background: var(--border);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.group-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.group-label span {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-left: 6px;
+}
+
+.session-card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.session-card.visible {
+  animation: cardSlideIn 0.4s ease forwards;
+}
+
+@keyframes cardSlideIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.session-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.session-card.selected {
+  border-color: rgba(0, 201, 167, 0.5);
+  box-shadow: 0 0 0 1px rgba(0, 201, 167, 0.2);
+}
+
+.session-card.running {
+  animation: cardSlideIn 0.4s ease forwards, pulseGlow 2.5s ease-in-out infinite 0.5s;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 16px 4px var(--bio-glow); }
+}
+
+.session-card.child {
+  margin-left: 24px;
+  border-left: 2px solid rgba(138, 155, 176, 0.08);
+}
+
+.session-card.child::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 50%;
+  width: 24px;
+  height: 2px;
+  background: var(--border);
+}
+
+.session-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.session-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all 0.15s;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  position: relative;
+}
+
+.session-checkbox:checked {
+  background: var(--bio);
+  border-color: var(--bio);
+}
+
+.session-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 5px;
+  height: 8px;
+  border: solid var(--void);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.session-checkbox:hover {
+  border-color: var(--text-dim);
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.session-nickname {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-badge.running {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.status-badge.running .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bio);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.status-badge.completed {
+  background: var(--cyan-dim);
+  color: var(--cyan);
+}
+
+.status-badge.failed {
+  background: var(--error-dim);
+  color: var(--error);
+}
+
+.status-badge.pending {
+  background: rgba(138, 155, 176, 0.08);
+  color: var(--text-dim);
+}
+
+.status-badge.stale {
+  background: var(--solar-dim);
+  color: var(--solar);
+}
+
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 20px;
+  background: var(--solar-dim);
+  color: var(--solar);
+  margin-left: 4px;
+}
+
+.session-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.meta-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+.meta-sep {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.meta-tag.step {
+  color: var(--bio);
+  font-weight: 500;
+}
+
+.meta-tag.parent-link {
+  color: var(--nebular);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.meta-tag.parent-link:hover {
+  color: #9b83d5;
+}
+
+.session-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.session-metric {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.session-metric .metric-icon {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.session-metric .metric-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+.session-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.session-cost {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.session-tokens {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.session-progress {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(0, 201, 167, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0;
+  transition: width 0.8s ease-out;
+}
+
+.progress-fill.bio { background: var(--bio); }
+.progress-fill.cyan { background: var(--cyan); }
+.progress-fill.error { background: var(--error); }
+.progress-fill.solar { background: var(--solar); }
+.progress-fill.muted { background: var(--text-muted); }
+
+.progress-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Isolated mode indicator */
+.isolated-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--nebular-dim);
+  color: var(--nebular);
+  font-family: var(--font-mono);
+}
+
+/* ─── SLIDE-OVER PANEL ─── */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 20, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.panel-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.slide-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--panel-width);
+  height: 100vh;
+  background: var(--abyss);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide-panel.open {
+  transform: translateX(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.panel-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.panel-status .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bio);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+.panel-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.panel-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.panel-tab {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.panel-tab:hover { color: var(--text-dim); }
+
+.panel-tab.active {
+  color: var(--bio);
+  border-bottom-color: var(--bio);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.panel-section {
+  margin-bottom: 24px;
+}
+
+.panel-section-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(138, 155, 176, 0.06);
+}
+
+.detail-item.full {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+
+.detail-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.detail-value.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.detail-value.bio { color: var(--bio); }
+.detail-value.nebular { color: var(--nebular); }
+
+/* Panel metrics grid */
+.panel-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-metric-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.panel-metric-card .pm-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  display: block;
+}
+
+.panel-metric-card .pm-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* Gate progress in panel */
+.gate-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gate-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.gate-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 28px;
+  width: 2px;
+  height: calc(100% - 16px);
+  background: var(--border);
+}
+
+.gate-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.gate-dot.done {
+  background: var(--bio-dim);
+  color: var(--bio);
+  border: 2px solid rgba(0, 201, 167, 0.4);
+}
+
+.gate-dot.active {
+  background: var(--solar-dim);
+  color: var(--solar);
+  border: 2px solid rgba(232, 164, 90, 0.5);
+  animation: gateActivePulse 2s ease-in-out infinite;
+}
+
+@keyframes gateActivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px var(--solar-dim); }
+}
+
+.gate-dot.pending {
+  background: rgba(138, 155, 176, 0.05);
+  color: var(--text-muted);
+  border: 2px solid var(--border);
+}
+
+.gate-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.gate-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.gate-name.dim {
+  color: var(--text-muted);
+}
+
+.gate-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Panel terminal */
+.panel-terminal {
+  background: #0a0a0a;
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: #a0a0a0;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-terminal .term-prompt { color: var(--bio); }
+.panel-terminal .term-cmd { color: var(--text); }
+.panel-terminal .term-output { color: var(--text-dim); }
+.panel-terminal .term-success { color: var(--cyan); }
+.panel-terminal .term-error { color: var(--error); }
+.panel-terminal .term-warn { color: var(--solar); }
+.panel-terminal .term-tool { color: var(--nebular); font-weight: 500; }
+.panel-terminal .term-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--bio);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Transcript turn */
+.transcript-turn {
+  margin-bottom: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.transcript-turn-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.turn-role {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.turn-role.user {
+  background: var(--solar-dim);
+  color: var(--solar);
+}
+
+.turn-role.assistant {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.turn-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.transcript-turn-body {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.transcript-turn-body code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.tool-call-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--nebular-dim);
+  color: var(--nebular);
+  font-family: var(--font-mono);
+  margin: 4px 4px 4px 0;
+}
+
+/* Channels in panel */
+.channel-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.channel-entry {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 0;
+}
+
+.channel-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  min-width: 40px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.channel-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding-top: 1px;
+}
+
+.channel-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.channel-text strong {
+  color: var(--bio);
+  font-weight: 600;
+}
+
+.channel-text .event-label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-search { display: none; }
+  .slide-panel { width: 100vw; }
+  .main { padding: 16px 12px 60px; }
+  .session-card.child { margin-left: 12px; }
+  .batch-actions { display: none; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .panel-metrics-grid { grid-template-columns: 1fr 1fr; }
+  .search-row { flex-direction: column; }
+  .sort-dropdown { width: 100%; }
+}
+
+/* ─── UTILITY ─── */
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ NAVIGATION ═══════════════════════ -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">M</div>
+    Method Bridge
+  </div>
+
+  <div class="nav-links">
+    <a class="nav-link" data-view="dashboard">Dashboard</a>
+    <a class="nav-link active" data-view="sessions">Sessions</a>
+    <a class="nav-link" data-view="strategies">Strategies</a>
+    <a class="nav-link" data-view="governance">Governance</a>
+    <a class="nav-link" data-view="analytics">Analytics</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search <kbd>Ctrl K</kbd>
+    </div>
+    <div class="nav-bell">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="badge">3</span>
+    </div>
+    <div class="nav-avatar">VF</div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ MAIN CONTENT ═══════════════════════ -->
+<main class="main">
+
+  <!-- ─── Search & Filter Bar ─── -->
+  <div class="search-filter-bar">
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="search-input" type="text" placeholder="Search by nickname, ID, workdir, methodology..." />
+        <div class="search-hint">
+          <kbd>Cmd</kbd><kbd>K</kbd>
+        </div>
+      </div>
+      <select class="sort-dropdown" id="sortDropdown">
+        <option value="recent">Sort: Recent</option>
+        <option value="oldest">Sort: Oldest</option>
+        <option value="expensive">Sort: Most Expensive</option>
+        <option value="longest">Sort: Longest Running</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip active" data-filter="all" onclick="setFilter(this)">All<span class="chip-count">8</span></div>
+      <div class="filter-chip" data-filter="running" onclick="setFilter(this)">Running<span class="chip-count">3</span></div>
+      <div class="filter-chip" data-filter="completed" onclick="setFilter(this)">Completed<span class="chip-count">3</span></div>
+      <div class="filter-chip" data-filter="failed" onclick="setFilter(this)">Failed<span class="chip-count">0</span></div>
+      <div class="filter-chip" data-filter="stale" onclick="setFilter(this)">Stale<span class="chip-count">1</span></div>
+      <div class="filter-chip" data-filter="pending" onclick="setFilter(this)">Pending<span class="chip-count">1</span></div>
+      <div class="batch-actions" id="batchActions" style="display: none;">
+        <button class="batch-btn kill" onclick="batchKill()">Kill Selected</button>
+        <button class="batch-btn prompt" onclick="batchPrompt()">Prompt Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Session Cards ─── -->
+  <div class="sessions-section" id="sessionsSection">
+
+    <!-- Group: orchestrator-1 children -->
+    <div class="session-group-header">
+      <div class="group-connector"></div>
+      <span class="group-label">Parent chain<span>orchestrator-1</span></span>
+    </div>
+
+    <!-- 1. impl-agent — Running -->
+    <div class="session-card child running" data-status="running" data-id="impl-agent" data-delay="0" onclick="openPanel('impl-agent')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">impl-agent</span>
+            <span class="status-badge running"><span class="status-dot"></span> Running</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P2-SD / M1-IMPL</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag step">&sigma;_B3</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag">12m</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag parent-link" title="Parent session">&uarr; orchestrator-1</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill bio" data-width="80"></div></div>
+            <span class="progress-pct">80%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.89</span>
+          <span class="session-tokens">45k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. review-agent — Running -->
+    <div class="session-card child running" data-status="running" data-id="review-agent" data-delay="80" onclick="openPanel('review-agent')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">review-agent</span>
+            <span class="status-badge running"><span class="status-dot"></span> Running</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P2-SD / M3-PHRV</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag step">&sigma;_1</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag">3m</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag parent-link">&uarr; orchestrator-1</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill bio" data-width="20"></div></div>
+            <span class="progress-pct">20%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.23</span>
+          <span class="session-tokens">12k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. arch-audit — Pending -->
+    <div class="session-card child" data-status="pending" data-id="arch-audit" data-delay="160" onclick="openPanel('arch-audit')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">arch-audit</span>
+            <span class="status-badge pending">&#9675; Pending</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P2-SD / M4-DDAG</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag" style="color: var(--text-muted);">queued</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag parent-link">&uarr; orchestrator-1</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill muted" data-width="0"></div></div>
+            <span class="progress-pct">0%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost" style="color: var(--text-muted);">&mdash;</span>
+          <span class="session-tokens">&mdash;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standalone sessions -->
+    <div class="session-group-header">
+      <div class="group-connector"></div>
+      <span class="group-label">Standalone sessions</span>
+    </div>
+
+    <!-- 4. test-runner — Completed -->
+    <div class="session-card" data-status="completed" data-id="test-runner" data-delay="240" onclick="openPanel('test-runner')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">test-runner</span>
+            <span class="status-badge completed">&#10003; Completed</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P1-EXEC / M3-TMP</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag" style="color: var(--text-muted);">completed 8m ago</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill cyan" data-width="100"></div></div>
+            <span class="progress-pct">100%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.12</span>
+          <span class="session-tokens">6k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. council-debate — Completed, isolated mode -->
+    <div class="session-card" data-status="completed" data-id="council-debate" data-delay="320" onclick="openPanel('council-debate')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">council-debate</span>
+            <span class="status-badge completed">&#10003; Completed</span>
+            <span class="isolated-tag">&#9878; isolated</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P1-EXEC / M1-COUNCIL</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag" style="color: var(--text-muted);">completed 1h ago</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill cyan" data-width="100"></div></div>
+            <span class="progress-pct">100%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.45</span>
+          <span class="session-tokens">34k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. strategy-node-1 — Running -->
+    <div class="session-card running" data-status="running" data-id="strategy-node-1" data-delay="400" onclick="openPanel('strategy-node-1')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">strategy-node-1</span>
+            <span class="status-badge running"><span class="status-dot"></span> Running</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">Strategy / S-CODE-REVIEW</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag step">&sigma;_exec</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag">5m</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill bio" data-width="55"></div></div>
+            <span class="progress-pct">55%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.34</span>
+          <span class="session-tokens">22k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. rfc-drafter — Completed -->
+    <div class="session-card" data-status="completed" data-id="rfc-drafter" data-delay="480" onclick="openPanel('rfc-drafter')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">rfc-drafter</span>
+            <span class="status-badge completed">&#10003; Completed</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P3-GOV / M1-DRAFT</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag" style="color: var(--text-muted);">completed 2h ago</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill cyan" data-width="100"></div></div>
+            <span class="progress-pct">100%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.08</span>
+          <span class="session-tokens">4k tokens</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. stale-worker — Stale -->
+    <div class="session-card" data-status="stale" data-id="stale-worker" data-delay="560" onclick="openPanel('stale-worker')">
+      <div class="session-card-top">
+        <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateBatchActions()" />
+        <div class="session-info">
+          <div class="session-name-row">
+            <span class="session-nickname">stale-worker</span>
+            <span class="status-badge stale">&#9888; Stale</span>
+            <span class="warning-badge">&#9888; 35m inactive</span>
+          </div>
+          <div class="session-meta-row">
+            <span class="meta-tag">P2-SD / M1-IMPL</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag" style="color: var(--solar);">&sigma;_B2</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-tag">42m</span>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill solar" data-width="40"></div></div>
+            <span class="progress-pct">40%</span>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-cost">$0.67</span>
+          <span class="session-tokens">38k tokens</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ═══════════════════════ SLIDE-OVER PANEL ═══════════════════════ -->
+<div class="panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
+<div class="slide-panel" id="slidePanel">
+  <div class="panel-header">
+    <div class="panel-header-left">
+      <span class="panel-title" id="panelTitle">impl-agent</span>
+      <span class="panel-status" id="panelStatus"><span class="status-dot"></span> Running</span>
+    </div>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-tabs" id="panelTabs">
+    <div class="panel-tab active" onclick="switchPanelTab(this, 'overview')">Overview</div>
+    <div class="panel-tab" onclick="switchPanelTab(this, 'terminal')">Terminal</div>
+    <div class="panel-tab" onclick="switchPanelTab(this, 'transcript')">Transcript</div>
+    <div class="panel-tab" onclick="switchPanelTab(this, 'channels')">Channels</div>
+  </div>
+  <div class="panel-body" id="panelBody">
+    <!-- Filled dynamically -->
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   INTERACTIVE LOGIC — Sessions Page
+   ═══════════════════════════════════════════════════════════ */
+
+// ─── Nav Link Switching ───
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// ─── Filter Chips ───
+function setFilter(el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const filter = el.getAttribute('data-filter');
+  document.querySelectorAll('.session-card').forEach(card => {
+    if (filter === 'all') {
+      card.style.display = '';
+    } else {
+      card.style.display = card.getAttribute('data-status') === filter ? '' : 'none';
+    }
+  });
+  // Show/hide group headers based on visible children
+  document.querySelectorAll('.session-group-header').forEach(header => {
+    let next = header.nextElementSibling;
+    let hasVisible = false;
+    while (next && !next.classList.contains('session-group-header')) {
+      if (next.classList.contains('session-card') && next.style.display !== 'none') {
+        hasVisible = true;
+        break;
+      }
+      next = next.nextElementSibling;
+    }
+    header.style.display = hasVisible ? '' : 'none';
+  });
+}
+
+// ─── Batch Actions ───
+function updateBatchActions() {
+  const checked = document.querySelectorAll('.session-checkbox:checked');
+  const batchActions = document.getElementById('batchActions');
+  batchActions.style.display = checked.length > 0 ? 'flex' : 'none';
+}
+
+function batchKill() { alert('Kill ' + document.querySelectorAll('.session-checkbox:checked').length + ' sessions'); }
+function batchPrompt() { alert('Prompt ' + document.querySelectorAll('.session-checkbox:checked').length + ' sessions'); }
+
+// ─── Progress Bar Animation ───
+function animateProgressBars() {
+  document.querySelectorAll('.progress-fill').forEach(bar => {
+    const width = bar.getAttribute('data-width');
+    setTimeout(() => { bar.style.width = width + '%'; }, 600);
+  });
+}
+
+// ─── Session Card Stagger Animation ───
+function animateSessionCards() {
+  const cards = document.querySelectorAll('.session-card');
+  cards.forEach((card, i) => {
+    const delay = parseInt(card.getAttribute('data-delay') || (i * 80));
+    setTimeout(() => card.classList.add('visible'), 200 + delay);
+  });
+}
+
+// ─── Panel Data ───
+const panelData = {
+  'impl-agent': {
+    title: 'impl-agent',
+    status: 'running',
+    statusLabel: 'Running',
+    id: 'ses_a7f3b2c1',
+    methodology: 'P2-SD v2.0',
+    method: 'M1-IMPL',
+    step: '\u03C3_B3 \u2192 \u03C3_B4',
+    workdir: 'packages/bridge/src/',
+    parent: 'orchestrator-1',
+    depth: '2',
+    budget: '$5.00',
+    spent: '$0.89',
+    isolation: 'No',
+    duration: '12m 34s',
+    tokens: '45.2k',
+    cost: '$0.89',
+    gates: [
+      { name: '\u03C3_init', desc: 'Load commission', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B1', desc: 'Read source files', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B2', desc: 'Implement changes', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B3', desc: 'Run tests (47/47)', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B4', desc: 'Verify gates', state: 'active', icon: '\u25CB' },
+      { name: '\u03C3_exit', desc: 'Report & retro', state: 'pending', icon: '\u25CB' },
+    ],
+    terminal: `<div><span class="term-prompt">$ </span><span class="term-cmd">npm run build</span></div>
+<div class="term-output">&gt; @method/bridge@0.1.0 build</div>
+<div class="term-output">&gt; tsc -p tsconfig.json</div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-tool">[Read]</span> <span class="term-output">packages/bridge/src/pool.ts (248 lines)</span></div>
+<div><span class="term-tool">[Read]</span> <span class="term-output">packages/bridge/src/pty-session.ts (312 lines)</span></div>
+<div><span class="term-tool">[Edit]</span> <span class="term-output">packages/bridge/src/pool.ts +45 -12</span></div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cmd">npm test</span></div>
+<div class="term-output">&gt; @method/bridge@0.1.0 test</div>
+<div class="term-output">&gt; vitest run</div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output"> <span class="term-success">\u2713</span> pool.test.ts (12 tests) 245ms</div>
+<div class="term-output"> <span class="term-success">\u2713</span> pty-session.test.ts (8 tests) 189ms</div>
+<div class="term-output"> <span class="term-success">\u2713</span> channels.test.ts (14 tests) 312ms</div>
+<div class="term-output"> <span class="term-success">\u2713</span> adaptive-settle.test.ts (6 tests) 87ms</div>
+<div class="term-output"> <span class="term-success">\u2713</span> watcher.test.ts (7 tests) 201ms</div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output"> Test Files  5 passed (5)</div>
+<div class="term-output"> Tests       <span class="term-success">47 passed</span> (47)</div>
+<div class="term-output"> Duration    1.03s</div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-tool">[Bash]</span> <span class="term-output">git add packages/bridge/src/pool.ts</span></div>
+<div><span class="term-tool">[Bash]</span> <span class="term-output">git commit -m "feat(bridge): adaptive settle algorithm"</span></div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cursor"></span></div>`,
+    transcript: [
+      {
+        role: 'user',
+        time: '14:12',
+        tokens: '1.2k',
+        body: 'Commission: Implement PRD-015 adaptive settle algorithm in <code>packages/bridge/src/pool.ts</code>. Requirements: exponential backoff starting at 300ms, max 2000ms, backoff factor 1.5. Must pass all existing tests plus 6 new tests for the adaptive behavior.'
+      },
+      {
+        role: 'assistant',
+        time: '14:14',
+        tokens: '38.4k',
+        tools: ['Read pool.ts', 'Read pty-session.ts', 'Edit pool.ts', 'Bash npm test', 'Bash git commit'],
+        body: 'I\'ll implement the adaptive settle algorithm. Let me start by reading the current pool implementation to understand the settle delay mechanism...<br><br>The current implementation uses a fixed <code>SETTLE_DELAY_MS</code>. I\'ll add an exponential backoff strategy that starts at <code>ADAPTIVE_SETTLE_INITIAL_MS</code> (300ms) and backs off by <code>ADAPTIVE_SETTLE_BACKOFF</code> (1.5x) on each false-positive cutoff, capped at <code>ADAPTIVE_SETTLE_MAX_MS</code> (2000ms).'
+      },
+      {
+        role: 'user',
+        time: '14:32',
+        tokens: '0.8k',
+        body: 'Tests pass. Verify the gate: confirm <code>compile_exit = 0</code> and <code>test_exit = 0</code>, then report results to the progress channel.'
+      }
+    ],
+    progress: [
+      { time: '14:32', step: '\u03C3_B4', text: 'Verifying compilation gates' },
+      { time: '14:28', step: '\u03C3_B3', text: 'Running test suite (47/47 passing)' },
+      { time: '14:20', step: '\u03C3_B2', text: 'Implementation complete, 3 files modified' },
+      { time: '14:14', step: '\u03C3_B1', text: 'Read 8 source files in packages/bridge/' },
+    ],
+    events: [
+      { time: '14:30', icon: '\u26A0', iconColor: 'var(--solar)', label: 'budget_warning', text: '85% of $5.00 consumed' },
+      { time: '14:24', icon: '\u25C6', iconColor: 'var(--bio)', label: 'git_commit', text: 'feat(bridge): adaptive settle algorithm' },
+      { time: '14:12', icon: '\u25C6', iconColor: 'var(--bio)', label: 'session_start', text: 'PTY spawned, commission delivered' },
+    ]
+  },
+  'review-agent': {
+    title: 'review-agent',
+    status: 'running',
+    statusLabel: 'Running',
+    id: 'ses_b2d4e5f6',
+    methodology: 'P2-SD v2.0',
+    method: 'M3-PHRV',
+    step: '\u03C3_1',
+    workdir: 'packages/core/',
+    parent: 'orchestrator-1',
+    depth: '2',
+    budget: '$2.00',
+    spent: '$0.23',
+    isolation: 'No',
+    duration: '3m 12s',
+    tokens: '12.1k',
+    cost: '$0.23',
+    gates: [
+      { name: '\u03C3_1', desc: 'Read deliverables', state: 'active', icon: '\u25CB' },
+      { name: '\u03C3_2', desc: 'Validate gates', state: 'pending', icon: '\u25CB' },
+      { name: '\u03C3_3', desc: 'Write review', state: 'pending', icon: '\u25CB' },
+    ],
+    terminal: `<div><span class="term-tool">[Read]</span> <span class="term-output">packages/core/src/session.ts (186 lines)</span></div>
+<div><span class="term-tool">[Read]</span> <span class="term-output">packages/core/src/loader.ts (134 lines)</span></div>
+<div><span class="term-tool">[Read]</span> <span class="term-output">packages/core/src/theory.ts (92 lines)</span></div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cmd">npm test -- --filter core</span></div>
+<div class="term-output">&gt; vitest run --filter core</div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output"> <span class="term-success">\u2713</span> loader.test.ts (8 tests) 112ms</div>
+<div class="term-output"> <span class="term-success">\u2713</span> session.test.ts (15 tests) 201ms</div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cursor"></span></div>`,
+    transcript: [
+      { role: 'user', time: '14:02', tokens: '0.9k', body: 'Commission: Phase review for core package. Validate all deliverables against M3-PHRV gates.' },
+      { role: 'assistant', time: '14:05', tokens: '11.2k', tools: ['Read session.ts', 'Read loader.ts', 'Read theory.ts', 'Bash npm test'], body: 'Starting phase review. Reading core package deliverables to validate against M3-PHRV gates...' }
+    ],
+    progress: [
+      { time: '14:05', step: '\u03C3_1', text: 'Reading core deliverables (3 files read)' },
+    ],
+    events: [
+      { time: '14:02', icon: '\u25C6', iconColor: 'var(--bio)', label: 'session_start', text: 'PTY spawned, commission delivered' },
+    ]
+  },
+  'arch-audit': {
+    title: 'arch-audit',
+    status: 'pending',
+    statusLabel: 'Pending',
+    id: 'ses_c3e5f7a8',
+    methodology: 'P2-SD v2.0',
+    method: 'M4-DDAG',
+    step: 'queued',
+    workdir: 'docs/arch/',
+    parent: 'orchestrator-1',
+    depth: '2',
+    budget: '$3.00',
+    spent: '\u2014',
+    isolation: 'No',
+    duration: '\u2014',
+    tokens: '\u2014',
+    cost: '\u2014',
+    gates: [
+      { name: '\u03C3_init', desc: 'Load commission', state: 'pending', icon: '\u25CB' },
+      { name: '\u03C3_1', desc: 'Read architecture docs', state: 'pending', icon: '\u25CB' },
+      { name: '\u03C3_2', desc: 'Validate dependencies', state: 'pending', icon: '\u25CB' },
+      { name: '\u03C3_exit', desc: 'Report findings', state: 'pending', icon: '\u25CB' },
+    ],
+    terminal: '<div class="term-output" style="color: var(--text-muted);">Session queued. Waiting for slot in pool...</div>',
+    transcript: [],
+    progress: [],
+    events: []
+  },
+  'test-runner': {
+    title: 'test-runner',
+    status: 'completed',
+    statusLabel: 'Completed',
+    id: 'ses_d4f6a8b9',
+    methodology: 'P1-EXEC v1.1',
+    method: 'M3-TMP',
+    step: '\u03C3_exit (completed)',
+    workdir: 'packages/core/',
+    parent: '\u2014',
+    depth: '1',
+    budget: '$1.00',
+    spent: '$0.12',
+    isolation: 'No',
+    duration: '8m 03s',
+    tokens: '6.0k',
+    cost: '$0.12',
+    gates: [
+      { name: '\u03C3_init', desc: 'Setup environment', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_exec', desc: 'Execute tests', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_exit', desc: 'Report results', state: 'done', icon: '\u2713' },
+    ],
+    terminal: `<div><span class="term-prompt">$ </span><span class="term-cmd">npm test</span></div>
+<div class="term-output"> <span class="term-success">\u2713</span> All 47 tests passed</div>
+<div class="term-output"> Coverage: 82%</div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output" style="color: var(--cyan);">Session completed successfully.</div>`,
+    transcript: [
+      { role: 'user', time: '14:07', tokens: '0.4k', body: 'Run the full test suite for the core package and report results.' },
+      { role: 'assistant', time: '14:15', tokens: '5.6k', tools: ['Bash npm test'], body: 'All 47 tests passing. Coverage at 82%. No failures detected.' }
+    ],
+    progress: [
+      { time: '14:15', step: '\u03C3_exit', text: 'Report complete: 47/47 tests, 82% coverage' },
+      { time: '14:10', step: '\u03C3_exec', text: 'Test execution complete' },
+    ],
+    events: [
+      { time: '14:15', icon: '\u2713', iconColor: 'var(--cyan)', label: 'completed', text: 'All gates passed, session complete' },
+      { time: '14:07', icon: '\u25C6', iconColor: 'var(--bio)', label: 'session_start', text: 'PTY spawned' },
+    ]
+  },
+  'council-debate': {
+    title: 'council-debate',
+    status: 'completed',
+    statusLabel: 'Completed',
+    id: 'ses_e5a7b9c0',
+    methodology: 'P1-EXEC v1.1',
+    method: 'M1-COUNCIL',
+    step: '\u03C3_exit (completed)',
+    workdir: '.method/council/',
+    parent: '\u2014',
+    depth: '1',
+    budget: '$2.00',
+    spent: '$0.45',
+    isolation: 'Yes',
+    duration: '15m 22s',
+    tokens: '34.0k',
+    cost: '$0.45',
+    gates: [
+      { name: '\u03C3_init', desc: 'Load agenda', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_deliberate', desc: 'Expert debate', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_decide', desc: 'Decisions rendered', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_exit', desc: 'Log session', state: 'done', icon: '\u2713' },
+    ],
+    terminal: `<div class="term-output">Council SESSION-039 deliberation complete.</div>
+<div class="term-output">3 decisions rendered. Agenda updated.</div>
+<div class="term-output" style="color: var(--cyan);">Session completed in isolated mode.</div>`,
+    transcript: [
+      { role: 'user', time: '13:30', tokens: '1.8k', body: 'Convene council session. Agenda items: smoke-test strategy approval, RFC-003 review, stale delta triage.' }
+    ],
+    progress: [
+      { time: '13:45', step: '\u03C3_exit', text: 'Session logged, 3 decisions rendered' },
+      { time: '13:40', step: '\u03C3_decide', text: 'Approved smoke-test strategy' },
+    ],
+    events: [
+      { time: '13:45', icon: '\u2713', iconColor: 'var(--cyan)', label: 'completed', text: 'Council session complete' },
+    ]
+  },
+  'strategy-node-1': {
+    title: 'strategy-node-1',
+    status: 'running',
+    statusLabel: 'Running',
+    id: 'ses_f6b8c0d1',
+    methodology: 'Strategy',
+    method: 'S-CODE-REVIEW',
+    step: '\u03C3_exec',
+    workdir: 'packages/',
+    parent: 'trigger-S-CODE-REVIEW',
+    depth: '1',
+    budget: '$2.00',
+    spent: '$0.34',
+    isolation: 'No',
+    duration: '5m 18s',
+    tokens: '22.0k',
+    cost: '$0.34',
+    gates: [
+      { name: '\u03C3_init', desc: 'Load strategy', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_exec', desc: 'Execute review', state: 'active', icon: '\u25CB' },
+      { name: '\u03C3_report', desc: 'Emit results', state: 'pending', icon: '\u25CB' },
+    ],
+    terminal: `<div><span class="term-tool">[Read]</span> <span class="term-output">packages/bridge/src/pool.ts (248 lines)</span></div>
+<div><span class="term-tool">[Read]</span> <span class="term-output">packages/bridge/src/index.ts (86 lines)</span></div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output">Reviewing 3 recent commits on master...</div>
+<div class="term-output">  ff7beb5 fix(strategy): pre-smoke-test review fixes</div>
+<div class="term-output">  9432ffa feat(governance): SESSION-036</div>
+<div class="term-output">  bd70886 feat(governance): SESSION-035</div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cursor"></span></div>`,
+    transcript: [
+      { role: 'user', time: '14:28', tokens: '0.6k', body: 'Execute S-CODE-REVIEW strategy. 3 commits detected on master branch since last review.' }
+    ],
+    progress: [
+      { time: '14:31', step: '\u03C3_exec', text: 'Reviewing 3 commits, 2 files analyzed' },
+    ],
+    events: [
+      { time: '14:28', icon: '\u25C6', iconColor: 'var(--bio)', label: 'session_start', text: 'Strategy execution started' },
+    ]
+  },
+  'rfc-drafter': {
+    title: 'rfc-drafter',
+    status: 'completed',
+    statusLabel: 'Completed',
+    id: 'ses_a8c0d1e2',
+    methodology: 'P3-GOV v1.0',
+    method: 'M1-DRAFT',
+    step: '\u03C3_exit (completed)',
+    workdir: '.method/council/rfcs/',
+    parent: '\u2014',
+    depth: '1',
+    budget: '$0.50',
+    spent: '$0.08',
+    isolation: 'No',
+    duration: '4m 11s',
+    tokens: '4.0k',
+    cost: '$0.08',
+    gates: [
+      { name: '\u03C3_draft', desc: 'Draft RFC', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_validate', desc: 'Validate format', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_exit', desc: 'Submit for review', state: 'done', icon: '\u2713' },
+    ],
+    terminal: `<div class="term-output">RFC-003 drafted: Anti-capitulation invariant and isolation mode</div>
+<div class="term-output">Format validated. Submitted to council queue.</div>
+<div class="term-output" style="color: var(--cyan);">Session completed.</div>`,
+    transcript: [
+      { role: 'user', time: '12:00', tokens: '1.1k', body: 'Draft RFC for anti-capitulation invariant and isolation mode. Reference the Organon methodology for the theoretical basis.' }
+    ],
+    progress: [
+      { time: '12:04', step: '\u03C3_exit', text: 'RFC submitted to council queue' },
+    ],
+    events: [
+      { time: '12:04', icon: '\u2713', iconColor: 'var(--cyan)', label: 'completed', text: 'RFC drafted and submitted' },
+    ]
+  },
+  'stale-worker': {
+    title: 'stale-worker',
+    status: 'stale',
+    statusLabel: 'Stale',
+    id: 'ses_b9d1e2f3',
+    methodology: 'P2-SD v2.0',
+    method: 'M1-IMPL',
+    step: '\u03C3_B2 (stalled)',
+    workdir: 'packages/mcp/src/',
+    parent: '\u2014',
+    depth: '1',
+    budget: '$3.00',
+    spent: '$0.67',
+    isolation: 'No',
+    duration: '42m 15s',
+    tokens: '38.0k',
+    cost: '$0.67',
+    gates: [
+      { name: '\u03C3_init', desc: 'Load commission', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B1', desc: 'Read source files', state: 'done', icon: '\u2713' },
+      { name: '\u03C3_B2', desc: 'Implement changes', state: 'active', icon: '\u25CB' },
+      { name: '\u03C3_B3', desc: 'Run tests', state: 'pending', icon: '\u25CB' },
+      { name: '\u03C3_exit', desc: 'Report', state: 'pending', icon: '\u25CB' },
+    ],
+    terminal: `<div><span class="term-tool">[Read]</span> <span class="term-output">packages/mcp/src/tools.ts (423 lines)</span></div>
+<div><span class="term-tool">[Edit]</span> <span class="term-output">packages/mcp/src/tools.ts +12 -3</span></div>
+<div class="term-output">&nbsp;</div>
+<div><span class="term-prompt">$ </span><span class="term-cmd">npm run build</span></div>
+<div class="term-output"><span class="term-error">error TS2345: Argument of type 'string' is not assignable to parameter of type 'SessionId'.</span></div>
+<div class="term-output"><span class="term-error">error TS2322: Type 'undefined' is not assignable to type 'BridgeResponse'.</span></div>
+<div class="term-output">&nbsp;</div>
+<div class="term-output" style="color: var(--solar);">[35m idle \u2014 no PTY activity detected]</div>`,
+    transcript: [
+      { role: 'user', time: '13:33', tokens: '0.8k', body: 'Implement MCP tool handler refactoring for bridge proxy tools. Fix type mismatches in tools.ts.' },
+      { role: 'assistant', time: '13:55', tokens: '37.2k', tools: ['Read tools.ts', 'Edit tools.ts', 'Bash npm run build'], body: 'I\'ve read the tools file and attempted a fix, but the build is failing with type errors. Investigating the SessionId type mismatch...' }
+    ],
+    progress: [
+      { time: '13:55', step: '\u03C3_B2', text: 'Build failing \u2014 2 type errors in tools.ts' },
+      { time: '13:40', step: '\u03C3_B1', text: 'Read 4 source files' },
+    ],
+    events: [
+      { time: '14:30', icon: '\u26A0', iconColor: 'var(--solar)', label: 'stale', text: '35m without PTY activity' },
+      { time: '13:55', icon: '\u2717', iconColor: 'var(--error)', label: 'build_error', text: '2 TypeScript errors in tools.ts' },
+      { time: '13:33', icon: '\u25C6', iconColor: 'var(--bio)', label: 'session_start', text: 'PTY spawned' },
+    ]
+  }
+};
+
+let currentPanelTab = 'overview';
+
+function openPanel(id) {
+  const data = panelData[id];
+  if (!data) return;
+
+  document.getElementById('panelTitle').textContent = data.title;
+
+  // Update status badge in panel header
+  const statusEl = document.getElementById('panelStatus');
+  const statusColors = {
+    running: { bg: 'var(--bio-dim)', color: 'var(--bio)', dot: true },
+    completed: { bg: 'var(--cyan-dim)', color: 'var(--cyan)', dot: false },
+    pending: { bg: 'rgba(138,155,176,0.08)', color: 'var(--text-dim)', dot: false },
+    stale: { bg: 'var(--solar-dim)', color: 'var(--solar)', dot: false },
+  };
+  const sc = statusColors[data.status] || statusColors.pending;
+  statusEl.style.background = sc.bg;
+  statusEl.style.color = sc.color;
+  statusEl.innerHTML = (sc.dot ? '<span class="status-dot" style="background:' + sc.color + '"></span> ' : '') + data.statusLabel;
+
+  document.getElementById('panelBackdrop').classList.add('open');
+  document.getElementById('slidePanel').classList.add('open');
+
+  // Highlight selected card
+  document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`.session-card[data-id="${id}"]`);
+  if (card) card.classList.add('selected');
+
+  // Reset to overview tab
+  currentPanelTab = 'overview';
+  document.querySelectorAll('.panel-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === 0);
+  });
+
+  renderPanelTab(data, 'overview');
+}
+
+function closePanel() {
+  document.getElementById('panelBackdrop').classList.remove('open');
+  document.getElementById('slidePanel').classList.remove('open');
+  document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
+}
+
+function switchPanelTab(el, tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentPanelTab = tab;
+
+  const title = document.getElementById('panelTitle').textContent;
+  const dataKey = Object.keys(panelData).find(k => panelData[k].title === title);
+  if (dataKey) renderPanelTab(panelData[dataKey], tab);
+}
+
+function renderPanelTab(data, tab) {
+  const body = document.getElementById('panelBody');
+
+  if (tab === 'overview') {
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">Session Info</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Nickname</span>
+            <span class="detail-value">${data.title}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Session ID</span>
+            <span class="detail-value mono">${data.id}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Methodology</span>
+            <span class="detail-value mono">${data.methodology}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Method</span>
+            <span class="detail-value mono bio">${data.method}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Current Step</span>
+            <span class="detail-value mono">${data.step}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Workdir</span>
+            <span class="detail-value mono">${data.workdir}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Parent</span>
+            <span class="detail-value mono nebular">${data.parent}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Depth</span>
+            <span class="detail-value mono">${data.depth}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Budget</span>
+            <span class="detail-value mono">${data.budget}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Isolation Mode</span>
+            <span class="detail-value">${data.isolation}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-label">Cost &amp; Tokens</div>
+        <div class="panel-metrics-grid">
+          <div class="panel-metric-card">
+            <span class="pm-value">${data.cost}</span>
+            <span class="pm-label">Cost</span>
+          </div>
+          <div class="panel-metric-card">
+            <span class="pm-value">${data.tokens}</span>
+            <span class="pm-label">Tokens</span>
+          </div>
+          <div class="panel-metric-card">
+            <span class="pm-value">${data.duration}</span>
+            <span class="pm-label">Duration</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-label">Gate Progress</div>
+        <div class="gate-progress">
+          ${data.gates.map(g => `
+            <div class="gate-step">
+              <div class="gate-dot ${g.state}">${g.icon}</div>
+              <div class="gate-info">
+                <span class="gate-name ${g.state === 'pending' ? 'dim' : ''}">${g.name}</span>
+                <span class="gate-desc">${g.desc}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  else if (tab === 'terminal') {
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">PTY Output</div>
+        <div class="panel-terminal">${data.terminal}</div>
+      </div>
+    `;
+  }
+
+  else if (tab === 'transcript') {
+    if (data.transcript.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No transcript yet. Session is queued.</div>';
+      return;
+    }
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">Conversation Transcript</div>
+        ${data.transcript.map(t => `
+          <div class="transcript-turn">
+            <div class="transcript-turn-header">
+              <span class="turn-role ${t.role}">${t.role}</span>
+              <span class="turn-meta">${t.time} &middot; ${t.tokens} tokens</span>
+            </div>
+            <div class="transcript-turn-body">
+              ${t.body}
+              ${t.tools ? '<div style="margin-top:8px;">' + t.tools.map(tool => '<span class="tool-call-badge">' + tool + '</span>').join('') + '</div>' : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  else if (tab === 'channels') {
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">Progress Timeline</div>
+        ${data.progress.length === 0 ? '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No progress reports yet.</div>' : `
+        <div class="channel-timeline">
+          ${data.progress.map(p => `
+            <div class="channel-entry">
+              <span class="channel-time">${p.time}</span>
+              <span class="channel-icon" style="color:var(--bio);">\u25C6</span>
+              <span class="channel-text"><strong>${p.step}</strong> \u2014 ${p.text}</span>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-label">Event Feed</div>
+        ${data.events.length === 0 ? '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No events yet.</div>' : `
+        <div class="channel-timeline">
+          ${data.events.map(e => `
+            <div class="channel-entry">
+              <span class="channel-time">${e.time}</span>
+              <span class="channel-icon" style="color:${e.iconColor};">${e.icon}</span>
+              <span class="channel-text"><span class="event-label">${e.label}</span> \u2014 ${e.text}</span>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+    `;
+  }
+}
+
+// ─── Keyboard shortcut ───
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePanel();
+});
+
+// ─── Initialize on load ───
+window.addEventListener('DOMContentLoaded', () => {
+  animateProgressBars();
+  animateSessionCards();
+
+  // Auto-open impl-agent panel after cards animate in
+  setTimeout(() => openPanel('impl-agent'), 900);
+});
+</script>
+
+</body>
+</html>

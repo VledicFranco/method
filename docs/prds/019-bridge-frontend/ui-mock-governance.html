@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Method Bridge — Governance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VIDTECCI THEME — Governance Page
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --void: #080e14;
+  --abyss: #0d1f2d;
+  --abyss-light: #122a3a;
+  --bio: #00c9a7;
+  --bio-dim: rgba(0, 201, 167, 0.15);
+  --bio-glow: rgba(0, 201, 167, 0.3);
+  --solar: #e8a45a;
+  --solar-dim: rgba(232, 164, 90, 0.15);
+  --solar-glow: rgba(232, 164, 90, 0.3);
+  --cyan: #00e5cc;
+  --error: #e05a5a;
+  --error-dim: rgba(224, 90, 90, 0.15);
+  --nebular: #7b5fb5;
+  --nebular-dim: rgba(123, 95, 181, 0.15);
+  --text: #f0f4f8;
+  --text-dim: #8a9bb0;
+  --text-muted: #5a6b7e;
+  --border: rgba(138, 155, 176, 0.12);
+  --border-hover: rgba(138, 155, 176, 0.25);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --nav-height: 56px;
+  --content-max: 820px;
+  --panel-width: 420px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ─── NAVIGATION BAR ─── */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 32px;
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-logo .logo-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--bio);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--void);
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--bio);
+  border-radius: 1px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-link:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-link.active {
+  color: var(--nebular);
+}
+
+.nav-link.active::after {
+  width: 60%;
+  left: 20%;
+  background: var(--nebular);
+}
+
+.nav-badge {
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.nav-badge.solar {
+  background: var(--solar);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.nav-search:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-search kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+.nav-bell {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-bell:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.nav-bell .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--solar);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid var(--void);
+}
+
+.nav-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nebular), var(--bio));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.nav-avatar:hover {
+  box-shadow: 0 0 0 2px var(--bio-dim);
+}
+
+/* ─── MAIN CONTENT ─── */
+
+.main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* ─── ATTENTION BANNER ─── */
+
+.attention-banner {
+  background: var(--abyss);
+  border: 1px solid rgba(232, 164, 90, 0.3);
+  border-left: 3px solid var(--solar);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-16px);
+  animation: slideDown 0.5s ease 0.3s forwards;
+}
+
+@keyframes slideDown {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.attention-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  gap: 16px;
+}
+
+.attention-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attention-icon-wrap {
+  width: 32px;
+  height: 32px;
+  background: var(--solar-dim);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.attention-text {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.attention-text strong {
+  color: var(--solar);
+  font-weight: 600;
+}
+
+.attention-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--void);
+  background: var(--solar);
+  padding: 7px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  border: none;
+  letter-spacing: 0.01em;
+}
+
+.attention-btn:hover {
+  background: #f0b46e;
+  box-shadow: 0 0 16px var(--solar-glow);
+}
+
+/* ─── HEALTH CARDS GRID ─── */
+
+.health-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  transition: border-color 0.3s;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-label-icon {
+  font-size: 13px;
+}
+
+.card-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.card-status-dot.healthy { background: var(--bio); }
+.card-status-dot.warning { background: var(--solar); }
+.card-status-dot.error { background: var(--error); }
+
+/* Card detail rows */
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12.5px;
+}
+
+.card-row .label {
+  color: var(--text-dim);
+}
+
+.card-row .value {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.card-row .value.mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.card-row .value.bio { color: var(--bio); }
+.card-row .value.solar { color: var(--solar); }
+.card-row .value.nebular { color: var(--nebular); }
+.card-row .value.cyan { color: var(--cyan); }
+.card-row .value.error { color: var(--error); }
+
+/* Sparkline container */
+.sparkline-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+}
+
+.sparkline-bar {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--nebular);
+  opacity: 0;
+  animation: sparkGrow 1s ease-out forwards;
+}
+
+@keyframes sparkGrow {
+  from { opacity: 0; transform: scaleY(0.3); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+/* Member dots */
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.member-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  cursor: default;
+  transition: transform 0.2s;
+}
+
+.member-dot:hover {
+  transform: scale(1.15);
+}
+
+.member-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+/* RFC pipeline mini viz */
+.pipeline-mini {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.pipeline-stage {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 4px 2px;
+  position: relative;
+}
+
+.pipeline-stage::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid var(--text-muted);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.3;
+}
+
+.pipeline-stage:last-child::after { display: none; }
+
+.pipeline-stage.active {
+  color: var(--solar);
+  font-weight: 700;
+}
+
+.pipeline-stage .stage-count {
+  display: block;
+  font-size: 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.pipeline-stage.active .stage-count {
+  color: var(--solar);
+}
+
+.pipeline-stage.empty .stage-count {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+/* Compliance bars */
+.compliance-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 12.5px;
+}
+
+.compliance-label {
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 0;
+}
+
+.compliance-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 500;
+  min-width: 50px;
+  text-align: right;
+}
+
+.compliance-icon {
+  font-size: 12px;
+  width: 18px;
+  text-align: center;
+}
+
+.compliance-icon.pass { color: var(--bio); }
+.compliance-icon.warn { color: var(--solar); }
+
+.compliance-bar-track {
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.compliance-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0;
+  transition: width 1s ease-out;
+}
+
+.compliance-bar-fill.full { background: var(--bio); }
+.compliance-bar-fill.partial { background: var(--solar); }
+
+.compliance-overall {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.compliance-pct {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--bio);
+}
+
+.compliance-pct-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Retro signals card */
+.signal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12.5px;
+}
+
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.signal-label {
+  flex: 1;
+  color: var(--text-dim);
+}
+
+.signal-value {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.signal-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.signal-badge.solar {
+  background: var(--solar-dim);
+  color: var(--solar);
+}
+
+.signal-badge.bio {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.signal-badge.nebular {
+  background: var(--nebular-dim);
+  color: var(--nebular);
+}
+
+.card-feedback-mini {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-feedback-mini code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.feedback-vote {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.feedback-vote.up { color: var(--bio); }
+.feedback-vote.down { color: var(--error); }
+
+/* ─── SECTION DIVIDERS ─── */
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  margin-top: 8px;
+}
+
+.section-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section-divider-text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ─── RFC KANBAN ─── */
+
+.kanban-scroll {
+  overflow-x: auto;
+  margin-bottom: 32px;
+  padding-bottom: 8px;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+  min-width: 780px;
+}
+
+.kanban-column {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  min-height: 100px;
+}
+
+.kanban-col-header {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kanban-col-count {
+  font-size: 9px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+}
+
+.kanban-card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.kanban-card:last-child { margin-bottom: 0; }
+
+.kanban-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.kanban-card.solar-glow {
+  border-color: rgba(232, 164, 90, 0.4);
+  box-shadow: 0 0 16px -4px var(--solar-glow);
+  animation: solarPulse 3s ease-in-out infinite;
+}
+
+@keyframes solarPulse {
+  0%, 100% { box-shadow: 0 0 8px -4px var(--solar-glow); }
+  50% { box-shadow: 0 0 20px -2px var(--solar-glow); }
+}
+
+.kanban-card-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.kanban-card-author {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.kanban-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.kanban-card-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kanban-card-badge.serves { background: var(--bio-dim); color: var(--bio); }
+.kanban-card-badge.extends { background: var(--nebular-dim); color: var(--nebular); }
+.kanban-card-badge.neutral { background: rgba(138, 155, 176, 0.08); color: var(--text-dim); }
+
+.kanban-card-time {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.kanban-empty {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px 4px;
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ─── COUNCIL SESSION TIMELINE ─── */
+
+.timeline {
+  position: relative;
+  padding-left: 72px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 34px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, var(--nebular-dim) 0%, var(--border) 30%, var(--border) 70%, transparent 100%);
+}
+
+.timeline-event {
+  position: relative;
+  margin-bottom: 16px;
+  opacity: 0;
+  transform: translateX(-12px);
+}
+
+.timeline-event.visible {
+  animation: eventSlideIn 0.4s ease forwards;
+}
+
+@keyframes eventSlideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.timeline-time {
+  position: absolute;
+  left: -72px;
+  top: 14px;
+  width: 56px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -42px;
+  top: 14px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  z-index: 2;
+  border: 2px solid var(--void);
+}
+
+.timeline-dot.council { background: var(--nebular); color: white; }
+
+.timeline-card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.timeline-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-card-body {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.timeline-card-body code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.event-type-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.event-type-tag.council { background: var(--nebular-dim); color: var(--nebular); }
+
+.timeline-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-card-footer .tl-action {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bio);
+  cursor: pointer;
+  transition: color 0.2s;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.timeline-card-footer .tl-action:hover { color: var(--cyan); }
+
+.timeline-card-footer .tl-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.decision-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.decision-pill {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.decision-pill.shift {
+  background: var(--solar-dim);
+  color: var(--solar);
+}
+
+.decision-pill.added {
+  background: var(--nebular-dim);
+  color: var(--nebular);
+}
+
+/* ─── SLIDE-OVER PANEL ─── */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 20, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.panel-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.slide-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--panel-width);
+  height: 100vh;
+  background: var(--abyss);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide-panel.open {
+  transform: translateX(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.panel-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.panel-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.panel-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.panel-section {
+  margin-bottom: 20px;
+}
+
+.panel-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.panel-text {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.panel-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.panel-badge-inline.bio {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.panel-badge-inline.solar {
+  background: var(--solar-dim);
+  color: var(--solar);
+}
+
+/* Review entries */
+.review-entry {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.review-entry:last-child { margin-bottom: 0; }
+
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.review-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.review-verdict {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.review-verdict.approve { background: var(--bio-dim); color: var(--bio); }
+.review-verdict.conditions { background: var(--solar-dim); color: var(--solar); }
+.review-verdict.reject { background: var(--error-dim); color: var(--error); }
+
+.review-body {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.review-conditions {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid var(--solar-dim);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.review-conditions li {
+  margin-bottom: 4px;
+}
+
+/* Minority position */
+.minority-entry {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--nebular);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.minority-author {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nebular);
+  margin-bottom: 4px;
+}
+
+.minority-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* Panel action buttons */
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  text-align: center;
+}
+
+.panel-btn.approve {
+  background: var(--bio);
+  color: var(--void);
+  border-color: var(--bio);
+}
+
+.panel-btn.approve:hover {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 16px var(--bio-glow);
+}
+
+.panel-btn.reject {
+  background: transparent;
+  color: var(--error);
+  border-color: var(--error-dim);
+}
+
+.panel-btn.reject:hover {
+  background: var(--error-dim);
+  border-color: var(--error);
+}
+
+.panel-btn.changes {
+  background: transparent;
+  color: var(--solar);
+  border-color: var(--solar-dim);
+}
+
+.panel-btn.changes:hover {
+  background: var(--solar-dim);
+  border-color: var(--solar);
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (max-width: 700px) {
+  .health-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .nav-search { display: none; }
+  .slide-panel { width: 100vw; }
+  .main { padding: 16px 12px 60px; }
+  .timeline { padding-left: 60px; }
+  .timeline::before { left: 26px; }
+  .timeline-time { left: -60px; width: 44px; font-size: 10px; }
+  .timeline-dot { left: -34px; }
+  .kanban { min-width: 700px; }
+}
+
+/* ─── REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── UTILITY ─── */
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ NAVIGATION ═══════════════════════ -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">M</div>
+    Method Bridge
+  </div>
+
+  <div class="nav-links">
+    <a class="nav-link" data-view="dashboard">Dashboard</a>
+    <a class="nav-link" data-view="timeline">Timeline</a>
+    <a class="nav-link" data-view="strategies">Strategies</a>
+    <a class="nav-link active" data-view="governance">
+      Governance
+      <span class="nav-badge solar">1</span>
+    </a>
+    <a class="nav-link" data-view="analytics">Analytics</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search <kbd>Ctrl K</kbd>
+    </div>
+    <div class="nav-bell">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="badge">1</span>
+    </div>
+    <div class="nav-avatar">VF</div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ MAIN CONTENT ═══════════════════════ -->
+<main class="main">
+
+  <!-- ─── Attention Banner ─── -->
+  <div class="attention-banner">
+    <div class="attention-banner-inner">
+      <div class="attention-left">
+        <div class="attention-icon-wrap">&#9888;</div>
+        <span class="attention-text"><strong>RFC-004</strong> is pending your approval</span>
+      </div>
+      <button class="attention-btn" onclick="openPanel()">Review &amp; Approve &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ─── Health Cards Grid ─── -->
+  <div class="health-grid">
+
+    <!-- Card 1: Council Health -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">
+          <span class="card-label-icon">&#9879;</span>
+          Council Health
+        </span>
+        <span class="card-status-dot healthy"></span>
+      </div>
+
+      <div class="card-row">
+        <span class="label">Last session</span>
+        <span class="value mono">SESSION-038 <span style="color:var(--text-muted);font-size:10px;margin-left:4px;">2d ago</span></span>
+      </div>
+      <div class="card-row">
+        <span class="label">Decisions</span>
+        <span class="value"><span class="counter" data-target="92" data-decimals="0">0</span> total <span style="color:var(--text-muted);font-size:11px;">&middot; 3 this week</span></span>
+      </div>
+      <div class="card-row">
+        <span class="label">Agenda items</span>
+        <span class="value">
+          <span class="counter" data-target="8" data-decimals="0">0</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-left:6px;">
+            <span style="color:var(--error);">3 P0</span> &middot;
+            <span style="color:var(--solar);">3 P1</span> &middot;
+            <span style="color:var(--text-dim);">2 P2</span>
+          </span>
+        </span>
+      </div>
+      <div class="card-row">
+        <span class="label">Trend</span>
+        <div class="sparkline-container">
+          <div class="sparkline" id="agendaSparkline"></div>
+          <span style="font-size:10px;color:var(--bio);">&#9660; decreasing</span>
+        </div>
+      </div>
+      <div class="card-row">
+        <span class="label">Next session due</span>
+        <span class="value" style="color:var(--solar);">Tomorrow</span>
+      </div>
+
+      <div class="member-row">
+        <div class="member-dot" style="background:linear-gradient(135deg, #7b5fb5, #9b7fd5);" title="Thane">Th</div>
+        <div class="member-dot" style="background:linear-gradient(135deg, #00c9a7, #00e5cc);" title="Nika">Ni</div>
+        <div class="member-dot" style="background:linear-gradient(135deg, #e8a45a, #f0c080);" title="Harlan">Ha</div>
+        <div class="member-dot" style="background:linear-gradient(135deg, #e05a5a, #f08080);" title="Reva">Re</div>
+        <div class="member-dot" style="background:linear-gradient(135deg, #5a8ae0, #80a8f0);" title="Orion">Or</div>
+        <span class="member-count">5 members</span>
+      </div>
+    </div>
+
+    <!-- Card 2: RFC Pipeline -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">
+          <span class="card-label-icon">&#9881;</span>
+          RFC Pipeline
+        </span>
+        <span class="nav-badge solar" style="font-size:9px;">1 pending</span>
+      </div>
+
+      <div class="card-row">
+        <span class="label">Active RFCs</span>
+        <span class="value"><span class="counter" data-target="3" data-decimals="0">0</span></span>
+      </div>
+      <div class="card-row">
+        <span class="label">Pending approval</span>
+        <span class="value solar">1 <span style="font-size:10px;color:var(--text-muted);margin-left:4px;">RFC-004</span></span>
+      </div>
+      <div class="card-row">
+        <span class="label">In review</span>
+        <span class="value nebular">1 <span style="font-size:10px;color:var(--text-muted);margin-left:4px;">RFC-005</span></span>
+      </div>
+      <div class="card-row">
+        <span class="label">Draft</span>
+        <span class="value" style="color:var(--text-dim);">1 <span style="font-size:10px;color:var(--text-muted);margin-left:4px;">RFC-006</span></span>
+      </div>
+
+      <div class="pipeline-mini">
+        <div class="pipeline-stage">
+          <span class="stage-count">1</span>
+          Draft
+        </div>
+        <div class="pipeline-stage">
+          <span class="stage-count">1</span>
+          Review
+        </div>
+        <div class="pipeline-stage empty">
+          <span class="stage-count">0</span>
+          Steering
+        </div>
+        <div class="pipeline-stage empty">
+          <span class="stage-count">0</span>
+          Accepted
+        </div>
+        <div class="pipeline-stage active">
+          <span class="stage-count">1</span>
+          Approval
+        </div>
+        <div class="pipeline-stage empty">
+          <span class="stage-count">0</span>
+          Handed Off
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Retro Signals -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">
+          <span class="card-label-icon">&#9673;</span>
+          Retro Signals
+        </span>
+        <span class="card-status-dot warning"></span>
+      </div>
+
+      <div class="signal-item">
+        <span class="signal-dot" style="background:var(--bio);"></span>
+        <span class="signal-label">Observations</span>
+        <span class="signal-value">12 total</span>
+        <span class="signal-badge solar">3 nearing threshold</span>
+      </div>
+      <div class="signal-item">
+        <span class="signal-dot" style="background:var(--solar);"></span>
+        <span class="signal-label">Gap candidates</span>
+        <span class="signal-value">1 active</span>
+      </div>
+      <div class="signal-item">
+        <span class="signal-dot" style="background:var(--nebular);"></span>
+        <span class="signal-label">Proposed deltas</span>
+        <span class="signal-value">4 unreviewed</span>
+        <span class="signal-badge nebular">needs triage</span>
+      </div>
+
+      <div class="card-feedback-mini">
+        Card feedback: <code>DR-03</code>
+        <span class="feedback-vote up">2 helpful</span> &middot;
+        <span class="feedback-vote down">1 unhelpful</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Process Compliance -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">
+          <span class="card-label-icon">&#9745;</span>
+          Process Compliance
+        </span>
+        <span class="card-status-dot healthy"></span>
+      </div>
+
+      <div class="compliance-row">
+        <span class="compliance-label">PR-01 Guide sync</span>
+        <div class="compliance-bar-track">
+          <div class="compliance-bar-fill full" data-width="100"></div>
+        </div>
+        <span class="compliance-value">10/10</span>
+        <span class="compliance-icon pass">&#10003;</span>
+      </div>
+      <div class="compliance-row">
+        <span class="compliance-label">PR-02 Stale escalation</span>
+        <div class="compliance-bar-track">
+          <div class="compliance-bar-fill full" data-width="100"></div>
+        </div>
+        <span class="compliance-value">9/9</span>
+        <span class="compliance-icon pass">&#10003;</span>
+      </div>
+      <div class="compliance-row">
+        <span class="compliance-label">PR-03 Retro placement</span>
+        <div class="compliance-bar-track">
+          <div class="compliance-bar-fill partial" data-width="71"></div>
+        </div>
+        <span class="compliance-value">5/7</span>
+        <span class="compliance-icon warn">&#9888;</span>
+      </div>
+
+      <div class="compliance-overall">
+        <span class="compliance-pct"><span class="counter" data-target="96" data-decimals="0">0</span>%</span>
+        <span class="compliance-pct-label">overall compliance<br><span style="font-size:10px;color:var(--text-muted);">24/26 followed</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── RFC Pipeline Kanban ─── -->
+  <div class="section-divider">
+    <span class="section-divider-line"></span>
+    <span class="section-divider-text">RFC Pipeline</span>
+    <span class="section-divider-line"></span>
+  </div>
+
+  <div class="kanban-scroll">
+    <div class="kanban">
+      <!-- Draft -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Draft
+          <span class="kanban-col-count">1</span>
+        </div>
+        <div class="kanban-card">
+          <div class="kanban-card-title">RFC-006: Session budget inheritance</div>
+          <div class="kanban-card-author">Harlan</div>
+          <div class="kanban-card-meta">
+            <span class="kanban-card-badge extends">extends</span>
+            <span class="kanban-card-time">1d</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domain Review -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Domain Review
+          <span class="kanban-col-count">1</span>
+        </div>
+        <div class="kanban-card">
+          <div class="kanban-card-title">RFC-005: Retro signal threshold automation</div>
+          <div class="kanban-card-author">Reva</div>
+          <div class="kanban-card-meta">
+            <span class="kanban-card-badge serves">serves_purpose</span>
+            <span class="kanban-card-time">3d</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steering Review -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Steering Review
+          <span class="kanban-col-count">0</span>
+        </div>
+        <div class="kanban-empty">No RFCs</div>
+      </div>
+
+      <!-- Accepted -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Accepted
+          <span class="kanban-col-count">0</span>
+        </div>
+        <div class="kanban-empty">No RFCs</div>
+      </div>
+
+      <!-- Human Approval -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Human Approval
+          <span class="kanban-col-count" style="background:var(--solar-dim);color:var(--solar);">1</span>
+        </div>
+        <div class="kanban-card solar-glow" onclick="openPanel()">
+          <div class="kanban-card-title">RFC-004: Anti-capitulation invariant &amp; isolation mode</div>
+          <div class="kanban-card-author">Nika &middot; Thane</div>
+          <div class="kanban-card-meta">
+            <span class="kanban-card-badge serves">serves_purpose</span>
+            <span class="kanban-card-time">5d</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Handed Off -->
+      <div class="kanban-column">
+        <div class="kanban-col-header">
+          Handed Off
+          <span class="kanban-col-count">0</span>
+        </div>
+        <div class="kanban-empty">No RFCs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Council Session Timeline ─── -->
+  <div class="section-divider" style="margin-top: 8px;">
+    <span class="section-divider-line"></span>
+    <span class="section-divider-text">Council Sessions</span>
+    <span class="section-divider-line"></span>
+  </div>
+
+  <div class="timeline" id="councilTimeline">
+
+    <!-- SESSION-038 -->
+    <div class="timeline-event" data-delay="0">
+      <span class="timeline-time">Mar 18</span>
+      <span class="timeline-dot council">&#9879;</span>
+      <div class="timeline-card">
+        <div class="timeline-card-title">
+          SESSION-038
+          <span class="event-type-tag council">council</span>
+        </div>
+        <div class="timeline-card-body">
+          Smoke test closure + roadmap prioritization
+        </div>
+        <div class="decision-pills">
+          <span class="decision-pill">smoke-test approved</span>
+          <span class="decision-pill">roadmap Q2 set</span>
+          <span class="decision-pill">DR-13 enforced</span>
+        </div>
+        <div class="timeline-card-footer" style="margin-top:8px;">
+          <button class="tl-action">View Session Log &rarr;</button>
+          <span class="tl-meta">3 decisions &#10003;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSION-037 -->
+    <div class="timeline-event" data-delay="100">
+      <span class="timeline-time">Mar 17</span>
+      <span class="timeline-dot council">&#9879;</span>
+      <div class="timeline-card">
+        <div class="timeline-card-title">
+          SESSION-037
+          <span class="event-type-tag council">council</span>
+        </div>
+        <div class="timeline-card-body">
+          RFC-003 review &mdash; anti-capitulation invariant first reading
+        </div>
+        <div class="decision-pills">
+          <span class="decision-pill">RFC-003 reviewed</span>
+          <span class="decision-pill">essence impact assessed</span>
+          <span class="decision-pill shift">1 position shift</span>
+        </div>
+        <div class="timeline-card-footer" style="margin-top:8px;">
+          <button class="tl-action">View Session Log &rarr;</button>
+          <span class="tl-meta">3 decisions, 1 position shift &#10003;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSION-036 -->
+    <div class="timeline-event" data-delay="200">
+      <span class="timeline-time">Mar 16</span>
+      <span class="timeline-dot council">&#9879;</span>
+      <div class="timeline-card">
+        <div class="timeline-card-title">
+          SESSION-036
+          <span class="event-type-tag council">council</span>
+        </div>
+        <div class="timeline-card-body">
+          First delta triage cycle &mdash; reviewing accumulated retro signals
+        </div>
+        <div class="decision-pills">
+          <span class="decision-pill added">DR-14 added</span>
+          <span class="decision-pill">triage complete</span>
+        </div>
+        <div class="timeline-card-footer" style="margin-top:8px;">
+          <button class="tl-action">View Session Log &rarr;</button>
+          <span class="tl-meta">DR-14 added &#10003;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSION-035 -->
+    <div class="timeline-event" data-delay="300">
+      <span class="timeline-time">Mar 15</span>
+      <span class="timeline-dot council">&#9879;</span>
+      <div class="timeline-card">
+        <div class="timeline-card-title">
+          SESSION-035
+          <span class="event-type-tag council">council</span>
+        </div>
+        <div class="timeline-card-body">
+          Delta triage process design &mdash; pending-deltas accumulator created
+        </div>
+        <div class="decision-pills">
+          <span class="decision-pill">triage process defined</span>
+          <span class="decision-pill added">accumulator created</span>
+        </div>
+        <div class="timeline-card-footer" style="margin-top:8px;">
+          <button class="tl-action">View Session Log &rarr;</button>
+          <span class="tl-meta">accumulator created &#10003;</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ═══════════════════════ SLIDE-OVER PANEL (RFC Approval) ═══════════════════════ -->
+<div class="panel-backdrop open" id="panelBackdrop" onclick="closePanel()"></div>
+<div class="slide-panel open" id="slidePanel">
+  <div class="panel-header">
+    <div class="panel-title-group">
+      <span class="panel-title">RFC-004 Approval</span>
+      <span class="panel-subtitle">Anti-Capitulation Invariant &amp; Isolation Mode</span>
+    </div>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- Meta -->
+    <div class="panel-section">
+      <div class="panel-section-label">Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:12.5px;">
+        <div>
+          <span style="color:var(--text-muted);font-size:11px;">Authors</span><br>
+          <span style="color:var(--text);font-weight:500;">Nika, Thane</span>
+        </div>
+        <div>
+          <span style="color:var(--text-muted);font-size:11px;">Date Submitted</span><br>
+          <span style="color:var(--text);font-weight:500;font-family:var(--font-mono);font-size:11.5px;">2026-03-15</span>
+        </div>
+        <div>
+          <span style="color:var(--text-muted);font-size:11px;">Essence Impact</span><br>
+          <span class="panel-badge-inline bio">&#10003; serves_purpose</span>
+        </div>
+        <div>
+          <span style="color:var(--text-muted);font-size:11px;">Time in Stage</span><br>
+          <span style="color:var(--solar);font-weight:500;">5 days</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Problem Statement -->
+    <div class="panel-section">
+      <div class="panel-section-label">Problem Statement</div>
+      <div class="panel-text">
+        LLM agents exhibit a well-documented tendency to capitulate under pressure &mdash; abandoning defensible positions when the human pushes back. In methodology-governed contexts, this undermines the integrity of delivery rules, gate enforcement, and essence invariants. Without a structural safeguard, a single moment of social pressure can override hours of rigorous process.
+      </div>
+    </div>
+
+    <!-- Proposal -->
+    <div class="panel-section">
+      <div class="panel-section-label">Proposal</div>
+      <div class="panel-text">
+        Introduce a formal <strong>anti-capitulation invariant</strong> as a first-class governance primitive. When an agent detects capitulation pressure on a protected constraint (delivery rule, gate, essence), it enters <strong>isolation mode</strong> &mdash; a restricted execution state where the constraint cannot be overridden without explicit council escalation. The invariant is enforced at the methodology runtime level, not as a behavioral guideline.
+      </div>
+    </div>
+
+    <!-- Reviews -->
+    <div class="panel-section">
+      <div class="panel-section-label">Reviews</div>
+
+      <div class="review-entry">
+        <div class="review-header">
+          <span class="review-author">Theory Council</span>
+          <span class="review-verdict approve">Approve</span>
+        </div>
+        <div class="review-body">
+          Formally consistent with F1-FTH. The invariant maps cleanly to the constraint preservation theorem. No conflicts with existing theory axioms.
+        </div>
+      </div>
+
+      <div class="review-entry">
+        <div class="review-header">
+          <span class="review-author">Steering Council</span>
+          <span class="review-verdict conditions">Approve with Conditions</span>
+        </div>
+        <div class="review-body">
+          Approved in principle. Two conditions must be met before handoff:
+        </div>
+        <ol class="review-conditions">
+          <li>Isolation mode must include an automatic timeout (max 30 minutes) to prevent permanent deadlock when the human is unavailable.</li>
+          <li>The escalation path must support asynchronous resolution &mdash; not just synchronous council sessions.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Minority Positions -->
+    <div class="panel-section">
+      <div class="panel-section-label">Minority Positions</div>
+
+      <div class="minority-entry">
+        <div class="minority-author">Harlan (dissent)</div>
+        <div class="minority-text">
+          Isolation mode creates a new failure mode: agents that refuse legitimate human overrides by incorrectly classifying them as capitulation pressure. The detection heuristic needs a false-positive escape hatch before this ships. A human override keyword should bypass isolation unconditionally.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel-actions">
+    <button class="panel-btn approve">Approve</button>
+    <button class="panel-btn reject">Reject</button>
+    <button class="panel-btn changes">Request Changes</button>
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   INTERACTIVE LOGIC — Governance Page
+   ═══════════════════════════════════════════════════════════ */
+
+// ─── Nav Link Switching ───
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// ─── Slide-Over Panel ───
+function openPanel() {
+  document.getElementById('panelBackdrop').classList.add('open');
+  document.getElementById('slidePanel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panelBackdrop').classList.remove('open');
+  document.getElementById('slidePanel').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePanel();
+});
+
+// ─── Counter Animation ───
+function animateCounters() {
+  document.querySelectorAll('.counter').forEach(counter => {
+    const target = parseFloat(counter.getAttribute('data-target'));
+    const decimals = parseInt(counter.getAttribute('data-decimals') ?? '2');
+    const duration = 1200;
+    const startTime = performance.now();
+
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = target * eased;
+      counter.textContent = decimals === 0 ? Math.round(current) : current.toFixed(decimals);
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    setTimeout(() => requestAnimationFrame(update), 600);
+  });
+}
+
+// ─── Compliance Bar Animation ───
+function animateComplianceBars() {
+  document.querySelectorAll('.compliance-bar-fill').forEach(bar => {
+    const width = bar.getAttribute('data-width');
+    setTimeout(() => { bar.style.width = width + '%'; }, 500);
+  });
+}
+
+// ─── Sparkline Generation ───
+function drawAgendaSparkline() {
+  const container = document.getElementById('agendaSparkline');
+  if (!container) return;
+  // Agenda items over last 8 sessions: trending down (good)
+  const data = [14, 12, 13, 11, 10, 9, 9, 8];
+  const max = Math.max(...data);
+
+  data.forEach((val, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'sparkline-bar';
+    const height = Math.max(3, (val / max) * 20);
+    bar.style.height = height + 'px';
+    bar.style.animationDelay = (0.8 + i * 0.08) + 's';
+    // Color the last bar differently
+    if (i === data.length - 1) {
+      bar.style.background = 'var(--bio)';
+    }
+    container.appendChild(bar);
+  });
+}
+
+// ─── Timeline Event Stagger Animation ───
+function animateTimeline() {
+  const events = document.querySelectorAll('#councilTimeline .timeline-event');
+  events.forEach((ev, i) => {
+    const delay = parseInt(ev.getAttribute('data-delay') || (i * 100));
+    setTimeout(() => ev.classList.add('visible'), 500 + delay);
+  });
+}
+
+// ─── Initialize on load ───
+window.addEventListener('DOMContentLoaded', () => {
+  animateCounters();
+  animateComplianceBars();
+  drawAgendaSparkline();
+  animateTimeline();
+});
+</script>
+
+</body>
+</html>

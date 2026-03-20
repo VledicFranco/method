@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registry Browser — Narrative Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --void: #080e14;
+      --abyss: #0d1f2d;
+      --abyss-light: #122a3a;
+      --bio: #00c9a7;
+      --bio-dim: rgba(0, 201, 167, 0.15);
+      --bio-glow: rgba(0, 201, 167, 0.3);
+      --solar: #e8a45a;
+      --solar-dim: rgba(232, 164, 90, 0.15);
+      --cyan: #00e5cc;
+      --error: #e05a5a;
+      --error-dim: rgba(224, 90, 90, 0.15);
+      --nebular: #7b5fb5;
+      --nebular-dim: rgba(123, 95, 181, 0.15);
+      --text: #f0f4f8;
+      --text-dim: #8a9bb0;
+      --text-muted: #5a6b7e;
+      --border: rgba(138, 155, 176, 0.12);
+      --border-hover: rgba(138, 155, 176, 0.25);
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+
+      --text-xs: 0.7rem;
+      --text-sm: 0.8rem;
+      --text-base: 0.875rem;
+      --text-md: 1rem;
+      --text-lg: 1.25rem;
+      --text-xl: 1.5rem;
+
+      --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--void);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* ── Navigation Bar ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 56px;
+      background: rgba(8, 14, 20, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-6);
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-md);
+      color: var(--bio);
+      letter-spacing: -0.02em;
+      margin-right: var(--space-8);
+      white-space: nowrap;
+    }
+    .nav-items { display: flex; gap: var(--space-1); flex: 1; }
+    .nav-item {
+      position: relative;
+      padding: var(--space-2) var(--space-4);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: color 200ms ease-out, background 200ms ease-out;
+      white-space: nowrap;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(138, 155, 176, 0.06); }
+    .nav-item::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: var(--bio);
+      transition: width 200ms ease-out, left 200ms ease-out;
+    }
+    .nav-item:hover::after { width: 50%; left: 25%; }
+    .nav-item.active { color: var(--text); }
+    .nav-item.active::after {
+      width: 70%;
+      left: 15%;
+      background: var(--bio);
+      box-shadow: 0 0 8px var(--bio-glow);
+    }
+    .nav-group-label {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      padding: var(--space-2) var(--space-3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .nav-actions {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+    }
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+      font-family: var(--font-mono);
+      color: var(--bio);
+    }
+    .nav-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--bio);
+      animation: pulse-glow-dot 2500ms ease-in-out infinite;
+    }
+
+    /* ── Layout: two-column ── */
+    .page-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Sidebar: Registry Tree ── */
+    .sidebar {
+      background: rgba(13, 31, 45, 0.5);
+      border-right: 1px solid var(--border);
+      padding: var(--space-6) 0;
+      overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 0 var(--space-6) var(--space-5);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: var(--space-4);
+    }
+    .sidebar-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-2);
+    }
+    .sidebar-subtitle {
+      font-size: var(--text-sm);
+      color: var(--text-dim);
+    }
+    .sidebar-search {
+      width: calc(100% - 48px);
+      margin: 0 var(--space-6) var(--space-4);
+      height: 34px;
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 var(--space-3);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      outline: none;
+    }
+    .sidebar-search::placeholder { color: var(--text-muted); }
+    .sidebar-search:focus { border-color: var(--bio); }
+
+    /* Tree */
+    .tree { padding: 0 var(--space-3); }
+    .tree-group { margin-bottom: var(--space-2); }
+    .tree-group-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 200ms;
+      user-select: none;
+    }
+    .tree-group-header:hover { background: rgba(138, 155, 176, 0.06); }
+    .tree-toggle {
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform 200ms;
+      width: 16px;
+      text-align: center;
+    }
+    .tree-toggle.open { transform: rotate(90deg); }
+    .tree-group-name {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+    }
+    .tree-group-desc {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .tree-group-count {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(138, 155, 176, 0.08);
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+    .tree-children {
+      display: none;
+      padding-left: var(--space-6);
+    }
+    .tree-children.open { display: block; }
+    .tree-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 6px var(--space-3);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 200ms;
+    }
+    .tree-item:hover { background: rgba(138, 155, 176, 0.06); }
+    .tree-item.selected {
+      background: var(--bio-dim);
+      border: 1px solid rgba(0, 201, 167, 0.2);
+    }
+    .tree-item-connector {
+      width: 16px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .tree-item-status {
+      width: 16px;
+      text-align: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .status-compiled { color: var(--bio); }
+    .status-draft { color: var(--text-muted); }
+    .status-promoted { color: var(--cyan); }
+    .status-wip { color: var(--solar); }
+    .tree-item-name {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+      flex: 1;
+    }
+    .tree-item.selected .tree-item-name { color: var(--text); }
+    .tree-item-version {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* ── Main Content: Method Detail ── */
+    .main-content {
+      padding: var(--space-8) var(--space-8);
+      max-width: 720px;
+      overflow-y: auto;
+    }
+    .method-header {
+      margin-bottom: var(--space-8);
+    }
+    .method-id {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--bio);
+      letter-spacing: 0.02em;
+      margin-bottom: var(--space-1);
+    }
+    .method-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-2);
+    }
+    .method-meta {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+    }
+    .method-meta-item {
+      font-size: var(--text-sm);
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: var(--space-6);
+    }
+    .tab {
+      padding: var(--space-3) var(--space-5);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      position: relative;
+      transition: color 200ms;
+    }
+    .tab:hover { color: var(--text); }
+    .tab::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: transparent;
+      transition: background 200ms;
+    }
+    .tab.active {
+      color: var(--text);
+    }
+    .tab.active::after {
+      background: var(--bio);
+      box-shadow: 0 0 8px var(--bio-glow);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Section blocks */
+    .detail-section {
+      margin-bottom: var(--space-8);
+    }
+    .detail-section-title {
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-4);
+    }
+
+    /* Navigation (what/who/why/how/when) */
+    .nav-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+    .nav-block {
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--space-5);
+    }
+    .nav-block.full-width { grid-column: 1 / -1; }
+    .nav-block-label {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-2);
+    }
+    .nav-block-value {
+      font-size: var(--text-base);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-table th {
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .data-table td {
+      padding: var(--space-3);
+      font-size: var(--text-sm);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .data-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text);
+    }
+    .data-table td.mono {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+    }
+
+    /* Steps mini DAG */
+    .step-dag {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: var(--space-4) 0;
+      overflow-x: auto;
+    }
+    .step-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 100px;
+    }
+    .step-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--abyss);
+      border: 2px solid var(--bio);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--bio);
+      transition: all 200ms;
+    }
+    .step-circle:hover {
+      background: var(--bio-dim);
+      box-shadow: 0 0 12px var(--bio-glow);
+    }
+    .step-label {
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+      text-align: center;
+      max-width: 90px;
+    }
+    .step-arrow {
+      width: 40px;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      flex-shrink: 0;
+    }
+    .step-arrow::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -4px;
+      border: 4px solid transparent;
+      border-left: 6px solid var(--border);
+    }
+
+    /* Gate checklist */
+    .gate-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .gate-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: var(--space-4);
+    }
+    .gate-status {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+    .gate-pass {
+      background: var(--bio-dim);
+      color: var(--bio);
+    }
+    .gate-info {
+      flex: 1;
+    }
+    .gate-name {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .gate-note {
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+    }
+
+    /* WIP list */
+    .wip-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .wip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: var(--space-4);
+    }
+    .wip-status-badge {
+      padding: 2px 8px;
+      border-radius: 9px;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .wip-open {
+      background: var(--solar-dim);
+      color: var(--solar);
+    }
+    .wip-resolved {
+      background: rgba(0, 229, 204, 0.15);
+      color: var(--cyan);
+    }
+    .wip-info { flex: 1; }
+    .wip-name {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .wip-desc {
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+    }
+
+    /* Badge (shared) */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 2px 8px;
+      border-radius: 9px;
+      font-size: var(--text-xs);
+      font-weight: 500;
+    }
+    .badge-compiled { background: var(--bio-dim); color: var(--bio); }
+    .badge-draft { background: rgba(138, 155, 176, 0.08); color: var(--text-dim); }
+
+    /* ── Animations ── */
+    @keyframes pulse-glow-dot {
+      0%, 100% { box-shadow: 0 0 0 0 var(--bio-glow); }
+      50% { box-shadow: 0 0 6px 2px var(--bio-glow); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page-layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation Bar ── -->
+<nav class="nav">
+  <div class="nav-logo">method bridge</div>
+  <div class="nav-items">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Sessions</div>
+    <div class="nav-item">Strategies</div>
+    <div class="nav-group-label">Governance</div>
+    <div class="nav-item">Council</div>
+    <div class="nav-item">Retrospectives</div>
+    <div class="nav-item active">Registry</div>
+    <div class="nav-item">Commission</div>
+  </div>
+  <div class="nav-actions">
+    <div class="nav-status">
+      <div class="nav-dot"></div>
+      Bridge Online
+    </div>
+  </div>
+</nav>
+
+<!-- ── Page Layout ── -->
+<div class="page-layout">
+
+  <!-- ── Sidebar: Registry Tree ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Registry</div>
+      <div class="sidebar-subtitle">6 methodologies, 28 methods</div>
+    </div>
+    <input class="sidebar-search" type="text" placeholder="Search methods..." />
+
+    <div class="tree">
+
+      <!-- P0-META -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle open">&#9654;</span>
+          <span class="tree-group-name">P0-META</span>
+          <span class="tree-group-desc">Meta-Methodology</span>
+          <span class="tree-group-count">7</span>
+        </div>
+        <div class="tree-children open">
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M1-MDES</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M3-MEVO</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M4-MINS</span>
+            <span class="tree-item-version">v1.2</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M5-MCOM</span>
+            <span class="tree-item-version">v1.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M7-DTID</span>
+            <span class="tree-item-version">v1.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-promoted">&#9733;</span>
+            <span class="tree-item-name">RETRO-PROTO</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-draft">&#9675;</span>
+            <span class="tree-item-name">STEER-PROTO</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- P1-EXEC -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle open">&#9654;</span>
+          <span class="tree-group-name">P1-EXEC</span>
+          <span class="tree-group-desc">Execution</span>
+          <span class="tree-group-count">3</span>
+        </div>
+        <div class="tree-children open">
+          <div class="tree-item selected" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M1-COUNCIL</span>
+            <span class="tree-item-version">v1.3</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M2-ORCH</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M3-TMP</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- P2-SD -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle open">&#9654;</span>
+          <span class="tree-group-name">P2-SD</span>
+          <span class="tree-group-desc">Software Delivery</span>
+          <span class="tree-group-count">7</span>
+        </div>
+        <div class="tree-children open">
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M1-IMPL</span>
+            <span class="tree-item-version">v3.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M2-DIMPL</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M3-PHRV</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-compiled" style="color: var(--text-muted);">...</span>
+            <span class="tree-item-name" style="color: var(--text-muted);">4 more methods</span>
+            <span class="tree-item-version"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- P3-GOV -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle open">&#9654;</span>
+          <span class="tree-group-name">P3-GOV</span>
+          <span class="tree-group-desc">Governance</span>
+          <span class="tree-group-count">4</span>
+        </div>
+        <div class="tree-children open">
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-draft">&#9675;</span>
+            <span class="tree-item-name">M1-DRAFT</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-draft">&#9675;</span>
+            <span class="tree-item-name">M2-REVIEW</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-draft">&#9675;</span>
+            <span class="tree-item-name">M3-APPROVE</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-draft">&#9675;</span>
+            <span class="tree-item-name">M4-HANDOFF</span>
+            <span class="tree-item-version">v0.1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- P-GH (collapsed) -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle">&#9654;</span>
+          <span class="tree-group-name">P-GH</span>
+          <span class="tree-group-desc">GitHub</span>
+          <span class="tree-group-count">4</span>
+        </div>
+        <div class="tree-children">
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M1-PR</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M2-ISSUE</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M3-RELEASE</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M4-CICD</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- P3-DISPATCH (collapsed) -->
+      <div class="tree-group">
+        <div class="tree-group-header" onclick="toggleTree(this)">
+          <span class="tree-toggle">&#9654;</span>
+          <span class="tree-group-name">P3-DISPATCH</span>
+          <span class="tree-group-desc">Dispatch</span>
+          <span class="tree-group-count">3</span>
+        </div>
+        <div class="tree-children">
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M1-ROUTE</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9500;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M2-ASSIGN</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+          <div class="tree-item" onclick="selectItem(this)">
+            <span class="tree-item-connector">&#9492;</span>
+            <span class="tree-item-status status-compiled">&#10003;</span>
+            <span class="tree-item-name">M3-TRACK</span>
+            <span class="tree-item-version">v1.0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Main Content: M1-COUNCIL Detail ── -->
+  <main class="main-content">
+
+    <div class="method-header">
+      <div class="method-id">P1-EXEC / M1-COUNCIL</div>
+      <div class="method-title">Steering Council</div>
+      <div class="method-meta">
+        <span class="badge badge-compiled">&#10003; compiled</span>
+        <div class="method-meta-item">
+          <span style="font-family: var(--font-mono); font-size: var(--text-xs);">v1.3</span>
+        </div>
+        <div class="method-meta-item" style="color: var(--text-muted);">
+          Last compiled 2026-03-15
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('navigation', this)">Navigation</div>
+      <div class="tab" onclick="switchTab('theory', this)">Domain Theory</div>
+      <div class="tab" onclick="switchTab('steps', this)">Steps</div>
+      <div class="tab" onclick="switchTab('compilation', this)">Compilation</div>
+      <div class="tab" onclick="switchTab('wip', this)">Known WIP</div>
+    </div>
+
+    <!-- Tab: Navigation -->
+    <div class="tab-content active" id="tab-navigation">
+      <div class="nav-grid">
+        <div class="nav-block">
+          <div class="nav-block-label">What</div>
+          <div class="nav-block-value">Persistent governance body that reviews priorities, steers project direction, and commissions agent work.</div>
+        </div>
+        <div class="nav-block">
+          <div class="nav-block-label">Who</div>
+          <div class="nav-block-value">The human operator and the methodology-aware agent. Council sessions require both roles.</div>
+        </div>
+        <div class="nav-block full-width">
+          <div class="nav-block-label">Why</div>
+          <div class="nav-block-value">Without a deliberate steering mechanism, projects drift toward local optima. The council provides a recurring checkpoint where strategic direction is evaluated against the project's essence.</div>
+        </div>
+        <div class="nav-block">
+          <div class="nav-block-label">How</div>
+          <div class="nav-block-value">Structured session protocol: delta triage, agenda review, prioritization, commission generation.</div>
+        </div>
+        <div class="nav-block">
+          <div class="nav-block-label">When</div>
+          <div class="nav-block-value">At the start of each work period or when accumulated deltas exceed the triage threshold.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Domain Theory -->
+    <div class="tab-content" id="tab-theory">
+      <div class="detail-section">
+        <div class="detail-section-title">Sorts</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Sort</th>
+              <th>Description</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Agenda</td>
+              <td>Ordered list of items requiring council attention</td>
+              <td class="mono">structured</td>
+            </tr>
+            <tr>
+              <td>AgendaItem</td>
+              <td>Single actionable item with priority and status</td>
+              <td class="mono">structured</td>
+            </tr>
+            <tr>
+              <td>Commission</td>
+              <td>Generated prompt for agent execution</td>
+              <td class="mono">artifact</td>
+            </tr>
+            <tr>
+              <td>Delta</td>
+              <td>Proposed change to methodology or project card</td>
+              <td class="mono">structured</td>
+            </tr>
+            <tr>
+              <td>Essence</td>
+              <td>Project identity: purpose, invariant, optimize_for</td>
+              <td class="mono">immutable</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Predicates</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Predicate</th>
+              <th>Signature</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Triaged(d)</td>
+              <td class="mono">Delta -> Bool</td>
+            </tr>
+            <tr>
+              <td>Prioritized(a)</td>
+              <td class="mono">Agenda -> Bool</td>
+            </tr>
+            <tr>
+              <td>Commissioned(i)</td>
+              <td class="mono">AgendaItem -> Bool</td>
+            </tr>
+            <tr>
+              <td>EssenceGuarded(e)</td>
+              <td class="mono">Essence -> Bool</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Axioms</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Statement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ax-1</td>
+              <td>Every delta must be triaged before agenda review begins.</td>
+            </tr>
+            <tr>
+              <td>Ax-2</td>
+              <td>Agenda items are prioritized relative to the project's essence.</td>
+            </tr>
+            <tr>
+              <td>Ax-3</td>
+              <td>A commission binds exactly one agenda item to one agent session.</td>
+            </tr>
+            <tr>
+              <td>Ax-4</td>
+              <td>The council cannot modify the essence — only guard it.</td>
+            </tr>
+            <tr>
+              <td>Ax-5</td>
+              <td>Stale agenda items (3+ sessions) must be resolved or archived.</td>
+            </tr>
+            <tr>
+              <td>Ax-6</td>
+              <td>Council decisions are recorded in the session log before execution.</td>
+            </tr>
+            <tr>
+              <td>Ax-7</td>
+              <td>Rejected deltas include rationale and are preserved in the log.</td>
+            </tr>
+            <tr>
+              <td>Ax-8</td>
+              <td>The council reviews retrospective observations for methodology feedback loops.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab: Steps -->
+    <div class="tab-content" id="tab-steps">
+      <div class="detail-section">
+        <div class="detail-section-title">Step Sequence</div>
+        <div class="step-dag">
+          <div class="step-node">
+            <div class="step-circle">s_0</div>
+            <div class="step-label">Delta Triage</div>
+          </div>
+          <div class="step-arrow"></div>
+          <div class="step-node">
+            <div class="step-circle">s_1</div>
+            <div class="step-label">Agenda Review</div>
+          </div>
+          <div class="step-arrow"></div>
+          <div class="step-node">
+            <div class="step-circle">s_2</div>
+            <div class="step-label">Prioritize</div>
+          </div>
+          <div class="step-arrow"></div>
+          <div class="step-node">
+            <div class="step-circle">s_3</div>
+            <div class="step-label">Commission</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Step Details</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Name</th>
+              <th>Precondition</th>
+              <th>Postcondition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>sigma_0</td>
+              <td>Delta Triage</td>
+              <td style="color: var(--text-dim);">pending_deltas.length > 0</td>
+              <td style="color: var(--text-dim);">all deltas triaged</td>
+            </tr>
+            <tr>
+              <td>sigma_1</td>
+              <td>Agenda Review</td>
+              <td style="color: var(--text-dim);">Triaged(deltas)</td>
+              <td style="color: var(--text-dim);">agenda updated</td>
+            </tr>
+            <tr>
+              <td>sigma_2</td>
+              <td>Prioritize</td>
+              <td style="color: var(--text-dim);">agenda.items.length > 0</td>
+              <td style="color: var(--text-dim);">Prioritized(agenda)</td>
+            </tr>
+            <tr>
+              <td>sigma_3</td>
+              <td>Commission</td>
+              <td style="color: var(--text-dim);">Prioritized(agenda)</td>
+              <td style="color: var(--text-dim);">Commissioned(top_items)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab: Compilation -->
+    <div class="tab-content" id="tab-compilation">
+      <div class="detail-section">
+        <div class="detail-section-title">Compilation Gates</div>
+        <div class="gate-list">
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G0 — YAML Structure</div>
+              <div class="gate-note">Valid YAML, all required top-level keys present</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G1 — Navigation Completeness</div>
+              <div class="gate-note">what/who/why/how/when all populated</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G2 — Domain Theory</div>
+              <div class="gate-note">Sorts, predicates, and axioms internally consistent</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G3 — Step DAG</div>
+              <div class="gate-note">All steps connected, no orphans, preconditions reference valid predicates</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G4 — Predicate Coverage</div>
+              <div class="gate-note">All predicates used in at least one step precondition or postcondition</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G5 — Axiom Grounding</div>
+              <div class="gate-note">Every axiom references at least one sort and one predicate</div>
+            </div>
+          </div>
+          <div class="gate-item">
+            <div class="gate-status gate-pass">&#10003;</div>
+            <div class="gate-info">
+              <div class="gate-name">G6 — Cross-Reference</div>
+              <div class="gate-note">External methodology references (P2-SD, RETRO-PROTO) verified</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Known WIP -->
+    <div class="tab-content" id="tab-wip">
+      <div class="detail-section">
+        <div class="detail-section-title">Work-In-Progress Items</div>
+        <div class="wip-list">
+          <div class="wip-item">
+            <span class="wip-status-badge wip-open">open</span>
+            <div class="wip-info">
+              <div class="wip-name">W1 — Formal verification of delta triage axioms</div>
+              <div class="wip-desc">Ax-1 and Ax-7 need formal proof that delta triage preserves agenda ordering invariants. Currently validated empirically across 36 sessions.</div>
+            </div>
+          </div>
+          <div class="wip-item">
+            <span class="wip-status-badge wip-resolved">resolved</span>
+            <div class="wip-info">
+              <div class="wip-name">W2 — Missing exit criteria for sigma_3</div>
+              <div class="wip-desc">Commission step had no explicit completion predicate. Resolved in v1.3 with Commissioned(top_items) postcondition.</div>
+            </div>
+          </div>
+          <div class="wip-item">
+            <span class="wip-status-badge wip-open">open</span>
+            <div class="wip-info">
+              <div class="wip-name">W5 — Multi-session commission chains</div>
+              <div class="wip-desc">Current model assumes 1 commission = 1 session. Need to model commission chains where output of one session feeds into the next council cycle.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function toggleTree(header) {
+    const toggle = header.querySelector('.tree-toggle');
+    const children = header.nextElementSibling;
+    toggle.classList.toggle('open');
+    children.classList.toggle('open');
+  }
+
+  function selectItem(item) {
+    document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
+    item.classList.add('selected');
+  }
+
+  function switchTab(tabId, tabEl) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tabEl.classList.add('active');
+    document.getElementById('tab-' + tabId).classList.add('active');
+  }
+</script>
+
+</body>
+</html>

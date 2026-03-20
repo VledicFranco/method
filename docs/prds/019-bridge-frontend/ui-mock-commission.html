@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commission Workflow — Narrative Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --void: #080e14;
+      --abyss: #0d1f2d;
+      --abyss-light: #122a3a;
+      --bio: #00c9a7;
+      --bio-dim: rgba(0, 201, 167, 0.15);
+      --bio-glow: rgba(0, 201, 167, 0.3);
+      --solar: #e8a45a;
+      --solar-dim: rgba(232, 164, 90, 0.15);
+      --cyan: #00e5cc;
+      --error: #e05a5a;
+      --error-dim: rgba(224, 90, 90, 0.15);
+      --nebular: #7b5fb5;
+      --nebular-dim: rgba(123, 95, 181, 0.15);
+      --text: #f0f4f8;
+      --text-dim: #8a9bb0;
+      --text-muted: #5a6b7e;
+      --border: rgba(138, 155, 176, 0.12);
+      --border-hover: rgba(138, 155, 176, 0.25);
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+
+      --text-xs: 0.7rem;
+      --text-sm: 0.8rem;
+      --text-base: 0.875rem;
+      --text-md: 1rem;
+      --text-lg: 1.25rem;
+      --text-xl: 1.5rem;
+
+      --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--void);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* ── Navigation Bar ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 56px;
+      background: rgba(8, 14, 20, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-6);
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-md);
+      color: var(--bio);
+      letter-spacing: -0.02em;
+      margin-right: var(--space-8);
+      white-space: nowrap;
+    }
+    .nav-items { display: flex; gap: var(--space-1); flex: 1; }
+    .nav-item {
+      position: relative;
+      padding: var(--space-2) var(--space-4);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: color 200ms ease-out, background 200ms ease-out;
+      white-space: nowrap;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(138, 155, 176, 0.06); }
+    .nav-item::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: var(--bio);
+      transition: width 200ms ease-out, left 200ms ease-out;
+    }
+    .nav-item:hover::after { width: 50%; left: 25%; }
+    .nav-item.active { color: var(--text); }
+    .nav-item.active::after {
+      width: 70%;
+      left: 15%;
+      background: var(--bio);
+      box-shadow: 0 0 8px var(--bio-glow);
+    }
+    .nav-group-label {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      padding: var(--space-2) var(--space-3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .nav-actions {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+    }
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+      font-family: var(--font-mono);
+      color: var(--bio);
+    }
+    .nav-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--bio);
+      animation: pulse-glow-dot 2500ms ease-in-out infinite;
+    }
+
+    /* ── Content ── */
+    .content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: var(--space-8) var(--space-6);
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-2);
+    }
+    .page-subtitle {
+      font-size: var(--text-base);
+      color: var(--text-dim);
+      margin-bottom: var(--space-8);
+    }
+
+    /* ── Section Headers ── */
+    .section-header {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-5);
+      margin-top: var(--space-10);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .section-header:first-of-type { margin-top: 0; }
+    .section-count {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      background: rgba(138, 155, 176, 0.08);
+      padding: 2px 8px;
+      border-radius: 9px;
+    }
+
+    /* ── Active Commission Cards ── */
+    .commission-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-4);
+      margin-bottom: var(--space-8);
+    }
+    .commission-card {
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--space-5);
+      transition: border-color 200ms ease-out, transform 200ms ease-out;
+    }
+    .commission-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+    .commission-card-title {
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: var(--space-3);
+      line-height: 1.4;
+    }
+    .commission-card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+      color: var(--text-dim);
+    }
+    .commission-card-meta-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 2px 8px;
+      border-radius: 9px;
+      font-size: var(--text-xs);
+      font-weight: 500;
+    }
+    .badge-success {
+      background: rgba(0, 229, 204, 0.15);
+      color: var(--cyan);
+    }
+    .badge-sessions {
+      background: var(--bio-dim);
+      color: var(--bio);
+    }
+    .badge-pr {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--bio);
+      cursor: pointer;
+    }
+    .badge-pr:hover { text-decoration: underline; }
+
+    /* ── Commission Builder ── */
+    .builder {
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--space-6);
+      margin-bottom: var(--space-8);
+    }
+    .builder-steps {
+      display: flex;
+      gap: var(--space-6);
+      margin-bottom: var(--space-8);
+    }
+    .builder-step-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      cursor: pointer;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      border: 2px solid var(--border);
+      color: var(--text-muted);
+      transition: all 200ms;
+    }
+    .step-number.active {
+      border-color: var(--bio);
+      color: var(--bio);
+      background: var(--bio-dim);
+    }
+    .step-number.completed {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: rgba(0, 229, 204, 0.15);
+    }
+    .step-label-text {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dim);
+      transition: color 200ms;
+    }
+    .step-label-text.active { color: var(--text); }
+    .step-connector {
+      width: 40px;
+      height: 2px;
+      background: var(--border);
+      align-self: center;
+    }
+    .step-connector.completed { background: var(--cyan); }
+
+    /* Step 1: Source Selection */
+    .source-section { margin-bottom: var(--space-6); }
+    .radio-group {
+      display: flex;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+    .radio-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-5);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+    .radio-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .radio-btn.active {
+      background: var(--bio-dim);
+      border-color: var(--bio);
+      color: var(--bio);
+    }
+    .radio-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      transition: all 200ms;
+      position: relative;
+    }
+    .radio-btn.active .radio-dot {
+      border-color: var(--bio);
+    }
+    .radio-btn.active .radio-dot::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--bio);
+    }
+    .source-dropdown {
+      width: 100%;
+      height: 40px;
+      background: var(--void);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 var(--space-4);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      outline: none;
+      cursor: pointer;
+    }
+    .source-dropdown:focus { border-color: var(--bio); }
+    .source-dropdown option { background: var(--abyss); }
+
+    /* Step 2: Prompt Preview */
+    .prompt-preview { margin-bottom: var(--space-6); }
+    .prompt-section-card {
+      background: var(--void);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: var(--space-3);
+      overflow: hidden;
+    }
+    .prompt-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      cursor: pointer;
+      transition: background 200ms;
+    }
+    .prompt-section-header:hover { background: var(--abyss-light); }
+    .prompt-section-num {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--bio);
+      margin-right: var(--space-3);
+      width: 20px;
+    }
+    .prompt-section-name {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+      flex: 1;
+    }
+    .prompt-section-toggle {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 200ms;
+    }
+    .prompt-section-toggle.open { transform: rotate(180deg); }
+    .prompt-section-body {
+      display: none;
+      padding: 0 var(--space-4) var(--space-4);
+    }
+    .prompt-section-body.open { display: block; }
+    .prompt-text {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+      line-height: 1.8;
+      background: rgba(138, 155, 176, 0.04);
+      padding: var(--space-3);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .prompt-text[contenteditable]:focus {
+      border-color: var(--bio);
+      outline: none;
+    }
+    .regenerate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      height: 36px;
+      padding: 0 var(--space-5);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 200ms;
+      margin-top: var(--space-4);
+    }
+    .regenerate-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+      background: rgba(138, 155, 176, 0.06);
+    }
+
+    /* Step 3: Spawn Config */
+    .config-section { margin-bottom: var(--space-6); }
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .config-field.full-width { grid-column: 1 / -1; }
+    .config-label {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+    .config-input {
+      height: 40px;
+      background: var(--void);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 var(--space-4);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      outline: none;
+    }
+    .config-input:focus { border-color: var(--bio); }
+    .config-input::placeholder { color: var(--text-muted); }
+
+    /* Toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) 0;
+    }
+    .toggle-label {
+      font-size: var(--text-sm);
+      color: var(--text-dim);
+    }
+    .toggle-label .hint {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+    .toggle {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: rgba(138, 155, 176, 0.15);
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background 200ms;
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: all 200ms;
+    }
+    .toggle.active {
+      background: var(--bio-dim);
+    }
+    .toggle.active::after {
+      left: 23px;
+      background: var(--bio);
+    }
+
+    /* Fire button */
+    .fire-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-3);
+      height: 48px;
+      padding: 0 var(--space-8);
+      background: var(--bio);
+      border: none;
+      border-radius: 12px;
+      color: var(--void);
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 200ms;
+      letter-spacing: -0.01em;
+    }
+    .fire-btn:hover {
+      background: var(--cyan);
+      box-shadow: 0 0 24px var(--bio-glow);
+      transform: translateY(-1px);
+    }
+    .fire-btn:active {
+      transform: translateY(0);
+    }
+    .fire-arrow {
+      font-size: 18px;
+      transition: transform 200ms;
+    }
+    .fire-btn:hover .fire-arrow {
+      transform: translateX(3px);
+    }
+
+    /* ── Commission History Timeline ── */
+    .timeline {
+      position: relative;
+      padding-left: var(--space-8);
+      margin-bottom: var(--space-8);
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 14px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: var(--space-6);
+      animation: slide-in-left 400ms ease-out both;
+    }
+    .timeline-item:nth-child(1) { animation-delay: 0ms; }
+    .timeline-item:nth-child(2) { animation-delay: 100ms; }
+    .timeline-item:nth-child(3) { animation-delay: 200ms; }
+    .timeline-dot {
+      position: absolute;
+      left: -26px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--bio);
+      border: 2px solid var(--void);
+    }
+    .timeline-dot.completed { background: var(--cyan); }
+    .timeline-time {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin-bottom: var(--space-2);
+    }
+    .timeline-card {
+      background: var(--abyss);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--space-4) var(--space-5);
+    }
+    .timeline-title {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: var(--space-2);
+    }
+    .timeline-detail {
+      font-size: var(--text-xs);
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+    .timeline-detail-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: var(--space-8) 0;
+    }
+
+    /* ── Animations ── */
+    @keyframes pulse-glow-dot {
+      0%, 100% { box-shadow: 0 0 0 0 var(--bio-glow); }
+      50% { box-shadow: 0 0 6px 2px var(--bio-glow); }
+    }
+    @keyframes slide-in-left {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .commission-cards { grid-template-columns: 1fr; }
+      .config-grid { grid-template-columns: 1fr; }
+      .builder-steps { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation Bar ── -->
+<nav class="nav">
+  <div class="nav-logo">method bridge</div>
+  <div class="nav-items">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Sessions</div>
+    <div class="nav-item">Strategies</div>
+    <div class="nav-group-label">Governance</div>
+    <div class="nav-item">Council</div>
+    <div class="nav-item">Retrospectives</div>
+    <div class="nav-item">Registry</div>
+    <div class="nav-item active">Commission</div>
+  </div>
+  <div class="nav-actions">
+    <div class="nav-status">
+      <div class="nav-dot"></div>
+      Bridge Online
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main Content ── -->
+<div class="content">
+
+  <h1 class="page-title">Commission Workflow</h1>
+  <p class="page-subtitle">Generate structured agent commissions from agenda items, RFCs, or freeform tasks. Review, configure, and fire.</p>
+
+  <!-- ── Active Commissions ── -->
+  <div class="section-header">
+    Active Commissions
+    <span class="section-count">3</span>
+  </div>
+
+  <div class="commission-cards">
+    <!-- Commission 1 -->
+    <div class="commission-card">
+      <div class="commission-card-title">Implement RFC-001 + RFC-002</div>
+      <div class="commission-card-meta">
+        <div class="commission-card-meta-row">
+          <span class="badge badge-success">&#10003; merged</span>
+          <span class="badge badge-sessions">2 sessions</span>
+        </div>
+        <div class="commission-card-meta-row">
+          <span style="color: var(--text-muted); font-size: var(--text-xs);">Fired 2d ago</span>
+          <span class="badge-pr">PR #31</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commission 2 -->
+    <div class="commission-card">
+      <div class="commission-card-title">Compile P3-GOV methods</div>
+      <div class="commission-card-meta">
+        <div class="commission-card-meta-row">
+          <span class="badge badge-success">&#10003; merged</span>
+          <span class="badge badge-sessions">1 session</span>
+        </div>
+        <div class="commission-card-meta-row">
+          <span style="color: var(--text-muted); font-size: var(--text-xs);">Fired 2d ago</span>
+          <span class="badge-pr">PR #30</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commission 3 -->
+    <div class="commission-card">
+      <div class="commission-card-title">Bridge test coverage</div>
+      <div class="commission-card-meta">
+        <div class="commission-card-meta-row">
+          <span class="badge badge-success">&#10003; on master</span>
+        </div>
+        <div class="commission-card-meta-row">
+          <span style="color: var(--text-muted); font-size: var(--text-xs);">Completed 3d ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── Commission Builder ── -->
+  <div class="section-header" style="margin-top: var(--space-6);">
+    Commission Builder
+  </div>
+
+  <div class="builder">
+
+    <!-- Step Indicators -->
+    <div class="builder-steps">
+      <div class="builder-step-indicator" onclick="goToStep(1)">
+        <div class="step-number completed">1</div>
+        <span class="step-label-text">Select Source</span>
+      </div>
+      <div class="step-connector completed"></div>
+      <div class="builder-step-indicator" onclick="goToStep(2)">
+        <div class="step-number active">2</div>
+        <span class="step-label-text active">Prompt Preview</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="builder-step-indicator" onclick="goToStep(3)">
+        <div class="step-number">3</div>
+        <span class="step-label-text">Spawn Config</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Source Selection -->
+    <div class="source-section" id="step-1" style="display: none;">
+      <div class="radio-group">
+        <button class="radio-btn active" onclick="selectSource(this, 'agenda')">
+          <div class="radio-dot"></div>
+          Agenda Item
+        </button>
+        <button class="radio-btn" onclick="selectSource(this, 'rfc')">
+          <div class="radio-dot"></div>
+          RFC
+        </button>
+        <button class="radio-btn" onclick="selectSource(this, 'freeform')">
+          <div class="radio-dot"></div>
+          Freeform
+        </button>
+      </div>
+
+      <select class="source-dropdown" id="agenda-dropdown">
+        <option value="">Select an agenda item...</option>
+        <option value="ag-048" selected>AG-048 — PRD 017 Phase 2: smoke test strategies</option>
+        <option value="ag-049">AG-049 — Compile P3-GOV M2-REVIEW and M3-APPROVE</option>
+        <option value="ag-050">AG-050 — Bridge dashboard redesign (Narrative Flow)</option>
+        <option value="ag-051">AG-051 — DR-14 enforcement via pre-commit hook</option>
+        <option value="ag-052">AG-052 — Token budget alerting (PRD 009)</option>
+      </select>
+    </div>
+
+    <!-- Step 2: Generated Prompt Preview -->
+    <div class="prompt-preview" id="step-2">
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">1</span>
+          <span class="prompt-section-name">Role Declaration</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">You are a sub-agent operating under the pv-method project's methodology framework. You execute commissioned work following P2-SD (Software Delivery) methodology. You report progress via bridge channels.</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">2</span>
+          <span class="prompt-section-name">Objective</span>
+          <span class="prompt-section-toggle open">&#9662;</span>
+        </div>
+        <div class="prompt-section-body open">
+          <div class="prompt-text" contenteditable="true">Implement PRD 017 Phase 2: smoke test strategy pipelines.
+
+Scope:
+- Add strategy YAML schema validation (smoke-test.yaml)
+- Implement strategy executor with step-by-step state machine
+- Add bridge endpoint POST /strategies/:id/execute
+- Wire MCP tool strategy_execute to bridge
+- 6 tests minimum covering: load, validate, execute, abort, timeout, state transitions
+
+Reference: docs/prds/PRD-017-strategy-pipelines.md</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">3</span>
+          <span class="prompt-section-name">Methodology Binding</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">methodology: P2-SD v2.0
+method: M1-IMPL v3.1
+session_type: implementation
+expected_steps: [sigma_A1, sigma_A2, sigma_B1, sigma_B2, sigma_C1, sigma_C2]</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">4</span>
+          <span class="prompt-section-name">Essence Context</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">purpose: The runtime that makes formal methodologies executable by LLM agents.
+invariant: Theory is the source of truth. When implementation and formal theory diverge, revise the implementation — never the theory.
+optimize_for: Faithfulness > simplicity > registry integrity.</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">5</span>
+          <span class="prompt-section-name">Execution Binding</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">workdir: C:\Users\atfm0\Repositories\pv-method
+branch: feature/prd017-phase2-strategy-pipelines
+create_pr: true
+run_tests: true
+max_duration: 45min</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">6</span>
+          <span class="prompt-section-name">Key Delivery Rules</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">DR-03: Core has zero transport dependencies. Strategy types in core, bridge endpoints in bridge.
+DR-05: Use js-yaml for all YAML parsing.
+DR-09: Tests use real YAML fixtures, not minimal mocks.
+DR-13: Validate YAML after registry edits.</div>
+        </div>
+      </div>
+
+      <div class="prompt-section-card">
+        <div class="prompt-section-header" onclick="togglePromptSection(this)">
+          <span class="prompt-section-num">7</span>
+          <span class="prompt-section-name">Sub-Agent Instructions</span>
+          <span class="prompt-section-toggle">&#9662;</span>
+        </div>
+        <div class="prompt-section-body">
+          <div class="prompt-text" contenteditable="true">- Do NOT modify registry YAML files unless explicitly required.
+- Do NOT modify .method/project-card.yaml or council artifacts.
+- Do NOT commit to files outside your task scope.
+- Report progress via bridge channels after each step.
+- On completion, emit a 'completed' event with summary.
+- If scope decisions arise, emit an 'escalation' event.</div>
+        </div>
+      </div>
+
+      <button class="regenerate-btn">
+        &#8635; Regenerate
+      </button>
+    </div>
+
+    <!-- Step 3: Spawn Configuration -->
+    <div class="config-section" id="step-3" style="display: none;">
+      <div class="config-grid">
+        <div class="config-field full-width">
+          <label class="config-label">Working Directory</label>
+          <input class="config-input" type="text" value="C:\Users\atfm0\Repositories\pv-method" />
+        </div>
+        <div class="config-field">
+          <label class="config-label">Max Depth</label>
+          <input class="config-input" type="number" value="2" min="1" max="5" />
+        </div>
+        <div class="config-field">
+          <label class="config-label">Max Agents</label>
+          <input class="config-input" type="number" value="3" min="1" max="10" />
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-label">
+          Isolation Mode
+          <span class="hint">Prevents the agent from accessing external resources or network</span>
+        </div>
+        <button class="toggle" onclick="this.classList.toggle('active')"></button>
+      </div>
+
+      <div style="margin-top: var(--space-6); text-align: right;">
+        <button class="fire-btn">
+          Fire Commission
+          <span class="fire-arrow">&rarr;</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Commission History Timeline ── -->
+  <div class="section-header">
+    Commission History
+  </div>
+
+  <div class="timeline">
+    <!-- Entry 1 -->
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-time">2 days ago</div>
+      <div class="timeline-card">
+        <div class="timeline-title">RFC-001 + RFC-002 Implementation</div>
+        <div class="timeline-detail">
+          <div class="timeline-detail-item">
+            <span class="badge badge-sessions">2 sessions</span>
+          </div>
+          <div class="timeline-detail-item">
+            <span class="badge badge-success">PR #31 merged</span>
+          </div>
+          <div class="timeline-detail-item" style="color: var(--text-muted); font-size: var(--text-xs);">
+            42min total
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entry 2 -->
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-time">2 days ago</div>
+      <div class="timeline-card">
+        <div class="timeline-title">P3-GOV Methods Compilation</div>
+        <div class="timeline-detail">
+          <div class="timeline-detail-item">
+            <span class="badge badge-sessions">1 session</span>
+          </div>
+          <div class="timeline-detail-item">
+            <span class="badge badge-success">PR #30 merged</span>
+          </div>
+          <div class="timeline-detail-item" style="color: var(--text-muted); font-size: var(--text-xs);">
+            28min total
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entry 3 -->
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-time">3 days ago</div>
+      <div class="timeline-card">
+        <div class="timeline-title">PRD 017 Phase 1 — Strategy Schema + Loader</div>
+        <div class="timeline-detail">
+          <div class="timeline-detail-item">
+            <span class="badge badge-sessions">4 sessions</span>
+          </div>
+          <div class="timeline-detail-item">
+            <span class="badge badge-success">PR #27 merged</span>
+          </div>
+          <div class="timeline-detail-item" style="color: var(--text-muted); font-size: var(--text-xs);">
+            1h 15min total
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Source type selection
+  function selectSource(btn, type) {
+    document.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const dropdown = document.getElementById('agenda-dropdown');
+    if (type === 'agenda') {
+      dropdown.style.display = 'block';
+      dropdown.innerHTML = `
+        <option value="">Select an agenda item...</option>
+        <option value="ag-048" selected>AG-048 — PRD 017 Phase 2: smoke test strategies</option>
+        <option value="ag-049">AG-049 — Compile P3-GOV M2-REVIEW and M3-APPROVE</option>
+        <option value="ag-050">AG-050 — Bridge dashboard redesign (Narrative Flow)</option>
+        <option value="ag-051">AG-051 — DR-14 enforcement via pre-commit hook</option>
+        <option value="ag-052">AG-052 — Token budget alerting (PRD 009)</option>
+      `;
+    } else if (type === 'rfc') {
+      dropdown.style.display = 'block';
+      dropdown.innerHTML = `
+        <option value="">Select an RFC...</option>
+        <option value="rfc-001">RFC-001 — Adaptive settle delay algorithm</option>
+        <option value="rfc-002">RFC-002 — PTY activity auto-detection</option>
+        <option value="rfc-003">RFC-003 — Anti-capitulation invariant and isolation mode</option>
+      `;
+    } else {
+      dropdown.style.display = 'none';
+    }
+  }
+
+  // Prompt section toggle
+  function togglePromptSection(header) {
+    const body = header.nextElementSibling;
+    const toggle = header.querySelector('.prompt-section-toggle');
+    body.classList.toggle('open');
+    toggle.classList.toggle('open');
+  }
+
+  // Step navigation
+  function goToStep(step) {
+    // Update indicators
+    document.querySelectorAll('.step-number').forEach((el, i) => {
+      el.classList.remove('active', 'completed');
+      if (i + 1 < step) el.classList.add('completed');
+      if (i + 1 === step) el.classList.add('active');
+    });
+    document.querySelectorAll('.step-label-text').forEach((el, i) => {
+      el.classList.remove('active');
+      if (i + 1 === step) el.classList.add('active');
+    });
+    document.querySelectorAll('.step-connector').forEach((el, i) => {
+      el.classList.remove('completed');
+      if (i + 1 < step) el.classList.add('completed');
+    });
+
+    // Show/hide step content
+    document.getElementById('step-1').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('step-2').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('step-3').style.display = step === 3 ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>

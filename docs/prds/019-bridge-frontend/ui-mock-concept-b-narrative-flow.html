@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Method Bridge — Narrative Flow (Concept B)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VIDTECCI THEME — Narrative Flow (Concept B)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --void: #080e14;
+  --abyss: #0d1f2d;
+  --abyss-light: #122a3a;
+  --bio: #00c9a7;
+  --bio-dim: rgba(0, 201, 167, 0.15);
+  --bio-glow: rgba(0, 201, 167, 0.3);
+  --solar: #e8a45a;
+  --solar-dim: rgba(232, 164, 90, 0.15);
+  --cyan: #00e5cc;
+  --error: #e05a5a;
+  --error-dim: rgba(224, 90, 90, 0.15);
+  --nebular: #7b5fb5;
+  --nebular-dim: rgba(123, 95, 181, 0.15);
+  --text: #f0f4f8;
+  --text-dim: #8a9bb0;
+  --text-muted: #5a6b7e;
+  --border: rgba(138, 155, 176, 0.12);
+  --border-hover: rgba(138, 155, 176, 0.25);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --nav-height: 56px;
+  --content-max: 820px;
+  --panel-width: 420px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ─── NAVIGATION BAR ─── */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 32px;
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-logo .logo-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--bio);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--void);
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--bio);
+  border-radius: 1px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-link:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-link.active {
+  color: var(--bio);
+}
+
+.nav-link.active::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.nav-search:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-search kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+.nav-bell {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-bell:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.nav-bell .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--error);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid var(--void);
+}
+
+.nav-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nebular), var(--bio));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.nav-avatar:hover {
+  box-shadow: 0 0 0 2px var(--bio-dim);
+}
+
+/* ─── MAIN CONTENT ─── */
+
+.main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* ─── ATTENTION BANNER ─── */
+
+.attention-banner {
+  background: var(--abyss);
+  border: 1px solid rgba(232, 164, 90, 0.3);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-16px);
+  animation: slideDown 0.5s ease 0.3s forwards;
+}
+
+@keyframes slideDown {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.attention-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.attention-header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.attention-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attention-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--solar-dim);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.attention-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--solar);
+}
+
+.attention-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.attention-chevron {
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+  font-size: 14px;
+}
+
+.attention-banner.collapsed .attention-chevron {
+  transform: rotate(-90deg);
+}
+
+.attention-banner.collapsed .attention-body {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+.attention-body {
+  padding: 0 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  opacity: 1;
+  transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+  overflow: hidden;
+}
+
+.attention-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.attention-item:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.attention-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attention-item-icon {
+  font-size: 14px;
+}
+
+.attention-item-text {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.attention-item-text .item-highlight {
+  color: var(--solar);
+  font-weight: 600;
+}
+
+.attention-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bio);
+  background: var(--bio-dim);
+  padding: 4px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+  border: none;
+}
+
+.attention-action:hover {
+  background: rgba(0, 201, 167, 0.25);
+}
+
+/* ─── RIGHT NOW SECTION ─── */
+
+.right-now-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  transition: border-color 0.3s;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* Session cards */
+.session-item {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  margin-bottom: 8px;
+}
+
+.session-item:last-child { margin-bottom: 0; }
+
+.session-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+.session-item.running {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 12px -4px var(--bio-glow); }
+}
+
+.session-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.session-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.session-diamond {
+  color: var(--bio);
+  font-size: 10px;
+}
+
+.session-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.session-step {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--bio);
+  border-radius: 2px;
+  width: 0;
+  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-pct {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Metrics card */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.metric-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.metric-value .counter {
+  display: inline-block;
+}
+
+.metric-trend {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.metric-trend.up { color: var(--solar); }
+.metric-trend.down { color: var(--bio); }
+.metric-trend.neutral { color: var(--text-muted); }
+
+.metrics-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bio);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.metrics-link:hover { color: var(--cyan); }
+
+/* ─── TIMELINE ─── */
+
+.timeline-section {
+  position: relative;
+}
+
+.timeline-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  margin-top: 8px;
+}
+
+.timeline-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.timeline-divider-text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 72px;
+}
+
+/* Vertical timeline line */
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 34px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, var(--bio-glow) 0%, var(--border) 30%, var(--border) 70%, transparent 100%);
+}
+
+.timeline-event {
+  position: relative;
+  margin-bottom: 16px;
+  opacity: 0;
+  transform: translateX(-12px);
+}
+
+.timeline-event.visible {
+  animation: eventSlideIn 0.4s ease forwards;
+}
+
+@keyframes eventSlideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.timeline-time {
+  position: absolute;
+  left: -72px;
+  top: 14px;
+  width: 56px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -42px;
+  top: 14px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  z-index: 2;
+  border: 2px solid var(--void);
+}
+
+.timeline-dot.session { background: var(--bio); color: var(--void); }
+.timeline-dot.trigger { background: var(--solar); color: var(--void); }
+.timeline-dot.complete { background: var(--cyan); color: var(--void); }
+.timeline-dot.council { background: var(--nebular); color: white; }
+.timeline-dot.error { background: var(--error); color: white; }
+
+.timeline-card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.timeline-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-card-title .event-type-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.event-type-tag.session { background: var(--bio-dim); color: var(--bio); }
+.event-type-tag.trigger { background: var(--solar-dim); color: var(--solar); }
+.event-type-tag.complete { background: rgba(0, 229, 204, 0.15); color: var(--cyan); }
+.event-type-tag.council { background: var(--nebular-dim); color: var(--nebular); }
+.event-type-tag.error { background: var(--error-dim); color: var(--error); }
+
+.timeline-card-body {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.timeline-card-body code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.timeline-card-body .gate-pass {
+  color: var(--bio);
+  font-weight: 500;
+}
+
+.timeline-card-body .gate-fail {
+  color: var(--error);
+  font-weight: 500;
+}
+
+.timeline-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-card-footer .tl-action {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bio);
+  cursor: pointer;
+  transition: color 0.2s;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.timeline-card-footer .tl-action:hover {
+  color: var(--cyan);
+}
+
+.timeline-card-footer .tl-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Earlier today collapsible */
+.earlier-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  margin-top: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.earlier-toggle:hover { color: var(--text-dim); }
+
+.earlier-toggle .chevron {
+  transition: transform 0.3s;
+  font-size: 10px;
+}
+
+.earlier-toggle.open .chevron {
+  transform: rotate(90deg);
+}
+
+.earlier-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+
+.earlier-content.open {
+  max-height: 1000px;
+}
+
+/* ─── SLIDE-OVER PANEL ─── */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 20, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.panel-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.slide-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--panel-width);
+  height: 100vh;
+  background: var(--abyss);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide-panel.open {
+  transform: translateX(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.panel-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.panel-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.panel-tab {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.panel-tab:hover { color: var(--text-dim); }
+
+.panel-tab.active {
+  color: var(--bio);
+  border-bottom-color: var(--bio);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.panel-section {
+  margin-bottom: 20px;
+}
+
+.panel-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.panel-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+
+.panel-detail-row .label { color: var(--text-dim); }
+.panel-detail-row .value { color: var(--text); font-weight: 500; }
+.panel-detail-row .value.mono { font-family: var(--font-mono); font-size: 11.5px; }
+
+.panel-progress-section {
+  margin-top: 16px;
+}
+
+.panel-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 12.5px;
+}
+
+.panel-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.panel-step-dot.done { background: var(--bio); }
+.panel-step-dot.active { background: var(--solar); animation: pulse 1.5s ease infinite; }
+.panel-step-dot.pending { background: var(--text-muted); opacity: 0.4; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px var(--solar-dim); }
+}
+
+.panel-step-name { color: var(--text); font-weight: 500; }
+.panel-step-name.dim { color: var(--text-muted); font-weight: 400; }
+
+/* Mock terminal in panel */
+.panel-terminal {
+  background: #0a0a0a;
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: #a0a0a0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-terminal .term-prompt { color: var(--bio); }
+.panel-terminal .term-cmd { color: var(--text); }
+.panel-terminal .term-output { color: var(--text-dim); }
+.panel-terminal .term-success { color: var(--cyan); }
+.panel-terminal .term-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--bio);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (max-width: 700px) {
+  .right-now-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .nav-search { display: none; }
+  .slide-panel { width: 100vw; }
+  .main { padding: 16px 12px 60px; }
+  .timeline { padding-left: 60px; }
+  .timeline::before { left: 26px; }
+  .timeline-time { left: -60px; width: 44px; font-size: 10px; }
+  .timeline-dot { left: -34px; }
+}
+
+/* ─── UTILITY ─── */
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ NAVIGATION ═══════════════════════ -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">M</div>
+    Method Bridge
+  </div>
+
+  <div class="nav-links">
+    <a class="nav-link" data-view="dashboard">Dashboard</a>
+    <a class="nav-link active" data-view="timeline">Timeline</a>
+    <a class="nav-link" data-view="strategies">Strategies</a>
+    <a class="nav-link" data-view="governance">Governance</a>
+    <a class="nav-link" data-view="analytics">Analytics</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search <kbd>Ctrl K</kbd>
+    </div>
+    <div class="nav-bell" id="navBell">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="badge">2</span>
+    </div>
+    <div class="nav-avatar">VF</div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ MAIN CONTENT ═══════════════════════ -->
+<main class="main">
+
+  <!-- ─── Attention Banner ─── -->
+  <div class="attention-banner" id="attentionBanner">
+    <div class="attention-header" onclick="toggleAttention()">
+      <div class="attention-header-left">
+        <div class="attention-icon">!</div>
+        <span class="attention-title">Needs Your Attention</span>
+        <span class="attention-count">2 items</span>
+      </div>
+      <span class="attention-chevron">&#9662;</span>
+    </div>
+    <div class="attention-body">
+      <div class="attention-item">
+        <div class="attention-item-left">
+          <span class="attention-item-icon" style="color: var(--solar);">&#9888;</span>
+          <span class="attention-item-text"><span class="item-highlight">RFC-004</span> anti-capitulation invariant pending council approval</span>
+        </div>
+        <button class="attention-action" onclick="openPanel('rfc')">Review &rarr;</button>
+      </div>
+      <div class="attention-item">
+        <div class="attention-item-left">
+          <span class="attention-item-icon" style="color: var(--error);">&#9889;</span>
+          <span class="attention-item-text"><span class="item-highlight">impl-agent</span> budget at 85% &mdash; $4.25 of $5.00 consumed</span>
+        </div>
+        <button class="attention-action" onclick="openPanel('impl-agent')">View &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Right Now Grid ─── -->
+  <div class="right-now-grid">
+
+    <!-- Active Sessions -->
+    <div class="card">
+      <div class="card-label">Right Now</div>
+
+      <div class="session-item running" onclick="openPanel('impl-agent')">
+        <div class="session-top">
+          <span class="session-name">
+            <span class="session-diamond">&#9670;</span> impl-agent
+          </span>
+          <span class="session-meta">12m &middot; $0.89</span>
+        </div>
+        <div class="session-step">M1-IMPL &sigma;_B3</div>
+        <div class="progress-row">
+          <div class="progress-bar"><div class="progress-fill" data-width="80"></div></div>
+          <span class="progress-pct">80%</span>
+        </div>
+      </div>
+
+      <div class="session-item running" onclick="openPanel('review-agent')">
+        <div class="session-top">
+          <span class="session-name">
+            <span class="session-diamond">&#9670;</span> review-agent
+          </span>
+          <span class="session-meta">3m &middot; $0.23</span>
+        </div>
+        <div class="session-step">M3-PHRV &sigma;_1</div>
+        <div class="progress-row">
+          <div class="progress-bar"><div class="progress-fill" data-width="20"></div></div>
+          <span class="progress-pct">20%</span>
+        </div>
+      </div>
+
+      <div class="session-item running" onclick="openPanel('smoke-runner')">
+        <div class="session-top">
+          <span class="session-name">
+            <span class="session-diamond">&#9670;</span> smoke-runner
+          </span>
+          <span class="session-meta">1m &middot; $0.05</span>
+        </div>
+        <div class="session-step">S-SMOKE &sigma;_exec</div>
+        <div class="progress-row">
+          <div class="progress-bar"><div class="progress-fill" data-width="45"></div></div>
+          <span class="progress-pct">45%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Metrics -->
+    <div class="card">
+      <div class="card-label">Today's Metrics</div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="metric-label">Cost</span>
+          <div class="metric-value">
+            $<span class="counter" data-target="2.34">0</span>
+            <span class="metric-trend up">&#9650; 12%</span>
+          </div>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Sessions</span>
+          <div class="metric-value">
+            <span class="counter" data-target="12" data-decimals="0">0</span>
+            <span class="metric-trend neutral">total</span>
+          </div>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Completed</span>
+          <div class="metric-value">
+            <span class="counter" data-target="8" data-decimals="0">0</span>
+            <span class="metric-trend down">(67%)</span>
+          </div>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Triggers</span>
+          <div class="metric-value">
+            <span class="counter" data-target="4" data-decimals="0">0</span>
+            <span class="metric-trend neutral">fires</span>
+          </div>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Tokens</span>
+          <div class="metric-value">
+            <span class="counter" data-target="234" data-decimals="0">0</span>k
+          </div>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Avg Duration</span>
+          <div class="metric-value">
+            <span class="counter" data-target="6.2">0</span>m
+          </div>
+        </div>
+      </div>
+      <a class="metrics-link">View Analytics &rarr;</a>
+    </div>
+  </div>
+
+  <!-- ─── Timeline ─── -->
+  <div class="timeline-section">
+
+    <div class="timeline-divider">
+      <span class="timeline-divider-line"></span>
+      <span class="timeline-divider-text">Timeline</span>
+      <span class="timeline-divider-line"></span>
+    </div>
+
+    <div class="timeline" id="timeline">
+
+      <!-- Event 1: Session advanced -->
+      <div class="timeline-event" data-delay="0">
+        <span class="timeline-time">14:32</span>
+        <span class="timeline-dot session">&#9670;</span>
+        <div class="timeline-card" onclick="openPanel('impl-agent')">
+          <div class="timeline-card-title">
+            impl-agent advanced to &sigma;_B4
+            <span class="event-type-tag session">session</span>
+          </div>
+          <div class="timeline-card-body">
+            Gate passed: <code>compile_exit = 0</code> <span class="gate-pass">&#10003;</span><br>
+            Cost so far: <span style="font-family: var(--font-mono); font-size: 11.5px;">$0.89</span>
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Session &rarr;</button>
+            <span class="tl-meta">12m elapsed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 2: Trigger fired -->
+      <div class="timeline-event" data-delay="100">
+        <span class="timeline-time">14:28</span>
+        <span class="timeline-dot trigger">&#9889;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            Trigger fired: S-CODE-REVIEW
+            <span class="event-type-tag trigger">trigger</span>
+          </div>
+          <div class="timeline-card-body">
+            Debounced: 3 commits &rarr; 1 fire (on <code>git_commit</code> to master)<br>
+            Strategy execution started: <code>exec-S-CODE-REVIEW-a3f2</code>
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Strategy &rarr;</button>
+            <span class="tl-meta">debounce: 60s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 3: Completion -->
+      <div class="timeline-event" data-delay="200">
+        <span class="timeline-time">14:15</span>
+        <span class="timeline-dot complete">&#10003;</span>
+        <div class="timeline-card" onclick="openPanel('test-runner')">
+          <div class="timeline-card-title">
+            test-runner completed
+            <span class="event-type-tag complete">complete</span>
+          </div>
+          <div class="timeline-card-body">
+            Duration: 8m &middot; Cost: $0.12 &middot; All gates passed <span class="gate-pass">&#10003;</span><br>
+            Output: 47 tests passing, 0 failures, coverage 82%
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Retro &rarr;</button>
+            <button class="tl-action">View Transcript &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 4: Spawn -->
+      <div class="timeline-event" data-delay="300">
+        <span class="timeline-time">14:02</span>
+        <span class="timeline-dot session">&#9670;</span>
+        <div class="timeline-card" onclick="openPanel('review-agent')">
+          <div class="timeline-card-title">
+            review-agent spawned
+            <span class="event-type-tag session">session</span>
+          </div>
+          <div class="timeline-card-body">
+            P2-SD / M3-PHRV &middot; Workdir: <code>packages/core/</code><br>
+            Parent: <span style="font-family: var(--font-mono); font-size: 11.5px;">orchestrator-1</span> &middot; Budget: $2.00
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Session &rarr;</button>
+            <span class="tl-meta">P2-SD v2.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 5: Council -->
+      <div class="timeline-event" data-delay="400">
+        <span class="timeline-time">13:45</span>
+        <span class="timeline-dot council">&#9879;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            Council SESSION-039 completed
+            <span class="event-type-tag council">council</span>
+          </div>
+          <div class="timeline-card-body">
+            3 decisions &middot; Agenda: &minus;1 item &middot; Essence integrity: <span class="gate-pass">&#10003;</span><br>
+            Key decision: Approved smoke-test strategy for registry validation
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Session Log &rarr;</button>
+            <button class="tl-action">View Decisions &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 6: Error -->
+      <div class="timeline-event" data-delay="500">
+        <span class="timeline-time">13:30</span>
+        <span class="timeline-dot error">&#10007;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            lint-agent failed
+            <span class="event-type-tag error">error</span>
+          </div>
+          <div class="timeline-card-body">
+            Gate failed: <code>eslint_exit != 0</code> <span class="gate-fail">&#10007;</span><br>
+            3 errors in <code>packages/bridge/src/pool.ts</code> &mdash; unused import, type mismatch
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Error &rarr;</button>
+            <button class="tl-action">View Transcript &rarr;</button>
+            <span class="tl-meta">cost: $0.04</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event 7 -->
+      <div class="timeline-event" data-delay="600">
+        <span class="timeline-time">13:12</span>
+        <span class="timeline-dot session">&#9670;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            impl-agent spawned
+            <span class="event-type-tag session">session</span>
+          </div>
+          <div class="timeline-card-body">
+            P2-SD / M1-IMPL &middot; Workdir: <code>packages/bridge/</code><br>
+            Commission: PRD-015 adaptive settle algorithm &middot; Budget: $5.00
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Commission &rarr;</button>
+            <span class="tl-meta">P2-SD v2.0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Earlier Today -->
+    <div style="padding-left: 72px; margin-top: 4px;">
+      <div class="earlier-toggle" id="earlierToggle" onclick="toggleEarlier()">
+        <span class="chevron">&#9654;</span>
+        Earlier Today &mdash; 6 more events
+      </div>
+      <div class="earlier-content" id="earlierContent">
+        <div class="timeline" style="padding-left: 0;">
+
+          <div class="timeline-event visible" style="padding-left: 72px;">
+            <span class="timeline-time" style="left: 0;">12:45</span>
+            <span class="timeline-dot complete" style="left: 30px;">&#10003;</span>
+            <div class="timeline-card">
+              <div class="timeline-card-title">
+                doc-sync completed
+                <span class="event-type-tag complete">complete</span>
+              </div>
+              <div class="timeline-card-body">
+                Updated 3 guides in <code>docs/guides/</code> &middot; PR-01 compliance <span class="gate-pass">&#10003;</span>
+              </div>
+              <div class="timeline-card-footer">
+                <button class="tl-action">View Retro &rarr;</button>
+                <span class="tl-meta">cost: $0.18</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-event visible" style="padding-left: 72px;">
+            <span class="timeline-time" style="left: 0;">11:30</span>
+            <span class="timeline-dot trigger" style="left: 30px;">&#9889;</span>
+            <div class="timeline-card">
+              <div class="timeline-card-title">
+                Trigger fired: S-SMOKE-TEST
+                <span class="event-type-tag trigger">trigger</span>
+              </div>
+              <div class="timeline-card-body">
+                Registry edit detected on <code>registry/P2-SD.yaml</code> &middot; Smoke test queued
+              </div>
+              <div class="timeline-card-footer">
+                <button class="tl-action">View Strategy &rarr;</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-event visible" style="padding-left: 72px;">
+            <span class="timeline-time" style="left: 0;">10:15</span>
+            <span class="timeline-dot session" style="left: 30px;">&#9670;</span>
+            <div class="timeline-card">
+              <div class="timeline-card-title">
+                orchestrator-1 spawned
+                <span class="event-type-tag session">session</span>
+              </div>
+              <div class="timeline-card-body">
+                P1-EXEC / M2-ORCH &middot; Persistent session &middot; Budget: $15.00
+              </div>
+              <div class="timeline-card-footer">
+                <button class="tl-action">View Session &rarr;</button>
+                <span class="tl-meta">persistent</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Yesterday divider -->
+    <div class="timeline-divider" style="margin-top: 24px;">
+      <span class="timeline-divider-line"></span>
+      <span class="timeline-divider-text">Yesterday</span>
+      <span class="timeline-divider-line"></span>
+    </div>
+
+    <div class="timeline">
+
+      <div class="timeline-event visible">
+        <span class="timeline-time">17:42</span>
+        <span class="timeline-dot council">&#9879;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            Council SESSION-038 completed
+            <span class="event-type-tag council">council</span>
+          </div>
+          <div class="timeline-card-body">
+            5 decisions &middot; DR-14 added &middot; Delta triage cycle complete
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Session Log &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-event visible">
+        <span class="timeline-time">15:20</span>
+        <span class="timeline-dot complete">&#10003;</span>
+        <div class="timeline-card">
+          <div class="timeline-card-title">
+            bridge-pr33 completed
+            <span class="event-type-tag complete">complete</span>
+          </div>
+          <div class="timeline-card-body">
+            PID cleanup implementation &middot; 14 tests passing &middot; PR merged
+          </div>
+          <div class="timeline-card-footer">
+            <button class="tl-action">View Retro &rarr;</button>
+            <span class="tl-meta">cost: $1.12</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ═══════════════════════ SLIDE-OVER PANEL ═══════════════════════ -->
+<div class="panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
+<div class="slide-panel" id="slidePanel">
+  <div class="panel-header">
+    <span class="panel-title" id="panelTitle">impl-agent</span>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-tabs">
+    <div class="panel-tab active" onclick="switchPanelTab(this, 'overview')">Overview</div>
+    <div class="panel-tab" onclick="switchPanelTab(this, 'terminal')">Terminal</div>
+    <div class="panel-tab" onclick="switchPanelTab(this, 'channels')">Channels</div>
+  </div>
+  <div class="panel-body" id="panelBody">
+    <!-- Filled dynamically -->
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   INTERACTIVE LOGIC
+   ═══════════════════════════════════════════════════════════ */
+
+// ─── Attention Banner Toggle ───
+function toggleAttention() {
+  document.getElementById('attentionBanner').classList.toggle('collapsed');
+}
+
+// ─── Earlier Today Toggle ───
+function toggleEarlier() {
+  const toggle = document.getElementById('earlierToggle');
+  const content = document.getElementById('earlierContent');
+  toggle.classList.toggle('open');
+  content.classList.toggle('open');
+}
+
+// ─── Nav Link Switching ───
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// ─── Progress Bar Animation ───
+function animateProgressBars() {
+  document.querySelectorAll('.progress-fill').forEach(bar => {
+    const width = bar.getAttribute('data-width');
+    setTimeout(() => { bar.style.width = width + '%'; }, 400);
+  });
+}
+
+// ─── Counter Animation ───
+function animateCounters() {
+  document.querySelectorAll('.counter').forEach(counter => {
+    const target = parseFloat(counter.getAttribute('data-target'));
+    const decimals = parseInt(counter.getAttribute('data-decimals') ?? '2');
+    const duration = 1200;
+    const startTime = performance.now();
+
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = target * eased;
+      counter.textContent = decimals === 0 ? Math.round(current) : current.toFixed(decimals);
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    setTimeout(() => requestAnimationFrame(update), 600);
+  });
+}
+
+// ─── Timeline Event Stagger Animation ───
+function animateTimeline() {
+  const events = document.querySelectorAll('#timeline .timeline-event');
+  events.forEach((ev, i) => {
+    const delay = parseInt(ev.getAttribute('data-delay') || (i * 100));
+    setTimeout(() => ev.classList.add('visible'), 500 + delay);
+  });
+}
+
+// ─── Slide-Over Panel ───
+
+const panelData = {
+  'impl-agent': {
+    title: 'impl-agent',
+    methodology: 'P2-SD / M1-IMPL',
+    step: '\u03C3_B3 \u2192 \u03C3_B4',
+    workdir: 'packages/bridge/',
+    parent: 'orchestrator-1',
+    budget: '$5.00',
+    spent: '$0.89',
+    duration: '12m 34s',
+    tokens: '48.2k',
+    status: 'running',
+    commission: 'PRD-015 adaptive settle algorithm',
+    steps: [
+      { name: '\u03C3_init \u2014 Load commission', state: 'done' },
+      { name: '\u03C3_B1 \u2014 Read source files', state: 'done' },
+      { name: '\u03C3_B2 \u2014 Implement changes', state: 'done' },
+      { name: '\u03C3_B3 \u2014 Run tests', state: 'done' },
+      { name: '\u03C3_B4 \u2014 Verify gates', state: 'active' },
+      { name: '\u03C3_exit \u2014 Report & retro', state: 'pending' },
+    ]
+  },
+  'review-agent': {
+    title: 'review-agent',
+    methodology: 'P2-SD / M3-PHRV',
+    step: '\u03C3_1',
+    workdir: 'packages/core/',
+    parent: 'orchestrator-1',
+    budget: '$2.00',
+    spent: '$0.23',
+    duration: '3m 12s',
+    tokens: '12.1k',
+    status: 'running',
+    commission: 'Phase review for core package',
+    steps: [
+      { name: '\u03C3_1 \u2014 Read deliverables', state: 'active' },
+      { name: '\u03C3_2 \u2014 Validate gates', state: 'pending' },
+      { name: '\u03C3_3 \u2014 Write review', state: 'pending' },
+    ]
+  },
+  'smoke-runner': {
+    title: 'smoke-runner',
+    methodology: 'Strategy / S-SMOKE',
+    step: '\u03C3_exec',
+    workdir: 'registry/',
+    parent: 'trigger-S-SMOKE-TEST',
+    budget: '$1.00',
+    spent: '$0.05',
+    duration: '1m 02s',
+    tokens: '3.4k',
+    status: 'running',
+    commission: 'Validate registry YAML integrity',
+    steps: [
+      { name: '\u03C3_exec \u2014 Run smoke test', state: 'active' },
+      { name: '\u03C3_report \u2014 Emit results', state: 'pending' },
+    ]
+  },
+  'test-runner': {
+    title: 'test-runner',
+    methodology: 'P2-SD / M1-IMPL',
+    step: '\u03C3_exit (completed)',
+    workdir: 'packages/core/',
+    parent: 'orchestrator-1',
+    budget: '$1.00',
+    spent: '$0.12',
+    duration: '8m 03s',
+    tokens: '22.8k',
+    status: 'completed',
+    commission: 'Run full test suite for core package',
+    steps: [
+      { name: '\u03C3_init \u2014 Setup', state: 'done' },
+      { name: '\u03C3_exec \u2014 Execute tests', state: 'done' },
+      { name: '\u03C3_exit \u2014 Report', state: 'done' },
+    ]
+  },
+  'rfc': {
+    title: 'RFC-004 Review',
+    methodology: 'Governance',
+    step: 'Pending Approval',
+    workdir: '.method/council/rfcs/',
+    parent: '\u2014',
+    budget: '\u2014',
+    spent: '\u2014',
+    duration: '\u2014',
+    tokens: '\u2014',
+    status: 'pending',
+    commission: 'Anti-capitulation invariant and isolation mode',
+    steps: [
+      { name: 'Drafted', state: 'done' },
+      { name: 'Council Review', state: 'done' },
+      { name: 'Approval', state: 'active' },
+      { name: 'Merge to registry', state: 'pending' },
+    ]
+  },
+};
+
+let currentPanelTab = 'overview';
+
+function openPanel(id) {
+  const data = panelData[id];
+  if (!data) return;
+
+  document.getElementById('panelTitle').textContent = data.title;
+  document.getElementById('panelBackdrop').classList.add('open');
+  document.getElementById('slidePanel').classList.add('open');
+
+  // Reset to overview tab
+  currentPanelTab = 'overview';
+  document.querySelectorAll('.panel-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === 0);
+  });
+
+  renderPanelTab(data, 'overview');
+}
+
+function closePanel() {
+  document.getElementById('panelBackdrop').classList.remove('open');
+  document.getElementById('slidePanel').classList.remove('open');
+}
+
+function switchPanelTab(el, tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentPanelTab = tab;
+
+  // Find current data from title
+  const title = document.getElementById('panelTitle').textContent;
+  const dataKey = Object.keys(panelData).find(k => panelData[k].title === title);
+  if (dataKey) renderPanelTab(panelData[dataKey], tab);
+}
+
+function renderPanelTab(data, tab) {
+  const body = document.getElementById('panelBody');
+
+  if (tab === 'overview') {
+    const statusColor = data.status === 'running' ? 'var(--bio)'
+      : data.status === 'completed' ? 'var(--cyan)'
+      : data.status === 'pending' ? 'var(--solar)'
+      : 'var(--text-dim)';
+
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">Session Details</div>
+        <div class="panel-detail-row">
+          <span class="label">Status</span>
+          <span class="value" style="color: ${statusColor}">${data.status}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Methodology</span>
+          <span class="value mono">${data.methodology}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Current Step</span>
+          <span class="value mono">${data.step}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Workdir</span>
+          <span class="value mono">${data.workdir}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Parent</span>
+          <span class="value mono">${data.parent}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Commission</span>
+          <span class="value">${data.commission}</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-label">Cost & Tokens</div>
+        <div class="panel-detail-row">
+          <span class="label">Budget</span>
+          <span class="value mono">${data.budget}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Spent</span>
+          <span class="value mono">${data.spent}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Duration</span>
+          <span class="value mono">${data.duration}</span>
+        </div>
+        <div class="panel-detail-row">
+          <span class="label">Tokens</span>
+          <span class="value mono">${data.tokens}</span>
+        </div>
+      </div>
+
+      <div class="panel-section panel-progress-section">
+        <div class="panel-section-label">Progress</div>
+        ${data.steps.map(s => `
+          <div class="panel-progress-step">
+            <span class="panel-step-dot ${s.state}"></span>
+            <span class="panel-step-name ${s.state === 'pending' ? 'dim' : ''}">${s.name}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  else if (tab === 'terminal') {
+    body.innerHTML = `
+      <div class="panel-terminal">
+        <div><span class="term-prompt">$ </span><span class="term-cmd">npm run build</span></div>
+        <div class="term-output">&gt; @method/bridge@0.1.0 build</div>
+        <div class="term-output">&gt; tsc -p tsconfig.json</div>
+        <div class="term-output">&nbsp;</div>
+        <div><span class="term-prompt">$ </span><span class="term-cmd">npm test</span></div>
+        <div class="term-output">&gt; @method/bridge@0.1.0 test</div>
+        <div class="term-output">&gt; vitest run</div>
+        <div class="term-output">&nbsp;</div>
+        <div class="term-output"> <span class="term-success">&#10003;</span> pool.test.ts (12 tests) 245ms</div>
+        <div class="term-output"> <span class="term-success">&#10003;</span> pty-session.test.ts (8 tests) 189ms</div>
+        <div class="term-output"> <span class="term-success">&#10003;</span> channels.test.ts (14 tests) 312ms</div>
+        <div class="term-output"> <span class="term-success">&#10003;</span> adaptive-settle.test.ts (6 tests) 87ms</div>
+        <div class="term-output"> <span class="term-success">&#10003;</span> watcher.test.ts (7 tests) 201ms</div>
+        <div class="term-output">&nbsp;</div>
+        <div class="term-output"> Test Files  5 passed (5)</div>
+        <div class="term-output"> Tests       <span class="term-success">47 passed</span> (47)</div>
+        <div class="term-output"> Duration    1.03s</div>
+        <div class="term-output">&nbsp;</div>
+        <div><span class="term-prompt">$ </span><span class="term-cursor"></span></div>
+      </div>
+    `;
+  }
+
+  else if (tab === 'channels') {
+    body.innerHTML = `
+      <div class="panel-section">
+        <div class="panel-section-label">Progress Channel</div>
+        <div style="font-size: 12px; color: var(--text-dim); line-height: 1.8;">
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:32</span>
+            <span><span style="color:var(--bio);font-weight:600;">\u03C3_B4</span> &mdash; Verifying compilation gates</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:28</span>
+            <span><span style="color:var(--bio);font-weight:600;">\u03C3_B3</span> &mdash; Running test suite (47/47 passing)</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:20</span>
+            <span><span style="color:var(--bio);font-weight:600;">\u03C3_B2</span> &mdash; Implementation complete, 3 files modified</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:14</span>
+            <span><span style="color:var(--bio);font-weight:600;">\u03C3_B1</span> &mdash; Read 8 source files in packages/bridge/</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:12</span>
+            <span><span style="color:var(--bio);font-weight:600;">\u03C3_init</span> &mdash; Commission loaded, scope confirmed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="margin-top: 20px;">
+        <div class="panel-section-label">Event Channel</div>
+        <div style="font-size: 12px; color: var(--text-dim); line-height: 1.8;">
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:30</span>
+            <span style="color:var(--solar);font-size:11px;">&#9888;</span>
+            <span><span style="font-weight:500;">budget_warning</span> &mdash; 85% of $5.00 consumed</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:24</span>
+            <span style="color:var(--bio);font-size:11px;">&#9670;</span>
+            <span><span style="font-weight:500;">git_commit</span> &mdash; feat(bridge): adaptive settle algorithm</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline;">
+            <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px;min-width:44px;">14:12</span>
+            <span style="color:var(--bio);font-size:11px;">&#9670;</span>
+            <span><span style="font-weight:500;">session_start</span> &mdash; PTY spawned, commission delivered</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ─── Keyboard shortcut ───
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePanel();
+});
+
+// ─── Initialize on load ───
+window.addEventListener('DOMContentLoaded', () => {
+  animateProgressBars();
+  animateCounters();
+  animateTimeline();
+});
+</script>
+
+</body>
+</html>

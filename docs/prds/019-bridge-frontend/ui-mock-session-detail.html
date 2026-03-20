@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Method Bridge — Session Detail: impl-agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VIDTECCI THEME — Session Detail (Narrative Flow)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --void: #080e14;
+  --abyss: #0d1f2d;
+  --abyss-light: #122a3a;
+  --bio: #00c9a7;
+  --bio-dim: rgba(0, 201, 167, 0.15);
+  --bio-glow: rgba(0, 201, 167, 0.3);
+  --solar: #e8a45a;
+  --solar-dim: rgba(232, 164, 90, 0.15);
+  --cyan: #00e5cc;
+  --error: #e05a5a;
+  --error-dim: rgba(224, 90, 90, 0.15);
+  --nebular: #7b5fb5;
+  --nebular-dim: rgba(123, 95, 181, 0.15);
+  --text: #f0f4f8;
+  --text-dim: #8a9bb0;
+  --text-muted: #5a6b7e;
+  --border: rgba(138, 155, 176, 0.12);
+  --border-hover: rgba(138, 155, 176, 0.25);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --nav-height: 56px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ─── NAVIGATION BAR ─── */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 32px;
+  flex-shrink: 0;
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-logo .logo-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--bio);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--void);
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--bio);
+  border-radius: 1px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-link:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-link.active {
+  color: var(--bio);
+}
+
+.nav-link.active::after {
+  width: 60%;
+  left: 20%;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.nav-search:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-search kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+.nav-bell {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-bell:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.nav-bell .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--error);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid var(--void);
+}
+
+.nav-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nebular), var(--bio));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.nav-avatar:hover {
+  box-shadow: 0 0 0 2px var(--bio-dim);
+}
+
+/* ─── BREADCRUMB ─── */
+
+.breadcrumb-bar {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.breadcrumb-bar a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.breadcrumb-bar a:hover {
+  color: var(--bio);
+}
+
+.breadcrumb-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ─── SESSION HEADER ─── */
+
+.session-header {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin: 20px 24px 0;
+  opacity: 0;
+  transform: translateY(-12px);
+  animation: slideDown 0.5s ease 0.2s forwards;
+}
+
+@keyframes slideDown {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.header-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-nickname {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-badge.running {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.status-badge.running .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bio);
+  animation: statusPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--bio-glow); opacity: 1; }
+  50% { box-shadow: 0 0 8px 3px var(--bio-glow); opacity: 0.7; }
+}
+
+.header-purpose {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.header-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.header-id:hover {
+  color: var(--text-dim);
+}
+
+.header-id .copy-icon {
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.header-id:hover .copy-icon {
+  opacity: 1;
+}
+
+.header-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.header-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.header-meta-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.header-meta-value.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.header-meta-value a {
+  color: var(--bio);
+  text-decoration: none;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.header-meta-value a:hover {
+  color: var(--cyan);
+}
+
+/* ─── THREE-PANEL LAYOUT ─── */
+
+.three-panel {
+  display: grid;
+  grid-template-columns: 280px 1fr 240px;
+  gap: 16px;
+  padding: 16px 24px 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── LEFT PANEL ─── */
+
+.left-panel {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.panel-card {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.panel-card-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Session info grid */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.info-row .label {
+  color: var(--text-dim);
+}
+
+.info-row .value {
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+.info-row .value.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Methodology steps */
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 12px;
+  position: relative;
+}
+
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 24px;
+  bottom: -7px;
+  width: 1px;
+  background: var(--border);
+}
+
+.step-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.step-dot.done {
+  background: var(--bio);
+}
+
+.step-dot.current {
+  background: var(--solar);
+  animation: stepPulse 2s ease-in-out infinite;
+}
+
+@keyframes stepPulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px var(--solar-dim); }
+}
+
+.step-dot.pending {
+  background: transparent;
+  border: 2px solid var(--text-muted);
+  opacity: 0.5;
+}
+
+.step-name {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.step-name.dim {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.step-name.current-name {
+  color: var(--solar);
+  font-weight: 600;
+}
+
+.step-check {
+  color: var(--bio);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* Gate status */
+.gate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.gate-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gate-badge.pass {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.gate-badge.pending {
+  background: rgba(138, 155, 176, 0.08);
+  color: var(--text-muted);
+}
+
+/* Channel events */
+.channel-event {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 11.5px;
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+.channel-event.visible {
+  animation: channelSlide 0.3s ease forwards;
+}
+
+@keyframes channelSlide {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.channel-time {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.channel-text {
+  color: var(--text-dim);
+}
+
+.channel-text .highlight {
+  color: var(--bio);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ─── CENTER PANEL (TABS) ─── */
+
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.content-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+  flex-shrink: 0;
+  background: var(--abyss);
+  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 0 4px;
+}
+
+.content-tab {
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  user-select: none;
+}
+
+.content-tab:hover {
+  color: var(--text-dim);
+}
+
+.content-tab.active {
+  color: var(--bio);
+  border-bottom-color: var(--bio);
+}
+
+.content-body {
+  background: var(--abyss);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.tab-pane {
+  display: none;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tab-pane.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── TERMINAL (xterm.js mock) ─── */
+
+.terminal-container {
+  flex: 1;
+  background: #050910;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: #c8d0d8;
+  padding: 16px 20px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.terminal-container::-webkit-scrollbar { width: 8px; }
+.terminal-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+.terminal-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+.term-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.t-prompt { color: var(--bio); font-weight: 500; }
+.t-cmd { color: #f0f4f8; }
+.t-dim { color: #5a6a7a; }
+.t-output { color: #8a9aaa; }
+.t-success { color: #00e5cc; }
+.t-warn { color: #e8a45a; }
+.t-error-text { color: #e05a5a; }
+.t-path { color: #7b9fc7; }
+.t-string { color: #98c379; }
+.t-keyword { color: #c678dd; }
+.t-number { color: #d19a66; }
+.t-tool-name { color: #00c9a7; font-weight: 600; }
+.t-tool-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.t-tool-badge.read { background: rgba(0, 201, 167, 0.15); color: #00c9a7; }
+.t-tool-badge.write { background: rgba(123, 95, 181, 0.15); color: #a78bdb; }
+.t-tool-badge.edit { background: rgba(232, 164, 90, 0.15); color: #e8a45a; }
+.t-tool-badge.bash { background: rgba(0, 229, 204, 0.15); color: #00e5cc; }
+.t-tool-badge.grep { background: rgba(100, 160, 220, 0.15); color: #7bb8e0; }
+
+.t-separator {
+  color: #2a3a4a;
+  user-select: none;
+}
+
+.t-spinner {
+  display: inline-block;
+  color: var(--bio);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.term-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  background: var(--bio);
+  animation: cursorBlink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes cursorBlink {
+  50% { opacity: 0; }
+}
+
+/* ─── TRANSCRIPT ─── */
+
+.transcript-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.transcript-turn {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.transcript-turn:last-child {
+  border-bottom: none;
+}
+
+.turn-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.turn-badge {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.turn-badge.user {
+  background: rgba(123, 95, 181, 0.2);
+  color: var(--nebular);
+}
+
+.turn-badge.assistant {
+  background: var(--bio-dim);
+  color: var(--bio);
+}
+
+.turn-badge.system {
+  background: rgba(138, 155, 176, 0.08);
+  color: var(--text-muted);
+}
+
+.turn-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.turn-content {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  padding-left: 2px;
+}
+
+.turn-content .show-full {
+  color: var(--bio);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.turn-content .show-full:hover {
+  color: var(--cyan);
+}
+
+.tool-call-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tool-call-card:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-call-icon {
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tool-call-icon.read-icon { background: rgba(0, 201, 167, 0.12); color: var(--bio); }
+.tool-call-icon.write-icon { background: rgba(123, 95, 181, 0.12); color: #a78bdb; }
+.tool-call-icon.edit-icon { background: rgba(232, 164, 90, 0.12); color: var(--solar); }
+.tool-call-icon.grep-icon { background: rgba(100, 160, 220, 0.12); color: #7bb8e0; }
+
+.tool-call-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-call-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tool-call-path {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-chevron {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ─── OUTPUT TAB ─── */
+
+.output-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.output-block {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.output-key {
+  color: var(--text-dim);
+}
+
+.output-value {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.output-value.string { color: #98c379; }
+.output-value.array { color: var(--text-dim); }
+.output-value.empty { color: var(--text-muted); font-style: italic; }
+.output-value.status-val { color: var(--solar); font-weight: 600; }
+
+/* ─── RIGHT PANEL ─── */
+
+.right-panel {
+  overflow-y: auto;
+  padding-left: 4px;
+}
+
+.cost-sparkline-container {
+  position: relative;
+  height: 48px;
+  margin: 8px 0 4px;
+}
+
+.cost-sparkline {
+  width: 100%;
+  height: 100%;
+}
+
+.sparkline-path {
+  fill: none;
+  stroke: var(--bio);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawSparkline 1.5s ease-out 0.8s forwards;
+}
+
+.sparkline-area {
+  fill: url(#sparkGradient);
+  opacity: 0;
+  animation: fadeIn 0.8s ease 1.5s forwards;
+}
+
+@keyframes drawSparkline {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.cost-big {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.cost-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Token breakdown */
+.token-bar-container {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.token-bar-segment {
+  height: 100%;
+  transition: width 1s ease-out 0.5s;
+}
+
+.token-bar-segment.input { background: var(--bio); }
+.token-bar-segment.output { background: var(--nebular); }
+.token-bar-segment.cache { background: var(--text-muted); }
+
+.token-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.token-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.token-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.token-legend-dot.input { background: var(--bio); }
+.token-legend-dot.output { background: var(--nebular); }
+.token-legend-dot.cache { background: var(--text-muted); }
+
+.token-legend-label { color: var(--text-dim); }
+.token-legend-value {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Diagnostics */
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 11.5px;
+}
+
+.diag-label { color: var(--text-dim); }
+
+.diag-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.diag-value.good { color: var(--bio); }
+.diag-value.warn { color: var(--solar); }
+.diag-value.bad { color: var(--error); }
+
+.watcher-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.watcher-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.watcher-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.watcher-type {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+/* ─── BOTTOM ACTION BAR ─── */
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+}
+
+.action-bar-left {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+}
+
+.action-btn.primary {
+  background: var(--bio);
+  color: var(--void);
+  border-color: var(--bio);
+}
+
+.action-btn.primary:hover {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.action-btn.danger {
+  background: transparent;
+  color: var(--error);
+  border-color: var(--error-dim);
+}
+
+.action-btn.danger:hover {
+  background: var(--error-dim);
+  border-color: var(--error);
+}
+
+.action-btn.ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+
+.action-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+
+/* ─── ANIMATIONS ─── */
+
+.counter-animate {
+  display: inline-block;
+}
+
+/* Tab fade transition */
+.tab-pane {
+  animation: tabFadeIn 0.25s ease;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (max-width: 1200px) {
+  .three-panel {
+    grid-template-columns: 260px 1fr;
+  }
+  .right-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .three-panel {
+    grid-template-columns: 1fr;
+  }
+  .left-panel {
+    display: none;
+  }
+  .nav-links { display: none; }
+  .nav-search { display: none; }
+  .header-meta-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .session-header {
+    margin: 12px 12px 0;
+    padding: 16px;
+  }
+  .three-panel {
+    padding: 12px;
+  }
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ NAVIGATION ═══════════════════════ -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">M</div>
+    Method Bridge
+  </div>
+
+  <div class="nav-links">
+    <a class="nav-link" data-view="dashboard">Dashboard</a>
+    <a class="nav-link active" data-view="sessions">Sessions</a>
+    <a class="nav-link" data-view="strategies">Strategies</a>
+    <a class="nav-link" data-view="governance">Governance</a>
+    <a class="nav-link" data-view="analytics">Analytics</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search <kbd>Ctrl K</kbd>
+    </div>
+    <div class="nav-bell">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="badge">1</span>
+    </div>
+    <div class="nav-avatar">VF</div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ BREADCRUMB ═══════════════════════ -->
+<div class="breadcrumb-bar">
+  <a>Sessions</a>
+  <span class="breadcrumb-sep">&rsaquo;</span>
+  <a>orchestrator-1</a>
+  <span class="breadcrumb-sep">&rsaquo;</span>
+  <span class="breadcrumb-current">impl-agent</span>
+</div>
+
+<!-- ═══════════════════════ SESSION HEADER ═══════════════════════ -->
+<div class="session-header">
+  <div class="header-top-row">
+    <div class="header-identity">
+      <div class="header-nickname">
+        impl-agent
+        <span class="status-badge running">
+          <span class="pulse-dot"></span>
+          Running
+        </span>
+      </div>
+      <div class="header-purpose">Implement PRD 018 Phase 2a-1 trigger system</div>
+      <div class="header-id" onclick="copyId(this)" title="Click to copy">
+        bridge-session-abc123
+        <span class="copy-icon">&#128203;</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-meta-grid">
+    <div class="header-meta-item">
+      <span class="header-meta-label">Methodology</span>
+      <span class="header-meta-value mono">P2-SD v2.0 / M1-IMPL v3.1</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Current Step</span>
+      <span class="header-meta-value mono" style="color: var(--solar);">&sigma;_B3 (Implement)</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Parent</span>
+      <span class="header-meta-value"><a>orchestrator-1</a></span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Depth</span>
+      <span class="header-meta-value mono">2 / max 3</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Budget</span>
+      <span class="header-meta-value mono">7 / 10 agents</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Isolation</span>
+      <span class="header-meta-value mono">worktree</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Started</span>
+      <span class="header-meta-value">12 minutes ago</span>
+    </div>
+    <div class="header-meta-item">
+      <span class="header-meta-label">Session ID</span>
+      <span class="header-meta-value mono" style="color: var(--text-muted); font-size: 10px;">S-038-impl</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ THREE-PANEL LAYOUT ═══════════════════════ -->
+<div class="three-panel">
+
+  <!-- ─── LEFT PANEL ─── -->
+  <div class="panel left-panel">
+
+    <!-- Session Info -->
+    <div class="panel-card">
+      <div class="panel-card-title">Session Info</div>
+      <div class="info-row">
+        <span class="label">Commission</span>
+        <span class="value" style="font-size: 11px;">PRD 018 P2a-1</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Workdir</span>
+        <span class="value mono">packages/bridge/</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Branch</span>
+        <span class="value mono">feat/prd018-triggers</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Worktree</span>
+        <span class="value mono">.worktrees/impl-agent</span>
+      </div>
+      <div class="info-row">
+        <span class="label">PID</span>
+        <span class="value mono">24891</span>
+      </div>
+    </div>
+
+    <!-- Methodology Progress -->
+    <div class="panel-card">
+      <div class="panel-card-title">Methodology Progress</div>
+      <div class="step-list">
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_A1 Load</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_A2 Scope</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_A3 Design</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_A4 Plan</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_B1 Read</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot done"></span>
+          <span class="step-name">&sigma;_B2 Scaffold</span>
+          <span class="step-check">&#10003;</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot current"></span>
+          <span class="step-name current-name">&sigma;_B3 Implement</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot pending"></span>
+          <span class="step-name dim">&sigma;_B4 Test</span>
+        </div>
+        <div class="step-item">
+          <span class="step-dot pending"></span>
+          <span class="step-name dim">&sigma;_B5 Gate</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gate Status -->
+    <div class="panel-card">
+      <div class="panel-card-title">Gate Status</div>
+      <div class="gate-row">
+        <span style="color: var(--text-dim); font-size: 12px;">Gate A</span>
+        <span class="gate-badge pass">PASS</span>
+      </div>
+      <div class="gate-row">
+        <span style="color: var(--text-dim); font-size: 12px;">Gate B</span>
+        <span class="gate-badge pending">pending</span>
+      </div>
+    </div>
+
+    <!-- Channel Events -->
+    <div class="panel-card">
+      <div class="panel-card-title">Channel Events</div>
+      <div id="channelEvents">
+        <div class="channel-event" data-delay="0">
+          <span class="channel-time">14:32</span>
+          <span class="channel-text"><span class="highlight">step_advanced</span> &sigma;_B3</span>
+        </div>
+        <div class="channel-event" data-delay="100">
+          <span class="channel-time">14:28</span>
+          <span class="channel-text"><span class="highlight">step_completed</span> &sigma;_B2</span>
+        </div>
+        <div class="channel-event" data-delay="200">
+          <span class="channel-time">14:20</span>
+          <span class="channel-text"><span class="highlight">step_advanced</span> &sigma;_B2</span>
+        </div>
+        <div class="channel-event" data-delay="300">
+          <span class="channel-time">14:15</span>
+          <span class="channel-text"><span class="highlight">sub_agent_spawned</span> test-helper</span>
+        </div>
+        <div class="channel-event" data-delay="400">
+          <span class="channel-time">14:10</span>
+          <span class="channel-text"><span class="highlight">step_completed</span> &sigma;_B1</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── CENTER PANEL ─── -->
+  <div class="panel center-panel">
+    <div class="content-tabs">
+      <div class="content-tab active" onclick="switchTab(this, 'terminal')">Terminal</div>
+      <div class="content-tab" onclick="switchTab(this, 'transcript')">Transcript</div>
+      <div class="content-tab" onclick="switchTab(this, 'output')">Output</div>
+    </div>
+
+    <div class="content-body">
+
+      <!-- TERMINAL TAB -->
+      <div class="tab-pane active" id="tab-terminal">
+        <div class="terminal-container" id="terminalOutput">
+          <div class="term-line"><span class="t-dim">╭──────────────────────────────────────────────────────────╮</span></div>
+          <div class="term-line"><span class="t-dim">│</span> <span class="t-prompt">Claude Code</span> <span class="t-dim">v1.0.23  ·  Model: opus-4  ·  /help</span>  <span class="t-dim">│</span></div>
+          <div class="term-line"><span class="t-dim">╰──────────────────────────────────────────────────────────╯</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-dim">cwd:</span> <span class="t-path">C:\Users\atfm0\Repositories\pv-method</span></div>
+          <div class="term-line"><span class="t-dim">worktree:</span> <span class="t-path">.worktrees/impl-agent</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-prompt">&gt; </span><span class="t-cmd">I'll start by reading the PRD and understanding the trigger system architecture.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge read">Read</span> <span class="t-path">docs/prds/PRD-018-trigger-system.md</span> <span class="t-dim">(284 lines)</span></div>
+          <div class="term-line">  <span class="t-tool-badge read">Read</span> <span class="t-path">packages/bridge/src/pool.ts</span> <span class="t-dim">(412 lines)</span></div>
+          <div class="term-line">  <span class="t-tool-badge grep">Grep</span> <span class="t-output">TriggerRouter</span> <span class="t-dim">in packages/bridge/src/ &mdash; 0 matches</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-prompt">&gt; </span><span class="t-cmd">The trigger system doesn't exist yet. I'll scaffold the core files.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge write">Write</span> <span class="t-path">packages/bridge/src/trigger-router.ts</span> <span class="t-dim">(87 lines)</span></div>
+          <div class="term-line">  <span class="t-tool-badge write">Write</span> <span class="t-path">packages/bridge/src/triggers/file-watch-trigger.ts</span> <span class="t-dim">(64 lines)</span></div>
+          <div class="term-line">  <span class="t-tool-badge write">Write</span> <span class="t-path">packages/bridge/src/triggers/git-commit-trigger.ts</span> <span class="t-dim">(52 lines)</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-prompt">&gt; </span><span class="t-cmd">Now wiring the router into the pool and registering the HTTP endpoints.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge edit">Edit</span> <span class="t-path">packages/bridge/src/pool.ts</span></div>
+          <div class="term-line">  <span class="t-dim">   ├─ +import { TriggerRouter } from './trigger-router';</span></div>
+          <div class="term-line">  <span class="t-dim">   ├─ +private triggerRouter: TriggerRouter;</span></div>
+          <div class="term-line">  <span class="t-dim">   └─ +this.triggerRouter = new TriggerRouter(this);</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge edit">Edit</span> <span class="t-path">packages/bridge/src/index.ts</span></div>
+          <div class="term-line">  <span class="t-dim">   └─ +app.post('/triggers', ...triggerRoutes);</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge bash">Bash</span> <span class="t-output">npm run build</span></div>
+          <div class="term-line">  <span class="t-success">  Build completed successfully (2.1s)</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-prompt">&gt; </span><span class="t-cmd">Build passes. Now implementing the debounce logic and polling strategy.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge edit">Edit</span> <span class="t-path">packages/bridge/src/trigger-router.ts</span></div>
+          <div class="term-line">  <span class="t-dim">   ├─ +private debounceTimers = new Map&lt;string, NodeJS.Timeout&gt;();</span></div>
+          <div class="term-line">  <span class="t-dim">   └─ +fire(triggerId: string, event: TriggerEvent): void {</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge edit">Edit</span> <span class="t-path">packages/bridge/src/triggers/file-watch-trigger.ts</span></div>
+          <div class="term-line">  <span class="t-dim">   └─ +<span class="t-warn">Using polling as primary file watcher on Linux</span></span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line">  <span class="t-tool-badge bash">Bash</span> <span class="t-output">npm test -- --filter trigger</span></div>
+          <div class="term-line">  <span class="t-success">  &#10003;</span> <span class="t-output">trigger-router.test.ts (6 tests) 312ms</span></div>
+          <div class="term-line">  <span class="t-success">  &#10003;</span> <span class="t-output">file-watch-trigger.test.ts (4 tests) 189ms</span></div>
+          <div class="term-line">  <span class="t-success">  &#10003;</span> <span class="t-output">git-commit-trigger.test.ts (3 tests) 145ms</span></div>
+          <div class="term-line">  <span class="t-output">  Tests  <span class="t-success">13 passed</span> (13)  Duration  0.65s</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="t-prompt">&gt; </span><span class="term-cursor"></span></div>
+        </div>
+      </div>
+
+      <!-- TRANSCRIPT TAB -->
+      <div class="tab-pane" id="tab-transcript">
+        <div class="transcript-container">
+
+          <!-- Turn 1 -->
+          <div class="transcript-turn">
+            <div class="turn-header">
+              <span class="turn-badge user">User</span>
+              <span class="turn-meta">
+                <span>14:20</span>
+                <span>&middot;</span>
+                <span>1,247 tokens</span>
+              </span>
+            </div>
+            <div class="turn-content">
+              You are an implementation agent commissioned for PRD 018 Phase 2a-1. Your task is to implement the trigger system for the Method Bridge. The trigger system should support file-watch and git-commit triggers with configurable debounce. Read the PRD at docs/prds/PRD-018-trigger-system.md first, then...
+              <span class="show-full">[Show full &rarr;]</span>
+            </div>
+          </div>
+
+          <!-- Turn 2 -->
+          <div class="transcript-turn">
+            <div class="turn-header">
+              <span class="turn-badge assistant">Assistant</span>
+              <span class="turn-meta">
+                <span>14:20</span>
+                <span>&middot;</span>
+                <span>892 tokens</span>
+              </span>
+            </div>
+            <div class="turn-content">
+              I'll start by reading the PRD and understanding the existing bridge architecture to plan the trigger system implementation.
+            </div>
+            <div class="tool-call-card">
+              <div class="tool-call-icon read-icon">&#128196;</div>
+              <div class="tool-call-info">
+                <div class="tool-call-name">Read</div>
+                <div class="tool-call-path">docs/prds/PRD-018-trigger-system.md</div>
+              </div>
+              <span class="tool-call-chevron">&rsaquo;</span>
+            </div>
+            <div class="tool-call-card">
+              <div class="tool-call-icon read-icon">&#128196;</div>
+              <div class="tool-call-info">
+                <div class="tool-call-name">Read</div>
+                <div class="tool-call-path">packages/bridge/src/pool.ts</div>
+              </div>
+              <span class="tool-call-chevron">&rsaquo;</span>
+            </div>
+            <div class="tool-call-card">
+              <div class="tool-call-icon grep-icon">&#128269;</div>
+              <div class="tool-call-info">
+                <div class="tool-call-name">Grep</div>
+                <div class="tool-call-path">TriggerRouter in packages/bridge/src/</div>
+              </div>
+              <span class="tool-call-chevron">&rsaquo;</span>
+            </div>
+          </div>
+
+          <!-- Turn 3 -->
+          <div class="transcript-turn">
+            <div class="turn-header">
+              <span class="turn-badge system">System</span>
+              <span class="turn-meta">
+                <span>14:22</span>
+                <span>&middot;</span>
+                <span>0 tokens</span>
+              </span>
+            </div>
+            <div class="turn-content" style="color: var(--text-muted); font-style: italic;">
+              [Auto-continue]
+            </div>
+          </div>
+
+          <!-- Turn 4 -->
+          <div class="transcript-turn">
+            <div class="turn-header">
+              <span class="turn-badge assistant">Assistant</span>
+              <span class="turn-meta">
+                <span>14:24</span>
+                <span>&middot;</span>
+                <span>2,340 tokens</span>
+              </span>
+            </div>
+            <div class="turn-content">
+              Now implementing the TriggerRouter class and the two initial trigger types. I'll use a polling-based approach for file watching on Linux since fs.watch is unreliable there, and a Git hook integration for commit triggers.
+            </div>
+            <div class="tool-call-card">
+              <div class="tool-call-icon write-icon">&#128221;</div>
+              <div class="tool-call-info">
+                <div class="tool-call-name">Write</div>
+                <div class="tool-call-path">packages/bridge/src/trigger-router.ts</div>
+              </div>
+              <span class="tool-call-chevron">&rsaquo;</span>
+            </div>
+            <div class="tool-call-card">
+              <div class="tool-call-icon edit-icon">&#9998;</div>
+              <div class="tool-call-info">
+                <div class="tool-call-name">Edit</div>
+                <div class="tool-call-path">packages/bridge/src/pool.ts</div>
+              </div>
+              <span class="tool-call-chevron">&rsaquo;</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- OUTPUT TAB -->
+      <div class="tab-pane" id="tab-output">
+        <div class="output-container">
+          <div class="panel-card-title" style="margin-bottom: 16px;">Structured Output &mdash; &sigma;_B3</div>
+          <div class="output-block">
+            <div><span class="output-key">task_ref:</span> <span class="output-value string">"PRD 018 Phase 2a-1"</span></div>
+            <div>&nbsp;</div>
+            <div><span class="output-key">files_changed:</span></div>
+            <div>  <span class="output-value array">- <span class="output-value string">"trigger-router.ts"</span></span></div>
+            <div>  <span class="output-value array">- <span class="output-value string">"file-watch-trigger.ts"</span></span></div>
+            <div>  <span class="output-value array">- <span class="output-value string">"git-commit-trigger.ts"</span></span></div>
+            <div>&nbsp;</div>
+            <div><span class="output-key">tests_added:</span> <span class="output-value"><span class="t-number">13</span></span></div>
+            <div><span class="output-key">tests_passing:</span> <span class="output-value"><span class="t-success">13</span></span></div>
+            <div>&nbsp;</div>
+            <div><span class="output-key">divergences:</span> <span class="output-value empty">[]</span></div>
+            <div>&nbsp;</div>
+            <div><span class="output-key">decisions:</span></div>
+            <div>  <span class="output-value array">- <span class="output-value string">"Used polling as primary file watcher on Linux"</span></span></div>
+            <div>&nbsp;</div>
+            <div><span class="output-key">status:</span> <span class="output-value status-val">IN_PROGRESS</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── RIGHT PANEL ─── -->
+  <div class="panel right-panel">
+
+    <!-- Cost Card -->
+    <div class="panel-card">
+      <div class="panel-card-title">Cost</div>
+      <div class="cost-big" id="costValue">$0.00</div>
+      <div class="cost-label">total session cost</div>
+      <div class="cost-sparkline-container">
+        <svg class="cost-sparkline" viewBox="0 0 200 48" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--bio)" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="var(--bio)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path class="sparkline-area" d="M0,44 L15,42 L30,40 L50,38 L70,35 L90,30 L110,24 L130,18 L150,14 L170,10 L190,8 L200,6 L200,48 L0,48 Z"/>
+          <path class="sparkline-path" d="M0,44 L15,42 L30,40 L50,38 L70,35 L90,30 L110,24 L130,18 L150,14 L170,10 L190,8 L200,6"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Tokens Card -->
+    <div class="panel-card">
+      <div class="panel-card-title">Tokens</div>
+      <div class="token-bar-container">
+        <div class="token-bar-segment input" id="tokenInput" style="width: 0%;"></div>
+        <div class="token-bar-segment output" id="tokenOutput" style="width: 0%;"></div>
+        <div class="token-bar-segment cache" id="tokenCache" style="width: 0%;"></div>
+      </div>
+      <div class="token-legend">
+        <div class="token-legend-item">
+          <span class="token-legend-dot input"></span>
+          <span class="token-legend-label">Input</span>
+          <span class="token-legend-value">45k</span>
+        </div>
+        <div class="token-legend-item">
+          <span class="token-legend-dot output"></span>
+          <span class="token-legend-label">Output</span>
+          <span class="token-legend-value">8k</span>
+        </div>
+        <div class="token-legend-item">
+          <span class="token-legend-dot cache"></span>
+          <span class="token-legend-label">Cache (78%)</span>
+          <span class="token-legend-value">12k</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagnostics Card -->
+    <div class="panel-card">
+      <div class="panel-card-title">Diagnostics</div>
+      <div class="diag-row">
+        <span class="diag-label">Tool calls</span>
+        <span class="diag-value" id="toolCallCount">0</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Time to first output</span>
+        <span class="diag-value">3.2s</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Stall classification</span>
+        <span class="diag-value good">NONE</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Adaptive settle</span>
+        <span class="diag-value">450ms</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Settle backoffs</span>
+        <span class="diag-value warn">2</span>
+      </div>
+    </div>
+
+    <!-- PTY Watcher Card -->
+    <div class="panel-card">
+      <div class="panel-card-title">PTY Watcher</div>
+      <div class="diag-row" style="margin-bottom: 6px;">
+        <span class="diag-label">Observations</span>
+        <span class="diag-value" id="watcherTotal">0</span>
+      </div>
+      <div class="watcher-grid">
+        <div class="watcher-item">
+          <span class="watcher-count">8</span>
+          <span class="watcher-type">tool_call</span>
+        </div>
+        <div class="watcher-item">
+          <span class="watcher-count">3</span>
+          <span class="watcher-type">file_op</span>
+        </div>
+        <div class="watcher-item">
+          <span class="watcher-count">1</span>
+          <span class="watcher-type">git_commit</span>
+        </div>
+        <div class="watcher-item">
+          <span class="watcher-count">0</span>
+          <span class="watcher-type">error</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ BOTTOM ACTION BAR ═══════════════════════ -->
+<div class="action-bar">
+  <div class="action-bar-left">
+    <button class="action-btn primary">Send Prompt</button>
+    <button class="action-btn danger">Kill Session</button>
+  </div>
+  <button class="action-btn ghost">View in Parent Context &rarr;</button>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   INTERACTIVE LOGIC — Session Detail
+   ═══════════════════════════════════════════════════════════ */
+
+// ─── Tab Switching ───
+function switchTab(el, tabId) {
+  // Update tab buttons
+  document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+
+  // Update tab panes
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById('tab-' + tabId);
+  if (pane) {
+    pane.classList.add('active');
+    // Re-trigger fade animation
+    pane.style.animation = 'none';
+    pane.offsetHeight; // reflow
+    pane.style.animation = '';
+  }
+}
+
+// ─── Copy Session ID ───
+function copyId(el) {
+  const text = el.textContent.trim().replace(/\s+/g, ' ').split(' ')[0];
+  navigator.clipboard.writeText('bridge-session-abc123').catch(() => {});
+
+  // Visual feedback
+  const orig = el.querySelector('.copy-icon').textContent;
+  el.querySelector('.copy-icon').textContent = '\u2713';
+  el.querySelector('.copy-icon').style.opacity = '1';
+  el.querySelector('.copy-icon').style.color = 'var(--bio)';
+  setTimeout(() => {
+    el.querySelector('.copy-icon').textContent = orig;
+    el.querySelector('.copy-icon').style.opacity = '';
+    el.querySelector('.copy-icon').style.color = '';
+  }, 1500);
+}
+
+// ─── Counter Animation ───
+function animateCounter(el, target, duration, decimals) {
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = target * eased;
+    el.textContent = decimals === 0 ? Math.round(current) : current.toFixed(decimals);
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// ─── Cost Animation ───
+function animateCost() {
+  const el = document.getElementById('costValue');
+  const target = 0.89;
+  const startTime = performance.now();
+  const duration = 1500;
+
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = '$' + (target * eased).toFixed(2);
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  setTimeout(() => requestAnimationFrame(update), 400);
+}
+
+// ─── Token Bar Animation ───
+function animateTokenBars() {
+  setTimeout(() => {
+    document.getElementById('tokenInput').style.width = '69%';   // 45k / 65k total
+    document.getElementById('tokenOutput').style.width = '12%';  // 8k
+    document.getElementById('tokenCache').style.width = '19%';   // 12k
+  }, 600);
+}
+
+// ─── Tool Call Counter ───
+function animateToolCalls() {
+  const el = document.getElementById('toolCallCount');
+  setTimeout(() => animateCounter(el, 23, 1200, 0), 500);
+}
+
+// ─── PTY Watcher Total ───
+function animateWatcher() {
+  const el = document.getElementById('watcherTotal');
+  setTimeout(() => animateCounter(el, 12, 1000, 0), 700);
+}
+
+// ─── Channel Events Stagger ───
+function animateChannelEvents() {
+  const events = document.querySelectorAll('#channelEvents .channel-event');
+  events.forEach((ev, i) => {
+    const delay = parseInt(ev.getAttribute('data-delay') || (i * 100));
+    setTimeout(() => ev.classList.add('visible'), 600 + delay);
+  });
+}
+
+// ─── Nav Link Switching ───
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// ─── Terminal Auto-Scroll ───
+function scrollTerminal() {
+  const term = document.getElementById('terminalOutput');
+  if (term) {
+    setTimeout(() => {
+      term.scrollTop = term.scrollHeight;
+    }, 300);
+  }
+}
+
+// ─── Initialize on Load ───
+window.addEventListener('DOMContentLoaded', () => {
+  animateCost();
+  animateTokenBars();
+  animateToolCalls();
+  animateWatcher();
+  animateChannelEvents();
+  scrollTerminal();
+});
+</script>
+
+</body>
+</html>

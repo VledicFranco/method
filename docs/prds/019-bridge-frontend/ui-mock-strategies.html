@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Narrative Flow — Strategies</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --void: #080e14;
+    --abyss: #0d1f2d;
+    --abyss-light: #122a3a;
+    --bio: #00c9a7;
+    --bio-dim: rgba(0, 201, 167, 0.15);
+    --bio-glow: rgba(0, 201, 167, 0.3);
+    --solar: #e8a45a;
+    --solar-dim: rgba(232, 164, 90, 0.15);
+    --cyan: #00e5cc;
+    --error: #e05a5a;
+    --error-dim: rgba(224, 90, 90, 0.15);
+    --nebular: #7b5fb5;
+    --nebular-dim: rgba(123, 95, 181, 0.15);
+    --text: #f0f4f8;
+    --text-dim: #8a9bb0;
+    --text-muted: #5a6b7e;
+    --border: rgba(138, 155, 176, 0.12);
+    --border-hover: rgba(138, 155, 176, 0.25);
+
+    --text-xs: 0.7rem;
+    --text-sm: 0.8rem;
+    --text-base: 0.875rem;
+    --text-md: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5rem;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: var(--text-base);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Navigation Bar ── */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 56px;
+    background: var(--abyss);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-6);
+    backdrop-filter: blur(12px);
+  }
+  .nav-logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-md);
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-right: var(--space-10);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .nav-logo .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bio);
+    box-shadow: 0 0 8px var(--bio-glow);
+  }
+  .nav-items {
+    display: flex;
+    gap: var(--space-6);
+    list-style: none;
+    flex: 1;
+    justify-content: center;
+  }
+  .nav-items li {
+    position: relative;
+  }
+  .nav-items a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    padding: var(--space-4) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: color 200ms ease-out;
+  }
+  .nav-items a:hover { color: var(--text); }
+  .nav-items a::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    right: 50%;
+    height: 2px;
+    background: var(--bio);
+    border-radius: 1px;
+    transition: left 200ms ease-out, right 200ms ease-out;
+  }
+  .nav-items a:hover::after { left: 0; right: 0; opacity: 0.5; }
+  .nav-items li.active a { color: var(--text); }
+  .nav-items li.active a::after {
+    left: 0;
+    right: 0;
+    opacity: 1;
+    box-shadow: 0 0 8px var(--bio-glow);
+  }
+  .nav-badge {
+    background: var(--bio-dim);
+    color: var(--bio);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+  .nav-actions {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .nav-action-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 200ms ease-out;
+  }
+  .nav-action-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+    background: var(--abyss-light);
+  }
+
+  /* ── Content Area ── */
+  .content {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+    padding-right: calc(420px + var(--space-6) + var(--space-6));
+  }
+
+  /* ── Section Headers ── */
+  .section-header {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-5);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .section-header .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    background: var(--abyss);
+    padding: 2px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Strategy Cards ── */
+  .strategy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-bottom: var(--space-10);
+  }
+  .strategy-card {
+    background: var(--abyss);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-5);
+    cursor: pointer;
+    transition: all 200ms ease-out;
+    position: relative;
+    animation: slide-in-left 400ms ease-out both;
+  }
+  .strategy-card:nth-child(1) { animation-delay: 0ms; }
+  .strategy-card:nth-child(2) { animation-delay: 100ms; }
+  .strategy-card:nth-child(3) { animation-delay: 200ms; }
+  .strategy-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  .strategy-card.selected {
+    border-color: var(--bio);
+    box-shadow: 0 0 0 1px var(--bio), 0 4px 20px rgba(0, 201, 167, 0.1);
+  }
+  .strategy-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-3);
+  }
+  .strategy-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--bio);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .strategy-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: var(--text-md);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-3);
+  }
+
+  /* Mini DAG */
+  .mini-dag {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: var(--space-3);
+  }
+  .dag-node {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dag-node.methodology { background: var(--nebular); }
+  .dag-node.script { background: var(--bio); }
+  .dag-edge {
+    width: 20px;
+    height: 2px;
+    flex-shrink: 0;
+  }
+  .dag-edge.success { background: var(--cyan); }
+  .dag-edge.pending { background: var(--text-muted); }
+  .dag-gate {
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+  .dag-gate.passed { background: var(--bio); }
+  .dag-gate.pending { background: var(--text-muted); border: 1px solid var(--text-muted); background: transparent; }
+
+  /* Strategy meta info */
+  .strategy-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+  }
+  .strategy-meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+  }
+  .strategy-meta-row .label {
+    color: var(--text-muted);
+    min-width: 60px;
+  }
+  .meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border-radius: 6px;
+    font-size: var(--text-xs);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .meta-badge.methodology {
+    background: var(--nebular-dim);
+    color: var(--nebular);
+  }
+  .meta-badge.script {
+    background: var(--bio-dim);
+    color: var(--bio);
+  }
+  .meta-badge.gate {
+    background: rgba(0, 229, 204, 0.1);
+    color: var(--cyan);
+  }
+  .meta-badge.trigger-manual {
+    background: rgba(138, 155, 176, 0.08);
+    color: var(--text-dim);
+  }
+  .meta-badge.trigger-file {
+    background: var(--solar-dim);
+    color: var(--solar);
+  }
+  .meta-badge.trigger-git {
+    background: var(--nebular-dim);
+    color: var(--nebular);
+  }
+
+  /* Last execution */
+  .strategy-exec {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-sm);
+  }
+  .exec-time {
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+  }
+  .exec-cost {
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+  }
+  .exec-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+  .exec-status.completed { color: var(--cyan); }
+  .exec-status.failed { color: var(--error); }
+
+  /* ── Timeline ── */
+  .timeline {
+    position: relative;
+    padding-left: var(--space-8);
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: var(--space-5);
+    animation: slide-in-left 400ms ease-out both;
+  }
+  .timeline-item:nth-child(1) { animation-delay: 300ms; }
+  .timeline-item:nth-child(2) { animation-delay: 400ms; }
+  .timeline-item:nth-child(3) { animation-delay: 500ms; }
+  .timeline-item:nth-child(4) { animation-delay: 600ms; }
+  .timeline-dot {
+    position: absolute;
+    left: calc(-1 * var(--space-8) + 0px);
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .timeline-dot.completed { background: var(--cyan); box-shadow: 0 0 8px rgba(0, 229, 204, 0.3); }
+  .timeline-dot.failed { background: var(--error); box-shadow: 0 0 8px rgba(224, 90, 90, 0.3); }
+  .timeline-card {
+    background: var(--abyss);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-4) var(--space-5);
+    transition: all 200ms ease-out;
+  }
+  .timeline-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+  }
+  .timeline-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .timeline-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+  }
+  .timeline-strategy {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--bio);
+    font-weight: 500;
+  }
+  .timeline-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+  .timeline-status-pill.completed {
+    background: rgba(0, 229, 204, 0.15);
+    color: var(--cyan);
+  }
+  .timeline-status-pill.failed {
+    background: var(--error-dim);
+    color: var(--error);
+  }
+  .timeline-detail {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+  }
+  .timeline-detail span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+  }
+  .timeline-link {
+    color: var(--bio);
+    text-decoration: none;
+    font-size: var(--text-xs);
+    font-family: 'Inter', sans-serif;
+    margin-left: auto;
+    transition: opacity 200ms;
+  }
+  .timeline-link:hover { opacity: 0.7; }
+
+  /* ── Slide-Over Panel ── */
+  .slide-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .slide-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    background: var(--abyss);
+    border-left: 1px solid var(--border);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    animation: slide-in-right 300ms ease-out;
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.4);
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .slide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-5) var(--space-6);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .slide-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .slide-type-label {
+    font-size: var(--text-xs);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .slide-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .slide-close {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: 8px;
+    transition: all 200ms;
+    line-height: 1;
+  }
+  .slide-close:hover {
+    background: var(--abyss-light);
+    color: var(--text);
+  }
+
+  /* Slide Tabs */
+  .slide-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 var(--space-6);
+    flex-shrink: 0;
+  }
+  .slide-tab {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 200ms;
+  }
+  .slide-tab:hover { color: var(--text); }
+  .slide-tab.active {
+    color: var(--text);
+  }
+  .slide-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--bio);
+    border-radius: 1px;
+  }
+
+  .slide-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-6);
+  }
+  .slide-body::-webkit-scrollbar { width: 6px; }
+  .slide-body::-webkit-scrollbar-track { background: transparent; }
+  .slide-body::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+  /* Structured View Sections */
+  .sv-section {
+    margin-bottom: var(--space-6);
+  }
+  .sv-section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--space-3);
+  }
+  .sv-field {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .sv-field-label {
+    color: var(--text-muted);
+    min-width: 90px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .sv-field-value {
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+  }
+
+  /* Node List */
+  .node-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .node-item {
+    background: var(--void);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-3) var(--space-4);
+  }
+  .node-item-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+  .node-type-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .node-type-dot.methodology { background: var(--nebular); }
+  .node-type-dot.script { background: var(--bio); }
+  .node-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  .node-type-label {
+    font-size: var(--text-xs);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node-type-label.methodology { background: var(--nebular-dim); color: var(--nebular); }
+  .node-type-label.script { background: var(--bio-dim); color: var(--bio); }
+  .node-meta {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: var(--space-4);
+  }
+  .node-meta .kv { display: flex; gap: var(--space-2); }
+  .node-meta .k { color: var(--text-muted); min-width: 60px; }
+  .node-meta .v { font-family: 'JetBrains Mono', monospace; color: var(--text-dim); }
+
+  /* Gate list */
+  .gate-item {
+    background: var(--void);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .gate-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cyan);
+    font-size: 12px;
+  }
+  .gate-info {
+    flex: 1;
+  }
+  .gate-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  .gate-type {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Trigger config in slide-over */
+  .trigger-config-item {
+    background: var(--void);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+  }
+  .trigger-icon {
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+
+  /* Oversight rules */
+  .oversight-rule {
+    background: var(--void);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .oversight-condition {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+    color: var(--solar);
+  }
+  .oversight-action {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* Slide Actions */
+  .slide-actions {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-6);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 200ms ease-out;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .btn-primary {
+    background: var(--bio);
+    color: var(--void);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 16px var(--bio-glow);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-secondary:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+    background: var(--abyss-light);
+  }
+
+  /* ── Animations ── */
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 var(--bio-glow); }
+    50% { box-shadow: 0 0 16px 4px var(--bio-glow); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ── DAG Legend ── */
+  .dag-legend {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+  .dag-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .dag-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dag-legend-diamond {
+    width: 6px;
+    height: 6px;
+    transform: rotate(45deg);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ Navigation Bar ═══ -->
+<nav class="nav">
+  <div class="nav-logo">
+    <span class="dot"></span>
+    Narrative Flow
+  </div>
+  <ul class="nav-items">
+    <li><a href="#">Dashboard</a></li>
+    <li><a href="#">Sessions <span class="nav-badge">2</span></a></li>
+    <li class="active"><a href="#">Strategies <span class="nav-badge">3</span></a></li>
+    <li><a href="#">Triggers</a></li>
+    <li><a href="#">Council</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="nav-action-btn">Cmd+K</button>
+  </div>
+</nav>
+
+<!-- ═══ Content Area ═══ -->
+<div class="content">
+
+  <!-- Strategy Definitions -->
+  <div class="section-header">
+    Strategy Definitions
+    <span class="count">3</span>
+  </div>
+
+  <div class="dag-legend">
+    <span class="dag-legend-item"><span class="dag-legend-dot" style="background:var(--nebular)"></span> methodology</span>
+    <span class="dag-legend-item"><span class="dag-legend-dot" style="background:var(--bio)"></span> script</span>
+    <span class="dag-legend-item"><span class="dag-legend-diamond" style="background:var(--cyan)"></span> gate</span>
+  </div>
+
+  <div class="strategy-grid">
+
+    <!-- Card 1: S-SMOKE-001 -->
+    <div class="strategy-card selected" onclick="selectCard(this)">
+      <div class="strategy-card-header">
+        <span class="strategy-id">S-SMOKE-001</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+      <div class="strategy-name">AG-045 Smoke Test</div>
+
+      <div class="mini-dag">
+        <span class="dag-node methodology" title="summarize (methodology)"></span>
+        <span class="dag-edge success"></span>
+        <span class="dag-node script" title="extract (script)"></span>
+        <span class="dag-edge success"></span>
+        <span class="dag-gate passed" title="smoke_check (gate)"></span>
+      </div>
+
+      <div class="strategy-meta">
+        <div class="strategy-meta-row">
+          <span class="label">Nodes</span>
+          <span class="meta-badge methodology">methodology</span>
+          <span class="meta-badge script">script</span>
+        </div>
+        <div class="strategy-meta-row">
+          <span class="label">Gates</span>
+          <span class="meta-badge gate">smoke_check</span>
+        </div>
+        <div class="strategy-meta-row">
+          <span class="label">Triggers</span>
+          <span class="meta-badge trigger-manual">manual</span>
+        </div>
+      </div>
+
+      <div class="strategy-exec">
+        <span class="exec-time">5m ago</span>
+        <span class="exec-cost">$0.25</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+    </div>
+
+    <!-- Card 2: S-PERF-FILE-WATCH -->
+    <div class="strategy-card" onclick="selectCard(this)">
+      <div class="strategy-card-header">
+        <span class="strategy-id">S-PERF-FILE-WATCH</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+      <div class="strategy-name">Performance Test</div>
+
+      <div class="mini-dag">
+        <span class="dag-node script" title="count_files (script)"></span>
+        <span class="dag-edge success"></span>
+        <span class="dag-gate passed" title="perf_check (gate)"></span>
+      </div>
+
+      <div class="strategy-meta">
+        <div class="strategy-meta-row">
+          <span class="label">Nodes</span>
+          <span class="meta-badge script">script</span>
+        </div>
+        <div class="strategy-meta-row">
+          <span class="label">Gates</span>
+          <span class="meta-badge gate">perf_check</span>
+        </div>
+        <div class="strategy-meta-row">
+          <span class="label">Triggers</span>
+          <span class="meta-badge trigger-manual">manual</span>
+          <span class="meta-badge trigger-file">file_watch</span>
+        </div>
+      </div>
+
+      <div class="strategy-exec">
+        <span class="exec-time">2h ago</span>
+        <span class="exec-cost">$0.00</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+    </div>
+
+    <!-- Card 3: S-CODE-REVIEW -->
+    <div class="strategy-card" onclick="selectCard(this)">
+      <div class="strategy-card-header">
+        <span class="strategy-id">S-CODE-REVIEW</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+      <div class="strategy-name">Auto Code Review</div>
+
+      <div class="mini-dag">
+        <span class="dag-node methodology" title="review (methodology)"></span>
+        <span class="dag-edge success"></span>
+        <span class="dag-node script" title="summarize (script)"></span>
+      </div>
+
+      <div class="strategy-meta">
+        <div class="strategy-meta-row">
+          <span class="label">Nodes</span>
+          <span class="meta-badge methodology">methodology</span>
+          <span class="meta-badge script">script</span>
+        </div>
+        <div class="strategy-meta-row">
+          <span class="label">Triggers</span>
+          <span class="meta-badge trigger-manual">manual</span>
+          <span class="meta-badge trigger-git">git_commit</span>
+        </div>
+      </div>
+
+      <div class="strategy-exec">
+        <span class="exec-time">1h ago</span>
+        <span class="exec-cost">$0.34</span>
+        <span class="exec-status completed">&#10003; completed</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Execution History -->
+  <div class="section-header">
+    Execution History
+  </div>
+
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <span class="timeline-time">14:32</span>
+          <span class="timeline-strategy">S-SMOKE-001</span>
+          <span class="timeline-status-pill completed">&#10003; completed</span>
+        </div>
+        <div class="timeline-detail">
+          <span>$0.25</span>
+          <span>1m 2s</span>
+          <span style="color: var(--cyan)">all gates passed</span>
+          <a href="#" class="timeline-link">Open in Visualizer &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <span class="timeline-time">13:15</span>
+          <span class="timeline-strategy">S-CODE-REVIEW</span>
+          <span class="timeline-status-pill completed">&#10003; completed</span>
+        </div>
+        <div class="timeline-detail">
+          <span>$0.34</span>
+          <span>4m 12s</span>
+          <span style="color: var(--solar)">1 gate retry</span>
+          <a href="#" class="timeline-link">Open in Visualizer &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot completed"></div>
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <span class="timeline-time">12:00</span>
+          <span class="timeline-strategy">S-PERF-FILE-WATCH</span>
+          <span class="timeline-status-pill completed">&#10003; completed</span>
+        </div>
+        <div class="timeline-detail">
+          <span>$0.00</span>
+          <span>1ms</span>
+          <span style="color: var(--solar)">triggered by file_watch</span>
+          <a href="#" class="timeline-link">Open in Visualizer &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot failed"></div>
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <span class="timeline-time">11:45</span>
+          <span class="timeline-strategy">S-CODE-REVIEW</span>
+          <span class="timeline-status-pill failed">&#10007; failed</span>
+        </div>
+        <div class="timeline-detail">
+          <span>$0.67</span>
+          <span>8m</span>
+          <span style="color: var(--error)">gate exhausted retries</span>
+          <a href="#" class="timeline-link">Open in Visualizer &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═══ Slide-Over Panel: S-SMOKE-001 ═══ -->
+<div class="slide-overlay"></div>
+<div class="slide-panel">
+  <div class="slide-header">
+    <div class="slide-title-group">
+      <span class="slide-type-label">Strategy Definition</span>
+      <span class="slide-title">S-SMOKE-001</span>
+    </div>
+    <button class="slide-close" title="Close">&times;</button>
+  </div>
+
+  <div class="slide-tabs">
+    <button class="slide-tab active">Overview</button>
+    <button class="slide-tab">YAML</button>
+    <button class="slide-tab">History</button>
+  </div>
+
+  <div class="slide-body">
+
+    <!-- Identity -->
+    <div class="sv-section">
+      <div class="sv-section-title">Identity</div>
+      <div class="sv-field">
+        <span class="sv-field-label">ID</span>
+        <span class="sv-field-value">S-SMOKE-001</span>
+      </div>
+      <div class="sv-field">
+        <span class="sv-field-label">Name</span>
+        <span class="sv-field-value">AG-045 Smoke Test</span>
+      </div>
+      <div class="sv-field">
+        <span class="sv-field-label">Version</span>
+        <span class="sv-field-value">1.0</span>
+      </div>
+    </div>
+
+    <!-- Nodes -->
+    <div class="sv-section">
+      <div class="sv-section-title">DAG Nodes</div>
+      <div class="node-list">
+
+        <div class="node-item">
+          <div class="node-item-header">
+            <span class="node-type-dot methodology"></span>
+            <span class="node-id">summarize</span>
+            <span class="node-type-label methodology">methodology</span>
+          </div>
+          <div class="node-meta">
+            <div class="kv"><span class="k">Method</span><span class="v">P2-SD / M3-TMP</span></div>
+            <div class="kv"><span class="k">Inputs</span><span class="v">project_name</span></div>
+            <div class="kv"><span class="k">Outputs</span><span class="v">summary</span></div>
+            <div class="kv"><span class="k">Gate</span><span class="v">algorithmic (max_retries: 1)</span></div>
+          </div>
+        </div>
+
+        <div class="node-item">
+          <div class="node-item-header">
+            <span class="node-type-dot script"></span>
+            <span class="node-id">extract</span>
+            <span class="node-type-label script">script</span>
+          </div>
+          <div class="node-meta">
+            <div class="kv"><span class="k">Depends</span><span class="v">summarize</span></div>
+            <div class="kv"><span class="k">Inputs</span><span class="v">summary</span></div>
+            <div class="kv"><span class="k">Outputs</span><span class="v">report</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Strategy Gates -->
+    <div class="sv-section">
+      <div class="sv-section-title">Strategy Gates</div>
+      <div class="node-list">
+        <div class="gate-item">
+          <div class="gate-icon">&#9830;</div>
+          <div class="gate-info">
+            <div class="gate-id">smoke_check</div>
+            <div class="gate-type">algorithmic &middot; depends on: extract</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trigger Config -->
+    <div class="sv-section">
+      <div class="sv-section-title">Triggers</div>
+      <div class="node-list">
+        <div class="trigger-config-item">
+          <span class="trigger-icon">&#9654;</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: var(--text-sm);">manual</span>
+          <span style="color: var(--text-muted); font-size: var(--text-xs); margin-left: auto;">Only invoked explicitly</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Oversight -->
+    <div class="sv-section">
+      <div class="sv-section-title">Oversight Rules</div>
+      <div class="oversight-rule">
+        <div class="oversight-condition">total_cost_usd &gt; 1.00</div>
+        <div class="oversight-action">&rarr; warn_human</div>
+      </div>
+      <div class="oversight-rule">
+        <div class="oversight-condition">step_duration_ms &gt; 300000</div>
+        <div class="oversight-action">&rarr; kill_and_requeue</div>
+      </div>
+    </div>
+
+    <!-- Outputs -->
+    <div class="sv-section">
+      <div class="sv-section-title">Outputs</div>
+      <div class="sv-field">
+        <span class="sv-field-label">Type</span>
+        <span class="sv-field-value">channel_event</span>
+      </div>
+      <div class="sv-field">
+        <span class="sv-field-label">Target</span>
+        <span class="sv-field-value">bridge</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="slide-actions">
+    <button class="btn btn-secondary">Open in Visualizer &rarr;</button>
+    <button class="btn btn-primary">Execute Now &rarr;</button>
+  </div>
+</div>
+
+<script>
+  function selectCard(card) {
+    document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  }
+</script>
+
+</body>
+</html>
