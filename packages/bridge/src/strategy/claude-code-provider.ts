@@ -24,7 +24,9 @@ export class ClaudeCodeProvider implements LlmProvider {
     args.push('--output-format', format);
 
     // Session management
-    if (request.resumeSessionId) {
+    if (request.refreshSessionId) {
+      args.push('--session-id', request.refreshSessionId);
+    } else if (request.resumeSessionId) {
       args.push('--resume', request.resumeSessionId);
     } else {
       args.push('--session-id', request.sessionId);
