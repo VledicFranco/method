@@ -1,51 +1,52 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-19"
-  last_session: SESSION-036
+  last_updated: "2026-03-20"
+  last_session: SESSION-038
   mode: steady-state
   cadence: "weekly or on-demand"
-  next_health_review: SESSION-038
+  next_health_review: SESSION-043
 
   p0_immediate:
-    - id: AG-052
-      item: "Routing parity audit — fix Ax-1 totality, classify routable vs delegable, regression gate"
-      owner: council
-      status: done
-      added_in: SESSION-034
-      resolved_in: SESSION-034
-      note: >
-        Audit complete: all 6 methodologies verified. Ax-1 rationale updated to document
-        routable vs delegable taxonomy. No other gaps found. P2-SD (7/7), P-GH (4/4),
-        P3-DISPATCH (3/3), P3-GOV (4 methods over 9 phases), P0-META (7/7) all clean.
-
-    - id: AG-045
-      item: "E2E strategy pipeline validation — real ClaudeCodeProvider on P3-GOV M1-DRAFT"
+    - id: AG-057
+      item: "Commission RFC-003 implementation — Ax-8 in M1-COUNCIL v1.3 + conviction monitoring in skill"
       owner: council
       status: open
-      added_in: SESSION-031
+      added_in: SESSION-038
       note: >
-        Promoted to P0b (D-079). Sequenced immediately after AG-052 (routing audit).
-        Real claude --print on real RFC through DAG executor. Fix what breaks.
-        D-065 original spec still applies: 2-node minimum strategy YAML.
+        D-091 priority 1. RFC-003 approved in S037 (D-087/D-088/D-089). Two parallel
+        commissions: (1) M1-COUNCIL v1.3 with Ax-8, (2) skill updates for conviction
+        monitoring in --isolated sections.
+
+    - id: AG-053
+      item: "Commission bridge test coverage — dashboard-route, token-tracker, usage-poller"
+      owner: PO
+      status: open
+      added_in: SESSION-034
+      promoted_in: SESSION-038
+      note: >
+        D-091 priority 2. Zero unit tests on 3 bridge modules. Commission a sub-agent.
+        Promoted from P2 to P0 by D-091 roadmap.
 
   p1_next:
-    - id: AG-045
-      item: "Strategy Pipelines smoke test — real ClaudeCodeProvider end-to-end validation"
+    - id: AG-058
+      item: "M5-REFINE design — advisor/synthesizer integration into P3-GOV"
       owner: council
       status: open
-      added_in: SESSION-031
+      added_in: SESSION-038
       note: >
-        D-065: 2-node Strategy YAML with one real claude --print invocation and one
-        script node. Validates integration path before Phase 2 work. All existing
-        tests use MockLlmProvider.
+        D-091 priority 3. Design session to formalize /review-advisors + /review-synthesizers
+        as a reusable refinement method in P3-GOV. Smallest extractable piece of the
+        autonomous government design (docs/gov-proposal/).
 
-    - id: AG-046
-      item: "Close orphaned PRs #27 and #28"
-      owner: PO
-      status: done
-      added_in: SESSION-031
-      resolved_in: SESSION-034
-      note: "Closed with comments. Content was on master."
+    - id: AG-059
+      item: "Strategy Phase 2 PRD — event triggers as first feature"
+      owner: council
+      status: open
+      added_in: SESSION-038
+      note: >
+        D-091 priority 4. Event triggers enable continuous governance (git commits →
+        code review, test failures → quality committee). PRD scope: trigger types,
+        Strategy YAML schema extensions, bridge integration.
 
     - id: AG-034
       item: "Context-mode prototype experiment (from AG-030 feasibility report)"
@@ -213,6 +214,7 @@ agenda:
     - { id: AG-047, resolved_in: SESSION-034, note: "PR #31 already merged (2026-03-19). M1-COUNCIL v1.2 on master." }
     - { id: AG-052, resolved_in: SESSION-034, note: "Routing parity audit complete. All 6 methodologies verified. Ax-1 updated with routable/delegable taxonomy. No gaps found beyond the documented ADVREV delegation-only design." }
     - { id: AG-055, resolved_in: SESSION-035, note: "Delta triage phase added to STEER-PROTO. Accumulator created. 6 backlogged deltas seeded. D-083." }
+    - { id: AG-045, resolved_in: SESSION-038, note: "Smoke test PASSED. 2-node strategy (methodology + script), real ClaudeCodeProvider, $0.32, 72.6s. UUID fix + PID cleanup fix (PR #33). All 8 PRD 017 criteria met. Phase 1 complete." }
 
   archived:
     - { id: AG-005, archived_in: SESSION-006, reason: "No cross-project comms need" }

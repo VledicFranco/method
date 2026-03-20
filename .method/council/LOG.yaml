@@ -4,6 +4,6 @@ log:
   description: >
     Council session logs stored per-day in logs/ directory.
     Load the latest file(s) for context. Full history preserved in date files.
-  latest: logs/2026-03-19-s036.yaml
-  total_sessions: 36
-  total_decisions: 86
+  latest: logs/2026-03-20-s038.yaml
+  total_sessions: 38
+  total_decisions: 92
