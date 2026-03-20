@@ -15,6 +15,7 @@ import { registerStrategyVizRoutes } from './strategy/strategy-viz-route.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
 import { setOnMessageHook } from './channels.js';
+import { registerFrontendRoutes } from './frontend-route.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -738,6 +739,14 @@ if (STRATEGY_ENABLED) {
 // ---------- Strategy Visualizer (PRD 018 Phase 2b-viz) ----------
 
 registerStrategyVizRoutes(app);
+
+// ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
+
+const FRONTEND_ENABLED = process.env.FRONTEND_ENABLED !== 'false';
+
+if (FRONTEND_ENABLED) {
+  registerFrontendRoutes(app);
+}
 
 // ---------- Event Triggers (PRD 018) ----------
 
