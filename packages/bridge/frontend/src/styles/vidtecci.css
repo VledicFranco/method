@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/* ── Vidtecci Narrative Flow — Design Tokens ── */
+
+:root {
+  /* Core palette */
+  --void: #080e14;
+  --abyss: #0d1f2d;
+  --abyss-light: #122a3a;
+  --bio: #00c9a7;
+  --bio-dim: rgba(0, 201, 167, 0.15);
+  --bio-glow: rgba(0, 201, 167, 0.3);
+  --solar: #e8a45a;
+  --solar-dim: rgba(232, 164, 90, 0.15);
+  --cyan: #00e5cc;
+  --error: #e05a5a;
+  --error-dim: rgba(224, 90, 90, 0.15);
+  --nebular: #7b5fb5;
+  --nebular-dim: rgba(123, 95, 181, 0.15);
+  --text: #f0f4f8;
+  --text-dim: #8a9bb0;
+  --text-muted: #5a6b7e;
+  --border: rgba(138, 155, 176, 0.12);
+  --border-hover: rgba(138, 155, 176, 0.25);
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Typography */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Base styles ── */
+
+html {
+  background-color: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Keyframe animations ── */
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--bio-glow); }
+  50% { box-shadow: 0 0 16px 4px var(--bio-glow); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-20px); max-height: 0; }
+  to { opacity: 1; transform: translateY(0); max-height: 300px; }
+}
+
+@keyframes count-up {
+  from { opacity: 0.5; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-over-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-over-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sparkline-draw {
+  from { stroke-dashoffset: 100%; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Tailwind v4 theme configuration ── */
+
+@theme {
+  /* Colors */
+  --color-void: var(--void);
+  --color-abyss: var(--abyss);
+  --color-abyss-light: var(--abyss-light);
+  --color-bio: var(--bio);
+  --color-bio-dim: var(--bio-dim);
+  --color-bio-glow: var(--bio-glow);
+  --color-solar: var(--solar);
+  --color-solar-dim: var(--solar-dim);
+  --color-cyan: var(--cyan);
+  --color-error: var(--error);
+  --color-error-dim: var(--error-dim);
+  --color-nebular: var(--nebular);
+  --color-nebular-dim: var(--nebular-dim);
+  --color-txt: var(--text);
+  --color-txt-dim: var(--text-dim);
+  --color-txt-muted: var(--text-muted);
+  --color-bdr: var(--border);
+  --color-bdr-hover: var(--border-hover);
+
+  /* Font families */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --spacing-sp-1: var(--space-1);
+  --spacing-sp-2: var(--space-2);
+  --spacing-sp-3: var(--space-3);
+  --spacing-sp-4: var(--space-4);
+  --spacing-sp-5: var(--space-5);
+  --spacing-sp-6: var(--space-6);
+  --spacing-sp-8: var(--space-8);
+  --spacing-sp-10: var(--space-10);
+
+  /* Border radius */
+  --radius-card: 12px;
+
+  /* Width / max-width */
+  --width-slideover: 420px;
+  --width-nav: 56px;
+
+  /* Animations */
+  --animate-pulse-glow: pulse-glow 2.5s ease-in-out infinite;
+  --animate-slide-in-left: slide-in-left 400ms ease-out forwards;
+  --animate-slide-down: slide-down 500ms ease-out forwards;
+  --animate-count-up: count-up 1.5s ease-out forwards;
+  --animate-slide-over-in: slide-over-in 300ms ease-out forwards;
+  --animate-slide-over-out: slide-over-out 250ms ease-in forwards;
+  --animate-backdrop-fade: backdrop-fade 200ms linear forwards;
+  --animate-sparkline-draw: sparkline-draw 1s ease-out forwards;
+}
