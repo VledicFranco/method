@@ -46,4 +46,5 @@ export const NAV_ITEMS = [
   { label: 'Triggers', path: '/app/triggers', icon: 'Zap' },
   { label: 'Governance', path: '/app/governance', icon: 'Shield' },
   { label: 'Analytics', path: '/app/analytics', icon: 'BarChart3' },
+  { label: 'Registry', path: '/app/registry', icon: 'BookOpen' },
 ] as const;

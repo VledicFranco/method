@@ -8,6 +8,7 @@ import {
   Zap,
   Shield,
   BarChart3,
+  BookOpen,
   Search,
   Bell,
   Settings,
@@ -21,6 +22,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Zap,
   Shield,
   BarChart3,
+  BookOpen,
 };
 
 export interface NavItem {

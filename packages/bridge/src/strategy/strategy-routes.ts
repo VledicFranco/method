@@ -6,9 +6,12 @@
  */
 
 import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
+import yaml from 'js-yaml';
 import type { LlmProvider } from './llm-provider.js';
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
+import type { StrategyYaml } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig, StrategyExecutionResult } from './strategy-executor.js';
 
@@ -327,5 +330,165 @@ export function registerStrategyRoutes(
       oversight_rules: dag.oversight_rules,
       context_inputs: dag.context_inputs,
     });
+  });
+
+  /**
+   * GET /api/strategies/definitions — List all strategy definitions parsed from
+   * .method/strategies/ YAML files (PRD 019.3 Component 1).
+   *
+   * Returns parsed strategy definitions with last execution info cross-referenced
+   * from the in-memory execution store. Files that fail to parse are included with
+   * an error field instead of the full definition.
+   */
+  app.get('/api/strategies/definitions', async (_request, reply) => {
+    const strategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+
+    let files: string[];
+    try {
+      const entries = await fs.readdir(strategyDir);
+      files = entries.filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
+    } catch (e) {
+      return reply.status(200).send({
+        definitions: [],
+        error: `Failed to read strategy directory: ${(e as Error).message}`,
+      });
+    }
+
+    const definitions: Array<Record<string, unknown>> = [];
+
+    for (const file of files) {
+      const filePath = join(strategyDir, file);
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const raw = yaml.load(content) as StrategyYaml;
+        const s = raw?.strategy;
+
+        if (!s || !s.id) {
+          definitions.push({
+            file_path: file,
+            error: 'Missing strategy.id in YAML',
+          });
+          continue;
+        }
+
+        // Extract trigger info from raw YAML (preserves full trigger config)
+        const triggers = (s.triggers ?? []).map((t: Record<string, unknown>) => ({
+          type: t.type as string,
+          config: Object.fromEntries(
+            Object.entries(t).filter(([k]) => k !== 'type'),
+          ),
+        }));
+
+        // Parse nodes from raw YAML
+        const nodes = (s.dag?.nodes ?? []).map(
+          (n: Record<string, unknown>) => ({
+            id: n.id,
+            type: n.type,
+            methodology: n.methodology ?? undefined,
+            method_hint: n.method_hint ?? undefined,
+            depends_on: (n.depends_on as string[]) ?? [],
+            inputs: (n.inputs as string[]) ?? [],
+            outputs: (n.outputs as string[]) ?? [],
+            gates: ((n.gates as Array<Record<string, unknown>>) ?? []).map(
+              (g: Record<string, unknown>) => ({
+                type: g.type,
+                check: g.check,
+                max_retries: g.max_retries ?? 3,
+              }),
+            ),
+          }),
+        );
+
+        // Strategy gates
+        const strategyGates = (s.dag?.strategy_gates ?? []).map(
+          (sg: Record<string, unknown>) => ({
+            id: sg.id,
+            depends_on: sg.depends_on,
+            type: sg.type,
+            check: sg.check,
+          }),
+        );
+
+        // Oversight rules
+        const oversightRules = (s.oversight?.rules ?? []).map(
+          (r: Record<string, unknown>) => ({
+            condition: r.condition,
+            action: r.action,
+          }),
+        );
+
+        // Context inputs
+        const contextInputs = (s.context?.inputs ?? []).map(
+          (ci: Record<string, unknown>) => ({
+            name: ci.name,
+            type: ci.type,
+            default: ci.default,
+          }),
+        );
+
+        // Outputs
+        const outputs = (s.outputs ?? []).map(
+          (o: Record<string, unknown>) => ({
+            type: o.type,
+            target: o.target,
+          }),
+        );
+
+        // Cross-reference with in-memory executions for last execution info
+        let lastExecution: Record<string, unknown> | undefined;
+        const matchingExecutions = Array.from(executions.values())
+          .filter((e) => e.strategy_id === s.id)
+          .sort((a, b) => {
+            const aTime = new Date(a.started_at).getTime();
+            const bTime = new Date(b.started_at).getTime();
+            return bTime - aTime; // newest first
+          });
+
+        if (matchingExecutions.length > 0) {
+          const latest = matchingExecutions[0];
+          const state = latest.executor.getState();
+          const gateResults = state?.gate_results ?? {};
+          const gatesPassed = Object.values(gateResults).filter(
+            (r: unknown) => (r as Record<string, unknown>)?.passed === true,
+          ).length;
+          const gatesFailed = Object.values(gateResults).filter(
+            (r: unknown) => (r as Record<string, unknown>)?.passed === false,
+          ).length;
+
+          lastExecution = {
+            execution_id: latest.execution_id,
+            status: latest.status,
+            cost_usd: state ? state.cost_usd : latest.cost_usd,
+            duration_ms: latest.result?.duration_ms ?? 0,
+            completed_at: latest.completed_at ?? null,
+            started_at: latest.started_at,
+            gates_passed: gatesPassed,
+            gates_failed: gatesFailed,
+          };
+        }
+
+        definitions.push({
+          id: s.id,
+          name: s.name,
+          version: s.version,
+          file_path: file,
+          triggers,
+          nodes,
+          strategy_gates: strategyGates,
+          oversight_rules: oversightRules,
+          context_inputs: contextInputs,
+          outputs,
+          last_execution: lastExecution ?? null,
+          raw_yaml: content,
+        });
+      } catch (e) {
+        definitions.push({
+          file_path: file,
+          error: `Failed to parse: ${(e as Error).message}`,
+        });
+      }
+    }
+
+    return reply.status(200).send({ definitions });
   });
 }
