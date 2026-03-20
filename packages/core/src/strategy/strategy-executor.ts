@@ -137,6 +137,9 @@ export class StrategyExecutor {
     // 2. Initialize state and session
     const artifacts = createArtifactStore();
     const startedAt = new Date().toISOString();
+    // Initialize with a random session ID. This session will be reused across nodes
+    // until a node with refresh_context=true is encountered, which will generate a new ID.
+    // UUID collision risk is negligible (~1e-18 probability with standard UUID v4).
     this.currentSessionId = crypto.randomUUID();
 
     // Store context inputs as initial artifacts
@@ -310,6 +313,10 @@ export class StrategyExecutor {
     let allGatesPassed = false;
     let retryFeedback: string | undefined;
 
+    // Retry loop: within-node retries maintain session continuity (resumeSessionId) for coherence.
+    // Context refresh (node.refresh_context) only happens between nodes, not within retries.
+    // This ensures that retry feedback and the previous output are both available in-context,
+    // allowing the LLM to reason about the failure and improve.
     while (attempt <= maxRetries) {
       try {
         let nodeOutput: Record<string, unknown>;

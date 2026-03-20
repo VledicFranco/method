@@ -17,6 +17,15 @@ export class ClaudeCodeProvider implements LlmProvider {
 
   /** Build CLI args from an LlmRequest */
   buildArgs(request: LlmRequest): string[] {
+    // Validate session management: cannot use both refreshSessionId and resumeSessionId
+    if (request.refreshSessionId && request.resumeSessionId) {
+      throw new Error(
+        'Cannot set both refreshSessionId and resumeSessionId. ' +
+        'refreshSessionId starts a fresh session; resumeSessionId continues an existing one. ' +
+        'Use one or the other, not both.'
+      );
+    }
+
     const args: string[] = ['--print', '-p', request.prompt];
 
     // Output format

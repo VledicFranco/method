@@ -9,9 +9,9 @@
 export interface LlmRequest {
   prompt: string;
   sessionId: string;
-  /** Resume an existing conversation */
+  /** Resume an existing conversation. Cannot be used together with refreshSessionId. */
   resumeSessionId?: string;
-  /** Start a fresh session with this ID (for context refresh) */
+  /** Start a fresh session with this ID (for context refresh). Cannot be used together with resumeSessionId. */
   refreshSessionId?: string;
   /** Maximum budget in USD for this invocation */
   maxBudgetUsd?: number;
