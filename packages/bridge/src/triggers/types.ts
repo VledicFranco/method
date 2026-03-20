@@ -40,6 +40,35 @@ export interface FileWatchTriggerConfig {
   max_batch_size?: number;
 }
 
+export interface ScheduleTriggerConfig {
+  type: 'schedule';
+  cron: string;
+  debounce_ms?: number;
+  debounce_strategy?: 'leading' | 'trailing';
+  max_concurrent?: number;
+  max_batch_size?: number;
+}
+
+export interface PtyWatcherTriggerConfig {
+  type: 'pty_watcher';
+  pattern: string;
+  condition?: string;
+  debounce_ms?: number;
+  debounce_strategy?: 'leading' | 'trailing';
+  max_concurrent?: number;
+  max_batch_size?: number;
+}
+
+export interface ChannelEventTriggerConfig {
+  type: 'channel_event';
+  event_types: string[];
+  filter?: string;
+  debounce_ms?: number;
+  debounce_strategy?: 'leading' | 'trailing';
+  max_concurrent?: number;
+  max_batch_size?: number;
+}
+
 export interface ManualTriggerConfig {
   type: 'manual';
 }
@@ -52,6 +81,9 @@ export interface McpToolTriggerConfig {
 export type TriggerConfig =
   | GitCommitTriggerConfig
   | FileWatchTriggerConfig
+  | ScheduleTriggerConfig
+  | PtyWatcherTriggerConfig
+  | ChannelEventTriggerConfig
   | ManualTriggerConfig
   | McpToolTriggerConfig;
 

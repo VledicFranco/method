@@ -104,6 +104,8 @@ export interface SessionPool {
   checkStale(): { stale: string[]; killed: string[] };
   /** Return OS PIDs of all live child processes managed by this pool. */
   childPids(): number[];
+  /** PRD 018: Set a pool-level observation hook for forwarding PTY observations to the trigger system. */
+  setObservationHook(hook: ((observation: { category: string; detail: Record<string, unknown>; session_id: string }) => void) | null): void;
 }
 
 export interface PoolOptions {
@@ -180,6 +182,9 @@ export function createPool(options?: PoolOptions): SessionPool {
   const lastAgentToolCallAt = new Map<string, number>();      // sessionId → timestamp of last Agent tool_call
   const AGENT_TOOL_RE = /\bAgent\b/;
   const WAITING_WINDOW_MS = 5000;
+
+  // PRD 018: Pool-level observation hook for forwarding to TriggerRouter
+  let observationHook: ((observation: { category: string; detail: Record<string, unknown>; session_id: string }) => void) | null = null;
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -568,6 +573,17 @@ export function createPool(options?: PoolOptions): SessionPool {
               // Any non-idle, non-tool activity still ends idle period
               diagnosticsTracker.recordActivity();
             }
+
+            // PRD 018 Phase 2a-2: Forward observation to trigger system
+            if (observationHook && !isIdle) {
+              try {
+                observationHook({
+                  category: match.category,
+                  detail: match.content,
+                  session_id: sessionId,
+                });
+              } catch { /* hook errors are non-fatal */ }
+            }
           };
 
           const watcher = createPtyWatcher(
@@ -928,6 +944,10 @@ export function createPool(options?: PoolOptions): SessionPool {
         }
       }
       return pids;
+    },
+
+    setObservationHook(hook) {
+      observationHook = hook;
     },
   };
 }

@@ -242,6 +242,10 @@ function createTestPool(maxSessions = 5) {
     childPids() {
       return [];
     },
+
+    setObservationHook() {
+      // no-op in test pool
+    },
   };
 
   return pool;

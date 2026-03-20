@@ -13,6 +13,7 @@ import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers } from './triggers/index.js';
+import { setOnMessageHook } from './channels.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -720,6 +721,20 @@ if (TRIGGERS_ENABLED) {
       warn: (msg) => app.log.warn(msg),
       error: (msg) => app.log.error(msg),
     },
+  });
+
+  // PRD 018 Phase 2a-2: Wire PTY watcher observation forwarding
+  pool.setObservationHook((observation) => {
+    if (triggerRouter) {
+      triggerRouter.onObservation(observation);
+    }
+  });
+
+  // PRD 018 Phase 2a-2: Wire channel event hook
+  setOnMessageHook((info) => {
+    if (triggerRouter) {
+      triggerRouter.onChannelMessage(info);
+    }
   });
 }
 
