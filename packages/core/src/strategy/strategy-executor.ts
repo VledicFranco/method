@@ -104,6 +104,7 @@ export interface StrategyExecutorConfig {
 
 export class StrategyExecutor {
   private state: ExecutionState | null = null;
+  private currentSessionId: string = '';
 
   constructor(
     private provider: LlmProvider,
@@ -133,9 +134,10 @@ export class StrategyExecutor {
       throw new Error(`Invalid Strategy DAG: ${validation.errors.join('; ')}`);
     }
 
-    // 2. Initialize state
+    // 2. Initialize state and session
     const artifacts = createArtifactStore();
     const startedAt = new Date().toISOString();
+    this.currentSessionId = crypto.randomUUID();
 
     // Store context inputs as initial artifacts
     for (const [key, value] of Object.entries(contextInputs)) {
@@ -447,6 +449,11 @@ export class StrategyExecutor {
         const value = lastOutput[outputName] ?? lastOutput;
         this.state!.artifacts.put(outputName, value, node.id);
       }
+
+      // If this node has refresh_context, generate a new session ID for subsequent nodes
+      if (node.refresh_context) {
+        this.currentSessionId = crypto.randomUUID();
+      }
     }
 
     return nodeResult;
@@ -522,7 +529,8 @@ export class StrategyExecutor {
       response = await Promise.race([
         this.provider.invoke({
           prompt,
-          sessionId: crypto.randomUUID(),
+          sessionId: this.currentSessionId,
+          refreshSessionId: node.refresh_context ? crypto.randomUUID() : undefined,
           maxBudgetUsd: this.config.defaultBudgetUsd,
           allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
           signal: abortController.signal,
