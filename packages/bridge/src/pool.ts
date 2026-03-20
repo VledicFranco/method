@@ -579,7 +579,7 @@ export function createPool(options?: PoolOptions): SessionPool {
               try {
                 observationHook({
                   category: match.category,
-                  detail: match.content,
+                  detail: match.content ?? {},
                   session_id: sessionId,
                 });
               } catch { /* hook errors are non-fatal */ }

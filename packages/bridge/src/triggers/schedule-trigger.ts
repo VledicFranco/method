@@ -41,7 +41,7 @@ function parseCronField(field: string, min: number, max: number): CronField {
     const trimmed = part.trim();
 
     // star/step: */5
-    if (trimmed.startsWith('*/') || trimmed.startsWith('*/')) {
+    if (trimmed.startsWith('*/')) {
       const step = parseInt(trimmed.substring(2), 10);
       if (isNaN(step) || step <= 0) throw new Error(`Invalid cron step: ${trimmed}`);
       for (let i = min; i <= max; i += step) {

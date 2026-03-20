@@ -116,6 +116,7 @@ export type OnMessageCallback = (info: {
   sender: string;
   type: string;
   content: Record<string, unknown>;
+  session_id?: string;
 }) => void;
 
 let _onMessageHook: OnMessageCallback | null = null;
@@ -136,6 +137,7 @@ export function appendMessage(
   sender: string,
   type: string,
   content: Record<string, unknown>,
+  session_id?: string,
 ): number {
   const ring = rings.get(channel)!;
   const last = ring.last();
@@ -160,6 +162,7 @@ export function appendMessage(
         sender,
         type,
         content,
+        session_id,
       });
     } catch {
       // Hook errors are non-fatal — never break channel append

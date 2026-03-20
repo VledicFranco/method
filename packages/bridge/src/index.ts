@@ -807,6 +807,10 @@ function gracefulShutdown(signal: string) {
       triggerRouter.shutdown().catch(() => { /* non-fatal */ });
     }
 
+    // Disconnect hooks to prevent trigger callbacks during teardown
+    pool.setObservationHook(null);
+    setOnMessageHook(null);
+
     // Kill all sessions (triggers auto-retro via handleSessionDeath)
     const sessions = pool.list();
     let killed = 0;

@@ -7,6 +7,13 @@
  * Security: new Function() sandbox with frozen context, no access to
  * require/process/fs/globalThis/eval/Function or any Node.js globals.
  * Matches the gate framework pattern from PRD 017 (evaluateGateExpression).
+ *
+ * SECURITY NOTE: This sandbox uses `new Function()` with shadowed globals as
+ * defense-in-depth against accidental misuse. It is NOT a security sandbox.
+ * Known escape vectors: constructor chain (`obj.constructor.constructor('return process')()`),
+ * dynamic `import()`. These expressions come from on-disk strategy YAML authored by the
+ * project owner — not from external untrusted input. If external input is ever evaluated,
+ * switch to `vm.runInNewContext()` or `isolated-vm`.
  */
 
 /**
