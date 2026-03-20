@@ -60,7 +60,7 @@ A single bridge instance running from a root directory (e.g., `~/Repositories/`)
 - UI dashboard enhancements for multi-project visualization
 - Resource copying UI (copy methodology/strategy through dashboard)
 
-**Note:** Phase 1 provides the foundation (project registry, event API) that Phase 2 Genesis agent will consume. Genesis is deferred to avoid scope bloat in Phase 1.
+**Note:** Phase 1 provides the foundation (project registry, event API with persistence) that Phase 2 Genesis agent will consume. Genesis spawning and UI are deferred to avoid scope bloat in Phase 1.
 
 ---
 
@@ -96,11 +96,22 @@ Repositories/ (root project)
 
 ### Key Components
 
-**1. Multi-Project Discovery**
+**1. Multi-Project Discovery (Fail-Safe)**
 - Bridge starts with `--root-dir <path>` or `ROOT_DIR` env var (defaults to cwd)
-- On startup, recursively scans for `.git/` directories
+- On startup, recursively scans for `.git/` directories with timeout (DISCOVERY_TIMEOUT_MS, default 60s)
 - Each git repo root becomes a project in the bridge's internal project registry
 - Projects are indexed by relative path from root (e.g., `pv-method`, `oss-constellation-engine`)
+- **Timeout & Recovery:**
+  - If discovery exceeds timeout, returns discovery_incomplete flag in /projects response
+  - Sets failed projects with status: "git_corrupted" or "discovery_incomplete" instead of silently dropping them
+  - Emits discovery_incomplete event to event log
+  - User can call `POST /projects/validate` to retry discovery
+  - User can call `POST /projects/:id/repair` to diagnose/fix corrupted repos
+  - Resumable discovery with checkpoint/resume (implementation detail; must not lose partial progress)
+- **Error Handling:**
+  - Corrupted .git/ dirs: register with error details, don't crash
+  - Permission denied: register with error, continue
+  - MAX_PROJECTS limit (if set): return discovery_incomplete when reached
 
 **2. Project Configuration (.method/ Directory)**
 - Bridge creates `.method/` in each project if missing
@@ -138,8 +149,8 @@ Repositories/ (root project)
   }
   ```
 
-- **Phase 1 Event Durability:** Events stored in-memory only (no persistence to disk). Event log capped at 10K events; oldest events pruned on overflow (FIFO). Events are not preserved across bridge restarts.
-- **Phase 2+ Event Durability:** Persistent `.method/genesis-events.yaml` with disk sync after each poll cycle, enabling event replay and Genesis session recovery after restarts.
+- **Phase 1 Event Durability:** Events persisted to `.method/genesis-events.yaml` (disk sync on append, buffered or per-event). Event log capped at 10K events; oldest events pruned on overflow (FIFO). File rotation at > 5MB. On bridge startup, loads events and emits recovery event. Per-project event retention policy enforced.
+- **Phase 2+ Event Durability:** Enhanced retention policies, cross-project event aggregation, event replay UI, and Genesis session recovery strategies built on Phase 1 persistence foundation.
 - Sessions belong to specific projects; queries for project A cannot see project B's events
 - Genesis (Phase 2) will consume events via `project_read_events(project_id?)` to filter by project or get all
 
@@ -234,17 +245,42 @@ project_config:
 - Per-project `.method/project-config.yaml` is committed to git; human edits `name`, `description`, `owner` as needed
 - Root `.method/project-config.yaml` (at ROOT_DIR) is similar but `id` is "" or "root"
 
+**Configuration Schema & Validation:**
+
+Bridge validates all `project-config.yaml` files at startup and on reload using strict schema:
+
+```yaml
+project_config:
+  id: string                              # required: relative path (auto-set by bridge)
+  name: string                            # required: project display name
+  description: string                     # optional
+  owner: string                           # optional
+  version: string                         # optional (default: "1.0")
+  dependencies: array of strings          # optional: project IDs this depends on (Phase 2)
+  shared_with: array of strings           # optional: project IDs that can import from here (Phase 2)
+```
+
+Validation Rules:
+- `id` must match relative path from ROOT_DIR (auto-corrected if mismatch detected; warning emitted)
+- `name` required; non-empty string
+- Return 400 Bad Request on validation failure with clear error message
+- Silent drops: **not allowed** (previous behavior rejected)
+- Test cases: missing fields, type mismatches, stale id, invalid path
+
 **Configuration Reload Behavior:**
 - Phase 1: Configuration is loaded at bridge startup and cached in-memory. If user edits `.method/project-config.yaml` directly, bridge restart is required for changes to take effect.
-- Manual reload API: `POST /projects/:id/reload` reloads that project's config from disk (non-blocking, async). If config is invalid, previous version retained.
+- Manual reload API: `POST /projects/:id/reload` reloads that project's config from disk (synchronous, not async). Returns 200 on success, 400 on validation failure, 409 on conflict. Config write is atomic (temp file + rename). Emits config_reloaded event.
 - Hot reload (bridge watches `.method/` for changes automatically): Phase 2 feature.
+- Privilege enforcement: Config reload restricted to session.project_id === id (or human-only override). Audit logging required.
 
 ### 4.3 Genesis Agent Architecture
 
+**Note:** Genesis is a Phase 2 feature. Phase 1 provides the project discovery, event schema, and API foundation. This section describes the Phase 2 architecture.
+
 **Spawning:**
 ```
-bridge startup → ProjectDiscovery complete
-              → if GENESIS_ENABLED: spawn_session(
+bridge startup → ProjectDiscovery complete (Phase 1)
+              → if GENESIS_ENABLED (Phase 2): spawn_session(
                   project_id: "root",
                   isolation: none,
                   model: GENESIS_MODEL,
@@ -257,8 +293,8 @@ bridge startup → ProjectDiscovery complete
 - Session ID: `genesis-root`
 - Budget: 50K tokens per day (configurable)
 - Tools: method MCP + project navigation MCP
-- Input: human prompts via `bridge_prompt` + accumulated events
-- Output: status reports via `bridge_event`
+- Input: human prompts via UI + accumulated events
+- Output: status reports and real-time TUI rendering
 
 **Polling loop:**
 ```typescript
@@ -312,6 +348,82 @@ ${portfolio_status}
 Begin by reporting the current state.
 ```
 
+### 4.4 Genesis UI/UX (Phase 2)
+
+**Pattern: Material Design FAB + Draggable Expandable Chat**
+
+The Genesis chat interface uses the existing **PTY bridge infrastructure** (xterm.js + SSE streaming) to mimic a real Claude Code terminal session, enabling the most natural interaction model.
+
+**Design:**
+
+1. **Floating Action Button (FAB)**
+   - Circular `+` button (60px) in bottom-right corner of dashboard, draggable
+   - Always visible, always accessible
+   - Click to expand/collapse chat panel; rotate 45° when expanded (visual feedback)
+   - Button is **part of the chat panel**, not separate (maintains consistency)
+
+2. **Expanded Chat Panel**
+   - Full-screen or half-screen modal expanding from bottom-right
+   - **Header:** "Genesis Control" title + close button (✕)
+   - **Status bar:** Genesis status (Active/Idle), budget %, last action timestamp
+   - **Terminal area:** xterm.js emulator rendering raw PTY output (same as `/sessions/:id/output.html`)
+   - **Input bar:** At bottom (mimics Claude Code TUI), input field + Enter to send (no explicit Send button)
+   - **Draggable:** Header and panel are draggable; can reposition while expanded without blocking dashboard
+
+3. **PTY Implementation Details**
+
+   **Connection:**
+   - Genesis spawns as a regular session with `persistent: true` and `session_id: genesis-root`
+   - Dashboard queries `/sessions/genesis-root/stream` (SSE endpoint) for live PTY output
+   - Dashboard POST to `/sessions/genesis-root/prompt` to send user input
+
+   **Terminal rendering:**
+   - Reuse existing `live-output.html` xterm.js setup (same fonts, colors, cursor behavior)
+   - Vidtecci color scheme (void, abyss, bio, solar, etc.) consistent with dashboard
+   - Parse raw PTY data (ANSI escape codes) via xterm.js; no custom parsing needed
+
+   **Input handling:**
+   - Input field captures keydown events; **Enter key sends** the prompt
+   - No explicit Send button (matches Claude Code TUI)
+   - Input field injects cleanly into the PTY output (xterm.js manages scroll)
+   - Supports readline history (↑/↓ navigation) if Claude Code session handles it
+
+4. **Interaction Flow**
+
+   ```
+   User sees FAB in bottom-right
+   User clicks FAB → panel expands, renders genesis-root PTY stream
+   User types prompt in input field
+   User presses Enter → POST /sessions/genesis-root/prompt
+   Genesis responds → SSE sends PTY output back
+   Panel updates in real-time (scrolling follows Genesis response)
+   User can drag panel to move it while reading dashboard
+   User clicks FAB again → panel collapses, FAB returns to + icon
+   ```
+
+5. **State Management**
+
+   - **Open/Closed:** Toggle on FAB click; stored in browser localStorage or session state
+   - **Position:** Dragging updates CSS `bottom`/`right`; persisted to localStorage (optional: remember position across sessions)
+   - **Session binding:** Genesis session is project-agnostic (`project_id: "root"`); always targets the root portfolio Genesis agent
+
+6. **Responsiveness**
+
+   - **Desktop:** Panel expands from bottom-right, takes ~40-50% of viewport
+   - **Mobile (< 768px):** Panel adapts to full-screen overlay with close button (↑ swipe or ✕ tap closes)
+   - FAB remains visible and draggable on all viewports
+   - Input bar sticky at bottom on mobile (handles virtual keyboard)
+
+7. **Visual Hierarchy (Narrative Flow)**
+
+   - **Glance:** FAB status indicator (color change on new events or budget warning)
+   - **Scan:** Expanded header shows status, budget %, recent timestamp
+   - **Deep Dive:** Full PTY terminal with conversation history and input
+
+8. **Prototype Reference**
+
+   A prototype of this pattern (FAB + draggable expand/collapse) exists in `tmp/genesis-ui-options.html`. Phase 2 implementation should use this as a reference for interaction patterns and drag behavior.
+
 ---
 
 ## 5. API Changes
@@ -333,20 +445,41 @@ GET /projects/:id/.method/project-config.yaml
   → raw YAML content
 ```
 
-**Note on Session→Project Binding:** Every session created via bridge is bound to a specific project_id. Sessions are isolated per project:
+**Session→Project Binding & Isolation Enforcement:**
+
+Every session created via bridge is bound to a specific project_id. Isolation is enforced at the MCP tool layer:
 - `POST /sessions` with `project_id` parameter binds session to that project
-- Sessions for project A cannot access method definitions, configurations, or events from project B
-- The `project_id` is embedded in session metadata and enforced at the bridge level
+- Sessions for project A **cannot access** method definitions, configurations, or events from project B
+- The `project_id` is embedded in session metadata and **validated by every MCP tool** before granting access
+- All MCP tools that reference project metadata (project_list, project_get, project_read_events) validate the requester's project_id against the target project_id
+- Genesis tools (genesis_report, etc.) can only be called by sessions with project_id = "root"
+- Config reload (POST /projects/:id/reload) enforces session.project_id === id (or human-only override)
+- MCP tool validation includes:
+  - Stripping user-supplied project_id (use session metadata instead)
+  - Access control check before returning any project data
+  - Audit logging for access attempts
+  - Test coverage: cross-project query rejection, event filtering per project, session identity enforcement
+
+**Test Requirements:** Isolation test suite at `packages/bridge/src/__tests__/project-isolation.test.ts` must verify:
+1. Agent in project A cannot read project B's events
+2. GET /projects/:A returns only A's metadata
+3. Sessions spawned for A have correct project_id tag
+4. Non-Genesis agents cannot call genesis_report
+5. Config reload restricted to same project_id
 
 **Event Queries (Phase 1 basic, Phase 2 advanced):**
 ```
 GET /projects/:id/events
-  → { events: [ { type, project_id, timestamp, ... } ] }
+  → { events: [ { type, project_id, timestamp, ... } ], nextCursor?: string }
   → Returns events for project_id only (not cross-project)
+  → Optional: since_cursor parameter for incremental polling
 
-GET /events  (aggregated, Phase 2 with Genesis)
-  → { events: [ { type, project_id, timestamp, ... } ] }
-  → Returns all events (Genesis will filter by project_id as needed)
+GET /events?since_cursor=X
+  → { events: [ { type, project_id, timestamp, ... } ], nextCursor?: string }
+  → Returns all events (Genesis Phase 2 will filter by project_id as needed)
+  → Cursor-based polling: since_cursor parameter skips to new events
+  → nextCursor in response enables incremental fetches
+  → Implementation: Phase 1 uses in-memory cursor tracking (minimal)
 ```
 
 **Genesis Control (Phase 2):**
@@ -391,26 +524,63 @@ genesis_report(message: string)
 
 ## 6. Implementation Phases
 
+### Phase 1 vs Phase 2 Boundary
+
+| Feature | Phase 1 | Phase 2 | Notes |
+|---------|---------|---------|-------|
+| Project discovery | ✅ | — | Recursive .git scan with error handling |
+| Project metadata (.method/project-config.yaml) | ✅ | — | Schema, validation, reload endpoints |
+| Event aggregation with project_id tagging | ✅ | — | Disk persistence, cursor-based polling |
+| Project isolation enforcement | ✅ | — | MCP tool validation, access control, tests |
+| Session→project binding | ✅ | — | Metadata embedding, API validation |
+| Genesis spawning | — | ✅ | Persistent session, initialization, polling loop |
+| Genesis UI (FAB + chat) | — | ✅ | Floating action button, PTY bridge rendering |
+| Genesis tools (genesis_report, etc.) | — | ✅ | Depends on mature event API from Phase 1 |
+| Resource copying tools | — | ✅ | Phase 3: project_copy_methodology, etc. |
+| Cross-project strategies | — | ✅ | Deferred to Phase 2+ |
+| Shared methodology registry | — | ✅ | Deferred to Phase 2+ |
+| Hot config reload | — | ✅ | File watching; Phase 1 uses manual reload |
+| Multi-project dashboard UI | — | ✅ | Phase 4: project list, session isolation, event stream |
+
+**Phase 1 is not deferred; Genesis is.** Phase 1 delivers complete multi-project support with persistent events, isolation enforcement, and all read-only APIs. Phase 2 adds Genesis (the persistent agent) and UI enhancements.
+
 ### Phase 1: Multi-Project Discovery & Configuration
 
 **Deliverables:**
-- ProjectDiscovery service (recursive .git scan with error handling)
-- ProjectRegistry (in-memory)
-- project-config.yaml schema & creation
+- ProjectDiscovery service (recursive .git scan with timeout, error handling, recovery endpoints)
+- ProjectRegistry (in-memory with fail-safe status tracking)
+- project-config.yaml JSON Schema with validation
 - Root `.method/` directory creation
-- Event aggregation with project_id tagging
-- API endpoints: GET /projects, GET /projects/:id, POST /projects/rescan, GET /projects/:id/events
-- Unit tests for discovery & project metadata
-- **Cross-project isolation tests:** verify sessions/events for project A don't leak to project B
+- **Event persistence:** `.method/genesis-events.yaml` disk sync, file rotation (> 5MB), per-project retention
+- Event aggregation with project_id tagging and cursor-based polling API
+- Project isolation enforcement at MCP tool layer (validation, access control, audit logging)
+- API endpoints:
+  - GET /projects (with discovery_incomplete flag)
+  - GET /projects/:id
+  - POST /projects/validate (retry discovery)
+  - POST /projects/:id/repair (diagnose/fix corrupted repos)
+  - POST /projects/:id/reload (synchronous, atomic, with error handling)
+  - GET /projects/:id/events
+  - GET /events (cursor-based, with since_cursor parameter)
+- Unit tests for discovery, metadata, event persistence
+- **Isolation test suite:** `packages/bridge/src/__tests__/project-isolation.test.ts`
+  - Verify sessions/events for project A don't leak to project B
+  - Cross-project query rejection
+  - Session identity enforcement
+  - Config reload privilege check
+  - 4+ concrete test cases with temp fixtures
+- **Failure scenario tests:** disk-full, permission-denied, partial init, incomplete discovery
 - Performance testing: startup < 2s, discovery < 500ms, event queries < 100ms
 
 **Files:**
 - `packages/bridge/src/project-discovery.ts` (new)
 - `packages/bridge/src/project-registry.ts` (new)
 - `packages/bridge/src/project-routes.ts` (new)
-- `packages/bridge/src/event-aggregation.ts` (new) — event schema with project_id
-- Schema: `.method/project-config.yaml` (document)
+- `packages/bridge/src/event-aggregation.ts` (new) — event schema, disk persistence, cursor API
+- `packages/bridge/src/event-persistence.ts` (new) — disk I/O, file rotation, recovery
+- Schema: `.method/project-config.yaml` JSON Schema (document)
 - Test file: `packages/bridge/src/__tests__/project-isolation.test.ts` (new)
+- Test fixture: disk-full, permission-denied scenarios
 
 ### Phase 2: Genesis Agent Foundation & Resource Sharing
 
@@ -473,19 +643,45 @@ genesis_report(message: string)
 ### Gitignore Precedence Rules
 - Root `.gitignore` applies globally to ROOT_DIR
 - Per-project `.gitignore` applies within each project directory
-- On file-level conflicts (e.g., root says ignore `.method/`, per-project says keep it): **per-project wins**
-- In practice: root ignores `.method/genesis-*` files; per-project `.method/` directories are committed (each project's `.method/project-config.yaml` is versioned)
+- **Git precedence:** Root rules apply first (global ignore patterns); per-project rules can whitelist exceptions via `!` (negation)
+- In practice:
+  - Root ignores specific files: `.method/genesis-events.yaml` (not a directory)
+  - Root whitelists: `!.method/project-config.yaml`, `!.method/.gitkeep`
+  - Per-project `.method/project-config.yaml` and `.method/manifest.yaml` are committed
+  - Per-project `genesis-events.yaml` (if it were in per-project) would be ignored by root rule
+- **No directory-level conflicts:** Root rules target specific files (genesis-events.yaml), not directories. Each project's `.method/` directory is committed.
+- Test: validate no file-level conflicts via pre-commit hook warning if genesis-* files are accidentally staged
 
 ---
 
 ## 8. Success Criteria
 
 ### Functional Criteria (Phase 1)
-- ✅ Bridge discovers all git repos in ROOT_DIR recursively (with error handling for corrupted repos)
-- ✅ Each project has `.method/` auto-created if missing
-- ✅ Bridge API returns project list with metadata
-- ✅ Project isolation: sessions/events for project A don't see project B's metadata
-- ✅ Event log accumulates with project_id tagging (capped at 10K, pruned on overflow)
+- ✅ Bridge discovers all git repos in ROOT_DIR recursively (with error handling for corrupted repos, timeout, discovery_incomplete flag)
+- ✅ Each project has `.method/` auto-created if missing (with auto-set id in project-config.yaml)
+- ✅ Bridge API returns project list with metadata (GET /projects includes discovery_incomplete flag)
+- ✅ Failed projects visible in /projects with error details (status: "git_corrupted", "discovery_incomplete", with error message)
+- ✅ Project isolation: sessions/events for project A don't see project B's metadata (verified by isolation test suite)
+- ✅ Event log persists to `.method/genesis-events.yaml` (survives bridge restart)
+- ✅ Event log accumulates with project_id tagging (capped at 10K, pruned on overflow, file rotation at > 5MB)
+- ✅ Config validation: invalid configs return 400 with clear error (not silent drops)
+- ✅ Config reload is synchronous, atomic, with error reporting (not async)
+
+### Concrete Test Cases (Phase 1)
+- **Isolation tests (4+ minimum):** `packages/bridge/src/__tests__/project-isolation.test.ts`
+  1. Agent in project A cannot read project B's events (GET /projects/B/events returns 403 or empty)
+  2. Session spawned for A has project_id="A" in metadata; queries for B fail
+  3. Config reload restricted to same project_id (POST /projects/B/reload blocked if session.project_id="A")
+  4. Non-root sessions cannot call genesis_report
+- **Failure scenario tests:**
+  1. Disk-full: event write fails, error logged, bridge continues, event skipped
+  2. Permission-denied: project directory not readable, status="git_corrupted", error in response
+  3. Partial init: .method/ partially created, recovery via POST /projects/:id/repair
+  4. Incomplete discovery: timeout at 60s, discovery_incomplete flag set, user can retry via POST /projects/validate
+- **Event persistence:**
+  1. Bridge restart loads events from disk
+  2. File rotation at > 5MB (old events pruned)
+  3. Cursor-based polling works (GET /events?since_cursor=X returns new events since X)
 
 ### Functional Criteria (Phase 2)
 - ✅ Genesis agent spawns on startup (if enabled)
