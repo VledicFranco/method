@@ -26,6 +26,7 @@ export class DebounceEngine {
   private timerId: ReturnType<typeof globalThis.setTimeout> | null = null;
   private leadingSuppressed = false;
   private leadingWindowStart = 0;
+  private firing = false; // re-entrancy guard: onFire must not synchronously re-enter push()
 
   constructor(
     config: DebounceConfig,
@@ -158,8 +159,13 @@ export class DebounceEngine {
 
   // ── Fire ────────────────────────────────────────────────────────
 
+  /**
+   * Fire a batch of events. Protected by a re-entrancy guard:
+   * if onFire synchronously calls push(), the nested fireBatch is skipped.
+   */
   private fireBatch(events: DebouncedEvent[]): void {
     if (events.length === 0) return;
+    if (this.firing) return; // re-entrancy guard
 
     const fire: DebouncedTriggerFire = {
       events,
@@ -168,6 +174,11 @@ export class DebounceEngine {
       count: events.length,
     };
 
-    this.onFire(fire);
+    this.firing = true;
+    try {
+      this.onFire(fire);
+    } finally {
+      this.firing = false;
+    }
   }
 }

@@ -750,6 +750,144 @@ strategy:
     // History starts empty
     assert.equal(router.getHistory().length, 0);
   });
+
+  it('end-to-end: debounce fire invokes executor with correct args (F-A-1)', async () => {
+    const execCalls: Array<{ strategyPath: string; contextInputs: Record<string, unknown> }> = [];
+
+    // Create watch target directory BEFORE registering (so watcher finds it)
+    mkdirSync(join(tmpDir, 'test'), { recursive: true });
+
+    const stratPath = writeStrategy('e2e.yaml', `
+strategy:
+  id: S-E2E
+  name: "E2E Test"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+      debounce_ms: 100
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    // Use real timers so fs.watch + debounce fire naturally
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      executor: async (strategyPath, contextInputs) => {
+        execCalls.push({ strategyPath, contextInputs });
+        return { execution_id: 'e2e-exec-001' };
+      },
+    });
+
+    const regs = await router.registerStrategy(stratPath);
+    assert.equal(regs.length, 1);
+
+    // Verify initial stats
+    const status0 = router.getStatus();
+    assert.equal(status0[0].stats.total_fires, 0);
+
+    // Let watcher fully initialize
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Write a matching file to trigger the pipeline
+    writeFileSync(join(tmpDir, 'test', 'trigger.md'), '# trigger');
+
+    // Wait for fs.watch to detect + debounce to expire (100ms) + executor to run
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Verify: executor was called
+    assert.ok(execCalls.length > 0, 'executor should have been called');
+    const call = execCalls[0];
+    assert.ok(call.strategyPath.includes('e2e.yaml'), 'executor called with correct strategy path');
+    assert.ok(call.contextInputs.trigger_event, 'context_inputs contains trigger_event');
+
+    // Verify stats were updated
+    const status1 = router.getStatus();
+    assert.ok(status1[0].stats.total_fires >= 1, 'fire_count should be incremented');
+    assert.ok(status1[0].stats.last_fired_at !== null, 'last_fired_at should be set');
+
+    // Verify history was populated
+    const history = router.getHistory();
+    assert.ok(history.length > 0, 'history should be populated after fire');
+    assert.equal(history[history.length - 1].strategy_id, 'S-E2E');
+
+    await router.shutdown();
+  });
+
+  it('max_concurrent rejects second fire while first is in-flight (F-A-6)', async () => {
+    const resolveBox: { fn: (() => void) | null } = { fn: null };
+    let execCount = 0;
+
+    // Create watch target directory BEFORE registering
+    mkdirSync(join(tmpDir, 'test'), { recursive: true });
+
+    const stratPath = writeStrategy('concurrent-e2e.yaml', `
+strategy:
+  id: S-CONC-E2E
+  name: "Concurrent E2E"
+  version: "1.0"
+  triggers:
+    - type: file_watch
+      paths: ["test/*.md"]
+      debounce_ms: 50
+      max_concurrent: 1
+  dag:
+    nodes:
+      - id: d
+        type: script
+        script: "return {}"
+`);
+
+    // Use real timers for fs.watch compatibility
+    const router = new TriggerRouter({
+      baseDir: tmpDir,
+      bridgeUrl: 'http://localhost:9999',
+      logger: silentLogger,
+      logFires: true,
+      executor: async () => {
+        execCount++;
+        if (execCount === 1) {
+          // First execution blocks until resolved
+          await new Promise<void>((resolve) => { resolveBox.fn = resolve; });
+        }
+        return { execution_id: `exec-${execCount}` };
+      },
+    });
+
+    await router.registerStrategy(stratPath);
+
+    // Let watcher fully initialize
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Write first file to trigger first execution
+    writeFileSync(join(tmpDir, 'test', 'first.md'), '# first');
+
+    // Wait for fs.watch + debounce (50ms) + async executor to start
+    await new Promise((r) => setTimeout(r, 300));
+
+    // First execution should be in-flight (blocked on resolveBox)
+    assert.ok(execCount >= 1, 'first execution should have started');
+
+    // Write second file — should be rejected by max_concurrent guard
+    writeFileSync(join(tmpDir, 'test', 'second.md'), '# second');
+    await new Promise((r) => setTimeout(r, 300));
+
+    // The second fire should have been skipped (max_concurrent=1, first still running)
+    const statusDuring = router.getStatus();
+    assert.equal(statusDuring[0].stats.total_fires, 1, 'should only have 1 fire (second was rejected)');
+    assert.ok(statusDuring[0].stats.debounced_events >= 1, 'debounced_events tracks the skipped second fire');
+
+    // Resolve the first execution
+    if (resolveBox.fn) resolveBox.fn();
+    await new Promise((r) => setTimeout(r, 50));
+
+    await router.shutdown();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

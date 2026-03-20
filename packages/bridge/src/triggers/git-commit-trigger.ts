@@ -12,7 +12,8 @@
 
 import { watch, existsSync, type FSWatcher } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFile as execFileCb } from 'node:child_process';
+import { promisify } from 'node:util';
 import { minimatch } from './glob-match.js';
 import type {
   TriggerWatcher,
@@ -21,6 +22,8 @@ import type {
   TimerInterface,
 } from './types.js';
 import { realTimers } from './types.js';
+
+const execFile = promisify(execFileCb);
 
 const DEFAULT_POLL_INTERVAL_MS = parseInt(
   process.env.TRIGGERS_GIT_POLL_INTERVAL_MS ?? '5000',
@@ -66,17 +69,29 @@ export class GitCommitTrigger implements TriggerWatcher {
     this.onFire = onFire;
     this._active = true;
 
-    // Capture initial HEAD SHA to avoid firing on startup
-    this.lastSeenSha = this.getCurrentSha();
+    // Capture initial HEAD SHA to avoid firing on startup, then start watchers
+    this.getCurrentSha().then((sha) => {
+      if (!this._active) return; // stopped before init completed
+      this.lastSeenSha = sha;
 
-    if (this.isLinux) {
-      // Linux: polling primary
-      this.startPolling();
-    } else {
-      // Windows/macOS: fs.watch() + poll fallback
-      this.startFsWatch();
-      this.startPolling();
-    }
+      if (this.isLinux) {
+        // Linux: polling primary
+        this.startPolling();
+      } else {
+        // Windows/macOS: fs.watch() + poll fallback
+        this.startFsWatch();
+        this.startPolling();
+      }
+    }).catch(() => {
+      // If initial SHA fails, start watchers anyway — next poll will pick it up
+      if (!this._active) return;
+      if (this.isLinux) {
+        this.startPolling();
+      } else {
+        this.startFsWatch();
+        this.startPolling();
+      }
+    });
   }
 
   stop(): void {
@@ -104,7 +119,7 @@ export class GitCommitTrigger implements TriggerWatcher {
     if (existsSync(refsDir)) {
       try {
         const watcher = watch(refsDir, { recursive: true }, () => {
-          this.checkForNewCommit();
+          void this.checkForNewCommit();
         });
         watcher.on('error', () => { /* watcher error — rely on polling */ });
         this.watchers.push(watcher);
@@ -115,7 +130,7 @@ export class GitCommitTrigger implements TriggerWatcher {
     if (existsSync(packedRefs)) {
       try {
         const watcher = watch(packedRefs, () => {
-          this.checkForNewCommit();
+          void this.checkForNewCommit();
         });
         watcher.on('error', () => { /* watcher error — rely on polling */ });
         this.watchers.push(watcher);
@@ -126,17 +141,19 @@ export class GitCommitTrigger implements TriggerWatcher {
   private startPolling(): void {
     const poll = (): void => {
       if (!this._active) return;
-      this.checkForNewCommit();
-      this.pollTimerId = this.timer.setTimeout(poll, this.pollIntervalMs);
+      void this.checkForNewCommit().then(() => {
+        if (!this._active) return;
+        this.pollTimerId = this.timer.setTimeout(poll, this.pollIntervalMs);
+      });
     };
 
     this.pollTimerId = this.timer.setTimeout(poll, this.pollIntervalMs);
   }
 
-  private checkForNewCommit(): void {
+  private async checkForNewCommit(): Promise<void> {
     if (!this._active || !this.onFire) return;
 
-    const currentSha = this.getCurrentSha();
+    const currentSha = await this.getCurrentSha();
     if (!currentSha) return;
 
     if (currentSha === this.lastSeenSha) return;
@@ -145,7 +162,7 @@ export class GitCommitTrigger implements TriggerWatcher {
     this.lastSeenSha = currentSha;
 
     // Get commit details
-    const commitInfo = this.getCommitInfo(currentSha);
+    const commitInfo = await this.getCommitInfo(currentSha);
     if (!commitInfo) return;
 
     // Check branch pattern if configured
@@ -163,42 +180,41 @@ export class GitCommitTrigger implements TriggerWatcher {
     });
   }
 
-  private getCurrentSha(): string | null {
+  private async getCurrentSha(): Promise<string | null> {
     try {
-      const output = execSync('git log --oneline -1 HEAD', {
+      // Use git rev-parse HEAD for full 40-char SHA (Fix 3: F-R-8)
+      const { stdout } = await execFile('git', ['rev-parse', 'HEAD'], {
         cwd: this.repoDir,
-        encoding: 'utf-8',
         timeout: 5000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim();
+      });
 
-      // Output format: "abc1234 commit message"
-      const sha = output.split(' ')[0];
+      const sha = stdout.trim();
       return sha || null;
     } catch {
       return null;
     }
   }
 
-  private getCommitInfo(sha: string): { branch: string; message: string } | null {
+  private async getCommitInfo(sha: string): Promise<{ branch: string; message: string } | null> {
+    // Validate SHA matches full 40-char hex to prevent command injection
+    if (!/^[0-9a-f]{40}$/i.test(sha)) {
+      return null;
+    }
+
     try {
-      // Get current branch name
-      const branch = execSync('git rev-parse --abbrev-ref HEAD', {
-        cwd: this.repoDir,
-        encoding: 'utf-8',
-        timeout: 5000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim();
+      // Get current branch name (no shell, no injection risk)
+      const { stdout: branchOut } = await execFile(
+        'git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+        { cwd: this.repoDir, timeout: 5000 },
+      );
 
-      // Get commit message
-      const message = execSync(`git log --format=%s -1 ${sha}`, {
-        cwd: this.repoDir,
-        encoding: 'utf-8',
-        timeout: 5000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim();
+      // Get commit message (sha is validated above)
+      const { stdout: msgOut } = await execFile(
+        'git', ['log', '--format=%s', '-1', sha],
+        { cwd: this.repoDir, timeout: 5000 },
+      );
 
-      return { branch, message };
+      return { branch: branchOut.trim(), message: msgOut.trim() };
     } catch {
       return null;
     }

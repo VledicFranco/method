@@ -25,6 +25,9 @@ export class FileWatchTrigger implements TriggerWatcher {
   private onFire: ((payload: Record<string, unknown>) => void) | null = null;
   private readonly allowedEvents: Set<string>;
   private readonly isRecursiveSupported: boolean;
+  /** Per-file dedup: maps file path to last event timestamp (ms) to collapse Windows double-fires */
+  private readonly lastEventTimes = new Map<string, number>();
+  private static readonly DEDUP_WINDOW_MS = 50;
 
   constructor(config: FileWatchTriggerConfig, baseDir: string) {
     this.config = config;
@@ -78,6 +81,7 @@ export class FileWatchTrigger implements TriggerWatcher {
     }
     this.watchers = [];
     this.onFire = null;
+    this.lastEventTimes.clear();
   }
 
   private handleEvent(eventType: string, filename: string, watchDir: string): void {
@@ -85,6 +89,14 @@ export class FileWatchTrigger implements TriggerWatcher {
 
     const fullPath = resolve(watchDir, filename);
     const relPath = relative(this.baseDir, fullPath).replace(/\\/g, '/');
+
+    // Per-file dedup: collapse double-fires within 50ms (common on Windows)
+    const now = Date.now();
+    const lastTime = this.lastEventTimes.get(relPath);
+    if (lastTime !== undefined && (now - lastTime) < FileWatchTrigger.DEDUP_WINDOW_MS) {
+      return;
+    }
+    this.lastEventTimes.set(relPath, now);
 
     // Check if the file matches any of the configured glob patterns
     const matched = this.config.paths.some((pattern) => minimatch(relPath, pattern));
@@ -135,6 +147,11 @@ export class FileWatchTrigger implements TriggerWatcher {
       const dir = staticParts.length > 0
         ? resolve(this.baseDir, staticParts.join('/'))
         : this.baseDir;
+
+      // Path traversal guard: resolved directory must stay within baseDir
+      if (!dir.startsWith(resolve(this.baseDir))) {
+        continue;
+      }
 
       // If the resolved path is a file, watch its parent
       try {

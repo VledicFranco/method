@@ -483,6 +483,9 @@ export class TriggerRouter {
       return;
     }
 
+    // Reserve execution slot immediately after guard check (Fix 7: F-R-1)
+    reg.active_executions++;
+
     // Build trigger event
     const triggerEvent: TriggerEvent = {
       trigger_type: reg.trigger_config.type as TriggerType,
@@ -511,7 +514,6 @@ export class TriggerRouter {
     }
 
     // Execute strategy
-    reg.active_executions++;
     try {
       const result = await this.executeStrategy(reg, triggerEvent);
       reg.stats.last_execution_id = result.execution_id;
