@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Sessions = lazy(() => import('./pages/Sessions'));
 const Strategies = lazy(() => import('./pages/Strategies'));
+const StrategyDetail = lazy(() => import('./pages/StrategyDetail'));
 const Triggers = lazy(() => import('./pages/Triggers'));
 const Governance = lazy(() => import('./pages/Governance'));
 const Analytics = lazy(() => import('./pages/Analytics'));
@@ -93,6 +94,7 @@ export function App() {
             <Route path="/app/" element={<Dashboard />} />
             <Route path="/app/sessions" element={<Sessions />} />
             <Route path="/app/strategies" element={<Strategies />} />
+            <Route path="/app/strategies/:id" element={<StrategyDetail />} />
             <Route path="/app/triggers" element={<Triggers />} />
             <Route path="/app/governance" element={<Governance />} />
             <Route path="/app/analytics" element={<Analytics />} />
