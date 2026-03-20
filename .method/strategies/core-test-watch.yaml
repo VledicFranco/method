@@ -1,0 +1,84 @@
+strategy:
+  id: S-CORE-TEST-WATCH
+  name: "Core Test Watcher — Auto-run on File Change"
+  version: "1.0"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths:
+        - "packages/core/src/**/*.ts"
+      events: [modify, create, delete]
+      debounce_ms: 3000
+      debounce_strategy: trailing
+      max_batch_size: 20
+      max_concurrent: 1
+
+  context:
+    inputs:
+      - { name: trigger_event, type: object }
+
+  capabilities:
+    test_runner: [Read, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Run npm test and capture full output
+      - id: run_tests
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        capabilities: [test_runner]
+        inputs: [trigger_event]
+        outputs: [test_output]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && (output.result.includes('PASS') || output.result.includes('FAIL') || output.result.includes('passing') || output.result.includes('failing'))"
+            max_retries: 1
+
+      # Phase 2: Parse test results into structured report
+      - id: parse_results
+        type: script
+        script: |
+          const raw = typeof inputs.test_output === 'string'
+            ? inputs.test_output
+            : (inputs.test_output.result || JSON.stringify(inputs.test_output));
+          const passed = /(?:Tests?:.*\d+ passed|\d+ passing|PASS)/i.test(raw);
+          const failed = /(?:Tests?:.*\d+ failed|\d+ failing|FAIL)/i.test(raw);
+          const status = failed ? 'FAILED' : (passed ? 'PASSED' : 'UNKNOWN');
+          var failedTests = [];
+          var failureLines = raw.split('\n');
+          for (var i = 0; i < failureLines.length; i++) {
+            var line = failureLines[i];
+            if (/^\s*(FAIL|✕|✗|×|\d+\))/i.test(line) || /failing/.test(line)) {
+              failedTests.push(line.trim());
+            }
+          }
+          var summary = status === 'FAILED'
+            ? 'Tests FAILED. Failed tests: ' + (failedTests.length > 0 ? failedTests.join('; ') : 'see full output')
+            : 'All tests PASSED.';
+          return {
+            status: status,
+            passed: passed && !failed,
+            failed_tests: failedTests,
+            summary: summary,
+            raw_length: raw.length
+          };
+        inputs: [test_output]
+        outputs: [report]
+        depends_on: [run_tests]
+
+    strategy_gates:
+      - id: results_captured
+        depends_on: [parse_results]
+        type: algorithmic
+        check: "artifacts.report && (artifacts.report.status === 'PASSED' || artifacts.report.status === 'FAILED')"
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 2.00", action: warn_human }
+      - { condition: "step_duration_ms > 300000", action: kill_and_requeue }
+
+  outputs:
+    - type: channel_event
+      target: bridge

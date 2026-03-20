@@ -1,0 +1,93 @@
+strategy:
+  id: S-STRATEGY-DESIGNER
+  name: "Strategy Designer — Meta-Strategy"
+  version: "1.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - { name: objective, type: string }
+      - { name: project_context, type: string, default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server" }
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Glob, Grep]
+
+  dag:
+    nodes:
+      # Phase 1: Analyze the objective and project context
+      - id: analyze
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        capabilities: [read_only]
+        inputs: [objective, project_context]
+        outputs: [analysis]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && typeof output.result === 'object'"
+            max_retries: 2
+
+      # Phase 2: Design the strategy YAML
+      - id: design
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        capabilities: [read_only]
+        inputs: [objective, analysis]
+        outputs: [strategy_yaml]
+        depends_on: [analyze]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.includes('strategy:')"
+            max_retries: 2
+
+      # Phase 3: Validate the generated YAML
+      - id: validate
+        type: script
+        script: |
+          const yaml = inputs.strategy_yaml;
+          const content = typeof yaml === 'string' ? yaml : (yaml.result || JSON.stringify(yaml));
+          const errors = [];
+          if (!content.includes('strategy:')) errors.push('Missing strategy: root key');
+          if (!content.includes('id:')) errors.push('Missing id field');
+          if (!content.includes('triggers:')) errors.push('Missing triggers section');
+          if (!content.includes('dag:')) errors.push('Missing dag section');
+          if (!content.includes('nodes:')) errors.push('Missing nodes in dag');
+          if (!content.includes('gates:') && !content.includes('strategy_gates:')) errors.push('Missing gates');
+          const valid = errors.length === 0;
+          return { valid, errors, yaml_content: content, validation: valid ? 'PASSED' : 'FAILED: ' + errors.join(', ') };
+        inputs: [strategy_yaml]
+        outputs: [validation_result]
+        depends_on: [design]
+
+      # Phase 4: Install the strategy (write to .method/strategies/)
+      - id: install
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        capabilities: [write]
+        inputs: [objective, validation_result, strategy_yaml]
+        outputs: [installation]
+        depends_on: [validate]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.includes('installed')"
+            max_retries: 1
+
+    strategy_gates:
+      - id: final_check
+        depends_on: [install]
+        type: algorithmic
+        check: "artifacts.installation && artifacts.installation.result && artifacts.installation.result.includes('installed')"
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 3.00", action: warn_human }
+      - { condition: "step_duration_ms > 600000", action: kill_and_requeue }
+
+  outputs:
+    - type: channel_event
+      target: bridge
