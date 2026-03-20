@@ -150,6 +150,12 @@ domain_theory:
     - name: sigma_2_terminates
       signature: "Council"
       description: "sigma_2 (Debate & Resolve) terminates for this Council — operational predicate for Ax-7 diminishing returns halt"
+    - name: has_defend_clause
+      signature: "CharacterCard"
+      description: "The CharacterCard's prompt includes the position-defense instruction: defend your positions, don't agree to avoid friction"
+    - name: has_acknowledge_clause
+      signature: "CharacterCard"
+      description: "The CharacterCard's prompt includes the counter-argument acknowledgment instruction: acknowledge genuinely good counter-arguments honestly"
     - name: diminishing_returns
       signature: "Council"
       description: >
@@ -246,8 +252,8 @@ domain_theory:
     - id: Ax-8
       name: Anti-capitulation clause integrity
       statement: >
-        forall c : Character, q : Question. constituted_by(c, card) ->
-        card.prompt contains defend_position_clause AND card.prompt contains acknowledge_counter_clause
+        forall c : Character.
+        has_defend_clause(card_of(c)) AND has_acknowledge_clause(card_of(c))
       rationale: >
         EXP-003: 9 deliberations across 3 problem types. Defend-only produces 56% position
         rigidity and +86.8% mean conviction (stubbornness). Acknowledge-only produces
@@ -264,16 +270,18 @@ domain_theory:
   initial_state_valid_claim:
     fresh: >
       A state with Challenge present, no Characters, no Questions, no Turns, no Positions,
-      no Decisions, no Artifact satisfies all axioms: Ax-1 through Ax-6 have false antecedents
+      no Decisions, no Artifact satisfies all axioms: Ax-1 through Ax-8 have false antecedents
       (no Characters or Turns exist) — all vacuously true. Valid.
     resume: >
       A state with Challenge present, Characters and Positions loaded from CMEM-PROTO memory,
       but no new Turns in this session satisfies all axioms: Ax-1 holds if the restored cast
       has >= 2 contrarians (guaranteed by prior session's sigma_1 postcondition preserved in
       memory). Ax-2 holds if exactly one leader is restored. Ax-3 through Ax-6 have false
-      antecedents for the current session (no new Turns yet). Pragmatic scoping: Characters
+      antecedents for the current session (no new Turns yet). Ax-8 holds if restored
+      CharacterCards contain both anti-capitulation clauses (guaranteed by prior session's
+      sigma_1 postcondition which enforces Ax-8 guidance). Pragmatic scoping: Characters
       and Positions loaded from CMEM-PROTO are treated as initial context, not as Turn-derived
-      state. Axioms Ax-1 through Ax-7 are evaluated only over Turns produced in the current
+      state. Axioms Ax-1 through Ax-8 are evaluated only over Turns produced in the current
       session. Prior Turns are not members of the carrier set; the Positions they established
       are initial conditions. Formal session-scoping of the Turn sort is deferred to a future
       theory revision (see domain_boundary_note). Assumption: the prior session completed
@@ -285,7 +293,9 @@ domain_theory:
     produced satisfies all axioms: Ax-1 (two contrarians exist), Ax-2 (one leader),
     Ax-3 (all repeated positions have responds_to edges — enforced during sigma_2),
     Ax-4 (all updates have counter-argument triggers), Ax-5 (each turn resolved at least
-    one pair), Ax-6 (leader issued no decisions). Valid.
+    one pair), Ax-6 (leader issued no decisions), Ax-7 (diminishing returns — pragmatic),
+    Ax-8 (anti-capitulation clauses present in all CharacterCards — enforced during sigma_1).
+    Valid.
 
 roles:
   - id: rho_leader
@@ -958,17 +968,19 @@ compilation_record:
       result: PASS
       note: >
         D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 10 sorts with cardinality, 3 function symbols
-        with totality, 16 predicates with typed signatures referencing declared sorts
+        with totality, 18 predicates with typed signatures referencing declared sorts
         (v1.1 fix: added decision_issued_by, specific_question, precedes, sigma_2_terminates;
-        fixed diminishing_returns signature from State to Council), 8 closed axioms with
-        rationale (Ax-4/5 free variables bound; Ax-5 temporal operators replaced with
-        precedes predicate; Ax-6 rewritten with declared predicates; Ax-7 is pragmatic,
-        not formally decidable; v1.2: Ax-7 gains minimum-turns guard |Turns| >= 2*|Questions|;
-        v1.3: Ax-8 anti-capitulation clause integrity — both defend-position and
-        acknowledge-counter clauses required in every character prompt).
+        fixed diminishing_returns signature from State to Council;
+        v1.3: added has_defend_clause, has_acknowledge_clause over CharacterCard),
+        8 closed axioms with rationale (Ax-4/5 free variables bound; Ax-5 temporal operators
+        replaced with precedes predicate; Ax-6 rewritten with declared predicates; Ax-7 is
+        pragmatic, not formally decidable; v1.2: Ax-7 gains minimum-turns guard
+        |Turns| >= 2*|Questions|; v1.3: Ax-8 anti-capitulation clause integrity uses declared
+        predicates has_defend_clause and has_acknowledge_clause over CharacterCard via card_of
+        function symbol).
         Domain boundary stated. Initial and terminal state membership in Mod(D_COUNCIL) claimed
         with axiom-by-axiom verification (v1.2: initial_state_valid_claim covers both fresh and
-        resume paths).
+        resume paths; v1.3: initial/terminal claims updated for Ax-7 and Ax-8).
     - gate: G2
       result: PASS
       note: >
