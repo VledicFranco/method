@@ -69,15 +69,18 @@ export class WebhookTrigger implements TriggerWatcher {
    */
   handleWebhook(
     body: unknown,
-    rawBody: string,
+    rawBody: Buffer | string,
     headers: Record<string, string | string[] | undefined>,
   ): { status: number; body: Record<string, unknown> } {
     if (!this._active || !this.onFire) {
       return { status: 503, body: { error: 'Trigger is not active' } };
     }
 
-    // Payload size check
-    if (rawBody.length > MAX_PAYLOAD_BYTES) {
+    // Payload size check (use Buffer.byteLength for accurate byte count)
+    const bodySize = Buffer.isBuffer(rawBody)
+      ? rawBody.length
+      : Buffer.byteLength(rawBody, 'utf-8');
+    if (bodySize > MAX_PAYLOAD_BYTES) {
       return {
         status: 413,
         body: { error: `Payload exceeds maximum size (${MAX_PAYLOAD_BYTES} bytes)` },
@@ -88,9 +91,11 @@ export class WebhookTrigger implements TriggerWatcher {
     if (this.config.secret_env) {
       const secret = process.env[this.config.secret_env];
       if (!secret) {
+        // Log specifics server-side only; do not leak env var name to caller
+        console.error(`[webhook] Secret env var '${this.config.secret_env}' is not set`);
         return {
           status: 500,
-          body: { error: `Webhook secret env var '${this.config.secret_env}' is not set` },
+          body: { error: 'Webhook configuration error' },
         };
       }
 
@@ -109,14 +114,15 @@ export class WebhookTrigger implements TriggerWatcher {
     }
 
     // Parse payload
+    const rawString = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : rawBody;
     let payload: Record<string, unknown>;
     if (body && typeof body === 'object') {
       payload = body as Record<string, unknown>;
     } else {
       try {
-        payload = JSON.parse(rawBody) as Record<string, unknown>;
+        payload = JSON.parse(rawString) as Record<string, unknown>;
       } catch {
-        payload = { raw: rawBody };
+        payload = { raw: rawString };
       }
     }
 

@@ -9,9 +9,22 @@
  * Management endpoints follow the existing bridge auth model (localhost-only assumed).
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TriggerRouter } from './trigger-router.js';
 import { WebhookTrigger } from './webhook-trigger.js';
+
+/**
+ * Restrict a management endpoint to localhost-only access.
+ * Returns false (and sends 403) if the request is from a non-local IP.
+ */
+function requireLocalhost(request: FastifyRequest, reply: FastifyReply): boolean {
+  const ip = request.ip;
+  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+    reply.status(403).send({ error: 'Only allowed from localhost' });
+    return false;
+  }
+  return true;
+}
 
 const TRIGGERS_STRATEGY_DIR = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
 
@@ -73,6 +86,7 @@ export function registerTriggerRoutes(
   app.post<{
     Params: { id: string };
   }>('/triggers/:id/enable', async (request, reply) => {
+    if (!requireLocalhost(request, reply)) return;
     const { id } = request.params;
 
     try {
@@ -96,6 +110,7 @@ export function registerTriggerRoutes(
   app.post<{
     Params: { id: string };
   }>('/triggers/:id/disable', async (request, reply) => {
+    if (!requireLocalhost(request, reply)) return;
     const { id } = request.params;
 
     try {
@@ -116,7 +131,8 @@ export function registerTriggerRoutes(
 
   // ── POST /triggers/pause — Pause all triggers (maintenance mode) ──
 
-  app.post('/triggers/pause', async (_request, reply) => {
+  app.post('/triggers/pause', async (request, reply) => {
+    if (!requireLocalhost(request, reply)) return;
     router.pauseAll();
     return reply.status(200).send({
       paused: true,
@@ -126,7 +142,8 @@ export function registerTriggerRoutes(
 
   // ── POST /triggers/resume — Resume all triggers ──
 
-  app.post('/triggers/resume', async (_request, reply) => {
+  app.post('/triggers/resume', async (request, reply) => {
+    if (!requireLocalhost(request, reply)) return;
     router.resumeAll();
     return reply.status(200).send({
       paused: false,
@@ -136,7 +153,8 @@ export function registerTriggerRoutes(
 
   // ── POST /triggers/reload — Hot reload strategy registrations ──
 
-  app.post('/triggers/reload', async (_request, reply) => {
+  app.post('/triggers/reload', async (request, reply) => {
+    if (!requireLocalhost(request, reply)) return;
     try {
       const result = await router.reloadStrategies(dir);
 
@@ -155,17 +173,43 @@ export function registerTriggerRoutes(
     }
   });
 
+  // ── Preserve raw body for HMAC signature verification ──
+  // Fastify's preParsing hook captures the raw bytes before JSON parsing,
+  // ensuring HMAC is computed over the exact bytes the sender signed.
+  app.addHook('preParsing', async (request, _reply, payload) => {
+    if (request.url.startsWith('/triggers/webhook/')) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of payload) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      const rawBuffer = Buffer.concat(chunks);
+      (request as any).rawBuffer = rawBuffer;
+      // Return a new readable stream from the buffer for Fastify to parse
+      const { Readable } = await import('node:stream');
+      return Readable.from(rawBuffer);
+    }
+    return payload;
+  });
+
   // ── Register webhook routes for existing triggers ──
   registerWebhookRoutes(app, router);
 }
 
-// Track which webhook paths have been registered to avoid duplicates
+// Track which webhook paths have been registered to avoid duplicates.
+// NOTE: Module-scoped singleton — Fastify does not support route removal, so
+// webhook paths are permanent once registered. The handler dynamically resolves
+// the trigger via router.getWebhookTriggers(), so deleted triggers return 404.
+// Tests that import this module share the same set; use caution in test isolation.
 const registeredWebhookPaths = new Set<string>();
 
 /**
  * Register Fastify routes for each active WebhookTrigger.
  * Dynamically creates POST (or custom method) routes at the webhook's configured path.
  * Skips paths that are already registered.
+ *
+ * NOTE: Fastify does not support route removal, so webhook paths are permanent
+ * once registered. The handler dynamically resolves the trigger via
+ * router.getWebhookTriggers(), so deleted triggers return 404 at runtime.
  */
 function registerWebhookRoutes(
   app: FastifyInstance,
@@ -200,16 +244,18 @@ function registerWebhookRoutes(
             return reply.status(404).send({ error: 'Webhook trigger not found for this path' });
           }
 
-          // Get raw body string for HMAC validation
-          const rawBody = typeof request.body === 'string'
-            ? request.body
-            : JSON.stringify(request.body ?? '');
+          // Use the raw buffer captured by preParsing hook for HMAC validation.
+          // Falls back to JSON.stringify if the hook didn't run (defensive).
+          const rawBuffer: Buffer = (request as any).rawBuffer
+            ?? Buffer.from(typeof request.body === 'string'
+              ? request.body
+              : JSON.stringify(request.body ?? ''));
 
           const headers = request.headers as Record<string, string | string[] | undefined>;
 
           const result = current.watcher.handleWebhook(
             request.body,
-            rawBody,
+            rawBuffer,
             headers,
           );
 
