@@ -12,6 +12,7 @@ import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
+import { TriggerRouter, scanAndRegisterTriggers } from './triggers/index.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -703,6 +704,25 @@ if (STRATEGY_ENABLED) {
   registerStrategyRoutes(app, strategyProvider);
 }
 
+// ---------- Event Triggers (PRD 018) ----------
+
+const TRIGGERS_ENABLED = process.env.TRIGGERS_ENABLED !== 'false';
+const TRIGGERS_STRATEGY_DIR = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+
+let triggerRouter: TriggerRouter | null = null;
+
+if (TRIGGERS_ENABLED) {
+  triggerRouter = new TriggerRouter({
+    baseDir: process.cwd(),
+    bridgeUrl: `http://localhost:${PORT}`,
+    logger: {
+      info: (msg) => app.log.info(msg),
+      warn: (msg) => app.log.warn(msg),
+      error: (msg) => app.log.error(msg),
+    },
+  });
+}
+
 // ---------- Start ----------
 
 async function start() {
@@ -720,6 +740,28 @@ async function start() {
         app.log.info(`Cleaned up ${removed} dead session(s) (TTL: ${DEAD_SESSION_TTL_MS}ms)`);
       }
     }, 60_000); // Check every minute
+
+    // PRD 018: Scan strategy files and register event triggers
+    if (triggerRouter) {
+      scanAndRegisterTriggers(triggerRouter, TRIGGERS_STRATEGY_DIR, {
+        info: (msg) => app.log.info(msg),
+        warn: (msg) => app.log.warn(msg),
+        error: (msg) => app.log.error(msg),
+      }).then((result) => {
+        if (result.registered > 0) {
+          app.log.info(
+            `Trigger startup scan: ${result.registered} trigger(s) registered from ${result.scanned} file(s)`,
+          );
+        }
+        if (result.errors.length > 0) {
+          app.log.warn(
+            `Trigger startup scan: ${result.errors.length} file(s) had errors`,
+          );
+        }
+      }).catch((err) => {
+        app.log.error(`Trigger startup scan failed: ${(err as Error).message}`);
+      });
+    }
 
     // PRD 006 Component 4: Stale detection timer
     setInterval(() => {
@@ -744,6 +786,11 @@ function gracefulShutdown(signal: string) {
   app.close().then(() => {
     // Stop usage polling
     usagePoller.stop();
+
+    // Stop trigger watchers (PRD 018)
+    if (triggerRouter) {
+      triggerRouter.shutdown().catch(() => { /* non-fatal */ });
+    }
 
     // Kill all sessions (triggers auto-retro via handleSessionDeath)
     const sessions = pool.list();
