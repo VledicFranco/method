@@ -90,6 +90,12 @@ export interface TriggerRouterOptions {
   logFires?: boolean;
   /** Strategy executor function (alternative to HTTP call, for testing) */
   executor?: (strategyPath: string, contextInputs: Record<string, unknown>) => Promise<{ execution_id: string }>;
+  /**
+   * PRD 018 Phase 2a-4: Callback to emit trigger_fired events to the channel system.
+   * Called after a trigger successfully fires. Used to inject events into
+   * GET /channels/events for dashboard visibility.
+   */
+  onTriggerFired?: (event: TriggerEvent) => void;
 }
 
 // ── Internal state for a registered trigger (extends TriggerRegistration) ──
@@ -109,6 +115,7 @@ export class TriggerRouter {
     timer: TimerInterface;
     logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
     executor: ((strategyPath: string, contextInputs: Record<string, unknown>) => Promise<{ execution_id: string }>) | null;
+    onTriggerFired: ((event: TriggerEvent) => void) | null;
   };
 
   private paused = false;
@@ -128,6 +135,7 @@ export class TriggerRouter {
       historySize: options.historySize ?? DEFAULTS.history_size,
       logFires: options.logFires ?? DEFAULTS.log_fires,
       executor: options.executor ?? null,
+      onTriggerFired: options.onTriggerFired ?? null,
     };
   }
 
@@ -711,16 +719,40 @@ export class TriggerRouter {
     const debounceConfig = this.getDebounceConfig(reg.trigger_config);
     const debounce = new DebounceEngine(
       debounceConfig,
-      (batch) => this.onTriggerFired(reg, batch),
+      (batch) => {
+        // PRD 018 Phase 2a-4: Catch debounce/routing errors so they don't crash the router
+        try {
+          this.onTriggerFired(reg, batch);
+        } catch (err) {
+          reg.stats.errors++;
+          this.options.logger.error(
+            `Debounce fire failed for ${reg.trigger_id}: ${(err as Error).message}`,
+          );
+        }
+      },
       this.options.timer,
     );
     reg.debounce = debounce;
 
-    // Start watcher — raw events go into debounce
-    watcher.start((payload) => {
-      if (!reg.enabled || this.paused) return;
-      debounce.push(payload);
-    });
+    // PRD 018 Phase 2a-4: Watcher crash recovery — if start() throws,
+    // catch the error, log it, mark as errored, continue with other watchers
+    try {
+      watcher.start((payload) => {
+        if (!reg.enabled || this.paused) return;
+        try {
+          debounce.push(payload);
+        } catch {
+          // Malformed event resilience — never crash from a push failure
+        }
+      });
+    } catch (err) {
+      reg.stats.errors++;
+      reg.watcher = null;
+      reg.debounce = null;
+      this.options.logger.error(
+        `Watcher start failed for ${reg.trigger_id}: ${(err as Error).message}`,
+      );
+    }
   }
 
   private stopWatcher(reg: InternalRegistration): void {
@@ -777,6 +809,15 @@ export class TriggerRouter {
       this.options.logger.info(
         `Trigger fired: ${reg.trigger_id} (${batch.count} event(s) debounced)`,
       );
+    }
+
+    // PRD 018 Phase 2a-4: Emit trigger_fired event to channel system
+    if (this.options.onTriggerFired) {
+      try {
+        this.options.onTriggerFired(triggerEvent);
+      } catch {
+        // Channel emission failure is non-fatal — never block trigger execution
+      }
     }
 
     // Execute strategy
