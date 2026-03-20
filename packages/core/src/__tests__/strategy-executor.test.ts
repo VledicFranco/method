@@ -1310,6 +1310,120 @@ strategy:
     assert.equal(result.node_results['work'].status, 'completed');
     assert.ok(result.node_results['work'].output.result, 'should have raw result');
   });
+
+  it('context continuity with refresh_context flag', async () => {
+    // Test that:
+    // 1. Without refresh_context: nodes 1 & 2 use the SAME session (continuous context)
+    // 2. With refresh_context=true on node 2: node 3 gets a FRESH session
+    //
+    // Track sessionId and refreshSessionId in invocations to verify behavior
+
+    class SessionTrackingProvider implements LlmProvider {
+      public invocations: LlmRequest[] = [];
+
+      async invoke(request: LlmRequest): Promise<LlmResponse> {
+        this.invocations.push(request);
+
+        // Extract node name from prompt for debugging
+        const match = request.prompt.match(/node "(\w+)"/);
+        const nodeName = match ? match[1] : 'unknown';
+
+        return makeMockResponse({
+          result: `\`\`\`json\n{"node": "${nodeName}", "done": true}\n\`\`\``,
+          total_cost_usd: 0.02,
+          session_id: request.refreshSessionId || request.resumeSessionId || request.sessionId,
+        });
+      }
+
+      async invokeStreaming(): Promise<LlmResponse> {
+        throw new Error('Not implemented');
+      }
+    }
+
+    const provider = new SessionTrackingProvider();
+    const config = makeExecutorConfig();
+    const executor = new StrategyExecutor(provider, config);
+
+    const yamlStr = `
+strategy:
+  id: S-CONTEXT-TEST
+  name: "Context Continuity Test"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: analyze
+        type: methodology
+        methodology: P2-SD
+        outputs: [analysis]
+      - id: design
+        type: methodology
+        methodology: P2-SD
+        depends_on: [analyze]
+        inputs: [analysis]
+        outputs: [design]
+        refresh_context: false
+      - id: validate
+        type: methodology
+        methodology: P2-SD
+        depends_on: [design]
+        inputs: [design]
+        outputs: [validation]
+        refresh_context: true
+`;
+
+    const dag = parseStrategyYaml(yamlStr);
+
+    // Verify refresh_context fields were parsed correctly
+    const analyzeNode = dag.nodes.find((n) => n.id === 'analyze')!;
+    const designNode = dag.nodes.find((n) => n.id === 'design')!;
+    const validateNode = dag.nodes.find((n) => n.id === 'validate')!;
+
+    assert.equal(analyzeNode.refresh_context, false, 'analyze node should default to false');
+    assert.equal(designNode.refresh_context, false, 'design node explicitly set to false');
+    assert.equal(validateNode.refresh_context, true, 'validate node explicitly set to true');
+
+    const result = await executor.execute(dag, {});
+
+    // Verify execution completed successfully
+    assert.equal(result.status, 'completed');
+    assert.equal(result.node_results['analyze'].status, 'completed');
+    assert.equal(result.node_results['design'].status, 'completed');
+    assert.equal(result.node_results['validate'].status, 'completed');
+
+    // Verify invocation tracking
+    assert.equal(provider.invocations.length, 3, 'should have 3 invocations (one per node)');
+
+    const analyzeInv = provider.invocations[0];
+    const designInv = provider.invocations[1];
+    const validateInv = provider.invocations[2];
+
+    // Both analyze and design should use the same session (design uses resumeSessionId or same sessionId)
+    // validate should have refreshSessionId set (creating a new session)
+    assert.ok(
+      analyzeInv.sessionId,
+      'analyze invocation should have sessionId',
+    );
+
+    // Design continues the same session (resumeSessionId is not explicitly used in the test,
+    // but sessionId should be maintained for continuity)
+    // Actually, per the commission, we use refreshSessionId when refresh_context=true
+    // So: analyze gets sessionId, design gets same sessionId (no refresh), validate gets refreshSessionId
+    assert.ok(
+      designInv.sessionId === analyzeInv.sessionId,
+      `design should use same session as analyze: design=${designInv.sessionId} vs analyze=${analyzeInv.sessionId}`,
+    );
+
+    assert.ok(
+      validateInv.refreshSessionId,
+      'validate invocation should have refreshSessionId set (because refresh_context=true)',
+    );
+
+    assert.notEqual(
+      validateInv.refreshSessionId,
+      analyzeInv.sessionId,
+      'validate refreshSessionId should be different from analyze sessionId',
+    );
+  });
 });
 
 // ── Timeout Tests (isolated to avoid cascading cancellations) ──
