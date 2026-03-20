@@ -174,9 +174,21 @@ function parseSingleTrigger(
       };
     }
 
-    // Phase 2a-3+ types — parsed but not yet supported
-    case 'webhook':
-      return null;
+    case 'webhook': {
+      const path = raw.path as string | undefined;
+      if (!path || typeof path !== 'string') return null;
+      return {
+        type: 'webhook',
+        path,
+        secret_env: raw.secret_env as string | undefined,
+        filter: raw.filter as string | undefined,
+        methods: raw.methods as string[] | undefined,
+        debounce_ms: raw.debounce_ms as number | undefined,
+        debounce_strategy: raw.debounce_strategy as 'leading' | 'trailing' | undefined,
+        max_concurrent: raw.max_concurrent as number | undefined,
+        max_batch_size: raw.max_batch_size as number | undefined,
+      };
+    }
 
     default:
       return null;

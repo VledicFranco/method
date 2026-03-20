@@ -12,7 +12,7 @@ import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
-import { TriggerRouter, scanAndRegisterTriggers } from './triggers/index.js';
+import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
 import { setOnMessageHook } from './channels.js';
 
 // Configuration from environment variables
@@ -736,6 +736,9 @@ if (TRIGGERS_ENABLED) {
       triggerRouter.onChannelMessage(info);
     }
   });
+
+  // PRD 018 Phase 2a-3: Register trigger management API + webhook routes
+  registerTriggerRoutes(app, triggerRouter, TRIGGERS_STRATEGY_DIR);
 }
 
 // ---------- Start ----------

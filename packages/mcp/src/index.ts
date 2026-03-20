@@ -633,6 +633,71 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["execution_id"],
       },
     },
+    {
+      name: "trigger_list",
+      description: "List all registered event triggers with status and stats. Optionally filter by strategy ID.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          strategy_id: {
+            type: "string",
+            description: "Optional: filter triggers by strategy ID",
+          },
+        },
+      },
+    },
+    {
+      name: "trigger_enable",
+      description: "Enable a specific event trigger by ID.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          trigger_id: {
+            type: "string",
+            description: "Trigger ID to enable (e.g., 'S-CODE-REVIEW:webhook:2')",
+          },
+        },
+        required: ["trigger_id"],
+      },
+    },
+    {
+      name: "trigger_disable",
+      description: "Disable a specific event trigger without unregistering it.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          trigger_id: {
+            type: "string",
+            description: "Trigger ID to disable (e.g., 'S-CODE-REVIEW:webhook:2')",
+          },
+        },
+        required: ["trigger_id"],
+      },
+    },
+    {
+      name: "trigger_pause_all",
+      description: "Pause all event triggers (maintenance mode). No triggers will fire until resumed.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
+    {
+      name: "trigger_resume_all",
+      description: "Resume all event triggers after maintenance pause.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
+    {
+      name: "trigger_reload",
+      description: "Hot-reload strategy trigger registrations from .method/strategies/. Reconciles: registers new, updates changed, unregisters deleted strategies.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
   ],
 }));
 
@@ -1218,6 +1283,67 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
 
         const res = await bridgeFetch(`${BRIDGE_URL}/strategies/${encodeURIComponent(execution_id)}/status`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_list": {
+        const { strategy_id } = z.object({
+          strategy_id: z.string().optional(),
+        }).parse(args);
+
+        const params = new URLSearchParams();
+        if (strategy_id) params.set('strategy_id', strategy_id);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers${qs}`);
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_enable": {
+        const { trigger_id } = z.object({
+          trigger_id: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers/${encodeURIComponent(trigger_id)}/enable`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_disable": {
+        const { trigger_id } = z.object({
+          trigger_id: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers/${encodeURIComponent(trigger_id)}/disable`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_pause_all": {
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers/pause`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_resume_all": {
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers/resume`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "trigger_reload": {
+        const res = await bridgeFetch(`${BRIDGE_URL}/triggers/reload`, {
+          method: 'POST',
+        });
         const data = await res.json();
         return ok(JSON.stringify(data, null, 2));
       }
