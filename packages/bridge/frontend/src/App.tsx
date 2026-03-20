@@ -96,6 +96,7 @@ export function App() {
             <Route path="/app/strategies" element={<Strategies />} />
             <Route path="/app/strategies/:id" element={<StrategyDetail />} />
             <Route path="/app/triggers" element={<Triggers />} />
+            <Route path="/app/triggers/:id" element={<Triggers />} />
             <Route path="/app/governance" element={<Governance />} />
             <Route path="/app/analytics" element={<Analytics />} />
             <Route path="/app/registry" element={<Registry />} />
