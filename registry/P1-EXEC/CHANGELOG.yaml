@@ -3,6 +3,24 @@ changelog:
   current_version: "1.2"
 
   entries:
+    - version: "M1-COUNCIL v1.3"
+      date: "2026-03-19"
+      type: method_evolution
+      method: M1-COUNCIL
+      changes:
+        - "RFC-003: Ax-8 anti-capitulation clause integrity — uses declared predicates has_defend_clause and has_acknowledge_clause over CharacterCard via card_of function symbol"
+        - "RFC-003: Removed vacuous Question quantifier from Ax-8 (F-R-3) and free card variable (F-R-4)"
+        - "Added has_defend_clause, has_acknowledge_clause predicates to domain theory"
+        - "initial_state_valid_claim.fresh updated: Ax-1 through Ax-8 vacuously true"
+        - "initial_state_valid_claim.resume updated: Ax-8 verified via prior sigma_1 postcondition"
+        - "terminal_state_valid_claim updated: Ax-7 and Ax-8 coverage added"
+        - "G1 compilation note updated: 18 predicates, Ax-8 uses declared predicates"
+      evidence:
+        rfcs: [RFC-003]
+        sessions: [SESSION-037]
+        decisions: [D-087]
+        theory_review_findings: [F-R-1, F-R-2, F-R-3, F-R-4]
+
     - version: "M1-COUNCIL v1.2"
       date: "2026-03-18"
       type: method_evolution

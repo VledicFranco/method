@@ -9,14 +9,16 @@ method:
     a named conviction and blind spot, and must defend or update positions under
     structural pressure. Value over single-agent reasoning: method-attributable insight
     generation through adversarial structure.
-  version: "1.2"
+  version: "1.3"
   status: compiled
-  compilation_date: "2026-03-18"
+  compilation_date: "2026-03-20"
   evolution_note: >
-    v1.2: RFC-001 (sigma_0 resume precondition for CMEM-PROTO) and RFC-002 (Ax-7
-    minimum-turns guard). RFC-001 adds sigma_0 resume precondition (additive). RFC-002
-    strengthens Ax-7 with minimum-turns guard (modification). Changes approved by Steering Council SESSION-032
-    (D-067, D-068) with Theory Council reviews TC-002, TC-005.
+    v1.3: RFC-003 (anti-capitulation invariant). Adds Ax-8 (anti-capitulation clause
+    integrity) — both defend-position and acknowledge-counter clauses required in every
+    character prompt. sigma_1 guidance updated with explicit anti-capitulation instructions.
+    Approved by Steering Council SESSION-037 (D-087).
+    Prior: v1.2 added RFC-001 (sigma_0 resume precondition for CMEM-PROTO) and RFC-002
+    (Ax-7 minimum-turns guard), approved SESSION-032 (D-067, D-068).
   formal_grounding: "theory/F1-FTH.md"
   derived_from: ".claude/skills/council-team/SKILL.md"
 
@@ -148,6 +150,12 @@ domain_theory:
     - name: sigma_2_terminates
       signature: "Council"
       description: "sigma_2 (Debate & Resolve) terminates for this Council — operational predicate for Ax-7 diminishing returns halt"
+    - name: has_defend_clause
+      signature: "CharacterCard"
+      description: "The CharacterCard's prompt includes the position-defense instruction: defend your positions, don't agree to avoid friction"
+    - name: has_acknowledge_clause
+      signature: "CharacterCard"
+      description: "The CharacterCard's prompt includes the counter-argument acknowledgment instruction: acknowledge genuinely good counter-arguments honestly"
     - name: diminishing_returns
       signature: "Council"
       description: >
@@ -241,6 +249,17 @@ domain_theory:
         as explicitly unresolved items. The minimum-turns guard prevents premature halts:
         diminishing_returns cannot be declared until the session has produced at least
         2 * |Questions| Turns, ensuring each Question has received substantive debate.
+    - id: Ax-8
+      name: Anti-capitulation clause integrity
+      statement: >
+        forall c : Character.
+        has_defend_clause(card_of(c)) AND has_acknowledge_clause(card_of(c))
+      rationale: >
+        EXP-003: 9 deliberations across 3 problem types. Defend-only produces 56% position
+        rigidity and +86.8% mean conviction (stubbornness). Acknowledge-only produces
+        capitulation events with all-decline conviction. Both clauses together produce zero
+        capitulation, widest conviction spread, and conditional updating. Neither clause may
+        be removed independently. G5 verifies sigma_1 guidance contains both instructions.
   domain_boundary_note: >
     Excludes: the content domain of the challenge (D_COUNCIL tracks debate structure, not
     subject matter); tool availability; the internal reasoning process of characters (only
@@ -251,16 +270,18 @@ domain_theory:
   initial_state_valid_claim:
     fresh: >
       A state with Challenge present, no Characters, no Questions, no Turns, no Positions,
-      no Decisions, no Artifact satisfies all axioms: Ax-1 through Ax-6 have false antecedents
+      no Decisions, no Artifact satisfies all axioms: Ax-1 through Ax-8 have false antecedents
       (no Characters or Turns exist) — all vacuously true. Valid.
     resume: >
       A state with Challenge present, Characters and Positions loaded from CMEM-PROTO memory,
       but no new Turns in this session satisfies all axioms: Ax-1 holds if the restored cast
       has >= 2 contrarians (guaranteed by prior session's sigma_1 postcondition preserved in
       memory). Ax-2 holds if exactly one leader is restored. Ax-3 through Ax-6 have false
-      antecedents for the current session (no new Turns yet). Pragmatic scoping: Characters
+      antecedents for the current session (no new Turns yet). Ax-8 holds if restored
+      CharacterCards contain both anti-capitulation clauses (guaranteed by prior session's
+      sigma_1 postcondition which enforces Ax-8 guidance). Pragmatic scoping: Characters
       and Positions loaded from CMEM-PROTO are treated as initial context, not as Turn-derived
-      state. Axioms Ax-1 through Ax-7 are evaluated only over Turns produced in the current
+      state. Axioms Ax-1 through Ax-8 are evaluated only over Turns produced in the current
       session. Prior Turns are not members of the carrier set; the Positions they established
       are initial conditions. Formal session-scoping of the Turn sort is deferred to a future
       theory revision (see domain_boundary_note). Assumption: the prior session completed
@@ -272,7 +293,9 @@ domain_theory:
     produced satisfies all axioms: Ax-1 (two contrarians exist), Ax-2 (one leader),
     Ax-3 (all repeated positions have responds_to edges — enforced during sigma_2),
     Ax-4 (all updates have counter-argument triggers), Ax-5 (each turn resolved at least
-    one pair), Ax-6 (leader issued no decisions). Valid.
+    one pair), Ax-6 (leader issued no decisions), Ax-7 (diminishing returns — pragmatic),
+    Ax-8 (anti-capitulation clauses present in all CharacterCards — enforced during sigma_1).
+    Valid.
 
 roles:
   - id: rho_leader
@@ -459,6 +482,14 @@ phases:
       that both operations are represented in the cast. Evidence: sessions with explicit
       divergent/convergent pairing produced the evolution ledger concept (divergent) and
       the hardest_decision field (convergent) — neither emerged from domain-only casts.
+
+      **Anti-capitulation clause integrity (Ax-8):**
+      Each character prompt MUST include both:
+      (a) defend your positions — don't agree to avoid friction, AND
+      (b) acknowledge genuinely good counter-arguments honestly.
+      Neither may be omitted. Defend-only produces stubbornness (56% position rigidity,
+      +86.8% mean conviction). Acknowledge-only produces capitulation (all-decline
+      conviction). Both together produce zero capitulation with conditional updating.
 
       **Procedure:**
       1. Design characters tailored to the Challenge domain.
@@ -937,15 +968,19 @@ compilation_record:
       result: PASS
       note: >
         D_COUNCIL = (Sigma_COUNCIL, Ax_COUNCIL). 10 sorts with cardinality, 3 function symbols
-        with totality, 16 predicates with typed signatures referencing declared sorts
+        with totality, 18 predicates with typed signatures referencing declared sorts
         (v1.1 fix: added decision_issued_by, specific_question, precedes, sigma_2_terminates;
-        fixed diminishing_returns signature from State to Council), 7 closed axioms with
-        rationale (Ax-4/5 free variables bound; Ax-5 temporal operators replaced with
-        precedes predicate; Ax-6 rewritten with declared predicates; Ax-7 is pragmatic,
-        not formally decidable; v1.2: Ax-7 gains minimum-turns guard |Turns| >= 2*|Questions|).
+        fixed diminishing_returns signature from State to Council;
+        v1.3: added has_defend_clause, has_acknowledge_clause over CharacterCard),
+        8 closed axioms with rationale (Ax-4/5 free variables bound; Ax-5 temporal operators
+        replaced with precedes predicate; Ax-6 rewritten with declared predicates; Ax-7 is
+        pragmatic, not formally decidable; v1.2: Ax-7 gains minimum-turns guard
+        |Turns| >= 2*|Questions|; v1.3: Ax-8 anti-capitulation clause integrity uses declared
+        predicates has_defend_clause and has_acknowledge_clause over CharacterCard via card_of
+        function symbol).
         Domain boundary stated. Initial and terminal state membership in Mod(D_COUNCIL) claimed
         with axiom-by-axiom verification (v1.2: initial_state_valid_claim covers both fresh and
-        resume paths).
+        resume paths; v1.3: initial/terminal claims updated for Ax-7 and Ax-8).
     - gate: G2
       result: PASS
       note: >
@@ -981,6 +1016,8 @@ compilation_record:
         decisions_summary, minority_positions, positions_updated_count. All fields covered.
         v1.2: sigma_0 guidance extended with resume procedure (RFC-001). sigma_2 diminishing
         returns detection updated with minimum-turns guard reference (RFC-002).
+        v1.3: sigma_1 guidance includes explicit anti-capitulation instructions (Ax-8) —
+        both defend-position and acknowledge-counter clauses required in every character prompt.
     - gate: G6
       result: PASS
-      note: "This file (P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml). Structurally complete. v1.2: RFC-001, RFC-002 applied."
+      note: "This file (P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml). Structurally complete. v1.3: RFC-003 applied (Ax-8, sigma_1 anti-capitulation guidance). Prior: v1.2 RFC-001, RFC-002."

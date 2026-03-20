@@ -7,7 +7,7 @@ argument-hint: "[--isolated] [problem or topic for the council to solve]"
 
 # Council Team
 
-> **Source of truth:** `pv-method/registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml` (compiled v1.1).
+> **Source of truth:** `pv-method/registry/P1-EXEC/M1-COUNCIL/M1-COUNCIL.yaml` (compiled v1.3).
 > **Canonical skill location:** `pv-method/.claude/skills/council-team/SKILL.md` (version-controlled).
 > The user-level copy at `~/.claude/skills/council-team/SKILL.md` is a deployment copy.
 > This skill is an operational rendering of M1-COUNCIL. When this skill and the compiled
@@ -123,7 +123,7 @@ Each character runs as a **separate sub-agent** with its own context window. Com
 2. Spawn ALL character agents **simultaneously** using `run_in_background: true`. Each agent receives ONLY:
    - Their character card (name, expertise, conviction, blind spot, voice)
    - The problem statement
-   - Instruction: "Write your opening position on this problem. Be specific. Take a clear stance. Return your position as text — do NOT read any file."
+   - Instruction: "Write your opening position on this problem. Be specific. Take a clear stance. End your response with a conviction level (0-100) for each question you address, formatted as 'Conviction: [question] = [0-100]'. Return your position as text — do NOT read any file."
 
    **Critical:** Do NOT give agents access to the transcript file during opening positions. Independence must be genuine — no agent sees any other agent's reasoning. This is the single highest-impact mechanism from EXP-001/EXP-002.
 
@@ -142,7 +142,7 @@ Each character runs as a **separate sub-agent** with its own context window. Com
 5. For each subsequent round, run characters **one at a time, sequentially**. For each character:
    - Spawn a fresh sub-agent with:
      - Their character card
-     - Instruction: "Read the transcript at `tmp/council-debate-transcript.md`. You are {Name}. Respond to the latest round's arguments. Counter specific claims. If you're shifting your position, name the argument that changed your mind. If you're holding, explain what counter-argument would be needed. Return your response as text."
+     - Instruction: "Read the transcript at `tmp/council-debate-transcript.md`. You are {Name}. Respond to the latest round's arguments. Counter specific claims. If you're shifting your position, name the argument that changed your mind. If you're holding, explain what counter-argument would be needed. End your response with your conviction level (0-100) on each open question, formatted as 'Conviction: [question] = [0-100]'. Return your response as text."
    - When the agent returns, append their response to the transcript:
      ```
      ### {Character Name} ({Role}) — Round {N}
@@ -155,6 +155,12 @@ Each character runs as a **separate sub-agent** with its own context window. Com
    - Are positions still shifting? (If all positions are stable for 2 rounds → converged)
    - Are new arguments appearing? (If only restated positions → diminishing returns)
    - Any character requesting PO input? (Relay as escalation)
+
+   **Conviction monitoring (D-089):** After each response round, extract each character's reported conviction levels and track trajectories across rounds. Flag two pathological signals:
+   - **All-decline:** All characters' convictions are declining across consecutive rounds -> capitulation signal (characters are caving to social pressure rather than updating on evidence)
+   - **All-rise:** All characters' convictions are rising across consecutive rounds -> stubbornness signal (characters are entrenching rather than engaging with counter-arguments)
+
+   Either signal warrants PO attention. Report it as: *"Conviction alert: [all-decline/all-rise] detected across round N->N+1. This may indicate [capitulation/stubbornness]. Continuing, but flagging for your awareness."*
 
    If converged or diminishing returns: proceed to synthesis. Max 5 rounds.
 
@@ -183,6 +189,7 @@ Each character runs as a **separate sub-agent** with its own context window. Com
 - **Ax-4 (conviction stability):** Enforced by the response instruction: "If you're shifting, name the argument."
 - **Ax-5 (turn progress):** The parent checks: did this round resolve any (Character, Question) pairs? If a round produces zero resolutions, flag it.
 - **Ax-7 (diminishing returns):** The parent's convergence check after each round. Halt if 2 consecutive rounds produce no new arguments.
+- **Ax-8 (anti-capitulation clause integrity):** Every character prompt in isolated mode MUST include both: (a) "defend your positions — don't agree to avoid friction" AND (b) "acknowledge genuinely good counter-arguments honestly." The parent verifies both clauses are present in each spawn prompt. Neither may be omitted.
 
 **Implementation notes:**
 - Use fresh agent spawns (not SendMessage continuation) — simpler, and the transcript file carries all context
@@ -263,3 +270,5 @@ If the debate was halted on diminishing returns: add a **5. Open Items** section
 - Do not skip the parent convergence check between rounds — the parent is the only one who can detect diminishing returns across the whole transcript
 - Do not use more than 2 iteration rounds without PO confirmation — diminishing returns compound with cost
 - Do not let agents modify the transcript file directly — they return text, the parent appends. This prevents ordering conflicts and ensures clean turn structure
+- Do not omit conviction level requests from agent prompts — conviction monitoring requires every character to report their conviction (0-100) on each open question in every round
+- Do not ignore all-decline or all-rise conviction signals — these are pathological patterns that require PO awareness
