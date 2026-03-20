@@ -1,0 +1,52 @@
+strategy:
+  id: S-SMOKE-001
+  name: "AG-045 Smoke Test"
+  version: "1.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - { name: project_name, type: string, default: "pv-method" }
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+
+  dag:
+    nodes:
+      - id: summarize
+        type: methodology
+        methodology: P2-SD
+        method_hint: M3-TMP
+        capabilities: [read_only]
+        inputs: [project_name]
+        outputs: [summary]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 10"
+            max_retries: 1
+
+      - id: extract
+        type: script
+        script: |
+          const text = typeof inputs.summary === 'string' ? inputs.summary : JSON.stringify(inputs.summary);
+          return { word_count: text.split(/\s+/).length, first_100_chars: text.substring(0, 100), smoke_test: 'PASSED' };
+        inputs: [summary]
+        outputs: [report]
+        depends_on: [summarize]
+
+    strategy_gates:
+      - id: smoke_check
+        depends_on: [extract]
+        type: algorithmic
+        check: "artifacts.report && artifacts.report.smoke_test === 'PASSED'"
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 1.00", action: warn_human }
+      - { condition: "step_duration_ms > 300000", action: kill_and_requeue }
+
+  outputs:
+    - type: channel_event
+      target: bridge

@@ -522,7 +522,7 @@ export class StrategyExecutor {
       response = await Promise.race([
         this.provider.invoke({
           prompt,
-          sessionId: `strategy-${dag.id}-${node.id}-${Date.now()}`,
+          sessionId: crypto.randomUUID(),
           maxBudgetUsd: this.config.defaultBudgetUsd,
           allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
           signal: abortController.signal,
