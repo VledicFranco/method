@@ -37,6 +37,7 @@ export interface StrategyYaml {
         inputs?: string[];
         outputs?: string[];
         depends_on?: string[];
+        refresh_context?: boolean;
         gates?: Array<{
           type: GateType;
           check: string;
@@ -88,6 +89,7 @@ export interface StrategyNode {
   outputs: string[];
   gates: GateConfig[];
   config: MethodologyNodeConfig | ScriptNodeConfig;
+  refresh_context?: boolean;
 }
 
 export interface OversightRule {
@@ -163,6 +165,7 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
       outputs: rawNode.outputs ?? [],
       gates,
       config,
+      refresh_context: rawNode.refresh_context ?? false,
     };
   });
 
