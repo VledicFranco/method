@@ -720,8 +720,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // F-SECUR-003: Validate project isolation for all tool calls
     const validationResult = validateProjectAccess(name, args as Record<string, unknown>);
     if (!validationResult.allowed) {
-      console.warn(`[ISOLATION] Tool call denied: ${validationResult.reason}`);
-      return err(validationResult.reason);
+      const reason = validationResult.reason ?? 'Tool call denied due to project isolation constraints';
+      console.warn(`[ISOLATION] Tool call denied: ${reason}`);
+      return err(reason);
     }
 
     switch (name) {

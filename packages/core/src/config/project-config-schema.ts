@@ -94,10 +94,10 @@ export function validateProjectConfigSafe(
     return { valid: true, data: result.data };
   }
 
-  const errors = (result.error.errors || []).map((err) => {
-    const path = err.path.length > 0 ? err.path.join('.') : 'root';
+  const errors = result.error.issues?.map((err) => {
+    const path = err.path && err.path.length > 0 ? err.path.join('.') : 'root';
     return `${path}: ${err.message}`;
-  });
+  }) ?? [];
 
   return { valid: false, errors };
 }
