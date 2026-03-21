@@ -310,3 +310,63 @@ test('DiscoveryService: Prevents infinite loops with symlinks', async () => {
     rmSync(tempDir, { recursive: true });
   }
 });
+
+test('DiscoveryService: Emits discovery_incomplete flag when MAX_PROJECTS exceeded', async () => {
+  const tempDir = join(tmpdir(), `test-discovery-incomplete-flag-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    // Create 60 projects (more than default max of 50 in some test setups)
+    // Using a small maxProjects limit to test the flag
+    for (let i = 0; i < 60; i++) {
+      createMockGitRepo(tempDir, `project-${String(i).padStart(3, '0')}`);
+    }
+
+    const service = new DiscoveryService({ maxProjects: 50 });
+    const result = await service.discover(tempDir);
+
+    assert.strictEqual(result.projects.length, 50, 'Should stop at max projects (50)');
+    assert.strictEqual(result.discovery_incomplete, true, 'discovery_incomplete should be true');
+    assert.strictEqual(result.stopped_at_max_projects, true, 'stopped_at_max_projects should be true');
+  } finally {
+    rmSync(tempDir, { recursive: true });
+  }
+});
+
+test('DiscoveryService: Resilience — skips corrupted .git/ and marks as git_corrupted', async () => {
+  const tempDir = join(tmpdir(), `test-discovery-corrupted-resilience-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    // Create one valid repo
+    createMockGitRepo(tempDir, 'valid-project');
+
+    // Create one corrupted repo (missing refs/ directory makes it invalid)
+    const corruptedPath = join(tempDir, 'corrupted-project');
+    const corruptedGitDir = join(corruptedPath, '.git');
+    mkdirSync(join(corruptedGitDir, 'objects'), { recursive: true });
+    // Deliberately NOT creating refs/ to make it corrupted
+
+    // Discovery should continue despite the corrupted repo
+    const service = new DiscoveryService();
+    const result = await service.discover(tempDir);
+
+    // Should find both repos
+    assert.strictEqual(result.projects.length, 2, 'Should discover both projects despite corruption');
+    assert.strictEqual(result.error_count, 0, 'Should not count as errors in discovery');
+
+    // Verify the valid one is healthy
+    const validProject = result.projects.find((p) => p.id === 'valid-project');
+    assert(validProject);
+    assert.strictEqual(validProject.status, 'healthy');
+    assert.strictEqual(validProject.git_valid, true);
+
+    // Verify the corrupted one is marked as git_corrupted
+    const corruptedProject = result.projects.find((p) => p.id === 'corrupted-project');
+    assert(corruptedProject);
+    assert.strictEqual(corruptedProject.status, 'git_corrupted', 'Should mark as git_corrupted');
+    assert.strictEqual(corruptedProject.git_valid, false);
+  } finally {
+    rmSync(tempDir, { recursive: true });
+  }
+});
