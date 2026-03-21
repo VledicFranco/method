@@ -53,7 +53,16 @@ export const ProjectConfigSchema = z.object({
 
   shared_with: z.array(z.string())
     .optional(),
-}).strict(); // Disallow additional properties
+
+  genesis_enabled: z.boolean()
+    .optional(),
+
+  resource_copy: z.boolean()
+    .optional(),
+
+  genesis_budget: z.number()
+    .optional(),
+}).passthrough(); // Allow additional properties (Phase 2 genesis fields)
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
@@ -154,6 +163,18 @@ export const ProjectConfigJsonSchema = {
         type: 'string',
       },
     },
+    genesis_enabled: {
+      type: 'boolean',
+      description: 'Enable Genesis agent for this project (Phase 2)',
+    },
+    resource_copy: {
+      type: 'boolean',
+      description: 'Allow copying resources to/from this project',
+    },
+    genesis_budget: {
+      type: 'number',
+      description: 'Daily token budget for Genesis agent (Phase 2)',
+    },
   },
-  additionalProperties: false,
+  additionalProperties: true,
 };
