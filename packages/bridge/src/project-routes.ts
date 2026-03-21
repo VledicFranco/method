@@ -117,6 +117,21 @@ export async function registerProjectRoutes(
         // In Phase 1, run discovery from current working directory
         const result = await discoveryService.discover(process.cwd());
 
+        // Emit event if discovery was stopped due to MAX_PROJECTS limit
+        if (result.stopped_at_max_projects) {
+          const event = createProjectEvent(
+            ProjectEventType.DISCOVERY_INCOMPLETE,
+            'discovery',
+            {
+              reason: 'max_projects_exceeded',
+              projects_found: result.projects.length,
+              scanned_count: result.scanned_count,
+            },
+            { phase: 'phase1' },
+          );
+          eventLog.push(event);
+        }
+
         return reply.status(200).send({
           projects: result.projects,
           discovery_incomplete: result.discovery_incomplete,

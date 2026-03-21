@@ -31,6 +31,7 @@ export interface DiscoveryCheckpoint {
 export interface DiscoveryResult {
   projects: ProjectMetadata[];
   discovery_incomplete: boolean;
+  stopped_at_max_projects?: boolean;
   error?: string;
   scanned_count: number;
   error_count: number;
@@ -64,6 +65,7 @@ export class DiscoveryService {
     const results: ProjectMetadata[] = [];
     const scannedDirs: Set<string> = new Set();
     let errorCount = 0;
+    let stoppedAtMaxProjects = false;
 
     const resolvedRoot = resolve(rootDir);
 
@@ -87,6 +89,7 @@ export class DiscoveryService {
 
         // Max projects check
         if (results.length >= this.maxProjects) {
+          stoppedAtMaxProjects = true;
           return;
         }
 
@@ -117,6 +120,7 @@ export class DiscoveryService {
 
           // Max projects check
           if (results.length >= this.maxProjects) {
+            stoppedAtMaxProjects = true;
             return;
           }
 
@@ -157,6 +161,7 @@ export class DiscoveryService {
     return {
       projects: results,
       discovery_incomplete: incomplete,
+      stopped_at_max_projects: stoppedAtMaxProjects,
       scanned_count: scannedDirs.size,
       error_count: errorCount,
       elapsed_ms: elapsed,
@@ -165,7 +170,8 @@ export class DiscoveryService {
 
   /**
    * Analyze a project directory (parent of .git/)
-   * Returns ProjectMetadata if valid, undefined on error
+   * Returns ProjectMetadata even for corrupted repos (never returns undefined)
+   * Marks corrupted repos with status: 'git_corrupted'
    */
   private analyzeProject(gitDir: string): ProjectMetadata | undefined {
     try {
@@ -174,7 +180,14 @@ export class DiscoveryService {
       const projectName = projectPath.split(/[\\/]/).pop() || 'unknown';
 
       // Check if .git is a valid git directory
-      const gitIsValid = this.isValidGitRepo(gitDir);
+      let gitIsValid = false;
+      let errorDetail: string | undefined;
+      try {
+        gitIsValid = this.isValidGitRepo(gitDir);
+      } catch (err) {
+        gitIsValid = false;
+        errorDetail = `Git validation error: ${(err as Error).message}`;
+      }
 
       // Check for .method directory
       const methodDir = join(projectPath, '.method');
@@ -197,6 +210,7 @@ export class DiscoveryService {
         status: gitIsValid ? 'healthy' : 'git_corrupted',
         git_valid: gitIsValid,
         method_dir_exists: methodExists,
+        error_detail: errorDetail,
         discovered_at: new Date().toISOString(),
       };
     } catch (err) {
@@ -206,6 +220,7 @@ export class DiscoveryService {
 
   /**
    * Check if .git directory is a valid git repository
+   * Throws if .git structure is severely corrupted
    */
   private isValidGitRepo(gitDir: string): boolean {
     try {
@@ -220,7 +235,8 @@ export class DiscoveryService {
 
       return existsSync(objectsDir) && existsSync(refsDir);
     } catch (err) {
-      return false;
+      // If we can't even stat the .git directory, it's corrupted
+      throw err;
     }
   }
 }
