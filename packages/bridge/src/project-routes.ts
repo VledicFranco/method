@@ -69,9 +69,9 @@ interface SessionContext {
 function getSessionContext(req: FastifyRequest): SessionContext {
   // In Phase 1, extract from headers or query params
   // Will be replaced with proper session middleware in Phase 2
+  // NOTE: x-admin header removed (F-SECUR-002). Admin checks require cryptographic session binding.
   const projectId = (req.headers['x-project-id'] as string) || undefined;
-  const isAdmin = (req.headers['x-admin'] as string) === 'true' || false;
-  return { projectId, isAdmin };
+  return { projectId };
 }
 
 // ── Isolation Enforcement ────
@@ -80,22 +80,17 @@ function validateProjectAccess(
   requestedProjectId: string,
   sessionContext: SessionContext,
 ): { allowed: boolean; reason?: string } {
-  // Admin can access any project
-  if (sessionContext.isAdmin) {
-    return { allowed: true };
-  }
-
-  // User can only access their own project
+  // Sessions must match project_id (F-SECUR-002: removed header-based admin escalation)
   if (sessionContext.projectId && sessionContext.projectId !== requestedProjectId) {
     return {
       allowed: false,
-      reason: `Access denied: project ${requestedProjectId} not accessible to project ${sessionContext.projectId}`,
+      reason: `Access denied: project ${requestedProjectId} not accessible to session project ${sessionContext.projectId}`,
     };
   }
 
-  // If no project context, only allow public read
+  // If no project context, deny write operations (Phase 1: discovery-only, no writes)
   if (!sessionContext.projectId) {
-    return { allowed: true };
+    return { allowed: true }; // Read-only discovery access
   }
 
   return { allowed: true };
@@ -264,7 +259,8 @@ export async function registerProjectRoutes(
     },
   );
 
-  // GET /api/events — Cursor-based event polling
+  // GET /api/events — Global event polling (Phase 1: testing only, unfiltered)
+  // NOTE: F-SECUR-001 — This endpoint returns all events. Not for multi-project production.
   app.get<{ Querystring: { since_cursor?: string } }>(
     '/api/events',
     async (
@@ -285,6 +281,54 @@ export async function registerProjectRoutes(
           events: newEvents,
           nextCursor,
           hasMore,
+        });
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Event polling failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  // GET /api/projects/:id/events — Project-scoped event polling (F-SECUR-004)
+  // Returns only events for the specified project, with isolation check
+  app.get<{ Params: { id: string }; Querystring: { since_cursor?: string } }>(
+    '/api/projects/:id/events',
+    async (
+      req: FastifyRequest<{ Params: { id: string }; Querystring: { since_cursor?: string } }>,
+      reply: FastifyReply,
+    ) => {
+      try {
+        const { id: projectId } = req.params;
+        const { since_cursor } = req.query || {};
+        const sessionContext = getSessionContext(req);
+
+        // Validate access
+        const access = validateProjectAccess(projectId, sessionContext);
+        if (!access.allowed) {
+          console.warn(`[ISOLATION] Cross-project event access denied: ${access.reason}`);
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: access.reason,
+          });
+        }
+
+        // Filter events by project_id
+        const projectEvents = eventLog.filter((e) => e.project_id === projectId);
+
+        // Get events since cursor
+        const newEvents = getEventsSinceCursor(projectEvents, since_cursor);
+
+        // Generate next cursor for next poll
+        const nextCursor = generateCursor(projectEvents.length);
+        const hasMore = newEvents.length > 0;
+
+        return reply.status(200).send({
+          events: newEvents,
+          nextCursor,
+          hasMore,
+          project_id: projectId,
         });
       } catch (err) {
         return reply.status(500).send({
