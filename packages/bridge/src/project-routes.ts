@@ -314,8 +314,8 @@ export async function registerProjectRoutes(
           });
         }
 
-        // Filter events by project_id
-        const projectEvents = eventLog.filter((e) => e.project_id === projectId);
+        // Filter events by projectId
+        const projectEvents = eventLog.filter((e) => e.projectId === projectId);
 
         // Get events since cursor
         const newEvents = getEventsSinceCursor(projectEvents, since_cursor);

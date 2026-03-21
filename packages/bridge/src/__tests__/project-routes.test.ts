@@ -26,17 +26,19 @@ test('getSessionContext: Extracts projectId from headers', () => {
   const context = getSessionContext(req);
 
   assert.strictEqual(context.projectId, 'project-123');
-  assert.strictEqual(context.isAdmin, false);
+  assert.strictEqual(context.isAdmin, undefined);
 });
 
-test('getSessionContext: Extracts admin flag', () => {
+test('getSessionContext: Does NOT extract admin flag (F-SECUR-002)', () => {
+  // Admin escalation removed - x-admin header no longer supported
   const req = {
-    headers: { 'x-admin': 'true' },
+    headers: { 'x-admin': 'true', 'x-project-id': 'test' },
   } as unknown as FastifyRequest;
 
   const context = getSessionContext(req);
 
-  assert.strictEqual(context.isAdmin, true);
+  assert.strictEqual(context.projectId, 'test');
+  assert.strictEqual(context.isAdmin, undefined, 'Admin flag should not exist');
 });
 
 test('getSessionContext: Defaults to empty context', () => {
@@ -47,21 +49,27 @@ test('getSessionContext: Defaults to empty context', () => {
   const context = getSessionContext(req);
 
   assert.strictEqual(context.projectId, undefined);
-  assert.strictEqual(context.isAdmin, false);
+  assert.strictEqual(context.isAdmin, undefined);
 });
 
 // ── Isolation Validation Tests ────
+// F-SECUR-002: Admin flag removed. All access control now based on session.project_id
 
-test('validateProjectAccess: Admin can access any project', () => {
-  const result = validateProjectAccess('project-123', { isAdmin: true });
+test('validateProjectAccess: No admin escalation (F-SECUR-002)', () => {
+  // Even if someone tries to pass isAdmin, it won't grant access
+  // because validateProjectAccess doesn't check it anymore
+  const result = validateProjectAccess('project-123', {
+    projectId: undefined,
+    isAdmin: true as any, // Ignored
+  });
 
+  // Without matching project_id, access is allowed only for read-only discovery
   assert.strictEqual(result.allowed, true);
 });
 
 test('validateProjectAccess: Denies cross-project access', () => {
   const result = validateProjectAccess('project-A', {
     projectId: 'project-B',
-    isAdmin: false,
   });
 
   assert.strictEqual(result.allowed, false);
@@ -71,16 +79,15 @@ test('validateProjectAccess: Denies cross-project access', () => {
 test('validateProjectAccess: Allows same-project access', () => {
   const result = validateProjectAccess('project-A', {
     projectId: 'project-A',
-    isAdmin: false,
   });
 
   assert.strictEqual(result.allowed, true);
 });
 
-test('validateProjectAccess: Allows access without project context', () => {
+test('validateProjectAccess: Allows read-only access without project context', () => {
+  // Phase 1: unauthenticated users can read global discovery (F-SECUR-002 mitigation)
   const result = validateProjectAccess('project-A', {
     projectId: undefined,
-    isAdmin: false,
   });
 
   assert.strictEqual(result.allowed, true);
@@ -266,13 +273,14 @@ test('Isolation: Cross-project request returns 403', () => {
   assert(result.reason);
 });
 
-test('Isolation: Admin bypass works', () => {
+test('Isolation: No admin bypass (F-SECUR-002)', () => {
+  // Admin escalation removed - cross-project access always denied
   const result = validateProjectAccess('any-project', {
     projectId: 'some-other-project',
-    isAdmin: true,
+    isAdmin: true as any, // Ignored
   });
 
-  assert.strictEqual(result.allowed, true);
+  assert.strictEqual(result.allowed, false);
 });
 
 test('Isolation: Same project access allowed', () => {
@@ -351,5 +359,75 @@ test('Error Handling: Missing required fields', () => {
 
   assert.strictEqual(typeof completeEvent.projectId, 'string');
   assert(Object.values(ProjectEventType).includes(completeEvent.type));
+});
+
+// ── Cross-Project Isolation Tests (F-SECUR-004) ────
+// Tests for GET /api/projects/:id/events endpoint isolation
+
+test('Project-Scoped Events: Session in project A cannot access project B events', () => {
+  // Simulate: Session spawned for project-A
+  // Attempts to access: GET /api/projects/project-B/events
+  const sessionA = { projectId: 'project-A' };
+  const access = validateProjectAccess('project-B', sessionA);
+
+  assert.strictEqual(access.allowed, false, 'Project A session cannot access project B');
+});
+
+test('Project-Scoped Events: Session in project A can access project A events', () => {
+  const sessionA = { projectId: 'project-A' };
+  const access = validateProjectAccess('project-A', sessionA);
+
+  assert.strictEqual(access.allowed, true, 'Project A session can access project A');
+});
+
+test('Project-Scoped Events: Unauthenticated can read global events (Phase 1)', () => {
+  // Phase 1 allows unauthenticated discovery-only access
+  const noSession = { projectId: undefined };
+  const access = validateProjectAccess('any-project', noSession);
+
+  assert.strictEqual(access.allowed, true, 'Read-only discovery access without session');
+});
+
+test('Isolation: Event filtering by projectId', () => {
+  // Clear and set up test events
+  const priorLength = eventLog.length;
+  eventLog.splice(0, eventLog.length);
+
+  // Add events for two different projects
+  const eventA1 = createProjectEvent(ProjectEventType.CREATED, 'project-A', { num: 1 });
+  const eventB1 = createProjectEvent(ProjectEventType.CREATED, 'project-B', { num: 2 });
+  const eventA2 = createProjectEvent(ProjectEventType.DISCOVERED, 'project-A', { num: 3 });
+
+  eventLog.push(eventA1, eventB1, eventA2);
+
+  // Filter for project-A
+  const projectAEvents = eventLog.filter((e) => e.projectId === 'project-A');
+  assert.strictEqual(projectAEvents.length, 2, 'Should get 2 events for project-A');
+  assert.strictEqual(projectAEvents[0].data.num, 1);
+  assert.strictEqual(projectAEvents[1].data.num, 3);
+
+  // Filter for project-B
+  const projectBEvents = eventLog.filter((e) => e.projectId === 'project-B');
+  assert.strictEqual(projectBEvents.length, 1, 'Should get 1 event for project-B');
+  assert.strictEqual(projectBEvents[0].data.num, 2);
+
+  // Restore
+  eventLog.splice(0, eventLog.length);
+  for (let i = 0; i < priorLength; i++) {
+    eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, `restore-${i}`));
+  }
+});
+
+test('Isolation: Multiple sessions with different projects', () => {
+  // Simulate two concurrent agent sessions
+  const sessionA = { projectId: 'project-A' };
+  const sessionB = { projectId: 'project-B' };
+
+  // Each can only access their own project
+  assert.strictEqual(validateProjectAccess('project-A', sessionA).allowed, true);
+  assert.strictEqual(validateProjectAccess('project-B', sessionA).allowed, false);
+
+  assert.strictEqual(validateProjectAccess('project-B', sessionB).allowed, true);
+  assert.strictEqual(validateProjectAccess('project-A', sessionB).allowed, false);
 });
 
