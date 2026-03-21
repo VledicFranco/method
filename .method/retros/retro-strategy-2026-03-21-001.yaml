@@ -1,0 +1,42 @@
+retro:
+  strategy_id: S-CORE-TEST-WATCH
+  generated_by: strategy-executor
+  generated_at: '2026-03-21T00:17:38.818Z'
+  timing:
+    started_at: '2026-03-20T22:46:54.341Z'
+    completed_at: '2026-03-21T00:17:38.818Z'
+    duration_minutes: 90.74
+    critical_path:
+      - run_tests
+  execution_summary:
+    nodes_total: 2
+    nodes_completed: 0
+    nodes_failed: 2
+    speedup_ratio: 1
+  cost:
+    total_usd: 0
+    per_node:
+      - node: run_tests
+        cost_usd: 0
+      - node: parse_results
+        cost_usd: 0
+  gates:
+    total: 1
+    passed: 0
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events:
+    - rule_condition: step_duration_ms > 300000
+      action: kill_and_requeue
+      triggered_at: '2026-03-21T00:17:38.817Z'
+  artifacts_produced: []
+rtifacts_produced: []
+des('passing') || output.result.includes('failing'))
+        attempts: 2
+        final: failed
+  oversight_events:
+    - rule_condition: step_duration_ms > 300000
+      action: kill_and_requeue
+      triggered_at: '2026-03-21T00:17:38.818Z'
+  artifacts_produced: []

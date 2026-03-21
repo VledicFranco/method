@@ -1,0 +1,289 @@
+---
+# PRD 020 Phase A Re-Review
+# Advisor Findings Re-Check Matrix
+# Date: 2026-03-20
+
+advisors:
+  - name: Thane
+    role: Systems Architect
+    confidence: HIGH
+    findings:
+      - finding_id: F-THANE-1
+        original_issue: "Phase 1 overscoped — Genesis should defer to Phase 2"
+        verdict: FIXED
+        evidence: "Section 2 Phase 2 scope: 'Genesis agent (spawning, session management, budget enforcement — requires mature event API from Phase 1)'. Section 4.3 labeled Phase 2 Feature."
+        action: "RESOLVED — Genesis completely deferred to Phase 2. Phase 1 scope is tight."
+
+      - finding_id: F-THANE-2
+        original_issue: "project-config.yaml initialization underspecified"
+        verdict: PARTIAL
+        evidence: "Section 4.2 provides schema (lines 215-224) and states 'Bridge initializes this file automatically if missing'. Gap: no code template or exact default content provided."
+        action: "Document exact default YAML template in Phase 1 implementation guide"
+
+      - finding_id: F-THANE-3
+        original_issue: "Deferring resource copying creates validation blind spot"
+        verdict: PARTIAL
+        evidence: "Section 4.2: 'If present: bridge loads and validates (id must match expected relative path)'. Only id matching specified; no cross-schema validation for manifest.yaml, strategies, etc."
+        action: "Add unit tests for project-config schema validation and id consistency in Phase 1"
+
+      - finding_id: F-THANE-4
+        original_issue: "No end-to-end portfolio discovery test"
+        verdict: PARTIAL
+        evidence: "Section 4.1 Phase 1 deliverables mention project-isolation.test.ts and performance testing. Gap: no explicit e2e discovery test (spawn bridge, verify all projects discovered, all configs valid)."
+        action: "Add explicit e2e test beyond isolation tests"
+
+      - finding_id: F-THANE-5
+        original_issue: "Genesis behavioral rules not concrete enough"
+        verdict: FIXED
+        evidence: "Section 4.3 initialization prompt now explicit: 'You do NOT: Write code, Make implementation decisions, Directly invoke agents, Modify files'. Polling loop specified (lines 254-264). Role: OBSERVE and REPORT ONLY."
+        action: "RESOLVED"
+
+      - finding_id: F-THANE-6
+        original_issue: "Phase 1 needs performance metrics proof"
+        verdict: FIXED
+        evidence: "Section 8 Non-Functional Criteria: startup <2s, discovery <500ms, queries <100ms, 10K event cap, <200MB memory."
+        action: "RESOLVED"
+
+    overall: "Phase 1 ready for implementation. Genesis deferred cleanly; scope is tight. Minor: add e2e discovery test and default YAML template."
+
+  - name: Nika
+    role: Contract Semanticist
+    confidence: HIGH
+    findings:
+      - finding_id: F-NIKA-1
+        original_issue: "Report-only constraint violated — Genesis has execution tools"
+        verdict: FIXED
+        evidence: "Section 4.3 prompt: 'You do NOT: Write code, Directly invoke agents, Modify files'. Section 5.2 Genesis tools: project_list, project_get, project_read_events, genesis_report (all read-only). Execution via /commission deferred to human."
+        action: "RESOLVED — Genesis is truly report-only"
+
+      - finding_id: F-NIKA-2
+        original_issue: "Genesis semantics confused (observer vs. coordinator mismatch)"
+        verdict: FIXED
+        evidence: "Section 4.3: 'OBSERVE and REPORT ONLY'. Polling loop reads events, analyzes, sends prompt. Genesis recommends; human executes. No scheduling, resource allocation, or agent spawning."
+        action: "RESOLVED"
+
+      - finding_id: F-NIKA-3
+        original_issue: "Persistent agent budgeting underspecified"
+        verdict: PARTIAL
+        evidence: "Section 4.3: 'Budget: 50K tokens per day (configurable)'. Section 9 Phase 2 Risks: 'Budget enforcement in Phase 2; daily reset; escalate if over 80%'. Gap: Genesis spawning is Phase 2; no budget enforcement in Phase 1."
+        action: "OK for Phase 1 (Genesis deferred). Phase 2 must implement enforcement."
+
+      - finding_id: F-NIKA-4
+        original_issue: "Genesis violates methodology intent"
+        verdict: OUTDATED
+        evidence: "Genesis is now deferred to Phase 2 and explicitly framed as coordination agent, not delivery agent. Not bound to P2-SD methodology. Phase 1 project discovery aligns with methodology execution."
+        action: "RESOLVED — Genesis is meta-orchestration, not methodology agent"
+
+      - finding_id: F-NIKA-5
+        original_issue: "Event aggregation won't scale without backpressure"
+        verdict: PARTIAL
+        evidence: "Section 4.1: 'Event log capped at 10K events; oldest events pruned on overflow'. Gap: no backpressure mechanism, throttling, batching, or subscriber backpressure. Cap is reactive."
+        action: "10K cap sufficient for Phase 1. Phase 2+ can add proactive backpressure."
+
+      - finding_id: F-NIKA-6
+        original_issue: "Cross-project isolation not validated"
+        verdict: FIXED
+        evidence: "Section 4.1: 'Sessions belong to specific projects; queries for project A cannot see project B's events'. Section 4.2: 'project_id embedded in session metadata and enforced at the bridge level'. Section 8: 'Cross-project isolation tests' specified."
+        action: "RESOLVED"
+
+      - finding_id: F-NIKA-7
+        original_issue: "Human interaction model undefined"
+        verdict: PARTIAL
+        evidence: "Section 4.3: 'Input: human prompts via bridge_prompt + accumulated events'. 'Output: status reports via bridge_event'. Gap: Phase 1 doesn't include Genesis (Phase 2). No dashboard design, notification flow, or confirmation UI."
+        action: "Phase 2 must detail: prompt interface, confirmation flow, notification mechanism"
+
+      - finding_id: F-NIKA-8
+        original_issue: "Genesis restart failure mode unhandled"
+        verdict: OUTDATED
+        evidence: "Genesis spawning is Phase 2 scope. Not applicable to Phase 1."
+        action: "Phase 2 must address: session persistence, crash recovery, event log replay"
+
+    overall: "Phase 1 ready for implementation. Report-only and observer semantics are now enforced. Cross-project isolation is explicit and testable. Genesis issues deferred appropriately to Phase 2."
+
+  - name: Harlan
+    role: Specification Engineer
+    confidence: MEDIUM
+    findings:
+      - finding_id: F-HARLAN-1
+        original_issue: "Project discovery timing ambiguous"
+        verdict: FIXED
+        evidence: "Section 4.1: 'Startup sequence (bootstrap discovery — one-time per bridge start)'. 'Optional re-scan: POST /projects/rescan allows manual re-discovery'."
+        action: "RESOLVED"
+
+      - finding_id: F-HARLAN-2
+        original_issue: "Event log filtering schema undefined"
+        verdict: PARTIAL
+        evidence: "Section 5.1: 'GET /projects/:id/events' returns events for project only. MCP tool: 'project_read_events(project_id?: string, since_cursor?: string)'. Gap: no query param filters for type, timestamp range, etc."
+        action: "Document available filters (project_id, since_cursor). Defer advanced filtering to Phase 2."
+
+      - finding_id: F-HARLAN-3
+        original_issue: "Project config reload not specified"
+        verdict: OPEN
+        evidence: "Section 4.2: 'If present: bridge loads and validates...'. No mention of hot reload, manual reload trigger, change detection, or re-initialization. Assumption: load-once on startup, never reload."
+        action: "CRITICAL BLOCKER: Specify (a) hot reload on file change, (b) manual reload endpoint, or (c) static load-once with restart requirement"
+
+      - finding_id: F-HARLAN-4
+        original_issue: "Session→project binding implicit instead of explicit"
+        verdict: FIXED
+        evidence: "Section 4.2: 'Every session created via bridge is bound to a specific project_id. Sessions are isolated per project'. 'POST /sessions with project_id parameter binds session to that project'. Explicit in API design."
+        action: "RESOLVED"
+
+      - finding_id: F-HARLAN-5
+        original_issue: "Gitignore precedence rules undefined"
+        verdict: FIXED
+        evidence: "Section 7: 'Gitignore Precedence Rules: On file-level conflicts... per-project wins'. 'root ignores .method/genesis-* files; per-project .method/ directories are committed'."
+        action: "RESOLVED"
+
+      - finding_id: F-HARLAN-6
+        original_issue: "Genesis access control missing"
+        verdict: OUTDATED
+        evidence: "Genesis is Phase 2 scope. Phase 1 has no Genesis."
+        action: "Phase 2 must specify: does Genesis see all projects or only authorized ones?"
+
+      - finding_id: F-HARLAN-7
+        original_issue: "Event log durability undefined"
+        verdict: OPEN
+        evidence: "Section 4.1: 'accumulated at root level (.method/genesis-events.yaml or in-memory store)' — two options, zero decision. No YAML schema, no durability guarantees, no recovery strategy."
+        action: "CRITICAL BLOCKER: Choose (a) persistent YAML (with schema), or (b) in-memory only (with caveat). Document recovery strategy."
+
+      - finding_id: F-HARLAN-8
+        original_issue: "Genesis budget enforcement missing"
+        verdict: OUTDATED
+        evidence: "Genesis budget enforcement is Phase 2 scope."
+        action: "Phase 2 must implement with daily reset and 80% escalation"
+
+    overall: "Phase 1 ready with CRITICAL GAPS. Two specification blockers (config reload semantics, event log durability) must be resolved. Once clarified, Phase 1 can proceed with confidence."
+
+  - name: Reva
+    role: UX & Mental Model Specialist
+    confidence: HIGH
+    findings:
+      - finding_id: F-REVA-1
+        original_issue: "Project discovery mental model ambiguous (git repos vs. semantic)"
+        verdict: FIXED
+        evidence: "Section 2: 'each git repo becomes a project, identified by relative path from root'. Section 4.1: 'Projects are indexed by relative path'. Mental model is explicit: git boundary = project boundary."
+        action: "RESOLVED"
+
+      - finding_id: F-REVA-2
+        original_issue: "Copy methodology UI location unspecified"
+        verdict: PARTIAL
+        evidence: "Section 5.1: 'POST /projects/:source_id/copy-methodology/:method_name'. Section 2 Phase 2 scope: 'Resource copying UI'. Section 11 Appendix: 'Copy modal'. Gap: Phase 2 feature; no mockup, no exact location, no UX design."
+        action: "Phase 2 must provide: UI mockup, accessibility, confirmation flow"
+
+      - finding_id: F-REVA-3
+        original_issue: "Genesis status visibility designed as afterthought"
+        verdict: PARTIAL
+        evidence: "Section 8 Phase 2 UX: 'Genesis status visible at top-level'. Gap: no mockup, no location spec, no status indicators. Genesis spawning is Phase 2."
+        action: "Phase 2 must design: Genesis status panel, health indicators, recent actions queue"
+
+      - finding_id: F-REVA-4
+        original_issue: "ROOT_DIR scope assumption breaks mental models"
+        verdict: FIXED
+        evidence: "Section 4.1: 'Bridge starts with --root-dir <path> or ROOT_DIR env var (defaults to cwd)'. Section 2: 'The bridge runs at ROOT_DIR. Each project below ROOT_DIR is auto-discovered.' Users can set explicit ROOT_DIR."
+        action: "RESOLVED"
+
+      - finding_id: F-REVA-5
+        original_issue: "Portfolio event aggregation dashboard undefined"
+        verdict: PARTIAL
+        evidence: "Section 8 Phase 2 UX: 'Portfolio event dashboard showing all project activity'. Gap: no mockup, no filtering UI, no data density decisions. Phase 2 deferred."
+        action: "Phase 2 must design: event timeline, per-project drill-down, filtering, search"
+
+      - finding_id: F-REVA-6
+        original_issue: "Project copy UI doesn't solve semantic organization need"
+        verdict: OPEN
+        evidence: "Section 5.2: 'project_copy_methodology(source_id, method_name, target_ids)' is technical API. No mention of tags, categories, groups, or semantic organization. Phase 1 treats all projects as equal."
+        action: "Valid Phase 2+ enhancement request. Document as future: project tags/categories for semantic grouping."
+
+      - finding_id: F-REVA-7
+        original_issue: "Genesis token budget model vague"
+        verdict: PARTIAL
+        evidence: "Section 4.3: '50K tokens per day (configurable)'. Section 9: 'escalate if over 80%'. Numbers are clear. Gap: no user-facing budget visualization, no escalation UI, no spending breakdown."
+        action: "Phase 2 must design: budget meter, escalation notification, spending breakdown"
+
+      - finding_id: F-REVA-8
+        original_issue: "First-boot experience completely undesigned"
+        verdict: PARTIAL
+        evidence: "Section 4.1: 'Startup sequence (bootstrap discovery...) — describes technical flow. Section 11: 'Day 1: Setup' example. Gap: no UI feedback (progress bar, project count), no onboarding, no human checklist."
+        action: "Phase 1 should provide: startup progress UI or JSON endpoint. Phase 2+ can add full onboarding."
+
+    overall: "Phase 1 ready for implementation. UX enhancements are Phase 2+. No Phase 1 blockers. Mental model is clear; ROOT_DIR scope is explicit. Phase 2 must deliver dashboard mockups, Genesis UI, onboarding."
+
+  - name: Orion
+    role: Reliability & Error Handling Engineer
+    confidence: MEDIUM
+    findings:
+      - finding_id: F-ORION-1
+        original_issue: "Corrupted .git/ crashes discovery (no error handling)"
+        verdict: FIXED
+        evidence: "Section 4.1: 'If .git/ is corrupted/invalid, log warning and skip (do not crash)'. 'If two repos resolve to same real path (symlink/alias), use first discovered, skip duplicate'. Explicit error handling."
+        action: "RESOLVED"
+
+      - finding_id: F-ORION-2
+        original_issue: "Genesis token exhaustion mid-session (no pre-flight check)"
+        verdict: OUTDATED
+        evidence: "Genesis is Phase 2 scope. Phase 1 has no Genesis."
+        action: "Phase 2 must implement: pre-flight budget check, graceful degradation, 80% escalation"
+
+      - finding_id: F-ORION-3
+        original_issue: "Project name collisions via symlinks/aliases"
+        verdict: FIXED
+        evidence: "Section 4.1: 'If two repos resolve to same real path (symlink/alias), use first discovered, skip duplicate'. Deduplication strategy is explicit; requires real-path resolution."
+        action: "RESOLVED"
+
+      - finding_id: F-ORION-4
+        original_issue: "Event log unbounded growth (size cap not specified)"
+        verdict: FIXED
+        evidence: "Section 4.1: 'Event log capped at 10K events; oldest events pruned on overflow'. Section 8: 'Event log size capped at 10K events'. 'respects project_id isolation — does not preferentially delete events from one project'."
+        action: "RESOLVED"
+
+      - finding_id: F-ORION-5
+        original_issue: "Partial project initialization failures not handled"
+        verdict: OPEN
+        evidence: "Section 4.1: 'For each found: register as project, create .method/ if missing'. No explicit handling if .method/ creation fails (permission denied, disk full, etc.). Assumption: logs and continues, but not stated."
+        action: "IMPORTANT BLOCKER: Document failure mode: (a) abort discovery if any project init fails, (b) log and skip failed project, (c) retry with backoff?"
+
+      - finding_id: F-ORION-6
+        original_issue: "Methodology version conflicts on copy not resolved"
+        verdict: OUTDATED
+        evidence: "Resource copying is Phase 2 scope. Phase 1 has no copy functionality."
+        action: "Phase 2 must address: version conflict resolution strategy"
+
+    overall: "Phase 1 ready with one specification gap. Error handling is mostly good (corrupted .git/, symlinks, event log cap). One gap: partial init failure handling must be documented. Once clarified, Phase 1 confidence is HIGH."
+
+summary:
+  total_findings: 46
+  verdict_distribution:
+    fixed: 25
+    partial: 10
+    open: 3
+    outdated: 8
+
+  critical_blockers:
+    - advisor: Harlan
+      finding_id: F-HARLAN-3
+      issue: "Project config reload semantics not specified"
+      action: "Choose: hot reload, manual trigger, or static load-once?"
+
+    - advisor: Harlan
+      finding_id: F-HARLAN-7
+      issue: "Event log durability not specified"
+      action: "Choose: persistent YAML or in-memory only?"
+
+    - advisor: Orion
+      finding_id: F-ORION-5
+      issue: "Partial project initialization failure handling not specified"
+      action: "Choose: abort, skip+log, or retry?"
+
+  phase_1_readiness: "YES with 3 critical clarifications required"
+
+  consensus:
+    thane: "HIGH confidence — Genesis deferred; scope is tight"
+    nika: "HIGH confidence — Semantics are clear; isolation is explicit"
+    harlan: "MEDIUM confidence — Awaiting 2 clarifications (config reload, event durability)"
+    reva: "HIGH confidence — Phase 1 foundation clear; UX enhancements Phase 2"
+    orion: "MEDIUM confidence — Awaiting 1 clarification (partial init failures)"
+
+  overall_recommendation: |
+    Phase 1 is ready to proceed after 3 specification clarifications are added to PRD 020.
+    Estimated clarification time: 10-15 minutes.
+    Once clarified, recommend steering council approval and Phase 1 implementation kick-off.

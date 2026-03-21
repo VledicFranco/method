@@ -1,6 +1,6 @@
 export {
   type Violation,
-  type ValidationResult,
+  type IsolationValidationResult,
   type IsolationValidator,
   DefaultIsolationValidator,
 } from './isolation-validator.js';

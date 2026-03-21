@@ -13,7 +13,7 @@ export interface Violation {
   message: string;
 }
 
-export interface ValidationResult {
+export interface IsolationValidationResult {
   valid: boolean;
   violations: Violation[];
 }
@@ -22,14 +22,14 @@ export interface IsolationValidator {
   /**
    * Validate isolation rules for a project
    */
-  validate(registry: ProjectRegistry, projectId: string): ValidationResult;
+  validate(registry: ProjectRegistry, projectId: string): IsolationValidationResult;
 }
 
 /**
  * Default isolation validator implementation
  */
 export class DefaultIsolationValidator implements IsolationValidator {
-  validate(registry: ProjectRegistry, projectId: string): ValidationResult {
+  validate(registry: ProjectRegistry, projectId: string): IsolationValidationResult {
     const violations: Violation[] = [];
 
     // Rule 1: ProjectRegistry immutability

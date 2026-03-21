@@ -1,0 +1,169 @@
+================================================================================
+PRD 020 PHASE A RE-REVIEW SUMMARY
+================================================================================
+
+Date: 2026-03-20
+Status: Phase 1 ready to proceed with 3 specification clarifications
+
+ADVISORS (All Completed):
+✅ Thane (Systems Architect) - HIGH confidence
+✅ Nika (Contract Semanticist) - HIGH confidence
+⚠️ Harlan (Specification Engineer) - MEDIUM confidence (waiting on 2 clarifications)
+✅ Reva (UX & Mental Model Specialist) - HIGH confidence
+⚠️ Orion (Reliability Engineer) - MEDIUM confidence (waiting on 1 clarification)
+
+================================================================================
+VERDICT DISTRIBUTION
+================================================================================
+
+Total Findings Reviewed: 46
+
+FIXED:      25 (54%) — Fully addressed in updated PRD
+PARTIAL:    10 (22%) — Partially addressed; gaps identified
+OPEN:        3 (7%)  — Critical blockers (see below)
+OUTDATED:    8 (17%) — Deferred to Phase 2 (acceptable)
+
+================================================================================
+CRITICAL BLOCKERS (3 items - MUST RESOLVE BEFORE IMPLEMENTATION)
+================================================================================
+
+1. F-HARLAN-3: Project Config Reload Not Specified
+   Issue:      If user edits .method/project-config.yaml, when does bridge reload it?
+   Blocker:    PRD doesn't specify reload semantics (hot reload? manual? static?)
+   Resolution: Add "Configuration Reload Behavior" section to PRD 4.2
+   Recommended: Static load-once (restart required); Option B for Phase 1
+   Time:       5 minutes to add
+
+2. F-HARLAN-7: Event Log Durability Not Specified
+   Issue:      Are events persisted to disk or in-memory only? Format? Recovery?
+   Blocker:    PRD says "genesis-events.yaml or in-memory store" but doesn't choose
+   Resolution: Add "Event Log Durability" section to PRD 4.1
+   Recommended: In-memory only for Phase 1; persistent YAML for Phase 2 when Genesis runs
+   Time:       5 minutes to add
+
+3. F-ORION-5: Partial Project Init Failures Not Specified
+   Issue:      If .method/ creation fails for one project, does bridge abort or continue?
+   Blocker:    PRD doesn't document failure mode
+   Resolution: Add "Initialization Failure Handling" section to PRD 4.1
+   Recommended: Log and skip (log warning, mark project degraded, continue with others); Option B
+   Time:       5 minutes to add
+
+TOTAL TIME TO RESOLVE: 10-15 minutes
+
+================================================================================
+IMPROVEMENTS IN UPDATED PRD (What's Better)
+================================================================================
+
+✅ Genesis cleanly deferred to Phase 2
+   - No scope bloat in Phase 1
+   - Phase 1 focuses on discovery, config, event aggregation
+   - Phase 2 adds Genesis spawning, budget enforcement, UI
+
+✅ Cross-project isolation explicit
+   - project_id tagging in event schema (lines 132-139)
+   - Session→project binding explicit in API (Section 4.2)
+   - Isolation tests specified in Phase 1 deliverables
+
+✅ Performance targets concrete
+   - Startup <2s, discovery <500ms, queries <100ms
+   - 10K event cap with FIFO pruning
+   - <200MB memory footprint
+   - All measurable, testable criteria
+
+✅ Behavioral contracts precise
+   - Genesis: "OBSERVE and REPORT ONLY" (no execution tools)
+   - Execution control stays with human (/commission, /review-pipeline, /steering-council)
+   - Explicit in initialization prompt (Section 4.3)
+
+✅ Error handling documented
+   - Corrupted .git/ handling (log warning, skip)
+   - Symlink/alias deduplication (real-path resolution)
+   - Event log cap and pruning strategy
+
+✅ Mental models clarified
+   - Git boundary = project boundary (explicit in Section 2, 4.1)
+   - ROOT_DIR is explicit and configurable (--root-dir flag, env var)
+   - Discovery is one-time at startup + optional manual rescan
+
+================================================================================
+MINOR GAPS (Non-Blocking Recommendations)
+================================================================================
+
+For Phase 1 implementation, consider adding:
+
+• Default .method/project-config.yaml template (Thane)
+  → Document exact YAML structure with all fields and defaults
+  → 10 min task; improves developer experience
+
+• End-to-end portfolio discovery test (Thane)
+  → Test: spawn bridge, verify all projects discovered, all configs valid
+  → 30 min task; complements existing isolation tests
+
+• Schema validation tests (Thane)
+  → Verify project-config.yaml structure and id matching
+  → 20 min task; improves confidence
+
+• Document event filtering (Harlan)
+  → Clarify available filters: project_id, since_cursor
+  → Defer advanced filtering (type, date range) to Phase 2
+  → 10 min task; improves API clarity
+
+================================================================================
+DEFERRED TO PHASE 2 (NOT BLOCKERS)
+================================================================================
+
+These were flagged but are appropriately deferred to Phase 2:
+
+• Genesis agent (spawning, session management) — Phase 2 responsibility
+• Genesis budget enforcement & 80% escalation — Phase 2 responsibility
+• Genesis restart/crash recovery — Phase 2 responsibility
+• Resource copying UI — Phase 2 responsibility (API exists; UI deferred)
+• Portfolio event aggregation dashboard — Phase 2 responsibility
+• Project semantic organization (tags/categories) — Valid Phase 2+ request
+• Genesis status visibility — Phase 2 responsibility
+• First-boot UX/onboarding — Phase 2 responsibility
+
+These are not blockers because they're properly scoped to Phase 2 and Phase 1
+doesn't claim to deliver them.
+
+================================================================================
+FINAL RECOMMENDATION
+================================================================================
+
+PHASE 1 IS READY TO PROCEED
+
+Required action:
+1. Author adds 3 clarification sections to PRD 020 (10-15 min)
+   - Config reload behavior (Section 4.2)
+   - Event log durability (Section 4.1)
+   - Initialization failure handling (Section 4.1)
+
+2. Steering council reviews clarifications (30 min)
+   - Confirm scope (Genesis in Phase 2)
+   - Approve Phase 1 implementation plan
+
+3. Begin Phase 1 implementation
+   - Estimated timeline: 2-3 weeks
+   - Deliverables: ProjectDiscovery, ProjectRegistry, event aggregation, API, tests
+
+Confidence levels after clarifications:
+• Thane: HIGH ✅
+• Nika: HIGH ✅
+• Harlan: HIGH ✅ (after 2 clarifications)
+• Reva: HIGH ✅
+• Orion: HIGH ✅ (after 1 clarification)
+
+Overall consensus: Phase 1 is architecturally sound, well-scoped, and ready for
+implementation once the 3 specification gaps are filled. The revised PRD 020 is
+substantially stronger than the original.
+
+================================================================================
+KEY DOCUMENTS
+================================================================================
+
+Main Report:   docs/prds/RECHECK_PHASE_A_RESULTS.md
+Findings Matrix: docs/prds/ADVISOR_FINDINGS_MATRIX.yaml
+Blockers Detail: docs/prds/PHASE_1_BLOCKERS_TO_RESOLVE.md
+This Summary:   docs/prds/PHASE_A_RECHECK_SUMMARY.txt
+
+================================================================================
