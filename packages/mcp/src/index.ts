@@ -20,6 +20,7 @@ import {
   loadMethodInSession,
   transitionMethodology,
 } from "@method/core";
+import { createValidationMiddleware } from "./validate-project-access.js";
 
 // Path resolution
 const ROOT = process.env.METHOD_ROOT ?? process.cwd();
@@ -61,6 +62,9 @@ async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
 // Session manager — isolates state by session_id
 const sessions = createSessionManager();
 const methodologySessions = createMethodologySessionManager();
+
+// Project isolation validation middleware (F-SECUR-003)
+const validateProjectAccess = createValidationMiddleware();
 
 // Input schemas
 const loadInput = z.object({
@@ -713,6 +717,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
+    // F-SECUR-003: Validate project isolation for all tool calls
+    const validationResult = validateProjectAccess(name, args as Record<string, unknown>);
+    if (!validationResult.allowed) {
+      console.warn(`[ISOLATION] Tool call denied: ${validationResult.reason}`);
+      return err(validationResult.reason);
+    }
+
     switch (name) {
       case "methodology_list": {
         const entries = listMethodologies(REGISTRY);
