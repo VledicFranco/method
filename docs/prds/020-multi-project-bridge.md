@@ -41,7 +41,7 @@ A single bridge instance running from a root directory (e.g., `~/Repositories/`)
 4. **Enables** easy sharing of methodologies, strategies, and project cards between projects
 5. **Anchors** a persistent Genesis agent that observes events and coordinates work (Phase 2 feature — see Phase 2 scope)
 
-**Note:** The bridge runs at ROOT_DIR. Each project below ROOT_DIR is auto-discovered. There is one bridge instance per ROOT_DIR, not one per project.
+**Key Mental Model:** Projects are identified by relative path from root. Semantic namespaces (grouping repos into logical portfolios) are a Phase 2 feature. The bridge runs at ROOT_DIR. Each project below ROOT_DIR is auto-discovered. There is one bridge instance per ROOT_DIR, not one per project.
 
 ### Scope (Phase 1)
 
@@ -143,14 +143,14 @@ Repositories/ (root project)
 
   ```typescript
   interface ProjectEvent {
-    type: string;                      // "completed", "error", "escalation", etc.
+    type: ProjectEventType;            // "completed", "error", "escalation", etc.
     project_id: string;                // relative path (e.g., "pv-method", "") for filtering
     timestamp: string;                 // ISO 8601
     content: Record<string, unknown>;  // event-specific data
   }
   ```
 
-- **Phase 1 Event Durability:** Events persisted to `.method/genesis-events.yaml` (disk write is async, buffered, non-blocking). Event log capped at 10K events; oldest events pruned on overflow (FIFO). File rotation at > 5MB (rotate to genesis-events.YYYY-MM-DD-HH-MM-SS.yaml.gz, keep last 3 rotated files).
+- **Phase 1 Event Durability:** Events persisted to `.method/genesis-events.yaml` (disk write is async, buffered, non-blocking). Event log capped at 10K events. When overflow occurs, oldest events are pruned (respecting project_id boundaries — projects never lose their own events out of order). File rotation at > 5MB (rotate to genesis-events.YYYY-MM-DD-HH-MM-SS.yaml.gz, keep last 3 rotated files).
   - **Backpressure Protection:** Disk writes are async; agent sessions are never blocked waiting for event persist. If write fails after 3 retries (exponential backoff), event is dropped and logged as `genesis_events_write_failed` (not fatal).
   - **Startup Recovery:** On bridge startup, loads all events from genesis-events.yaml. If file is corrupted (partial write, truncation), attempts to recover valid entries. Emits `{type: 'genesis_events_corruption_detected', recovered_events: N, skipped_events: M}` event. Backup copy saved as genesis-events.yaml.backup for operator review.
   - **Per-project retention policy:** Phase 1 uses global FIFO. Phase 2 adds per-project budgets or event-type weighting (high-priority events never pruned until retention expires).
@@ -193,16 +193,15 @@ MAX_PROJECTS=50                             # safety limit on auto-discovery
 **(Phase 2 — Genesis environment variables will be added)**
 
 **Startup sequence (bootstrap discovery — one-time per bridge start):**
-1. Bridge starts in `ROOT_DIR`
-2. Register ROOT_DIR as project ID "" (empty, or "root")
-3. Create `.method/` in ROOT_DIR if missing
-4. Recursively scan for `.git/` directories up to 3 levels deep
-   - If `.git/` is corrupted/invalid, log warning and skip (do not crash)
-   - If two repos resolve to same real path (symlink/alias), use first discovered, skip duplicate
-   - Stop if discovery hits `MAX_PROJECTS` safety limit
-5. For each found: register as project, create `.method/` if missing
-6. Load project config from each `.method/project-config.yaml`
-7. Initialize route handlers with project context
+1. Load root project config
+2. Scan for .git/ repos recursively (up to 3 levels deep, timeout 60s)
+3. One-time bootstrap discovery (populate registry with all projects)
+4. Init .method/ for each project
+5. Optional: POST /projects/rescan for manual re-discovery after adding new repos
+
+**Error Handling:**
+- If .git/ is corrupted, log warning and skip project (do NOT crash bridge). Operator reviews in logs. Use POST /projects/:id/repair for diagnosis.
+- Symlink collision detection: If two discovered repos resolve to same real path (symlink/alias), use first discovered and skip duplicate.
 
 **Initialization Failure Handling:**
 - If `.method/` creation fails for any project (permissions, disk full, etc.): log error, mark project with `init_failed: true` in registry, and **continue discovery** (do not abort for other projects)
@@ -230,17 +229,21 @@ interface ProjectMetadata {
 
 **project-config.yaml (new, per project):**
 
-Bridge initializes this file automatically if missing. Schema:
+Each discovered project auto-creates .method/project-config.yaml if missing. Schema: {id, name, description?, owner?, version?, dependencies?, shared_with?, genesis_enabled?, resource_copy?, genesis_budget?}.
 
+Example:
 ```yaml
 project_config:
-  id: pv-method                                              # relative path from ROOT_DIR (auto-set by bridge)
-  name: "pv-method"                                          # project display name
+  id: pv-method                                              # relative path from ROOT_DIR (kebab-case, auto-set by bridge)
+  name: "pv-method"                                          # project display name (readable)
   description: "Runtime for formal methodologies"            # optional
   owner: "steering council"                                  # optional
-  version: "1.0"                                             # metadata version
-  dependencies: []                                           # other project IDs this depends on (Phase 2)
-  shared_with: []                                            # projects that can import methodologies from here (Phase 2)
+  version: "1.0"                                             # optional, metadata version
+  dependencies: []                                           # optional, other project IDs this depends on (Phase 2)
+  shared_with: []                                            # optional, projects that can import methodologies from here (Phase 2)
+  genesis_enabled: false                                     # optional, enable Genesis agent for this project (Phase 2)
+  resource_copy: true                                        # optional, allow copying resources to/from this project
+  genesis_budget: 50000                                      # optional, daily token budget for Genesis agent (Phase 2)
 ```
 
 **Initialization behavior:**
@@ -450,6 +453,8 @@ GET /projects/:id/.method/project-config.yaml
 
 **Session→Project Binding & Isolation Enforcement:**
 
+Every session references a project_id (extracted from x-project-id header or injected by MCP tools). Project_id is non-optional; all event queries, config reads, and project operations are scoped to the session's project_id.
+
 Every session created via bridge is bound to a specific project_id. Isolation is enforced at the MCP tool layer:
 - `POST /sessions` with `project_id` parameter binds session to that project
 - Sessions for project A **cannot access** method definitions, configurations, or events from project B
@@ -582,8 +587,10 @@ genesis_report(message: string)
   - Session identity enforcement
   - Config reload privilege check
   - 4+ concrete test cases with temp fixtures
+  - Cross-project isolation validation tests: unit tests verify project_id filtering. Event queries for project A don't see project B's events.
 - **Failure scenario tests:** disk-full, permission-denied, partial init, incomplete discovery
 - Performance testing: startup < 2s, discovery < 500ms, event queries < 100ms
+- **Human interaction model:** Phase 1 is data-only (no Genesis agent). GET /projects returns all projects. /projects/:id/{manifest,config} returns project-specific data. Phase 1 consumers: CLI tools, dashboards, programmatic access via MCP.
 
 **Files:**
 - `packages/bridge/src/project-discovery.ts` (new)
@@ -659,7 +666,7 @@ genesis_report(message: string)
 ### Gitignore Precedence Rules
 - Root `.gitignore` applies globally to ROOT_DIR
 - Per-project `.gitignore` applies within each project directory
-- **Git precedence:** Root rules apply first (global ignore patterns); per-project rules can whitelist exceptions via `!` (negation)
+- **Precedence:** Root .gitignore applies globally. Per-project .gitignore overrides for project-local artifacts. No conflicts — per-project rules win on file-level conflicts.
 - In practice:
   - Root ignores specific files: `.method/genesis-events.yaml` (not a directory)
   - Root whitelists: `!.method/project-config.yaml`, `!.method/.gitkeep`
@@ -706,9 +713,9 @@ genesis_report(message: string)
 - ✅ resource_copy_strategy works
 
 ### Non-Functional Criteria (Phase 1)
-- ✅ Bridge startup time < 2s (with up to 20 projects)
-- ✅ Project discovery < 500ms (recursive scan of ROOT_DIR)
-- ✅ Event log queries < 100ms (filtering by project_id)
+- ✅ Bridge startup < 2 seconds with 20 projects
+- ✅ Discovery scan < 500ms for 20 projects
+- ✅ Event log queries < 100ms
 - ✅ Event log size capped at 10K events; old events pruned on overflow
 - ✅ Memory footprint < 200MB (projects + sessions + events)
 
