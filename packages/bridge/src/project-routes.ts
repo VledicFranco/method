@@ -22,7 +22,7 @@ import {
   createTestEvent,
 } from '@method/core';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
-import { copyMethodology, copyStrategy } from './resource-copier.js';
+import { copyMethodology, copyStrategy, validateTargetIds } from './resource-copier.js';
 import { reloadConfig, validateConfig } from './config/config-reloader.js';
 import path from 'path';
 
@@ -585,7 +585,16 @@ export async function registerProjectRoutes(
           });
         }
 
-        // F-SEC-002: Validate that requester can access source project
+        // F-S-1: Validate target_ids bounds and format
+        const targetValidation = validateTargetIds(target_ids);
+        if (!targetValidation.valid) {
+          return reply.status(400).send({
+            error: 'Invalid target_ids',
+            message: targetValidation.error,
+          });
+        }
+
+        // F-S-3: Validate that requester can access source project
         const sessionContext = getSessionContext(req);
         const sourceValidation = validateProjectAccess(source_id, sessionContext);
         if (!sourceValidation.allowed) {
@@ -596,12 +605,12 @@ export async function registerProjectRoutes(
           });
         }
 
-        // F-SEC-002: Validate that requester can access ALL target projects
+        // F-S-3: Validate that requester can access ALL target projects
         for (const targetId of target_ids) {
           const targetValidation = validateProjectAccess(targetId, sessionContext);
           if (!targetValidation.allowed) {
             return reply.status(403).send({
-              error: 'Access denied',
+              error: 'Access denied to one or more target projects',
               reason: `Cannot copy to project ${targetId} — permission denied`,
               message: targetValidation.reason || 'Not authorized to write to target project',
             });
@@ -637,7 +646,16 @@ export async function registerProjectRoutes(
           });
         }
 
-        // F-SEC-002: Validate that requester can access source project
+        // F-S-1: Validate target_ids bounds and format
+        const targetValidation = validateTargetIds(target_ids);
+        if (!targetValidation.valid) {
+          return reply.status(400).send({
+            error: 'Invalid target_ids',
+            message: targetValidation.error,
+          });
+        }
+
+        // F-S-3: Validate that requester can access source project
         const sessionContext = getSessionContext(req);
         const sourceValidation = validateProjectAccess(source_id, sessionContext);
         if (!sourceValidation.allowed) {
@@ -648,12 +666,12 @@ export async function registerProjectRoutes(
           });
         }
 
-        // F-SEC-002: Validate that requester can access ALL target projects
+        // F-S-3: Validate that requester can access ALL target projects
         for (const targetId of target_ids) {
           const targetValidation = validateProjectAccess(targetId, sessionContext);
           if (!targetValidation.allowed) {
             return reply.status(403).send({
-              error: 'Access denied',
+              error: 'Access denied to one or more target projects',
               reason: `Cannot copy to project ${targetId} — permission denied`,
               message: targetValidation.reason || 'Not authorized to write to target project',
             });

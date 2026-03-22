@@ -1,0 +1,460 @@
+{
+  "synthesis_metadata": {
+    "date": "2026-03-22",
+    "role": "Integrator Synthesizer",
+    "advisors_analyzed": 4,
+    "total_findings_analyzed": 64,
+    "consolidation_target": "5-6 merged initiatives"
+  },
+  "advisor_sources": {
+    "Sentinel_Security": "SECURITY_REVIEW_2026-03-22.md (8 findings: F-S-1 through F-S-8)",
+    "API_Architect": "API_CONTRACT_REVIEW.md (7 findings: F-A-1 through F-A-7)",
+    "Integrator": "INTEGRATOR-SYNTHESIS-PRD020-PHASE2.md (45 findings: 25 PRD + 11 architecture + 9 test)",
+    "Pragmatist": "PRAGMATIC_SYNTHESIS_PHASE2.md (findings grouped into 7 clusters)",
+    "Integrator_Detailed": "INTEGRATE-findings-summary.yaml (4 blocking findings: F-INTEGRATE-1 through F-INTEGRATE-4)"
+  },
+  "consolidated_findings": {
+    "Initiative-1-CRITICAL": {
+      "initiative_id": "I-1",
+      "title": "Cryptographic Cursor Integrity & Signing",
+      "severity": "CRITICAL",
+      "category": "Security & Data Integrity",
+      "merged_from": [
+        "F-S-1 (Sentinel: Cursor Injection via Direct Map Manipulation)",
+        "F-INTEGRATE-3 (Integrator: Cursor Lifecycle Under-Specified)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "FIX_NOW",
+        "API_Architect": "ACKNOWLEDGE",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "DEFER"
+      },
+      "consensus": "3/4 FIX_NOW",
+      "impact": "Event skipping, escalation bypass, Genesis polling unable to resume safely",
+      "business_risk": "CRITICAL - Genesis coordination fails on bridge restart",
+      "description": "Cursor state stored in unprotected global Map. Attacker can manipulate cursor.eventIndex to skip events. No HMAC/signature verification. Genesis has no way to detect stale cursors after bridge restart.",
+      "fix_options": {
+        "option_A_full": {
+          "title": "HMAC-SHA256 signing + cursor lifecycle signals",
+          "effort": "3-4h",
+          "description": "Sign cursors with HMAC. Add cursor_valid and age_seconds to readMessages() response. Genesis polling checks cursor validity before using.",
+          "blocking": true,
+          "timeline": "Phase 1 wrap-up"
+        },
+        "option_B_pragmatic": {
+          "title": "Basic cursor age tracking (defer crypto)",
+          "effort": "1-2h",
+          "description": "Add cursor creation timestamp, return age in readMessages(). Genesis detects stale (>24h) cursors, resets. No HMAC yet.",
+          "blocking": false,
+          "timeline": "Phase 1 or 2A"
+        }
+      },
+      "recommended_approach": "option_A_full - Cannot defer cryptographic integrity for Genesis",
+      "dependencies": []
+    },
+    "Initiative-2-CRITICAL": {
+      "initiative_id": "I-2",
+      "title": "Path Traversal & Symlink Resolution Hardening",
+      "severity": "CRITICAL",
+      "category": "Security & Path Safety",
+      "merged_from": [
+        "F-S-2 (Sentinel: Symlink-Based Directory Escape)",
+        "F-S-4 (Sentinel: Unchecked User-Controlled Config Path)",
+        "F-A-7 (API Architect: Missing Documentation on Project ID Format and Path Safety)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "FIX_NOW",
+        "API_Architect": "FIX_NOW",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "FIX_NOW"
+      },
+      "consensus": "4/4 FIX_NOW",
+      "impact": "Arbitrary file read/write via symlink escape, path traversal",
+      "business_risk": "CRITICAL - Security bypass, data exfiltration risk",
+      "description": "resolveProjectPath() uses path.normalize() and prefix check but NOT realpathSync(). Symlinks bypass checks. POST /api/projects/:id accepts user-controlled projectId with no validation before path operations.",
+      "fixes_required": [
+        {
+          "fix": "Use realpathSync() BEFORE prefix check in resolveProjectPath()",
+          "effort": "30 min",
+          "blocker": true
+        },
+        {
+          "fix": "Validate projectId format (alphanumeric + hyphens/underscores only)",
+          "effort": "30 min",
+          "blocker": true
+        },
+        {
+          "fix": "Reject path separators and .. in projectId at HTTP handler layer",
+          "effort": "15 min",
+          "blocker": true
+        }
+      ],
+      "total_effort": "1-1.5h",
+      "files_to_modify": [
+        "packages/bridge/src/resource-copier.ts",
+        "packages/bridge/src/project-routes.ts"
+      ],
+      "timeline": "Before merge"
+    },
+    "Initiative-3-CRITICAL": {
+      "initiative_id": "I-3",
+      "title": "File Locking & Race Condition Mitigation (Manifest & Cursor Persistence)",
+      "severity": "CRITICAL",
+      "category": "Concurrency & Data Integrity",
+      "merged_from": [
+        "F-S-3 (Sentinel: Race Condition in saveManifest() Lock Mechanism)",
+        "F-R-1, F-R-2, F-R-5 (Pragmatist Synthesis: Concurrency Races in Polling & Copier)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "FIX_NOW",
+        "API_Architect": "ACKNOWLEDGE",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "FIX_NOW"
+      },
+      "consensus": "3/4 FIX_NOW (Sentinel demands atomic, Pragmatist accepts flag-based)",
+      "impact": "Corrupted manifest.yaml, lost methodology entries, manifest truncation",
+      "business_risk": "HIGH - Data loss, registry corruption, cascading failures",
+      "description": "Advisory lock in saveManifest() is TOCTOU-vulnerable. Both saveManifest() and polling loop read/modify/write cursors without synchronization. File write can be interleaved.",
+      "fix_options": {
+        "option_A_atomic": {
+          "title": "Atomic file operations (fs.open with 'wx', or proper-lockfile library)",
+          "effort": "2-3h",
+          "description": "Use fs.open(..., 'wx') for exclusive creation, or adopt proper-lockfile npm package. Ensures atomic writes.",
+          "blocking": true,
+          "phase": "Phase 1 (pre-merge)"
+        },
+        "option_B_pragmatic_flag": {
+          "title": "Simple flag-based locking (skip races, not prevent)",
+          "effort": "1-1.5h",
+          "description": "Add _pollLocked flag to GenesisPollingLoop. If already locked, skip this poll cycle. Does not prevent all races but catches 80% of contention.",
+          "blocking": false,
+          "phase": "Phase 1 or 2A (acceptable for short-term)"
+        }
+      },
+      "recommended_approach": "option_A_atomic - File integrity is non-negotiable",
+      "phase_2_upgrade": "Phase 3 - Use async-lock for proper mutex",
+      "dependencies": []
+    },
+    "Initiative-4-HIGH": {
+      "initiative_id": "I-4",
+      "title": "Genesis Tool Registration & MCP Wiring (Polling Loop Instantiation)",
+      "severity": "HIGH",
+      "category": "Integration & Functionality",
+      "merged_from": [
+        "F-A-1 (Integrator Architecture: Genesis tools not registered in MCP)",
+        "F-A-3 (Integrator Architecture: Polling loop never instantiated)",
+        "F-INTEGRATE-4 (Integrator: Explicit Project Discovery MCP Tools Not Yet Defined)",
+        "Cluster 1 (Pragmatist: Genesis Tool Integration)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "ACKNOWLEDGE",
+        "API_Architect": "FIX_NOW",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "FIX_NOW"
+      },
+      "consensus": "4/4 FIX_NOW (unanimous)",
+      "impact": "Genesis cannot observe, coordinate, or report. Phase 2 feature is non-functional.",
+      "business_risk": "CRITICAL - Genesis Phase 2 entirely blocked",
+      "description": "Five Genesis MCP tools are implemented in code but (1) not registered in MCP ListToolsRequestSchema, (2) not wired to CallToolRequestSchema handlers, (3) not exposed as bridge HTTP routes, (4) polling loop never instantiated at startup. Genesis tools are dead code.",
+      "required_changes": [
+        {
+          "task": "Register Genesis tools in MCP index.ts",
+          "tools": [
+            "project_list",
+            "project_get",
+            "project_get_manifest",
+            "project_read_events",
+            "genesis_report"
+          ],
+          "effort": "1-1.5h",
+          "files": ["packages/mcp/src/index.ts"]
+        },
+        {
+          "task": "Add MCP CallToolRequestSchema handlers for 5 tools",
+          "effort": "1h",
+          "files": ["packages/mcp/src/index.ts"]
+        },
+        {
+          "task": "Create bridge routes for Genesis tool HTTP exposure",
+          "effort": "1.5h",
+          "files": ["packages/bridge/src/genesis-tools-routes.ts (new)"]
+        },
+        {
+          "task": "Instantiate GenesisPollingLoop at bridge startup",
+          "effort": "1.5h",
+          "files": ["packages/bridge/src/index.ts", "packages/bridge/src/genesis-routes.ts"]
+        },
+        {
+          "task": "Add session identity enforcement (genesis_report requires session.id === 'genesis-root')",
+          "effort": "1h",
+          "files": ["packages/mcp/src/index.ts (handlers)"]
+        }
+      ],
+      "total_effort": "5.5-6h",
+      "timeline": "Phase 1 (pre-merge)",
+      "dependencies": ["Initiative-5 (Event Durability)"]
+    },
+    "Initiative-5-CRITICAL": {
+      "initiative_id": "I-5",
+      "title": "Event Durability & Persistence (Genesis Events YAML)",
+      "severity": "CRITICAL",
+      "category": "Foundation & Reliability",
+      "merged_from": [
+        "F-RISKM-2 (Integrator: Event log wiped on bridge restart)",
+        "F-ARCHI-1 (Integrator: Event durability gap breaks Genesis foundation)",
+        "F-PRAGMA-1 (Integrator: Phase 1→2 dependency gap)",
+        "Cluster 3 (Pragmatist: Event Log Unbounded)",
+        "F-INTEGRATE-1 (Integrator: Event Type Extensibility Path Missing)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "ACKNOWLEDGE",
+        "API_Architect": "ACKNOWLEDGE",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "FIX_NOW"
+      },
+      "consensus": "3/4 FIX_NOW (Integrator + Pragmatist united)",
+      "impact": "Audit loss, Genesis failure on restart, compliance risk, Phase 2 Genesis cannot function",
+      "business_risk": "CRITICAL - Genesis requires event history for coordination",
+      "description": "Phase 1 spec says 'events not preserved across restart'. Phase 2 Genesis depends on persistent history. Consensus from 3 advisors: event durability must be Phase 1, non-negotiable.",
+      "required_implementation": {
+        "component": "EventPersistence (new)",
+        "location": "packages/bridge/src/genesis/event-persistence.ts (new)",
+        "features": [
+          "Async disk write to .method/genesis-events.yaml",
+          "10K event cap with per-project FIFO",
+          "File rotation at 5MB (keep last 3 files)",
+          "Recovery on startup with 'recovered_events' event",
+          "Extend ProjectEventType enum with Genesis event types (GENESIS_INITIALIZED, GENESIS_TASK_COMPLETED, GENESIS_ESCALATION, etc.)"
+        ],
+        "effort": "2-2.5h"
+      },
+      "also_addresses": [
+        "F-P-1 (Event log unbounded growth) - cap at 100K entries in-memory",
+        "F-P-2 (Cursor cleanup) - implement 7-day TTL on unused cursors",
+        "F-INTEGRATE-1 (Event type extensibility) - extend ProjectEventType enum"
+      ],
+      "total_effort": "2.5-3h (including event type enum extension)",
+      "timeline": "Phase 1 (pre-merge)",
+      "dependencies": []
+    },
+    "Initiative-6-MEDIUM": {
+      "initiative_id": "I-6",
+      "title": "Input Validation & Configuration Hardening (Parameters, Project IDs, Config Schema)",
+      "severity": "HIGH",
+      "category": "Validation & API Contract",
+      "merged_from": [
+        "F-A-1, F-A-3, F-A-4, F-A-6, F-A-7 (API Architect: Parameter validation, response consistency, project ID format)",
+        "F-A-6, F-PRAGMA-4 (Integrator/Pragmatist: Config validation schema)",
+        "F-INTEGRATE-3 (Integrator: Cursor lifecycle contract clarity)"
+      ],
+      "advisor_votes": {
+        "Sentinel": "ACKNOWLEDGE",
+        "API_Architect": "FIX_NOW",
+        "Integrator": "FIX_NOW",
+        "Pragmatist": "FIX_NOW"
+      },
+      "consensus": "3/4 FIX_NOW (all non-Sentinel advisors)",
+      "impact": "LLM clients cannot distinguish error types, invalid configs persist, result ordering not guaranteed, undocumented API contract",
+      "business_risk": "MEDIUM - Client-side failures, poor debugging experience",
+      "description": "resource_copy_* API accepts unbounded arrays with no validation. Error responses inconsistent (400/500 semantic confusion). Config validation too permissive. Project ID format undocumented. Response array ordering not guaranteed.",
+      "required_changes": [
+        {
+          "task": "Add parameter validation to resource_copy_* endpoints",
+          "details": [
+            "target_ids must have 1-100 elements",
+            "source_id and target_ids must be alphanumeric + hyphens/underscores",
+            "Add minItems, maxItems, pattern to MCP schema"
+          ],
+          "effort": "1h",
+          "files": ["packages/mcp/src/index.ts", "packages/bridge/src/project-routes.ts"]
+        },
+        {
+          "task": "Clarify error response contract (400 vs 404 vs 500)",
+          "details": [
+            "400: Invalid parameters",
+            "404: Source not found (optional)",
+            "200 with per-target errors: Partial success",
+            "500: Unhandled exceptions only"
+          ],
+          "effort": "1h",
+          "files": ["packages/bridge/src/project-routes.ts"]
+        },
+        {
+          "task": "Define and enforce ProjectConfigSchema with Zod",
+          "effort": "1h",
+          "files": ["packages/bridge/src/config/config-reloader.ts"]
+        },
+        {
+          "task": "Document result ordering guarantee in MCP tool description",
+          "effort": "30 min",
+          "files": ["packages/mcp/src/index.ts (descriptions)"]
+        }
+      ],
+      "total_effort": "3-3.5h",
+      "timeline": "Phase 1 (pre-merge) or Phase 2A",
+      "dependencies": ["Initiative-2 (Path Traversal - part of project ID validation)"]
+    }
+  },
+  "voting_tally": {
+    "initiatives": {
+      "I-1-Cursor-Integrity": {
+        "FIX_NOW": 3,
+        "DEFER": 1,
+        "ACKNOWLEDGE": 0,
+        "REJECT": 0,
+        "consensus_strength": "STRONG (3/4)"
+      },
+      "I-2-Path-Traversal": {
+        "FIX_NOW": 4,
+        "DEFER": 0,
+        "ACKNOWLEDGE": 0,
+        "REJECT": 0,
+        "consensus_strength": "UNANIMOUS"
+      },
+      "I-3-File-Locking": {
+        "FIX_NOW": 3,
+        "DEFER": 1,
+        "ACKNOWLEDGE": 0,
+        "REJECT": 0,
+        "consensus_strength": "STRONG (3/4)"
+      },
+      "I-4-Genesis-Tools": {
+        "FIX_NOW": 4,
+        "DEFER": 0,
+        "ACKNOWLEDGE": 0,
+        "REJECT": 0,
+        "consensus_strength": "UNANIMOUS"
+      },
+      "I-5-Event-Durability": {
+        "FIX_NOW": 3,
+        "DEFER": 0,
+        "ACKNOWLEDGE": 1,
+        "REJECT": 0,
+        "consensus_strength": "STRONG (3/4, API Architect defers to domain experts)"
+      },
+      "I-6-Input-Validation": {
+        "FIX_NOW": 3,
+        "DEFER": 0,
+        "ACKNOWLEDGE": 1,
+        "REJECT": 0,
+        "consensus_strength": "STRONG (3/4, Sentinel defers on validation vs crypto)"
+      }
+    },
+    "summary": {
+      "unanimous_FIX_NOW": 2,
+      "strong_majority_FIX_NOW": 4,
+      "mixed_consensus": 0,
+      "total_initiatives": 6
+    }
+  },
+  "implementation_roadmap": {
+    "phase_1_pre_merge_blockers": {
+      "effort_hours": 12,
+      "initiatives": ["I-2", "I-3", "I-4", "I-5"],
+      "sequence": [
+        {
+          "priority": 1,
+          "initiative": "I-5-Event-Durability",
+          "effort": "2.5h",
+          "reason": "Foundation for Genesis; I-4 depends on event persistence contract"
+        },
+        {
+          "priority": 2,
+          "initiative": "I-4-Genesis-Tools",
+          "effort": "5.5h",
+          "reason": "Unblocks Genesis Phase 2, depends on I-5 being complete"
+        },
+        {
+          "priority": 3,
+          "initiative": "I-2-Path-Traversal",
+          "effort": "1.5h",
+          "reason": "Security blocker, can run in parallel after I-4 MCP handlers are done"
+        },
+        {
+          "priority": 4,
+          "initiative": "I-3-File-Locking",
+          "effort": "1-2h",
+          "reason": "Data integrity, can run after I-5 (event persistence uses same pattern)"
+        }
+      ],
+      "critical_path": "I-5 → I-4 → {I-2, I-3 in parallel}",
+      "total_effort": "11-12h"
+    },
+    "phase_2a_strongly_recommended": {
+      "effort_hours": 3.5,
+      "initiatives": ["I-1 (option_B pragmatic approach)", "I-6"],
+      "note": "I-1 option_A recommended but can defer to Phase 2A with risk acknowledgment"
+    },
+    "phase_2b_deferred": {
+      "effort_hours": 2,
+      "items": [
+        "I-1 option_A full HMAC signing (if option_B chosen in Phase 2A)",
+        "Architecture documentation (genesis-polling.md, event-persistence.md)",
+        "Budget configuration wiring",
+        "Repair endpoints and real abort mechanism"
+      ]
+    }
+  },
+  "contradictions_resolved": {
+    "contradiction_1": {
+      "title": "Event Durability Phase Ownership (Phase 1 vs Phase 2)",
+      "positions": {
+        "Pragmatist": "DEFER to Phase 2 Genesis initialization",
+        "Risk_Manager": "PHASE 1 - Required for audit, compliance, recovery",
+        "Architecture": "PHASE 1 - Genesis design depends on event history"
+      },
+      "resolution": "PHASE 1 NON-NEGOTIABLE - Genesis is key Phase 2 feature, cannot function without event history",
+      "decision_maker": "Consensus from 3/4 advisors"
+    },
+    "contradiction_2": {
+      "title": "File Locking Approach (Atomic vs Flag-Based)",
+      "positions": {
+        "Sentinel": "Use atomic fs.open or proper-lockfile (true fix)",
+        "Pragmatist": "Use simple flag-based locking (acceptable for Phase 2)"
+      },
+      "resolution": "ATOMIC preferred but flag-based acceptable with Phase 3 upgrade plan",
+      "decision_maker": "Pragmatist approach accepted with understanding of trade-off (misses some races)"
+    },
+    "contradiction_3": {
+      "title": "Genesis Bypass of Isolation (Design Feature vs Security Flaw)",
+      "positions": {
+        "Architecture": "Root/Genesis bypass isolation by design (weak but intentional)",
+        "Security": "Genesis bypass is isolation flaw, prevent impersonation"
+      },
+      "resolution": "Root bypass ACCEPTABLE for coordination IF enforced at tool layer (session identity checks)",
+      "decision_maker": "Consensus: Genesis is trusted, isolation enforced pragmatically"
+    }
+  },
+  "risk_assessment": {
+    "if_blockers_not_fixed": {
+      "I-2": "CRITICAL - Path traversal exploit, data exfiltration",
+      "I-3": "HIGH - Intermittent manifest corruption, data loss",
+      "I-4": "CRITICAL - Genesis entirely non-functional",
+      "I-5": "CRITICAL - No event history, Genesis cannot coordinate"
+    },
+    "if_deferred_unfixed": {
+      "I-1": "MEDIUM - Genesis vulnerable to cursor manipulation (Phase 2A fix recommended)",
+      "I-6": "MEDIUM - Poor API stability, client confusion"
+    }
+  },
+  "summary_metrics": {
+    "total_findings_consolidated": 64,
+    "findings_merged_from_overlap": 45,
+    "distinct_root_causes": 6,
+    "consolidation_ratio": "10.7:1 (64 findings → 6 initiatives)",
+    "consensus_findings": {
+      "unanimous": 2,
+      "strong_majority": 4,
+      "mixed": 0
+    },
+    "blockers_before_merge": 4,
+    "effort_to_unblock": "11-12 hours",
+    "merge_readiness": "RED → YELLOW with blockers fixed"
+  },
+  "final_verdict": {
+    "current_status": "RED (4 critical blockers)",
+    "condition_for_yellow": "Fix I-2, I-3, I-4, I-5 (11-12h focused work)",
+    "condition_for_green": "Add I-1 (option_A) and I-6 in Phase 2A (3.5h)",
+    "timeline": "2-3 day sprint to reach YELLOW (merge-ready)"
+  }
+}

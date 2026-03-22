@@ -51,22 +51,42 @@ export class DiscoveryService {
   private timeoutMs: number;
   private maxProjects: number;
   private cachedProjects: ProjectMetadata[] = [];
+  private cacheExpiresAt: number = 0;
+  private cacheTtlMs: number;
 
-  constructor(options?: { timeoutMs?: number; maxProjects?: number }) {
+  constructor(options?: { timeoutMs?: number; maxProjects?: number; cacheTtlMs?: number }) {
     const envTimeout = process.env.DISCOVERY_TIMEOUT_MS
       ? parseInt(process.env.DISCOVERY_TIMEOUT_MS, 10)
+      : undefined;
+    const envCacheTtl = process.env.DISCOVERY_CACHE_TTL_MS
+      ? parseInt(process.env.DISCOVERY_CACHE_TTL_MS, 10)
       : undefined;
 
     this.timeoutMs = options?.timeoutMs ?? envTimeout ?? 60000;
     this.maxProjects = options?.maxProjects ?? 1000;
+    this.cacheTtlMs = options?.cacheTtlMs ?? envCacheTtl ?? 1800000; // 30 minutes
   }
 
   /**
    * Get cached projects from the last discovery run
-   * Returns empty array if no discovery has been run yet
+   * Returns empty array if no discovery has been run yet or cache has expired
    */
   getCachedProjects(): ProjectMetadata[] {
-    return [...this.cachedProjects];
+    const now = Date.now();
+    if (this.cacheExpiresAt > now && this.cachedProjects.length > 0) {
+      console.debug(`Discovery cache hit (${this.cachedProjects.length} projects, expires in ${this.cacheExpiresAt - now}ms)`);
+      return [...this.cachedProjects];
+    }
+    return [];
+  }
+
+  /**
+   * Clear the discovery cache and force a fresh scan
+   */
+  clearCache(): void {
+    this.cachedProjects = [];
+    this.cacheExpiresAt = 0;
+    console.debug('Discovery cache cleared');
   }
 
   /**
@@ -173,8 +193,10 @@ export class DiscoveryService {
     const elapsed = Date.now() - startTime;
     const incomplete = results.length >= this.maxProjects || elapsed > this.timeoutMs;
 
-    // Cache the results
+    // Cache the results with TTL
     this.cachedProjects = results;
+    this.cacheExpiresAt = Date.now() + this.cacheTtlMs;
+    console.debug(`Discovery cache updated (${results.length} projects, expires in ${this.cacheTtlMs}ms)`);
 
     return {
       projects: results,

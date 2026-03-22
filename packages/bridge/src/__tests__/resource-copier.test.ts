@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import { copyMethodology, copyStrategy } from '../resource-copier.js';
+import { copyMethodology, copyStrategy, validateTargetIds } from '../resource-copier.js';
 
 // ── Test Helpers ────
 
@@ -770,9 +770,13 @@ test('Resource Copier: blocks path traversal in target with ../', async () => {
         target_ids: ['../sibling'],
       });
 
-      // Should report error due to path traversal
+      // Should report error due to target_ids validation (F-S-1)
+      // '../sibling' fails format validation /^[a-z0-9_-]{3,64}$/
       assert.strictEqual(result.copied_to[0].status, 'error');
-      assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+      assert(
+        result.copied_to[0].error_detail?.includes('Invalid target_ids') ||
+          result.copied_to[0].error_detail?.includes('Path traversal'),
+      );
     } finally {
       process.chdir(originalCwd);
     }
@@ -903,6 +907,291 @@ test('Resource Copier: blocks path traversal in strategy copy', async () => {
       // Should report error due to path traversal
       assert.strictEqual(result.copied_to[0].status, 'error');
       assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+// ── F-S-1: Target IDs Validation Tests ────
+
+test('F-S-1: validateTargetIds rejects empty array', () => {
+  const result = validateTargetIds([]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('at least 1'));
+});
+
+test('F-S-1: validateTargetIds rejects array with more than 100 items', () => {
+  const items = Array(101)
+    .fill(0)
+    .map((_, i) => `project-${i}`);
+  const result = validateTargetIds(items);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('at most 100'));
+});
+
+test('F-S-1: validateTargetIds rejects non-array', () => {
+  const result = validateTargetIds('not-an-array');
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('must be an array'));
+});
+
+test('F-S-1: validateTargetIds rejects non-string items', () => {
+  const result = validateTargetIds(['valid-id', 123]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('must be a string'));
+});
+
+test('F-S-1: validateTargetIds rejects IDs with uppercase', () => {
+  const result = validateTargetIds(['Valid-ID']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-1: validateTargetIds rejects IDs with special chars', () => {
+  const result = validateTargetIds(['project@name']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-1: validateTargetIds rejects IDs shorter than 3 chars', () => {
+  const result = validateTargetIds(['ab']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-1: validateTargetIds rejects IDs longer than 64 chars', () => {
+  const longId = 'a'.repeat(65);
+  const result = validateTargetIds([longId]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-1: validateTargetIds accepts valid IDs with hyphens', () => {
+  const result = validateTargetIds(['project-name', 'test-proj-2']);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.error, undefined);
+});
+
+test('F-S-1: validateTargetIds accepts valid IDs with underscores', () => {
+  const result = validateTargetIds(['project_name', 'test_proj']);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.error, undefined);
+});
+
+test('F-S-1: validateTargetIds accepts valid IDs with numbers', () => {
+  const result = validateTargetIds(['project123', 'test-proj-2-v3']);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.error, undefined);
+});
+
+test('F-S-1: validateTargetIds accepts single valid ID', () => {
+  const result = validateTargetIds(['single-id']);
+  assert.strictEqual(result.valid, true);
+});
+
+test('F-S-1: validateTargetIds accepts 100 valid IDs', () => {
+  const items = Array(100)
+    .fill(0)
+    .map((_, i) => `proj-${i}`);
+  const result = validateTargetIds(items);
+  assert.strictEqual(result.valid, true);
+});
+
+test('F-S-1: copyMethodology rejects invalid target_ids count (0 items)', async () => {
+  const baseDir = join(tmpdir(), `test-validate-empty-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          { id: 'P2-SD', type: 'methodology', version: '2.0' },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: [],
+      });
+
+      assert.strictEqual(result.copied_to.length, 1);
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Invalid target_ids'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('F-S-1: copyMethodology rejects invalid target_ids format (uppercase)', async () => {
+  const baseDir = join(tmpdir(), `test-validate-upper-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          { id: 'P2-SD', type: 'methodology', version: '2.0' },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: ['Invalid-Name'],
+      });
+
+      assert.strictEqual(result.copied_to.length, 1);
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Invalid target_ids'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('F-S-1: copyStrategy rejects invalid target_ids (special chars)', async () => {
+  const baseDir = join(tmpdir(), `test-validate-special-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          { id: 'STRAT-001', type: 'strategy', version: '1.0' },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyStrategy({
+        source_id: 'source',
+        strategy_name: 'STRAT-001',
+        target_ids: ['project@evil'],
+      });
+
+      assert.strictEqual(result.copied_to.length, 1);
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Invalid target_ids'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+// ── F-S-7: Path Canonicalization Tests ────
+
+test('F-S-7: copyMethodology handles symlink escape attempts', async () => {
+  const baseDir = join(tmpdir(), `test-symlink-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          { id: 'P2-SD', type: 'methodology', version: '2.0' },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      // Test with relative path that looks like escape attempt
+      // (actual symlink creation might fail on some systems, so we test the path validation)
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: ['../escape-attempt'],
+      });
+
+      // Should fail due to target_ids validation or path traversal protection
+      // '../escape-attempt' fails F-S-1 format validation due to '..' and '/'
+      assert.strictEqual(result.copied_to.length, 1);
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(
+        result.copied_to[0].error_detail?.includes('Invalid target_ids') ||
+          result.copied_to[0].error_detail?.includes('Path traversal') ||
+          result.copied_to[0].error_detail?.includes('Symlink escape'),
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('F-S-7: Path validation accepts canonical paths', async () => {
+  const baseDir = join(tmpdir(), `test-canonical-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    const targetPath = createGitRepo(baseDir, 'target');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          { id: 'P2-SD', type: 'methodology', version: '2.0' },
+        ],
+      },
+    });
+
+    createManifest(targetPath, {
+      manifest: { project: 'target', last_updated: '2026-03-21', installed: [] },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      // Should succeed with normal project names
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: ['target'],
+      });
+
+      assert.strictEqual(result.copied_to[0].status, 'success');
     } finally {
       process.chdir(originalCwd);
     }

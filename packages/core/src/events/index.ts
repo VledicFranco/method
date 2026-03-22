@@ -13,3 +13,4 @@ export {
 } from './event-persistence.js';
 
 export { YamlEventPersistence } from './yaml-event-persistence.js';
+export { JsonLineEventPersistence } from './jsonl-event-persistence.js';

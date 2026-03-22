@@ -1,0 +1,69 @@
+Original_Finding_ID,Source_Advisor,Finding_Title,Severity,Merged_Into_Initiative,Initiative_Title,Consolidation_Ratio
+F-S-1,Sentinel Security,"Cursor Injection via Direct Map Manipulation",CRITICAL,I-1,"Cryptographic Cursor Integrity & Signing",2-findings-merged
+F-S-2,Sentinel Security,"Symlink-Based Directory Escape",HIGH,I-2,"Path Traversal & Symlink Resolution Hardening",3-findings-merged
+F-S-3,Sentinel Security,"Race Condition in saveManifest() Lock",HIGH,I-3,"File Locking & Race Condition Mitigation",2-findings-merged
+F-S-4,Sentinel Security,"Unchecked User-Controlled Config Path",HIGH,I-2,"Path Traversal & Symlink Resolution Hardening",3-findings-merged (overlap)
+F-S-5,Sentinel Security,"Cursor TTL Cleanup Not Enforced",MEDIUM,I-5,"Event Durability & Persistence",incorporated
+F-S-6,Sentinel Security,"Genesis projectProvider Callback Injection",HIGH,I-5,"Event Durability & Persistence",mitigated-by-validation
+F-S-7,Sentinel Security,"YAML Deserialization Injection",MEDIUM,I-5,"Event Durability & Persistence",requires-safe-schema
+F-S-8,Sentinel Security,"No Post-Load Validation",MEDIUM,I-6,"Input Validation & Configuration Hardening",requires-config-schema
+F-A-1,API Architect,"Parameter Validation & Documentation",MAJOR,I-6,"Input Validation & Configuration Hardening",5-params-consolidated
+F-A-2,API Architect,"Inconsistent Error Response Format",CRITICAL,I-6,"Input Validation & Configuration Hardening",error-semantics
+F-A-3,API Architect,"Error Detail Field Presence & Semantics",MAJOR,I-6,"Input Validation & Configuration Hardening",response-contract
+F-A-4,API Architect,"Response Array Ordering Not Documented",MAJOR,I-6,"Input Validation & Configuration Hardening",ordering-guarantee
+F-A-5,API Architect,"F-SEC-002 Authorization Checks Source Only",CRITICAL,I-6,"Input Validation & Configuration Hardening",target-validation
+F-A-6,API Architect,"Backwards Compatibility Not Addressed",MINOR,I-6,"Input Validation & Configuration Hardening",versioning-strategy
+F-A-7,API Architect,"Missing Project ID Format Documentation",MINOR,I-2,"Path Traversal & Symlink Resolution Hardening",3-findings-merged (overlap)
+F-PRAGMA-1,Pragmatist,"Event Durability Phase Ownership",CRITICAL,I-5,"Event Durability & Persistence",consensus-blocker
+F-PRAGMA-2,Pragmatist,"Project Init Failure Path Undefined",MEDIUM,I-6,"Input Validation & Configuration Hardening",scope-clarity
+F-PRAGMA-3,Pragmatist,"Cross-Project Isolation Tests Infeasible",MEDIUM,I-6,"Input Validation & Configuration Hardening",test-fixtures
+F-PRAGMA-4,Pragmatist,"Config Validation Schema Not Defined",MEDIUM,I-6,"Input Validation & Configuration Hardening",zod-schema
+F-PRAGMA-5,Pragmatist,"Event API Insufficient for Genesis",MEDIUM,I-4,"Genesis Tool Registration & MCP Wiring",cursor-api
+F-R-1,Pragmatist (Risk),"Unbounded Event Log Growth",HIGH,I-5,"Event Durability & Persistence",cap-at-100k
+F-R-2,Pragmatist (Risk),"Cursor Map Unbounded Growth",MEDIUM,I-5,"Event Durability & Persistence",7-day-ttl
+F-R-5,Pragmatist (Risk),"Concurrency Races (polling + reload)",MEDIUM,I-3,"File Locking & Race Condition Mitigation",flag-based-locks
+F-R-9,Pragmatist (Risk),"Genesis Budget Not Enforced",MEDIUM,I-4,"Genesis Tool Registration & MCP Wiring",phase-2b-defer
+F-ARCHI-1,Integrator (Architecture),"Event Durability Gap Breaks Genesis",CRITICAL,I-5,"Event Durability & Persistence",foundation-blocker
+F-ARCHI-2,Integrator (Architecture),"Project Isolation Semantic Only",HIGH,I-6,"Input Validation & Configuration Hardening",session-identity-enforced
+F-ARCHI-3,Integrator (Architecture),"Event Log Overflow Contradicts Complete History",MEDIUM,I-5,"Event Durability & Persistence",fifo-per-project
+F-ARCHI-5,Integrator (Architecture),"Genesis Phase 2 MCP Availability Undefined",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",tool-registration
+F-SECUR-1,Integrator (Security),"Session-Project Binding Not Enforced",HIGH,I-6,"Input Validation & Configuration Hardening",mcp-layer-checks
+F-SECUR-3,Integrator (Security),"Ambiguous Default Behavior for Unfiltered Queries",MEDIUM,I-6,"Input Validation & Configuration Hardening",filter-semantics
+F-SECUR-4,Integrator (Security),"Genesis Root Access Isolation Bypass",CRITICAL,I-6,"Input Validation & Configuration Hardening",tool-session-checks
+F-A-1,Integrator,"Genesis Tools Not Registered",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",unanimous-blocker
+F-A-3,Integrator,"Polling Loop Never Instantiated",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",unanimous-blocker
+F-RISKM-1,Integrator,"MAX_PROJECTS Silent Failure",MEDIUM,I-6,"Input Validation & Configuration Hardening",fail-safe-indicators
+F-RISKM-2,Integrator,"Event Log Wiped on Restart",CRITICAL,I-5,"Event Durability & Persistence",consensus-blocker
+F-RISKM-3,Integrator,"Incomplete Discovery After Timeout",MEDIUM,I-6,"Input Validation & Configuration Hardening",recovery-checkpoints
+F-RISKM-4,Integrator,"Corrupted .git Skipped",MEDIUM,I-6,"Input Validation & Configuration Hardening",phase-2b-repair
+F-RISKM-5,Integrator,"Gitignore Semantics Incorrect",MEDIUM,I-6,"Input Validation & Configuration Hardening",phase-3-defer
+F-A-8,Integrator,"Architecture Docs Missing",MEDIUM,I-6,"Input Validation & Configuration Hardening",documentation-debt
+F-A-9,Integrator,"Genesis Abort Incomplete",MEDIUM,I-6,"Input Validation & Configuration Hardening",phase-2b-defer
+F-UXDES-1,Integrator (UX),"FAB Semantics Unclear",MINOR,DEFER,"Mobile UX Separate Workstream",not-blocking
+F-UXDES-2,Integrator (UX),"Keyboard Handling Missing",MINOR,DEFER,"Mobile UX Separate Workstream",not-blocking
+F-UXDES-3,Integrator (UX),"Dragging Interaction Missing",MINOR,DEFER,"Mobile UX Separate Workstream",not-blocking
+F-UXDES-4,Integrator (UX),"Mobile Responsiveness Gaps",MINOR,DEFER,"Mobile UX Separate Workstream",not-blocking
+F-UXDES-5,Integrator (UX),"Touch Target Sizing",MINOR,DEFER,"Mobile UX Separate Workstream",not-blocking
+F-INTEGRATE-1,Integrator,"Event Type Extensibility Missing",CRITICAL,I-5,"Event Durability & Persistence",enum-extension
+F-INTEGRATE-2,Integrator,"No Schema Versioning",MEDIUM,I-5,"Event Durability & Persistence",phase-2b-defer
+F-INTEGRATE-3,Integrator,"Cursor Lifecycle Under-Specified",HIGH,I-1,"Cryptographic Cursor Integrity & Signing",lifecycle-signals
+F-INTEGRATE-4,Integrator,"Project Discovery MCP Tools Missing",MEDIUM,I-4,"Genesis Tool Registration & MCP Wiring",tool-availability
+F-P-1,Pragmatist,"Event Log Unbounded",HIGH,I-5,"Event Durability & Persistence",100k-cap
+F-P-2,Pragmatist,"Cursor Cleanup Insufficient",MEDIUM,I-5,"Event Durability & Persistence",7-day-ttl
+S-1,Pragmatist,"Tool Integration Gaps",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",cluster-1
+I-2,Pragmatist,"Hardcoded Genesis Budget",MEDIUM,I-4,"Genesis Tool Registration & MCP Wiring",phase-2b-defer
+A-1,Pragmatist,"Config Scatter",MEDIUM,I-6,"Input Validation & Configuration Hardening",centralize
+A-2,Pragmatist,"Error Handling Scattered",MEDIUM,I-6,"Input Validation & Configuration Hardening",centralize
+A-3,Pragmatist,"Cleanup Scattered",MEDIUM,I-6,"Input Validation & Configuration Hardening",centralize
+A-4,Pragmatist,"Race Conditions Untested",MEDIUM,I-3,"File Locking & Race Condition Mitigation",testing-debt
+T-001,Pragmatist,"Untested Concurrency Operations",MEDIUM,I-3,"File Locking & Race Condition Mitigation",testing-blocker
+T-003,Pragmatist,"Cursor Lifecycle Under Contention",MEDIUM,I-1,"Cryptographic Cursor Integrity & Signing",testing-blocker
+T-005,Pragmatist,"Manifest Write Race",MEDIUM,I-3,"File Locking & Race Condition Mitigation",testing-blocker
+Cluster-A,Pragmatist,"Genesis Non-Functionality",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",foundation-integration
+Cluster-B,Pragmatist,"Event Durability Contradiction",CRITICAL,I-5,"Event Durability & Persistence",consensus-blocker
+Cluster-C,Pragmatist,"Project Isolation Enforcement Weakness",HIGH,I-6,"Input Validation & Configuration Hardening",session-checks
+Cluster-D,Pragmatist,"Integration Mismatches",HIGH,I-4,"Genesis Tool Registration & MCP Wiring",tool-endpoint-gaps
+Cluster-E,Pragmatist,"Validation & Sanitization",MEDIUM,I-6,"Input Validation & Configuration Hardening",bounds-checking
+Cluster-F,Pragmatist,"Silent Failures & Operational Blindness",MEDIUM,I-6,"Input Validation & Configuration Hardening",fail-safe-indicators
+Cluster-G,Pragmatist,"Documentation & Arch Maintenance",MEDIUM,I-6,"Input Validation & Configuration Hardening",documentation-debt
+Cluster-H,Pragmatist,"Incomplete/Deferred Scope",MEDIUM,DEFER,"Phase 2B / Phase 3 Work Items",scope-clarity

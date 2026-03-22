@@ -38,11 +38,13 @@ export interface PollingLoopConfig {
   intervalMs?: number;
   cursorFilePath?: string;
   methodDir?: string;
+  maxConcurrentPolls?: number;
 }
 
 const DEFAULT_INTERVAL_MS = 5000; // 5 seconds
 const DEFAULT_CURSOR_FILE = '.method/genesis-cursors.yaml';
 const CURSOR_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DEFAULT_MAX_CONCURRENT_POLLS = 5;
 
 /**
  * Load cursors from .method/genesis-cursors.yaml
@@ -197,10 +199,16 @@ export class GenesisPollingLoop {
   private pollingIntervalId: NodeJS.Timeout | null = null;
   private cursors: GenesisCursors;
   private running = false;
+  private maxConcurrentPolls: number;
 
   constructor(config?: PollingLoopConfig) {
+    const envMaxConcurrent = process.env.MAX_CONCURRENT_POLLS
+      ? parseInt(process.env.MAX_CONCURRENT_POLLS, 10)
+      : undefined;
+
     this.intervalMs = config?.intervalMs ?? DEFAULT_INTERVAL_MS;
     this.cursorFilePath = config?.cursorFilePath ?? DEFAULT_CURSOR_FILE;
+    this.maxConcurrentPolls = config?.maxConcurrentPolls ?? envMaxConcurrent ?? DEFAULT_MAX_CONCURRENT_POLLS;
     this.cursors = loadCursors(this.cursorFilePath);
 
     // F-P-2: Clean up stale cursors on startup (older than 7 days)
@@ -257,6 +265,7 @@ export class GenesisPollingLoop {
   /**
    * Single poll iteration
    * Made public for testing purposes
+   * F-A-3: Parallelizes polling across up to maxConcurrentPolls projects
    */
   async pollOnce(
     pool: SessionPool,
@@ -268,35 +277,67 @@ export class GenesisPollingLoop {
     // Get list of projects to poll from projectProvider, defaulting to ['root']
     const projectIds = projectProvider ? projectProvider() : ['root'];
 
-    // Iterate over all projects
-    for (const projectId of projectIds) {
-      const currentCursor = getCursorForProject(this.cursors, projectId);
+    // Parallelize polling with max concurrency limit
+    for (let i = 0; i < projectIds.length; i += this.maxConcurrentPolls) {
+      const batch = projectIds.slice(i, i + this.maxConcurrentPolls);
 
-      try {
-        const events = await eventFetcher(projectId, currentCursor);
+      // Poll batch in parallel
+      const pollPromises = batch.map((projectId) => this.pollProject(projectId, eventFetcher, onNewEvents));
 
-        if (events.length > 0) {
-          console.log(`Genesis: Found ${events.length} new events for project ${projectId}`);
+      // Wait for all to complete, collect results
+      const batchResults = await Promise.allSettled(pollPromises);
 
-          // Update cursor
-          const lastEvent = events[events.length - 1];
-          const newCursor = lastEvent.id || `cursor-${Date.now()}`;
-          this.cursors = updateCursorForProject(this.cursors, projectId, newCursor, events.length);
-
-          // Save cursors to disk
-          saveCursors(this.cursors, this.cursorFilePath);
-
-          // Invoke callback if provided
-          if (onNewEvents) {
-            await onNewEvents(projectId, events);
+      // Process results and update cursors
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        if (result.status === 'fulfilled' && result.value) {
+          const { projectId, events } = result.value;
+          if (events.length > 0) {
+            // Update cursor
+            const lastEvent = events[events.length - 1];
+            const newCursor = lastEvent.id || `cursor-${Date.now()}`;
+            this.cursors = updateCursorForProject(this.cursors, projectId, newCursor, events.length);
           }
         }
-      } catch (err) {
-        console.warn(
-          `Genesis polling error for project ${projectId}:`,
-          (err as Error).message,
-        );
       }
+
+      // Save cursors after each batch
+      if (batchResults.some((r) => r.status === 'fulfilled')) {
+        saveCursors(this.cursors, this.cursorFilePath);
+      }
+    }
+  }
+
+  /**
+   * Poll a single project for new events
+   * Returns projectId and events if successful, or null on error
+   */
+  private async pollProject(
+    projectId: string,
+    eventFetcher: (projectId: string, cursor: string) => Promise<ProjectEvent[]>,
+    onNewEvents?: (projectId: string, events: ProjectEvent[]) => Promise<void>,
+  ): Promise<{ projectId: string; events: ProjectEvent[] } | null> {
+    const currentCursor = getCursorForProject(this.cursors, projectId);
+
+    try {
+      const events = await eventFetcher(projectId, currentCursor);
+
+      if (events.length > 0) {
+        console.log(`Genesis: Found ${events.length} new events for project ${projectId}`);
+
+        // Invoke callback if provided
+        if (onNewEvents) {
+          await onNewEvents(projectId, events);
+        }
+      }
+
+      return { projectId, events };
+    } catch (err) {
+      console.warn(
+        `Genesis polling error for project ${projectId}:`,
+        (err as Error).message,
+      );
+      return null;
     }
   }
 

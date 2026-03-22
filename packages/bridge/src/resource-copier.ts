@@ -39,12 +39,65 @@ export interface CopyResponse {
   copied_to: CopyResult[];
 }
 
+// ── F-S-1: Target IDs Validation ────
+
+/**
+ * Validates target_ids array for bounds and format.
+ *
+ * @param target_ids - Array of 1-100 project IDs in format [a-z0-9_-]{3,64}
+ * @returns { valid: boolean; error?: string }
+ *
+ * Rules:
+ * - Min 1 item, max 100 items (bounds)
+ * - Each item matches /^[a-z0-9_-]{3,64}$/
+ * - Return error string if validation fails
+ */
+export function validateTargetIds(target_ids: any): { valid: boolean; error?: string } {
+  // Check if target_ids is an array
+  if (!Array.isArray(target_ids)) {
+    return { valid: false, error: 'target_ids must be an array' };
+  }
+
+  // Check bounds: min 1, max 100
+  if (target_ids.length < 1) {
+    return { valid: false, error: 'target_ids must contain at least 1 project ID' };
+  }
+
+  if (target_ids.length > 100) {
+    return { valid: false, error: 'target_ids must contain at most 100 project IDs' };
+  }
+
+  // Validate format of each item: /^[a-z0-9_-]{3,64}$/
+  const projectIdRegex = /^[a-z0-9_-]{3,64}$/;
+  for (let i = 0; i < target_ids.length; i++) {
+    const id = target_ids[i];
+
+    // Check if it's a string
+    if (typeof id !== 'string') {
+      return { valid: false, error: `target_ids[${i}] must be a string, got ${typeof id}` };
+    }
+
+    // Check format
+    if (!projectIdRegex.test(id)) {
+      return {
+        valid: false,
+        error: `target_ids[${i}] "${id}" does not match format [a-z0-9_-]{3,64}`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 /**
  * Safely resolve project directory path from project ID
  * Includes path traversal protection to prevent directory escape attacks
  *
  * In Phase 1, we assume project ID = project directory name
  * Root is determined by rootDir parameter (default: process.cwd())
+ *
+ * F-S-7: Path canonicalization — resolves symlinks using fs.realpathSync()
+ * and validates that paths remain within the root directory structure.
  */
 function resolveProjectPath(projectId: string, rootDir: string = process.cwd()): string {
   // Special case: root project
@@ -72,9 +125,39 @@ function resolveProjectPath(projectId: string, rootDir: string = process.cwd()):
       throw new Error(`Path traversal detected: "${projectId}" resolves outside root directory`);
     }
 
-    return normalized;
+    // F-S-7: Path canonicalization — resolve symlinks if path exists
+    let canonicalPath = normalized;
+    if (fs.existsSync(normalized)) {
+      try {
+        canonicalPath = fs.realpathSync(normalized);
+        // Verify canonical path still within root
+        const canonicalNormalized = path.normalize(canonicalPath);
+        if (
+          !canonicalNormalized.startsWith(normalizedRoot + path.sep) &&
+          canonicalNormalized !== normalizedRoot
+        ) {
+          throw new Error(
+            `Symlink escape detected: "${projectId}" resolves to ${canonicalNormalized} outside root directory`,
+          );
+        }
+      } catch (err) {
+        // If realpathSync fails but path exists, use normalized path
+        if ((err as Error).message.includes('Symlink escape')) {
+          throw err;
+        }
+        // Otherwise fall through to normalized path
+      }
+    } else {
+      // For non-existent paths (new projects), use normalized + startsWith check as fallback
+      canonicalPath = normalized;
+    }
+
+    return canonicalPath;
   } catch (err) {
-    if ((err as Error).message.includes('Path traversal detected')) {
+    if (
+      (err as Error).message.includes('Path traversal detected') ||
+      (err as Error).message.includes('Symlink escape')
+    ) {
       throw err;
     }
     throw new Error(`Failed to resolve project path: ${(err as Error).message}`);
@@ -186,6 +269,21 @@ export async function copyMethodology(req: CopyMethodologyRequest, rootDir: stri
   const { source_id, method_name, target_ids } = req;
 
   const results: CopyResult[] = [];
+
+  // F-S-1: Validate target_ids array bounds and format
+  const validation = validateTargetIds(target_ids);
+  if (!validation.valid) {
+    // Return 400 equivalent by returning error for all targets
+    return {
+      copied_to: [
+        {
+          project_id: '',
+          status: 'error',
+          error_detail: `Invalid target_ids: ${validation.error}`,
+        },
+      ],
+    };
+  }
 
   // Resolve source project path (with path traversal protection)
   let sourcePath: string;
@@ -314,6 +412,21 @@ export async function copyStrategy(req: CopyStrategyRequest, rootDir: string = p
   const { source_id, strategy_name, target_ids } = req;
 
   const results: CopyResult[] = [];
+
+  // F-S-1: Validate target_ids array bounds and format
+  const validation = validateTargetIds(target_ids);
+  if (!validation.valid) {
+    // Return 400 equivalent by returning error for all targets
+    return {
+      copied_to: [
+        {
+          project_id: '',
+          status: 'error',
+          error_detail: `Invalid target_ids: ${validation.error}`,
+        },
+      ],
+    };
+  }
 
   // Resolve source project path (with path traversal protection)
   let sourcePath: string;
