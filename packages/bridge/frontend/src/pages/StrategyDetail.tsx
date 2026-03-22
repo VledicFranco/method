@@ -26,8 +26,8 @@ import {
   useExecuteStrategy,
 } from '@/hooks/useStrategies';
 import { formatCost, formatDuration, formatRelativeTime } from '@/lib/formatters';
-import type { StrategyDefinition } from '@/lib/types';
-import { ArrowLeft, Play } from 'lucide-react';
+import type { StrategyExecution } from '@/lib/types';
+import { ArrowLeft, Play, GitCompare, ExternalLink } from 'lucide-react';
 
 // ── Toast notification ──
 
@@ -45,6 +45,164 @@ const TABS = [
   { id: 'history', label: 'History' },
 ];
 
+// ── Comparison Panel ──
+
+function ComparisonPanel({
+  executions,
+  compareIds,
+}: {
+  executions: StrategyExecution[];
+  compareIds: string[];
+}) {
+  const [a, b] = compareIds.map((eid) => executions.find((e) => e.execution_id === eid));
+  if (!a || !b) return null;
+
+  const costDelta = b.cost_usd - a.cost_usd;
+  const costPct = a.cost_usd > 0 ? ((costDelta / a.cost_usd) * 100) : 0;
+
+  return (
+    <Card className="mt-sp-4">
+      <div className="flex items-center gap-2 mb-sp-3">
+        <GitCompare className="h-4 w-4 text-bio" />
+        <h3 className="text-sm text-txt font-medium">Execution Comparison</h3>
+      </div>
+
+      <div className="grid grid-cols-3 gap-sp-4 text-xs">
+        <div />
+        <div className="font-mono text-txt-muted truncate text-center" title={a.execution_id}>
+          {a.execution_id.slice(0, 16)}...
+        </div>
+        <div className="font-mono text-txt-muted truncate text-center" title={b.execution_id}>
+          {b.execution_id.slice(0, 16)}...
+        </div>
+
+        {/* Status */}
+        <div className="text-txt-dim">Status</div>
+        <div className="text-center"><StatusBadge status={a.status as Status} size="sm" /></div>
+        <div className="text-center"><StatusBadge status={b.status as Status} size="sm" /></div>
+
+        {/* Cost */}
+        <div className="text-txt-dim">Cost</div>
+        <div className="font-mono text-center text-txt">{formatCost(a.cost_usd)}</div>
+        <div className="font-mono text-center">
+          <span className="text-txt">{formatCost(b.cost_usd)}</span>
+          {costDelta !== 0 && (
+            <span className={cn('ml-1', costDelta > 0 ? 'text-error' : 'text-bio')}>
+              ({costDelta > 0 ? '+' : ''}{costPct.toFixed(0)}%)
+            </span>
+          )}
+        </div>
+
+        {/* Started */}
+        <div className="text-txt-dim">Started</div>
+        <div className="font-mono text-center text-txt-dim">{formatRelativeTime(a.started_at)}</div>
+        <div className="font-mono text-center text-txt-dim">{formatRelativeTime(b.started_at)}</div>
+      </div>
+    </Card>
+  );
+}
+
+// ── History Tab ──
+
+function HistoryTab({
+  executions,
+  strategyId,
+  compareIds,
+  onCompareToggle,
+  onClearCompare,
+}: {
+  executions: StrategyExecution[];
+  strategyId: string;
+  compareIds: string[];
+  onCompareToggle: (eid: string) => void;
+  onClearCompare: () => void;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="space-y-sp-3">
+      {/* Compare toolbar */}
+      {executions.length >= 2 && (
+        <div className="flex items-center justify-between mb-sp-2">
+          <p className="text-[0.65rem] text-txt-muted">
+            {compareIds.length === 0
+              ? 'Select 2 executions to compare'
+              : `${compareIds.length}/2 selected`}
+          </p>
+          {compareIds.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={onClearCompare}>
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Comparison panel */}
+      {compareIds.length === 2 && (
+        <ComparisonPanel executions={executions} compareIds={compareIds} />
+      )}
+
+      {executions.length === 0 ? (
+        <Card>
+          <p className="text-txt-dim text-sm text-center py-sp-4">
+            No executions yet.
+          </p>
+        </Card>
+      ) : (
+        executions.map((exec) => {
+          const isSelected = compareIds.includes(exec.execution_id);
+          return (
+            <Card key={exec.execution_id} variant="interactive" selected={isSelected}>
+              <div className="flex items-center justify-between mb-sp-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {executions.length >= 2 && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onCompareToggle(exec.execution_id)}
+                      className="shrink-0 accent-bio"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  <span
+                    className="font-mono text-xs text-txt truncate max-w-[260px]"
+                    title={exec.execution_id}
+                  >
+                    {exec.execution_id}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusBadge status={exec.status as Status} size="sm" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<ExternalLink className="h-3 w-3" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/app/strategies/${strategyId}/exec/${exec.execution_id}`);
+                    }}
+                  >
+                    DAG
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-sp-4 text-xs text-txt-dim font-mono">
+                <span>{formatRelativeTime(exec.started_at)}</span>
+                {exec.cost_usd > 0 && <span>{formatCost(exec.cost_usd)}</span>}
+              </div>
+              {exec.retro_path && (
+                <p className="text-[0.7rem] text-bio mt-sp-2 font-mono truncate">
+                  retro: {exec.retro_path}
+                </p>
+              )}
+            </Card>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ── Page Component ──
 
 export default function StrategyDetail() {
@@ -56,6 +214,7 @@ export default function StrategyDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   const definition = useMemo(
     () => defData?.definitions.find((d) => d.id === id) ?? null,
@@ -272,38 +431,19 @@ export default function StrategyDetail() {
       )}
 
       {activeTab === 'history' && (
-        <div className="space-y-sp-3">
-          {strategyExecutions.length === 0 ? (
-            <Card>
-              <p className="text-txt-dim text-sm text-center py-sp-4">
-                No executions yet.
-              </p>
-            </Card>
-          ) : (
-            strategyExecutions.map((exec) => (
-              <Card key={exec.execution_id} variant="interactive">
-                <div className="flex items-center justify-between mb-sp-2">
-                  <span
-                    className="font-mono text-xs text-txt truncate max-w-[300px]"
-                    title={exec.execution_id}
-                  >
-                    {exec.execution_id}
-                  </span>
-                  <StatusBadge status={exec.status as Status} />
-                </div>
-                <div className="flex items-center gap-sp-4 text-xs text-txt-dim font-mono">
-                  <span>{formatRelativeTime(exec.started_at)}</span>
-                  {exec.cost_usd > 0 && <span>{formatCost(exec.cost_usd)}</span>}
-                </div>
-                {exec.retro_path && (
-                  <p className="text-[0.7rem] text-bio mt-sp-2 font-mono truncate">
-                    retro: {exec.retro_path}
-                  </p>
-                )}
-              </Card>
-            ))
-          )}
-        </div>
+        <HistoryTab
+          executions={strategyExecutions}
+          strategyId={id!}
+          compareIds={compareIds}
+          onCompareToggle={(eid) => {
+            setCompareIds((prev) => {
+              if (prev.includes(eid)) return prev.filter((x) => x !== eid);
+              if (prev.length >= 2) return [prev[1], eid];
+              return [...prev, eid];
+            });
+          }}
+          onClearCompare={() => setCompareIds([])}
+        />
       )}
 
       {/* Execute dialog */}

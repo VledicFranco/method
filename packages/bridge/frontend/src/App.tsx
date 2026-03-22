@@ -11,6 +11,7 @@ const Governance = lazy(() => import('./pages/Governance'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Registry = lazy(() => import('./pages/Registry'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ExecutionView = lazy(() => import('./pages/ExecutionView'));
 
 // ── Route loading skeleton ──
 
@@ -95,6 +96,7 @@ export function App() {
             <Route path="/app/sessions" element={<Sessions />} />
             <Route path="/app/strategies" element={<Strategies />} />
             <Route path="/app/strategies/:id" element={<StrategyDetail />} />
+            <Route path="/app/strategies/:id/exec/:eid" element={<ExecutionView />} />
             <Route path="/app/triggers" element={<Triggers />} />
             <Route path="/app/triggers/:id" element={<Triggers />} />
             <Route path="/app/governance" element={<Governance />} />
