@@ -232,11 +232,17 @@ describe("evaluateTransition(P0_META, ...)", () => {
     expect(firedTraces[0].label).toBe("terminate");
   });
 
-  it("all arms select null (methods are placeholders)", () => {
-    // Since no sub-methods are ported yet, all arms select null
-    for (const arm of P0_META.arms) {
-      expect(arm.selects).toBeNull();
-    }
+  it("routing arms are wired to methods, terminal arm selects null", () => {
+    // Arms 1-7 are routing arms — should have methods wired (except arm 5: M6_MAUD deferred)
+    expect(P0_META.arms[0].selects).not.toBeNull(); // M3_MEVO
+    expect(P0_META.arms[1].selects).not.toBeNull(); // M1_MDES
+    expect(P0_META.arms[2].selects).not.toBeNull(); // M4_MINS
+    expect(P0_META.arms[3].selects).not.toBeNull(); // M5_MCOM
+    expect(P0_META.arms[4].selects).toBeNull();      // M6_MAUD — deferred
+    expect(P0_META.arms[5].selects).not.toBeNull(); // M7_DTID
+    expect(P0_META.arms[6].selects).not.toBeNull(); // M2_MDIS
+    // Arm 8 is terminal
+    expect(P0_META.arms[7].selects).toBeNull();
   });
 });
 

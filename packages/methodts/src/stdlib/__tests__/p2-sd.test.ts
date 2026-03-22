@@ -146,10 +146,14 @@ describe("SD_ARMS", () => {
     }
   });
 
-  it("all arms select null (methods are placeholders)", () => {
-    for (const arm of SD_ARMS) {
-      expect(arm.selects).toBeNull();
+  it("routing arms select actual methods, terminal arms select null", () => {
+    // Arms 1-7 are routing arms — should have methods wired
+    for (let i = 0; i < 7; i++) {
+      expect(SD_ARMS[i].selects).not.toBeNull();
     }
+    // Arms 8-9 are terminal/executing
+    expect(SD_ARMS[7].selects).toBeNull();
+    expect(SD_ARMS[8].selects).toBeNull();
   });
 });
 

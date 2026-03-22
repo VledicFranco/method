@@ -122,10 +122,14 @@ describe("P1_EXEC", () => {
     expect(P1_EXEC.safety.maxDepth).toBe(3);
   });
 
-  it("all arms select null (methods are placeholders)", () => {
-    for (const arm of P1_EXEC.arms) {
-      expect(arm.selects).toBeNull();
-    }
+  it("routing arms select actual methods, terminal arms select null", () => {
+    // Arms 1-3 are routing arms — should have methods wired
+    expect(P1_EXEC.arms[0].selects).not.toBeNull(); // M1-COUNCIL
+    expect(P1_EXEC.arms[1].selects).not.toBeNull(); // M2-ORCH
+    expect(P1_EXEC.arms[2].selects).not.toBeNull(); // M3-TMP
+    // Arms 4-5 are terminal/executing — should be null
+    expect(P1_EXEC.arms[3].selects).toBeNull(); // terminate
+    expect(P1_EXEC.arms[4].selects).toBeNull(); // executing
   });
 });
 
