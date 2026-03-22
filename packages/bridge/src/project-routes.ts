@@ -87,6 +87,23 @@ function getEventsFromLog(log: CircularEventLog, fromIndex: number): ProjectEven
 
 const cursorMap = new Map<string, CursorState>();
 const eventLog = createCircularEventLog(EVENT_LOG_MAX_SIZE);
+let globalEventPersistence: EventPersistence | undefined; // Set during registration
+
+function setPersistence(persistence: EventPersistence | undefined): void {
+  globalEventPersistence = persistence;
+}
+
+async function pushEventToLogWithPersistence(log: CircularEventLog, event: ProjectEvent): Promise<void> {
+  pushEventToLog(log, event);
+  if (globalEventPersistence) {
+    try {
+      await globalEventPersistence.append(event);
+    } catch (err) {
+      console.error('Failed to persist event:', err);
+      // Continue despite persistence failure
+    }
+  }
+}
 
 function generateCursor(index: number, projectId?: string): string {
   const cursorId = Math.random().toString(36).slice(2);
@@ -171,8 +188,12 @@ export async function registerProjectRoutes(
   discoveryService: DiscoveryService,
   registry: InMemoryProjectRegistry,
   eventPersistence?: EventPersistence,
+  rootDir: string = process.cwd(),
 ): Promise<void> {
   const validator = new DefaultIsolationValidator();
+
+  // Set global persistence for this registration
+  setPersistence(eventPersistence);
 
   // Initialize registry
   await registry.initialize();
@@ -183,7 +204,7 @@ export async function registerProjectRoutes(
     async (_req: FastifyRequest, reply: FastifyReply) => {
       try {
         // In Phase 1, run discovery from current working directory
-        const result = await discoveryService.discover(process.cwd());
+        const result = await discoveryService.discover(rootDir);
 
         // Emit event if discovery was stopped due to MAX_PROJECTS limit
         if (result.stopped_at_max_projects) {
@@ -197,7 +218,7 @@ export async function registerProjectRoutes(
             },
             { phase: 'phase1' },
           );
-          pushEventToLog(eventLog, event);
+          await pushEventToLogWithPersistence(eventLog, event);
         }
 
         return reply.status(200).send({
@@ -237,7 +258,7 @@ export async function registerProjectRoutes(
         }
 
         // Discover and find project
-        const result = await discoveryService.discover(process.cwd());
+        const result = await discoveryService.discover(rootDir);
         const project = result.projects.find((p) => p.id === id);
 
         if (!project) {
@@ -265,7 +286,7 @@ export async function registerProjectRoutes(
         const { checkpoint } = (req.body || {}) as Record<string, any>;
 
         // Run discovery (checkpoint support added in Phase 2)
-        const result = await discoveryService.discover(process.cwd(), checkpoint);
+        const result = await discoveryService.discover(rootDir, checkpoint);
 
         return reply.status(200).send(result);
       } catch (err) {
@@ -296,7 +317,7 @@ export async function registerProjectRoutes(
         }
 
         // Discover and find project
-        const result = await discoveryService.discover(process.cwd());
+        const result = await discoveryService.discover(rootDir);
         const project = result.projects.find((p) => p.id === id);
 
         if (!project) {
@@ -380,7 +401,7 @@ export async function registerProjectRoutes(
         }
 
         // Determine config file path
-        const configPath = path.join(process.cwd(), projectId, 'manifest.yaml');
+        const configPath = path.join(rootDir, projectId, 'manifest.yaml');
 
         // Perform atomic reload
         const result = await reloadConfig({
@@ -407,7 +428,7 @@ export async function registerProjectRoutes(
           },
           { phase: 'phase2b' },
         );
-        pushEventToLog(eventLog, event);
+        await pushEventToLogWithPersistence(eventLog, event);
 
         // Trigger registry rescan
         try {
@@ -539,7 +560,7 @@ export async function registerProjectRoutes(
           { test: true },
         );
 
-        pushEventToLog(eventLog, event);
+        await pushEventToLogWithPersistence(eventLog, event);
 
         return reply.status(201).send(event);
       } catch (err) {
@@ -591,7 +612,7 @@ export async function registerProjectRoutes(
           source_id,
           method_name,
           target_ids,
-        });
+        }, rootDir);
 
         return reply.status(200).send(result);
       } catch (err) {
@@ -643,7 +664,7 @@ export async function registerProjectRoutes(
           source_id,
           strategy_name,
           target_ids,
-        });
+        }, rootDir);
 
         return reply.status(200).send(result);
       } catch (err) {
@@ -658,5 +679,5 @@ export async function registerProjectRoutes(
 
 // Export for testing
 export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor };
-export { eventLog, pushEventToLog, getEventsFromLog, createCircularEventLog };
+export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence };
 export type { CircularEventLog, CursorState };

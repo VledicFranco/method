@@ -28,4 +28,5 @@ export {
   type EventFilter,
   type EventPersistence,
   createTestEvent,
+  YamlEventPersistence,
 } from './events/index.js';

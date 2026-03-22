@@ -50,12 +50,14 @@ function createDebouncer(callback: FileWatcherCallback, delayMs: number) {
 export class FileWatcher {
   private watchDir: string;
   private debounceMs: number;
+  private rootDir: string;
   private watchers: Map<string, FSWatcher> = new Map();
   private debouncedCallback: (() => Promise<void>) | null = null;
   private active = false;
 
-  constructor(private registry: ProjectRegistry, options: FileWatcherOptions = {}) {
-    this.watchDir = options.watchDir || join(process.cwd(), '.method');
+  constructor(private registry: ProjectRegistry, options: FileWatcherOptions = {}, rootDir: string = process.cwd()) {
+    this.rootDir = rootDir;
+    this.watchDir = options.watchDir || join(rootDir, '.method');
     this.debounceMs = options.debounceMs || 100;
   }
 
@@ -148,8 +150,8 @@ export class FileWatcher {
     }
 
     // Watch .method root for YAML files
-    if (filePath.startsWith(join(process.cwd(), '.method')) && filename.endsWith('.yaml')) {
-      const dir = join(process.cwd(), '.method');
+    if (filePath.startsWith(join(this.rootDir, '.method')) && filename.endsWith('.yaml')) {
+      const dir = join(this.rootDir, '.method');
       if (filePath.startsWith(dir)) {
         return true;
       }
@@ -166,8 +168,9 @@ export function createFileWatcher(
   registry: ProjectRegistry,
   callback: FileWatcherCallback,
   options: FileWatcherOptions = {},
+  rootDir: string = process.cwd(),
 ): FileWatcher {
-  const watcher = new FileWatcher(registry, options);
+  const watcher = new FileWatcher(registry, options, rootDir);
   watcher.start(callback);
   return watcher;
 }

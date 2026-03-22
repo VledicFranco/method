@@ -25,6 +25,8 @@ export interface PtySession {
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   resize(cols: number, rows: number): void;
   kill(): void;
+  /** Send CTRL-C interrupt signal to PTY stdin. Returns true if interrupt was written, false if PTY not available. */
+  interrupt(): boolean;
   /** PRD 012 Phase 2: Adaptive settle delay instance (null if disabled). */
   readonly adaptiveSettle: AdaptiveSettleDelay | null;
 }
@@ -319,6 +321,20 @@ export function spawnSession(options: SpawnOptions): PtySession {
         ptyProcess.kill();
       } catch {
         // Already dead — ignore
+      }
+    },
+
+    interrupt(): boolean {
+      try {
+        if (!ptyProcess) {
+          return false;
+        }
+        // Write CTRL-C character (\x03) to PTY stdin
+        ptyProcess.write('\x03');
+        return true;
+      } catch {
+        // PTY write failed — not available or already dead
+        return false;
       }
     },
 

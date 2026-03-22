@@ -11,6 +11,42 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync, existsS
 import { join, dirname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import { randomBytes } from 'node:crypto';
+import { z } from 'zod';
+
+/**
+ * Zod schema for manifest.yaml structure
+ * Used for validation when manifest key is present
+ */
+const InstalledEntrySchema = z.object({
+  id: z.string(),
+  type: z.enum(['methodology', 'protocol', 'strategy']),
+  version: z.string(),
+  card: z.string().optional(),
+  card_version: z.string().optional(),
+  instance_id: z.string().optional(),
+  artifacts: z.array(z.string()).optional(),
+  note: z.string().optional(),
+  status: z.enum(['draft', 'promoted', 'active']).optional(),
+  extends: z.string().optional(),
+});
+
+const ManifestSchema = z.object({
+  manifest: z.object({
+    project: z.string(),
+    last_updated: z.string(),
+    installed: z.array(InstalledEntrySchema),
+  }),
+});
+
+/**
+ * Config validation: either a manifest config or a generic object
+ * If it has 'manifest' key, validate as ManifestSchema
+ * Otherwise, accept any non-null object
+ */
+const ConfigSchema = z.union([
+  ManifestSchema,
+  z.object({}).passthrough(), // Accept any other object
+]);
 
 export interface ConfigReloadRequest {
   configPath: string;
@@ -29,18 +65,35 @@ export interface ConfigReloadResult {
 }
 
 /**
- * Validates YAML config structure
+ * Validates YAML config structure using Zod schema
+ * - If config has 'manifest' key, validates against ManifestSchema
+ * - Otherwise, accepts any non-null object
  */
 export function validateConfig(config: Record<string, any>): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  // Basic structure checks
+  // Basic structure check
   if (typeof config !== 'object' || config === null) {
     errors.push('Config must be an object');
+    return { valid: false, errors };
   }
 
-  // Additional YAML validation can be added here
-  // For now, we just check basic structure
+  // If config has a 'manifest' key, validate it strictly as ManifestSchema
+  if ('manifest' in config) {
+    try {
+      ManifestSchema.parse(config);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        err.errors.forEach((error) => {
+          const path = error.path.join('.');
+          errors.push(`${path || 'root'}: ${error.message}`);
+        });
+      } else {
+        errors.push((err as Error).message);
+      }
+    }
+  }
+  // Otherwise, accept any object (for backward compatibility with tests and other use cases)
 
   return {
     valid: errors.length === 0,

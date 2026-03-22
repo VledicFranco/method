@@ -16,6 +16,7 @@ import type { ProjectEvent } from '@method/core';
 
 export interface GenesisToolsContext {
   discoveryService: DiscoveryService;
+  rootDir: string;
   eventLog: { buffer: ProjectEvent[]; capacity: number; index: number; count: number };
   cursorMap: Map<string, { version: string; eventIndex: number; timestamp: number; projectId?: string }>;
 }
@@ -24,7 +25,7 @@ export interface GenesisToolsContext {
  * Tool: project_list() → list all discovered projects with metadata
  */
 export async function projectListTool(ctx: GenesisToolsContext) {
-  const result = await ctx.discoveryService.discover(process.cwd());
+  const result = await ctx.discoveryService.discover(ctx.rootDir);
 
   // Transform ProjectMetadata to response format
   const projects = result.projects.map(p => ({
@@ -50,7 +51,7 @@ export async function projectGetTool(
   ctx: GenesisToolsContext,
   project_id: string,
 ) {
-  const result = await ctx.discoveryService.discover(process.cwd());
+  const result = await ctx.discoveryService.discover(ctx.rootDir);
   const project = result.projects.find(p => p.id === project_id);
 
   if (!project) {
@@ -75,7 +76,7 @@ export async function projectGetManifestTool(
   ctx: GenesisToolsContext,
   project_id: string,
 ) {
-  const result = await ctx.discoveryService.discover(process.cwd());
+  const result = await ctx.discoveryService.discover(ctx.rootDir);
   const project = result.projects.find(p => p.id === project_id);
 
   if (!project) {

@@ -20,11 +20,12 @@ import { registerRegistryRoutes } from './registry-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
 import { registerGenesisRoutes } from './genesis-routes.js';
-import { registerProjectRoutes, eventLog, getEventsFromLog } from './project-routes.js';
+import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './project-routes.js';
 import { DiscoveryService } from './multi-project/discovery-service.js';
-import { InMemoryProjectRegistry } from '@method/core';
+import { InMemoryProjectRegistry, YamlEventPersistence } from '@method/core';
 
 // Configuration from environment variables
+const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
 const SETTLE_DELAY_MS = parseInt(process.env.SETTLE_DELAY_MS ?? '1000', 10);
@@ -120,6 +121,12 @@ registerLiveOutputRoutes(app, pool, tokenTracker);
 
 registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
 
+// ---------- Project Routes (PRD 020 Phase 2A) ----------
+
+// F-I-2: Initialize and register project discovery routes
+const discoveryService = new DiscoveryService();
+const projectRegistry = new InMemoryProjectRegistry();
+
 // ---------- Genesis Routes (PRD 020 Phase 2A) ----------
 
 // F-A-1: Register Genesis tools routes
@@ -127,14 +134,13 @@ registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
 const genesisRouteContext: any = {
   sessionPool: pool,
   genesisSessionId: null,
-  genesisToolsContext: undefined,
+  genesisToolsContext: {
+    discoveryService,
+    rootDir: ROOT_DIR,
+    eventLog,
+    cursorMap,
+  },
 };
-
-// ---------- Project Routes (PRD 020 Phase 2A) ----------
-
-// F-I-2: Initialize and register project discovery routes
-const discoveryService = new DiscoveryService();
-const projectRegistry = new InMemoryProjectRegistry();
 
 // ---------- Health ----------
 
@@ -804,7 +810,7 @@ let triggerRouter: TriggerRouter | null = null;
 
 if (TRIGGERS_ENABLED) {
   triggerRouter = new TriggerRouter({
-    baseDir: process.cwd(),
+    baseDir: ROOT_DIR,
     bridgeUrl: `http://localhost:${PORT}`,
     logger: {
       info: (msg) => app.log.info(msg),
@@ -852,7 +858,12 @@ async function start() {
   try {
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
-    await registerProjectRoutes(app, discoveryService, projectRegistry);
+
+    // Initialize event persistence
+    const eventPersistence = new YamlEventPersistence(join(ROOT_DIR, '.method', 'genesis-events.yaml'));
+    await eventPersistence.recover();
+
+    await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR);
 
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
@@ -904,7 +915,7 @@ async function start() {
     // PRD 020 Phase 2A: Spawn Genesis on startup if enabled
     if (GENESIS_ENABLED) {
       try {
-        const genesisResult = await spawnGenesis(pool, process.cwd(), 50000);
+        const genesisResult = await spawnGenesis(pool, ROOT_DIR, 50000);
         app.log.info(
           `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
         );
@@ -962,12 +973,19 @@ async function start() {
           }
         };
 
+        // Create projectProvider callback that returns discovered projects
+        const projectProvider = () => {
+          const cached = discoveryService.getCachedProjects();
+          return cached.length > 0 ? cached.map(p => p.id) : ['root'];
+        };
+
         // Start the polling loop
         genesisPollingLoop.start(
           genesisResult.sessionId,
           pool,
           eventFetcher,
           onNewEvents,
+          projectProvider,
         );
 
         app.log.info(`Genesis polling loop started (interval: ${GENESIS_POLLING_INTERVAL_MS}ms)`);

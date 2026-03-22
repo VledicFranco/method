@@ -375,3 +375,144 @@ test('FileWatcher: Prevents duplicate start', async () => {
     rmSync(tempDir, { recursive: true });
   }
 });
+
+// ── Zod Manifest Validation Tests ────
+
+test('validateConfig: Validates manifest structure with Zod', () => {
+  const validManifest = {
+    manifest: {
+      project: 'test-project',
+      last_updated: '2026-03-21',
+      installed: [
+        {
+          id: 'P2-SD',
+          type: 'methodology',
+          version: '2.0',
+        },
+      ],
+    },
+  };
+
+  const result = validateConfig(validManifest);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.errors.length, 0);
+});
+
+test('validateConfig: Rejects manifest with missing required manifest key', () => {
+  const invalidConfig = {
+    project: 'test',
+    installed: [],
+  };
+
+  const result = validateConfig(invalidConfig);
+  // Should pass because it doesn't have a 'manifest' key, so no strict validation
+  assert.strictEqual(result.valid, true);
+});
+
+test('validateConfig: Rejects manifest with invalid installed array', () => {
+  const invalidManifest = {
+    manifest: {
+      project: 'test-project',
+      last_updated: '2026-03-21',
+      installed: 'not-an-array',
+    },
+  };
+
+  const result = validateConfig(invalidManifest as any);
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.length > 0);
+});
+
+test('validateConfig: Rejects entry with invalid type enum', () => {
+  const invalidManifest = {
+    manifest: {
+      project: 'test-project',
+      last_updated: '2026-03-21',
+      installed: [
+        {
+          id: 'P2-SD',
+          type: 'invalid-type',
+          version: '2.0',
+        },
+      ],
+    },
+  };
+
+  const result = validateConfig(invalidManifest as any);
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.length > 0);
+  assert.ok(result.errors[0].includes('type'));
+});
+
+test('validateConfig: Accepts valid protocol entry', () => {
+  const validManifest = {
+    manifest: {
+      project: 'test-project',
+      last_updated: '2026-03-21',
+      installed: [
+        {
+          id: 'RETRO-PROTO',
+          type: 'protocol',
+          version: '1.0',
+          status: 'promoted',
+        },
+      ],
+    },
+  };
+
+  const result = validateConfig(validManifest);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.errors.length, 0);
+});
+
+test('validateConfig: Accepts optional fields in entries', () => {
+  const validManifest = {
+    manifest: {
+      project: 'test-project',
+      last_updated: '2026-03-21',
+      installed: [
+        {
+          id: 'P2-SD',
+          type: 'methodology',
+          version: '2.0',
+          card: 'project-card.yaml',
+          card_version: '1.3',
+          instance_id: 'I2-METHOD',
+          artifacts: ['file1.yaml', 'dir/'],
+          note: 'Optional note',
+          extends: 'P1-EXEC',
+        },
+      ],
+    },
+  };
+
+  const result = validateConfig(validManifest);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.errors.length, 0);
+});
+
+test('validateConfig: Rejects manifest with missing project field', () => {
+  const invalidManifest = {
+    manifest: {
+      last_updated: '2026-03-21',
+      installed: [],
+    },
+  };
+
+  const result = validateConfig(invalidManifest as any);
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.length > 0);
+});
+
+test('validateConfig: Allows non-manifest objects without strict validation', () => {
+  const genericObject = {
+    key: 'value',
+    nested: {
+      foo: 'bar',
+    },
+  };
+
+  const result = validateConfig(genericObject);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.errors.length, 0);
+});

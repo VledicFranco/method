@@ -694,3 +694,219 @@ test('Resource Copier: handles malformed source manifest gracefully', async () =
     rmSync(baseDir, { recursive: true });
   }
 });
+
+// ── Tests: Path Traversal Protection ────
+
+test('Resource Copier: blocks path traversal with ../', async () => {
+  const baseDir = join(tmpdir(), `test-traversal-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'P2-SD',
+            type: 'methodology',
+            version: '2.0',
+          },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: '../../etc/passwd',
+        method_name: 'P2-SD',
+        target_ids: ['target'],
+      });
+
+      // Should report error due to path traversal
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('Resource Copier: blocks path traversal in target with ../', async () => {
+  const baseDir = join(tmpdir(), `test-traversal-target-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'P2-SD',
+            type: 'methodology',
+            version: '2.0',
+          },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: ['../sibling'],
+      });
+
+      // Should report error due to path traversal
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('Resource Copier: blocks absolute paths', async () => {
+  const baseDir = join(tmpdir(), `test-absolute-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'P2-SD',
+            type: 'methodology',
+            version: '2.0',
+          },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: '/etc/passwd',
+        method_name: 'P2-SD',
+        target_ids: ['target'],
+      });
+
+      // Should report error due to path traversal
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('Resource Copier: allows valid project names', async () => {
+  const baseDir = join(tmpdir(), `test-valid-names-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    const targetPath = createGitRepo(baseDir, 'target-project');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'P2-SD',
+            type: 'methodology',
+            version: '2.0',
+          },
+        ],
+      },
+    });
+
+    createManifest(targetPath, {
+      manifest: { project: 'target-project', last_updated: '2026-03-21', installed: [] },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyMethodology({
+        source_id: 'source',
+        method_name: 'P2-SD',
+        target_ids: ['target-project'],
+      });
+
+      // Should succeed with valid names
+      assert.strictEqual(result.copied_to[0].status, 'success');
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('Resource Copier: blocks path traversal in strategy copy', async () => {
+  const baseDir = join(tmpdir(), `test-strat-traversal-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'STRAT-001',
+            type: 'strategy',
+            version: '1.0',
+          },
+        ],
+      },
+    });
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      const result = await copyStrategy({
+        source_id: '../../evil',
+        strategy_name: 'STRAT-001',
+        target_ids: ['target'],
+      });
+
+      // Should report error due to path traversal
+      assert.strictEqual(result.copied_to[0].status, 'error');
+      assert(result.copied_to[0].error_detail?.includes('Path traversal'));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});

@@ -134,6 +134,7 @@ function createTestContext(): GenesisToolsContext {
 
   return {
     discoveryService: mockDiscoveryService,
+    rootDir: '/test-root',
     eventLog,
     cursorMap: new Map(),
   };

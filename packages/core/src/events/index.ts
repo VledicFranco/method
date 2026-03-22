@@ -11,3 +11,5 @@ export {
   type EventPersistence,
   createTestEvent,
 } from './event-persistence.js';
+
+export { YamlEventPersistence } from './yaml-event-persistence.js';

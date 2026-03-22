@@ -191,7 +191,7 @@ export async function registerGenesisRoutes(
   );
 
   // DELETE /genesis/prompt — Abort in-flight prompt
-  app.delete<{ Reply: { aborted: boolean; cancelled_prompt_id?: string } | { error: string; message: string } }>(
+  app.delete<{ Reply: { aborted: boolean; cancelled_prompt_id?: string; reason?: string } | { aborted: false; reason: string } | { error: string; message: string } }>(
     '/genesis/prompt',
     async (_req: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -203,14 +203,33 @@ export async function registerGenesisRoutes(
         }
 
         // F-A-9: Cancel the oldest pending prompt for this session
-        // Note: In production, this would interrupt an actual in-flight prompt.
-        // For testing/simulation, we always succeed since the command was issued.
         const cancelledPromptId = cancelPrompt(context.genesisSessionId);
 
-        return reply.status(200).send({
-          aborted: true,
-          cancelled_prompt_id: cancelledPromptId || undefined,
-        });
+        // Get the session to attempt PTY interrupt
+        const session = context.sessionPool.getSession(context.genesisSessionId);
+        if (!session) {
+          // Session doesn't exist
+          return reply.status(501).send({
+            aborted: false,
+            reason: 'pty_interrupt_not_supported',
+          });
+        }
+
+        // Attempt to send CTRL-C to PTY stdin
+        const interrupted = session.interrupt();
+
+        if (interrupted) {
+          return reply.status(200).send({
+            aborted: true,
+            cancelled_prompt_id: cancelledPromptId || undefined,
+          });
+        } else {
+          // PTY interrupt not available (e.g., print mode or dead session)
+          return reply.status(501).send({
+            aborted: false,
+            reason: 'pty_interrupt_not_supported',
+          });
+        }
       } catch (err) {
         return reply.status(500).send({
           error: 'Failed to abort Genesis prompt',

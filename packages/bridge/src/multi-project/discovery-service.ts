@@ -50,6 +50,7 @@ export interface DiscoveryResult {
 export class DiscoveryService {
   private timeoutMs: number;
   private maxProjects: number;
+  private cachedProjects: ProjectMetadata[] = [];
 
   constructor(options?: { timeoutMs?: number; maxProjects?: number }) {
     const envTimeout = process.env.DISCOVERY_TIMEOUT_MS
@@ -58,6 +59,14 @@ export class DiscoveryService {
 
     this.timeoutMs = options?.timeoutMs ?? envTimeout ?? 60000;
     this.maxProjects = options?.maxProjects ?? 1000;
+  }
+
+  /**
+   * Get cached projects from the last discovery run
+   * Returns empty array if no discovery has been run yet
+   */
+  getCachedProjects(): ProjectMetadata[] {
+    return [...this.cachedProjects];
   }
 
   /**
@@ -163,6 +172,9 @@ export class DiscoveryService {
 
     const elapsed = Date.now() - startTime;
     const incomplete = results.length >= this.maxProjects || elapsed > this.timeoutMs;
+
+    // Cache the results
+    this.cachedProjects = results;
 
     return {
       projects: results,

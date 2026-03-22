@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { registerGenesisRoutes, type GenesisRouteContext } from '../genesis-routes.js';
 import type { SessionPool, SessionStatusInfo } from '../pool.js';
+import type { PtySession } from '../pty-session.js';
 import type { GenesisToolsContext } from '../genesis/tools.js';
 
 // ── Mock Genesis Tools Context ────
@@ -25,6 +26,7 @@ function createMockGenesisToolsContext(): GenesisToolsContext {
         discovery_incomplete: false,
       }),
     } as any,
+    rootDir: '/test-root',
     eventLog: {
       buffer: [],
       capacity: 1000,
@@ -117,7 +119,29 @@ function createMockSessionPool(
     poolStats: () => { throw new Error('Not implemented'); },
     removeDead: () => 0,
     getChannels: () => { throw new Error('Not implemented'); },
-    getSession: () => { throw new Error('Not implemented'); },
+    getSession: (sessionId: string): PtySession | undefined => {
+      if (!genesisSessionId || sessionId !== genesisSessionId) {
+        return undefined;
+      }
+
+      // Return a mock PtySession with interrupt support
+      return {
+        id: sessionId,
+        pid: 12345,
+        status: 'ready',
+        queueDepth: 0,
+        promptCount: 0,
+        lastActivityAt: new Date(),
+        transcript: '',
+        onOutput: () => () => {},
+        onExit: () => {},
+        sendPrompt: async () => ({ output: '', timedOut: false }),
+        resize: () => {},
+        kill: () => {},
+        interrupt: () => true, // Mock: always succeeds
+        adaptiveSettle: null,
+      } as PtySession;
+    },
     checkStale: () => ({ stale: [], killed: [] }),
     childPids: () => [],
     setObservationHook: () => {},

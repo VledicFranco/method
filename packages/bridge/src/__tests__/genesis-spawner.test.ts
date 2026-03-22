@@ -427,7 +427,7 @@ describe('GenesisPollingLoop', () => {
       ];
 
       let callCount = 0;
-      const eventFetcher = async () => {
+      const eventFetcher = async (_projectId: string, _cursor: string) => {
         callCount++;
         return callCount === 1 ? mockEvents : [];
       };
@@ -463,7 +463,7 @@ describe('GenesisPollingLoop', () => {
     const pool = new MockSessionPool();
 
     let pollCount = 0;
-    const eventFetcher = async () => {
+    const eventFetcher = async (_projectId: string, _cursor: string) => {
       pollCount++;
       await new Promise(r => setTimeout(r, 200));
       return [];
@@ -487,7 +487,7 @@ describe('GenesisPollingLoop', () => {
 
     try {
       let attemptCount = 0;
-      const eventFetcher = async () => {
+      const eventFetcher = async (_projectId: string, _cursor: string) => {
         attemptCount++;
         if (attemptCount === 1) {
           throw new Error('Transient error');
@@ -515,7 +515,7 @@ describe('GenesisPollingLoop', () => {
     const loop = new GenesisPollingLoop({ intervalMs: 100 });
     const pool = new MockSessionPool();
 
-    const eventFetcher = async () => [];
+    const eventFetcher = async (_projectId: string, _cursor: string) => [];
 
     assert.strictEqual(loop.isRunning(), false);
 
@@ -534,7 +534,7 @@ describe('GenesisPollingLoop', () => {
   it('should warn if start called while already running', () => {
     const loop = new GenesisPollingLoop({ intervalMs: 100 });
     const pool = new MockSessionPool();
-    const eventFetcher = async () => [];
+    const eventFetcher = async (_projectId: string, _cursor: string) => [];
 
     let warnCalled = false;
     const originalWarn = console.warn;

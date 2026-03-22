@@ -40,23 +40,45 @@ export interface CopyResponse {
 }
 
 /**
- * Resolve project directory path from project ID
+ * Safely resolve project directory path from project ID
+ * Includes path traversal protection to prevent directory escape attacks
+ *
  * In Phase 1, we assume project ID = project directory name
- * Root is process.cwd()
+ * Root is determined by rootDir parameter (default: process.cwd())
  */
-function resolveProjectPath(projectId: string): string {
+function resolveProjectPath(projectId: string, rootDir: string = process.cwd()): string {
   // Special case: root project
   if (projectId === 'root' || projectId === '.') {
-    return process.cwd();
+    return rootDir;
   }
+
+  let resolvedPath: string;
 
   // If projectId contains path separators, treat as relative path
   // Otherwise, treat as sibling directory
   if (projectId.includes(path.sep) || projectId.includes('/')) {
-    return path.resolve(projectId);
+    resolvedPath = path.resolve(projectId);
+  } else {
+    resolvedPath = path.resolve(rootDir, projectId);
   }
 
-  return path.resolve(process.cwd(), projectId);
+  // Path traversal protection: ensure resolved path stays within root
+  try {
+    const normalizedRoot = path.normalize(path.resolve(rootDir));
+    const normalized = path.normalize(path.resolve(resolvedPath));
+
+    // Check if normalized path starts with root (with separator to prevent prefix matches)
+    if (!normalized.startsWith(normalizedRoot + path.sep) && normalized !== normalizedRoot) {
+      throw new Error(`Path traversal detected: "${projectId}" resolves outside root directory`);
+    }
+
+    return normalized;
+  } catch (err) {
+    if ((err as Error).message.includes('Path traversal detected')) {
+      throw err;
+    }
+    throw new Error(`Failed to resolve project path: ${(err as Error).message}`);
+  }
 }
 
 /**
@@ -160,13 +182,26 @@ function findInstalledEntry(manifest: any, id: string, type: string): number {
 /**
  * Copy a methodology from source to target projects
  */
-export async function copyMethodology(req: CopyMethodologyRequest): Promise<CopyResponse> {
+export async function copyMethodology(req: CopyMethodologyRequest, rootDir: string = process.cwd()): Promise<CopyResponse> {
   const { source_id, method_name, target_ids } = req;
 
   const results: CopyResult[] = [];
 
-  // Resolve source project path
-  const sourcePath = resolveProjectPath(source_id);
+  // Resolve source project path (with path traversal protection)
+  let sourcePath: string;
+  try {
+    sourcePath = resolveProjectPath(source_id, rootDir);
+  } catch (err) {
+    // Path traversal or resolution error
+    for (const targetId of target_ids) {
+      results.push({
+        project_id: targetId,
+        status: 'error',
+        error_detail: `Invalid source project ID: ${(err as Error).message}`,
+      });
+    }
+    return { copied_to: results };
+  }
 
   // Load source manifest
   const sourceManifest = loadManifest(sourcePath);
@@ -201,7 +236,8 @@ export async function copyMethodology(req: CopyMethodologyRequest): Promise<Copy
   // Copy to each target
   for (const targetId of target_ids) {
     try {
-      const targetPath = resolveProjectPath(targetId);
+      // Resolve target path with path traversal protection
+      const targetPath = resolveProjectPath(targetId, rootDir);
 
       // Verify target exists by checking for .git directory
       if (!fs.existsSync(path.join(targetPath, '.git'))) {
@@ -274,13 +310,26 @@ export async function copyMethodology(req: CopyMethodologyRequest): Promise<Copy
 /**
  * Copy a strategy from source to target projects
  */
-export async function copyStrategy(req: CopyStrategyRequest): Promise<CopyResponse> {
+export async function copyStrategy(req: CopyStrategyRequest, rootDir: string = process.cwd()): Promise<CopyResponse> {
   const { source_id, strategy_name, target_ids } = req;
 
   const results: CopyResult[] = [];
 
-  // Resolve source project path
-  const sourcePath = resolveProjectPath(source_id);
+  // Resolve source project path (with path traversal protection)
+  let sourcePath: string;
+  try {
+    sourcePath = resolveProjectPath(source_id, rootDir);
+  } catch (err) {
+    // Path traversal or resolution error
+    for (const targetId of target_ids) {
+      results.push({
+        project_id: targetId,
+        status: 'error',
+        error_detail: `Invalid source project ID: ${(err as Error).message}`,
+      });
+    }
+    return { copied_to: results };
+  }
 
   // Load source manifest
   const sourceManifest = loadManifest(sourcePath);
@@ -315,7 +364,8 @@ export async function copyStrategy(req: CopyStrategyRequest): Promise<CopyRespon
   // Copy to each target
   for (const targetId of target_ids) {
     try {
-      const targetPath = resolveProjectPath(targetId);
+      // Resolve target path with path traversal protection
+      const targetPath = resolveProjectPath(targetId, rootDir);
 
       // Verify target exists by checking for .git directory
       if (!fs.existsSync(path.join(targetPath, '.git'))) {
