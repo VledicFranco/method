@@ -141,6 +141,9 @@ function convertStep(step: Step<S>): CoreStep {
     precondition,
     postcondition,
     guidance,
+    // Note: outputSchema is null for YAML-loaded steps because MethodTS Step<S> type
+    // doesn't include output_schema. The original core loader populated this from YAML.
+    // TODO: Add _outputSchema to methodts YAML adapter's step conversion.
     outputSchema: null,
   };
 }
@@ -448,7 +451,8 @@ export function listMethodologiesTS(registryPath: string): MethodologyEntry[] {
       let parsed: Record<string, unknown>;
       try {
         parsed = readYaml(filePath);
-      } catch {
+      } catch (e) {
+        console.warn(`[MCP] Failed to parse ${filePath}: ${(e as Error).message}`);
         continue;
       }
 
@@ -630,8 +634,8 @@ export function startMethodologySessionTS(
         }
       }
     }
-  } catch {
-    // If we can't read the YAML for objective, leave it null
+  } catch (e) {
+    console.warn(`[MCP] Failed to read methodology objective for ${methodologyId}: ${(e as Error).message}`);
   }
 
   // 4. Create session state
@@ -1080,8 +1084,8 @@ export function transitionMethodologyTS(
     const st = session.status();
     currentMethodName = st.methodId;
     currentStepCount = st.totalSteps;
-  } catch {
-    /* method may not be loaded */
+  } catch (e) {
+    console.warn(`[MCP] Could not get method status during transition: ${(e as Error).message}`);
   }
 
   // 5. Create completed method record

@@ -31,15 +31,15 @@ export interface ValidationResult {
  * These tools operate on project-specific data and must enforce access control.
  */
 const PROJECT_SCOPED_TOOLS = new Set([
-  // Future: project registry tools
+  // Project registry tools
   'project_list',
   'project_get',
   'project_read_events',
-  'project_copy_method',
-  'project_copy_strategy',
-  // Future: Genesis agent tools
+  // Resource copier tools (PRD 020 Phase 3)
+  'resource_copy_methodology',
+  'resource_copy_strategy',
+  // Genesis agent tools
   'genesis_report',
-  'genesis_spawn',
 ]);
 
 /**
