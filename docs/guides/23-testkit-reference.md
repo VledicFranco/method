@@ -317,7 +317,7 @@ const { layer, recordings } = SequenceProvider([
 
 ### `silentProvider(): Layer<AgentProvider>`
 
-Zero-config provider for script-only execution. Returns `{ raw: "{}", cost: { tokens: 0, usd: 0, duration_ms: 0 } }` for any commission. Used internally by harnesses when no agent config is provided.
+Fail-fast provider for script-only execution. If an agent step accidentally invokes it, fails with a clear `AgentSpawnFailed` error explaining that no responses were configured. Script steps never hit the provider, so this is transparent for script-only methodologies. Used internally by harnesses when no agent config is provided.
 
 ---
 
