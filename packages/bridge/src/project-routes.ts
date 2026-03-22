@@ -564,6 +564,17 @@ export async function registerProjectRoutes(
           });
         }
 
+        // F-SEC-002: Validate that requester can access source project
+        const sessionContext = getSessionContext(req);
+        const sourceValidation = validateProjectAccess(source_id, sessionContext);
+        if (!sourceValidation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: `Cannot copy from project ${source_id} — permission denied`,
+            message: sourceValidation.reason || 'Not authorized to access source project',
+          });
+        }
+
         const result = await copyMethodology({
           source_id,
           method_name,
@@ -590,6 +601,17 @@ export async function registerProjectRoutes(
         if (!source_id || !strategy_name || !target_ids || !Array.isArray(target_ids)) {
           return reply.status(400).send({
             error: 'Missing or invalid required fields: source_id, strategy_name, target_ids (array)',
+          });
+        }
+
+        // F-SEC-002: Validate that requester can access source project
+        const sessionContext = getSessionContext(req);
+        const sourceValidation = validateProjectAccess(source_id, sessionContext);
+        if (!sourceValidation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: `Cannot copy from project ${source_id} — permission denied`,
+            message: sourceValidation.reason || 'Not authorized to access source project',
           });
         }
 

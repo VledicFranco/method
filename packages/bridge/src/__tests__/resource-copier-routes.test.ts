@@ -281,3 +281,147 @@ test('POST /api/resources/copy-methodology: handles partial failures gracefully'
     rmSync(baseDir, { recursive: true });
   }
 });
+
+// ── F-SEC-002: Resource Copy Authorization Tests ────
+
+test('POST /api/resources/copy-methodology: Returns 403 when requester cannot access source project', async () => {
+  const baseDir = join(tmpdir(), `test-routes-sec-method-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source-proj');
+    const targetPath = createGitRepo(baseDir, 'target-proj');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source-proj',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'P2-SD',
+            type: 'methodology',
+            version: '2.0',
+          },
+        ],
+      },
+    });
+
+    createManifest(targetPath, {
+      manifest: {
+        project: 'target-proj',
+        last_updated: '2026-03-21',
+        installed: [],
+      },
+    });
+
+    const app = Fastify({ logger: false });
+    const discoveryService = new DiscoveryService();
+    const registry = new InMemoryProjectRegistry();
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      await registerProjectRoutes(app, discoveryService, registry);
+      await app.ready();
+
+      try {
+        // Request with x-project-id=other-proj trying to copy from source-proj
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/resources/copy-methodology',
+          headers: {
+            'x-project-id': 'other-proj',
+          },
+          payload: {
+            source_id: 'source-proj',
+            method_name: 'P2-SD',
+            target_ids: ['target-proj'],
+          },
+        });
+
+        assert.strictEqual(response.statusCode, 403);
+        const body = JSON.parse(response.body);
+        assert.strictEqual(body.error, 'Access denied');
+        assert(body.reason.includes('Cannot copy from project source-proj'));
+      } finally {
+        await app.close();
+      }
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});
+
+test('POST /api/resources/copy-strategy: Returns 403 when requester cannot access source project', async () => {
+  const baseDir = join(tmpdir(), `test-routes-sec-strat-${Date.now()}`);
+  mkdirSync(baseDir, { recursive: true });
+
+  try {
+    const sourcePath = createGitRepo(baseDir, 'source');
+    const targetPath = createGitRepo(baseDir, 'target');
+
+    createManifest(sourcePath, {
+      manifest: {
+        project: 'source',
+        last_updated: '2026-03-21',
+        installed: [
+          {
+            id: 'STRAT-001',
+            type: 'strategy',
+            version: '1.0',
+          },
+        ],
+      },
+    });
+
+    createManifest(targetPath, {
+      manifest: {
+        project: 'target',
+        last_updated: '2026-03-21',
+        installed: [],
+      },
+    });
+
+    const app = Fastify({ logger: false });
+    const discoveryService = new DiscoveryService();
+    const registry = new InMemoryProjectRegistry();
+
+    const originalCwd = process.cwd();
+    process.chdir(baseDir);
+
+    try {
+      await registerProjectRoutes(app, discoveryService, registry);
+      await app.ready();
+
+      try {
+        // Request with x-project-id=other trying to copy from source
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/resources/copy-strategy',
+          headers: {
+            'x-project-id': 'other',
+          },
+          payload: {
+            source_id: 'source',
+            strategy_name: 'STRAT-001',
+            target_ids: ['target'],
+          },
+        });
+
+        assert.strictEqual(response.statusCode, 403);
+        const body = JSON.parse(response.body);
+        assert.strictEqual(body.error, 'Access denied');
+        assert(body.reason.includes('Cannot copy from project source'));
+      } finally {
+        await app.close();
+      }
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    rmSync(baseDir, { recursive: true });
+  }
+});

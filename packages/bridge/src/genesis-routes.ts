@@ -20,6 +20,7 @@ import {
   genesisReportTool,
   type GenesisToolsContext,
 } from './genesis/tools.js';
+import { validateProjectAccess, getSessionContext } from './project-routes.js';
 
 export interface GenesisRouteContext {
   sessionPool: SessionPool;
@@ -196,8 +197,18 @@ export async function registerGenesisRoutes(
   // GET /api/genesis/projects/list — List all discovered projects
   app.get<{ Reply: any }>(
     '/api/genesis/projects/list',
-    async (_req: FastifyRequest, reply: FastifyReply) => {
+    async (req: FastifyRequest, reply: FastifyReply) => {
       try {
+        // F-SEC-001: Validate project access
+        const sessionContext = getSessionContext(req);
+        // Only root (Genesis) can list all projects
+        if (sessionContext.projectId && sessionContext.projectId !== 'root') {
+          return reply.status(403).send({
+            error: 'Access denied',
+            message: `Only Genesis (root) can list all projects`,
+          });
+        }
+
         if (!context.genesisToolsContext) {
           return reply.status(503).send({
             error: 'Genesis tools not available',
@@ -221,6 +232,16 @@ export async function registerGenesisRoutes(
     '/api/genesis/projects/:projectId',
     async (req: FastifyRequest<{ Params: { projectId: string } }>, reply: FastifyReply) => {
       try {
+        // F-SEC-001: Validate project access
+        const sessionContext = getSessionContext(req);
+        const validation = validateProjectAccess(req.params.projectId, sessionContext);
+        if (!validation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            message: validation.reason || 'Not authorized to access this project',
+          });
+        }
+
         if (!context.genesisToolsContext) {
           return reply.status(503).send({
             error: 'Genesis tools not available',
@@ -251,6 +272,16 @@ export async function registerGenesisRoutes(
     '/api/genesis/projects/:projectId/manifest',
     async (req: FastifyRequest<{ Params: { projectId: string } }>, reply: FastifyReply) => {
       try {
+        // F-SEC-001: Validate project access
+        const sessionContext = getSessionContext(req);
+        const validation = validateProjectAccess(req.params.projectId, sessionContext);
+        if (!validation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            message: validation.reason || 'Not authorized to access this project',
+          });
+        }
+
         if (!context.genesisToolsContext) {
           return reply.status(503).send({
             error: 'Genesis tools not available',
@@ -281,6 +312,18 @@ export async function registerGenesisRoutes(
     '/api/genesis/projects/events',
     async (req: FastifyRequest<{ Querystring: { project_id?: string; since_cursor?: string } }>, reply: FastifyReply) => {
       try {
+        // F-SEC-001: Validate project access if project_id is specified
+        if (req.query.project_id) {
+          const sessionContext = getSessionContext(req);
+          const validation = validateProjectAccess(req.query.project_id, sessionContext);
+          if (!validation.allowed) {
+            return reply.status(403).send({
+              error: 'Access denied',
+              message: validation.reason || 'Not authorized to access this project',
+            });
+          }
+        }
+
         if (!context.genesisToolsContext) {
           return reply.status(503).send({
             error: 'Genesis tools not available',

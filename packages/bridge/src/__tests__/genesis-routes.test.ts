@@ -11,6 +11,29 @@ import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { registerGenesisRoutes, type GenesisRouteContext } from '../genesis-routes.js';
 import type { SessionPool, SessionStatusInfo } from '../pool.js';
+import type { GenesisToolsContext } from '../genesis/tools.js';
+
+// ── Mock Genesis Tools Context ────
+
+function createMockGenesisToolsContext(): GenesisToolsContext {
+  return {
+    discoveryService: {
+      discover: async () => ({
+        projects: [],
+        stopped_at_max_projects: false,
+        scanned_count: 0,
+        discovery_incomplete: false,
+      }),
+    } as any,
+    eventLog: {
+      buffer: [],
+      capacity: 1000,
+      index: 0,
+      count: 0,
+    },
+    cursorMap: new Map(),
+  };
+}
 
 // ── Mock Session Pool ────
 
@@ -374,6 +397,112 @@ describe('Genesis HTTP Routes', () => {
     assert.strictEqual(response.statusCode, 200);
     const data = JSON.parse(response.body);
     assert(data.output.includes('Test with whitespace'));
+
+    await app.close();
+  });
+
+  // ── F-SEC-001: Genesis Project Tools Authorization Tests ────
+
+  test('GET /api/genesis/projects/list: Returns 403 when non-root project tries to list', async () => {
+    const app: FastifyInstance = fastify();
+    const genesisSessionId = 'genesis-session-123';
+    const pool = createMockSessionPool(genesisSessionId) as SessionPool;
+
+    await registerGenesisRoutes(app, {
+      sessionPool: pool,
+      genesisSessionId,
+      genesisToolsContext: createMockGenesisToolsContext(),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/genesis/projects/list',
+      headers: {
+        'x-project-id': 'other-project',
+      },
+    });
+
+    assert.strictEqual(response.statusCode, 403);
+    const data = JSON.parse(response.body);
+    assert.strictEqual(data.error, 'Access denied');
+
+    await app.close();
+  });
+
+  test('GET /api/genesis/projects/:projectId: Returns 403 when accessing different project', async () => {
+    const app: FastifyInstance = fastify();
+    const genesisSessionId = 'genesis-session-123';
+    const pool = createMockSessionPool(genesisSessionId) as SessionPool;
+
+    await registerGenesisRoutes(app, {
+      sessionPool: pool,
+      genesisSessionId,
+      genesisToolsContext: createMockGenesisToolsContext(),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/genesis/projects/target-project',
+      headers: {
+        'x-project-id': 'other-project',
+      },
+    });
+
+    assert.strictEqual(response.statusCode, 403);
+    const data = JSON.parse(response.body);
+    assert.strictEqual(data.error, 'Access denied');
+
+    await app.close();
+  });
+
+  test('GET /api/genesis/projects/:projectId/manifest: Returns 403 when accessing different project', async () => {
+    const app: FastifyInstance = fastify();
+    const genesisSessionId = 'genesis-session-123';
+    const pool = createMockSessionPool(genesisSessionId) as SessionPool;
+
+    await registerGenesisRoutes(app, {
+      sessionPool: pool,
+      genesisSessionId,
+      genesisToolsContext: createMockGenesisToolsContext(),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/genesis/projects/target-project/manifest',
+      headers: {
+        'x-project-id': 'other-project',
+      },
+    });
+
+    assert.strictEqual(response.statusCode, 403);
+    const data = JSON.parse(response.body);
+    assert.strictEqual(data.error, 'Access denied');
+
+    await app.close();
+  });
+
+  test('GET /api/genesis/projects/events: Returns 403 when accessing different project events', async () => {
+    const app: FastifyInstance = fastify();
+    const genesisSessionId = 'genesis-session-123';
+    const pool = createMockSessionPool(genesisSessionId) as SessionPool;
+
+    await registerGenesisRoutes(app, {
+      sessionPool: pool,
+      genesisSessionId,
+      genesisToolsContext: createMockGenesisToolsContext(),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/genesis/projects/events?project_id=target-project',
+      headers: {
+        'x-project-id': 'other-project',
+      },
+    });
+
+    assert.strictEqual(response.statusCode, 403);
+    const data = JSON.parse(response.body);
+    assert.strictEqual(data.error, 'Access denied');
 
     await app.close();
   });
