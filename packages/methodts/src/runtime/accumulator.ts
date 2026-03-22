@@ -12,6 +12,14 @@
 
 import type { WorldState, StateTrace, Snapshot } from "../state/world-state.js";
 
+/** Per-model cost breakdown (from AgentResult.modelUsage). */
+export type ModelCostRecord = {
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly costUsd: number;
+};
+
 /** Record of a completed method within a methodology run. */
 export type CompletedMethodRecord = {
   readonly methodId: string;
@@ -21,6 +29,9 @@ export type CompletedMethodRecord = {
     readonly tokens: number;
     readonly usd: number;
     readonly duration_ms: number;
+    readonly modelBreakdown?: readonly ModelCostRecord[];
+    readonly cacheCreationTokens?: number;
+    readonly cacheReadTokens?: number;
   };
 };
 
@@ -97,4 +108,27 @@ export function recordMethod(
     elapsedMs: acc.elapsedMs + record.cost.duration_ms,
     completedMethods: [...acc.completedMethods, record],
   };
+}
+
+/**
+ * Aggregate model breakdown across multiple cost records.
+ *
+ * Pure function — sums inputTokens, outputTokens, and costUsd per model
+ * across all provided cost records. Records without modelBreakdown are skipped.
+ */
+export function aggregateModelCosts(
+  costs: readonly { modelBreakdown?: readonly ModelCostRecord[] }[],
+): ModelCostRecord[] {
+  const byModel = new Map<string, { inputTokens: number; outputTokens: number; costUsd: number }>();
+  for (const cost of costs) {
+    for (const m of cost.modelBreakdown ?? []) {
+      const existing = byModel.get(m.model) ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+      byModel.set(m.model, {
+        inputTokens: existing.inputTokens + m.inputTokens,
+        outputTokens: existing.outputTokens + m.outputTokens,
+        costUsd: existing.costUsd + m.costUsd,
+      });
+    }
+  }
+  return [...byModel.entries()].map(([model, data]) => ({ model, ...data }));
 }

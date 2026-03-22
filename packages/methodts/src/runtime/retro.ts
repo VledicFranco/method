@@ -13,7 +13,9 @@ import type {
   MethodologyResult,
   ExecutionAccumulatorState,
   CompletedMethodRecord,
+  ModelCostRecord,
 } from "./accumulator.js";
+import { aggregateModelCosts } from "./accumulator.js";
 import type { SafetyBounds } from "../methodology/methodology.js";
 
 /** Structured retrospective from a methodology run. YAML-serializable (DR-T06). */
@@ -31,6 +33,12 @@ export type MethodologyRetro = {
       readonly tokens: number;
       readonly usd: number;
     }[];
+    readonly perModel?: readonly ModelCostRecord[];
+    readonly cacheEfficiency?: {
+      readonly creationTokens: number;
+      readonly readTokens: number;
+      readonly savingsEstimate: number;
+    };
   };
   readonly routing: {
     readonly totalLoops: number;
@@ -93,10 +101,34 @@ export function generateRetro<S>(
     usd: m.cost.usd,
   }));
 
+  // Per-model aggregation (from enriched cost data)
+  const modelBreakdown = aggregateModelCosts(acc.completedMethods.map((m) => m.cost));
+  const perModel = modelBreakdown.length > 0 ? modelBreakdown : undefined;
+
+  // Cache efficiency (from enriched cost data)
+  const totalCacheCreation = acc.completedMethods.reduce(
+    (sum, m) => sum + (m.cost.cacheCreationTokens ?? 0),
+    0,
+  );
+  const totalCacheRead = acc.completedMethods.reduce(
+    (sum, m) => sum + (m.cost.cacheReadTokens ?? 0),
+    0,
+  );
+  const cacheEfficiency =
+    totalCacheCreation > 0 || totalCacheRead > 0
+      ? {
+          creationTokens: totalCacheCreation,
+          readTokens: totalCacheRead,
+          savingsEstimate: totalCacheRead, // cache reads saved re-computing those tokens
+        }
+      : undefined;
+
   const cost = {
     totalTokens: acc.totalTokens,
     totalCostUsd: acc.totalCostUsd,
     perMethod,
+    perModel,
+    cacheEfficiency,
   };
 
   // Routing — method execution sequence
