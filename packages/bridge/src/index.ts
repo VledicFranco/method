@@ -182,9 +182,13 @@ app.post<{
     purpose?: string;
     spawn_delay_ms?: number;
     mode?: 'pty' | 'print';
+    /** PRD 014: Glob patterns of files the agent is allowed to modify. */
+    allowed_paths?: string[];
+    /** PRD 014: Scope enforcement mode. */
+    scope_mode?: 'enforce' | 'warn';
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -205,6 +209,8 @@ app.post<{
       purpose,
       spawn_delay_ms,
       mode,
+      allowed_paths,
+      scope_mode,
     });
 
     // Register session with token tracker
