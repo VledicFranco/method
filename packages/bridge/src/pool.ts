@@ -9,6 +9,7 @@ import { generateAutoRetro } from './auto-retro.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { AdaptiveSettleDelay, parseAdaptiveSettleConfig, isAdaptiveSettleEnabled } from './adaptive-settle.js';
 import { SpawnQueue } from './spawn-queue.js';
+import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -92,6 +93,10 @@ export interface SessionPool {
     persistent?: boolean;
     spawn_delay_ms?: number;
     mode?: SessionMode;
+    /** PRD 014: Glob patterns of files the agent is allowed to modify. Empty array = no constraint. */
+    allowed_paths?: string[];
+    /** PRD 014: Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. */
+    scope_mode?: 'enforce' | 'warn';
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
@@ -313,7 +318,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -401,6 +406,36 @@ export function createPool(options?: PoolOptions): SessionPool {
         worktree_branch: worktreeBranch,
         metals_available: effectiveIsolation !== 'worktree',
       };
+
+      // PRD 014: Scope enforcement — determine effective mode and install hook
+      const effectiveAllowedPaths = allowed_paths ?? [];
+      const envScopeDefault = process.env.SCOPE_ENFORCEMENT_DEFAULT;
+      const validatedEnvDefault: 'enforce' | 'warn' = (envScopeDefault === 'enforce' || envScopeDefault === 'warn') ? envScopeDefault : 'enforce';
+      let effectiveScopeMode: 'enforce' | 'warn' = scope_mode ?? validatedEnvDefault;
+
+      if (effectiveAllowedPaths.length > 0) {
+        if (effectiveIsolation !== 'worktree' && effectiveScopeMode === 'enforce') {
+          // PRD 014: Worktree fallback — can't install hook in shared mode
+          console.warn(`[PRD 014] allowed_paths provided without worktree isolation — falling back to mode 'warn'. Pre-commit hook requires isolation: 'worktree'.`);
+          effectiveScopeMode = 'warn';
+        }
+
+        if (effectiveScopeMode === 'enforce' && worktreePath) {
+          // Install pre-commit hook in the worktree
+          const hookResult = installScopeHook(worktreePath, sessionId, effectiveAllowedPaths);
+          if (hookResult.error) {
+            console.warn(`[PRD 014] Scope hook installation warning: ${hookResult.error}`);
+          }
+        }
+
+        // Store scope constraint in metadata for PTY watcher (Phase 2)
+        const existingMetadata = metadata ?? {};
+        metadata = {
+          ...existingMetadata,
+          allowed_paths: effectiveAllowedPaths,
+          scope_mode: effectiveScopeMode,
+        };
+      }
 
       // PRD 006 Component 4: Stale detection config
       // PRD 011: persistent sessions skip stale detection entirely
@@ -586,12 +621,35 @@ export function createPool(options?: PoolOptions): SessionPool {
             }
           };
 
+          // PRD 014: Pass allowed_paths to watcher for scope violation detection
+          const sessionAllowedPaths = metadata?.allowed_paths as string[] | undefined;
+
+          // PRD 014 F-N-1: Push-notify parent on scope violations from PTY watcher
+          const scopeViolationPush = (sessionAllowedPaths && sessionAllowedPaths.length > 0 && parentSessionId)
+            ? (content: unknown) => {
+                try {
+                  const parentSession = sessions.get(parentSessionId!);
+                  if (parentSession && parentSession.status !== 'dead') {
+                    const notification = [
+                      `BRIDGE NOTIFICATION — Child agent [${assignedNickname}] event: scope_violation`,
+                      `Session: ${assignedNickname} (${sessionId.substring(0, 8)})`,
+                      `Details: ${JSON.stringify(content ?? {})}`,
+                      `Action required: Child is writing outside its allowed scope — intervene or adjust allowed_paths`,
+                    ].join('\n');
+                    parentSession.sendPrompt(notification).catch(() => { /* non-fatal */ });
+                  }
+                } catch { /* non-fatal */ }
+              }
+            : undefined;
+
           const watcher = createPtyWatcher(
             sessionId,
             channels,
             (cb) => session.onOutput(cb),
             watcherConfig,
             diagnosticsCallback,
+            sessionAllowedPaths,
+            scopeViolationPush,
           );
           sessionWatchers.set(sessionId, watcher);
 

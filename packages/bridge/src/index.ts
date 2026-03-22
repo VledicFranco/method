@@ -182,9 +182,13 @@ app.post<{
     purpose?: string;
     spawn_delay_ms?: number;
     mode?: 'pty' | 'print';
+    /** PRD 014: Glob patterns of files the agent is allowed to modify. */
+    allowed_paths?: string[];
+    /** PRD 014: Scope enforcement mode. */
+    scope_mode?: 'enforce' | 'warn';
   };
 }>('/sessions', async (request, reply) => {
-  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode } = request.body ?? {};
+  const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode } = request.body ?? {};
 
   if (!workdir || typeof workdir !== 'string') {
     return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -205,6 +209,8 @@ app.post<{
       purpose,
       spawn_delay_ms,
       mode,
+      allowed_paths,
+      scope_mode,
     });
 
     // Register session with token tracker
@@ -259,6 +265,8 @@ app.post<{
       nickname?: string;
       purpose?: string;
       mode?: 'pty' | 'print';
+      allowed_paths?: string[];
+      scope_mode?: 'enforce' | 'warn';
     }>;
     stagger_ms?: number;
   };
@@ -323,6 +331,8 @@ app.post<{
         nickname: cfg.nickname,
         purpose: cfg.purpose,
         mode: cfg.mode,
+        allowed_paths: cfg.allowed_paths,
+        scope_mode: cfg.scope_mode,
       });
 
       tokenTracker.registerSession(result.sessionId, cfg.workdir, new Date());
@@ -582,8 +592,8 @@ app.post<{
     const channels = pool.getChannels(id);
     const sequence = appendMessage(channels.events, sender ?? id, type, content ?? {});
 
-    // Push notification to parent (PRD 008 Component 2)
-    const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale']);
+    // Push notification to parent (PRD 008 Component 2, PRD 014: scope_violation)
+    const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale', 'scope_violation']);
     if (PUSHABLE_EVENTS.has(type)) {
       try {
         const status = pool.status(id);
@@ -597,7 +607,7 @@ app.post<{
                 ? `Commission: ${status.metadata.commission_id} — ${status.metadata.task_summary ?? 'no summary'}`
                 : `Session: ${status.nickname} (${id.substring(0, 8)})`,
               `Details: ${JSON.stringify(content ?? {})}`,
-              `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : 'Investigate stale session'}`,
+              `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : type === 'scope_violation' ? 'Child is writing outside its allowed scope — intervene or adjust allowed_paths' : 'Investigate stale session'}`,
             ].join('\n');
 
             // Fire-and-forget — don't await, don't block on response

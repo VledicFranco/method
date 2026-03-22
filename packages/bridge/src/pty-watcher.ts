@@ -7,11 +7,15 @@ import {
   type PatternMatch,
   ALL_MATCHERS,
   PROMPT_CHAR_RE,
+  createScopeViolationMatcher,
 } from './pattern-matchers.js';
 import { appendMessage, type SessionChannels } from './channels.js';
 
 /** PRD 012: Callback invoked for each observation (used by DiagnosticsTracker). */
 export type ObservationCallback = (match: PatternMatch, isIdle: boolean) => void;
+
+/** PRD 014: Callback for scope violation events that need push notification to parent. */
+export type ScopeViolationCallback = (content: unknown) => void;
 
 // ── ANSI stripping ──────────────────────────────────────────────
 
@@ -51,6 +55,7 @@ export interface PtyWatcher {
 const ALL_CATEGORIES: ObservationCategory[] = [
   'tool_call', 'git_commit', 'test_result', 'file_operation',
   'build_result', 'error', 'idle', 'permission_prompt',
+  'scope_violation',  // PRD 014
 ];
 
 export function parseWatcherConfig(env: Record<string, string | undefined>, metadata?: Record<string, unknown>): WatcherConfig {
@@ -102,9 +107,18 @@ export function createPtyWatcher(
   onOutputSubscribe: (cb: (data: string) => void) => () => void,
   config: WatcherConfig,
   onObservation?: ObservationCallback,
+  /** PRD 014: Glob patterns of files this session is allowed to modify. */
+  allowedPaths?: string[],
+  /** PRD 014: Callback to push-notify parent on scope violations (F-N-1 fix). */
+  onScopeViolation?: ScopeViolationCallback,
 ): PtyWatcher {
   const observations: ActivityObservation[] = [];
   const spawnedAt = new Date();
+
+  // PRD 014: Create scope violation matcher if allowed_paths is configured
+  const scopeViolationMatcher = (allowedPaths && allowedPaths.length > 0)
+    ? createScopeViolationMatcher(allowedPaths)
+    : null;
 
   // Rate limiting: category → last emission timestamp
   const lastEmissionTime = new Map<string, number>();
@@ -182,6 +196,39 @@ export function createPtyWatcher(
           const channel = match.channelTarget === 'progress' ? channels.progress : channels.events;
           appendMessage(channel, 'pty-watcher', match.messageType, match.content);
           recordEmission(match, now);
+
+          if (config.logMatches) {
+            console.log(`[pty-watcher:${sessionId}] ${match.category}/${match.messageType}`, match.content);
+          }
+        }
+      }
+    }
+
+    // PRD 014: Run scope violation matcher (context-aware, separate from ALL_MATCHERS)
+    if (scopeViolationMatcher && config.patterns.has('scope_violation')) {
+      const scopeResults = scopeViolationMatcher(matchText);
+      for (const match of scopeResults) {
+        observations.push({
+          timestamp: new Date(now).toISOString(),
+          category: match.category,
+          detail: match.content,
+        });
+
+        if (onObservation) {
+          try { onObservation(match, false); } catch { /* callback errors are non-fatal */ }
+        }
+
+        lastActivityTimestamp = now;
+        isWorking = true;
+
+        if (shouldEmit(match, now)) {
+          appendMessage(channels.events, 'pty-watcher', match.messageType, match.content);
+          recordEmission(match, now);
+
+          // PRD 014 F-N-1 fix: Push-notify parent for scope violations
+          if (onScopeViolation) {
+            try { onScopeViolation(match.content); } catch { /* non-fatal */ }
+          }
 
           if (config.logMatches) {
             console.log(`[pty-watcher:${sessionId}] ${match.category}/${match.messageType}`, match.content);

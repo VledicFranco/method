@@ -2,6 +2,8 @@
 // Pure functions that detect structured signals in PTY output.
 // Each matcher receives cleaned text (ANSI-stripped) and returns matches.
 
+import { isPathAllowed } from './scope-hook.js';
+
 export type ObservationCategory =
   | 'tool_call'
   | 'git_commit'
@@ -10,7 +12,8 @@ export type ObservationCategory =
   | 'file_operation'
   | 'error'
   | 'idle'
-  | 'permission_prompt';
+  | 'permission_prompt'
+  | 'scope_violation';  // PRD 014
 
 export interface PatternMatch {
   category: ObservationCategory;
@@ -328,7 +331,77 @@ export const matchPermissionPrompt: PatternMatcher = (text) => {
   return [];
 };
 
+// ── Pattern 9: Scope Violation Detection (PRD 014) ──────────────
+// Detects Write/Edit operations on files outside the session's allowed_paths.
+// Read operations are never violations — agents should read freely.
+// This is a context-aware matcher: it needs allowed_paths from session metadata.
+// Use createScopeViolationMatcher() to create a matcher with bound scope context.
+
+/**
+ * Create a scope violation pattern matcher bound to specific allowed_paths.
+ *
+ * Reuses the same file path extraction regex as Pattern 4 (file_operation),
+ * but only fires on Write/Edit operations and cross-references extracted
+ * paths against allowedPaths. Read operations are never violations.
+ *
+ * Returns a standard PatternMatcher that checks Write/Edit operations against
+ * the provided scope constraints.
+ *
+ * @param allowedPaths - Glob patterns of files the agent is allowed to modify.
+ *                       Empty array means no constraint (returns no violations).
+ */
+export function createScopeViolationMatcher(allowedPaths: string[]): PatternMatcher {
+  // Reuse Pattern 4's regex for file path extraction
+  const SCOPE_FILE_PATH_RE = /(?:Read|Write|Edit|file_path)[:\s]+["']?([^\s"']+\.\w{1,10})["']?/g;
+
+  return (text: string): PatternMatch[] => {
+    if (allowedPaths.length === 0) return []; // No constraint — nothing to check
+
+    const matches: PatternMatch[] = [];
+    const seen = new Set<string>();
+
+    for (const m of text.matchAll(SCOPE_FILE_PATH_RE)) {
+      const filePath = m[1];
+      if (seen.has(filePath)) continue;
+
+      // Determine operation from the matched keyword or preceding text
+      const matchedKeyword = m[0];
+      const prefix = text.substring(Math.max(0, m.index! - 20), m.index!);
+
+      let operation: 'read' | 'write' | 'edit' = 'read';
+      if (/Write/i.test(matchedKeyword) || /Write/i.test(prefix)) {
+        operation = 'write';
+      } else if (/Edit/i.test(matchedKeyword) || /Edit/i.test(prefix)) {
+        operation = 'edit';
+      }
+
+      // Skip Read operations — reads are never violations (SC-5)
+      if (operation === 'read') continue;
+
+      seen.add(filePath);
+
+      // Check if the file path is outside allowed scope
+      if (!isPathAllowed(filePath, allowedPaths)) {
+        matches.push({
+          category: 'scope_violation',
+          channelTarget: 'events',
+          messageType: 'scope_violation',
+          content: {
+            path: filePath,
+            operation,
+            allowed_patterns: allowedPaths,
+          },
+        });
+      }
+    }
+
+    return matches;
+  };
+}
+
 // ── Matcher Registry ────────────────────────────────────────────
+// Note: scope_violation matcher is NOT in ALL_MATCHERS because it requires
+// context (allowed_paths) — it's created per-session in the PtyWatcher factory.
 
 export const ALL_MATCHERS: Array<{ category: ObservationCategory; matcher: PatternMatcher }> = [
   { category: 'tool_call', matcher: matchToolCall },

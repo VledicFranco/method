@@ -372,6 +372,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             enum: ["pty", "print"],
             description: "Session mode: 'pty' for interactive PTY with TUI rendering, 'print' for headless structured JSON output via claude --print. Default: 'pty' (or 'print' if PRINT_SESSION_DEFAULT=true).",
           },
+          allowed_paths: {
+            type: "array",
+            items: { type: "string" },
+            description: "Glob patterns of files this agent is allowed to modify. Empty = no constraint. Requires isolation: 'worktree' for enforcement mode. PRD 014.",
+          },
+          scope_mode: {
+            type: "string",
+            enum: ["enforce", "warn"],
+            description: "Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. PRD 014.",
+          },
         },
         required: ["workdir"],
       },
@@ -440,6 +450,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                   type: "string",
                   enum: ["pty", "print"],
                   description: "Session mode: 'pty' or 'print'",
+                },
+                allowed_paths: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Glob patterns of files this agent is allowed to modify. PRD 014.",
+                },
+                scope_mode: {
+                  type: "string",
+                  enum: ["enforce", "warn"],
+                  description: "Scope enforcement mode. PRD 014.",
                 },
               },
               required: ["workdir"],
@@ -538,7 +558,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           type: {
             type: "string",
-            enum: ["completed", "error", "escalation", "budget_warning"],
+            enum: ["completed", "error", "escalation", "budget_warning", "scope_violation", "stale"],
             description: "Lifecycle event type",
           },
           content: {
@@ -1035,7 +1055,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "bridge_spawn": {
-        const { workdir, spawn_args, initial_prompt, session_id, nickname, purpose, parent_session_id, depth, budget, isolation, timeout_ms, mode } = z.object({
+        const { workdir, spawn_args, initial_prompt, session_id, nickname, purpose, parent_session_id, depth, budget, isolation, timeout_ms, mode, allowed_paths, scope_mode } = z.object({
           workdir: z.string(),
           spawn_args: z.array(z.string()).optional(),
           initial_prompt: z.string().optional(),
@@ -1051,6 +1071,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           isolation: z.enum(["worktree", "shared"]).optional(),
           timeout_ms: z.number().optional(),
           mode: z.enum(["pty", "print"]).optional(),
+          allowed_paths: z.array(z.string()).optional(),
+          scope_mode: z.enum(["enforce", "warn"]).optional(),
         }).parse(args);
 
         const body: Record<string, unknown> = { workdir };
@@ -1073,6 +1095,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (timeout_ms !== undefined) body.timeout_ms = timeout_ms;
         // PRD 012 Phase 4: session mode
         if (mode) body.mode = mode;
+        // PRD 014: scope enforcement
+        if (allowed_paths) body.allowed_paths = allowed_paths;
+        if (scope_mode) body.scope_mode = scope_mode;
 
         const res = await bridgeFetch(`${BRIDGE_URL}/sessions`, {
           method: 'POST',
@@ -1127,6 +1152,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             isolation: z.enum(["worktree", "shared"]).optional(),
             timeout_ms: z.number().optional(),
             mode: z.enum(["pty", "print"]).optional(),
+            allowed_paths: z.array(z.string()).optional(),
+            scope_mode: z.enum(["enforce", "warn"]).optional(),
           })),
           stagger_ms: z.number().optional(),
         }).parse(args);
@@ -1146,6 +1173,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             if (s.isolation) cfg.isolation = s.isolation;
             if (s.timeout_ms !== undefined) cfg.timeout_ms = s.timeout_ms;
             if (s.mode) cfg.mode = s.mode;
+            if (s.allowed_paths) cfg.allowed_paths = s.allowed_paths;
+            if (s.scope_mode) cfg.scope_mode = s.scope_mode;
             return cfg;
           }),
         };
@@ -1319,7 +1348,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "bridge_event": {
         const { bridge_session_id, type: eventType, content: eventContent } = z.object({
           bridge_session_id: z.string(),
-          type: z.enum(["completed", "error", "escalation", "budget_warning"]),
+          type: z.enum(["completed", "error", "escalation", "budget_warning", "scope_violation", "stale"]),
           content: z.record(z.string(), z.unknown()).optional(),
         }).parse(args);
 

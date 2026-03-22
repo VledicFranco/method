@@ -448,6 +448,70 @@ The bridge creates a worktree at `.claude/worktrees/{session_id[:8]}/` with a br
 
 On kill, the worktree can be merged, kept, or discarded via the `worktree_action` parameter on `bridge_kill`.
 
+## Scope Enforcement (PRD 014)
+
+Sub-agents can be constrained to modify only specific files via `allowed_paths`. This provides three layers of enforcement:
+
+1. **Pre-commit hook** (hard block) — git-level rejection of commits with out-of-scope files
+2. **PTY watcher** (real-time signal) — `scope_violation` events emitted on Write/Edit to out-of-scope paths
+3. **Push notification** — parent agent notified immediately when a child writes out of scope
+
+### Basic Usage
+
+```
+bridge_spawn({
+  workdir: "/path/to/project",
+  isolation: "worktree",
+  allowed_paths: ["packages/bridge/src/**", "packages/bridge/src/__tests__/**"],
+  scope_mode: "enforce"
+})
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `allowed_paths` | `string[]` | `[]` (no constraint) | Glob patterns of files the agent may modify |
+| `scope_mode` | `'enforce' \| 'warn'` | `'enforce'` | `enforce` installs pre-commit hook + PTY detection. `warn` emits events only. |
+
+### Glob Pattern Semantics
+
+| Pattern | Matches |
+|---------|---------|
+| `packages/bridge/src/**` | All files under `packages/bridge/src/` at any depth |
+| `docs/prds/*.md` | Markdown files directly in `docs/prds/` |
+| `*.ts` | Any TypeScript file at any depth |
+| `packages/core/**` `packages/mcp/**` | Multiple package scopes (pass as separate array entries) |
+
+### How It Works
+
+When `allowed_paths` is provided with `isolation: "worktree"` and `scope_mode: "enforce"`:
+
+1. The bridge creates the worktree (existing PRD 006 logic)
+2. A pre-commit hook is generated and installed in the worktree's hooks directory
+3. The PTY watcher is configured with the scope context
+4. If the agent tries to `git commit` files outside `allowed_paths`, the hook rejects with a clear error
+5. If the agent uses `Write` or `Edit` on out-of-scope files, a `scope_violation` event is emitted to the events channel
+6. The parent agent receives a push notification for `scope_violation` events
+
+### Worktree Requirement
+
+The pre-commit hook requires `isolation: "worktree"`. If `allowed_paths` is provided without worktree isolation, the bridge automatically falls back to `scope_mode: "warn"` and logs a warning. In warn mode, the PTY watcher still emits `scope_violation` events, but commits are not blocked.
+
+### Backwards Compatibility
+
+Sessions spawned without `allowed_paths` behave exactly as before — no hook is installed, no scope checking occurs. Read operations are never restricted regardless of `allowed_paths`.
+
+### Commission Integration
+
+The `/commission` skill automatically includes `allowed_paths` in `bridge_spawn` calls when the orchestrator prompt specifies file-scope constraints (Section 9). The commission maps each sub-agent's declared scope to glob patterns.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SCOPE_ENFORCEMENT_DEFAULT` | `enforce` | Default scope mode when `allowed_paths` is provided but `scope_mode` is not |
+
 ## Chain and Budget System
 
 Sessions track parent-child relationships for multi-level orchestration:
@@ -756,3 +820,4 @@ Response: `{ "messages": [...], "next_cursor": 5 }`
 | `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
 | `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
 | `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
+| `SCOPE_ENFORCEMENT_DEFAULT` | `enforce` | Default scope mode when `allowed_paths` provided (PRD 014) |
