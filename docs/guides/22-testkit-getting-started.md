@@ -229,12 +229,12 @@ Compilation failed for M_BROKEN:
 
 Compilation report for M_BROKEN: FAILED
 
-  [PASS] G1-domain: Signature and axioms valid
-  [PASS] G2-objective: Objective is a typed Predicate<S>
-  [FAIL] G3-roles: Uncovered roles: reviewer
-  [PASS] G4-dag: All edges composable
-  [PASS] G5-guidance: No agent steps
-  [PASS] G6-serializable: Method structure serializable
+  [PASS] G1-domain: PASS — Signature and axioms valid
+  [PASS] G2-objective: PASS — Objective is a typed Predicate<S>
+  [FAIL] G3-roles: FAIL — Uncovered roles: reviewer
+  [PASS] G4-dag: PASS — All edges composable
+  [PASS] G5-guidance: PASS — No agent steps
+  [PASS] G6-serializable: PASS — Method structure serializable
 ```
 
 ## Next Steps

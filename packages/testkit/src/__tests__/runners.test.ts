@@ -3,9 +3,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { check, and, not } from "@method/methodts";
+import { check, and } from "@method/methodts";
+import { Prompt } from "@method/methodts";
 import {
   scriptStep,
+  agentStep,
   methodBuilder,
   methodologyBuilder,
   domainBuilder,
@@ -14,6 +16,7 @@ import {
   runMethodIsolated,
   runMethodologyIsolated,
   scenario,
+  SequenceProvider,
 } from "../index.js";
 
 // ── Domain ──
@@ -122,6 +125,67 @@ describe("runStepIsolated", () => {
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.error).toContain("intentional failure");
+    }
+  });
+});
+
+// ── agentStep + runStepIsolated integration ──
+
+describe("agentStep + runStepIsolated", () => {
+  type SimpleState = { value: string };
+
+  const agentAnalyzeStep = agentStep<SimpleState>("analyze", {
+    role: "analyst",
+    pre: check<SimpleState>("has_value", (s) => s.value.length > 0),
+    post: check<SimpleState>("analyzed", (s) => s.value.startsWith("analyzed:")),
+    prompt: new Prompt((ctx: any) => `Analyze this: ${ctx.state.value}`),
+    parse: (raw: string, current: SimpleState) => ({ value: `analyzed:${raw}` }),
+  });
+
+  it("runs an agent step with provided responses", async () => {
+    const result = await runStepIsolated(
+      agentAnalyzeStep,
+      { value: "hello" },
+      { agentResponses: [{ raw: "result", cost: { tokens: 10, usd: 0.001, duration_ms: 100 } }] },
+    );
+
+    expect(result.status).toBe("completed");
+    if (result.status === "completed") {
+      expect(result.state.value).toBe("analyzed:result");
+      expect(result.postconditionMet).toBe(true);
+      expect(result.recordings).toHaveLength(1);
+      expect(result.recordings[0].commission.prompt).toContain("hello");
+    }
+  });
+
+  it("agent step fails without responses (silentProvider)", async () => {
+    const result = await runStepIsolated(
+      agentAnalyzeStep,
+      { value: "hello" },
+      // No agentResponses — silentProvider should fail clearly
+    );
+
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.error).toContain("silentProvider");
+    }
+  });
+
+  it("agent step parse error surfaces correctly", async () => {
+    const badParseStep = agentStep<SimpleState>("bad_parse", {
+      prompt: new Prompt(() => "do something"),
+      parse: (_raw: string, _current: SimpleState) => { throw new Error("parse boom"); },
+    });
+
+    const result = await runStepIsolated(
+      badParseStep,
+      { value: "hello" },
+      { agentResponses: [{ raw: "anything", cost: { tokens: 5, usd: 0, duration_ms: 50 } }] },
+    );
+
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.error).toContain("parse boom");
     }
   });
 });
