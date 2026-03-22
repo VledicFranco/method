@@ -6,20 +6,25 @@
  */
 
 import { useState, useCallback } from 'react';
-import { RefreshCw, BookOpen, Package } from 'lucide-react';
+import { RefreshCw, BookOpen, Package, Copy } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { RegistryTree } from '@/components/domain/RegistryTree';
 import { MethodDetail } from '@/components/domain/MethodDetail';
+import { CopyMethodologyModal } from '@/components/domain/CopyMethodologyModal';
 import { useRegistryTree, useMethodDetail, useRegistryManifest, useRegistryReload } from '@/hooks/useRegistry';
 import { cn } from '@/lib/cn';
 import type { ManifestEntry } from '@/lib/registry-types';
 
 // ── Manifest View ──
 
-function ManifestView() {
+interface ManifestViewProps {
+  onCopyClick?: (sourceId: string, methodologyName: string) => void;
+}
+
+function ManifestView({ onCopyClick }: ManifestViewProps) {
   const { data: manifest, isLoading } = useRegistryManifest();
 
   if (isLoading) {
@@ -56,7 +61,7 @@ function ManifestView() {
       </div>
 
       {manifest.installed.map((entry) => (
-        <ManifestCard key={entry.id} entry={entry} />
+        <ManifestCard key={entry.id} entry={entry} onCopyClick={onCopyClick} />
       ))}
     </div>
   );
@@ -72,7 +77,12 @@ function SyncStatusBadge({ status }: { status: ManifestEntry['sync_status'] }) {
   return <Badge variant={variants[status] ?? 'muted'} label={status} size="sm" />;
 }
 
-function ManifestCard({ entry }: { entry: ManifestEntry }) {
+interface ManifestCardProps {
+  entry: ManifestEntry;
+  onCopyClick?: (sourceId: string, methodologyName: string) => void;
+}
+
+function ManifestCard({ entry, onCopyClick }: ManifestCardProps) {
   const [showArtifacts, setShowArtifacts] = useState(false);
 
   return (
@@ -109,6 +119,16 @@ function ManifestCard({ entry }: { entry: ManifestEntry }) {
             <p className="mt-1 text-[0.7rem] text-txt-muted italic">{entry.note}</p>
           )}
         </div>
+        {entry.type === 'methodology' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onCopyClick?.(entry.id, entry.id)}
+            title="Copy this methodology to other projects"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Artifacts */}
@@ -141,6 +161,9 @@ export default function Registry() {
   const [viewMode, setViewMode] = useState<ViewMode>('registry');
   const [selectedMethodology, setSelectedMethodology] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copySourceId, setCopySourceId] = useState<string>('');
+  const [copyMethodologyName, setCopyMethodologyName] = useState<string>('');
 
   const { data: tree, isLoading: treeLoading } = useRegistryTree();
   const { data: methodDetail, isLoading: detailLoading } = useMethodDetail(selectedMethodology, selectedMethod);
@@ -155,53 +178,65 @@ export default function Registry() {
     reload.mutate();
   }, [reload]);
 
-  return (
-    <PageShell
-      wide
-      title="Registry"
-      actions={
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex items-center rounded-lg border border-bdr overflow-hidden">
-            <button
-              onClick={() => setViewMode('registry')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] font-medium transition-colors',
-                viewMode === 'registry'
-                  ? 'bg-bio-dim text-bio'
-                  : 'text-txt-dim hover:text-txt hover:bg-abyss-light',
-              )}
-            >
-              <BookOpen className="h-3.5 w-3.5" />
-              Browse
-            </button>
-            <button
-              onClick={() => setViewMode('manifest')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] font-medium transition-colors',
-                viewMode === 'manifest'
-                  ? 'bg-bio-dim text-bio'
-                  : 'text-txt-dim hover:text-txt hover:bg-abyss-light',
-              )}
-            >
-              <Package className="h-3.5 w-3.5" />
-              Manifest
-            </button>
-          </div>
+  const handleCopyClick = useCallback((sourceId: string, methodologyName: string) => {
+    setCopySourceId(sourceId);
+    setCopyMethodologyName(methodologyName);
+    setCopyModalOpen(true);
+  }, []);
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReload}
-            disabled={reload.isPending}
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', reload.isPending && 'animate-spin')} />
-          </Button>
-        </div>
-      }
-    >
-      {viewMode === 'manifest' ? (
-        <ManifestView />
+  const handleCopySuccess = useCallback(() => {
+    // Refetch manifest after successful copy
+    reload.mutate();
+  }, [reload]);
+
+  return (
+    <>
+      <PageShell
+        wide
+        title="Registry"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-bdr overflow-hidden">
+              <button
+                onClick={() => setViewMode('registry')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] font-medium transition-colors',
+                  viewMode === 'registry'
+                    ? 'bg-bio-dim text-bio'
+                    : 'text-txt-dim hover:text-txt hover:bg-abyss-light',
+                )}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Browse
+              </button>
+              <button
+                onClick={() => setViewMode('manifest')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] font-medium transition-colors',
+                  viewMode === 'manifest'
+                    ? 'bg-bio-dim text-bio'
+                    : 'text-txt-dim hover:text-txt hover:bg-abyss-light',
+                )}
+              >
+                <Package className="h-3.5 w-3.5" />
+                Manifest
+              </button>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReload}
+              disabled={reload.isPending}
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', reload.isPending && 'animate-spin')} />
+            </Button>
+          </div>
+        }
+      >
+        {viewMode === 'manifest' ? (
+          <ManifestView onCopyClick={handleCopyClick} />
       ) : (
         <div className="flex gap-0 -mx-sp-4">
           {/* Sidebar tree (340px) */}
@@ -262,6 +297,15 @@ export default function Registry() {
           </div>
         </div>
       )}
-    </PageShell>
+      </PageShell>
+
+      <CopyMethodologyModal
+        open={copyModalOpen}
+        onClose={() => setCopyModalOpen(false)}
+        initialSourceId={copySourceId}
+        initialMethodName={copyMethodologyName}
+        onSuccess={handleCopySuccess}
+      />
+    </>
   );
 }

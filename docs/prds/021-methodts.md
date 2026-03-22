@@ -1,12 +1,13 @@
 # PRD 021: MethodTS — Typed Methodology SDK
 
-**Status:** Draft (post-review synthesis applied 2026-03-21)
+**Status:** Phase 1a implemented (foundation types ~880 lines); Phase 1b not started (runtime, agent providers, gates, stdlib)
 **Owner:** Steering Council
 **Methodology:** P2-SD v2.0
 **Depends on:** PRD 017 (strategy pipelines), PRD 004 (methodology runtime), F1-FTH (formal theory)
 **Complexity:** High — new package, Effect ecosystem adoption, touches theory extensions
 **Package:** `@method/methodts` (new)
 **Review:** 4-advisor adversarial review completed 2026-03-21. 41 findings, 14 fixes applied. Action plan: `tmp/action-plan-021-methodts-2026-03-21.md`
+**Impacts:** PRD 004 (replaced Phase 3), PRD 017 (subsumed Phase 2-3), PRD 015 (subsumed), PRD 006 (extended), PRD 018 (extended — EventBus feeds triggers), PRD 012 (extended — wraps print-mode), PRD 020 (extended — project-scoped execution), PRD 010 (complemented — typed retros), PRD 014 (complemented — typed scope), PRD 008 (unchanged — richer events via hook)
 
 ---
 

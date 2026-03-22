@@ -1,10 +1,11 @@
 # PRD 020: Multi-Project Bridge & Genesis Agent
 
-**Status:** Phase 1 Approved (Ready for Commission)
+**Status:** Phase 1 partially implemented (~70-80% — discovery, registry, API, isolation done; missing ROOT_DIR env var, event disk persistence, Genesis startup wiring)
 **Owner:** Steering Council (AG-064)
 **Methodology:** P2-SD v2.0
 **Target Release:** Phase 2 (after PRD 017 matures)
 **Complexity:** High — architectural change to bridge, new persistent agent
+**PRD 021 impact:** **Extended.** MethodTS needs project-scoped methodology loading from `manifest.yaml`. Every `runMethodology` execution binds to a `project_id`. Events tagged with project_id for isolation. Genesis agent (Phase 2) commissions MethodTS methodologies. Resource copying between projects gains typed validation for methodology compatibility.
 
 ---
 

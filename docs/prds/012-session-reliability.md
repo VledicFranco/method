@@ -1,6 +1,6 @@
 # PRD 012 — Session Reliability at Scale
 
-**Status:** Partially implemented
+**Status:** Substantially implemented (~90-95% — Phases 0-2 and 4 complete; only Phase 3 stress test runner not built)
 **Date:** 2026-03-15
 **Previous:** Draft (2026-03-15)
 **Scope:** Adaptive settle delay, PTY parser replacement, concurrency ceiling testing, diagnostic instrumentation
@@ -8,6 +8,7 @@
 **Evidence:** OBS-03 (empty PTY responses), OBS-12 (settle delay compounding), OBS-17 (40% completion at 5 agents), OBS-18 (edit-vs-create reliability gap)
 **Origin:** RFC #1 (council triage — 4-1 vote, highest impact/effort ratio)
 **Implementation:** Phases 0-2 and 4 implemented. Phase 0 (staggered batch spawn), Phase 1 (diagnostic instrumentation), Phase 2 (adaptive settle delay), Phase 4 (print-mode sessions — LlmProvider, ClaudeCodeProvider, PrintSession, pool mode routing, MCP integration, 41+ tests). Phase 3 (concurrency ceiling testing) remains unimplemented.
+**PRD 021 impact:** **Extended.** MethodTS's `ClaudeHeadlessProvider` wraps the same `claude --print` mechanism from Phase 4. Rich metadata (cost, tokens, permission denials) feeds into `ExecutionAccumulator` for methodology-level safety bounds. Diagnostic metrics inform methodology observability. Step timeout expectations interact with adaptive settle delay.
 
 ---
 

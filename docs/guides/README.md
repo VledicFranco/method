@@ -19,6 +19,10 @@ Conceptual guides explaining the method system — what methods and methodologie
 | 13 | [Installation and .method/](13-installation.md) | Project leads | The .method/ directory, manifest, installation specs, committed vs ephemeral |
 | 14 | [Extending the Bridge Dashboard UI](14-bridge-dashboard-ui.md) | Contributors | Dashboard rendering architecture, Vidtecci OS design system, adding panels and pages |
 | 15 | [Remote Access via Tailscale](15-remote-access.md) | Agent operators | Accessing the bridge from a phone or remote machine over Tailscale |
+| 16 | [Strategy Pipelines](16-strategy-pipelines.md) | Delivery teams | Creating event-triggered workflows across projects |
+| 17 | [Narrative Flow UI](17-narrative-flow-ui.md) | Contributors | Visualization of methodology execution as interactive narratives |
+| 18 | [Strategy Context Continuity](18-strategy-context-continuity.md) | Agent operators | Maintaining context across strategy steps and sub-agent calls |
+| 19 | [PRD 020: Multi-Project Genesis Agent](19-prd020-multi-project-genesis.md) | Agent operators, project leads | Genesis persistent coordinator, project discovery, resource sharing across projects |
 
 ## How to read these guides
 

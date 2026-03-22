@@ -1,0 +1,2144 @@
+
+> test
+> npx tsx --test packages/core/src/__tests__/*.test.ts packages/bridge/src/__tests__/*.test.ts
+
+▶ AdaptiveSettleDelay (PRD 012 Phase 2)
+  ▶ initial state
+    ✔ starts at 300ms initial delay (0.5422ms)
+    ✔ has zero false positives (0.1417ms)
+  ✔ initial state (1.1641ms)
+  ▶ custom config
+    ✔ respects custom initialDelayMs (0.1801ms)
+    ✔ respects custom maxDelayMs (0.2423ms)
+  ✔ custom config (0.5637ms)
+  ▶ false-positive detection
+    ✔ detects false positive when data arrives within threshold (0.1912ms)
+    ✔ backs off delay on false positive (0.1257ms)
+    ✔ caps at maxDelayMs (0.1269ms)
+    ✔ does not detect false positive without prior settle (0.1029ms)
+    ✔ consumes the settle marker — second check is not a false positive (0.0879ms)
+    ✔ does not detect false positive when data arrives after threshold (131.2813ms)
+  ✔ false-positive detection (132.2721ms)
+  ▶ backoff progression
+    ✔ follows geometric backoff progression (0.3238ms)
+    ✔ stays at maxDelayMs after hitting cap (0.1725ms)
+  ✔ backoff progression (0.6332ms)
+  ▶ resetOnToolMarker()
+    ✔ resets delay to initialDelayMs (0.2937ms)
+    ✔ clears pending settle marker (0.1707ms)
+    ✔ respects resetOnToolMarker=false config (0.1098ms)
+  ✔ resetOnToolMarker() (0.6913ms)
+  ▶ reset()
+    ✔ resets all state (0.1353ms)
+  ✔ reset() (0.1852ms)
+  ▶ floorDelayMs
+    ✔ never goes below floorDelayMs (0.114ms)
+  ✔ floorDelayMs (0.1589ms)
+✔ AdaptiveSettleDelay (PRD 012 Phase 2) (136.2362ms)
+▶ parseAdaptiveSettleConfig
+  ✔ returns defaults for empty env (0.1375ms)
+  ✔ parses env overrides (0.077ms)
+✔ parseAdaptiveSettleConfig (0.2743ms)
+▶ isAdaptiveSettleEnabled
+  ✔ returns true by default (0.075ms)
+  ✔ returns true for explicit true (0.04ms)
+  ✔ returns false when disabled (0.0384ms)
+✔ isAdaptiveSettleEnabled (0.2142ms)
+▶ AdaptiveSettleDelay + DiagnosticsTracker integration
+  ✔ diagnostics reports adaptive delay as current_settle_delay_ms (2.3316ms)
+  ✔ diagnostics reports false_positive_settles from adaptive (0.4316ms)
+  ✔ diagnostics recordPromptCompletion uses adaptive delay for overhead (0.3894ms)
+  ✔ diagnostics uses fixed delay when no adaptive settle (0.85ms)
+✔ AdaptiveSettleDelay + DiagnosticsTracker integration (4.0815ms)
+▶ Auto-Retro Generator (PRD 013)
+  ▶ YAML generation
+    ✔ writes retro file with correct structure (3.7813ms)
+    ✔ includes auto-generated header comment (2.0085ms)
+    ✔ includes placeholder sections (1.9915ms)
+  ✔ YAML generation (8.6696ms)
+  ▶ timing
+    ✔ computes duration in minutes (1.9642ms)
+    ✔ computes active vs idle minutes (1.9898ms)
+    ✔ clamps active minutes to zero when idle exceeds duration (1.8349ms)
+    ✔ records spawned_at and terminated_at as ISO strings (2.9443ms)
+    ✔ records termination reason (4.1193ms)
+  ✔ timing (13.1217ms)
+  ▶ activity summary
+    ✔ counts tool calls (1.9655ms)
+    ✔ generates tool breakdown sorted by frequency (1.8699ms)
+    ✔ shows empty tool_breakdown when no tool calls (1.8385ms)
+    ✔ collects files touched from file_operation observations (1.8016ms)
+    ✔ deduplicates files touched (1.7835ms)
+    ✔ shows empty files_touched when no file operations (2.1098ms)
+    ✔ records git commits (1.7587ms)
+    ✔ shows empty git_commits when none (1.7049ms)
+  ✔ activity summary (15.0675ms)
+  ▶ quality
+    ✔ reports tests_run: false when no test results (1.9366ms)
+    ✔ reports last test result when tests were run (1.7588ms)
+    ✔ reports build_succeeded from last build result (1.695ms)
+    ✔ reports build_succeeded: null when no builds (1.7562ms)
+    ✔ counts errors observed (1.7102ms)
+  ✔ quality (9.1032ms)
+  ▶ YAML escaping
+    ✔ escapes double quotes in session ID (3.4651ms)
+    ✔ escapes backslashes in nickname (2.2513ms)
+  ✔ YAML escaping (5.8003ms)
+  ▶ error handling
+    ✔ returns written: false when retros dir does not exist (1.2049ms)
+  ✔ error handling (1.2518ms)
+  ▶ filename sequencing
+    ✔ starts at 001 (2.1776ms)
+    ✔ increments sequence for same date (2.5566ms)
+  ✔ filename sequencing (4.8051ms)
+  ▶ comprehensive observation handling
+    ✔ processes all observation categories in one retro (1.6828ms)
+  ✔ comprehensive observation handling (1.7283ms)
+✔ Auto-Retro Generator (PRD 013) (60.1171ms)
+▶ Channel Infrastructure (PRD 008)
+  ▶ createSessionChannels()
+    ✔ creates progress and events channels with empty messages (0.9814ms)
+    ✔ channels have correct names (0.1767ms)
+    ✔ channels start with empty cursors (0.1176ms)
+  ✔ createSessionChannels() (1.8217ms)
+  ▶ appendMessage()
+    ✔ appends a message with sequence starting at 1 (0.6438ms)
+    ✔ sequential appends get monotonically increasing sequences (0.2497ms)
+    ✔ message has correct ISO 8601 timestamp format (0.3748ms)
+    ✔ message has correct sender, type, and content (0.1843ms)
+    ✔ returns the sequence number (0.153ms)
+  ✔ appendMessage() (1.8864ms)
+  ▶ readMessages()
+    ✔ returns all messages when sinceSequence is 0 (0.3118ms)
+    ✔ returns only messages after sinceSequence (0.6495ms)
+    ✔ returns empty array when no messages match (0.1093ms)
+    ✔ returns correct last_sequence (0.1204ms)
+    ✔ returns sinceSequence as last_sequence when no messages match (0.1071ms)
+    ✔ updates cursor when readerId is provided (0.0724ms)
+    ✔ does not create cursor when readerId is omitted (0.091ms)
+    ✔ has_more is false (MVP — no pagination) (0.0833ms)
+  ✔ readMessages() (1.7353ms)
+  ▶ message cap (1000 limit)
+    ✔ after 1001 appends, only 1000 messages remain (0.997ms)
+    ✔ the evicted message is the oldest (first appended) (1.0107ms)
+    ✔ the newest message is preserved (1.2069ms)
+  ✔ message cap (1000 limit) (3.2971ms)
+  ▶ real scenario: methodology step progression
+    ✔ simulates agent working through methodology steps (0.1514ms)
+  ✔ real scenario: methodology step progression (0.1928ms)
+  ▶ real scenario: event lifecycle
+    ✔ tracks session events from start to completion (0.9947ms)
+  ✔ real scenario: event lifecycle (1.1044ms)
+  ▶ cursor isolation
+    ✔ two readers have independent cursors on the same channel (0.3207ms)
+  ✔ cursor isolation (0.4125ms)
+✔ Channel Infrastructure (PRD 008) (11.0228ms)
+▶ ClaudeCodeProvider
+  ▶ buildArgs()
+    ✔ builds basic args with --print, -p, prompt, --output-format, --session-id, --permission-mode (0.7423ms)
+    ✔ uses --resume instead of --session-id when resumeSessionId is set (0.1154ms)
+    ✔ includes --max-budget-usd when set (0.1126ms)
+    ✔ includes --append-system-prompt when set (0.0914ms)
+    ✔ includes --model when set (0.1018ms)
+    ✔ includes --verbose when set (0.0835ms)
+    ✔ includes --include-partial-messages when set (0.0853ms)
+    ✔ includes both --verbose and --include-partial-messages when both set (0.0965ms)
+    ✔ appends additionalFlags (0.1005ms)
+    ✔ uses custom permission mode when specified (0.1411ms)
+    ✔ defaults to json output format when outputFormat is omitted (0.1602ms)
+    ✔ respects explicit output format override (0.0761ms)
+    ✔ places --print and -p before the prompt (0.089ms)
+    ✔ does not include --max-budget-usd when not set (0.0587ms)
+    ✔ does not include --model when not set (0.143ms)
+    ✔ does not include --verbose when not set (0.0755ms)
+    ✔ does not include --append-system-prompt when not set (0.0682ms)
+    ✔ does not include --include-partial-messages when not set (0.0439ms)
+    ✔ includes --allowedTools when set (0.0817ms)
+    ✔ does not include --allowedTools when not set (0.0434ms)
+    ✔ does not include --allowedTools when set to empty array (0.0426ms)
+  ✔ buildArgs() (3.4507ms)
+✔ ClaudeCodeProvider (3.7776ms)
+▶ Dashboard Formatting Helpers (PRD 013)
+  ▶ formatTokens
+    ✔ returns "0" for zero (0.515ms)
+    ✔ returns raw number below 1000 (0.1064ms)
+    ✔ formats thousands with k suffix (0.074ms)
+    ✔ formats millions with M suffix (0.0804ms)
+  ✔ formatTokens (1.3512ms)
+  ▶ formatUptime
+    ✔ shows minutes only when under 1 hour (0.1271ms)
+    ✔ shows 0m for just started (0.0782ms)
+    ✔ shows hours and minutes (0.0945ms)
+    ✔ shows 1h 0m for exactly one hour (0.0855ms)
+  ✔ formatUptime (0.5476ms)
+  ▶ formatStartedAt
+    ✔ formats date as YYYY-MM-DD HH:MM:SS (0.2834ms)
+    ✔ pads single-digit values with zeros (0.1033ms)
+  ✔ formatStartedAt (0.4632ms)
+  ▶ formatTimeAgo
+    ✔ returns "now" for less than 5 seconds (0.1249ms)
+    ✔ returns seconds ago for < 60s (0.0495ms)
+    ✔ returns minutes ago for < 60m (0.0412ms)
+    ✔ returns hours ago for >= 60m (0.0374ms)
+    ✔ boundary: 59s shows seconds (0.0363ms)
+    ✔ boundary: 60s shows 1m (0.0369ms)
+  ✔ formatTimeAgo (0.444ms)
+  ▶ formatTimeUntil
+    ✔ returns "now" for past timestamps (0.2372ms)
+    ✔ returns minutes for < 1 hour (0.0533ms)
+    ✔ returns hours and minutes for < 24 hours (0.0445ms)
+    ✔ returns days and hours for >= 24 hours (0.0417ms)
+  ✔ formatTimeUntil (0.447ms)
+  ▶ meterClass
+    ✔ returns "healthy" below 60 (0.0837ms)
+    ✔ returns "warning" at 60-84 (0.0399ms)
+    ✔ returns "critical" at 85+ (0.0352ms)
+  ✔ meterClass (0.228ms)
+  ▶ cacheRateClass
+    ✔ returns "low" below 40 (0.0721ms)
+    ✔ returns "mid" at 40-69 (0.0375ms)
+    ✔ returns "good" at 70+ (0.0336ms)
+  ✔ cacheRateClass (0.195ms)
+  ▶ statusBadgeClass
+    ✔ maps known statuses (0.0639ms)
+    ✔ defaults to status-init for unknown status (0.0353ms)
+  ✔ statusBadgeClass (0.1373ms)
+  ▶ escapeHtml
+    ✔ escapes ampersand (0.1117ms)
+    ✔ escapes less-than (0.0399ms)
+    ✔ escapes greater-than (0.0338ms)
+    ✔ escapes double quotes (0.0382ms)
+    ✔ escapes all special characters together (0.0379ms)
+    ✔ returns empty string unchanged (0.0321ms)
+    ✔ returns plain text unchanged (0.0344ms)
+  ✔ escapeHtml (0.4428ms)
+  ▶ summarizeEventContent
+    ✔ returns empty string for empty content (0.1312ms)
+    ✔ returns empty string for null/undefined (0.0481ms)
+    ✔ extracts result field (0.0663ms)
+    ✔ extracts error_message field (0.0435ms)
+    ✔ extracts escalation_question field (0.0457ms)
+    ✔ extracts description field (0.0482ms)
+    ✔ truncates long values at 80 chars (0.0523ms)
+    ✔ falls back to first value for unknown fields (0.0375ms)
+    ✔ truncates fallback values at 60 chars (0.087ms)
+    ✔ prefers result over other fields (0.05ms)
+  ✔ summarizeEventContent (1.3062ms)
+✔ Dashboard Formatting Helpers (PRD 013) (6.699ms)
+▶ Dashboard Render Functions (PRD 013)
+  ▶ renderSubscriptionPanel
+    ✔ shows not_configured message when no token (0.2255ms)
+    ✔ shows scope_error message on 403 (0.051ms)
+    ✔ shows network_error message (0.0398ms)
+    ✔ shows loading message during polling (0.0346ms)
+    ✔ returns empty string for unknown status without usage (0.0324ms)
+    ✔ renders usage meters when data is available (0.1237ms)
+    ✔ applies correct meter classes based on utilization (0.0798ms)
+  ✔ renderSubscriptionPanel (0.686ms)
+  ▶ renderSessionRows
+    ✔ shows empty message when no sessions (0.2443ms)
+    ✔ renders a single session row (0.3138ms)
+    ✔ shows token data when available (0.1105ms)
+    ✔ shows dash when no token data (0.0686ms)
+    ✔ renders depth badge for child sessions (0.0925ms)
+    ✔ orders sessions as tree: parents before children (0.0918ms)
+    ✔ shows methodology session ID when present (0.0801ms)
+    ✔ shows workdir short name (0.0948ms)
+    ✔ includes detail row with diagnostics (0.0985ms)
+    ✔ shows stall reason when present (0.0777ms)
+  ✔ renderSessionRows (1.4252ms)
+✔ Dashboard Render Functions (PRD 013) (2.1699ms)
+▶ DiagnosticsTracker (PRD 012)
+  ▶ initial state
+    ✔ returns null for timing fields before any output (0.8308ms)
+  ✔ initial state (1.328ms)
+  ▶ recordFirstOutput()
+    ✔ records time_to_first_output_ms (0.2503ms)
+    ✔ only records the first output (0.1704ms)
+  ✔ recordFirstOutput() (0.5312ms)
+  ▶ recordToolCall()
+    ✔ increments tool_call_count (0.2582ms)
+    ✔ records time_to_first_tool_ms (0.2321ms)
+    ✔ only records timing for first tool call (0.1728ms)
+  ✔ recordToolCall() (0.8319ms)
+  ▶ recordIdleTransition()
+    ✔ increments idle_transitions count (0.6462ms)
+    ✔ tracks longest idle period (33.3454ms)
+    ✔ includes current idle in longest_idle_ms if still idle (30.7712ms)
+  ✔ recordIdleTransition() (64.9973ms)
+  ▶ recordPermissionPrompt()
+    ✔ sets permission_prompt_detected to true (0.1796ms)
+  ✔ recordPermissionPrompt() (0.2406ms)
+  ▶ recordPromptCompletion()
+    ✔ accumulates settle overhead (0.102ms)
+  ✔ recordPromptCompletion() (0.1351ms)
+  ▶ classifyStall()
+    ✔ returns permission_blocked when no tool calls ever detected (0.1139ms)
+    ✔ returns task_complexity when tool calls + many idle transitions (0.0664ms)
+    ✔ returns unknown when tool calls present but few idle transitions (0.0714ms)
+    ✔ returns resource_contention when slow first output + other sessions slow (0.4863ms)
+  ✔ classifyStall() (0.8491ms)
+✔ DiagnosticsTracker (PRD 012) (69.4385ms)
+▶ matchPermissionPrompt (PRD 012)
+  ✔ detects standard permission prompt (0.3364ms)
+  ✔ detects permission prompt with tool name (0.1743ms)
+  ✔ detects Yes/No variant (1.3948ms)
+  ✔ detects case variants (0.2015ms)
+  ✔ does not match regular text with Allow (0.1036ms)
+  ✔ does not match text without Allow (0.0813ms)
+  ✔ returns empty for unrelated text (0.0653ms)
+✔ matchPermissionPrompt (PRD 012) (2.625ms)
+▶ PtyWatcher diagnostics integration (PRD 012)
+  ✔ calls onObservation for tool calls (1.7298ms)
+  ✔ calls onObservation for idle transitions (0.6724ms)
+  ✔ calls onObservation for permission prompts (0.2093ms)
+  ✔ emits permission_prompt_detected to events channel (0.2605ms)
+  ✔ includes permission_prompt in default pattern set (0.1411ms)
+✔ PtyWatcher diagnostics integration (PRD 012) (3.1443ms)
+✔ E2E: Discovery discovers 3 real git repositories with metadata (1026.982ms)
+✔ E2E: Discovery initializes .method directory structure for each project (707.6329ms)
+✔ E2E: Discovery handles mixed healthy and corrupted repos (353.7687ms)
+✔ E2E: Cleanup — temp repos are properly handled (687.9523ms)
+✔ DiscoveryService: Basic discovery finds git repositories (7.4872ms)
+✔ DiscoveryService: Recursive discovery in nested directories (5.4771ms)
+✔ DiscoveryService: Auto-creates .method directory (3.091ms)
+✔ DiscoveryService: Timeout protection (12.9675ms)
+✔ DiscoveryService: Max projects limit (24.5335ms)
+✔ DiscoveryService: Error recovery - corrupted git repo (4.5614ms)
+✔ DiscoveryService: Performance for 20 projects (38.0989ms)
+✔ DiscoveryService: Non-existent root directory (0.314ms)
+✔ DiscoveryService: Returns correct ProjectMetadata structure (2.9246ms)
+✔ DiscoveryService: DiscoveryResult structure (2.6444ms)
+✔ DiscoveryService: Avoids scanning node_modules (4.7845ms)
+✔ DiscoveryService: Prevents infinite loops with symlinks (3.6158ms)
+✔ DiscoveryService: Emits discovery_incomplete flag when MAX_PROJECTS exceeded (115.3162ms)
+✔ DiscoveryService: Resilience — skips corrupted .git/ and marks as git_corrupted (4.7505ms)
+▶ extractResponse
+  ✔ extracts basic response between ● and ❯ (0.912ms)
+  ✔ strips ANSI escape sequences from the response (0.2553ms)
+  ✔ replaces cursor-right escapes with spaces (0.1478ms)
+  ✔ simulates carriage return overwriting (0.1162ms)
+  ✔ uses fallback extraction when no ● marker is present (0.1838ms)
+  ✔ returns empty string when buffer has no readable content (0.1035ms)
+  ✔ uses the last ● marker when multiple are present (0.094ms)
+  ✔ filters out box-drawing / TUI chrome lines (0.0998ms)
+  ✔ filters out pure whitespace lines (0.1173ms)
+  ✔ handles multiline response correctly (0.1725ms)
+  ✔ handles mixed ANSI + carriage return + box-drawing (0.1392ms)
+  ✔ handles buffer with no ❯ — takes everything after last ● (0.0976ms)
+  ✔ handles ❯ appearing mid-line (0.0709ms)
+  ✔ handles empty response between ● and ❯ (0.0977ms)
+  ✔ handles complex ANSI sequences in response (0.1439ms)
+  ✔ preserves content with special characters (0.0936ms)
+✔ extractResponse (3.8508ms)
+▶ SessionPool
+  ▶ create()
+    ✔ accepts and stores metadata on session creation (1.2031ms)
+    ✔ creates a session without metadata (0.2126ms)
+    ✔ stores workdir with the session (0.2054ms)
+    ✔ accepts spawnArgs parameter (0.1968ms)
+    ✔ increments totalSpawned on each create (0.3153ms)
+    ✔ enforces max session limit (0.5412ms)
+  ✔ create() (3.3142ms)
+  ▶ status()
+    ✔ returns metadata, promptCount, lastActivityAt, workdir (0.2198ms)
+    ✔ reflects updated promptCount after sending a prompt (0.7422ms)
+    ✔ updates lastActivityAt after sending a prompt (23.3914ms)
+    ✔ throws for unknown session (0.4125ms)
+  ✔ status() (25.0365ms)
+  ▶ list()
+    ✔ returns metadata, promptCount, lastActivityAt, workdir for each session (0.5063ms)
+    ✔ includes sessions without metadata (0.1405ms)
+  ✔ list() (0.7261ms)
+  ▶ poolStats()
+    ✔ returns correct stats after creation and kills (0.1808ms)
+    ✔ startedAt is set at pool creation time (0.1965ms)
+  ✔ poolStats() (0.4652ms)
+  ▶ removeDead()
+    ✔ removes dead sessions older than TTL (29.9135ms)
+    ✔ does not remove dead sessions younger than TTL (0.2957ms)
+    ✔ does not remove alive sessions (0.1864ms)
+    ✔ returns 0 when no sessions exist (0.1079ms)
+  ✔ removeDead() (30.7273ms)
+  ▶ session chains (PRD 006)
+    ✔ root session has depth 0 and no parent (0.2062ms)
+    ✔ child session records parent and depth (0.1995ms)
+    ✔ rejects spawn when depth exceeds max_depth (0.2642ms)
+    ✔ rejects spawn when agent budget is exhausted (0.2352ms)
+    ✔ returns chain info from create() (0.135ms)
+    ✔ list() includes chain info for all sessions (0.2164ms)
+  ✔ session chains (PRD 006) (1.4317ms)
+✔ SessionPool (62.208ms)
+▶ PrintSession
+  ▶ initial state
+    ✔ starts in ready status (1ms)
+    ✔ starts with promptCount 0 (0.2167ms)
+    ✔ starts with empty transcript (0.1761ms)
+    ✔ starts with null printMetadata (0.1795ms)
+    ✔ adaptiveSettle is always null (0.2017ms)
+    ✔ has the correct id (0.204ms)
+    ✔ has a lastActivityAt date (0.2038ms)
+  ✔ initial state (2.834ms)
+  ▶ kill()
+    ✔ sets status to dead (0.7382ms)
+    ✔ fires exit callbacks with code 0 (0.1723ms)
+    ✔ fires multiple exit callbacks (0.595ms)
+    ✔ does not throw if exit callback throws (0.1976ms)
+  ✔ kill() (1.8743ms)
+  ▶ resize()
+    ✔ is a no-op — does not throw (0.13ms)
+    ✔ does not change status (0.0859ms)
+  ✔ resize() (0.2887ms)
+  ▶ onOutput()
+    ✔ returns an unsubscribe function (0.1295ms)
+  ✔ onOutput() (0.1661ms)
+  ▶ sendPrompt() rejection when dead
+    ✔ rejects with /dead/ when session is already killed (0.4146ms)
+  ✔ sendPrompt() rejection when dead (0.4521ms)
+  ﹣ sendPrompt() (mocked child_process) (0.0289ms) # SKIP
+✔ PrintSession (6.1625ms)
+✔ getSessionContext: Extracts projectId from headers (0.7994ms)
+✔ getSessionContext: Does NOT extract admin flag (F-SECUR-002) (0.1267ms)
+✔ getSessionContext: Defaults to empty context (0.08ms)
+✔ validateProjectAccess: No admin escalation (F-SECUR-002) (0.0912ms)
+✔ validateProjectAccess: Denies cross-project access (0.1319ms)
+✔ validateProjectAccess: Allows same-project access (0.066ms)
+✔ validateProjectAccess: Allows read-only access without project context (0.0726ms)
+✔ validateProjectAccess: Audit logs cross-project denial (0.0798ms)
+✔ Cursor: generateCursor creates unique cursor IDs (0.5128ms)
+✔ Cursor: parseCursor retrieves stored index (0.1404ms)
+✔ Cursor: parseCursor returns 0 for unknown cursor (0.0911ms)
+✔ Cursor: getEventsSinceCursor returns events from index (0.5291ms)
+✔ Cursor: getEventsSinceCursor returns all events without cursor (0.0905ms)
+✔ Cursor: getEventsSinceCursor returns empty for cursor past end (0.0736ms)
+✔ Cursor: Cursor state expires after 24 hours (0.0491ms)
+✔ Event Log: Stores and retrieves events (0.0905ms)
+✔ Event Log: Supports cursor-based retrieval (0.1106ms)
+✔ ProjectMetadata: Has all required fields (0.3216ms)
+✔ HTTP Status: Routes return appropriate status codes (documentation) (0.0987ms)
+✔ Isolation: Cross-project request returns 403 (0.0499ms)
+✔ Isolation: No admin bypass (F-SECUR-002) (0.0382ms)
+✔ Isolation: Same project access allowed (0.0374ms)
+✔ Event Polling: First poll gets all events (0.0819ms)
+✔ Event Polling: Subsequent poll returns only new events (0.0835ms)
+✔ Error Handling: Invalid project ID returns 400 (0.0431ms)
+✔ Error Handling: Missing required fields (0.0504ms)
+✔ Project-Scoped Events: Session in project A cannot access project B events (0.0429ms)
+✔ Project-Scoped Events: Session in project A can access project A events (0.0365ms)
+✔ Project-Scoped Events: Unauthenticated can read global events (Phase 1) (0.0379ms)
+✔ Isolation: Event filtering by projectId (0.0919ms)
+✔ Isolation: Multiple sessions with different projects (0.0476ms)
+▶ Pattern Matchers (PRD 010)
+  ▶ matchToolCall
+    ✔ detects built-in tools (0.7212ms)
+    ✔ detects multiple built-in tools in one chunk (0.2276ms)
+    ✔ detects MCP tools (0.1218ms)
+    ✔ emits methodology_activity for methodology tools (0.1047ms)
+    ✔ deduplicates same tool in one chunk (0.1153ms)
+    ✔ returns empty for text without tools (0.0946ms)
+  ✔ matchToolCall (1.9925ms)
+  ▶ matchGitCommit
+    ✔ detects git commit output (0.2271ms)
+    ✔ detects commit on feature branch (0.104ms)
+    ✔ returns empty for non-commit text (0.1014ms)
+  ✔ matchGitCommit (0.5662ms)
+  ▶ matchTestResult
+    ✔ detects Node.js test runner output (0.2725ms)
+    ✔ emits test_failure event when tests fail (0.1213ms)
+    ✔ does not emit test_failure when all pass (0.0788ms)
+    ✔ detects Jest/Vitest output (0.1094ms)
+    ✔ detects Jest output with no failures (0.1013ms)
+    ✔ detects Mocha-style output (0.0937ms)
+  ✔ matchTestResult (0.8909ms)
+  ▶ matchFileOperation
+    ✔ detects Read operations (0.2667ms)
+    ✔ detects Write operations (0.0859ms)
+    ✔ detects Edit operations (0.0726ms)
+    ✔ deduplicates same file (0.0652ms)
+  ✔ matchFileOperation (0.5847ms)
+  ▶ matchBuildResult
+    ✔ detects TSC errors (0.1615ms)
+    ✔ emits build_failure event (0.0611ms)
+    ✔ detects build success via exit code (0.0858ms)
+  ✔ matchBuildResult (0.3729ms)
+  ▶ matchError
+    ✔ detects Node.js errors (0.2258ms)
+    ✔ detects stack traces (0.1241ms)
+    ✔ detects non-zero exit codes (0.0925ms)
+    ✔ does not detect exit code 0 (0.0775ms)
+    ✔ ignores build-related exit codes (handled by build matcher) (0.0468ms)
+  ✔ matchError (0.6505ms)
+  ▶ PROMPT_CHAR_RE
+    ✔ matches the prompt character (0.0566ms)
+    ✔ matches prompt in context (0.033ms)
+    ✔ does not match regular text (0.0486ms)
+  ✔ PROMPT_CHAR_RE (0.1943ms)
+✔ Pattern Matchers (PRD 010) (5.7352ms)
+▶ PtyWatcher (PRD 010)
+  ✔ subscribes to PTY output and detects tool calls (1.079ms)
+  ✔ records observations for all matches (0.1725ms)
+  ✔ emits to correct channel (progress vs events) (0.1903ms)
+  ✔ detects idle transition (0.4697ms)
+  ✔ does not emit idle without prior activity (0.7931ms)
+  ✔ respects rate limiting (0.2607ms)
+  ✔ disabled watcher produces no output (0.1116ms)
+  ✔ respects pattern filter (0.1518ms)
+  ✔ strips ANSI codes before matching (0.1417ms)
+  ✔ handles cross-chunk patterns via line buffer (0.25ms)
+✔ PtyWatcher (PRD 010) (3.8965ms)
+▶ parseWatcherConfig
+  ✔ uses defaults when no env vars set (0.1471ms)
+  ✔ respects PTY_WATCHER_ENABLED=false (0.0481ms)
+  ✔ parses comma-separated patterns (0.0566ms)
+  ✔ per-session metadata overrides env vars (0.048ms)
+✔ parseWatcherConfig (0.3735ms)
+▶ OBS-19: Agent tool call detection
+  ✔ matchToolCall detects Agent tool (0.0676ms)
+  ✔ watcher records Agent tool_call observation (0.1569ms)
+  ✔ stripAnsiCodes removes ANSI sequences (0.0371ms)
+✔ OBS-19: Agent tool call detection (0.3104ms)
+▶ Auto-Retro Generator (PRD 010)
+  ✔ generates retro YAML file (2.3977ms)
+  ✔ skips when retros directory does not exist (0.3088ms)
+  ✔ increments sequence number for same date (1.7733ms)
+  ✔ cleanup temp directory (1.1294ms)
+✔ Auto-Retro Generator (PRD 010) (5.7074ms)
+▶ Registry API contract for frontend
+  ✔ tree response has shape expected by RegistryTree component (170.4625ms)
+  ✔ method detail has shape expected by MethodDetail component (6.3048ms)
+  ✔ protocol detail has shape expected by protocol view (5.9043ms)
+  ✔ manifest response has shape expected by ManifestView (29.1347ms)
+✔ Registry API contract for frontend (212.7152ms)
+▶ GET /api/registry
+  ✔ returns a tree with methodologies (156.7186ms)
+  ✔ includes methods within each methodology (30.5906ms)
+  ✔ includes protocols identified by YAML content (26.6218ms)
+  ✔ skips non-methodology directories (instances, submissions) (26.4988ms)
+✔ GET /api/registry (241.2758ms)
+▶ GET /api/registry/:methodology/:method
+  ✔ returns full parsed method YAML (4.2905ms)
+  ✔ resolves protocol files by ID (5.0453ms)
+  ✔ returns 404 for nonexistent method (3.7001ms)
+✔ GET /api/registry/:methodology/:method (13.2653ms)
+▶ GET /api/registry/manifest
+  ✔ returns installed methodologies with sync status (26.9661ms)
+✔ GET /api/registry/manifest (27.1367ms)
+▶ POST /api/registry/reload
+  ✔ invalidates cache and returns confirmation (2.3731ms)
+✔ POST /api/registry/reload (2.7147ms)
+▶ SpawnQueue
+  ✔ executes a single enqueued operation (0.6526ms)
+  ✔ enforces minimum gap between consecutive spawns (115.8705ms)
+  ✔ does not delay the first spawn (0.3335ms)
+  ✔ serializes concurrent enqueue calls (123.3908ms)
+  ✔ propagates errors without blocking the queue (0.5385ms)
+  ✔ reports pending count (216.0578ms)
+  ✔ uses default minGapMs when no options provided (0.2761ms)
+✔ SpawnQueue (458.115ms)
+▶ generateRetro
+  ✔ produces correct structure from execution result (1.2926ms)
+  ✔ calculates speedup_ratio correctly (0.2331ms)
+  ✔ populates cost per-node breakdown (0.2084ms)
+  ✔ aggregates gate retry data correctly (0.1958ms)
+  ✔ includes oversight events (0.1603ms)
+  ✔ lists artifacts excluding context inputs (0.1264ms)
+  ✔ handles failed nodes in execution summary (0.1292ms)
+✔ generateRetro (3.1258ms)
+▶ computeCriticalPath
+  ✔ finds the longest path through a linear DAG (0.6085ms)
+  ✔ finds the longest branch in a parallel DAG (0.1641ms)
+  ✔ handles empty DAG (0.1553ms)
+  ✔ handles single node (0.1096ms)
+✔ computeCriticalPath (1.2172ms)
+▶ retroToYaml
+  ✔ produces valid YAML string (3.5919ms)
+  ✔ round-trips cost data through YAML (0.8626ms)
+✔ retroToYaml (4.5496ms)
+▶ saveRetro
+  ✔ saves retro file with correct naming convention (9.1157ms)
+  ✔ increments sequence number for same date (3.5337ms)
+  ✔ creates directory if it does not exist (2.7731ms)
+✔ saveRetro (15.591ms)
+▶ evictStaleExecutions
+  ✔ eviction function is callable without errors (6.9737ms)
+✔ evictStaleExecutions (7.0409ms)
+▶ retro gate matching
+  ✔ gate matching does not false-positive on substring node IDs (0.1739ms)
+✔ retro gate matching (0.221ms)
+▶ Strategy Routes
+  ✔ POST /strategies/execute returns 202 with execution_id (206.7611ms)
+  ✔ POST /strategies/execute rejects missing yaml and path (5.2537ms)
+  ✔ POST /strategies/execute rejects invalid YAML (5.8717ms)
+  ✔ GET /strategies/:id/status returns 404 for unknown id (3.4156ms)
+  ✔ GET /strategies lists executions (4.0009ms)
+  ✔ GET /strategies/:id/status returns status for running execution (108.8575ms)
+✔ Strategy Routes (334.5446ms)
+▶ deriveProjectDirName (PRD 013)
+  ✔ converts Windows absolute path (0.6381ms)
+  ✔ handles paths with trailing separators (0.1382ms)
+  ✔ produces consistent results for same path (0.1018ms)
+✔ deriveProjectDirName (PRD 013) (1.5746ms)
+▶ TokenTracker (PRD 013)
+  ▶ registerSession + getUsage
+    ✔ returns null for unregistered session (1.5489ms)
+    ✔ returns null cached value before refreshUsage (1.5828ms)
+  ✔ registerSession + getUsage (3.2785ms)
+  ▶ getAggregate
+    ✔ returns zeroes when no sessions registered (1.2573ms)
+    ✔ returns zeroes when sessions have no cached usage (1.0425ms)
+    ✔ aggregates usage across multiple sessions (7.8228ms)
+    ✔ computes cache hit rate correctly (2.8479ms)
+  ✔ getAggregate (13.1873ms)
+  ▶ refreshUsage
+    ✔ returns null for unregistered session (1.0414ms)
+    ✔ returns null when project dir not found (1.1874ms)
+    ✔ parses usage from JSONL with message.usage format (2.5889ms)
+    ✔ parses usage from JSONL with top-level usage format (2.3068ms)
+    ✔ skips malformed JSONL lines gracefully (2.3524ms)
+    ✔ caches result for subsequent getUsage calls (2.1962ms)
+    ✔ handles events with no usage data (2.1974ms)
+    ✔ uses fixture file for realistic JSONL parsing (2.2592ms)
+  ✔ refreshUsage (16.3597ms)
+  ▶ edge cases
+    ✔ handles missing sessionsDir gracefully (0.9796ms)
+    ✔ handles empty JSONL file (2.706ms)
+    ✔ finds most recent JSONL when multiple exist (3.1747ms)
+  ✔ edge cases (6.9656ms)
+✔ TokenTracker (PRD 013) (40.0201ms)
+▶ deriveProjectDirName — transcript-reader (PRD 013)
+  ✔ converts Windows absolute path (0.505ms)
+  ✔ handles paths with trailing separators (0.1427ms)
+  ✔ produces consistent results for same path (0.1046ms)
+✔ deriveProjectDirName — transcript-reader (PRD 013) (1.4032ms)
+▶ TranscriptReader — getTranscript (PRD 013)
+  ✔ parses user message with string content (3.0757ms)
+  ✔ parses assistant message with string content (2.1874ms)
+  ✔ parses assistant message with text + tool_use blocks (2.2208ms)
+  ✔ parses multiple tool_use blocks in a single message (2.0241ms)
+  ✔ parses tool_result blocks with string content in user message (2.3453ms)
+  ✔ parses tool_result blocks with array content in user message (2.0308ms)
+  ✔ skips events with no message field (1.9233ms)
+  ✔ skips events with unrecognized role (1.9056ms)
+  ✔ skips malformed JSON lines gracefully (1.955ms)
+  ✔ extracts tokens from message.usage (1.8963ms)
+  ✔ extracts tokens from top-level usage (event.usage) (1.8527ms)
+  ✔ returns undefined tokens when no usage data present (1.7439ms)
+  ✔ uses fallback content when text is empty but tool calls exist (1.858ms)
+  ✔ uses [empty] fallback when no text and no tool calls (1.7595ms)
+  ✔ returns empty array for nonexistent file (1.3158ms)
+  ✔ returns empty array for empty JSONL file (1.9529ms)
+  ✔ uses current timestamp when event has no timestamp field (2.122ms)
+  ✔ parses the realistic transcript.jsonl fixture correctly (1.0626ms)
+✔ TranscriptReader — getTranscript (PRD 013) (35.7932ms)
+▶ TranscriptReader — listSessions (PRD 013)
+  ✔ returns empty array when sessions dir does not exist (1.0925ms)
+  ✔ returns empty array when project dir does not exist (0.9665ms)
+  ✔ returns empty array when project dir has no JSONL files (1.8855ms)
+  ✔ lists a single JSONL file with correct metadata (2.0174ms)
+  ✔ lists multiple JSONL files sorted by mtime descending (9.4517ms)
+  ✔ filters out non-JSONL files (3.4369ms)
+✔ TranscriptReader — listSessions (PRD 013) (19.0137ms)
+▶ Glob Matcher (minimatch)
+  ✔ matches simple wildcard (*) (0.7394ms)
+  ✔ matches double wildcard (**) (0.1685ms)
+  ✔ matches question mark (?) (0.1266ms)
+  ✔ matches character class ([abc]) (0.1434ms)
+  ✔ matches brace expansion ({a,b}) (0.1839ms)
+  ✔ matches exact paths (0.1449ms)
+  ✔ normalizes backslashes (0.0795ms)
+  ✔ handles **/ prefix for directory matching (0.1374ms)
+✔ Glob Matcher (minimatch) (2.6219ms)
+▶ DebounceEngine
+  ▶ trailing strategy
+    ✔ fires after quiet period (1.0734ms)
+    ✔ resets timer on each new event (0.2238ms)
+    ✔ respects max_batch_size (0.1395ms)
+    ✔ batches events within window into single fire (0.1387ms)
+  ✔ trailing strategy (1.7176ms)
+  ▶ leading strategy
+    ✔ fires immediately on first event (0.2234ms)
+    ✔ suppresses subsequent events within window (0.1863ms)
+    ✔ re-opens window after debounce period (0.1372ms)
+    ✔ respects max_batch_size during suppression (0.1456ms)
+  ✔ leading strategy (0.8016ms)
+  ▶ cancel
+    ✔ cancels pending trailing fire (0.1226ms)
+    ✔ clears pending event count (0.0957ms)
+  ✔ cancel (0.2827ms)
+✔ DebounceEngine (2.9407ms)
+▶ TriggerParser
+  ✔ parses all trigger types from YAML (2.2413ms)
+  ✔ separates event triggers from manual/mcp_tool (0.2957ms)
+  ✔ parses file_watch config correctly (0.284ms)
+  ✔ parses git_commit config correctly (0.3022ms)
+  ✔ hasEventTriggers returns true for strategies with event triggers (0.3005ms)
+  ✔ hasEventTriggers returns false for manual-only strategies (0.1109ms)
+  ✔ hasEventTriggers returns false for invalid YAML (0.4588ms)
+  ✔ throws on missing strategy.id (0.5667ms)
+  ✔ backward compatible — manual and mcp_tool still parsed (0.2794ms)
+✔ TriggerParser (5.0726ms)
+▶ TriggerRouter
+  ✔ registers triggers from a strategy YAML file (3.0452ms)
+  ✔ unregisters all triggers for a strategy (63.9267ms)
+  ✔ respects max_concurrent guard (1.905ms)
+  ✔ tracks fire count in stats (1.3522ms)
+  ✔ enforces max_watchers limit (2.1001ms)
+  ✔ pauseAll / resumeAll lifecycle (1.374ms)
+  ✔ setTriggerEnabled toggles a specific trigger (1.3232ms)
+  ✔ throws on unknown trigger ID (0.6399ms)
+  ✔ shutdown clears all registrations (1.3413ms)
+  ✔ history is populated after trigger fire and capped (0.5753ms)
+  ✔ end-to-end: debounce fire invokes executor with correct args (F-A-1) (666.3138ms)
+  ✔ max_concurrent rejects second fire while first is in-flight (F-A-6) (841.7616ms)
+✔ TriggerRouter (1586.9255ms)
+▶ FileWatchTrigger
+  ✔ fires when a matching file is created (610.9449ms)
+  ✔ does not fire for non-matching files (610.0606ms)
+  ✔ reports correct active state (1.7865ms)
+  ✔ has correct type (0.9353ms)
+  ✔ handles non-existent watch directory gracefully (0.9831ms)
+✔ FileWatchTrigger (1224.9831ms)
+▶ GitCommitTrigger
+  ✔ detects a new commit via polling (1497.4507ms)
+  ✔ reports correct active state (140.0615ms)
+  ✔ has correct type (82.84ms)
+  ✔ filters by branch_pattern (1618.8018ms)
+✔ GitCommitTrigger (3339.428ms)
+▶ Startup Scanning
+  ✔ registers triggers from valid strategy files (2.5945ms)
+  ✔ skips strategies without event triggers (1.3354ms)
+  ✔ logs errors for invalid YAML and continues (2.0885ms)
+  ✔ handles non-existent directory gracefully (0.6242ms)
+  ✔ scans both .yaml and .yml extensions (57.092ms)
+✔ Startup Scanning (63.9256ms)
+▶ Cron Parser
+  ✔ parses "* * * * *" (every minute) (0.4291ms)
+  ✔ parses step expressions (*/15) (0.1133ms)
+  ✔ parses ranges (1-5) (0.615ms)
+  ✔ parses range with step (1-10/3) (0.0846ms)
+  ✔ parses comma-separated values (1,15,30) (0.0729ms)
+  ✔ parses specific cron expression (0 */6 * * *) (0.0686ms)
+  ✔ throws on invalid field count (0.13ms)
+  ✔ throws on out-of-range value (0.1075ms)
+  ✔ throws on invalid step (0.082ms)
+  ▶ cronMatches
+    ✔ matches a date at midnight UTC on January 1 (Sunday) (0.1066ms)
+    ✔ does not match wrong minute (0.0613ms)
+  ✔ cronMatches (0.2144ms)
+  ▶ nextCronFire
+    ✔ finds the next minute for "* * * * *" (0.1515ms)
+    ✔ finds the next matching time for "0 */6 * * *" (0.1214ms)
+    ✔ rolls over to next day when needed (0.2781ms)
+  ✔ nextCronFire (0.6119ms)
+✔ Cron Parser (2.7136ms)
+▶ ScheduleTrigger
+  ✔ fires at the correct cron time using mock timer (0.3131ms)
+  ✔ does not fire when stopped (0.0932ms)
+  ✔ has correct type (0.0543ms)
+  ✔ fires multiple times for every-minute cron (0.1034ms)
+✔ ScheduleTrigger (0.6345ms)
+▶ Sandboxed Expression Evaluator
+  ✔ evaluates truthy expression (0.3678ms)
+  ✔ evaluates falsy expression (0.1102ms)
+  ✔ handles complex boolean expressions (0.0972ms)
+  ✔ returns false with error for invalid expressions (0.0903ms)
+  ✔ blocks access to process (0.0751ms)
+  ✔ blocks access to require (0.065ms)
+  ✔ handles optional chaining (0.0905ms)
+  ✔ handles missing properties gracefully (0.0746ms)
+✔ Sandboxed Expression Evaluator (1.0876ms)
+▶ PtyWatcherTrigger
+  ✔ fires when observation matches pattern (0.1482ms)
+  ✔ does not fire for non-matching pattern (0.0712ms)
+  ✔ applies condition expression to filter (0.1126ms)
+  ✔ does not fire when inactive (0.063ms)
+  ✔ has correct type (0.0568ms)
+  ✔ handles invalid condition gracefully (0.1057ms)
+✔ PtyWatcherTrigger (0.7423ms)
+▶ ChannelEventTrigger
+  ✔ fires when event type matches (0.1613ms)
+  ✔ does not fire for non-matching event type (0.0561ms)
+  ✔ applies filter expression (0.1584ms)
+  ✔ does not fire when inactive (0.0968ms)
+  ✔ has correct type (0.0512ms)
+  ✔ handles invalid filter gracefully (0.1145ms)
+✔ ChannelEventTrigger (0.7258ms)
+▶ TriggerParser (Phase 2a-2 types)
+  ✔ parses schedule trigger (0.1567ms)
+  ✔ parses pty_watcher trigger (0.1067ms)
+  ✔ parses channel_event trigger (0.126ms)
+  ✔ skips schedule trigger without cron field (0.0748ms)
+  ✔ skips pty_watcher trigger without pattern field (0.062ms)
+  ✔ skips channel_event trigger without event_types field (0.0603ms)
+  ✔ hasEventTriggers detects schedule/pty_watcher/channel_event (0.1144ms)
+✔ TriggerParser (Phase 2a-2 types) (0.8082ms)
+▶ TriggerRouter (Phase 2a-2)
+  ✔ registers schedule trigger from YAML (1.889ms)
+  ✔ registers pty_watcher trigger from YAML (1.4235ms)
+  ✔ registers channel_event trigger from YAML (1.3598ms)
+  ✔ onObservation forwards to pty_watcher triggers and fires executor (3913.3913ms)
+  ✔ onObservation does not fire for non-matching observations (208.7307ms)
+  ✔ onChannelMessage forwards to channel_event triggers and fires executor (216.9368ms)
+  ✔ onChannelMessage does not fire for non-matching event types (203.8676ms)
+  ✔ pausing prevents onObservation and onChannelMessage from firing (218.0615ms)
+✔ TriggerRouter (Phase 2a-2) (4766.2422ms)
+▶ WebhookTrigger
+  ✔ fires with valid HMAC signature (1.18ms)
+  ✔ rejects invalid HMAC signature (0.3882ms)
+  ✔ rejects missing signature when secret_env is configured (0.2242ms)
+  ✔ accepts webhook without secret_env (no HMAC required) (0.3999ms)
+  ✔ applies filter expression to payload (0.6789ms)
+  ✔ returns 503 when trigger is not active (0.1714ms)
+  ✔ has correct type and path (0.2353ms)
+  ✔ defaults methods to POST (0.0969ms)
+  ✔ reports correct active state (0.1127ms)
+  ✔ sanitizes sensitive headers from context (0.2265ms)
+✔ WebhookTrigger (4.1025ms)
+▶ TriggerParser (Phase 2a-3 webhook)
+  ✔ parses webhook trigger (0.3283ms)
+  ✔ skips webhook trigger without path field (0.1139ms)
+  ✔ hasEventTriggers detects webhook (0.0852ms)
+✔ TriggerParser (Phase 2a-3 webhook) (0.604ms)
+▶ TriggerRouter (Phase 2a-3 webhook)
+  ✔ registers webhook trigger from YAML (1.4987ms)
+  ✔ webhook trigger fires executor on valid handleWebhook (212.1625ms)
+✔ TriggerRouter (Phase 2a-3 webhook) (213.908ms)
+▶ Hot Reload (Phase 2a-3)
+  ✔ adds new strategy files on reload (4.0953ms)
+  ✔ removes deleted strategy files on reload (1.2742ms)
+  ✔ updates changed strategy files on reload (1.5678ms)
+  ✔ handles non-existent directory on reload (0.5031ms)
+  ✔ reports errors for invalid YAML on reload (1.5382ms)
+✔ Hot Reload (Phase 2a-3) (9.1605ms)
+▶ Phase 2a-4: Dashboard Trigger Panel
+  ✔ renders disabled message when no provider (0.1658ms)
+  ✔ renders trigger status table with registered triggers (0.224ms)
+  ✔ renders maintenance mode banner when paused (0.0963ms)
+  ✔ renders fire history timeline (12.1451ms)
+  ✔ shows empty state when no triggers registered (0.5462ms)
+✔ Phase 2a-4: Dashboard Trigger Panel (13.2933ms)
+▶ Phase 2a-4: triggerStatusClass
+  ✔ returns trigger-active for enabled, not paused, no errors (0.0695ms)
+  ✔ returns trigger-warning for enabled with errors (0.0341ms)
+  ✔ returns trigger-disabled for not enabled (0.0299ms)
+  ✔ returns trigger-paused when paused (regardless of enabled) (0.0291ms)
+✔ Phase 2a-4: triggerStatusClass (0.2198ms)
+▶ Phase 2a-4: trigger_fired Channel Events
+  ✔ emits trigger_fired event via onTriggerFired callback after fire (678.5452ms)
+✔ Phase 2a-4: trigger_fired Channel Events (678.7744ms)
+▶ Phase 2a-4: Watcher Crash Recovery
+  ✔ recovers from watcher start() failure without affecting other watchers (2.4494ms)
+✔ Phase 2a-4: Watcher Crash Recovery (2.5217ms)
+▶ Phase 2a-4: Debounce Performance
+  ✔ 100 rapid events with max_batch_size=10 produces at most 10 fires (0.2906ms)
+  ✔ 100 rapid events with leading strategy produce bounded fires (0.2832ms)
+✔ Phase 2a-4: Debounce Performance (0.6258ms)
+▶ parseBucket (PRD 013)
+  ✔ extracts valid bucket with utilization and resets_at (0.6124ms)
+  ✔ returns defaults when key is missing from body (0.0989ms)
+  ✔ returns defaults when bucket is not an object (0.0763ms)
+  ✔ returns defaults when bucket is null (0.0755ms)
+  ✔ falls back to percent_used when utilization is absent (0.1113ms)
+  ✔ prefers utilization over percent_used when both present (0.1028ms)
+  ✔ returns 0 utilization when neither utilization nor percent_used present (0.0893ms)
+  ✔ falls back to reset_at when resets_at is absent (0.13ms)
+  ✔ prefers resets_at over reset_at when both present (0.1144ms)
+  ✔ returns null resets_at when neither resets_at nor reset_at present (0.1161ms)
+  ✔ handles utilization of zero correctly (0.1042ms)
+  ✔ handles utilization of 100 correctly (0.0828ms)
+✔ parseBucket (PRD 013) (2.6133ms)
+▶ parseExtraUsage (PRD 013)
+  ✔ extracts valid extra_usage with enabled=true (0.5703ms)
+  ✔ extracts valid extra_usage with enabled=false (0.0668ms)
+  ✔ returns null when extra_usage key is missing (0.0858ms)
+  ✔ returns null when extra_usage is null (0.052ms)
+  ✔ returns null when extra_usage is not an object (0.0407ms)
+  ✔ coerces truthy enabled value to boolean (0.0483ms)
+  ✔ coerces falsy enabled value to boolean (0.0423ms)
+  ✔ returns enabled=false when enabled field is missing (0.0436ms)
+✔ parseExtraUsage (PRD 013) (1.6102ms)
+▶ createUsagePoller (PRD 013)
+  ▶ getStatus
+    ✔ returns "not_configured" when no token provided (null) (0.2841ms)
+    ✔ returns "polling" on fresh start before any poll completes (0.0844ms)
+    ✔ returns "ok" after a successful poll (74.6082ms)
+    ✔ returns "scope_error" after 403 response (62.5313ms)
+    ✔ returns "network_error" after fetch throws (62.5016ms)
+    ✔ stays "not_configured" even after start() when no token (0.3939ms)
+  ✔ getStatus (200.7748ms)
+  ▶ status transitions
+    ✔ transitions polling → ok after successful fetch (61.8226ms)
+    ✔ transitions polling → scope_error after 403 (62.6382ms)
+    ✔ transitions polling → network_error after fetch throws (62.3926ms)
+    ✔ not_configured stays not_configured after start() (62.6952ms)
+    ✔ stays "ok" after successful poll even if subsequent poll gets non-ok HTTP (61.8589ms)
+    ✔ network_error with existing cache still returns "ok" (124.468ms)
+  ✔ status transitions (436.3682ms)
+  ▶ getCached
+    ✔ returns null before any poll (0.237ms)
+    ✔ returns null when no token configured (0.1077ms)
+    ✔ returns populated data after successful poll (62.6854ms)
+    ✔ retains cached data after a failed subsequent poll (123.4301ms)
+    ✔ returns null after 403 (stop is called, no cache populated) (61.12ms)
+    ✔ polled_at is a valid ISO timestamp (61.7779ms)
+  ✔ getCached (310.0906ms)
+  ▶ start / stop
+    ✔ start is a no-op when no token (0.1623ms)
+    ✔ stop clears the interval and prevents further polling (250.9213ms)
+    ✔ stop can be called multiple times without error (62.5934ms)
+    ✔ start triggers an immediate first poll (61.654ms)
+  ✔ start / stop (375.6809ms)
+  ▶ full integration with realistic API response
+    ✔ parses all four buckets and extra_usage from a realistic response (62.4927ms)
+    ✔ handles API response with percent_used fallback field (62.6227ms)
+[usage-poller] 403 Forbidden — stopping subscription usage polling. Check CLAUDE_OAUTH_TOKEN.
+[usage-poller] Network error — will retry on next interval: fetch failed: ECONNREFUSED
+[usage-poller] 403 Forbidden — stopping subscription usage polling. Check CLAUDE_OAUTH_TOKEN.
+[usage-poller] Network error — will retry on next interval: fetch failed: ECONNREFUSED
+[usage-poller] Network error — will retry on next interval: fetch failed: ECONNREFUSED
+[usage-poller] Network error — will retry on next interval: fetch failed: ECONNREFUSED
+[usage-poller] 403 Forbidden — stopping subscription usage polling. Check CLAUDE_OAUTH_TOKEN.
+    ✔ handles API response with missing buckets gracefully (8142.8919ms)
+    ✔ sends correct Authorization header and anthropic-beta header (56.7031ms)
+[usage-poller] 403 Forbidden — stopping subscription usage polling. Check CLAUDE_OAUTH_TOKEN.
+    ✔ polls the correct URL (62.9852ms)
+  ✔ full integration with realistic API response (8388.0442ms)
+[usage-poller] HTTP 500 — will retry on next interval
+  ▶ 403 handling
+    ✔ stops polling after receiving 403 (296.1374ms)
+  ✔ 403 handling (296.4563ms)
+  ▶ non-OK HTTP status handling
+    ✔ does not update cache on 500 error (60.2231ms)
+  ✔ non-OK HTTP status handling (60.4329ms)
+✔ createUsagePoller (PRD 013) (10068.3813ms)
+▶ Worktree Isolation (PRD 006 Component 2)
+  ▶ WorktreeInfo defaults
+    ✔ shared session has metals_available: true and no worktree path (1.0857ms)
+    ✔ status includes worktree info (0.2473ms)
+    ✔ list includes worktree info for all sessions (0.2714ms)
+  ✔ WorktreeInfo defaults (2.1264ms)
+  ▶ kill with worktree_action
+    ✔ kill returns worktree_cleaned: false for shared sessions (0.2496ms)
+    ✔ kill without worktree_action defaults to keep (0.1533ms)
+  ✔ kill with worktree_action (0.5154ms)
+✔ Worktree Isolation (PRD 006 Component 2) (2.9585ms)
+▶ Stale Detection (PRD 006 Component 4)
+  ▶ stale flag defaults
+    ✔ new session is not stale (0.205ms)
+    ✔ list includes stale flag (0.1656ms)
+  ✔ stale flag defaults (0.5007ms)
+  ▶ checkStale()
+    ✔ returns empty arrays when no sessions are stale (0.7093ms)
+    ✔ marks session stale after stale_timeout_ms (0.278ms)
+    ✔ does not mark dead sessions as stale (0.199ms)
+    ✔ auto-kills session after kill_timeout_ms (0.6687ms)
+    ✔ emits stale event to channels when marking stale (0.2292ms)
+    ✔ emits stale event with auto_killed action when killing (0.1741ms)
+    ✔ does not double-mark already stale sessions (0.1223ms)
+    ✔ uses custom timeout_ms when provided (0.1111ms)
+    ✔ multiple sessions can be stale independently (0.1331ms)
+  ✔ checkStale() (2.8343ms)
+✔ Stale Detection (PRD 006 Component 4) (3.5461ms)
+▶ InMemoryArtifactStore
+  ▶ put()
+    ✔ creates version 1 on first write (1.2806ms)
+    ✔ increments version on subsequent writes (0.1191ms)
+  ✔ put() (1.8816ms)
+  ▶ get()
+    ✔ returns the latest version (0.1594ms)
+    ✔ returns null for non-existent artifact (0.0714ms)
+  ✔ get() (0.3562ms)
+  ▶ getVersion()
+    ✔ returns a specific version (1-indexed) (0.1667ms)
+    ✔ returns null for non-existent version (0.1125ms)
+    ✔ returns null for non-existent artifact (0.0907ms)
+  ✔ getVersion() (0.5067ms)
+  ▶ snapshot()
+    ✔ returns frozen object with latest versions (0.4562ms)
+    ✔ is independent of subsequent puts (immutability) (0.1143ms)
+  ✔ snapshot() (0.6634ms)
+  ▶ history()
+    ✔ returns all versions in order (0.186ms)
+    ✔ returns empty array for non-existent artifact (0.0867ms)
+    ✔ returns a defensive copy (not the internal array) (0.1044ms)
+  ✔ history() (0.4906ms)
+  ▶ multiple artifacts
+    ✔ can coexist independently (0.1048ms)
+  ✔ multiple artifacts (0.1545ms)
+  ▶ createArtifactStore()
+    ✔ returns a functional ArtifactStore (0.0776ms)
+  ✔ createArtifactStore() (0.141ms)
+✔ InMemoryArtifactStore (4.731ms)
+✔ packages\core\src\__tests__\event-persistence-contract.test.ts (8646.5475ms)
+▶ EventPersistence Contract
+  ▶ append
+    ✔ appends a single event (0.7503ms)
+    ✔ appends multiple events in order (0.2504ms)
+    ✔ preserves event immutability (round-trip) (0.5617ms)
+  ✔ append (2.1134ms)
+  ▶ query
+    ✔ filters by projectId (0.4597ms)
+    ✔ filters by type (0.2947ms)
+    ✔ filters by both projectId and type (0.2498ms)
+    ✔ filters by date range (since) (0.1744ms)
+    ✔ filters by date range (until) (0.1581ms)
+    ✔ returns empty array on no matches (0.1366ms)
+    ✔ returns all events on empty filter (0.1516ms)
+  ✔ query (1.9412ms)
+  ▶ latest
+    ✔ returns N most recent events (0.1981ms)
+    ✔ returns events in reverse chronological order (most recent first) (0.147ms)
+    ✔ respects count limit (0.654ms)
+    ✔ returns all events if count exceeds total (0.1095ms)
+    ✔ returns empty array for count 0 (0.0831ms)
+  ✔ latest (1.3065ms)
+✔ EventPersistence Contract (5.7441ms)
+▶ evaluateGateExpression
+  ✔ passes on simple truthy expression (0.9621ms)
+  ✔ fails on simple falsy expression (0.2208ms)
+  ✔ evaluates expressions accessing artifacts (0.1651ms)
+  ✔ evaluates expressions accessing execution_metadata (0.1426ms)
+  ✔ returns failed with error message on syntax error (0.1883ms)
+  ✔ returns failed (not throws) when accessing undefined property (0.201ms)
+  ✔ cannot access process (sandbox) (0.1814ms)
+  ✔ cannot access require (sandbox) (0.1515ms)
+  ✔ cannot access globalThis (sandbox) (0.1869ms)
+  ✔ cannot use Function constructor (sandbox) (0.2608ms)
+  ✔ context objects are frozen (cannot be mutated by expression) (0.1733ms)
+  ✔ handles complex boolean expressions (0.1192ms)
+  ✔ handles expression returning 0 as falsy (0.1158ms)
+  ✔ handles expression returning non-empty string as truthy (0.0998ms)
+  ✔ times out on long-running expression (0.1197ms)
+✔ evaluateGateExpression (4.2682ms)
+▶ evaluateGate
+  ✔ algorithmic gate passes when expression is true (0.1855ms)
+  ✔ algorithmic gate fails when expression is false (0.1052ms)
+  ✔ observation gate evaluates against execution_metadata (0.6592ms)
+  ✔ observation gate fails on metadata violation (0.1179ms)
+  ✔ human approval gate always returns not passed with suspension message (0.0917ms)
+  ✔ human approval gate ignores check expression (0.0701ms)
+✔ evaluateGate (1.3701ms)
+▶ buildRetryFeedback
+  ✔ generates correct retry prompt format (0.1227ms)
+  ✔ includes attempt number and max retries (0.0526ms)
+  ✔ includes gate check expression (0.0482ms)
+  ✔ includes failure reason (0.0622ms)
+  ✔ handles missing feedback gracefully (0.057ms)
+  ✔ includes provided feedback (0.0496ms)
+✔ buildRetryFeedback (0.4911ms)
+▶ getDefaultRetries
+  ✔ returns 3 for algorithmic gates (0.0588ms)
+  ✔ returns 2 for observation gates (0.0471ms)
+  ✔ returns 0 for human_approval gates (0.0332ms)
+✔ getDefaultRetries (0.2ms)
+▶ getDefaultTimeout
+  ✔ returns 5000 for algorithmic gates (0.0578ms)
+  ✔ returns 5000 for observation gates (0.0328ms)
+  ✔ returns 5000 for human_approval gates (0.029ms)
+✔ getDefaultTimeout (0.1806ms)
+▶ Integration: full methodology session loop
+  ✔ start → route → load → execute → transition → load → execute → complete (170.1336ms)
+✔ Integration: full methodology session loop (170.8445ms)
+▶ Integration: methodology_select backward compatibility
+  ✔ selectMethodology creates a working session that can be used with methodology session functions (71.0113ms)
+✔ Integration: methodology_select backward compatibility (71.184ms)
+▶ Integration: session isolation
+  ✔ two methodology sessions with different IDs do not interfere (116.345ms)
+✔ Integration: session isolation (116.4584ms)
+▶ Integration: step_context includes methodology progress
+  ✔ context returns methodology id and name, not the method name (47.6473ms)
+  ✔ context shows correct progress after advancing steps (49.4295ms)
+  ✔ validateStepOutput records output and integrates with methodology session (70.0376ms)
+✔ Integration: step_context includes methodology progress (167.3564ms)
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+▶ IsolationValidator
+  ▶ validate
+    ▶ valid project IDs
+      ✔ accepts simple alphanumeric project IDs (47.3529ms)
+      ✔ accepts project IDs with hyphens (31.4671ms)
+      ✔ accepts mixed case project IDs (27.2941ms)
+      ✔ accepts single character project IDs (25.8442ms)
+    ✔ valid project IDs (132.6654ms)
+    ▶ invalid project IDs
+      ✔ rejects empty project ID (26.4036ms)
+      ✔ rejects project ID with leading hyphen (25.8952ms)
+      ✔ rejects project ID with trailing hyphen (24.5078ms)
+      ✔ rejects project ID with invalid characters (25.3008ms)
+      ✔ rejects project ID with spaces (25.4319ms)
+    ✔ invalid project IDs (127.8907ms)
+    ▶ warnings for reserved namespaces
+      ✔ warns on sys- prefix (26.3534ms)
+      ✔ warns on internal- prefix (27.0047ms)
+      ✔ warns on reserved- prefix (25.624ms)
+      ✔ does not warn on non-reserved prefixes (24.6964ms)
+    ✔ warnings for reserved namespaces (104.1777ms)
+    ▶ registry checks
+      ✔ returns accessible registry state (23.1129ms)
+      ✔ validates against populated registry (24.4443ms)
+    ✔ registry checks (47.668ms)
+    ▶ ValidationResult structure
+      ✔ returns valid boolean flag (24.7659ms)
+      ✔ returns violations array (24.6383ms)
+      ✔ all violations have required fields (25.8246ms)
+      ✔ valid flag matches error count (24.2419ms)
+    ✔ ValidationResult structure (99.648ms)
+  ✔ validate (512.3886ms)
+✔ IsolationValidator (512.658ms)
+▶ startMethodologySession — P1-EXEC
+  ✔ returns correct metadata for a real methodology (50.9977ms)
+  ✔ extracts the objective from YAML (29.0864ms)
+✔ startMethodologySession — P1-EXEC (80.7923ms)
+▶ startMethodologySession — error cases
+  ✔ throws for non-existent methodology (23.4905ms)
+✔ startMethodologySession — error cases (23.5994ms)
+▶ startMethodologySession — session data
+  ✔ returns valid MethodologySessionData (27.5748ms)
+✔ startMethodologySession — session data (27.6753ms)
+▶ createMethodologySessionManager
+  ✔ set and get a session (24.4694ms)
+  ✔ returns null for non-existent session (0.1264ms)
+✔ createMethodologySessionManager (24.7679ms)
+▶ routeMethodology — P1-EXEC
+  ✔ routes to adversarial_dispatch arm when adversarial_pressure_beneficial is true (45.0466ms)
+  ✔ routes to M2-ORCH when adversarial=false, decomposable=true (48.605ms)
+  ✔ routes to M3-TMP when adversarial=false, decomposable=false (47.3653ms)
+  ✔ returns a result with no predicates provided (all inconclusive) (46.5658ms)
+  ✔ categorizes predicates as provided vs inferred (46.6252ms)
+✔ routeMethodology — P1-EXEC (234.503ms)
+▶ loadMethodInSession — P1-EXEC
+  ✔ loads M3-TMP into the session with correct result (48.4838ms)
+  ✔ sets methodology context on the method session (49.0219ms)
+  ✔ updates methodology session status to executing (43.4046ms)
+  ✔ throws for method not in repertoire (44.1322ms)
+  ✔ throws when session status is executing (43.7978ms)
+✔ loadMethodInSession — P1-EXEC (229.0736ms)
+▶ transitionMethodology — full flow: start → load → transition
+  ✔ completes M3-TMP and re-routes to a next method (70.4158ms)
+✔ transitionMethodology — full flow: start → load → transition (70.4973ms)
+▶ transitionMethodology — records step outputs
+  ✔ captures recorded step outputs in the completed method (65.27ms)
+✔ transitionMethodology — records step outputs (65.3543ms)
+▶ transitionMethodology — with completion summary
+  ✔ stores the completion summary in completedMethods (69.363ms)
+✔ transitionMethodology — with completion summary (69.4511ms)
+▶ transitionMethodology — error: not executing
+  ✔ throws when session status is initialized (not executing) (23.2805ms)
+✔ transitionMethodology — error: not executing (23.3986ms)
+▶ enhanced step_context — priorMethodOutputs
+  ✔ priorMethodOutputs is empty on first method load (47.1882ms)
+  ✔ priorMethodOutputs populated after transition and re-load (89.6954ms)
+✔ enhanced step_context — priorMethodOutputs (136.9955ms)
+▶ ProjectEvent
+  ▶ createProjectEvent
+    ✔ creates an event with all required fields (1.1987ms)
+    ✔ creates an event with default empty data and metadata (0.1498ms)
+    ✔ generates unique IDs for multiple events (0.1219ms)
+    ✔ timestamps are close together for events created in quick succession (0.1298ms)
+  ✔ createProjectEvent (2.1723ms)
+  ▶ serializeProjectEvent
+    ✔ serializes to plain object (0.5783ms)
+    ✔ converts timestamp to ISO string (0.1975ms)
+  ✔ serializeProjectEvent (0.9223ms)
+  ▶ deserializeProjectEvent
+    ✔ deserializes a valid event from plain object (0.2307ms)
+    ✔ throws on missing id (0.41ms)
+    ✔ throws on invalid type (0.1922ms)
+    ✔ throws on missing projectId (0.186ms)
+    ✔ throws on invalid timestamp (0.1176ms)
+    ✔ handles Date timestamp directly (0.0735ms)
+    ✔ supports all ProjectEventType values (0.1495ms)
+  ✔ deserializeProjectEvent (1.612ms)
+  ▶ round-trip serialization
+    ✔ deserialize(serialize(event)) === event (0.1261ms)
+  ✔ round-trip serialization (0.1955ms)
+✔ ProjectEvent (5.3842ms)
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\M2-MDIS\M2-MDIS.yaml: bad indentation of a mapping entry (173:3)
+
+ 170 |       - "Fabricate observations ( ...
+ 171 |       - "Skip trial (Ax-3: promot ...
+ 172 |       - "Compile the method direc ...
+ 173 |   coverage_claim: "Discoverer see ...
+---------^
+ 174 |   authority_claim: "All five step ...
+ 175 |   role_partition_rationale: >
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-ARTIFACTS.yaml: bad indentation of a mapping entry (306:7)
+
+ 303 |       - "A gap candidate has clear ev ...
+ 304 |       - "A proposed delta exists with ...
+ 305 |       - "The registry maintainer deci ...
+ 306 |       note: >
+-------------^
+ 307 |         Not every gap candidate trigg ...
+ 308 |         more evidence. Some wait for  ...
+Failed to load C:\Users\atfm0\Repositories\method\registry\P0-META\RETRO-PROTO-PROMOTION.yaml: bad indentation of a mapping entry (96:5)
+
+ 93 |       The meta-retrospective identi ...
+ 94 |       These are incorporated into t ...
+ 95 | 
+ 96 |     - id: REF-01
+----------^
+ 97 |       finding: "Manual aggregation  ...
+ 98 |       change: >
+▶ InMemoryProjectRegistry
+  ▶ initialize
+    ✔ initializes without throwing (47.4526ms)
+    ✔ idempotent — can be called multiple times (32.4197ms)
+  ✔ initialize (80.5521ms)
+  ▶ find
+    ✔ throws if registry not initialized (28.5373ms)
+    ✔ returns undefined for non-existent specs (26.4675ms)
+    ✔ finds real specs from registry by ID (26.1173ms)
+    ✔ finds real specs from registry by name (25.6285ms)
+  ✔ find (107.062ms)
+  ▶ list
+    ✔ returns array of specs (28.5327ms)
+    ✔ does not return duplicate specs (28.4834ms)
+    ✔ all specs have required fields (24.6568ms)
+    ✔ throws if not initialized (23.0953ms)
+  ✔ list (105.0161ms)
+  ▶ getByName
+    ✔ alias for find (24.1453ms)
+  ✔ getByName (24.2183ms)
+  ▶ verify
+    ✔ accepts valid spec (0.2509ms)
+    ✔ rejects spec with missing id (0.1224ms)
+    ✔ rejects spec with missing name (0.0852ms)
+    ✔ rejects spec with missing version (0.0702ms)
+    ✔ warns on non-semver version (0.066ms)
+    ✔ accepts semver versions (0.1046ms)
+    ✔ allows extra fields in spec (0.083ms)
+  ✔ verify (0.918ms)
+✔ InMemoryProjectRegistry (318.2787ms)
+▶ getMethodologyRouting — P2-SD
+  ✔ successfully extracts routing for P2-SD (5.8954ms)
+  ✔ arms have correct structure — first arm (1.4318ms)
+  ✔ predicates are merged — multi_task_scope has operationalization (1.1529ms)
+  ✔ predicates without operationalization have null trueWhen/falseWhen (1.0575ms)
+  ✔ terminal arms have null selects (0.9457ms)
+✔ getMethodologyRouting — P2-SD (11.279ms)
+▶ getMethodologyRouting — error cases
+  ✔ throws for non-existent methodology (0.6376ms)
+  ✔ throws for method YAML instead of methodology (2.2447ms)
+✔ getMethodologyRouting — error cases (3.1797ms)
+▶ selectMethodology — success
+  ✔ selects M1-IMPL from P2-SD methodology (51.3549ms)
+  ✔ returns correct MethodologySelectResult structure (29.6529ms)
+  ✔ sets methodology context — context() returns methodology name (25.3463ms)
+✔ selectMethodology — success (107.0942ms)
+▶ selectMethodology — error cases
+  ✔ throws for non-existent methodology (27.031ms)
+  ✔ throws for method not in methodology repertoire (24.5472ms)
+✔ selectMethodology — error cases (51.7605ms)
+▶ validateSessionBudget
+  ✔ allows spawn when within budget (1.2502ms)
+  ✔ rejects when depth equals max_depth (0.2269ms)
+  ✔ rejects when depth exceeds max_depth (0.088ms)
+  ✔ rejects when agents_spawned equals max_agents (0.0942ms)
+  ✔ allows spawn at depth 0 with fresh budget (0.0809ms)
+  ✔ depth check takes priority over agent count (0.0806ms)
+✔ validateSessionBudget (2.5933ms)
+▶ P1 — AdvanceResult
+  ✔ advance() returns AdvanceResult with all fields (7.1353ms)
+✔ P1 — AdvanceResult (7.8124ms)
+▶ P1 — CurrentStepResult
+  ✔ current() returns CurrentStepResult envelope (2.1898ms)
+✔ P1 — CurrentStepResult (2.2909ms)
+▶ P1 — Terminal step
+  ✔ advance() returns nextStep: null when reaching the last step (2.2339ms)
+✔ P1 — Terminal step (2.5549ms)
+▶ P3 — SessionManager.getOrCreate identity
+  ✔ getOrCreate("a") returns the same session on repeated calls (0.2508ms)
+  ✔ getOrCreate("a") and getOrCreate("b") return different sessions (0.154ms)
+✔ P3 — SessionManager.getOrCreate identity (0.5697ms)
+▶ P3 — Session isolation between different methods
+  ✔ loading different methods — each session sees its own method via status() (3.2989ms)
+✔ P3 — Session isolation between different methods (3.4364ms)
+▶ P3 — Advancing in one session does not affect another
+  ✔ advancing session "a" does not change session "b" step position (2.0992ms)
+✔ P3 — Advancing in one session does not affect another (2.1736ms)
+▶ P3 — Default session
+  ✔ default session "__default__" works correctly (1.2422ms)
+✔ P3 — Default session (1.3083ms)
+▶ PRD 003 — context()
+  ✔ returns StepContext with all fields (1.5832ms)
+  ✔ progress string is correct at start (1.7458ms)
+  ✔ priorStepOutputs is empty when no outputs recorded (1.1391ms)
+  ✔ priorStepOutputs populated after recording and advancing (1.309ms)
+  ✔ throws when no method loaded (0.104ms)
+  ✔ updates after advance (0.9361ms)
+  ✔ setMethodologyContext updates context().methodology.name (1.622ms)
+  ✔ methodology context persists across load() calls (0.9412ms)
+  ✔ load() clears step outputs (1.0077ms)
+✔ PRD 003 — context() (10.637ms)
+▶ parseStrategyYaml
+  ✔ parses a valid Strategy YAML string into StrategyDAG (3.2482ms)
+  ✔ parses nodes with correct types and dependencies (1.017ms)
+  ✔ applies default retries and timeout to gates (0.3589ms)
+  ✔ parses capabilities and oversight rules (0.3793ms)
+  ✔ parses a Strategy with script nodes (0.1786ms)
+  ✔ parses strategy_gates (0.195ms)
+✔ parseStrategyYaml (6.1247ms)
+▶ parseStrategyObject
+  ✔ transforms a pre-parsed YAML object into StrategyDAG (0.3249ms)
+  ✔ handles empty optional fields gracefully (0.135ms)
+✔ parseStrategyObject (0.5775ms)
+▶ validateStrategyDAG
+  ✔ valid DAG passes validation (0.5589ms)
+  ✔ detects cyclic dependency (A -> B -> A) (0.168ms)
+  ✔ detects missing depends_on reference (0.114ms)
+  ✔ detects duplicate node IDs (0.1027ms)
+  ✔ detects invalid capability reference (0.1091ms)
+  ✔ detects gate expression syntax error (0.1657ms)
+  ✔ returns multiple errors at once (0.1229ms)
+  ✔ detects invalid strategy_gates depends_on reference (0.1186ms)
+✔ validateStrategyDAG (1.6371ms)
+▶ topologicalSort
+  ✔ linear chain: A -> B -> C produces [[A], [B], [C]] (0.1795ms)
+  ✔ diamond: A -> B, A -> C, B -> D, C -> D produces [[A], [B, C], [D]] (0.0917ms)
+  ✔ independent nodes at same level (0.0774ms)
+  ✔ single node produces [[node]] (0.0552ms)
+  ✔ throws on cyclic DAG (0.2948ms)
+✔ topologicalSort (0.7939ms)
+▶ StrategyExecutor
+  ✔ 3-node Strategy end-to-end: methodology -> methodology -> script (2.5354ms)
+  ✔ parallel execution: two independent nodes (56.5302ms)
+  ✔ gate failure with retry: first attempt fails, second succeeds (1.2069ms)
+  ✔ gate failure exhausts retries: node status is gate_failed (0.6392ms)
+  ✔ script node executes correctly: inputs flow in, output stored (0.7305ms)
+  ✔ artifact dependency filtering: node receives only declared inputs (0.6801ms)
+  ✔ oversight rule triggers on high cost (0.4162ms)
+  ✔ context inputs stored as initial artifacts (0.2273ms)
+  ✔ escalate_to_human oversight rule suspends execution (0.5468ms)
+  ✔ getState() returns null before execution (0.0783ms)
+  ✔ getState() returns state during/after execution (0.2077ms)
+  ✔ invalid DAG throws during execution (0.2ms)
+  ✔ strategy gate failure causes failed status (0.2606ms)
+  ✔ methodology node with empty methodology field fails validation (0.0815ms)
+  ✔ methodology node with missing methodology field fails validation (0.0718ms)
+  ✔ LLM response without JSON code block is handled gracefully (0.2773ms)
+  ✔ context continuity with refresh_context flag (0.4517ms)
+✔ StrategyExecutor (65.587ms)
+▶ StrategyExecutor — timeout enforcement
+  ✔ provider that completes within timeout succeeds (23.6461ms)
+  ✔ provider that rejects immediately is caught as node failure (0.5127ms)
+✔ StrategyExecutor — timeout enforcement (24.2582ms)
+▶ P2 — lookupTheory with Unicode normalization
+  ✔ "Phi-Schema" returns F4-PHI.md content (2.7956ms)
+  ✔ "sigma" matches Sigma references via Unicode normalization (1.4285ms)
+  ✔ "delta" matches delta references via Unicode normalization (0.4537ms)
+✔ P2 — lookupTheory with Unicode normalization (5.3414ms)
+▶ P2 — lookupTheory existing queries still work
+  ✔ "domain retraction" returns results (0.3153ms)
+  ✔ "methodology" returns results (0.2996ms)
+  ✔ "coalgebra" returns results (0.9352ms)
+✔ P2 — lookupTheory existing queries still work (1.7141ms)
+▶ validateStepOutput — valid output
+  ✔ passes with recommendation "advance" for valid output (6.8527ms)
+✔ validateStepOutput — valid output (7.4497ms)
+▶ validateStepOutput — missing required field
+  ✔ produces error finding and recommendation "retry" for missing field (1.9454ms)
+✔ validateStepOutput — missing required field (2.0229ms)
+▶ validateStepOutput — postcondition check
+  ✔ passes when keywords from postcondition are present in output (1.3224ms)
+  ✔ fails postcondition when keywords are missing — recommendation "escalate" (2.3617ms)
+✔ validateStepOutput — postcondition check (3.8279ms)
+▶ validateStepOutput — output recording
+  ✔ records output even on validation failure (1.8428ms)
+✔ validateStepOutput — output recording (1.9541ms)
+▶ validateStepOutput — step ID mismatch
+  ✔ throws error for step_id mismatch (1.3963ms)
+✔ validateStepOutput — step ID mismatch (1.4926ms)
+▶ validateStepOutput — type checking
+  ✔ detects type mismatch for integer field (1.2058ms)
+✔ validateStepOutput — type checking (1.2804ms)
+ℹ tests 865
+ℹ suites 224
+ℹ pass 865
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23757.178
+exit_code: 

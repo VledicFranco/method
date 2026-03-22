@@ -1,6 +1,6 @@
 # PRD 013 — Bridge Test Coverage Extension
 
-**Status:** Partially implemented
+**Status:** Partially implemented (~70-75% — Phase 1 pure function tests complete, Phase 2 missing live-output-route and transcript-route tests, Phase 3 coverage tooling done)
 **Date:** 2026-03-15
 **Previous:** Draft (2026-03-15)
 **Scope:** Unit tests for untested bridge modules, test infrastructure, coverage tooling
