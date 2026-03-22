@@ -1,0 +1,45 @@
+topic_id: TOPIC-META-AGENT-LOOP
+name: "Meta Agent Loop — MethodTS Strategy Replacing Claude Code"
+status: active
+sessions:
+  - date: "2026-03-21"
+    mode: synthetic
+    questions_resolved: 4
+    position_shifts: 3
+    escalations: 0
+
+cast:
+  - name: Kael
+    role: Runtime Architect (Contrarian)
+    conviction: "The suspension model is the product"
+  - name: Nyx
+    role: Agent Systems Designer (Contrarian)
+    conviction: "Agents must adapt methodology in-flight"
+  - name: Rhea
+    role: Product & UX Strategist (Contrarian)
+    conviction: "Autonomy without legibility is a black box"
+  - name: Ignis
+    role: Visionary Systems Theorist (Contrarian)
+    conviction: "Self-designing systems are the only scalable architecture"
+  - name: Petra
+    role: Production Systems Engineer (Contrarian)
+    conviction: "Self-modifying systems need a hard floor they cannot modify"
+  - name: Seren
+    role: Leader / Mediator
+    conviction: "Best architecture makes the hardest tradeoff explicit"
+
+standing_decisions:
+  - id: D-Q1
+    question: "MetaState design"
+    decision: "Flat record with frozen ReadonlyArray<MethodologyMeta>, pipeline selection array, candidateMethodology field. Registry frozen at strategy start. Client reconstructs conversation from state traces."
+  - id: D-Q2
+    question: "Inline methodology creation"
+    decision: "4-arm priority stack: exact → adapted → composed → create. Arm 4 gated by M1-MDES availability, compilation, simulation, budget inheritance (≤50%), step/loop caps, mandatory human approval. Post-strategy persistence offer."
+  - id: D-Q3
+    question: "Pitch UX mechanism"
+    decision: "Dedicated agent step (sigma_pitch) with suspension: always. Multi-turn Q&A via insight-cached re-runs. Conditional rendering for created methodologies."
+  - id: D-Q4
+    question: "Bridge relationship"
+    decision: "Meta-loop is standalone process. Uses ClaudeHeadlessProvider for own steps, BridgeAgentProvider for sub-agents. Strategy EventBus for meta-loop observability. Client merges both streams."
+
+open_questions: []
