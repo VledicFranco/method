@@ -10,8 +10,6 @@
  */
 
 import {
-  loadMethodFromFile,
-  loadMethodologyFromFile,
   topologicalOrder,
   evaluateTransition,
 } from "@method/methodts";
@@ -22,9 +20,12 @@ import type {
   Arm,
   DomainTheory,
 } from "@method/methodts";
-import { readdirSync, existsSync, statSync, readFileSync } from "fs";
-import { join, basename } from "path";
-import yaml from "js-yaml";
+import {
+  getStdlibCatalog,
+  getMethod,
+  getMethodology,
+} from "@method/methodts/stdlib";
+// fs/path/yaml no longer needed for methodology loading (stdlib-backed)
 
 // ── Types matching core's output shapes ──
 
@@ -360,38 +361,7 @@ type MethodologySessionState = {
   routingInfo: RoutingInfo;
 };
 
-// ── YAML helpers ──
-
-function readYaml(filePath: string): Record<string, unknown> {
-  const raw = readFileSync(filePath, "utf-8");
-  const parsed = yaml.load(raw);
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new Error(`Failed to parse ${filePath}: YAML did not produce an object`);
-  }
-  return parsed as Record<string, unknown>;
-}
-
-function extractString(obj: Record<string, unknown>, ...keys: string[]): string | null {
-  for (const key of keys) {
-    const val = obj[key];
-    if (typeof val === "string") return val.trim();
-  }
-  return null;
-}
-
-function findYamlFiles(dirPath: string): string[] {
-  const results: string[] = [];
-  const entries = readdirSync(dirPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findYamlFiles(fullPath));
-    } else if (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml")) {
-      results.push(fullPath);
-    }
-  }
-  return results;
-}
+// YAML helpers removed — methodology loading is now stdlib-backed
 
 // ── Listing types ──
 
@@ -408,14 +378,6 @@ type MethodologyEntry = {
   description: string;
   methods: MethodEntry[];
 };
-
-// ── Routing helper ──
-
-function parseReturns(returns: string): string | null {
-  if (returns === "None") return null;
-  const match = returns.match(/^Some\((.+)\)$/);
-  return match ? match[1] : null;
-}
 
 // ── Condition evaluator ──
 
@@ -627,12 +589,28 @@ type ValidationResult = {
 // ══════════════════════════════════════════════════════════════
 
 export class MethodologySessionStore {
-  private readonly registryDir: string;
   private readonly stepSessions = new Map<string, MethodTSSession>();
   private readonly methodologySessions = new Map<string, MethodologySessionState>();
 
-  constructor(registryDir: string) {
-    this.registryDir = registryDir;
+  /**
+   * Constructor accepts registryDir for backward compatibility but no longer
+   * reads from the filesystem — all methodology data comes from the stdlib catalog.
+   */
+  constructor(_registryDir?: string) {
+    // registryDir is ignored — stdlib is the canonical source
+  }
+
+  // ── Method loading (from stdlib catalog) ──
+
+  private loadMethodFromStdlib(methodologyId: string, methodId: string): Method<S> {
+    const method = getMethod(methodologyId, methodId);
+    if (!method) {
+      throw new Error(
+        `Method ${methodId} not found in methodology ${methodologyId}. ` +
+        `Available methods: ${getStdlibCatalog().find(m => m.methodologyId === methodologyId)?.methods.map(m => m.methodId).join(", ") ?? "none"}`,
+      );
+    }
+    return method as Method<S>;
   }
 
   // ── Session helpers ──
@@ -644,149 +622,55 @@ export class MethodologySessionStore {
     return this.stepSessions.get(sessionId)!;
   }
 
-  // ── List methodologies ──
+  // ── List methodologies (from stdlib catalog) ──
 
   private listMethodologiesInternal(): MethodologyEntry[] {
-    const entries = readdirSync(this.registryDir, { withFileTypes: true });
-    const methodologyDirs = entries.filter((e) => e.isDirectory());
-
-    const result: MethodologyEntry[] = [];
-
-    for (const dir of methodologyDirs) {
-      const methodologyDir = join(this.registryDir, dir.name);
-      const yamlFiles = findYamlFiles(methodologyDir);
-
-      let methodologyId = dir.name;
-      let methodologyName = dir.name;
-      let methodologyDescription = "";
-      const methods: MethodEntry[] = [];
-
-      for (const filePath of yamlFiles) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = readYaml(filePath);
-        } catch (e) {
-          console.warn(`[methodology-store] Failed to parse ${filePath}: ${(e as Error).message}`);
-          continue;
-        }
-
-        const methodBlock = parsed["method"] as Record<string, unknown> | undefined;
-        const methodologyBlock = parsed["methodology"] as Record<string, unknown> | undefined;
-
-        if (methodologyBlock) {
-          methodologyId = extractString(methodologyBlock, "id") ?? dir.name;
-          methodologyName = extractString(methodologyBlock, "name") ?? dir.name;
-          const nav = parsed["navigation"] as Record<string, unknown> | undefined;
-          methodologyDescription =
-            extractString(nav ?? {}, "what") ??
-            extractString(methodologyBlock, "description") ??
-            "";
-        } else if (methodBlock) {
-          const phases = parsed["phases"] as unknown[] | undefined;
-          const nav = parsed["navigation"] as Record<string, unknown> | undefined;
-          methods.push({
-            methodId: extractString(methodBlock, "id") ?? basename(filePath, ".yaml"),
-            name: extractString(methodBlock, "name") ?? basename(filePath, ".yaml"),
-            description:
-              extractString(nav ?? {}, "what") ??
-              extractString(methodBlock, "description") ??
-              "",
-            stepCount: Array.isArray(phases) ? phases.length : 0,
-          });
-        }
-      }
-
-      result.push({
-        methodologyId,
-        name: methodologyName,
-        description: methodologyDescription,
-        methods: methods.sort((a, b) => a.methodId.localeCompare(b.methodId)),
-      });
-    }
-
-    return result.sort((a, b) => a.methodologyId.localeCompare(b.methodologyId));
+    return getStdlibCatalog().map((entry) => ({
+      methodologyId: entry.methodologyId,
+      name: entry.name,
+      description: entry.description,
+      methods: entry.methods.map((m) => ({
+        methodId: m.methodId,
+        name: m.name,
+        description: m.description,
+        stepCount: m.stepCount,
+      })),
+    }));
   }
 
-  // ── Get routing info ──
+  // ── Get routing info (from stdlib typed methodology) ──
 
   private getRoutingInternal(methodologyId: string): RoutingInfo {
-    const filePath = join(this.registryDir, methodologyId, `${methodologyId}.yaml`);
-
-    if (!existsSync(filePath)) {
-      throw new Error(`Methodology ${methodologyId} not found in registry`);
+    const methodology = getMethodology(methodologyId);
+    if (!methodology) {
+      throw new Error(`Methodology ${methodologyId} not found in stdlib`);
     }
 
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = readYaml(filePath);
-    } catch (e) {
-      if ((e as Error).message.startsWith("Failed to parse")) {
-        throw e;
-      }
-      throw new Error(`Failed to parse ${filePath}: ${(e as Error).message}`);
-    }
+    // Extract predicates from domain theory
+    const predicates: RoutingPredicate[] = Object.entries(
+      methodology.domain.signature.predicates,
+    ).map(([name, pred]) => ({
+      name,
+      description: pred.tag === "check" ? pred.label : null,
+      trueWhen: null, // Operationalization not available in typed values
+      falseWhen: null,
+    }));
 
-    if (parsed["method"] && !parsed["methodology"]) {
-      throw new Error(
-        `YAML at ${filePath} is a method, not a methodology. Routing is only available for methodology-level files.`,
-      );
-    }
-
-    const methodologyBlock = parsed["methodology"] as Record<string, unknown> | undefined;
-    if (!methodologyBlock) {
-      throw new Error(`Methodology ${methodologyId} not found in registry`);
-    }
-
-    const transitionFunction = parsed["transition_function"] as Record<string, unknown> | undefined;
-    if (!transitionFunction) {
-      throw new Error(`Methodology ${methodologyId} has no transition_function defined`);
-    }
-
-    const methodologyIdFromYaml = (methodologyBlock["id"] as string) ?? methodologyId;
-    const methodologyName = (methodologyBlock["name"] as string) ?? methodologyId;
-
-    const domainTheory = parsed["domain_theory"] as Record<string, unknown> | undefined;
-    const formalPredicates = (domainTheory?.["predicates"] as Array<Record<string, unknown>>) ?? [];
-
-    const predOp = parsed["predicate_operationalization"] as Record<string, unknown> | undefined;
-    const opPredicates = (predOp?.["predicates"] as Array<Record<string, unknown>>) ?? [];
-    const evaluationOrderStr = (predOp?.["evaluation_order"] as string) ?? "";
-
-    const opMap = new Map<string, { trueWhen: string | null; falseWhen: string | null }>();
-    for (const op of opPredicates) {
-      const name = op["name"] as string;
-      const trueWhen = typeof op["true_when"] === "string" ? op["true_when"].trim() : null;
-      const falseWhen = typeof op["false_when"] === "string" ? op["false_when"].trim() : null;
-      opMap.set(name, { trueWhen, falseWhen });
-    }
-
-    const predicates: RoutingPredicate[] = formalPredicates.map((fp) => {
-      const name = fp["name"] as string;
-      const description = typeof fp["description"] === "string" ? fp["description"].trim() : null;
-      const op = opMap.get(name);
-      return {
-        name,
-        description,
-        trueWhen: op?.trueWhen ?? null,
-        falseWhen: op?.falseWhen ?? null,
-      };
-    });
-
-    const rawArms = (transitionFunction["arms"] as Array<Record<string, unknown>>) ?? [];
-    const arms: RoutingArm[] = rawArms.map((arm) => ({
-      priority: arm["priority"] as number,
-      label: arm["label"] as string,
-      condition: arm["condition"] as string,
-      selects: parseReturns(arm["returns"] as string),
-      rationale: typeof arm["rationale"] === "string" ? arm["rationale"].trim() : null,
+    // Extract arms from methodology
+    const arms: RoutingArm[] = methodology.arms.map((arm) => ({
+      priority: arm.priority,
+      label: arm.label,
+      condition: arm.condition.tag === "check" ? arm.condition.label : String(arm.condition.tag),
+      selects: arm.selects?.id ?? null,
+      rationale: arm.rationale,
     }));
 
     return {
-      methodologyId: methodologyIdFromYaml,
-      name: methodologyName,
+      methodologyId: methodology.id,
+      name: methodology.name,
       predicates,
       arms,
-      evaluationOrder: evaluationOrderStr.trim(),
+      evaluationOrder: "priority-stack (arms evaluated 1..N, first match wins)",
     };
   }
 
@@ -1043,7 +927,7 @@ export class MethodologySessionStore {
    */
   loadMethod(sessionId: string, methodologyId: string, methodId: string): object {
     const session = this.getOrCreateStepSession(sessionId);
-    const method = loadMethodFromFile(this.registryDir, methodologyId, methodId);
+    const method = this.loadMethodFromStdlib(methodologyId, methodId);
     session.load(methodologyId, method);
     const ordered = topologicalOrder(method.dag);
     // Extract objective string from Predicate
@@ -1124,26 +1008,11 @@ export class MethodologySessionStore {
     // 2. Get routing info
     const routingInfo = this.getRoutingInternal(methodologyId);
 
-    // 3. Read objective from the methodology YAML
+    // 3. Extract objective from typed methodology
     let objective: string | null = null;
-    try {
-      const yamlPath = join(this.registryDir, methodologyId, `${methodologyId}.yaml`);
-      const raw = readFileSync(yamlPath, "utf-8");
-      const parsed = yaml.load(raw) as Record<string, unknown> | null;
-      if (parsed && typeof parsed === "object") {
-        const objectiveBlock = parsed["objective"] as Record<string, unknown> | undefined;
-        if (objectiveBlock && typeof objectiveBlock === "object") {
-          const formal = objectiveBlock["formal"];
-          const formalStatement = objectiveBlock["formal_statement"];
-          if (typeof formal === "string") {
-            objective = formal.trim();
-          } else if (typeof formalStatement === "string") {
-            objective = formalStatement.trim();
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(`[methodology-store] Failed to read methodology objective for ${methodologyId}: ${(e as Error).message}`);
+    const typedMethodology = getMethodology(methodologyId);
+    if (typedMethodology && typedMethodology.objective.tag === "check") {
+      objective = typedMethodology.objective.label;
     }
 
     // 4. Create session state
@@ -1219,7 +1088,7 @@ export class MethodologySessionStore {
     }
 
     // 3. Load the method via MethodTS
-    const method = loadMethodFromFile(this.registryDir, methodologyId, selectedMethodId);
+    const method = this.loadMethodFromStdlib(methodologyId, selectedMethodId);
     session.load(methodologyId, method);
 
     // 4. Record methodology context
@@ -1297,7 +1166,7 @@ export class MethodologySessionStore {
     }
 
     // 3. Load the method via MethodTS
-    const method = loadMethodFromFile(this.registryDir, methSession.methodologyId, methodId);
+    const method = this.loadMethodFromStdlib(methSession.methodologyId, methodId);
     const ordered = topologicalOrder(method.dag);
 
     // 4. Load into session
