@@ -19,6 +19,7 @@ import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
+import { registerGenesisRoutes } from './genesis-routes.js';
 import { eventLog, getEventsFromLog } from './project-routes.js';
 
 // Configuration from environment variables
@@ -116,6 +117,20 @@ registerLiveOutputRoutes(app, pool, tokenTracker);
 // ---------- Transcript Browser (PRD 007 Phase 3) ----------
 
 registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
+
+// ---------- Genesis Routes (PRD 020 Phase 2A) ----------
+
+// F-A-1: Register Genesis tools routes
+// Context will be populated when Genesis is spawned
+const genesisRouteContext: any = {
+  sessionPool: pool,
+  genesisSessionId: null,
+  genesisToolsContext: undefined,
+};
+
+registerGenesisRoutes(app, genesisRouteContext).catch(err => {
+  console.error('Failed to register Genesis routes:', err);
+});
 
 // ---------- Health ----------
 
