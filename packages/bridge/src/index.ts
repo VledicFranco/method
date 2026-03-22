@@ -130,19 +130,11 @@ const genesisRouteContext: any = {
   genesisToolsContext: undefined,
 };
 
-registerGenesisRoutes(app, genesisRouteContext).catch(err => {
-  console.error('Failed to register Genesis routes:', err);
-});
-
 // ---------- Project Routes (PRD 020 Phase 2A) ----------
 
 // F-I-2: Initialize and register project discovery routes
 const discoveryService = new DiscoveryService();
 const projectRegistry = new InMemoryProjectRegistry();
-
-registerProjectRoutes(app, discoveryService, projectRegistry).catch(err => {
-  console.error('Failed to register project routes:', err);
-});
 
 // ---------- Health ----------
 
@@ -873,6 +865,10 @@ if (TRIGGERS_ENABLED) {
 
 async function start() {
   try {
+    // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
+    await registerGenesisRoutes(app, genesisRouteContext);
+    await registerProjectRoutes(app, discoveryService, projectRegistry);
+
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
 
