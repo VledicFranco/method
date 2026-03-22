@@ -433,15 +433,24 @@ import { M1_MDES, compose, deriveIDD } from "@method/methodts/stdlib"
 
 ### Vision
 
-MethodTS is a TypeScript library that makes the formal theory executable. A method designer writes typed definitions — domain theories, steps, methods, methodologies — and the library provides: prompt composition, predicate evaluation, routing automation, commission generation, state tracking, gate evaluation, sort extraction, and TLA+ compilation. Agent context windows are freed for judgment and creativity; everything else is compiled, tested, and instant.
+MethodTS is a TypeScript library that makes the formal theory executable — and ultimately **replaces `@method/core` as the methodology runtime** (D-093, SESSION-039, PO-approved). A method designer writes typed definitions — domain theories, steps, methods, methodologies — and the library provides: prompt composition, predicate evaluation, routing automation, commission generation, state tracking, gate evaluation, sort extraction, and TLA+ compilation. Agent context windows are freed for judgment and creativity; everything else is compiled, tested, and instant.
 
-### Migration Strategy
+**TypeScript is the source of truth** for methodology definitions (D-094). YAML becomes a compilation target — readable, archival, backward-compatible — but not authoritative. The project invariant ("theory is source of truth") and the faithfulness priority both favor this: TypeScript types represent F1-FTH definitions more faithfully than YAML strings.
 
-Phase 1 does **not** migrate existing YAML. The YAML registry remains the source of truth for `@method/core`. MethodTS types are authored fresh — they are typed from scratch, not generated from YAML.
+### Transition Plan (D-093)
 
-Type duplication between `@method/core` and `@method/methodts` is intentional (DR-T05). MethodTS types are richer (typed predicates, Effect gates, state tracking) and serve a different purpose (SDK authoring vs runtime session management). The two type systems coexist.
+**Phase 1 — Prove:** MethodTS is standalone (DR-T05). `@method/core` is unchanged. MethodTS must demonstrate it can express and run methodologies independently. Type duplication between core and MethodTS is intentional and temporary.
 
-Phase 2 will address convergence: either a `@method/types` shared package extracting structural overlap, or a bidirectional YAML-to-TypeScript code generation tool. See OQ-1 and OQ-5.
+**Phase 2 — Integrate:** MCP tool handlers rewire to call MethodTS instead of core (D-099a). A runtime YAML adapter loads existing YAML into MethodTS types dynamically for methodologies not yet ported to TypeScript (D-098). Shared types package extracts structural overlap. P1-EXEC and P2-SD ported to stdlib (D-100).
+
+**Phase 3 — Deprecate:** `@method/core` deprecated. MethodTS IS the runtime. YAML registry becomes archival. P-GH, P3-GOV, P3-DISPATCH ported to stdlib. Core's session management, routing, and validation fully replaced.
+
+**Empirical gate for Phase 2:** MethodTS must run P2-SD end-to-end on a real project (pv-method itself) using `ClaudeHeadlessProvider`, producing equivalent results to the current core-based execution. This is not a test-state simulation — it is a real commissioned agent producing real code.
+
+**What stays unchanged during transition:**
+- `@method/bridge` stays as the agent session transport layer (PTY management, dashboard, channels, spawn queue). The bridge does not execute methodology logic. (D-099b)
+- `@method/mcp` tool surfaces stay unchanged — agents see no difference. Only the handler implementations change. (D-099a)
+- The YAML registry stays readable via the runtime adapter. No methodology becomes inaccessible during transition. (D-098)
 
 ### Scope
 
@@ -470,10 +479,14 @@ Phase 2 will address convergence: either a `@method/types` shared package extrac
 - **Standard Library (stdlib)** — P0-META methodology + M1-MDES method as typed MethodTS values, reusable predicates, prompts, gates. Self-hosting: stdlib compiles via `compileMethod()`.
 - Integration tests and remaining documentation
 
-**Phase 2:**
-- TLA+ spec derivation/compiler from methodology definitions
-- Bridge client as Effect service (replace raw fetch in `@method/mcp`)
+**Phase 2 — Integrate (D-093, D-098, D-099, D-100):**
+- **MCP rewire:** tool handlers call MethodTS instead of core. Tool surfaces unchanged. (D-099a)
+- **Runtime YAML adapter:** load existing YAML into MethodTS types dynamically (D-098). One-time scaffolding tool to generate .ts stubs from .yaml.
+- **Shared types package:** `@method/types` extracts structural overlap between core and MethodTS (D-099d)
+- **Stdlib expansion:** P1-EXEC + P2-SD ported as typed MethodTS values (D-100)
 - `BridgeAgentProvider` — bridge-backed agent execution with PTY sessions, channels, dashboard
+- `agentSteeredController` — strategy controller that commissions reasoning agents for decisions
+- TLA+ spec derivation/compiler targeting TLA+ directly (D-096)
 - Remaining meta-methods in stdlib: M2-MDIS, M3-MEVO, M4-MINS, M5-MCOM, M7-DTID
 - Method composition (`compose()`, `mergeDomainTheories()`, `composeDAGs()`)
 - Implementation derivation (`deriveIDD()`, `checkFaithfulness()`)
@@ -482,7 +495,6 @@ Phase 2 will address convergence: either a `@method/types` shared package extrac
 - Extractor reconciliation (parsed vs observed state diff post-agent-step)
 - Bridge channel integration (emit RuntimeEvents to bridge progress/event channels)
 - Retro output compatible with RETRO-PROTO schema
-- Integration with existing `@method/core` (shared types package or code generation)
 - Additional extractor services: `FileSystemService`, `HttpService`
 - `callbackGate` for webhook-style external triggers
 - Tool<S> type with Hoare-typed pre/postconditions (F1-FTH Def 3.1)
@@ -490,9 +502,15 @@ Phase 2 will address convergence: either a `@method/types` shared package extrac
 - Domain morphisms (F1-FTH Def 1.4)
 - Heterogeneous quantifiers (`forall` over sub-types)
 
+**Phase 3 — Deprecate (D-093, D-100):**
+- `@method/core` deprecated and removed
+- MethodTS IS the methodology runtime
+- YAML registry becomes read-only archival format
+- Stdlib expansion: P-GH + P3-GOV + P3-DISPATCH ported as typed MethodTS values
+- Core's strategy executor replaced by MethodTS's adaptive controller via `fromStrategyDAG` (D-099c)
+
 **Exclude:**
-- Replacing `@method/core` — MethodTS complements it, does not replace it
-- UI/dashboard changes
+- UI/dashboard changes (bridge dashboard is unaffected by the transition)
 - Modifications to the formal theory files (F1-FTH, F4-PHI)
 - Concurrent methodology support (blocked on P4 — parallel retraction coherence)
 
@@ -2849,7 +2867,7 @@ packages/methodts/
 | DR-T02 | Within `@method/methodts`, Effect is the primary side-effect mechanism. No raw Promises or `async/await` in internal logic. Integration boundaries with existing packages use `Effect.promise()` wrappers. Existing packages (`core`, `mcp`, `bridge`) retain their current async patterns. |
 | DR-T03 | Algebraic laws (monoid, functor, logical equivalences) must have property-based tests. |
 | DR-T04 | Every public function must have JSDoc documentation with at least one example. |
-| DR-T05 | Zero runtime dependency on `@method/core`, `@method/mcp`, or `@method/bridge`. MethodTS is standalone. Type duplication is intentional — see Migration Strategy (§3). |
+| DR-T05 | **Phase 1 only:** Zero runtime dependency on `@method/core`, `@method/mcp`, or `@method/bridge`. MethodTS is standalone. Type duplication is intentional. Phase 2 introduces shared types package. Phase 3 deprecates core — DR-T05 expires. (D-099d, SESSION-039) |
 | DR-T06 | State tracking types must be serializable to YAML (for retro/trace integration). |
 | DR-T07 | Script steps execute within the Effect runtime with the same pre/post contract as agent steps. |
 | DR-T08 | Gate evaluation must produce diagnostic traces (not just pass/fail) for commission feedback. |
@@ -2878,12 +2896,22 @@ packages/methodts/
 13. `instantiate(M1_MDES, I2_METHOD_card)` produces a valid instantiated method
 14. Full library documentation in `docs/` covers all components with examples
 
+**Empirical gate (required before Phase 2 begins):**
+15. **MethodTS runs P2-SD end-to-end on pv-method** using `ClaudeHeadlessProvider` — a real commissioned agent produces real code, builds clean, tests pass. This is the proof that MethodTS can replace core. (D-093)
+
 **Phase 2 is complete when:**
-15. TLA+ compiler generates parseable .tla specs from at least one MethodTS methodology
-16. Generated safety properties (□) and liveness properties (◇) match the methodology's axioms and objective
-17. Bridge client Effect service replaces raw fetch for at least one bridge operation
-18. All 6 P0-META meta-methods defined in stdlib and executable via `runMethodology`
-19. `compose(M_left, M_right, interface)` produces a composite method that passes `compileMethod()`
+16. MCP tool handlers rewired to call MethodTS — agents see no behavior change (D-099a)
+17. Runtime YAML adapter loads existing registry YAML into MethodTS types (D-098)
+18. P1-EXEC and P2-SD fully ported to stdlib as typed MethodTS values (D-100)
+19. TLA+ compiler generates parseable .tla specs targeting TLA+ directly (D-096)
+20. Generated safety properties (□) and liveness properties (◇) match the methodology's axioms and objective
+21. All 6 P0-META meta-methods defined in stdlib and executable via `runMethodology`
+22. `compose(M_left, M_right, interface)` produces a composite method that passes `compileMethod()`
+
+**Phase 3 is complete when:**
+23. `@method/core` removed from the monorepo — MethodTS is the sole methodology runtime
+24. P-GH, P3-GOV, P3-DISPATCH ported to stdlib
+25. YAML registry is read-only archival — all methodology authoring is TypeScript
 
 ---
 
@@ -2894,7 +2922,7 @@ packages/methodts/
 | Effect learning curve | Medium — team unfamiliar with Effect ecosystem | Phase 1a is mostly pure TypeScript. Effect surfaces in Phase 1b (gates, extractors). Start with core patterns (Effect.gen, Layer, Ref). Avoid advanced features (Stream, Fiber) until needed. |
 | Type system complexity | Medium — deep generics (Predicate<A>, Role<S, V>) may confuse users | Provide concrete type aliases for common cases. Documentation-first approach with getting-started guide leading with templates. DR-T10 enforces plain-language docs. |
 | TLA+ tooling availability | Low — TLA+ toolbox is Java-based, may not be in all environments | Phase 2 delivery. Compiler produces .tla text files that can be verified externally. |
-| Scope creep into @method/core replacement | High — temptation to migrate core's runtime to MethodTS | DR-T05 enforces standalone. Migration Strategy (§3) defers convergence to Phase 2. |
+| Premature core replacement | High — replacing core before MethodTS is proven causes regression | Empirical gate: MethodTS must run P2-SD end-to-end on pv-method with ClaudeHeadlessProvider before Phase 2 integration begins. DR-T05 enforces Phase 1 standalone. (D-093) |
 | Fast-check generator complexity | Medium — generating valid Predicate<A> trees requires careful recursion bounds | Use `fc.letrec` for recursive structures with depth cap of 3. Budget implementation time for generator design. Quantifier laws tested with hand-crafted generators; propositional laws with fully generic generators. |
 | Type duplication with @method/core | Medium — parallel type definitions may drift over time | Intentional per DR-T05 and Migration Strategy. Phase 2 addresses convergence via shared types package or code generation. |
 | Suspension serialization complexity | High — reconstructing coroutine resume from serialized position is non-trivial | `SuspendedMethodology<S>` must serialize to YAML/JSON (DR-T06) and reconstruct `resume` from position + methodology on deserialization. Risk: state divergence or reconstruction failure at certain suspension points (mid-retry, mid-context-assembly). Mitigation: round-trip property tests for every `SuspensionReason` variant; explicit test coverage of resume-from-deserialization; limit serializability to well-defined suspension points (post-step, post-gate, method-boundary) — mid-step suspensions are not serializable. |
@@ -2902,10 +2930,19 @@ packages/methodts/
 
 ---
 
-## 11. Open Questions
+## 11. Resolved Questions (SESSION-039)
 
-- **OQ-1:** Should MethodTS compile to `@method/core`'s YAML format, or should core eventually consume MethodTS types directly? (Affects Phase 2 integration strategy.)
-- **OQ-2:** How should WorldState<S> diff work for deeply nested sorts? JSON structural diff is a starting point but may be too noisy for large states.
-- **OQ-3:** Should the TLA+ compiler target TLA+ directly or PlusCal (which compiles to TLA+)? PlusCal is more readable but less expressive.
-- **OQ-4:** Should the Effect Layer composition for extractors be project-card-aware (i.e., read `context.build_command` etc. from the card to auto-configure services)?
-- **OQ-5:** Should MethodTS include a YAML-to-TypeScript scaffolding tool that generates typed stubs from existing registry YAML? (Migration enabler for Phase 2.)
+All original open questions were resolved by Steering Council SESSION-039 (D-094 through D-098):
+
+| OQ | Question | Decision | Reference |
+|----|----------|----------|-----------|
+| OQ-1 | YAML or TypeScript as source of truth? | **TypeScript is source of truth.** YAML is a compilation target (readable, archival, backward-compatible). Runtime YAML adapter for unported methodologies. | D-094 |
+| OQ-2 | Diff strategy for deeply nested WorldState? | **Path-based structural diff** with configurable depth limit (default 3) and `ignorePaths` option. Fields below depth limit compared by reference equality. | D-095 |
+| OQ-3 | TLA+ or PlusCal? | **Target TLA+ directly.** PlusCal loses expressiveness. Compiler output is machine-consumed by TLC, not hand-read. | D-096 |
+| OQ-4 | Extractors project-card-aware? | **Yes, via `instantiate()`.** Already specified in Component 14.3. Card context fields bound into extractors and gates during instantiation. | D-097 |
+| OQ-5 | YAML-to-TypeScript scaffolding? | **Yes to both:** one-time migration tool (Phase 2 dev tool) + runtime YAML adapter (Phase 2 essential for transition). | D-098 |
+
+## 12. Remaining Open Questions
+
+- **OQ-6:** What are the exact empirical gate criteria for Phase 2? Which P2-SD method, which pv-method task, which success metrics beyond "builds clean, tests pass"?
+- **OQ-7:** Should the project card's `essence.purpose` be updated to reflect the transition from "loads compiled methodology YAML specifications" to "executes typed methodology definitions"? (Deferred until Phase 2 integration begins.)

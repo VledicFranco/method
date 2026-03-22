@@ -1,12 +1,32 @@
 agenda:
   project: pv-method
-  last_updated: "2026-03-20"
-  last_session: SESSION-038
+  last_updated: "2026-03-22"
+  last_session: SESSION-039
   mode: steady-state
   cadence: "weekly or on-demand"
   next_health_review: SESSION-043
 
   p0_immediate:
+    - id: AG-060
+      item: "Update PRD 021 with SESSION-039 decisions (D-093–D-100): transition plan, OQ resolutions, Phase 3 scope, DR-T05 revision"
+      owner: PO
+      status: open
+      added_in: SESSION-039
+      note: >
+        8 decisions from SESSION-039 need to be reflected in the PRD. Key changes:
+        MethodTS replaces core (phased), TypeScript is source of truth, OQ-1 through
+        OQ-5 resolved, Phase 3 added (core deprecation), DR-T05 becomes temporary.
+
+    - id: AG-061
+      item: "Define empirical gate for Phase 2 transition — what test proves MethodTS can replace core?"
+      owner: council
+      status: open
+      added_in: SESSION-039
+      note: >
+        D-093 requires MethodTS to run P2-SD end-to-end on a real project before Phase 2
+        integration begins. Need concrete gate criteria: which project, which methodology,
+        which success metrics, ClaudeHeadlessProvider vs MockProvider.
+
     - id: AG-057
       item: "Commission RFC-003 implementation — Ax-8 in M1-COUNCIL v1.3 + conviction monitoring in skill"
       owner: council
