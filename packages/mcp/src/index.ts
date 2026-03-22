@@ -1545,6 +1545,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           since_cursor: z.string().optional(),
         }).parse(args);
 
+        // F-N-11: Validate cursor string format
+        if (since_cursor && !/^[a-zA-Z0-9_-]{40,256}$/.test(since_cursor)) {
+          return {
+            content: [{
+              type: "text",
+              text: `Error: invalid cursor format. Cursor must match pattern ^[a-zA-Z0-9_-]{40,256}$. Received: ${since_cursor.slice(0, 50)}...`,
+            }],
+            isError: true,
+          };
+        }
+
         const params = new URLSearchParams();
         if (project_id) params.set('project_id', project_id);
         if (since_cursor) params.set('since_cursor', since_cursor);

@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/Button';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { ProjectMetadata } from '@/lib/types';
+import { memo } from 'react';
 
 export interface ProjectListViewProps {
   onProjectSelect?: (project: ProjectMetadata) => void;
 }
 
-export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
+// F-P-3: Memoize with custom comparator
+function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
   const { projects, loading, error, refetch } = useProjects();
 
   const getStatusColor = (status: string): 'bio' | 'solar' | 'error' | 'nebular' | 'cyan' => {
@@ -97,15 +99,15 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
         </Card>
       ) : (
         <div className="overflow-x-auto rounded-card border border-bdr bg-abyss">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" role="table">
             <thead>
-              <tr className="border-b border-bdr">
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">ID</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">Name</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">Description</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">Status</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">Methodologies</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim">Last Scanned</th>
+              <tr className="border-b border-bdr" role="row">
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">ID</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Name</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Description</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Status</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Methodologies</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Last Scanned</th>
               </tr>
             </thead>
             <tbody>
@@ -117,7 +119,7 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
                     index === projects.length - 1 && 'border-b-0',
                   )}
                   onClick={() => onProjectSelect?.(project)}
-                  role="button"
+                  role="row"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -125,16 +127,16 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
                     }
                   }}
                 >
-                  <td className="px-sp-4 py-sp-3">
+                  <td className="px-sp-4 py-sp-3" role="cell">
                     <code className="text-xs bg-void/50 px-2 py-1 rounded text-txt-muted">
                       {project.id.slice(0, 8)}
                     </code>
                   </td>
-                  <td className="px-sp-4 py-sp-3 font-medium text-txt">{project.name}</td>
-                  <td className="px-sp-4 py-sp-3 text-txt-dim max-w-xs truncate">
+                  <td className="px-sp-4 py-sp-3 font-medium text-txt" role="cell">{project.name}</td>
+                  <td className="px-sp-4 py-sp-3 text-txt-dim max-w-xs truncate" role="cell">
                     {project.description || '—'}
                   </td>
-                  <td className="px-sp-4 py-sp-3">
+                  <td className="px-sp-4 py-sp-3" role="cell">
                     <Badge
                       variant="outlined"
                       color={getStatusColor(project.status)}
@@ -143,7 +145,7 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
                       {getStatusLabel(project.status)}
                     </Badge>
                   </td>
-                  <td className="px-sp-4 py-sp-3">
+                  <td className="px-sp-4 py-sp-3" role="cell">
                     {project.installed_methodologies && project.installed_methodologies.length > 0 ? (
                       <div className="flex gap-1 flex-wrap max-w-xs">
                         {project.installed_methodologies.slice(0, 3).map((method) => (
@@ -161,7 +163,7 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
                       <span className="text-txt-muted">None</span>
                     )}
                   </td>
-                  <td className="px-sp-4 py-sp-3 text-xs text-txt-muted whitespace-nowrap">
+                  <td className="px-sp-4 py-sp-3 text-xs text-txt-muted whitespace-nowrap" role="cell">
                     {formatDate(project.last_scanned)}
                   </td>
                 </tr>
@@ -173,3 +175,9 @@ export function ProjectListView({ onProjectSelect }: ProjectListViewProps) {
     </div>
   );
 }
+
+// F-P-3: Export memoized component
+export const ProjectListView = memo(ProjectListViewComponent, (prevProps, nextProps) => {
+  // Re-render only if onProjectSelect callback changes (functions are compared by reference)
+  return prevProps.onProjectSelect === nextProps.onProjectSelect;
+});

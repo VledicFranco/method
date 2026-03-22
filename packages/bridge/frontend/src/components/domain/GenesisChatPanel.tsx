@@ -51,11 +51,18 @@ export function GenesisChatPanel({
     }
   }, []);
 
-  // SSE stream handler
+  // SSE stream handler (F-P-1: Cap buffer to 500 messages)
   const handleMessage = useCallback(
     (data: unknown) => {
       if (typeof data === 'string') {
-        setTerminalOutput((prev) => [...prev, data]);
+        setTerminalOutput((prev) => {
+          const updated = [...prev, data];
+          // Keep only the latest 500 messages
+          if (updated.length > 500) {
+            return updated.slice(updated.length - 500);
+          }
+          return updated;
+        });
       }
     },
     [],
@@ -163,11 +170,20 @@ export function GenesisChatPanel({
     }
   };
 
-  // Handle Enter key
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // Handle Enter key in textarea
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendPrompt();
+    }
+  };
+
+  // F-A-2: Handle keyboard navigation and focus trap
+  const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Escape key closes the panel
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
     }
   };
 
@@ -181,7 +197,20 @@ export function GenesisChatPanel({
         height: '600px',
         left: `${position.x}px`,
         top: `${position.y}px`,
+        // F-E-1: Mobile responsive layout
+        ...(typeof window !== 'undefined' && window.innerWidth <= 768 ? {
+          width: '100%',
+          height: 'auto',
+          left: '0',
+          top: 'auto',
+          bottom: '0',
+          right: '0',
+          borderRadius: '12px 12px 0 0',
+        } : {}),
       }}
+      onKeyDown={handlePanelKeyDown}
+      role="dialog"
+      aria-label="Genesis Chat Panel"
     >
       {/* Header */}
       <div
@@ -226,6 +255,7 @@ export function GenesisChatPanel({
           onClick={onClose}
           className="p-1 hover:bg-abyss rounded transition-colors"
           title="Close"
+          tabIndex={0}
         >
           <X className="h-4 w-4 text-txt-dim" />
         </button>
@@ -259,7 +289,7 @@ export function GenesisChatPanel({
           ref={inputRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleInputKeyDown}
           placeholder="Type a prompt (Shift+Enter for newline)..."
           className={cn(
             'flex-1 bg-void text-txt text-sm',
@@ -269,6 +299,7 @@ export function GenesisChatPanel({
           )}
           rows={3}
           disabled={isSending}
+          tabIndex={0}
         />
         <button
           onClick={handleSendPrompt}
@@ -281,6 +312,7 @@ export function GenesisChatPanel({
               : 'bg-bio text-void hover:bg-bio/90 active:bg-bio/80',
           )}
           title="Send prompt (Enter)"
+          tabIndex={0}
         >
           {isSending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

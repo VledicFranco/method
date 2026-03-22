@@ -12,6 +12,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { SessionPool, SessionStatusInfo } from './pool.js';
+import { randomBytes } from 'crypto';
 import {
   projectListTool,
   projectGetTool,
@@ -33,6 +34,16 @@ export interface GenesisRouteContext {
  * Maps session_id to set of pending prompt IDs
  */
 const inFlightPrompts = new Map<string, Set<string>>();
+
+/**
+ * CSRF token store (F-N-1)
+ * Maps session_id to current valid CSRF token
+ */
+const csrfTokens = new Map<string, string>();
+
+function generateCsrfToken(): string {
+  return randomBytes(32).toString('hex');
+}
 
 function generatePromptId(): string {
   return `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -93,7 +104,14 @@ export async function registerGenesisRoutes(
           });
         }
 
-        return reply.status(200).send(status);
+        // F-N-1: Generate and return CSRF token
+        const csrfToken = generateCsrfToken();
+        csrfTokens.set(context.genesisSessionId, csrfToken);
+
+        return reply.status(200).send({
+          ...status,
+          csrf_token: csrfToken,
+        });
       } catch (err) {
         return reply.status(500).send({
           error: 'Failed to fetch Genesis status',
@@ -105,7 +123,7 @@ export async function registerGenesisRoutes(
 
   // POST /genesis/prompt — Send prompt to Genesis
   app.post<{
-    Body: { message: string; timeoutMs?: number };
+    Body: { message: string; timeoutMs?: number; csrf_token?: string };
     Reply: { output: string; timedOut: boolean; prompt_id?: string } | { error: string; message: string };
   }>(
     '/genesis/prompt',
@@ -121,12 +139,21 @@ export async function registerGenesisRoutes(
           });
         }
 
-        const { message, timeoutMs } = req.body as { message?: string; timeoutMs?: number };
+        const { message, timeoutMs, csrf_token } = req.body as { message?: string; timeoutMs?: number; csrf_token?: string };
 
         if (!message || typeof message !== 'string' || message.trim().length === 0) {
           return reply.status(400).send({
             error: 'Invalid request',
             message: 'message field is required and must be non-empty string',
+          });
+        }
+
+        // F-N-1: Validate CSRF token (after message validation)
+        const validToken = csrfTokens.get(context.genesisSessionId);
+        if (!validToken || csrf_token !== validToken) {
+          return reply.status(403).send({
+            error: 'CSRF token invalid or missing',
+            message: 'POST /genesis/prompt requires valid csrf_token from /genesis/status',
           });
         }
 
