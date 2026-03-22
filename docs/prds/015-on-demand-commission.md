@@ -1,6 +1,6 @@
 # PRD 015 — Default Execution Method: Keep Agents Active via Step DAG
 
-**Status:** Draft
+**Status:** Not implemented (building blocks exist but M-EXEC method, commission YAML schema, and auto-load are absent)
 **Date:** 2026-03-15
 **Scope:** A generic compiled method (M-EXEC) that any agent follows when no specific methodology is loaded — provides the step_advance engagement loop for ad-hoc tasks, commissions, and any work that doesn't have a dedicated method
 **Depends on:** PRD 004 (methodology runtime), PRD 005 (bridge), P0-META (compilation gates)

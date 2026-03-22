@@ -1,6 +1,6 @@
 # PRD 021: MethodTS — Typed Methodology SDK
 
-**Status:** Draft (post-review synthesis applied 2026-03-21)
+**Status:** Phase 1a implemented (foundation types ~880 lines); Phase 1b not started (runtime, agent providers, gates, stdlib)
 **Owner:** Steering Council
 **Methodology:** P2-SD v2.0
 **Depends on:** PRD 017 (strategy pipelines), PRD 004 (methodology runtime), F1-FTH (formal theory)

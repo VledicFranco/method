@@ -1,6 +1,6 @@
 # PRD 017 — Strategy Pipelines: Methodology DAG Automation
 
-**Status:** Partially implemented (Phase 1 complete except static DAG visualization — deferred to Phase 2)
+**Status:** Implemented (Phase 1 complete — static DAG visualization deferred to Phase 2)
 **Date:** 2026-03-16
 **Scope:** Phase 1 — Minimal DAG executor, gate framework, print-mode LLM provider, Strategy YAML schema
 **Depends on:** PRD 004 (methodology runtime), PRD 005 (bridge), PRD 012 Phase 4 (print-mode sessions)

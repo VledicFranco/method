@@ -1,6 +1,6 @@
 # PRD 018 — Strategy Phase 2: Event Triggers
 
-**Status:** Draft
+**Status:** Implemented (all 4 phases: 2a-1 through 2a-4)
 **Date:** 2026-03-19
 **Scope:** Phase 2a — Event trigger system for Strategy Pipelines
 **Depends on:** PRD 017 (Strategy Pipelines Phase 1), PRD 010 (PTY Auto-Detection), PRD 008 (Agent Visibility)

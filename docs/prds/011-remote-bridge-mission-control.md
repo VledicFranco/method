@@ -1,6 +1,6 @@
 # PRD 011 — Remote Bridge: Mission Control from Anywhere
 
-**Status:** Partially implemented
+**Status:** Partially implemented (~75-80% — Tailscale mesh, portal auth, persistent sessions complete; voice/push features superseded by PRD 016)
 **Date:** 2026-03-15
 **Previous:** Draft (vision) (2026-03-15)
 **Scope:** Secure remote access to the bridge from mobile via voice + text

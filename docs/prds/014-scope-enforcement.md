@@ -1,6 +1,6 @@
 # PRD 014 — Sub-Agent Scope Enforcement
 
-**Status:** Draft
+**Status:** Not implemented
 **Date:** 2026-03-15
 **Scope:** Metadata-driven path constraints for spawned agents, pre-commit hook generation, PTY watcher scope violation detection, commission skill integration
 **Depends on:** PRD 006 (recursive orchestration + worktree isolation), PRD 010 (PTY watcher infrastructure)
