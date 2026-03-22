@@ -83,31 +83,60 @@ function loadManifest(projectPath: string): any | null {
 /**
  * Save manifest.yaml to a project
  * Creates .method directory if needed
+ * Uses advisory file locking to prevent concurrent write corruption
  * Returns true on success, false on error
  */
 function saveManifest(projectPath: string, manifest: any): boolean {
   try {
     const methodDir = path.join(projectPath, '.method');
     const manifestPath = path.join(methodDir, 'manifest.yaml');
+    const lockPath = path.join(methodDir, '.manifest.lock');
 
     // Create .method directory if needed
     if (!fs.existsSync(methodDir)) {
       fs.mkdirSync(methodDir, { recursive: true });
     }
 
-    // Serialize manifest with proper YAML formatting
-    const content = yaml.dump(manifest, {
-      indent: 2,
-      lineWidth: 120,
-      noRefs: true,
-    });
+    // F-R-2: Acquire advisory lock (check if lock exists; if yes, wait 100ms + retry)
+    let retries = 10;
+    while (fs.existsSync(lockPath) && retries-- > 0) {
+      // Synchronous sleep using busy-wait (simple lock acquisition)
+      const startTime = Date.now();
+      while (Date.now() - startTime < 100) {
+        // Busy wait 100ms
+      }
+    }
 
-    // Atomic write: write to temp file first, then rename
-    const tempPath = `${manifestPath}.tmp`;
-    fs.writeFileSync(tempPath, content, 'utf-8');
-    fs.renameSync(tempPath, manifestPath);
+    if (fs.existsSync(lockPath)) {
+      console.warn(`Failed to acquire lock for ${projectPath} after 10 retries`);
+      return false; // Lock timeout — fail gracefully
+    }
 
-    return true;
+    // Write lock file
+    fs.writeFileSync(lockPath, Date.now().toString(), 'utf-8');
+
+    try {
+      // Serialize manifest with proper YAML formatting
+      const content = yaml.dump(manifest, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      });
+
+      // Atomic write: write to temp file first, then rename
+      const tempPath = `${manifestPath}.tmp`;
+      fs.writeFileSync(tempPath, content, 'utf-8');
+      fs.renameSync(tempPath, manifestPath);
+
+      return true;
+    } finally {
+      // Release lock
+      try {
+        fs.unlinkSync(lockPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
   } catch (err) {
     console.error(`Failed to save manifest to ${projectPath}:`, (err as Error).message);
     return false;

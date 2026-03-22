@@ -501,33 +501,8 @@ app.delete<{
   }
 });
 
-/**
- * GET /genesis/status — Get Genesis session status (PRD 020 Phase 2A)
- */
-app.get('/genesis/status', async (_request, reply) => {
-  const sessionId = getGenesisSessionId(pool);
-  if (!sessionId) {
-    return reply.status(404).send({ error: 'Genesis not running' });
-  }
-
-  try {
-    const status = pool.status(sessionId);
-    return reply.status(200).send({
-      session_id: status.sessionId,
-      nickname: status.nickname,
-      status: status.status,
-      mode: status.mode,
-      project_id: status.metadata?.project_id ?? 'root',
-      budget_tokens_per_day: status.metadata?.budget_tokens_per_day ?? 50000,
-      queue_depth: status.queueDepth,
-      prompt_count: status.promptCount,
-      last_activity_at: status.lastActivityAt.toISOString(),
-      metadata: status.metadata,
-    });
-  } catch (err) {
-    return reply.status(500).send({ error: (err as Error).message });
-  }
-});
+// NOTE: /genesis/status route is now registered in registerGenesisRoutes()
+// Removed duplicate to avoid FastifyError: Method 'GET' already declared
 
 /**
  * GET /sessions — List all sessions.
