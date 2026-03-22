@@ -6,6 +6,7 @@
  *   GET    /api/projects/:id             — get single project (with isolation check)
  *   POST   /api/projects/validate        — resume discovery from checkpoint
  *   POST   /api/projects/:id/repair      — diagnose corrupted repo
+ *   POST   /api/projects/:id/reload      — reload project config (atomic, audited)
  *   GET    /api/events                   — cursor-based event polling
  *
  * Isolation enforced via IsolationValidator from Wave 1.
@@ -21,6 +22,9 @@ import {
   createTestEvent,
 } from '@method/core';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
+import { copyMethodology, copyStrategy } from './resource-copier.js';
+import { reloadConfig, validateConfig } from './config/config-reloader.js';
+import path from 'path';
 
 // ── Event Cursor Management (Phase 1: In-Memory) ────
 
@@ -274,6 +278,98 @@ export async function registerProjectRoutes(
     },
   );
 
+  // POST /api/projects/:id/reload — Reload project config (atomic, with audit logging)
+  app.post<{ Params: { id: string }; Body: Record<string, any> }>(
+    '/api/projects/:id/reload',
+    async (req: FastifyRequest<{ Params: { id: string }; Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { id: projectId } = req.params;
+        const newConfig = req.body || {};
+        const sessionContext = getSessionContext(req);
+
+        // Validate access
+        const access = validateProjectAccess(projectId, sessionContext);
+        if (!access.allowed) {
+          console.warn(`[ISOLATION] Cross-project config reload denied: ${access.reason}`);
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: access.reason,
+          });
+        }
+
+        // Only allow reload if session owns the project or admin override present
+        if (sessionContext.projectId && sessionContext.projectId !== projectId) {
+          console.warn(`[AUDIT] Unauthorized config reload attempt for ${projectId} from session ${sessionContext.projectId}`);
+          return reply.status(403).send({
+            error: 'Privilege denied',
+            reason: `session.project_id (${sessionContext.projectId}) does not match requested project (${projectId})`,
+          });
+        }
+
+        // Validate config structure
+        const validation = validateConfig(newConfig);
+        if (!validation.valid) {
+          return reply.status(400).send({
+            error: 'Config validation failed',
+            errors: validation.errors,
+          });
+        }
+
+        // Determine config file path
+        const configPath = path.join(process.cwd(), projectId, 'manifest.yaml');
+
+        // Perform atomic reload
+        const result = await reloadConfig({
+          configPath,
+          newConfig,
+          userId: sessionContext.projectId || 'anonymous',
+          metadata: { projectId },
+        });
+
+        if (!result.success) {
+          return reply.status(400).send({
+            error: result.message,
+            detail: result.error,
+          });
+        }
+
+        // Emit config reload event
+        const event = createProjectEvent(
+          ProjectEventType.CONFIG_UPDATED,
+          projectId,
+          {
+            config_path: configPath,
+            changes: result.diff,
+          },
+          { phase: 'phase2b' },
+        );
+        eventLog.push(event);
+
+        // Trigger registry rescan
+        try {
+          await registry.rescan();
+          console.log(`[FileWatcher] Rescan triggered after config reload for ${projectId}`);
+        } catch (err) {
+          console.warn(`[FileWatcher] Rescan failed after config reload:`, (err as Error).message);
+          // Don't fail the request if rescan fails
+        }
+
+        return reply.status(200).send({
+          success: true,
+          message: 'Config reloaded and rescanned successfully',
+          old_config: result.oldConfig,
+          new_config: result.newConfig,
+          changes: result.diff,
+        });
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Config reload failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
   // GET /api/events — Global event polling (Phase 1: testing only, unfiltered)
   // NOTE: F-SECUR-001 — This endpoint returns all events. Not for multi-project production.
   app.get<{ Querystring: { since_cursor?: string } }>(
@@ -381,6 +477,64 @@ export async function registerProjectRoutes(
       } catch (err) {
         return reply.status(400).send({
           error: 'Failed to create test event',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  // POST /api/resources/copy-methodology — Copy methodology from source to targets
+  app.post<{ Body: Record<string, any> }>(
+    '/api/resources/copy-methodology',
+    async (req: FastifyRequest<{ Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { source_id, method_name, target_ids } = req.body || {};
+
+        if (!source_id || !method_name || !target_ids || !Array.isArray(target_ids)) {
+          return reply.status(400).send({
+            error: 'Missing or invalid required fields: source_id, method_name, target_ids (array)',
+          });
+        }
+
+        const result = await copyMethodology({
+          source_id,
+          method_name,
+          target_ids,
+        });
+
+        return reply.status(200).send(result);
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Resource copy failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  // POST /api/resources/copy-strategy — Copy strategy from source to targets
+  app.post<{ Body: Record<string, any> }>(
+    '/api/resources/copy-strategy',
+    async (req: FastifyRequest<{ Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { source_id, strategy_name, target_ids } = req.body || {};
+
+        if (!source_id || !strategy_name || !target_ids || !Array.isArray(target_ids)) {
+          return reply.status(400).send({
+            error: 'Missing or invalid required fields: source_id, strategy_name, target_ids (array)',
+          });
+        }
+
+        const result = await copyStrategy({
+          source_id,
+          strategy_name,
+          target_ids,
+        });
+
+        return reply.status(200).send(result);
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Resource copy failed',
           message: (err as Error).message,
         });
       }

@@ -30,6 +30,11 @@ export interface ProjectRegistry {
   initialize(): Promise<void>;
 
   /**
+   * Rescan registry — reload all YAML specs from disk
+   */
+  rescan(): Promise<void>;
+
+  /**
    * Find spec by name (exact match)
    */
   find(name: string): MethodologySpec | undefined;
@@ -64,6 +69,22 @@ export class InMemoryProjectRegistry implements ProjectRegistry {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    // Scan registry directory for YAML files
+    const specs = await this.scanRegistryDirectory(this.registryDir);
+    specs.forEach((spec) => {
+      this.specs.set(spec.id, spec);
+      if (spec.name) {
+        this.specs.set(spec.name, spec);
+      }
+    });
+
+    this.initialized = true;
+  }
+
+  async rescan(): Promise<void> {
+    // Clear existing specs
+    this.specs.clear();
 
     // Scan registry directory for YAML files
     const specs = await this.scanRegistryDirectory(this.registryDir);

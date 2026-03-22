@@ -14,6 +14,7 @@ export enum ProjectEventType {
   PUBLISHED = 'PUBLISHED',
   ISOLATED = 'ISOLATED',
   DISCOVERY_INCOMPLETE = 'DISCOVERY_INCOMPLETE',
+  CONFIG_UPDATED = 'CONFIG_UPDATED',
 }
 
 export interface ProjectEvent {
