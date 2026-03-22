@@ -13,8 +13,8 @@ import {
   compileToYaml,
   type StrategyDAG,
   type StrategyDAGNode,
-  type StrategyDecision,
 } from "../compat.js";
+import type { StrategyDecision } from "../controller.js";
 import type { Methodology, SafetyBounds } from "../../methodology/methodology.js";
 import type { MethodologyResult } from "../../runtime/accumulator.js";
 

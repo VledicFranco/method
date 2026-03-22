@@ -58,7 +58,13 @@ export * from "./runtime/run-method.js";
 export * from "./runtime/run-methodology.js";
 export * from "./runtime/retro.js";
 
-// Wave 5+: Uncomment as components are implemented:
-// export * from "./strategy/controller.js";
-// export * from "./meta/compile.js";
-// export * from "./meta/instantiate.js";
+// Wave 5: Strategy + Meta + ClaudeHeadless
+export * from "./strategy/controller.js";
+export * from "./strategy/run-strategy.js";
+export * from "./strategy/prebuilt.js";
+export * from "./strategy/compat.js";
+export * from "./meta/compile.js";
+export * from "./meta/instantiate.js";
+export * from "./meta/evolve.js";
+export * from "./meta/project-card.js";
+export * from "./provider/claude-headless.js";

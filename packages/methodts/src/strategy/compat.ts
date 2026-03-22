@@ -17,25 +17,7 @@ import type { Methodology, SafetyBounds } from "../methodology/methodology.js";
 import type { MethodologyResult } from "../runtime/accumulator.js";
 import type { WorldState } from "../state/world-state.js";
 import type { Gate } from "../gate/gate.js";
-
-// ── Strategy types (inline — WU-5.1 may not be merged yet) ──
-
-/** Decision returned by a StrategyController after a methodology completes. */
-export type StrategyDecision<S> =
-  | { readonly tag: "done"; readonly result: MethodologyResult<S> }
-  | { readonly tag: "rerun"; readonly methodology?: Methodology<S>; readonly state?: WorldState<S> }
-  | { readonly tag: "switch_methodology"; readonly methodology: Methodology<S> }
-  | { readonly tag: "abort"; readonly reason: string };
-
-/** Adaptive controller wrapping a methodology with gates and completion logic. */
-export type StrategyController<S> = {
-  readonly id: string;
-  readonly name: string;
-  readonly methodology: Methodology<S>;
-  readonly gates: readonly Gate<S>[];
-  readonly onComplete: (result: MethodologyResult<S>) => Effect.Effect<StrategyDecision<S>, never, never>;
-  readonly safety: SafetyBounds;
-};
+import type { StrategyController, StrategyDecision } from "./controller.js";
 
 // ── Static DAG types (PRD 017) ──
 
