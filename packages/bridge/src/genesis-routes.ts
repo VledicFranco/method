@@ -358,6 +358,14 @@ export async function registerGenesisRoutes(
           });
         }
 
+        // F-N-11: Validate cursor format before passing to tool
+        if (req.query.since_cursor && !/^[a-zA-Z0-9_-]{40,256}$/.test(req.query.since_cursor)) {
+          return reply.status(400).send({
+            error: 'Invalid cursor format',
+            message: 'since_cursor must be alphanumeric with underscores/hyphens, 40-256 chars',
+          });
+        }
+
         const result = await projectReadEventsTool(
           context.genesisToolsContext,
           req.query.project_id,

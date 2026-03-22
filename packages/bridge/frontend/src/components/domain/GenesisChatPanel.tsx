@@ -272,7 +272,7 @@ export function GenesisChatPanel({
           </div>
         ))}
         {sseError && (
-          <div className="text-error text-xs mt-2">
+          <div className="text-error text-xs mt-2" role="alert" aria-live="polite" aria-atomic="true">
             [Connection Error: {sseError}]
           </div>
         )}

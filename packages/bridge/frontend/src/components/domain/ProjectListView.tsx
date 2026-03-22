@@ -59,7 +59,7 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
             Retry
           </Button>
         </div>
-        <Card variant="default" padding="md" accent="error">
+        <Card variant="default" padding="md" accent="error" role="alert" aria-live="polite" aria-atomic="true">
           <div className="flex gap-sp-3 items-start">
             <AlertCircle className="h-5 w-5 text-error shrink-0 mt-0.5" />
             <div>

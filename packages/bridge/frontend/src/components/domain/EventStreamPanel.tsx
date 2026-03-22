@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader2, AlertCircle, Zap } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import DOMPurify from 'dompurify';
 import type { ProjectEvent } from '@/lib/types';
 
 export interface EventStreamPanelProps {
@@ -182,8 +183,8 @@ export function EventStreamPanel({
                               <span className="font-mono text-xs">{key}:</span>{' '}
                               <span className="text-xs">
                                 {typeof value === 'string'
-                                  ? value.slice(0, 60)
-                                  : JSON.stringify(value).slice(0, 60)}
+                                  ? DOMPurify.sanitize(value).slice(0, 60)
+                                  : DOMPurify.sanitize(JSON.stringify(value)).slice(0, 60)}
                               </span>
                             </div>
                           ))}
