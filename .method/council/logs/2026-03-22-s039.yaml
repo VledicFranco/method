@@ -1,0 +1,157 @@
+sessions:
+  - id: SESSION-039
+    date: "2026-03-22"
+    cast: [Thane, Nika, Harlan, Reva, Orion]
+    mode: synthetic
+    challenge: "PRD 021 implications — should MethodTS replace core? Open questions. Architectural decisions."
+    source: "PO directive after PRD 021 review completion"
+
+    decisions:
+      - id: D-093
+        question: "Should MethodTS replace @method/core?"
+        decision: >
+          Yes. MethodTS replaces core as the methodology runtime following a phased
+          transition: Phase 1 (prove standalone), Phase 2 (MCP rewire + YAML adapter +
+          shared types), Phase 3 (core deprecated, MethodTS IS the runtime). The YAML
+          registry becomes an archival/readable compilation target, not the source of truth.
+          TypeScript definitions are authoritative.
+        status: decided
+        rationale: >
+          The project invariant ("theory is source of truth") and optimization priority
+          ("faithfulness > simplicity > registry integrity") both favor MethodTS — its
+          types represent F1-FTH definitions more faithfully than core's stringly-typed
+          YAML loading. Risk mitigated by phased transition and empirical gate (MethodTS
+          must run P2-SD end-to-end on a real project before Phase 2 begins).
+        for: "All 5 (Harlan strongest advocate, Orion most aggressive timeline)"
+        against: "None (Nika required empirical gate, Reva required YAML adapter — both incorporated)"
+        po_ruling: "Approved"
+        essence_impact: purpose
+        essence_check: >
+          Purpose changes from "loads compiled methodology YAML specifications" to
+          "executes typed methodology definitions." The invariant and optimization
+          priorities are strengthened, not weakened. PO approved.
+
+      - id: D-094
+        question: "OQ-1: YAML or TypeScript as source of truth?"
+        decision: >
+          TypeScript becomes the source of truth for methodology definitions. YAML is a
+          compilation target (readability, archival, backward compatibility). A runtime
+          YAML adapter loads existing YAML into MethodTS types dynamically for methodologies
+          not yet ported to TypeScript.
+        status: decided
+        rationale: >
+          Follows directly from D-093 and the invariant. TypeScript represents the theory
+          more faithfully. The YAML adapter provides backward compatibility during transition.
+        for: "All 5"
+        against: "None"
+
+      - id: D-095
+        question: "OQ-2: Diff strategy for deeply nested WorldState?"
+        decision: >
+          Path-based structural diff with configurable depth limit (default 3) and
+          ignorePaths option. Fields below depth limit compared by reference equality.
+          diffOptions: { maxDepth: number; ignorePaths: string[] } parameter on diff().
+        status: decided
+        rationale: "Prevents noise on volatile fields while preserving meaningful change detection."
+        for: "All 5"
+        against: "None"
+
+      - id: D-096
+        question: "OQ-3: TLA+ or PlusCal target?"
+        decision: >
+          Target TLA+ directly. PlusCal loses expressiveness for machine-generated specs.
+          The compiler output is consumed by TLC model checker, not hand-read.
+        status: decided
+        rationale: "Machine-generated specs need full TLA+ surface for arbitrary temporal formulas."
+        for: "All 5"
+        against: "None"
+
+      - id: D-097
+        question: "OQ-4: Should extractors be project-card-aware?"
+        decision: >
+          Yes, via instantiate(). Already specified in Component 14.3. Project card context
+          fields (build_command, test_command) bound into script step extractors and gates
+          during instantiation. OQ-4 resolved — no PRD change needed.
+        status: decided
+        rationale: "The mechanism exists in the spec. The question was already answered."
+        for: "All 5"
+        against: "None"
+
+      - id: D-098
+        question: "OQ-5: YAML-to-TypeScript scaffolding tool?"
+        decision: >
+          Yes to both: (1) one-time migration tool (generate .ts stubs from .yaml) as
+          Phase 2 dev tool, (2) runtime YAML adapter (load .yaml dynamically into MethodTS
+          types) as Phase 2 essential for core replacement. The adapter is the backward
+          compatibility layer.
+        status: decided
+        rationale: "Runtime adapter enables the Phase 2→3 transition without breaking existing YAML users."
+        for: "All 5"
+        against: "None"
+
+      - id: D-099
+        question: "What happens to MCP, bridge, strategy executor, and DR-T05?"
+        decision: >
+          Four sub-decisions:
+          (a) MCP: tool handlers rewire to MethodTS in Phase 2. Tool surfaces unchanged.
+              Agents see no difference.
+          (b) Bridge: stays as transport layer. Does not execute methodology logic.
+              ClaudeHeadlessProvider calls claude --print directly; bridge manages PTY
+              sessions for dashboard/observability.
+          (c) Strategy: MethodTS adaptive controller subsumes core's static executor via
+              fromStrategyDAG() adapter. Core executor deprecated in Phase 2.
+          (d) DR-T05: stays for Phase 1 (proves standalone). Phase 2 introduces shared
+              types. Phase 3 deprecates core. DR-T05 is a temporary constraint.
+        status: decided
+        rationale: >
+          Each existing package retains its role (MCP = tool surface, bridge = transport)
+          while the logic layer migrates to MethodTS. No big-bang rewrite — incremental
+          rewiring preserving external interfaces.
+        for: "All 5"
+        against: "None"
+
+      - id: D-100
+        question: "What is the incremental porting plan for the registry?"
+        decision: >
+          Phase 1b: P0-META + M1-MDES (already planned in stdlib).
+          Phase 2: P1-EXEC + P2-SD (the two most-used methodologies).
+          Phase 3: P-GH + P3-GOV + P3-DISPATCH.
+          YAML adapter bridges the gap — unported methodologies load dynamically.
+        status: decided
+        rationale: "Port by usage frequency. Most-used first. Adapter prevents blocking."
+        for: "All 5"
+        against: "None"
+
+    open_questions:
+      - "PRD 021 needs updating to reflect D-093 through D-100 (transition plan, OQ resolutions, phasing changes)"
+      - "Empirical gate: what specific test proves MethodTS can run P2-SD end-to-end? Define the gate criteria."
+
+    artifacts_produced:
+      - "SESSION-039 log (this file)"
+
+    next_agenda_items:
+      - "Update PRD 021 with D-093–D-100 decisions (resolve OQs, add Phase 3 scope, update DR-T05)"
+      - "Define the empirical gate for Phase 2 transition (what test must pass?)"
+      - "AG-057 (RFC-003 commission) — carry forward"
+      - "AG-053 (bridge test coverage) — carry forward"
+
+    session_retro:
+      decisions_actionable: true
+      essence_check_genuine: true
+      agenda_delta: -5
+      debate_quality:
+        mu_1_question_resolution: 1.0
+        mu_2_adversarial_integrity: 0.90
+        mu_3_escalation_precision: 1.0
+      processes_followed:
+        - process: PR-01
+          followed: true
+          note: "No registry changes this session."
+        - process: PR-02
+          followed: true
+          note: "No stale items. 5 OQs resolved."
+        - process: PR-03
+          followed: true
+          note: "Session retro produced."
+      process_improvement_signal: "None — session ran cleanly."
+      member_adequacy: true
