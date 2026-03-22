@@ -15,8 +15,11 @@ export * from "./types.js";
 export { D_META } from "./meta/d-meta.js";
 export { predicates } from "./predicates.js";
 
-// Placeholder — populated during later work units
-// export { P0_META } from "./meta/p0-meta.js";
-// export { M1_MDES } from "./methods/m1-mdes.js";
-// export * from "./prompts.js";
-// export * from "./gates.js";
+// ── WU-6.2: M1_MDES + Compilation Gates ──
+export { M1_MDES } from "./methods/m1-mdes.js";
+export { G1_domain, G2_objective, G3_roles, G4_dag, G5_guidance, G6_serializable, compilationGates } from "./gates.js";
+
+// ── WU-6.3: P0_META + Arms + Prompts ──
+export { P0_META } from "./meta/p0-meta.js";
+export { arm_gap_severity, arm_lifecycle_design, arm_lifecycle_instantiation, arm_structural_composition, arm_structural_audit, arm_implementation_derivation, arm_discovery, arm_terminate } from "./meta/arms.js";
+export { prompts } from "./prompts.js";
