@@ -36,6 +36,9 @@ export class YamlEventPersistence implements EventPersistence {
   private flushTimeout: NodeJS.Timeout | null = null;
   private lastFlushTime = 0;
   private projectIdIndex: Map<string, number[]> = new Map(); // projectId -> event indices
+  private pendingFlushPromise: Promise<void> | null = null;
+  private pendingFlushResolve: (() => void) | null = null;
+  private pendingFlushReject: ((err: Error) => void) | null = null;
 
   constructor(filePath: string) {
     this.filePath = filePath;
@@ -100,21 +103,42 @@ export class YamlEventPersistence implements EventPersistence {
     }
     this.projectIdIndex.get(event.projectId)!.push(eventIndex);
 
-    // Debounce flush
+    // Debounce flush - create a shared promise if this is the first append
+    if (!this.pendingFlushPromise) {
+      this.pendingFlushPromise = new Promise<void>((resolve, reject) => {
+        this.pendingFlushResolve = resolve;
+        this.pendingFlushReject = reject;
+      });
+    }
+
+    // Cancel and reschedule timeout
     if (this.flushTimeout) {
       clearTimeout(this.flushTimeout);
     }
 
-    return new Promise<void>((resolve, reject) => {
-      this.flushTimeout = setTimeout(() => {
-        this.flushToDisk()
-          .then(() => resolve())
-          .catch((err) => {
-            console.error('Failed to flush events to disk:', err);
-            reject(err);
-          });
-      }, FLUSH_DEBOUNCE_MS);
-    });
+    this.flushTimeout = setTimeout(() => {
+      this.flushToDisk()
+        .then(() => {
+          if (this.pendingFlushResolve) {
+            this.pendingFlushResolve();
+          }
+          this.pendingFlushPromise = null;
+          this.pendingFlushResolve = null;
+          this.pendingFlushReject = null;
+        })
+        .catch((err) => {
+          console.error('Failed to flush events to disk:', err);
+          if (this.pendingFlushReject) {
+            this.pendingFlushReject(err as Error);
+          }
+          this.pendingFlushPromise = null;
+          this.pendingFlushResolve = null;
+          this.pendingFlushReject = null;
+        });
+    }, FLUSH_DEBOUNCE_MS);
+
+    // Return the shared promise so all concurrent appends wait for the same flush
+    return this.pendingFlushPromise;
   }
 
   /**
