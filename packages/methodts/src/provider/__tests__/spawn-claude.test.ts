@@ -114,13 +114,18 @@ describe("spawnClaude — buildCliArgs + parseClaudeOutput pipeline", () => {
       duration_ms: 1500,
       num_turns: 2,
       session_id: "sess-abc",
+      usage: {
+        input_tokens: 800,
+        output_tokens: 400,
+      },
     });
     const result = parseClaudeOutput(stdout);
     expect(result.raw).toBe("success");
     expect(result.cost.usd).toBe(0.02);
     expect(result.cost.duration_ms).toBe(1500);
-    expect(result.cost.tokens).toBe(2);
+    expect(result.cost.tokens).toBe(1200); // input_tokens + output_tokens
     expect(result.sessionId).toBe("sess-abc");
+    expect(result.numTurns).toBe(2);
   });
 });
 

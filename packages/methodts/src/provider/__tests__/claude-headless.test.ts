@@ -96,13 +96,18 @@ describe("parseClaudeOutput", () => {
       duration_ms: 2000,
       num_turns: 3,
       session_id: "sess-abc",
+      usage: {
+        input_tokens: 1500,
+        output_tokens: 500,
+      },
     });
     const result = parseClaudeOutput(stdout);
     expect(result.raw).toBe("task completed successfully");
     expect(result.cost.usd).toBe(0.05);
     expect(result.cost.duration_ms).toBe(2000);
-    expect(result.cost.tokens).toBe(3);
+    expect(result.cost.tokens).toBe(2000); // input_tokens + output_tokens
     expect(result.sessionId).toBe("sess-abc");
+    expect(result.numTurns).toBe(3);
   });
 
   it("valid JSON without result field uses entire stdout as raw", () => {

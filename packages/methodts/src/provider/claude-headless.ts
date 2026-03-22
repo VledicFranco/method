@@ -37,8 +37,15 @@ const defaults: Required<ClaudeHeadlessConfig> = {
 /**
  * Build CLI arguments for claude --print invocation.
  * Exposed for testing — the main export is ClaudeHeadlessProvider.
+ *
+ * When `resumeSessionId` is provided, `--resume` takes precedence over `--session-id`.
  */
-export function buildCliArgs(prompt: string, config: ClaudeHeadlessConfig, sessionId?: string): string[] {
+export function buildCliArgs(
+  prompt: string,
+  config: ClaudeHeadlessConfig,
+  sessionId?: string,
+  resumeSessionId?: string,
+): string[] {
   const cfg = { ...defaults, ...config };
   const args: string[] = [
     "--print",
@@ -49,7 +56,10 @@ export function buildCliArgs(prompt: string, config: ClaudeHeadlessConfig, sessi
   if (cfg.maxBudgetUsd != null) {
     args.push("--max-budget-usd", String(cfg.maxBudgetUsd));
   }
-  if (sessionId) {
+  // Session management: --resume takes precedence over --session-id
+  if (resumeSessionId) {
+    args.push("--resume", resumeSessionId);
+  } else if (sessionId) {
     args.push("--session-id", sessionId);
   }
   if (cfg.allowedTools.length > 0) {
@@ -61,6 +71,9 @@ export function buildCliArgs(prompt: string, config: ClaudeHeadlessConfig, sessi
 /**
  * Parse JSON output from claude --print into AgentResult.
  * The JSON format has: { result: string, cost_usd: number, duration_ms: number, ... }
+ *
+ * Extracts rich fields when present: usage breakdown, per-model costs,
+ * stop reason, and permission denials.
  */
 export function parseClaudeOutput(stdout: string): AgentResult {
   try {
@@ -68,11 +81,30 @@ export function parseClaudeOutput(stdout: string): AgentResult {
     return {
       raw: typeof parsed.result === "string" ? parsed.result : stdout,
       cost: {
-        tokens: parsed.num_turns ?? 0,
-        usd: parsed.cost_usd ?? 0,
+        tokens: (parsed.usage?.input_tokens ?? 0) + (parsed.usage?.output_tokens ?? 0),
+        usd: parsed.total_cost_usd ?? parsed.cost_usd ?? 0,
         duration_ms: parsed.duration_ms ?? 0,
       },
       sessionId: parsed.session_id,
+      // Rich fields — optional, present when claude returns them
+      usage: parsed.usage ? {
+        inputTokens: parsed.usage.input_tokens ?? 0,
+        outputTokens: parsed.usage.output_tokens ?? 0,
+        cacheCreationTokens: parsed.usage.cache_creation_input_tokens ?? 0,
+        cacheReadTokens: parsed.usage.cache_read_input_tokens ?? 0,
+      } : undefined,
+      modelUsage: parsed.model_usage ? Object.fromEntries(
+        Object.entries(parsed.model_usage).map(([model, data]) => [
+          model, {
+            inputTokens: (data as Record<string, number>).inputTokens ?? (data as Record<string, number>).input_tokens ?? 0,
+            outputTokens: (data as Record<string, number>).outputTokens ?? (data as Record<string, number>).output_tokens ?? 0,
+            costUsd: (data as Record<string, number>).costUSD ?? (data as Record<string, number>).cost_usd ?? 0,
+          },
+        ]),
+      ) : undefined,
+      numTurns: parsed.num_turns,
+      stopReason: parsed.stop_reason,
+      permissionDenials: parsed.permission_denials?.length ? parsed.permission_denials : undefined,
     };
   } catch {
     // If JSON parse fails, treat entire stdout as raw output
@@ -116,8 +148,8 @@ export function generateSessionId(prefix: string, methodId?: string, stepId?: st
 export function ClaudeHeadlessProvider(config: ClaudeHeadlessConfig = {}): Layer.Layer<AgentProvider> {
   return Layer.succeed(AgentProvider, {
     execute: (commission) => {
-      const sessionId = generateSessionId(config.sessionPrefix ?? defaults.sessionPrefix);
-      return spawnClaude(commission.prompt, config, sessionId);
+      const sessionId = commission.sessionId ?? generateSessionId(config.sessionPrefix ?? defaults.sessionPrefix);
+      return spawnClaude(commission.prompt, config, sessionId, commission.resumeSessionId);
     },
   });
 }

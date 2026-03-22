@@ -36,8 +36,9 @@ export function spawnClaude(
   prompt: string,
   config: ClaudeHeadlessConfig,
   sessionId: string,
+  resumeSessionId?: string,
 ): Effect.Effect<AgentResult, AgentError, never> {
-  const args = buildCliArgs(prompt, config, sessionId);
+  const args = buildCliArgs(prompt, config, sessionId, resumeSessionId);
   const bin = config.claudeBin ?? "claude";
   const timeoutMs = config.timeoutMs ?? 300000;
 
