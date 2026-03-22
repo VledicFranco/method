@@ -265,6 +265,8 @@ app.post<{
       nickname?: string;
       purpose?: string;
       mode?: 'pty' | 'print';
+      allowed_paths?: string[];
+      scope_mode?: 'enforce' | 'warn';
     }>;
     stagger_ms?: number;
   };
@@ -329,6 +331,8 @@ app.post<{
         nickname: cfg.nickname,
         purpose: cfg.purpose,
         mode: cfg.mode,
+        allowed_paths: cfg.allowed_paths,
+        scope_mode: cfg.scope_mode,
       });
 
       tokenTracker.registerSession(result.sessionId, cfg.workdir, new Date());

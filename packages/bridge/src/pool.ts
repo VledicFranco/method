@@ -409,7 +409,9 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       // PRD 014: Scope enforcement — determine effective mode and install hook
       const effectiveAllowedPaths = allowed_paths ?? [];
-      let effectiveScopeMode: 'enforce' | 'warn' = scope_mode ?? (process.env.SCOPE_ENFORCEMENT_DEFAULT as 'enforce' | 'warn') ?? 'enforce';
+      const envScopeDefault = process.env.SCOPE_ENFORCEMENT_DEFAULT;
+      const validatedEnvDefault: 'enforce' | 'warn' = (envScopeDefault === 'enforce' || envScopeDefault === 'warn') ? envScopeDefault : 'enforce';
+      let effectiveScopeMode: 'enforce' | 'warn' = scope_mode ?? validatedEnvDefault;
 
       if (effectiveAllowedPaths.length > 0) {
         if (effectiveIsolation !== 'worktree' && effectiveScopeMode === 'enforce') {
@@ -622,6 +624,24 @@ export function createPool(options?: PoolOptions): SessionPool {
           // PRD 014: Pass allowed_paths to watcher for scope violation detection
           const sessionAllowedPaths = metadata?.allowed_paths as string[] | undefined;
 
+          // PRD 014 F-N-1: Push-notify parent on scope violations from PTY watcher
+          const scopeViolationPush = (sessionAllowedPaths && sessionAllowedPaths.length > 0 && parentSessionId)
+            ? (content: unknown) => {
+                try {
+                  const parentSession = sessions.get(parentSessionId!);
+                  if (parentSession && parentSession.status !== 'dead') {
+                    const notification = [
+                      `BRIDGE NOTIFICATION — Child agent [${assignedNickname}] event: scope_violation`,
+                      `Session: ${assignedNickname} (${sessionId.substring(0, 8)})`,
+                      `Details: ${JSON.stringify(content ?? {})}`,
+                      `Action required: Child is writing outside its allowed scope — intervene or adjust allowed_paths`,
+                    ].join('\n');
+                    parentSession.sendPrompt(notification).catch(() => { /* non-fatal */ });
+                  }
+                } catch { /* non-fatal */ }
+              }
+            : undefined;
+
           const watcher = createPtyWatcher(
             sessionId,
             channels,
@@ -629,6 +649,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             watcherConfig,
             diagnosticsCallback,
             sessionAllowedPaths,
+            scopeViolationPush,
           );
           sessionWatchers.set(sessionId, watcher);
 

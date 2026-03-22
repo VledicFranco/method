@@ -3,8 +3,8 @@
 // scope constraints in git worktrees. The hook is self-contained
 // with zero runtime dependencies.
 
-import { writeFileSync, mkdirSync, chmodSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { writeFileSync, mkdirSync, chmodSync, existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
 /**
@@ -54,9 +54,40 @@ export function generateHookScript(sessionId: string, allowedPaths: string[]): s
 # Allowed paths:
 ${patternsComment}
 
-shopt -s extglob
-
 ALLOWED_PATTERNS=(${patternsArray})
+
+# Convert a glob pattern to a bash regex where:
+#   ** matches any characters (including /)
+#   *  matches any characters except /
+#   ?  matches any single character except /
+#   .  is escaped to literal dot
+glob_to_regex() {
+  local pattern="$1"
+  local regex=""
+  local i=0
+  local len=\${#pattern}
+  while [ $i -lt $len ]; do
+    local char="\${pattern:$i:1}"
+    local next="\${pattern:$((i+1)):1}"
+    if [ "$char" = "*" ] && [ "$next" = "*" ]; then
+      local after="\${pattern:$((i+2)):1}"
+      if [ "$after" = "/" ]; then
+        regex+="(.+/)?"; i=$((i+3))
+      else
+        regex+=".*"; i=$((i+2))
+      fi
+    elif [ "$char" = "*" ]; then
+      regex+="[^/]*"; i=$((i+1))
+    elif [ "$char" = "?" ]; then
+      regex+="[^/]"; i=$((i+1))
+    elif [ "$char" = "." ]; then
+      regex+="[.]"; i=$((i+1))
+    else
+      regex+="$char"; i=$((i+1))
+    fi
+  done
+  echo "$regex"
+}
 
 # Get staged files
 STAGED=$(git diff --cached --name-only)
@@ -65,30 +96,33 @@ if [ -z "$STAGED" ]; then
   exit 0
 fi
 
-VIOLATIONS=""
+VIOLATIONS=()
 
 while IFS= read -r file; do
   [ -z "$file" ] && continue
+  # Strip trailing CR (Windows CRLF)
+  file="\${file%$'\\r'}"
   allowed=false
   for pattern in "\${ALLOWED_PATTERNS[@]}"; do
-    # Use bash pattern matching
-    # Handle ** (any depth) by converting to extended glob
-    # Convert gitignore-style ** to bash glob
-    glob_pattern="$pattern"
-    if [[ "$file" == $glob_pattern ]]; then
+    # If pattern has no /, allow matching at any depth (gitignore semantics)
+    if [[ "$pattern" != */* ]]; then
+      pattern="**/$pattern"
+    fi
+    regex=$(glob_to_regex "$pattern")
+    if [[ "$file" =~ ^$regex$ ]]; then
       allowed=true
       break
     fi
   done
   if [ "$allowed" = false ]; then
-    VIOLATIONS="$VIOLATIONS  $file\\n"
+    VIOLATIONS+=("$file")
   fi
 done <<< "$STAGED"
 
-if [ -n "$VIOLATIONS" ]; then
+if [ \${#VIOLATIONS[@]} -gt 0 ]; then
   echo ""
   echo "SCOPE VIOLATION: The following files are not in allowed_paths for this session:"
-  echo -e "$VIOLATIONS"
+  printf '  %s\\n' "\${VIOLATIONS[@]}"
   echo "Allowed patterns: \${ALLOWED_PATTERNS[*]}"
   echo ""
   echo "Remove the file(s) from staging (git reset HEAD '<file>') or request scope extension."
@@ -155,6 +189,24 @@ export function installScopeHook(
     // Ensure hooks directory exists
     mkdirSync(hooksDir, { recursive: true });
 
+    // Check for existing pre-commit hook (F-D-3: don't silently overwrite)
+    if (existsSync(hookPath)) {
+      const existing = readFileSync(hookPath, 'utf-8');
+      if (!existing.includes('PRD 014')) {
+        // Chain: prepend scope check, then call existing hook
+        const script = generateHookScript(sessionId, allowedPaths);
+        const chained = script.replace(
+          /^exit 0\n$/m,
+          '# Chain: run original pre-commit hook\nexec "$(dirname "$0")/pre-commit.original" "$@" 2>/dev/null\nexit 0\n',
+        );
+        writeFileSync(hookPath + '.original', existing, { encoding: 'utf-8' });
+        try { chmodSync(hookPath + '.original', 0o755); } catch { /* Windows */ }
+        writeFileSync(hookPath, chained, { encoding: 'utf-8' });
+        try { chmodSync(hookPath, 0o755); } catch { /* Windows */ }
+        return { installed: true, hookPath };
+      }
+    }
+
     // Generate and write the hook script
     const script = generateHookScript(sessionId, allowedPaths);
     writeFileSync(hookPath, script, { encoding: 'utf-8' });
@@ -190,15 +242,28 @@ export function installScopeHook(
 export function isPathAllowed(filePath: string, allowedPaths: string[]): boolean {
   if (allowedPaths.length === 0) return true; // No constraint
 
-  // Normalize path separators to forward slashes
-  const normalized = filePath.replace(/\\/g, '/');
+  // Normalize path separators and resolve traversal
+  const normalized = normalizePath(filePath);
 
   for (const pattern of allowedPaths) {
-    if (matchGlobPattern(normalized, pattern)) {
+    if (matchGlobPattern(normalized, pattern.replace(/\\/g, '/'))) {
       return true;
     }
   }
   return false;
+}
+
+/**
+ * Normalize a file path: forward slashes, resolve '..' and '.' segments.
+ */
+function normalizePath(filePath: string): string {
+  const parts = filePath.replace(/\\/g, '/').split('/');
+  const resolved: string[] = [];
+  for (const seg of parts) {
+    if (seg === '..') resolved.pop();
+    else if (seg !== '.' && seg !== '') resolved.push(seg);
+  }
+  return resolved.join('/');
 }
 
 /**
@@ -263,6 +328,9 @@ function globToRegex(pattern: string): string {
       i += 1;
     } else if (char === '.') {
       result += '\\.';
+      i += 1;
+    } else if (char === '\\') {
+      result += '\\\\';
       i += 1;
     } else if (char === '(' || char === ')' || char === '+' || char === '^' || char === '$' || char === '|' || char === '{' || char === '}' || char === '[' || char === ']') {
       // Escape regex special chars

@@ -14,6 +14,9 @@ import { appendMessage, type SessionChannels } from './channels.js';
 /** PRD 012: Callback invoked for each observation (used by DiagnosticsTracker). */
 export type ObservationCallback = (match: PatternMatch, isIdle: boolean) => void;
 
+/** PRD 014: Callback for scope violation events that need push notification to parent. */
+export type ScopeViolationCallback = (content: unknown) => void;
+
 // ── ANSI stripping ──────────────────────────────────────────────
 
 const ANSI_RE = /\x1B\[[0-9;]*[a-zA-Z]/g;
@@ -106,6 +109,8 @@ export function createPtyWatcher(
   onObservation?: ObservationCallback,
   /** PRD 014: Glob patterns of files this session is allowed to modify. */
   allowedPaths?: string[],
+  /** PRD 014: Callback to push-notify parent on scope violations (F-N-1 fix). */
+  onScopeViolation?: ScopeViolationCallback,
 ): PtyWatcher {
   const observations: ActivityObservation[] = [];
   const spawnedAt = new Date();
@@ -219,6 +224,11 @@ export function createPtyWatcher(
         if (shouldEmit(match, now)) {
           appendMessage(channels.events, 'pty-watcher', match.messageType, match.content);
           recordEmission(match, now);
+
+          // PRD 014 F-N-1 fix: Push-notify parent for scope violations
+          if (onScopeViolation) {
+            try { onScopeViolation(match.content); } catch { /* non-fatal */ }
+          }
 
           if (config.logMatches) {
             console.log(`[pty-watcher:${sessionId}] ${match.category}/${match.messageType}`, match.content);

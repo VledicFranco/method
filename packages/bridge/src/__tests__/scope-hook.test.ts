@@ -54,9 +54,9 @@ describe('generateHookScript (PRD 014)', () => {
     assert.ok(script.includes('Session: abc-def-123'));
   });
 
-  it('includes extglob shopt for pattern matching', () => {
+  it('includes glob_to_regex function for pattern matching', () => {
     const script = generateHookScript('sess-004', ['src/**']);
-    assert.ok(script.includes('shopt -s extglob'));
+    assert.ok(script.includes('glob_to_regex'));
   });
 });
 

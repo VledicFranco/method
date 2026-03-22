@@ -451,6 +451,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                   enum: ["pty", "print"],
                   description: "Session mode: 'pty' or 'print'",
                 },
+                allowed_paths: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Glob patterns of files this agent is allowed to modify. PRD 014.",
+                },
+                scope_mode: {
+                  type: "string",
+                  enum: ["enforce", "warn"],
+                  description: "Scope enforcement mode. PRD 014.",
+                },
               },
               required: ["workdir"],
             },
@@ -548,7 +558,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           type: {
             type: "string",
-            enum: ["completed", "error", "escalation", "budget_warning"],
+            enum: ["completed", "error", "escalation", "budget_warning", "scope_violation", "stale"],
             description: "Lifecycle event type",
           },
           content: {
@@ -1142,6 +1152,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             isolation: z.enum(["worktree", "shared"]).optional(),
             timeout_ms: z.number().optional(),
             mode: z.enum(["pty", "print"]).optional(),
+            allowed_paths: z.array(z.string()).optional(),
+            scope_mode: z.enum(["enforce", "warn"]).optional(),
           })),
           stagger_ms: z.number().optional(),
         }).parse(args);
@@ -1161,6 +1173,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             if (s.isolation) cfg.isolation = s.isolation;
             if (s.timeout_ms !== undefined) cfg.timeout_ms = s.timeout_ms;
             if (s.mode) cfg.mode = s.mode;
+            if (s.allowed_paths) cfg.allowed_paths = s.allowed_paths;
+            if (s.scope_mode) cfg.scope_mode = s.scope_mode;
             return cfg;
           }),
         };
@@ -1334,7 +1348,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "bridge_event": {
         const { bridge_session_id, type: eventType, content: eventContent } = z.object({
           bridge_session_id: z.string(),
-          type: z.enum(["completed", "error", "escalation", "budget_warning"]),
+          type: z.enum(["completed", "error", "escalation", "budget_warning", "scope_violation", "stale"]),
           content: z.record(z.string(), z.unknown()).optional(),
         }).parse(args);
 
