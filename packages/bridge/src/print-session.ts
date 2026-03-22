@@ -208,6 +208,11 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
       }
     },
 
+    interrupt(): boolean {
+      // No-op for print sessions — no PTY process to interrupt
+      return false;
+    },
+
     get adaptiveSettle(): AdaptiveSettleDelay | null {
       return null; // Print sessions don't use settle delay
     },

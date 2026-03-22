@@ -29,4 +29,5 @@ export {
   type EventPersistence,
   createTestEvent,
   YamlEventPersistence,
+  JsonLineEventPersistence,
 } from './events/index.js';

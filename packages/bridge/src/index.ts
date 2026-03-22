@@ -19,10 +19,11 @@ import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
+import { CursorMaintenanceJob } from './genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './genesis-routes.js';
 import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './project-routes.js';
 import { DiscoveryService } from './multi-project/discovery-service.js';
-import { InMemoryProjectRegistry, YamlEventPersistence } from '@method/core';
+import { InMemoryProjectRegistry, JsonLineEventPersistence, YamlEventPersistence } from '@method/core';
 
 // Configuration from environment variables
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
@@ -39,6 +40,7 @@ const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
 const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
 const GENESIS_ENABLED = process.env.GENESIS_ENABLED === 'true';
 const GENESIS_POLLING_INTERVAL_MS = parseInt(process.env.GENESIS_POLLING_INTERVAL_MS ?? '5000', 10);
+const CURSOR_CLEANUP_INTERVAL_MS = parseInt(process.env.CURSOR_CLEANUP_INTERVAL_MS ?? '3600000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -61,6 +63,7 @@ const transcriptReader = createTranscriptReader({
 });
 
 let genesisPollingLoop: GenesisPollingLoop | null = null;
+let cursorMaintenanceJob: CursorMaintenanceJob | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -859,8 +862,10 @@ async function start() {
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
 
-    // Initialize event persistence
-    const eventPersistence = new YamlEventPersistence(join(ROOT_DIR, '.method', 'genesis-events.yaml'));
+    // Initialize event persistence with JSON Lines format and YAML fallback
+    const jsonlPath = join(ROOT_DIR, '.method', 'genesis-events.jsonl');
+    const yamlPath = join(ROOT_DIR, '.method', 'genesis-events.yaml');
+    const eventPersistence = new JsonLineEventPersistence(jsonlPath, yamlPath);
     await eventPersistence.recover();
 
     await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR);
@@ -989,6 +994,13 @@ async function start() {
         );
 
         app.log.info(`Genesis polling loop started (interval: ${GENESIS_POLLING_INTERVAL_MS}ms)`);
+
+        // F-T-2: Start cursor maintenance job
+        cursorMaintenanceJob = new CursorMaintenanceJob(
+          join(ROOT_DIR, '.method', 'genesis-cursors.yaml'),
+          CURSOR_CLEANUP_INTERVAL_MS,
+        );
+        cursorMaintenanceJob.start();
       } catch (err) {
         app.log.error(`Failed to spawn Genesis: ${(err as Error).message}`);
       }
@@ -1010,6 +1022,11 @@ function gracefulShutdown(signal: string) {
     // Stop Genesis polling loop if running
     if (genesisPollingLoop) {
       genesisPollingLoop.stop();
+    }
+
+    // Stop cursor maintenance job if running
+    if (cursorMaintenanceJob) {
+      cursorMaintenanceJob.stop();
     }
 
     // Stop trigger watchers (PRD 018)

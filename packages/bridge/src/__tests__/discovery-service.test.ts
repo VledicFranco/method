@@ -370,3 +370,79 @@ test('DiscoveryService: Resilience — skips corrupted .git/ and marks as git_co
     rmSync(tempDir, { recursive: true });
   }
 });
+
+test('DiscoveryService: Cache returns same result within TTL', async () => {
+  const tempDir = join(tmpdir(), `test-discovery-cache-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    createMockGitRepo(tempDir, 'project-1');
+    createMockGitRepo(tempDir, 'project-2');
+
+    const service = new DiscoveryService({ cacheTtlMs: 5000 });
+
+    // First discovery
+    const result1 = await service.discover(tempDir);
+    assert.strictEqual(result1.projects.length, 2);
+
+    // Get cached result without re-scanning
+    const cached = service.getCachedProjects();
+    assert.strictEqual(cached.length, 2);
+    assert.deepStrictEqual(cached, result1.projects);
+  } finally {
+    rmSync(tempDir, { recursive: true });
+  }
+});
+
+test('DiscoveryService: Cache expires after TTL', async () => {
+  const tempDir = join(tmpdir(), `test-discovery-cache-expire-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    createMockGitRepo(tempDir, 'project-1');
+
+    const service = new DiscoveryService({ cacheTtlMs: 100 }); // 100ms TTL
+
+    // First discovery
+    await service.discover(tempDir);
+    const cached1 = service.getCachedProjects();
+    assert.strictEqual(cached1.length, 1);
+
+    // Wait for cache to expire
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Cache should be empty after expiration
+    const cached2 = service.getCachedProjects();
+    assert.strictEqual(cached2.length, 0);
+  } finally {
+    rmSync(tempDir, { recursive: true });
+  }
+});
+
+test('DiscoveryService: clearCache() forces fresh scan', async () => {
+  const tempDir = join(tmpdir(), `test-discovery-clear-cache-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    createMockGitRepo(tempDir, 'project-1');
+
+    const service = new DiscoveryService();
+
+    // First discovery
+    const result1 = await service.discover(tempDir);
+    assert.strictEqual(result1.projects.length, 1);
+
+    // Verify cache is populated
+    const cached1 = service.getCachedProjects();
+    assert.strictEqual(cached1.length, 1);
+
+    // Clear cache
+    service.clearCache();
+
+    // Cache should be empty
+    const cached2 = service.getCachedProjects();
+    assert.strictEqual(cached2.length, 0);
+  } finally {
+    rmSync(tempDir, { recursive: true });
+  }
+});

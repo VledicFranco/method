@@ -33,6 +33,7 @@ function fakePtySession(id: string, initialStatus: SessionStatus = 'ready'): Pty
     kill() {
       status = 'dead';
     },
+    interrupt() { return false; },
     adaptiveSettle: null,
     pid: null,
   };
