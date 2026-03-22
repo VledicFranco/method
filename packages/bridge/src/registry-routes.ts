@@ -1,21 +1,31 @@
 /**
  * PRD 019.2: Registry API Endpoints
  *
- * Four HTTP endpoints that serve parsed registry YAML data as JSON.
- * Scans the registry/ directory for methodology and method YAML files,
- * parses them with js-yaml (DR-05), and returns structured JSON.
+ * Serves methodology registry data from the @method/methodts stdlib.
+ * Tree and method detail endpoints use the typed stdlib catalog and metadata.
+ * Manifest and promotion endpoints still read YAML (project config, not methodology data).
  *
  * Endpoints:
- *   GET  /api/registry                     — full tree structure
- *   GET  /api/registry/manifest            — parsed manifest with sync status
- *   GET  /api/registry/:methodology/:method — full parsed method/protocol YAML
+ *   GET  /api/registry                     — full tree structure (from stdlib)
+ *   GET  /api/registry/manifest            — parsed manifest with sync status (YAML)
+ *   GET  /api/registry/:methodology/:method — method detail (from stdlib)
+ *   GET  /api/registry/:methodology/:protocol/promotion — promotion record (YAML)
  *   POST /api/registry/reload              — invalidate cache
  */
 
 import { readdir, readFile, stat, access } from 'node:fs/promises';
-import { join, basename, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import yaml from 'js-yaml';
 import type { FastifyInstance } from 'fastify';
+
+// ── Stdlib imports ──
+
+import { getStdlibCatalog, getMethod } from '@method/methodts/stdlib';
+import { topologicalOrder } from '@method/methodts';
+import {
+  getMethodMetadata,
+  getMethodologyMetadata,
+} from '@method/methodts/stdlib/metadata';
 
 // ── Types ──
 
@@ -125,11 +135,6 @@ async function safeYamlLoad(filePath: string): Promise<Record<string, unknown> |
   }
 }
 
-/**
- * Validate that path segments don't escape the base directory.
- * Rejects segments containing '..', '/', or '\\' and verifies the
- * resolved path stays within the base directory (path traversal guard).
- */
 function safePath(base: string, ...segments: string[]): string | null {
   for (const seg of segments) {
     if (seg.includes('..') || seg.includes('/') || seg.includes('\\')) return null;
@@ -139,134 +144,52 @@ function safePath(base: string, ...segments: string[]): string | null {
   return resolved;
 }
 
-// ── Scanner ──
+// ── Registry Tree (from stdlib) ──
 
-function isMethodologyDir(name: string): boolean {
-  return /^P[0-9]?-/.test(name);
-}
-
-function isMethodDir(name: string): boolean {
-  return /^M[0-9]+-/.test(name);
-}
-
-function isProtocolFile(name: string): boolean {
-  return name.endsWith('.yaml') && (
-    name.includes('PROTOCOL') ||
-    name.includes('PROTO')
-  );
-}
-
-async function scanRegistry(config: RegistryConfig): Promise<RegistryTree> {
-  const { registryDir } = config;
-  const methodologies: RegistryMethodologySummary[] = [];
+function buildRegistryTree(): RegistryTree {
+  const catalog = getStdlibCatalog();
   let totalMethods = 0;
-  let totalProtocols = 0;
   let totalCompiled = 0;
   let totalDraft = 0;
 
-  if (!(await pathExists(registryDir))) {
-    return {
-      methodologies: [],
-      totals: { methodologies: 0, methods: 0, protocols: 0, compiled: 0, draft: 0 },
-      cached_at: new Date().toISOString(),
-    };
-  }
+  const methodologies: RegistryMethodologySummary[] = catalog.map((entry) => {
+    const methodologyMeta = getMethodologyMetadata(entry.methodologyId);
 
-  const topEntries = await readdir(registryDir);
-
-  for (const dirName of topEntries) {
-    if (!isMethodologyDir(dirName)) continue;
-
-    const methodologyDir = join(registryDir, dirName);
-    if (!(await isDirectory(methodologyDir))) continue;
-
-    // Read methodology-level YAML
-    const methodologyYamlPath = join(methodologyDir, `${dirName}.yaml`);
-    const methodologyData = await safeYamlLoad(methodologyYamlPath);
-    const meth = (methodologyData?.methodology ?? {}) as Record<string, unknown>;
-
-    const methods: RegistryMethodSummary[] = [];
-    const entries = await readdir(methodologyDir);
-
-    // Scan for method subdirectories
-    for (const entry of entries) {
-      const entryPath = join(methodologyDir, entry);
-      if (!(await isDirectory(entryPath))) continue;
-      if (!isMethodDir(entry)) continue;
-
-      const methodYamlPath = join(entryPath, `${entry}.yaml`);
-      const methodData = await safeYamlLoad(methodYamlPath);
-      if (!methodData) continue;
-
-      const m = (methodData.method ?? {}) as Record<string, unknown>;
-      const wipItems = methodData.known_wip;
-      const wipCount = Array.isArray(wipItems) ? wipItems.length : 0;
-      const status = (m.status as string) ?? 'draft';
-
-      methods.push({
-        id: (m.id as string) ?? entry,
-        name: (m.name as string) ?? entry,
-        version: (m.version as string) ?? '0.0',
-        status,
-        type: 'method',
-        wip_count: wipCount,
-      });
+    const methods: RegistryMethodSummary[] = entry.methods.map((m) => {
+      const meta = getMethodMetadata(entry.methodologyId, m.methodId);
+      const wipCount = meta?.known_wip?.length ?? 0;
+      const status = m.status;
 
       totalMethods++;
       if (status === 'compiled') totalCompiled++;
       else totalDraft++;
-    }
 
-    // Scan for protocol files at methodology level
-    for (const entry of entries) {
-      const entryPath = join(methodologyDir, entry);
-      if (!(await isFile(entryPath))) continue;
-      if (!isProtocolFile(entry)) continue;
-
-      // Skip non-protocol YAML files by parsing content
-      const data = await safeYamlLoad(entryPath);
-      if (!data || !data.protocol) continue;
-
-      const p = data.protocol as Record<string, unknown>;
-      const wipItems = data.known_wip;
-      const wipCount = Array.isArray(wipItems) ? wipItems.length : 0;
-      const status = (p.status as string) ?? (p.maturity as string) ?? 'draft';
-
-      methods.push({
-        id: (p.id as string) ?? basename(entry, '.yaml'),
-        name: (p.name as string) ?? basename(entry, '.yaml'),
-        version: (p.version as string) ?? '0.0',
+      return {
+        id: m.methodId,
+        name: m.name,
+        version: m.version,
         status,
-        type: 'protocol',
+        type: 'method' as const,
         wip_count: wipCount,
-      });
+      };
+    });
 
-      totalProtocols++;
-      if (status === 'promoted') totalCompiled++;
-      else totalDraft++;
-    }
-
-    const methStatus = (meth.status as string) ?? 'draft';
-
-    methodologies.push({
-      id: (meth.id as string) ?? dirName,
-      name: (meth.name as string) ?? dirName,
-      version: (meth.version as string) ?? '0.0',
-      status: methStatus,
+    return {
+      id: entry.methodologyId,
+      name: entry.name,
+      version: entry.version,
+      status: entry.status,
       method_count: methods.length,
       methods,
-    });
-  }
-
-  // Sort methodologies by ID for consistent ordering
-  methodologies.sort((a, b) => a.id.localeCompare(b.id));
+    };
+  });
 
   return {
     methodologies,
     totals: {
       methodologies: methodologies.length,
       methods: totalMethods,
-      protocols: totalProtocols,
+      protocols: 0, // Protocols not tracked in stdlib
       compiled: totalCompiled,
       draft: totalDraft,
     },
@@ -274,32 +197,141 @@ async function scanRegistry(config: RegistryConfig): Promise<RegistryTree> {
   };
 }
 
-// ── Promotion Record Resolution ──
+// ── Method Detail (from stdlib typed Method + metadata) ──
+
+function buildMethodDetail(methodologyId: string, methodId: string): Record<string, unknown> | null {
+  const method = getMethod(methodologyId, methodId);
+  const meta = getMethodMetadata(methodologyId, methodId);
+
+  if (!method && !meta) return null;
+
+  const result: Record<string, unknown> = {};
+
+  // Method block
+  if (meta) {
+    result.method = {
+      id: meta.id,
+      parent: meta.parent,
+      name: meta.name,
+      description: meta.description,
+      version: meta.version,
+      status: meta.status,
+      ...(meta.compilation_date ? { compilation_date: meta.compilation_date } : {}),
+      ...(meta.evolution_note ? { evolution_note: meta.evolution_note } : {}),
+      ...(meta.formal_grounding ? { formal_grounding: meta.formal_grounding } : {}),
+    };
+  } else if (method) {
+    result.method = {
+      id: method.id,
+      name: method.name,
+      version: '1.0',
+      status: 'compiled',
+    };
+  }
+
+  // Navigation
+  if (meta?.navigation) {
+    result.navigation = {
+      what: meta.navigation.what,
+      who: meta.navigation.who,
+      why: meta.navigation.why,
+      how: meta.navigation.how,
+      ...(meta.navigation.when_to_use ? { when_to_use: meta.navigation.when_to_use } : {}),
+      ...(meta.navigation.when_to_invoke ? { when_to_invoke: meta.navigation.when_to_invoke } : {}),
+      ...(meta.navigation.when_not_to_use ? { when_not_to_use: meta.navigation.when_not_to_use } : {}),
+      ...(meta.navigation.when_not_to_invoke ? { when_not_to_invoke: meta.navigation.when_not_to_invoke } : {}),
+    };
+  }
+
+  // Domain theory (from typed Method)
+  if (method) {
+    const domain = method.domain;
+    result.domain_theory = {
+      id: domain.id,
+      sorts: domain.signature.sorts.map((s) => ({
+        name: s.name,
+        description: s.description,
+        cardinality: s.cardinality,
+      })),
+      predicates: Object.entries(domain.signature.predicates).map(([name, pred]) => ({
+        name,
+        description: pred.tag === 'check' ? pred.label : undefined,
+      })),
+      function_symbols: domain.signature.functionSymbols.map((f) => ({
+        name: f.name,
+        signature: `${f.inputSorts.join(' × ')} → ${f.outputSort}`,
+        totality: f.totality,
+        description: f.description,
+      })),
+      axioms: Object.entries(domain.axioms).map(([id, pred]) => ({
+        id,
+        name: pred.tag === 'check' ? pred.label : id,
+      })),
+    };
+
+    // Phases (from typed Method steps — use DAG order if acyclic, else raw order)
+    let orderedSteps = method.dag.steps;
+    let topology = 'dag';
+    try {
+      orderedSteps = topologicalOrder(method.dag);
+      topology = 'linear';
+    } catch {
+      // DAG has cycles (e.g., loop-back edges) — use raw step order
+      topology = 'cyclic';
+    }
+    result.phases = orderedSteps.map((step) => ({
+      id: step.id,
+      name: step.name,
+      role: step.role ?? null,
+      precondition: step.precondition.tag === 'check' ? step.precondition.label : null,
+      postcondition: step.postcondition.tag === 'check' ? step.postcondition.label : null,
+    }));
+
+    // Step DAG
+    result.step_dag = {
+      topology,
+      steps: orderedSteps.map((step) => ({
+        id: step.id,
+        name: step.name,
+      })),
+    };
+
+    // Roles
+    result.roles = method.roles.map((r) => ({
+      id: r.id,
+      description: r.description,
+    }));
+  }
+
+  // Compilation record
+  if (meta?.compilation_record) {
+    result.compilation_record = meta.compilation_record;
+  }
+
+  // Known WIP
+  if (meta?.known_wip && meta.known_wip.length > 0) {
+    result.known_wip = meta.known_wip;
+  }
+
+  return result;
+}
+
+// ── Promotion Record Resolution (still YAML — protocols not in stdlib) ──
 
 async function resolvePromotionFile(config: RegistryConfig, methodologyId: string, protocolId: string): Promise<string | null> {
   const { registryDir } = config;
-
-  // Path traversal guard: reject segments that could escape the registry directory
   const methodologyDir = safePath(registryDir, methodologyId);
   if (!methodologyDir) return null;
   if (protocolId.includes('..') || protocolId.includes('/') || protocolId.includes('\\')) return null;
-
   if (!(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
 
-  // Scan for *-PROMOTION.yaml files matching the protocol ID by filename convention.
-  // We match by filename rather than parsed YAML content because promotion files
-  // may contain YAML that fails strict parsing (e.g., mixed mapping/sequence sections).
-  // The file is then parsed separately by the route handler which returns 422 on errors.
   const entries = await readdir(methodologyDir);
-
-  // Try exact convention: {PROTOCOL-ID}-PROMOTION.yaml
   const exactName = `${protocolId}-PROMOTION.yaml`;
   if (entries.includes(exactName)) {
     const exactPath = join(methodologyDir, exactName);
     if (await isFile(exactPath)) return exactPath;
   }
 
-  // Fallback: scan for any *-PROMOTION.yaml that contains the protocol ID in its filename
   for (const entry of entries) {
     if (!entry.endsWith('-PROMOTION.yaml') && !entry.endsWith('-PROMOTION.yml')) continue;
     if (!entry.includes(protocolId)) continue;
@@ -310,46 +342,7 @@ async function resolvePromotionFile(config: RegistryConfig, methodologyId: strin
   return null;
 }
 
-// ── Method/Protocol Detail Resolution ──
-
-async function resolveMethodFile(config: RegistryConfig, methodologyId: string, methodId: string): Promise<string | null> {
-  const { registryDir } = config;
-
-  // Path traversal guard: reject segments that could escape the registry directory
-  const methodologyDir = safePath(registryDir, methodologyId);
-  if (!methodologyDir) return null;
-  const methodDir = safePath(registryDir, methodologyId, methodId);
-  if (!methodDir) return null;
-
-  // Try method subdirectory first: registry/{methodology}/{method}/{method}.yaml
-  const methodDirPath = join(methodDir, `${methodId}.yaml`);
-  if (await pathExists(methodDirPath)) return methodDirPath;
-
-  // Try protocol files at methodology level (scan by parsed ID)
-  if (!(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
-
-  const entries = await readdir(methodologyDir);
-  for (const entry of entries) {
-    const entryPath = join(methodologyDir, entry);
-    if (!(await isFile(entryPath))) continue;
-    if (!entry.endsWith('.yaml')) continue;
-
-    const data = await safeYamlLoad(entryPath);
-    if (!data) continue;
-
-    // Check if this file's protocol ID matches
-    const protocol = data.protocol as Record<string, unknown> | undefined;
-    if (protocol && (protocol.id as string) === methodId) return entryPath;
-
-    // Also check method ID (in case someone requests by method.id from a root-level file)
-    const method = data.method as Record<string, unknown> | undefined;
-    if (method && (method.id as string) === methodId) return entryPath;
-  }
-
-  return null;
-}
-
-// ── Manifest ──
+// ── Manifest (still YAML — project config, not methodology data) ──
 
 async function loadManifest(config: RegistryConfig, tree: RegistryTree): Promise<ManifestResponse> {
   const { manifestPath } = config;
@@ -366,7 +359,6 @@ async function loadManifest(config: RegistryConfig, tree: RegistryTree): Promise
   const manifest = data.manifest as Record<string, unknown>;
   const installed = (manifest.installed ?? []) as Array<Record<string, unknown>>;
 
-  // Build a lookup from the registry tree for version comparison
   const registryVersions = new Map<string, string>();
   for (const m of tree.methodologies) {
     registryVersions.set(m.id, m.version);
@@ -422,7 +414,7 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
   };
 
   /**
-   * GET /api/registry — Full registry tree structure
+   * GET /api/registry — Full registry tree structure (from stdlib catalog)
    */
   app.get('/api/registry', async (_request, reply) => {
     const now = Date.now();
@@ -430,7 +422,7 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
       return reply.status(200).send(treeCache);
     }
 
-    const tree = await scanRegistry(config);
+    const tree = buildRegistryTree();
     treeCache = tree;
     treeCacheExpiry = now + config.cacheTtlMs;
 
@@ -441,13 +433,12 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
    * GET /api/registry/manifest — Parsed manifest with sync status
    */
   app.get('/api/registry/manifest', async (_request, reply) => {
-    // Ensure tree is populated (use cache if available)
     const now = Date.now();
     let tree: RegistryTree;
     if (treeCache && now < treeCacheExpiry) {
       tree = treeCache;
     } else {
-      tree = await scanRegistry(config);
+      tree = buildRegistryTree();
       treeCache = tree;
       treeCacheExpiry = now + config.cacheTtlMs;
     }
@@ -457,18 +448,25 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
   });
 
   /**
-   * GET /api/registry/:methodology/:method — Full parsed method/protocol YAML as JSON
+   * GET /api/registry/:methodology/:method — Method detail (from stdlib)
    */
   app.get<{
     Params: { methodology: string; method: string };
   }>('/api/registry/:methodology/:method', async (request, reply) => {
     const { methodology, method } = request.params;
 
-    // Path traversal guard: reject params with traversal characters early
+    // Try stdlib first
+    const detail = buildMethodDetail(methodology, method);
+    if (detail) {
+      return reply.status(200).send(detail);
+    }
+
+    // Fallback to YAML for protocols and non-stdlib methods
     if (!safePath(config.registryDir, methodology, method)) {
       return reply.status(400).send({ error: 'Invalid path parameters' });
     }
 
+    // Try YAML resolution
     const filePath = await resolveMethodFile(config, methodology, method);
     if (!filePath) {
       return reply.status(404).send({ error: `Method ${methodology}/${method} not found` });
@@ -487,14 +485,13 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
   });
 
   /**
-   * GET /api/registry/:methodology/:protocol/promotion — Promotion record for a protocol
+   * GET /api/registry/:methodology/:protocol/promotion — Promotion record (YAML)
    */
   app.get<{
     Params: { methodology: string; protocol: string };
   }>('/api/registry/:methodology/:protocol/promotion', async (request, reply) => {
     const { methodology, protocol: protocolId } = request.params;
 
-    // Path traversal guard: reject params with traversal characters early
     if (!safePath(config.registryDir, methodology) ||
         protocolId.includes('..') || protocolId.includes('/') || protocolId.includes('\\')) {
       return reply.status(400).send({ error: 'Invalid path parameters' });
@@ -525,7 +522,39 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
     treeCacheExpiry = 0;
     return reply.status(200).send({
       status: 'ok',
-      message: 'Registry cache invalidated. Next request will re-scan.',
+      message: 'Registry cache invalidated. Next request will rebuild from stdlib.',
     });
   });
+}
+
+// ── YAML fallback for method detail (protocols, non-stdlib methods) ──
+
+async function resolveMethodFile(config: RegistryConfig, methodologyId: string, methodId: string): Promise<string | null> {
+  const { registryDir } = config;
+  const methodDir = safePath(registryDir, methodologyId, methodId);
+  if (!methodDir) return null;
+
+  const methodDirPath = join(methodDir, `${methodId}.yaml`);
+  if (await pathExists(methodDirPath)) return methodDirPath;
+
+  const methodologyDir = safePath(registryDir, methodologyId);
+  if (!methodologyDir || !(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
+
+  const entries = await readdir(methodologyDir);
+  for (const entry of entries) {
+    const entryPath = join(methodologyDir, entry);
+    if (!(await isFile(entryPath))) continue;
+    if (!entry.endsWith('.yaml')) continue;
+
+    const data = await safeYamlLoad(entryPath);
+    if (!data) continue;
+
+    const protocol = data.protocol as Record<string, unknown> | undefined;
+    if (protocol && (protocol.id as string) === methodId) return entryPath;
+
+    const method = data.method as Record<string, unknown> | undefined;
+    if (method && (method.id as string) === methodId) return entryPath;
+  }
+
+  return null;
 }
