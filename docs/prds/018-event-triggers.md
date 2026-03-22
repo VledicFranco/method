@@ -6,6 +6,7 @@
 **Depends on:** PRD 017 (Strategy Pipelines Phase 1), PRD 010 (PTY Auto-Detection), PRD 008 (Agent Visibility)
 **Evidence:** Council SESSION-038 (D-091 roadmap item #4), gov-proposal Section 7 (Continuous Governance), PRD 017 Section 6 (Phase 2 deferral), vision doc D-007
 **Council memory:** `.method/council/memory/strategy-pipelines.yaml` (TOPIC-STRATEGY-PIPELINES)
+**PRD 021 impact:** **Extended.** MethodTS's `EventBus<S>` emits 20 typed `RuntimeEvent<S>` variants that feed into `channel_event` triggers — enabling triggers that react to methodology lifecycle events (step_completed, gate_evaluated, methodology_suspended). Trigger context injection gets typed mapping. MethodTS becomes the richest event source for the trigger system.
 
 ---
 

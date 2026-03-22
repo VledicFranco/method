@@ -6,6 +6,7 @@
 **Depends on:** PRD 006 (recursive orchestration + worktree isolation), PRD 010 (PTY watcher infrastructure)
 **Evidence:** OBS-05 (sub-agents commit out-of-scope files), project-card `role_notes.impl_sub_agent` (prompt-level mitigation insufficient), RFC #3 recommendations
 **Council:** Pending
+**PRD 021 impact:** **Complemented.** MethodTS's `Step<S>.tools` field and commission `allowedTools` provide typed capability declarations at the method level. File scope can be declared per-method and passed to `bridge_spawn`. If implemented, `allowed_paths` metadata feeds into MethodTS's `ContextSpec<S>` for typed scope constraints.
 
 ---
 

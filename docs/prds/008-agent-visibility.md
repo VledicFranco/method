@@ -8,6 +8,7 @@
 **Evidence:** PRD 006 bridge commission failure (agent produced docs not code, couldn't monitor or redirect), empty bridge_prompt responses, SESSION-015/016 council decisions (D-026, D-027)
 **MVP Scope:** Components 1 + 2 only (progress + events). Components 3 + 4 deferred.
 **Deferred status:** Component 3 (structured result handoff) remains deferred. Component 4 (heartbeat) superseded by PRD 010 Pattern 1 (tool call detection provides the activity heartbeat — see PRD 010 §10).
+**PRD 021 impact:** **Unchanged.** Bridge channels stay the same. MethodTS emits richer typed events to channels via `bridgeChannelHook` (Phase 2) but the channel infrastructure is unaffected.
 **Implementation:** 5 commits (e091a63–aa6ee6d). Channel infrastructure, 5 HTTP endpoints, 5 MCP proxy tools, push notifications, auto-progress from step_advance, dashboard panels. 138 tests (22 new). 8/8 success criteria met. Retro at .method/retros/retro-prd008-mvp-impl.yaml.
 
 ---

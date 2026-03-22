@@ -7,6 +7,7 @@
 **Evidence:** Council session 2026-03-16 (12 decisions, 6-member cast), Constellation Engine research, `--print` CLI research
 **Vision:** [docs/vision/strategy-pipelines.md](../vision/strategy-pipelines.md) (full idea archive + deferred items)
 **Council memory:** `.method/council/memory/strategy-pipelines.yaml` (TOPIC-STRATEGY-PIPELINES)
+**PRD 021 impact:** **Subsumed (Phase 2-3).** MethodTS's `StrategyController<S>` is a superset of the static StrategyDAG model. Gates become typed `Gate<S>` (replacing sandboxed string eval). `LlmProvider` → `AgentProvider`. `ArtifactStore` gains typed `Artifact<T>`. `fromStrategyDAG()` wraps existing DAGs in the adaptive interface. Core's `StrategyExecutor` replaced by `runStrategy()` in Phase 3.
 
 ---
 

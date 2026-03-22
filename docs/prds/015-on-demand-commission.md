@@ -6,6 +6,7 @@
 **Depends on:** PRD 004 (methodology runtime), PRD 005 (bridge), P0-META (compilation gates)
 **Evidence:** OBS-02 (stalling on long prompts), EXP-OBS02 (threshold ~500 chars), agents using methodology MCP tools stay active
 **Origin:** PO insight — agents following methodology steps via MCP never stall because `step_current → work → step_advance` keeps them in active tool-calling mode. Making this the DEFAULT for all bridge-spawned agents eliminates stalling at the infrastructure level.
+**PRD 021 impact:** **Subsumed.** MethodTS's `commission()` and `batchCommission()` replace M-EXEC's manual commission loading. The 7-step M-EXEC DAG becomes a typed `Method<CommissionState>` in stdlib. Steps σ_1-σ_3 (load commission, load context, route method) become deterministic script steps instead of agent reasoning (~500 tokens saved per commission).
 
 ---
 

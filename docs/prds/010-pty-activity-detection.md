@@ -8,6 +8,7 @@
 **Evidence:** OBS-01 (agents don't use channel tools), OBS-02 (agents stall without visibility), OBS-09 (PTY output contains parseable signals), OBS-11 (agents deliver well but silently), PR-03 enforcement gap (0/12 retros placed correctly)
 **Council:** SESSION-022 (D-035 scope), SESSION-023 (D-038 confirmation, 7 design gaps resolved)
 **Implementation:** PTY watcher with 7 pattern matchers, auto-channel emission, auto-retro generator, persistent sessions. Bridge config: 10 max sessions, 1s settle delay. OBS-01/09/11 resolved. OBS-12 mitigated (settle delay reduced).
+**PRD 021 impact:** **Complemented.** MethodTS's typed `StateTrace<S>` produces richer retrospectives than PTY pattern matching (computed from typed data, not inferred from terminal output). Auto-retro from trace replaces PTY-based retro for MethodTS-driven sessions. Observation patterns remain useful for non-MethodTS sessions and for `pty_watcher` triggers (PRD 018).
 
 ---
 
