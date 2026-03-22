@@ -12,3 +12,10 @@ topics:
     status: active
     last_session: "2026-03-19"
     session_count: 1
+
+  - id: TOPIC-META-AGENT-LOOP
+    name: "Meta Agent Loop — MethodTS Strategy Replacing Claude Code"
+    file: meta-agent-loop.yaml
+    status: active
+    last_session: "2026-03-21"
+    session_count: 1
