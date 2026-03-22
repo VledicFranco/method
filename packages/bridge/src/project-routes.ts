@@ -575,6 +575,18 @@ export async function registerProjectRoutes(
           });
         }
 
+        // F-SEC-002: Validate that requester can access ALL target projects
+        for (const targetId of target_ids) {
+          const targetValidation = validateProjectAccess(targetId, sessionContext);
+          if (!targetValidation.allowed) {
+            return reply.status(403).send({
+              error: 'Access denied',
+              reason: `Cannot copy to project ${targetId} — permission denied`,
+              message: targetValidation.reason || 'Not authorized to write to target project',
+            });
+          }
+        }
+
         const result = await copyMethodology({
           source_id,
           method_name,
@@ -613,6 +625,18 @@ export async function registerProjectRoutes(
             reason: `Cannot copy from project ${source_id} — permission denied`,
             message: sourceValidation.reason || 'Not authorized to access source project',
           });
+        }
+
+        // F-SEC-002: Validate that requester can access ALL target projects
+        for (const targetId of target_ids) {
+          const targetValidation = validateProjectAccess(targetId, sessionContext);
+          if (!targetValidation.allowed) {
+            return reply.status(403).send({
+              error: 'Access denied',
+              reason: `Cannot copy to project ${targetId} — permission denied`,
+              message: targetValidation.reason || 'Not authorized to write to target project',
+            });
+          }
         }
 
         const result = await copyStrategy({
