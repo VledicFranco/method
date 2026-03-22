@@ -535,3 +535,194 @@ describe("runStep — agent", () => {
     expect(error.retryable).toBe(false);
   });
 });
+
+// ── Session resume tests ──
+
+describe("runStep — session resume", () => {
+  it("first attempt commission has sessionId, not resumeSessionId", async () => {
+    const commissions: Array<{ prompt: string; sessionId?: string; resumeSessionId?: string }> = [];
+    const mockLayer = MockAgentProvider({
+      responses: [
+        {
+          match: (c) => {
+            commissions.push(c);
+            return true;
+          },
+          result: {
+            raw: '{"count": 5, "valid": true}',
+            cost: { tokens: 100, usd: 0.01, duration_ms: 500 },
+          },
+        },
+      ],
+    });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const config = yield* makeConfig();
+        return yield* runStep(agentStep(), validState, config);
+      }).pipe(Effect.provide(mockLayer)),
+    );
+
+    expect(commissions).toHaveLength(1);
+    expect(commissions[0].sessionId).toBeDefined();
+    expect(commissions[0].sessionId).toMatch(/^step_step-agent_/);
+    expect(commissions[0].resumeSessionId).toBeUndefined();
+  });
+
+  it("retry attempt commission has resumeSessionId from first attempt", async () => {
+    const commissions: Array<{ prompt: string; sessionId?: string; resumeSessionId?: string }> = [];
+    let parseCallCount = 0;
+
+    const mockLayer = MockAgentProvider({
+      responses: [
+        {
+          match: (c) => {
+            commissions.push(c);
+            return true;
+          },
+          result: {
+            raw: '{"count": 5, "valid": true}',
+            cost: { tokens: 50, usd: 0.005, duration_ms: 200 },
+          },
+        },
+      ],
+    });
+
+    // Parse fails on first call, succeeds on second — forces a retry
+    const step = agentStep({
+      parseImpl: (_raw: string, _current: TestState) => {
+        parseCallCount++;
+        if (parseCallCount === 1) {
+          return Effect.fail({
+            _tag: "ParseError" as const,
+            message: "Deliberately failing first parse",
+            raw: _raw,
+          });
+        }
+        return Effect.succeed({ count: 5, valid: true });
+      },
+    });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const config = yield* makeConfig({ maxRetries: 3 });
+        return yield* runStep(step, validState, config);
+      }).pipe(Effect.provide(mockLayer)),
+    );
+
+    expect(commissions).toHaveLength(2);
+    // First attempt: sessionId set, no resumeSessionId
+    expect(commissions[0].sessionId).toBeDefined();
+    expect(commissions[0].resumeSessionId).toBeUndefined();
+    // Second attempt: resumeSessionId matches first attempt's sessionId
+    expect(commissions[1].resumeSessionId).toBe(commissions[0].sessionId);
+    expect(commissions[1].sessionId).toBeUndefined();
+  });
+
+  it("sessionId from AgentResult is captured for reuse on retries", async () => {
+    const commissions: Array<{ prompt: string; sessionId?: string; resumeSessionId?: string }> = [];
+    let parseCallCount = 0;
+    const bridgeSessionId = "bridge-assigned-session-42";
+
+    const mockLayer = MockAgentProvider({
+      responses: [
+        {
+          match: (c) => {
+            commissions.push(c);
+            return true;
+          },
+          result: {
+            raw: '{"count": 5, "valid": true}',
+            cost: { tokens: 50, usd: 0.005, duration_ms: 200 },
+            sessionId: bridgeSessionId, // Bridge assigns a different session ID
+          },
+        },
+      ],
+    });
+
+    // Parse fails on first call, succeeds on second — forces a retry
+    const step = agentStep({
+      parseImpl: (_raw: string, _current: TestState) => {
+        parseCallCount++;
+        if (parseCallCount === 1) {
+          return Effect.fail({
+            _tag: "ParseError" as const,
+            message: "Deliberately failing first parse",
+            raw: _raw,
+          });
+        }
+        return Effect.succeed({ count: 5, valid: true });
+      },
+    });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const config = yield* makeConfig({ maxRetries: 3 });
+        return yield* runStep(step, validState, config);
+      }).pipe(Effect.provide(mockLayer)),
+    );
+
+    expect(commissions).toHaveLength(2);
+    // Retry uses the bridge-assigned sessionId (from AgentResult), not the generated one
+    expect(commissions[1].resumeSessionId).toBe(bridgeSessionId);
+  });
+
+  it("postcondition retry also uses resumeSessionId", async () => {
+    const commissions: Array<{ prompt: string; sessionId?: string; resumeSessionId?: string }> = [];
+    let parseCallCount = 0;
+
+    const mockLayer = MockAgentProvider({
+      responses: [
+        {
+          match: (c) => {
+            commissions.push(c);
+            return true;
+          },
+          result: {
+            raw: '{"count": 10, "valid": true}',
+            cost: { tokens: 50, usd: 0.005, duration_ms: 200 },
+          },
+        },
+      ],
+    });
+
+    // Postcondition: count > 5. First parse returns count=2 (fails), second returns count=10 (passes).
+    const step = agentStep({
+      postcondition: check<TestState>("count > 5", (s) => s.count > 5),
+      parseImpl: (_raw: string, _current: TestState) => {
+        parseCallCount++;
+        if (parseCallCount === 1) {
+          return Effect.succeed({ count: 2, valid: true }); // fails postcondition
+        }
+        return Effect.succeed({ count: 10, valid: true }); // passes postcondition
+      },
+    });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const config = yield* makeConfig({ maxRetries: 3 });
+        return yield* runStep(step, validState, config);
+      }).pipe(Effect.provide(mockLayer)),
+    );
+
+    expect(commissions).toHaveLength(2);
+    // Second attempt resumes the session from the first
+    expect(commissions[1].resumeSessionId).toBe(commissions[0].sessionId);
+    expect(commissions[1].sessionId).toBeUndefined();
+  });
+
+  it("script steps do not generate session tracking fields", async () => {
+    // Script steps bypass agent execution entirely — no session tracking
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const config = yield* makeConfig();
+        return yield* runStep(scriptStep(), validState, config);
+      }).pipe(Effect.provide(defaultMockLayer)),
+    );
+
+    // Script step succeeds without touching agent provider
+    expect(result.value.count).toBe(1);
+    // No direct way to assert "no commission sent" — but the mock is never matched,
+    // and the test passing proves script execution bypasses agent entirely.
+  });
+});

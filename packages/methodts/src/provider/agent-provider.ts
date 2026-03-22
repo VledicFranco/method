@@ -61,6 +61,16 @@ export type AgentError =
   | { readonly _tag: "AgentPermissionDenied"; readonly resource: string; readonly message: string }
   | { readonly _tag: "AgentSpawnFailed"; readonly message: string; readonly cause?: unknown };
 
+/** Commission payload for agent execution. */
+export type AgentCommission = {
+  readonly prompt: string;
+  readonly bridge?: Record<string, unknown>;
+  /** Session ID to assign when creating a new session. */
+  readonly sessionId?: string;
+  /** Session ID to resume (continues an existing conversation). */
+  readonly resumeSessionId?: string;
+};
+
 /** Streaming event from agent execution. */
 export type AgentStreamEvent = {
   readonly type: string;
@@ -72,25 +82,15 @@ export type AgentStreamEvent = {
 /**
  * Agent provider service — executes commissions via an agent backend.
  *
- * Implementations receive a commission prompt (and optional bridge config)
- * and return an AgentResult or an AgentError.
+ * Implementations receive an AgentCommission (prompt, optional bridge config,
+ * optional session tracking) and return an AgentResult or an AgentError.
  */
 export interface AgentProvider {
-  readonly execute: (commission: {
-    prompt: string;
-    bridge?: Record<string, unknown>;
-    sessionId?: string;
-    resumeSessionId?: string;
-  }) => Effect.Effect<AgentResult, AgentError, never>;
+  readonly execute: (commission: AgentCommission) => Effect.Effect<AgentResult, AgentError, never>;
 
   /** Optional streaming execution — emits events as the agent works. */
   readonly executeStreaming?: (
-    commission: {
-      prompt: string;
-      bridge?: Record<string, unknown>;
-      sessionId?: string;
-      resumeSessionId?: string;
-    },
+    commission: AgentCommission,
     onEvent: (event: AgentStreamEvent) => void,
   ) => Effect.Effect<AgentResult, AgentError, never>;
 }

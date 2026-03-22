@@ -70,6 +70,7 @@ export function runStep<S>(
 
     const maxRetries = Math.max(0, config.maxRetries ?? 3);
     let lastError: RunStepError | undefined;
+    let stepSessionId: string | undefined; // Track session across retries for agent resume
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const feedback =
@@ -137,9 +138,16 @@ export function runStep<S>(
           promptText += `\n\n## Retry Feedback\n${feedback}`;
         }
 
+        // Build commission with session tracking.
+        // First attempt: create a new session. Retries: resume the same session
+        // so the agent retains conversation context across retry attempts.
+        const commission = attempt === 0
+          ? { prompt: promptText, sessionId: `step_${step.id}_${Date.now().toString(36)}` }
+          : { prompt: promptText, resumeSessionId: stepSessionId };
+
         // Execute via agent provider
         const agentResult = yield* agentProvider
-          .execute({ prompt: promptText })
+          .execute(commission)
           .pipe(
             Effect.mapError(
               (e): RunStepError => ({
@@ -151,6 +159,11 @@ export function runStep<S>(
               }),
             ),
           );
+
+        // Capture sessionId from first attempt for reuse on retries
+        if (attempt === 0) {
+          stepSessionId = agentResult.sessionId ?? commission.sessionId;
+        }
 
         cost = agentResult.cost;
 

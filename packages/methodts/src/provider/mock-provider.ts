@@ -9,12 +9,12 @@
  */
 
 import { Effect, Layer } from "effect";
-import { AgentProvider, type AgentResult, type AgentError } from "./agent-provider.js";
+import { AgentProvider, type AgentResult, type AgentError, type AgentCommission } from "./agent-provider.js";
 
 /** A mock response configuration. */
 export type MockResponse = {
   /** Predicate: does this response match the commission? */
-  readonly match: (commission: { prompt: string }) => boolean;
+  readonly match: (commission: AgentCommission) => boolean;
   /** The response to return when matched. */
   readonly result: AgentResult;
 };
@@ -27,7 +27,7 @@ export type MockAgentProviderConfig = {
   readonly fallback?: AgentResult;
   /** Commission prompts that should trigger a failure. */
   readonly failOn?: Array<{
-    readonly match: (commission: { prompt: string }) => boolean;
+    readonly match: (commission: AgentCommission) => boolean;
     readonly error: AgentError;
   }>;
 };

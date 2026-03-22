@@ -56,6 +56,11 @@ export function runMethodology<S>(
     let acc = initialAccumulator();
     const snapshots: Snapshot<S>[] = [];
 
+    // TODO: Methodology-level session continuity — track a methodologySessionId
+    // across methods so the agent retains conversation context across steps.
+    // This is a bigger architectural change requiring a sessionContinuity config flag.
+    // For now, session resume is only wired at the step retry level (run-step.ts).
+
     // Coalgebraic loop
     while (true) {
       // Safety check — uses ExecutionAccumulator from safety.ts (compatible fields)
