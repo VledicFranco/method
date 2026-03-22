@@ -14,6 +14,7 @@ const badgeVariants = cva(
         error: 'bg-error-dim text-error',
         nebular: 'bg-nebular-dim text-nebular',
         muted: 'bg-txt-muted/10 text-txt-dim',
+        outlined: 'border border-current text-current bg-transparent',
       },
       size: {
         sm: 'px-2 py-0.5 text-[0.7rem]',
@@ -29,15 +30,45 @@ const badgeVariants = cva(
 
 export interface BadgeProps extends VariantProps<typeof badgeVariants> {
   icon?: ReactNode;
-  label: string;
+  label?: string;
   className?: string;
+  /** Alternative to label prop */
+  children?: ReactNode;
+  /** For outlined variant — cyan, bio, solar, error, nebular */
+  color?: 'bio' | 'solar' | 'error' | 'nebular' | 'cyan';
 }
 
-export function Badge({ icon, label, variant, size, className }: BadgeProps) {
+export function Badge({
+  icon,
+  label,
+  variant,
+  size,
+  className,
+  children,
+  color,
+}: BadgeProps) {
+  const variantToUse = variant || (color && !variant ? 'outlined' : undefined);
+  const textColorClass =
+    color && variant === 'outlined'
+      ? {
+          bio: 'text-bio',
+          solar: 'text-solar',
+          error: 'text-error',
+          nebular: 'text-nebular',
+          cyan: 'text-cyan',
+        }[color] || ''
+      : '';
+
   return (
-    <span className={cn(badgeVariants({ variant, size }), className)}>
+    <span
+      className={cn(
+        badgeVariants({ variant: variantToUse, size }),
+        textColorClass,
+        className,
+      )}
+    >
       {icon && <span className="shrink-0">{icon}</span>}
-      {label}
+      {children || label}
     </span>
   );
 }

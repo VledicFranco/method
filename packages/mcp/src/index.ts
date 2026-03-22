@@ -702,6 +702,52 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {},
       },
     },
+    {
+      name: "resource_copy_methodology",
+      description: "Copy a methodology from a source project to one or more target projects. Reads the source manifest.yaml and copies the methodology entry to target manifests.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          source_id: {
+            type: "string",
+            description: "Source project ID (directory name)",
+          },
+          method_name: {
+            type: "string",
+            description: "Methodology ID to copy (e.g., P2-SD)",
+          },
+          target_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "Target project IDs (directory names)",
+          },
+        },
+        required: ["source_id", "method_name", "target_ids"],
+      },
+    },
+    {
+      name: "resource_copy_strategy",
+      description: "Copy a strategy from a source project to one or more target projects. Reads the source manifest.yaml and copies the strategy entry to target manifests.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          source_id: {
+            type: "string",
+            description: "Source project ID (directory name)",
+          },
+          strategy_name: {
+            type: "string",
+            description: "Strategy ID to copy",
+          },
+          target_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "Target project IDs (directory names)",
+          },
+        },
+        required: ["source_id", "strategy_name", "target_ids"],
+      },
+    },
   ],
 }));
 
@@ -1356,6 +1402,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const res = await bridgeFetch(`${BRIDGE_URL}/triggers/reload`, {
           method: 'POST',
         });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "resource_copy_methodology": {
+        const { source_id, method_name, target_ids } = z.object({
+          source_id: z.string(),
+          method_name: z.string(),
+          target_ids: z.array(z.string()),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/resources/copy-methodology`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_id, method_name, target_ids }),
+        });
+
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "resource_copy_strategy": {
+        const { source_id, strategy_name, target_ids } = z.object({
+          source_id: z.string(),
+          strategy_name: z.string(),
+          target_ids: z.array(z.string()),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/resources/copy-strategy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_id, strategy_name, target_ids }),
+        });
+
         const data = await res.json();
         return ok(JSON.stringify(data, null, 2));
       }
