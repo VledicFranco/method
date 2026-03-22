@@ -13,23 +13,30 @@ import {
 import { silentProvider, SequenceProvider } from "../provider/recording-provider.js";
 import type { Recording } from "../provider/recording-provider.js";
 
-/** Result of running a step in isolation. */
-export type StepHarnessResult<S> = {
-  /** Whether the precondition was met. */
-  readonly preconditionMet: boolean;
-  /** Diagnostic trace for precondition evaluation. */
-  readonly preconditionTrace: EvalTrace;
-  /** Whether the postcondition was met (null if precondition failed or execution errored). */
-  readonly postconditionMet: boolean | null;
-  /** Diagnostic trace for postcondition evaluation (null if not evaluated). */
-  readonly postconditionTrace: EvalTrace | null;
-  /** The resulting state value (null if precondition failed or execution errored). */
-  readonly state: S | null;
-  /** Error message if execution failed. */
-  readonly error: string | null;
-  /** Agent recordings if agent responses were provided. */
-  readonly recordings: Recording[];
-};
+/** Discriminated union result of running a step in isolation. */
+export type StepHarnessResult<S> =
+  | {
+      /** Precondition was not met — step did not execute. */
+      readonly status: "precondition_failed";
+      readonly preconditionTrace: EvalTrace;
+      readonly recordings: Recording[];
+    }
+  | {
+      /** Step executed successfully. */
+      readonly status: "completed";
+      readonly preconditionTrace: EvalTrace;
+      readonly postconditionMet: boolean;
+      readonly postconditionTrace: EvalTrace;
+      readonly state: S;
+      readonly recordings: Recording[];
+    }
+  | {
+      /** Step execution failed with an expected error. */
+      readonly status: "error";
+      readonly preconditionTrace: EvalTrace;
+      readonly error: string;
+      readonly recordings: Recording[];
+    };
 
 export type StepHarnessOptions = {
   /** Agent responses for agent steps (consumed in order). */
@@ -39,15 +46,20 @@ export type StepHarnessOptions = {
 /**
  * Run a single step in isolation. Handles all Effect boilerplate internally.
  *
- * For script steps, no configuration needed.
- * For agent steps, provide `agentResponses` in options.
+ * Returns a discriminated union on `status`:
+ * - `"precondition_failed"` — step was not executed
+ * - `"completed"` — step ran, check `postconditionMet` and `state`
+ * - `"error"` — step execution failed
+ *
+ * Effect defects (bugs) propagate as thrown exceptions to the test runner.
  *
  * @example
  * ```ts
  * const result = await runStepIsolated(triageStep, STATES.detected);
- * expect(result.preconditionMet).toBe(true);
- * expect(result.postconditionMet).toBe(true);
- * expect(result.state!.status).toBe("triaged");
+ * if (result.status === "completed") {
+ *   expect(result.postconditionMet).toBe(true);
+ *   expect(result.state.status).toBe("triaged");
+ * }
  * ```
  */
 export async function runStepIsolated<S>(
@@ -59,12 +71,8 @@ export async function runStepIsolated<S>(
   const preconditionTrace = evaluateWithTrace(step.precondition, stateValue);
   if (!preconditionTrace.result) {
     return {
-      preconditionMet: false,
+      status: "precondition_failed",
       preconditionTrace,
-      postconditionMet: null,
-      postconditionTrace: null,
-      state: null,
-      error: null,
       recordings: [],
     };
   }
@@ -115,11 +123,8 @@ export async function runStepIsolated<S>(
       ? String((err as { message: unknown }).message)
       : JSON.stringify(err);
     return {
-      preconditionMet: true,
+      status: "error",
       preconditionTrace,
-      postconditionMet: null,
-      postconditionTrace: null,
-      state: null,
       error: errorMsg,
       recordings,
     };
@@ -130,12 +135,11 @@ export async function runStepIsolated<S>(
   // Evaluate postcondition
   const postconditionTrace = evaluateWithTrace(step.postcondition, newValue);
   return {
-    preconditionMet: true,
+    status: "completed",
     preconditionTrace,
     postconditionMet: postconditionTrace.result,
     postconditionTrace,
     state: newValue,
-    error: null,
     recordings,
   };
 }

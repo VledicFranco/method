@@ -8,7 +8,7 @@
 // ── Builders ──
 
 export { domainBuilder, type DomainBuilder } from "./builders/domain.js";
-export { scriptStep, agentStep, type ScriptStepOptions, type AgentStepOptions } from "./builders/step.js";
+export { scriptStep, scriptStepEffect, agentStep, type ScriptStepOptions, type ScriptStepEffectOptions, type AgentStepOptions } from "./builders/step.js";
 export { methodBuilder, type MethodBuilder } from "./builders/method.js";
 export { methodologyBuilder, type MethodologyBuilder } from "./builders/methodology.js";
 export { worldState, worldStateWithViolations } from "./builders/state.js";

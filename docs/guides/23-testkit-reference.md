@@ -48,12 +48,29 @@ const step = scriptStep<MyState>("pick_item", {
 });
 ```
 
-### `agentStep<S>(id, options): Step<S>`
+### `scriptStepEffect<S>(id, options): Step<S>`
 
-Build an agent step (LLM-backed execution).
+Build a script Step whose execution can fail in the Effect sense. Unlike `scriptStep` (which wraps a pure function in `Effect.succeed`), this accepts an execute function that returns an `Effect` directly.
 
 ```typescript
-import { Prompt } from "@method/methodts";
+import { Effect } from "effect";
+
+const step = scriptStepEffect<MyState>("validate", {
+  role: "validator",
+  pre: hasData,
+  post: isValid,
+  execute: s => s.data.length > 0
+    ? Effect.succeed({ ...s, valid: true })
+    : Effect.fail({ _tag: "StepError", message: "No data to validate" }),
+});
+```
+
+### `agentStep<S>(id, options): Step<S>`
+
+Build an agent step (LLM-backed execution). Requires `Prompt` which is re-exported from `@method/testkit`.
+
+```typescript
+import { Prompt, agentStep } from "@method/testkit";
 
 const step = agentStep<MyState>("analyze", {
   role: "analyst",
@@ -155,7 +172,7 @@ Every assertion throws with diagnostic traces on failure — not bare "expected 
 |----------|-------------|
 | `assertCoherent(methodology, states)` | Check all 5 coherence properties. Returns result. Throws with per-check detail. |
 | `assertRoutesTo(methodology, state, label)` | Assert δ_Φ routes to named arm. Pass `null` for termination. |
-| `assertTerminates(methodology, trajectory)` | Assert termination measure decreases and objective met at end. |
+| `assertTerminates(methodology, trajectory)` | Assert termination measure changes monotonically, has strict progress, last state terminates, and objective met. |
 | `assertRoutingTotal(methodology, states)` | Assert every state fires at least one arm. |
 
 ### Retraction Assertions
@@ -172,21 +189,31 @@ Execution harnesses that hide Effect ceremony.
 
 ### `runStepIsolated<S>(step, stateValue, options?): Promise<StepHarnessResult<S>>`
 
-Run a single step. Returns precondition/postcondition evaluation with traces.
+Run a single step. Returns a discriminated union on `status`:
 
 ```typescript
 const result = await runStepIsolated(triageStep, STATES.detected);
 
-result.preconditionMet    // boolean
-result.preconditionTrace  // EvalTrace — inspect on failure
-result.postconditionMet   // boolean | null (null if precondition failed)
-result.postconditionTrace // EvalTrace | null
-result.state              // S | null (the transformed state)
-result.error              // string | null
-result.recordings         // Recording[] (agent interactions)
+switch (result.status) {
+  case "precondition_failed":
+    result.preconditionTrace  // EvalTrace — why precondition failed
+    break;
+  case "completed":
+    result.postconditionMet   // boolean
+    result.postconditionTrace // EvalTrace
+    result.state              // S — the transformed state (not nullable)
+    break;
+  case "error":
+    result.error              // string — execution error message
+    break;
+}
+result.recordings             // Recording[] — always available
+result.preconditionTrace      // EvalTrace — always available
 ```
 
 **Options:** `{ agentResponses?: AgentResult[] }` — for agent steps.
+
+Effect defects (bugs in step code) propagate as thrown exceptions to the test runner rather than being captured in the result.
 
 ### `runMethodIsolated<S>(method, initialState, options?): Promise<MethodResult<S>>`
 

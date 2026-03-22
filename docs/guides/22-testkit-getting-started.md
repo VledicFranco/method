@@ -240,3 +240,5 @@ Compilation report for M_BROKEN: FAILED
 ## Next Steps
 
 - **[Guide 23 — Testkit Reference](./23-testkit-reference.md)** — Full API reference for all builders, assertions, harnesses, providers, and diagnostics.
+- **[Guide 24 — Testkit Migration](./24-testkit-migration.md)** — Migrating from manual e2e test patterns to testkit.
+- **[Guide 25 — Testkit Diagnostics](./25-testkit-diagnostics.md)** — Using trace printers, report formatters, and simulation for debugging.

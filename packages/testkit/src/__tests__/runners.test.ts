@@ -46,29 +46,28 @@ const finalizeStep = scriptStep<CounterState>("finalize", {
 // ── runStepIsolated ──
 
 describe("runStepIsolated", () => {
-  it("runs a script step and returns state + pre/postcondition", async () => {
+  it("runs a script step and returns completed status with state", async () => {
     const result = await runStepIsolated(incrementStep, {
       count: 0,
       target: 3,
       done: false,
     });
 
-    expect(result.preconditionMet).toBe(true);
-    expect(result.postconditionMet).toBe(true);
-    expect(result.state!.count).toBe(1);
-    expect(result.error).toBeNull();
+    expect(result.status).toBe("completed");
+    if (result.status === "completed") {
+      expect(result.postconditionMet).toBe(true);
+      expect(result.state.count).toBe(1);
+    }
   });
 
-  it("detects precondition failure", async () => {
+  it("detects precondition failure with discriminated status", async () => {
     const result = await runStepIsolated(incrementStep, {
       count: 3,
       target: 3,
       done: false,
     });
 
-    expect(result.preconditionMet).toBe(false);
-    expect(result.state).toBeNull();
-    expect(result.postconditionMet).toBeNull();
+    expect(result.status).toBe("precondition_failed");
   });
 
   it("detects postcondition failure", async () => {
@@ -85,9 +84,11 @@ describe("runStepIsolated", () => {
       done: false,
     });
 
-    expect(result.preconditionMet).toBe(true);
-    expect(result.postconditionMet).toBe(false);
-    expect(result.postconditionTrace).not.toBeNull();
+    expect(result.status).toBe("completed");
+    if (result.status === "completed") {
+      expect(result.postconditionMet).toBe(false);
+      expect(result.postconditionTrace).toBeDefined();
+    }
   });
 
   it("provides precondition trace for diagnosis", async () => {
@@ -97,10 +98,31 @@ describe("runStepIsolated", () => {
       done: false,
     });
 
-    expect(result.preconditionTrace).toBeDefined();
+    expect(result.status).toBe("precondition_failed");
     expect(result.preconditionTrace.result).toBe(false);
     // Should have children from the AND predicate
     expect(result.preconditionTrace.children.length).toBeGreaterThan(0);
+  });
+
+  it("returns error status for failing Effect steps", async () => {
+    const { Effect: Eff } = await import("effect");
+    const { scriptStepEffect } = await import("../index.js");
+
+    const failStep = scriptStepEffect<CounterState>("fail_step", {
+      pre: notDone,
+      execute: (_s) => Eff.fail({ _tag: "StepError" as const, message: "intentional failure" }),
+    });
+
+    const result = await runStepIsolated(failStep, {
+      count: 0,
+      target: 3,
+      done: false,
+    });
+
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.error).toContain("intentional failure");
+    }
   });
 });
 
