@@ -1,0 +1,76 @@
+# Retrospective — PRD 014: Sub-Agent Scope Enforcement
+# Method: M1-IMPL (P2-SD v2.0)
+# Session: PRD 014 implementation
+# Date: 2026-03-22
+
+hardest_decision: >
+  Designing the scope violation matcher integration with the existing PTY watcher
+  pipeline. The existing PatternMatcher type signature is (text: string) => PatternMatch[],
+  which doesn't accept context parameters. Rather than changing the shared interface
+  (which would break all existing matchers), I chose a factory pattern:
+  createScopeViolationMatcher(allowedPaths) returns a standard PatternMatcher closure.
+  This keeps the scope_violation matcher out of ALL_MATCHERS (since it requires context)
+  and runs it as a separate pass in the watcher's handleChunk. The alternative was
+  extending PatternMatcher to accept an optional context, but that would have touched
+  every matcher signature for a concern only one matcher needs.
+
+observations:
+  - id: OBS-01
+    category: architecture
+    observation: >
+      The glob-to-regex conversion for isPathAllowed required careful treatment of
+      gitignore semantics. Patterns without a directory separator (like *.ts) need
+      to match at any depth, which means prepending **/ implicitly. This mirrors
+      gitignore behavior but differs from standard shell globbing. The bash hook
+      uses native glob matching which may have subtle differences from the TypeScript
+      regex implementation. Both are tested, but edge cases with dotfiles or paths
+      containing special characters could diverge.
+
+  - id: OBS-02
+    category: testing
+    observation: >
+      The integration tests for the pre-commit hook (Phase 1) create real git
+      repositories in tmpdir, which takes ~600ms per test on Windows. This is
+      acceptable for correctness but means the scope-hook test suite alone takes
+      ~3 seconds. If the test count grows, consider a test helper that pre-creates
+      a reusable git repo fixture.
+
+  - id: OBS-03
+    category: design
+    observation: >
+      Adding scope_violation to ALL_CATEGORIES in pty-watcher.ts broke an existing
+      test that asserted config.patterns.size === 8. This is a classic fragile
+      assertion pattern — the test hardcoded the count instead of checking for the
+      presence of expected categories. Fixed by updating to 9, but the test should
+      probably use assert.ok(config.patterns.has('scope_violation')) instead.
+
+card_feedback:
+  essence:
+    purpose_alignment: >
+      PRD 014 strengthens the bridge's role as the enforcement mechanism for
+      methodology-driven agent execution. The bridge now enforces not just what
+      agents can do (methodology steps) but what files they can touch. This is
+      a natural extension of the runtime's purpose.
+    invariant_compliance: >
+      No theory files were touched. The implementation adds infrastructure-level
+      enforcement without altering any formal methodology specifications.
+  delivery_rules:
+    - id: DR-03
+      status: respected
+      note: >
+        All scope enforcement code lives in @method/bridge (scope-hook.ts,
+        pattern-matchers.ts, pty-watcher.ts) and @method/mcp (index.ts).
+        Zero changes to @method/core.
+    - id: DR-14
+      status: respected
+      note: >
+        scope-hook.ts has 27 unit tests covering hook generation, glob matching,
+        installation, and integration with real git. scope-violation has 15 tests
+        covering the PTY watcher matcher and watcher integration.
+    - id: DR-09
+      status: respected
+      note: >
+        Integration tests use real git repositories, not mocks. The pre-commit
+        hook is tested by actually staging files and running git commit.
+
+proposed_deltas: []
