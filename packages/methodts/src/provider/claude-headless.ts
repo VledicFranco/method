@@ -62,7 +62,7 @@ export function buildCliArgs(
   } else if (sessionId) {
     args.push("--session-id", sessionId);
   }
-  if (cfg.allowedTools.length > 0) {
+  if (cfg.allowedTools && cfg.allowedTools.length > 0) {
     args.push("--allowedTools", cfg.allowedTools.join(","));
   }
   return args;

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@method/core": "*",
+    "@method/methodts": "*",
     "node-pty": "^1.0.0",
     "fastify": "^5.0.0",
     "js-yaml": "^4.1.1",

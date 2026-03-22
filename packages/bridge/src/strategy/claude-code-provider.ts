@@ -1,12 +1,15 @@
 import { spawn } from 'node:child_process';
+import { buildCliArgs, parseClaudeOutput, type ClaudeHeadlessConfig } from '@method/methodts';
+import type { AgentResult } from '@method/methodts';
 import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from './llm-provider.js';
 
 /**
- * PRD 012 Phase 4: Claude Code CLI Provider
+ * Claude Code CLI Provider — delegates to @method/methodts for arg building
+ * and output parsing, wraps result as LlmResponse for bridge consumption.
  *
- * Invokes `claude --print` with structured JSON output.
- * Each invoke() call spawns a new process; multi-turn is handled
- * via --resume <session_id>.
+ * invoke() uses methodts's buildCliArgs + parseClaudeOutput as the canonical
+ * implementation. invokeStreaming() retains bridge-native streaming logic
+ * (stream-json format) which methodts doesn't yet support.
  */
 export class ClaudeCodeProvider implements LlmProvider {
   private readonly claudeBin: string;
@@ -15,53 +18,102 @@ export class ClaudeCodeProvider implements LlmProvider {
     this.claudeBin = claudeBin;
   }
 
-  /** Build CLI args from an LlmRequest */
+  /** Convert an LlmRequest to ClaudeHeadlessConfig + args for methodts */
+  private toMethodTSConfig(request: LlmRequest): ClaudeHeadlessConfig {
+    return {
+      claudeBin: this.claudeBin,
+      model: request.model,
+      maxBudgetUsd: request.maxBudgetUsd,
+      workdir: request.workdir,
+      allowedTools: request.allowedTools,
+    };
+  }
+
+  /** Convert methodts AgentResult to bridge LlmResponse */
+  private toLlmResponse(agent: AgentResult, request: LlmRequest): LlmResponse {
+    return {
+      result: agent.raw,
+      is_error: false,
+      duration_ms: agent.cost.duration_ms,
+      duration_api_ms: agent.cost.duration_ms, // methodts doesn't separate API vs total
+      num_turns: agent.numTurns ?? 0,
+      session_id: agent.sessionId ?? request.sessionId,
+      total_cost_usd: agent.cost.usd,
+      usage: agent.usage ? {
+        input_tokens: agent.usage.inputTokens,
+        cache_creation_input_tokens: agent.usage.cacheCreationTokens,
+        cache_read_input_tokens: agent.usage.cacheReadTokens,
+        output_tokens: agent.usage.outputTokens,
+      } : { input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 },
+      model_usage: agent.modelUsage ? Object.fromEntries(
+        Object.entries(agent.modelUsage).map(([model, data]) => [
+          model, { inputTokens: data.inputTokens, outputTokens: data.outputTokens, costUSD: data.costUsd }
+        ])
+      ) : {},
+      permission_denials: agent.permissionDenials ? [...agent.permissionDenials] : [],
+      stop_reason: agent.stopReason ?? 'end_turn',
+      subtype: 'success',
+    };
+  }
+
+  /** Build CLI args — delegates to methodts buildCliArgs + adds bridge-specific flags */
   buildArgs(request: LlmRequest): string[] {
-    // Validate session management: cannot use both refreshSessionId and resumeSessionId
+    // Validate session management
     if (request.refreshSessionId && request.resumeSessionId) {
       throw new Error(
         'Cannot set both refreshSessionId and resumeSessionId. ' +
-        'refreshSessionId starts a fresh session; resumeSessionId continues an existing one. ' +
         'Use one or the other, not both.'
       );
     }
 
-    const args: string[] = ['--print', '-p', request.prompt];
+    const config = this.toMethodTSConfig(request);
+    const sessionId = request.refreshSessionId ?? request.sessionId;
+    const resumeSessionId = request.resumeSessionId;
 
-    // Output format
-    const format = request.outputFormat ?? 'json';
-    args.push('--output-format', format);
+    // Use methodts canonical arg builder with explicit overrides (no methodts defaults leaking)
+    const configExplicit: ClaudeHeadlessConfig = {
+      claudeBin: this.claudeBin,
+      model: request.model,           // undefined if not set — methodts won't add --model
+      maxBudgetUsd: request.maxBudgetUsd, // undefined if not set
+      workdir: request.workdir,
+      allowedTools: request.allowedTools,
+    };
+    const args = buildCliArgs(request.prompt, configExplicit, sessionId, resumeSessionId);
 
-    // Session management
-    if (request.refreshSessionId) {
-      args.push('--session-id', request.refreshSessionId);
-    } else if (request.resumeSessionId) {
-      args.push('--resume', request.resumeSessionId);
-    } else {
-      args.push('--session-id', request.sessionId);
+    // Strip any methodts defaults that leaked (model, budget) when bridge didn't request them
+    for (const flag of ['--model', '--max-budget-usd']) {
+      if (flag === '--model' && request.model === undefined) {
+        const idx = args.indexOf(flag);
+        if (idx >= 0) args.splice(idx, 2);
+      }
+      if (flag === '--max-budget-usd' && request.maxBudgetUsd === undefined) {
+        const idx = args.indexOf(flag);
+        if (idx >= 0) args.splice(idx, 2);
+      }
     }
 
-    // Permission mode (required for headless)
-    args.push('--permission-mode', request.permissionMode ?? 'bypassPermissions');
+    // Override output format (methodts defaults to json, but bridge may want stream-json)
+    const formatIdx = args.indexOf('--output-format');
+    if (formatIdx >= 0 && request.outputFormat) {
+      args[formatIdx + 1] = request.outputFormat;
+    }
 
-    // Optional flags
-    if (request.maxBudgetUsd !== undefined) {
-      args.push('--max-budget-usd', String(request.maxBudgetUsd));
+    // Bridge-specific flags not in methodts
+    const permMode = request.permissionMode ?? 'bypassPermissions';
+    const pmIdx = args.indexOf('--permission-mode');
+    if (pmIdx >= 0) {
+      args[pmIdx + 1] = permMode;
+    } else {
+      args.push('--permission-mode', permMode);
     }
     if (request.appendSystemPrompt) {
       args.push('--append-system-prompt', request.appendSystemPrompt);
-    }
-    if (request.model) {
-      args.push('--model', request.model);
     }
     if (request.verbose) {
       args.push('--verbose');
     }
     if (request.includePartialMessages) {
       args.push('--include-partial-messages');
-    }
-    if (request.allowedTools && request.allowedTools.length > 0) {
-      args.push('--allowedTools', request.allowedTools.join(','));
     }
     if (request.additionalFlags) {
       args.push(...request.additionalFlags);
@@ -74,7 +126,6 @@ export class ClaudeCodeProvider implements LlmProvider {
   private buildEnv(request: LlmRequest): Record<string, string> {
     const env: Record<string, string> = { ...process.env as Record<string, string> };
     if (request.workdir) {
-      // Ensure the child process knows the bridge URL
       env.BRIDGE_URL = process.env.BRIDGE_URL ?? `http://localhost:${process.env.PORT ?? '3456'}`;
       env.BRIDGE_SESSION_ID = request.sessionId;
     }
@@ -92,7 +143,6 @@ export class ClaudeCodeProvider implements LlmProvider {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
-      // AbortSignal support: kill the child process if the signal fires
       if (request.signal) {
         request.signal.addEventListener('abort', () => {
           child.kill();
@@ -102,13 +152,8 @@ export class ClaudeCodeProvider implements LlmProvider {
       let stdout = '';
       let stderr = '';
 
-      child.stdout!.on('data', (chunk: Buffer) => {
-        stdout += chunk.toString();
-      });
-
-      child.stderr!.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-      });
+      child.stdout!.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+      child.stderr!.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
 
       child.on('error', (err) => {
         reject(new Error(`Failed to spawn claude: ${err.message}`));
@@ -121,8 +166,9 @@ export class ClaudeCodeProvider implements LlmProvider {
         }
 
         try {
-          const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>;
-          resolve(this.parseJsonResult(parsed));
+          // Use methodts canonical output parser
+          const agentResult = parseClaudeOutput(stdout.trim());
+          resolve(this.toLlmResponse(agentResult, request));
         } catch (e) {
           reject(new Error(`Failed to parse claude JSON output: ${(e as Error).message}\nstdout: ${stdout.substring(0, 500)}`));
         }
@@ -152,10 +198,8 @@ export class ClaudeCodeProvider implements LlmProvider {
 
       child.stdout!.on('data', (chunk: Buffer) => {
         buffer += chunk.toString();
-
-        // Process complete JSON lines
         const lines = buffer.split('\n');
-        buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -165,9 +209,9 @@ export class ClaudeCodeProvider implements LlmProvider {
             const event = JSON.parse(trimmed) as Record<string, unknown>;
             onEvent(event as LlmStreamEvent);
 
-            // Capture the final result event
             if (event.type === 'result') {
-              lastResult = this.parseJsonResult(event);
+              const agentResult = parseClaudeOutput(trimmed);
+              lastResult = this.toLlmResponse(agentResult, request);
             }
           } catch {
             // Skip malformed lines
@@ -175,26 +219,22 @@ export class ClaudeCodeProvider implements LlmProvider {
         }
       });
 
-      child.stderr!.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-      });
+      child.stderr!.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
 
       child.on('error', (err) => {
         reject(new Error(`Failed to spawn claude: ${err.message}`));
       });
 
       child.on('close', (code) => {
-        // Process any remaining buffer
         if (buffer.trim()) {
           try {
             const event = JSON.parse(buffer.trim()) as Record<string, unknown>;
             onEvent(event as LlmStreamEvent);
             if (event.type === 'result') {
-              lastResult = this.parseJsonResult(event);
+              const agentResult = parseClaudeOutput(buffer.trim());
+              lastResult = this.toLlmResponse(agentResult, request);
             }
-          } catch {
-            // Skip malformed trailing data
-          }
+          } catch { /* Skip malformed trailing data */ }
         }
 
         if (lastResult) {
@@ -206,42 +246,5 @@ export class ClaudeCodeProvider implements LlmProvider {
         }
       });
     });
-  }
-
-  /** Parse Claude Code JSON output into LlmResponse */
-  private parseJsonResult(raw: Record<string, unknown>): LlmResponse {
-    const usage = (raw.usage ?? {}) as Record<string, number>;
-    const modelUsage = (raw.modelUsage ?? {}) as Record<string, Record<string, number>>;
-
-    return {
-      result: String(raw.result ?? ''),
-      is_error: Boolean(raw.is_error),
-      duration_ms: Number(raw.duration_ms ?? 0),
-      duration_api_ms: Number(raw.duration_api_ms ?? 0),
-      num_turns: Number(raw.num_turns ?? 0),
-      session_id: String(raw.session_id ?? ''),
-      total_cost_usd: Number(raw.total_cost_usd ?? 0),
-      usage: {
-        input_tokens: Number(usage.input_tokens ?? 0),
-        cache_creation_input_tokens: Number(usage.cache_creation_input_tokens ?? 0),
-        cache_read_input_tokens: Number(usage.cache_read_input_tokens ?? 0),
-        output_tokens: Number(usage.output_tokens ?? 0),
-      },
-      model_usage: Object.fromEntries(
-        Object.entries(modelUsage).map(([model, data]) => [
-          model,
-          {
-            inputTokens: Number(data.inputTokens ?? 0),
-            outputTokens: Number(data.outputTokens ?? 0),
-            costUSD: Number(data.costUSD ?? 0),
-          },
-        ])
-      ),
-      permission_denials: Array.isArray(raw.permission_denials)
-        ? (raw.permission_denials as string[])
-        : [],
-      stop_reason: String(raw.stop_reason ?? 'end_turn'),
-      subtype: String(raw.subtype ?? 'success'),
-    };
   }
 }
