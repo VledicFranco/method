@@ -1,29 +1,34 @@
-// Strategy module re-exports for backward compatibility.
-// Pure logic is in @method/core; bridge-only items (transport, I/O) are local.
+// Strategy module barrel exports (PRD 017)
+// Pure logic lives locally (formerly in @method/core); bridge-only items (transport, I/O) are also here.
 
-// Re-export everything from core's strategy barrel
-export type {
-  LlmRequest, LlmUsage, LlmResponse, LlmStreamEvent, LlmProvider,
-  ArtifactVersion, ArtifactBundle, ArtifactStore,
-  GateType, GateConfig, GateContext, GateResult,
-  StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult,
-  NodeStatus, NodeResult, OversightEvent, ExecutionState, ExecutionStateSnapshot, StrategyExecutionResult, StrategyExecutorConfig,
-  StrategyRetro,
-} from '@method/core';
+// LLM Provider
+export type { LlmRequest, LlmUsage, LlmResponse, LlmStreamEvent, LlmProvider } from './llm-provider.js';
 
-export {
-  InMemoryArtifactStore, createArtifactStore,
-  getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback,
-  parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort,
-  StrategyExecutor,
-  generateRetro, computeCriticalPath, retroToYaml,
-} from '@method/core';
+// Artifact Store
+export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './artifact-store.js';
+export { InMemoryArtifactStore, createArtifactStore } from './artifact-store.js';
+
+// Gates
+export type { GateType, GateConfig, GateContext, GateResult } from './gates.js';
+export { getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback } from './gates.js';
+
+// Strategy Parser
+export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult } from './strategy-parser.js';
+export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy-parser.js';
+
+// Backward-compatible alias
+export type { StrategyValidationResult as ValidationResult } from './strategy-parser.js';
+
+// Strategy Executor
+export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, ExecutionStateSnapshot, StrategyExecutionResult, StrategyExecutorConfig } from './strategy-executor.js';
+export { StrategyExecutor } from './strategy-executor.js';
+
+// Retro Generator (pure logic)
+export type { StrategyRetro } from './retro-generator.js';
+export { generateRetro, computeCriticalPath, retroToYaml } from './retro-generator.js';
 
 // loadExecutorConfig lives in bridge (DR-03: env access in bridge only)
 export { loadExecutorConfig } from './strategy-routes.js';
-
-// Backward-compatible alias (bridge's strategy-parser.ts used this name)
-export type { StrategyValidationResult as ValidationResult } from '@method/core';
 
 // Bridge-only exports (transport and I/O)
 export { ClaudeCodeProvider } from './claude-code-provider.js';

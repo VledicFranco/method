@@ -13,14 +13,18 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { ProjectEvent, EventPersistence } from '@method/core';
+import type { ProjectEvent, EventPersistence } from './events/index.js';
 import {
   DefaultIsolationValidator,
+} from './validation/index.js';
+import {
   InMemoryProjectRegistry,
+} from './registry/index.js';
+import {
   ProjectEventType,
   createProjectEvent,
   createTestEvent,
-} from '@method/core';
+} from './events/index.js';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
 import { copyMethodology, copyStrategy, validateTargetIds } from './resource-copier.js';
 import { reloadConfig, validateConfig } from './config/config-reloader.js';

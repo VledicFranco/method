@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DiscoveryService } from '../multi-project/discovery-service.js';
 import { discoverAndRegister, loadProjectConfig, rescanAndReloadConfigs } from '../multi-project/discovery-registry-integration.js';
-import { InMemoryProjectRegistry } from '@method/core';
+import { InMemoryProjectRegistry } from '../registry/index.js';
 
 // Helper to create a mock git repository
 function createMockGitRepo(basePath: string, projectName: string): string {

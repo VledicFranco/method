@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DiscoveryService } from '../multi-project/discovery-service.js';
-import type { ProjectEvent } from '@method/core';
+import type { ProjectEvent } from '../events/index.js';
 
 export interface GenesisToolsContext {
   discoveryService: DiscoveryService;

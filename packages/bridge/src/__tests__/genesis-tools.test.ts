@@ -8,8 +8,8 @@ import assert from 'node:assert';
 import { describe } from 'node:test';
 import type { DiscoveryService } from '../multi-project/discovery-service.js';
 import type { ProjectMetadata } from '../multi-project/discovery-service.js';
-import type { ProjectEvent } from '@method/core';
-import { ProjectEventType, createProjectEvent } from '@method/core';
+import type { ProjectEvent } from '../events/index.js';
+import { ProjectEventType, createProjectEvent } from '../events/index.js';
 import {
   projectListTool,
   projectGetTool,

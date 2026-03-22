@@ -41,8 +41,8 @@ import {
   GenesisPollingLoop,
 } from '../genesis/polling-loop.js';
 import type { SessionPool, SessionStatusInfo } from '../pool.js';
-import type { ProjectEvent } from '@method/core';
-import { ProjectEventType, createProjectEvent } from '@method/core';
+import type { ProjectEvent } from '../events/index.js';
+import { ProjectEventType, createProjectEvent } from '../events/index.js';
 
 // ─── Mock SessionPool for E2E Testing ───
 

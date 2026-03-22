@@ -84,7 +84,7 @@ export function validateConfig(config: Record<string, any>): { valid: boolean; e
       ManifestSchema.parse(config);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        err.errors.forEach((error) => {
+        err.issues.forEach((error) => {
           const path = error.path.join('.');
           errors.push(`${path || 'root'}: ${error.message}`);
         });
