@@ -6,6 +6,7 @@
  *   GET    /api/projects/:id             — get single project (with isolation check)
  *   POST   /api/projects/validate        — resume discovery from checkpoint
  *   POST   /api/projects/:id/repair      — diagnose corrupted repo
+ *   POST   /api/projects/:id/reload      — reload project config (atomic, audited)
  *   GET    /api/events                   — cursor-based event polling
  *
  * Isolation enforced via IsolationValidator from Wave 1.
@@ -21,20 +22,80 @@ import {
   createTestEvent,
 } from '@method/core';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
+import { copyMethodology, copyStrategy } from './resource-copier.js';
+import { reloadConfig, validateConfig } from './config/config-reloader.js';
+import path from 'path';
 
 // ── Event Cursor Management (Phase 1: In-Memory) ────
 
+// Configuration from environment variables
+const EVENT_LOG_MAX_SIZE = parseInt(process.env.EVENT_LOG_MAX_SIZE ?? '100000', 10);
+const CURSOR_VERSION = '1'; // Version 1: { version, projectId, index, timestamp }
+
 interface CursorState {
+  version: string;
   eventIndex: number;
   timestamp: number;
+  projectId?: string;
+}
+
+// Circular buffer implementation for event log
+interface CircularEventLog {
+  buffer: ProjectEvent[];
+  capacity: number;
+  index: number; // Next write position
+  count: number; // Total events ever added (for absolute indexing)
+}
+
+function createCircularEventLog(capacity: number): CircularEventLog {
+  return {
+    buffer: [],
+    capacity,
+    index: 0,
+    count: 0,
+  };
+}
+
+function pushEventToLog(log: CircularEventLog, event: ProjectEvent): void {
+  if (log.buffer.length < log.capacity) {
+    log.buffer.push(event);
+  } else {
+    // Evict oldest entry at current index
+    log.buffer[log.index] = event;
+  }
+  log.index = (log.index + 1) % log.capacity;
+  log.count++;
+}
+
+function getEventsFromLog(log: CircularEventLog, fromIndex: number): ProjectEvent[] {
+  if (fromIndex >= log.count) {
+    return []; // Index beyond current count
+  }
+
+  // Clamp fromIndex to valid range: max(0, count - capacity)
+  const minValidIndex = Math.max(0, log.count - log.capacity);
+  const clampedIndex = Math.max(minValidIndex, fromIndex);
+  const offset = clampedIndex - (log.count - log.buffer.length);
+
+  if (offset >= log.buffer.length) {
+    return [];
+  }
+
+  const startPos = Math.max(0, offset);
+  return log.buffer.slice(startPos);
 }
 
 const cursorMap = new Map<string, CursorState>();
-const eventLog: ProjectEvent[] = [];
+const eventLog = createCircularEventLog(EVENT_LOG_MAX_SIZE);
 
-function generateCursor(index: number): string {
+function generateCursor(index: number, projectId?: string): string {
   const cursorId = Math.random().toString(36).slice(2);
-  cursorMap.set(cursorId, { eventIndex: index, timestamp: Date.now() });
+  cursorMap.set(cursorId, {
+    version: CURSOR_VERSION,
+    eventIndex: index,
+    timestamp: Date.now(),
+    projectId,
+  });
 
   // Cleanup old cursors (>24h)
   for (const [id, state] of cursorMap.entries()) {
@@ -46,16 +107,23 @@ function generateCursor(index: number): string {
   return cursorId;
 }
 
-function parseCursor(cursor: string): number {
+function parseCursor(cursor: string): { index: number; projectId?: string } {
   const state = cursorMap.get(cursor);
   if (!state) {
-    return 0; // Default to first event
+    return { index: 0 };
   }
-  return state.eventIndex;
+
+  // Check version compatibility (Phase 3 migration point)
+  if (state.version !== CURSOR_VERSION) {
+    console.warn(`Cursor version mismatch: expected ${CURSOR_VERSION}, got ${state.version}. Resetting.`);
+    return { index: 0 };
+  }
+
+  return { index: state.eventIndex, projectId: state.projectId };
 }
 
 function getEventsSinceCursor(events: ProjectEvent[], cursorId?: string): ProjectEvent[] {
-  const index = cursorId ? parseCursor(cursorId) : 0;
+  const { index } = cursorId ? parseCursor(cursorId) : { index: 0 };
   return events.slice(index);
 }
 
@@ -129,7 +197,7 @@ export async function registerProjectRoutes(
             },
             { phase: 'phase1' },
           );
-          eventLog.push(event);
+          pushEventToLog(eventLog, event);
         }
 
         return reply.status(200).send({
@@ -274,6 +342,98 @@ export async function registerProjectRoutes(
     },
   );
 
+  // POST /api/projects/:id/reload — Reload project config (atomic, with audit logging)
+  app.post<{ Params: { id: string }; Body: Record<string, any> }>(
+    '/api/projects/:id/reload',
+    async (req: FastifyRequest<{ Params: { id: string }; Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { id: projectId } = req.params;
+        const newConfig = req.body || {};
+        const sessionContext = getSessionContext(req);
+
+        // Validate access
+        const access = validateProjectAccess(projectId, sessionContext);
+        if (!access.allowed) {
+          console.warn(`[ISOLATION] Cross-project config reload denied: ${access.reason}`);
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: access.reason,
+          });
+        }
+
+        // Only allow reload if session owns the project or admin override present
+        if (sessionContext.projectId && sessionContext.projectId !== projectId) {
+          console.warn(`[AUDIT] Unauthorized config reload attempt for ${projectId} from session ${sessionContext.projectId}`);
+          return reply.status(403).send({
+            error: 'Privilege denied',
+            reason: `session.project_id (${sessionContext.projectId}) does not match requested project (${projectId})`,
+          });
+        }
+
+        // Validate config structure
+        const validation = validateConfig(newConfig);
+        if (!validation.valid) {
+          return reply.status(400).send({
+            error: 'Config validation failed',
+            errors: validation.errors,
+          });
+        }
+
+        // Determine config file path
+        const configPath = path.join(process.cwd(), projectId, 'manifest.yaml');
+
+        // Perform atomic reload
+        const result = await reloadConfig({
+          configPath,
+          newConfig,
+          userId: sessionContext.projectId || 'anonymous',
+          metadata: { projectId },
+        });
+
+        if (!result.success) {
+          return reply.status(400).send({
+            error: result.message,
+            detail: result.error,
+          });
+        }
+
+        // Emit config reload event
+        const event = createProjectEvent(
+          ProjectEventType.CONFIG_UPDATED,
+          projectId,
+          {
+            config_path: configPath,
+            changes: result.diff,
+          },
+          { phase: 'phase2b' },
+        );
+        pushEventToLog(eventLog, event);
+
+        // Trigger registry rescan
+        try {
+          await registry.rescan();
+          console.log(`[FileWatcher] Rescan triggered after config reload for ${projectId}`);
+        } catch (err) {
+          console.warn(`[FileWatcher] Rescan failed after config reload:`, (err as Error).message);
+          // Don't fail the request if rescan fails
+        }
+
+        return reply.status(200).send({
+          success: true,
+          message: 'Config reloaded and rescanned successfully',
+          old_config: result.oldConfig,
+          new_config: result.newConfig,
+          changes: result.diff,
+        });
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Config reload failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
   // GET /api/events — Global event polling (Phase 1: testing only, unfiltered)
   // NOTE: F-SECUR-001 — This endpoint returns all events. Not for multi-project production.
   app.get<{ Querystring: { since_cursor?: string } }>(
@@ -285,11 +445,14 @@ export async function registerProjectRoutes(
       try {
         const { since_cursor } = req.query || {};
 
-        // Get events since cursor
-        const newEvents = getEventsSinceCursor(eventLog, since_cursor);
+        // Get all events from circular buffer
+        const allEvents = getEventsFromLog(eventLog, 0);
 
-        // Generate next cursor for next poll
-        const nextCursor = generateCursor(eventLog.length);
+        // Get events since cursor
+        const newEvents = getEventsSinceCursor(allEvents, since_cursor);
+
+        // Generate next cursor for next poll (use count to handle wrap-around)
+        const nextCursor = generateCursor(eventLog.count);
         const hasMore = newEvents.length > 0;
 
         return reply.status(200).send({
@@ -329,14 +492,15 @@ export async function registerProjectRoutes(
           });
         }
 
-        // Filter events by projectId
-        const projectEvents = eventLog.filter((e) => e.projectId === projectId);
+        // Get all events from circular buffer and filter by projectId
+        const allEvents = getEventsFromLog(eventLog, 0);
+        const projectEvents = allEvents.filter((e) => e.projectId === projectId);
 
         // Get events since cursor
         const newEvents = getEventsSinceCursor(projectEvents, since_cursor);
 
         // Generate next cursor for next poll
-        const nextCursor = generateCursor(projectEvents.length);
+        const nextCursor = generateCursor(eventLog.count, projectId);
         const hasMore = newEvents.length > 0;
 
         return reply.status(200).send({
@@ -375,7 +539,7 @@ export async function registerProjectRoutes(
           { test: true },
         );
 
-        eventLog.push(event);
+        pushEventToLog(eventLog, event);
 
         return reply.status(201).send(event);
       } catch (err) {
@@ -386,8 +550,89 @@ export async function registerProjectRoutes(
       }
     },
   );
+
+  // POST /api/resources/copy-methodology — Copy methodology from source to targets
+  app.post<{ Body: Record<string, any> }>(
+    '/api/resources/copy-methodology',
+    async (req: FastifyRequest<{ Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { source_id, method_name, target_ids } = req.body || {};
+
+        if (!source_id || !method_name || !target_ids || !Array.isArray(target_ids)) {
+          return reply.status(400).send({
+            error: 'Missing or invalid required fields: source_id, method_name, target_ids (array)',
+          });
+        }
+
+        // F-SEC-002: Validate that requester can access source project
+        const sessionContext = getSessionContext(req);
+        const sourceValidation = validateProjectAccess(source_id, sessionContext);
+        if (!sourceValidation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: `Cannot copy from project ${source_id} — permission denied`,
+            message: sourceValidation.reason || 'Not authorized to access source project',
+          });
+        }
+
+        const result = await copyMethodology({
+          source_id,
+          method_name,
+          target_ids,
+        });
+
+        return reply.status(200).send(result);
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Resource copy failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  // POST /api/resources/copy-strategy — Copy strategy from source to targets
+  app.post<{ Body: Record<string, any> }>(
+    '/api/resources/copy-strategy',
+    async (req: FastifyRequest<{ Body: Record<string, any> }>, reply: FastifyReply) => {
+      try {
+        const { source_id, strategy_name, target_ids } = req.body || {};
+
+        if (!source_id || !strategy_name || !target_ids || !Array.isArray(target_ids)) {
+          return reply.status(400).send({
+            error: 'Missing or invalid required fields: source_id, strategy_name, target_ids (array)',
+          });
+        }
+
+        // F-SEC-002: Validate that requester can access source project
+        const sessionContext = getSessionContext(req);
+        const sourceValidation = validateProjectAccess(source_id, sessionContext);
+        if (!sourceValidation.allowed) {
+          return reply.status(403).send({
+            error: 'Access denied',
+            reason: `Cannot copy from project ${source_id} — permission denied`,
+            message: sourceValidation.reason || 'Not authorized to access source project',
+          });
+        }
+
+        const result = await copyStrategy({
+          source_id,
+          strategy_name,
+          target_ids,
+        });
+
+        return reply.status(200).send(result);
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Resource copy failed',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
 }
 
 // Export for testing
 export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor };
-export { eventLog };
+export { eventLog, pushEventToLog, getEventsFromLog, createCircularEventLog };
+export type { CircularEventLog, CursorState };

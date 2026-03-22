@@ -1,0 +1,199 @@
+================================================================================
+PRD 020 PHASE 2 DEPLOYMENT READINESS SYNTHESIS
+================================================================================
+
+Delivery Date: 2026-03-21
+Strategist: Multi-advisor consensus (5 advisors: Thane, Nika, Harlan, Reva, Orion)
+Repository: pv-method (feat/prd020-phase2)
+Status: CONDITIONAL MERGE (after 11 blockers resolved)
+
+================================================================================
+FINDINGS ANALYZED
+================================================================================
+
+Total Findings: 47
+  - Architecture review (F-A-*): 11 findings
+  - Performance audit (F-P-*): 7 findings
+  - Advisory synthesis (F-THANE/NIKA/HARLAN/REVA/ORION): 29 findings
+
+Breakdown by Bucket:
+  - FIX NOW (merge blockers): 11 findings
+  - PHASE 3 DEFERRED: 24 findings (with PRD-031 references)
+  - OPS CONSTRAINTS: 11 findings (operational boundaries)
+  - REJECTED (maintenance work): 2 findings
+
+================================================================================
+DELIVERABLES
+================================================================================
+
+1. README-deployment-readiness.md (2 KB)
+   Navigation guide + quick reference + reading paths per role
+
+2. prd020-phase2-executive-summary.md (8.2 KB)
+   10-minute summary: decision matrix, 11 blockers, Phase 3 scope, ops runbook
+
+3. prd020-phase2-deployment-readiness.md (23 KB) [COMPREHENSIVE]
+   40-minute analysis: FIX NOW tasks, PHASE 3 scope, OPS constraints, REJECT items
+
+4. prd020-phase2-merge-blockers-checklist.md (32 KB) [DETAILED TASKS]
+   Engineer task list: 11 blockers x 5-7 tasks each, with code examples
+
+5. prd020-phase2-fix-tracking.csv (6.9 KB)
+   47 findings with severity, category, bucket, effort, owner
+
+================================================================================
+DECISION SUMMARY
+================================================================================
+
+VERDICT: CONDITIONAL MERGE
+
+Requirements:
+  - All 11 FIX NOW items resolved
+  - All 992 tests passing
+  - Performance benchmarks validated (<2s discovery, <100ms polling)
+  - Ops team acknowledges runbook
+  - Phase 3 backlog created (24 items with PRD-031 refs)
+
+Timeline: 16-18 engineering hours + 4-6 QA hours (7 days)
+Risk: LOW (with ops constraints) / MEDIUM (without monitoring)
+
+================================================================================
+THE 11 BLOCKING FINDINGS (Pre-Merge)
+================================================================================
+
+CRITICAL (Non-Functional):
+  1. F-A-1   | Genesis tools not registered in MCP               | 2h
+  2. F-A-3   | Polling loop never instantiated/started           | 3h
+  3. F-P-1   | Event log unbounded growth (OOM crash 24h)        | 2h
+  4. F-P-2   | Cursor map unbounded leak (28MB+ stale)           | 1h
+  5. F-NIKA-1| Genesis can execute mutations (violates safety)   | 1h
+
+HIGH (Unvalidated / Unusable):
+  6. F-THANE-2| project-config.yaml not initialized              | 1.5h
+  7. F-THANE-4| No E2E portfolio discovery test                  | 2h
+  8. F-NIKA-6 | Cross-project isolation not tested               | 1h
+  9. F-THANE-6| Performance metrics not measured                 | 1.5h
+
+MEDIUM-HIGH (State Inconsistency):
+  10. F-A-5  | Cursor format not versioned (Phase 3 blocker)     | 0.5h
+  11. F-A-9  | Genesis abort returns fake success (race condition)| 1.5h
+
+Total Engineering Effort: 17 hours
+
+================================================================================
+PHASE 3 DEFERRED (24 ITEMS)
+================================================================================
+
+Performance (7): cursor batching, file watcher, discovery cache, dashboard memory,
+                 error recovery, genesis config, decoupling
+
+Architecture (6): docs, behavioral spec, methodology positioning, event lifecycle,
+                  metrics, isolation tests
+
+Safety (5): config validation, path traversal, atomic swaps, error consistency,
+            budget tests
+
+Testing (6): E2E integration, race conditions, abort, load tests, multi-project,
+             cursor cleanup
+
+Phase 2 Mitigation: Max 20 projects per instance, ops monitoring, release notes
+
+================================================================================
+OPERATIONAL CONSTRAINTS (PHASE 2 DEPLOYMENT)
+================================================================================
+
+Resource Limits:
+  - Max 20 projects per bridge instance
+  - Max 10,000 events in memory (ring buffer)
+  - Max 1,000 cursors in memory (LRU)
+  - Memory alert >500MB, restart >800MB
+
+Usage Rules:
+  - Dashboard tabs: 8-hour lifetime (restart daily)
+  - Discovery calls: max 1x per minute
+  - YAML edits: batch <500ms windows
+  - Genesis spawns: max 1x per 30s
+
+Monitoring:
+  Daily: memory, event log size, cursor map, errors
+  Weekly: perf benchmark, load test, file watcher latency
+  Monthly: event archive, polling frequency, error patterns
+
+================================================================================
+QUALITY GATES (BEFORE MERGE)
+================================================================================
+
+Code & Tests:
+  - All 11 FIX NOW tasks completed
+  - All 992 tests passing (npm run test)
+  - Integration tests pass
+  - Performance benchmarks validated
+
+Reviews:
+  - Bridge team lead: code review + sign-off
+  - QA team lead: test plan + sign-off
+  - Steering council: merge approval
+  - Ops team: runbook acknowledgment
+
+================================================================================
+KEY METRICS (PHASE 2 SUCCESS)
+================================================================================
+
+Discovery: <2s for 10 projects (with 20-project limit)
+Polling: <100ms per cycle
+Memory: stable state <500MB, alerts at >500MB
+Uptime: >99.9% with ops constraints
+Event log: circular buffer (10K max, no OOM)
+Error rate: <0.1%
+
+================================================================================
+RECOMMENDED READING
+================================================================================
+
+CTO / Steering Council (30 min):
+  1. This manifest
+  2. Executive summary
+  3. Final assessment in deployment-readiness.md
+
+Engineering Lead (2 hours):
+  1. Executive summary (10 min)
+  2. Deployment readiness doc (40 min)
+  3. Merge blockers checklist first 2 tasks each (70 min)
+
+Individual Engineer (per blocker, 1.5-2.5 hours):
+  1. Executive summary table (2 min)
+  2. Your blocker in merge-blockers-checklist.md (30 min)
+  3. Task implementation (1-2 hours)
+
+QA Lead (1 hour):
+  1. Executive summary (10 min)
+  2. Merge blockers: find QA-owned items (30 min)
+  3. Fix tracking CSV + ops constraints (20 min)
+
+Ops/Deployment (30 min):
+  1. Executive summary ops sections (20 min)
+  2. Full ops runbook section (10 min)
+
+================================================================================
+SUMMARY
+================================================================================
+
+Phase 2 is INCOMPLETE (11 blockers) but STRATEGICALLY SOUND.
+
+After 17 hours of fixes:
+  - Feature complete (Genesis wired + polling running)
+  - Stable (unbounded growth capped, tests added)
+  - Safe (privilege checks, isolation validated)
+  - Validated (E2E + perf benchmarks)
+
+Ready for: <20 projects with ops constraints
+
+Phase 3 roadmap: Scale to 100+, optimize, complete docs
+
+Status: READY FOR ENGINEERING HANDOFF
+
+================================================================================
+Document Set Delivery Date: 2026-03-21
+Location: .method/delivery/prd020-phase2-*
+Status: Complete and ready for team execution
+================================================================================

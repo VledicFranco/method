@@ -17,6 +17,12 @@ import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from '.
 import { setOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
+import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
+import { GenesisPollingLoop } from './genesis/polling-loop.js';
+import { registerGenesisRoutes } from './genesis-routes.js';
+import { registerProjectRoutes, eventLog, getEventsFromLog } from './project-routes.js';
+import { DiscoveryService } from './multi-project/discovery-service.js';
+import { InMemoryProjectRegistry } from '@method/core';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -30,6 +36,8 @@ const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000'
 const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
 const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
 const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
+const GENESIS_ENABLED = process.env.GENESIS_ENABLED === 'true';
+const GENESIS_POLLING_INTERVAL_MS = parseInt(process.env.GENESIS_POLLING_INTERVAL_MS ?? '5000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -50,6 +58,8 @@ const tokenTracker = createTokenTracker({
 const transcriptReader = createTranscriptReader({
   sessionsDir: CLAUDE_SESSIONS_DIR,
 });
+
+let genesisPollingLoop: GenesisPollingLoop | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -109,6 +119,22 @@ registerLiveOutputRoutes(app, pool, tokenTracker);
 // ---------- Transcript Browser (PRD 007 Phase 3) ----------
 
 registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
+
+// ---------- Genesis Routes (PRD 020 Phase 2A) ----------
+
+// F-A-1: Register Genesis tools routes
+// Context will be populated when Genesis is spawned
+const genesisRouteContext: any = {
+  sessionPool: pool,
+  genesisSessionId: null,
+  genesisToolsContext: undefined,
+};
+
+// ---------- Project Routes (PRD 020 Phase 2A) ----------
+
+// F-I-2: Initialize and register project discovery routes
+const discoveryService = new DiscoveryService();
+const projectRegistry = new InMemoryProjectRegistry();
 
 // ---------- Health ----------
 
@@ -476,6 +502,34 @@ app.delete<{
 });
 
 /**
+ * GET /genesis/status — Get Genesis session status (PRD 020 Phase 2A)
+ */
+app.get('/genesis/status', async (_request, reply) => {
+  const sessionId = getGenesisSessionId(pool);
+  if (!sessionId) {
+    return reply.status(404).send({ error: 'Genesis not running' });
+  }
+
+  try {
+    const status = pool.status(sessionId);
+    return reply.status(200).send({
+      session_id: status.sessionId,
+      nickname: status.nickname,
+      status: status.status,
+      mode: status.mode,
+      project_id: status.metadata?.project_id ?? 'root',
+      budget_tokens_per_day: status.metadata?.budget_tokens_per_day ?? 50000,
+      queue_depth: status.queueDepth,
+      prompt_count: status.promptCount,
+      last_activity_at: status.lastActivityAt.toISOString(),
+      metadata: status.metadata,
+    });
+  } catch (err) {
+    return reply.status(500).send({ error: (err as Error).message });
+  }
+});
+
+/**
  * GET /sessions — List all sessions.
  */
 app.get('/sessions', async (_request, reply) => {
@@ -811,6 +865,10 @@ if (TRIGGERS_ENABLED) {
 
 async function start() {
   try {
+    // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
+    await registerGenesisRoutes(app, genesisRouteContext);
+    await registerProjectRoutes(app, discoveryService, projectRegistry);
+
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
 
@@ -857,6 +915,81 @@ async function start() {
         app.log.warn(`Auto-killed stale sessions: ${result.killed.join(', ')}`);
       }
     }, STALE_CHECK_INTERVAL_MS);
+
+    // PRD 020 Phase 2A: Spawn Genesis on startup if enabled
+    if (GENESIS_ENABLED) {
+      try {
+        const genesisResult = await spawnGenesis(pool, process.cwd(), 50000);
+        app.log.info(
+          `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
+        );
+
+        // F-A-3: Instantiate and start Genesis polling loop
+        genesisPollingLoop = new GenesisPollingLoop({
+          intervalMs: GENESIS_POLLING_INTERVAL_MS,
+          cursorFilePath: '.method/genesis-cursors.yaml',
+        });
+
+        // Create eventFetcher callback that fetches from the event log
+        const eventFetcher = async (_projectId: string, cursor: string): Promise<any[]> => {
+          try {
+            // Parse cursor to get starting index
+            let startIndex = 0;
+            if (cursor) {
+              // Simple cursor parsing: try to extract index from cursor string
+              // In production, would use proper cursor format
+              const parsed = parseInt(cursor, 10);
+              if (!isNaN(parsed)) {
+                startIndex = parsed;
+              }
+            }
+
+            // Get all events from the log
+            const allEvents = getEventsFromLog(eventLog, startIndex);
+            return allEvents;
+          } catch (err) {
+            app.log.warn(`Event fetcher error: ${(err as Error).message}`);
+            return [];
+          }
+        };
+
+        // Create callback for new events
+        const onNewEvents = async (_projectId: string, events: any[]): Promise<void> => {
+          if (!genesisResult.sessionId || events.length === 0) return;
+
+          try {
+            // Generate a summary of the events for Genesis
+            const eventSummary = events.map(e => {
+              const type = typeof e.type === 'string' ? e.type : JSON.stringify(e.type);
+              const projectId = e.projectId || 'unknown';
+              return `${type} (${projectId})`;
+            }).join(', ');
+
+            // Dispatch prompt to Genesis
+            const prompt = `Observed ${events.length} new event(s): ${eventSummary}\n\nUse project_read_events() to fetch details and analyze the impact on project state.`;
+
+            // Fire async prompt but don't wait (Genesis session handles it)
+            pool.prompt(genesisResult.sessionId, prompt, 10000).catch(err => {
+              app.log.warn(`Failed to send prompt to Genesis: ${(err as Error).message}`);
+            });
+          } catch (err) {
+            app.log.warn(`Event callback error: ${(err as Error).message}`);
+          }
+        };
+
+        // Start the polling loop
+        genesisPollingLoop.start(
+          genesisResult.sessionId,
+          pool,
+          eventFetcher,
+          onNewEvents,
+        );
+
+        app.log.info(`Genesis polling loop started (interval: ${GENESIS_POLLING_INTERVAL_MS}ms)`);
+      } catch (err) {
+        app.log.error(`Failed to spawn Genesis: ${(err as Error).message}`);
+      }
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);
@@ -870,6 +1003,11 @@ function gracefulShutdown(signal: string) {
   app.close().then(() => {
     // Stop usage polling
     usagePoller.stop();
+
+    // Stop Genesis polling loop if running
+    if (genesisPollingLoop) {
+      genesisPollingLoop.stop();
+    }
 
     // Stop trigger watchers (PRD 018)
     if (triggerRouter) {

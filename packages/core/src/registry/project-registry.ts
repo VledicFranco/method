@@ -3,6 +3,8 @@
  *
  * In-memory, queryable registry of compiled methodology YAML specs.
  * Loads from registry/ directory, caches, validates.
+ *
+ * F-THANE-2: Also tracks discovered projects and their configurations
  */
 
 import fs from 'fs';
@@ -17,6 +19,20 @@ export interface MethodologySpec {
   [key: string]: any;
 }
 
+export interface ProjectConfig {
+  id: string;
+  name: string;
+  description?: string;
+  owner?: string;
+  version?: string;
+  dependencies?: Array<{ project_id: string; version_constraint?: string }>;
+  shared_with?: string[];
+  genesis_enabled?: boolean;
+  resource_copy?: boolean;
+  genesis_budget?: number;
+  [key: string]: any;
+}
+
 export interface VerifyResult {
   valid: boolean;
   errors: string[];
@@ -28,6 +44,11 @@ export interface ProjectRegistry {
    * Initialize registry — scan and load all YAML specs
    */
   initialize(): Promise<void>;
+
+  /**
+   * Rescan registry — reload all YAML specs from disk
+   */
+  rescan(): Promise<void>;
 
   /**
    * Find spec by name (exact match)
@@ -48,6 +69,21 @@ export interface ProjectRegistry {
    * Verify a spec is valid
    */
   verify(spec: MethodologySpec): VerifyResult;
+
+  /**
+   * F-THANE-2: Register a discovered project config
+   */
+  registerProjectConfig(config: ProjectConfig): void;
+
+  /**
+   * F-THANE-2: Get a registered project config by ID
+   */
+  getProjectConfig(projectId: string): ProjectConfig | undefined;
+
+  /**
+   * F-THANE-2: List all registered project configs
+   */
+  listProjectConfigs(): ProjectConfig[];
 }
 
 /**
@@ -55,6 +91,7 @@ export interface ProjectRegistry {
  */
 export class InMemoryProjectRegistry implements ProjectRegistry {
   private specs: Map<string, MethodologySpec> = new Map();
+  private projectConfigs: Map<string, ProjectConfig> = new Map();
   private initialized = false;
   private registryDir: string;
 
@@ -64,6 +101,22 @@ export class InMemoryProjectRegistry implements ProjectRegistry {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    // Scan registry directory for YAML files
+    const specs = await this.scanRegistryDirectory(this.registryDir);
+    specs.forEach((spec) => {
+      this.specs.set(spec.id, spec);
+      if (spec.name) {
+        this.specs.set(spec.name, spec);
+      }
+    });
+
+    this.initialized = true;
+  }
+
+  async rescan(): Promise<void> {
+    // Clear existing specs
+    this.specs.clear();
 
     // Scan registry directory for YAML files
     const specs = await this.scanRegistryDirectory(this.registryDir);
@@ -131,6 +184,30 @@ export class InMemoryProjectRegistry implements ProjectRegistry {
       errors,
       warnings,
     };
+  }
+
+  /**
+   * F-THANE-2: Register a discovered project config
+   */
+  registerProjectConfig(config: ProjectConfig): void {
+    if (!config.id) {
+      throw new Error('Project config must have an id');
+    }
+    this.projectConfigs.set(config.id, config);
+  }
+
+  /**
+   * F-THANE-2: Get a registered project config by ID
+   */
+  getProjectConfig(projectId: string): ProjectConfig | undefined {
+    return this.projectConfigs.get(projectId);
+  }
+
+  /**
+   * F-THANE-2: List all registered project configs
+   */
+  listProjectConfigs(): ProjectConfig[] {
+    return Array.from(this.projectConfigs.values());
   }
 
   private async scanRegistryDirectory(dir: string): Promise<MethodologySpec[]> {
