@@ -2,14 +2,15 @@
  * ClaudeHeadlessProvider — Production agent provider wrapping `claude --print`.
  *
  * Builds CLI arguments, parses JSON output, and maps process errors
- * to AgentError variants. The actual process spawn is stubbed in Phase 1b;
- * integration tests with real Claude are deferred to Wave 7 (WU-7.3).
+ * to AgentError variants. Spawns `claude --print` via child_process.spawn
+ * with configurable timeout, budget, and model selection.
  *
  * @see PRD 021 Component 13 — ClaudeHeadlessProvider
  */
 
-import { Effect, Layer } from "effect";
+import { Layer } from "effect";
 import { AgentProvider, type AgentResult, type AgentError } from "./agent-provider.js";
+import { spawnClaude } from "./spawn-claude.js";
 
 /** Configuration for the Claude headless provider. */
 export type ClaudeHeadlessConfig = {
@@ -109,26 +110,14 @@ export function generateSessionId(prefix: string, methodId?: string, stepId?: st
 /**
  * Create a ClaudeHeadless AgentProvider.
  *
- * In production, this spawns `claude --print` processes.
- * For Phase 1b, the actual spawn is stubbed — the unit tests verify
- * argument building, output parsing, and error mapping.
- * Integration tests with real Claude are in Wave 7 (WU-7.3).
+ * Spawns `claude --print` as a child process for each commission.
+ * Configurable via ClaudeHeadlessConfig (model, budget, timeout, etc.).
  */
 export function ClaudeHeadlessProvider(config: ClaudeHeadlessConfig = {}): Layer.Layer<AgentProvider> {
   return Layer.succeed(AgentProvider, {
-    execute: (commission) =>
-      Effect.gen(function* () {
-        // Build args (verifiable)
-        const sessionId = generateSessionId(config.sessionPrefix ?? defaults.sessionPrefix);
-        const _args = buildCliArgs(commission.prompt, config, sessionId);
-
-        // In Phase 1b, we don't actually spawn — this is a stub
-        // Real implementation would use Effect.tryPromise to spawn child_process
-        return yield* Effect.fail<AgentError>({
-          _tag: "AgentSpawnFailed",
-          message: "ClaudeHeadlessProvider: live execution not yet implemented (Phase 1b stub)",
-          cause: undefined,
-        });
-      }),
+    execute: (commission) => {
+      const sessionId = generateSessionId(config.sessionPrefix ?? defaults.sessionPrefix);
+      return spawnClaude(commission.prompt, config, sessionId);
+    },
   });
 }

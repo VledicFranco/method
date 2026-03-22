@@ -256,8 +256,8 @@ describe("ClaudeHeadlessConfig defaults", () => {
 // ── ClaudeHeadlessProvider Layer ────────────────────────────────────────────
 
 describe("ClaudeHeadlessProvider", () => {
-  it("creates a Layer that fails with AgentSpawnFailed (Phase 1b stub)", async () => {
-    const layer = ClaudeHeadlessProvider();
+  it("fails with AgentSpawnFailed when binary does not exist", async () => {
+    const layer = ClaudeHeadlessProvider({ claudeBin: "__nonexistent_binary__" });
     const program = AgentProvider.pipe(
       Effect.flatMap((provider) => provider.execute({ prompt: "test prompt" })),
     );
@@ -268,15 +268,12 @@ describe("ClaudeHeadlessProvider", () => {
       const err = Cause.failureOption(exit.cause);
       expect(err._tag).toBe("Some");
       if (err._tag === "Some") {
-        expect(err.value).toMatchObject({
-          _tag: "AgentSpawnFailed",
-          message: expect.stringContaining("Phase 1b stub"),
-        });
+        expect(err.value._tag).toBe("AgentSpawnFailed");
       }
     }
   });
 
-  it("accepts custom config without errors", async () => {
+  it("accepts custom config without construction errors", () => {
     const config: ClaudeHeadlessConfig = {
       model: "opus",
       maxBudgetUsd: 20,
@@ -286,14 +283,9 @@ describe("ClaudeHeadlessProvider", () => {
       timeoutMs: 600000,
       sessionPrefix: "custom",
     };
+    // Layer construction should not throw
     const layer = ClaudeHeadlessProvider(config);
-    const program = AgentProvider.pipe(
-      Effect.flatMap((provider) => provider.execute({ prompt: "with custom config" })),
-    );
-
-    const exit = await Effect.runPromiseExit(Effect.provide(program, layer));
-    // Still fails (stub), but should not throw
-    expect(Exit.isFailure(exit)).toBe(true);
+    expect(layer).toBeDefined();
   });
 
   it("satisfies the AgentProvider interface via Layer.succeed", async () => {
