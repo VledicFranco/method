@@ -1199,3 +1199,71 @@ test('F-S-7: Path validation accepts canonical paths', async () => {
     rmSync(baseDir, { recursive: true });
   }
 });
+
+// ── F-S-3: Target IDs Validation Tests ────
+
+test('F-S-3: validateTargetIds accepts valid single target', () => {
+  const result = validateTargetIds(['target-proj']);
+  assert.strictEqual(result.valid, true);
+});
+
+test('F-S-3: validateTargetIds accepts valid multiple targets (up to 100)', () => {
+  const targets = Array.from({ length: 100 }, (_, i) => `target-${i}`);
+  const result = validateTargetIds(targets);
+  assert.strictEqual(result.valid, true);
+});
+
+test('F-S-3: validateTargetIds rejects empty array', () => {
+  const result = validateTargetIds([]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('at least 1'));
+});
+
+test('F-S-3: validateTargetIds rejects array with > 100 items', () => {
+  const targets = Array.from({ length: 101 }, (_, i) => `target-${i}`);
+  const result = validateTargetIds(targets);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('at most 100'));
+});
+
+test('F-S-3: validateTargetIds rejects non-array', () => {
+  const result = validateTargetIds('not-an-array');
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('must be an array'));
+});
+
+test('F-S-3: validateTargetIds rejects non-string items', () => {
+  const result = validateTargetIds(['valid-id', 123]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('must be a string'));
+});
+
+test('F-S-3: validateTargetIds rejects IDs with invalid characters', () => {
+  const result = validateTargetIds(['valid-id', 'invalid@id']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-3: validateTargetIds rejects IDs shorter than 3 chars', () => {
+  const result = validateTargetIds(['ab']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-3: validateTargetIds rejects IDs longer than 64 chars', () => {
+  const longId = 'a'.repeat(65);
+  const result = validateTargetIds([longId]);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});
+
+test('F-S-3: validateTargetIds accepts valid formats with hyphens and underscores', () => {
+  const result = validateTargetIds(['my-project_123', 'test_proj-456', 'a-b-c']);
+  assert.strictEqual(result.valid, true);
+});
+
+test('F-S-3: validateTargetIds rejects uppercase letters', () => {
+  const result = validateTargetIds(['Project-ABC']);
+  assert.strictEqual(result.valid, false);
+  assert(result.error?.includes('does not match format'));
+});

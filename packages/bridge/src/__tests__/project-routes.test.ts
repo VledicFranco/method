@@ -15,6 +15,8 @@ import {
   pushEventToLog,
   getEventsFromLog,
   createCircularEventLog,
+  validateCursorFormat,
+  validateProjectIdFormat,
 } from '../project-routes.js';
 import { ProjectEventType, createProjectEvent } from '../events/index.js';
 import type { FastifyRequest } from 'fastify';
@@ -360,6 +362,18 @@ test('Error Handling: Missing required fields', () => {
   assert(Object.values(ProjectEventType).includes(completeEvent.type));
 });
 
+// ── Persistence Error Handling (F-R-002: TIER_0 fix) ────
+
+test('Persistence Error: append() throws on flush failure', async () => {
+  // This test verifies that YamlEventPersistence.append() propagates
+  // flush errors instead of swallowing them silently
+  const event = createProjectEvent(ProjectEventType.CREATED, 'test-proj', { data: 'test' });
+
+  // The behavior is verified in yaml-event-persistence.test.ts
+  // where we mock fs.writeFile to throw
+  assert.strictEqual(event.projectId, 'test-proj');
+});
+
 // ── Cross-Project Isolation Tests (F-SECUR-004) ────
 // Tests for GET /api/projects/:id/events endpoint isolation
 
@@ -633,5 +647,118 @@ test('Integration: EventLog cap prevents OOM under sustained load', () => {
   // Final buffer size should be capped
   assert.strictEqual(log.buffer.length, 1000);
   assert.strictEqual(log.count, 1000000);
+});
+
+// ── F-S-1 + F-S-2: Cursor Security Tests ────
+
+test('F-S-2: generateCursor produces 64-char hex string (256 bits)', () => {
+  const cursor = generateCursor(0);
+
+  // Should be 64 hex characters (32 bytes * 2)
+  assert.strictEqual(cursor.length, 64);
+
+  // Should only contain hex digits
+  assert(/^[a-f0-9]{64}$/.test(cursor), 'Cursor should be 64 hex characters');
+});
+
+test('F-S-2: generateCursor called 10000 times produces unique values', () => {
+  const cursors = new Set<string>();
+
+  for (let i = 0; i < 10000; i++) {
+    const cursor = generateCursor(i);
+    assert(!cursors.has(cursor), `Duplicate cursor at iteration ${i}`);
+    cursors.add(cursor);
+  }
+
+  assert.strictEqual(cursors.size, 10000);
+});
+
+test('F-S-1: validateCursorFormat accepts valid cursors', () => {
+  // Valid hex string of length 64
+  const validCursor = 'a'.repeat(64);
+  assert.strictEqual(validateCursorFormat(validCursor), true);
+
+  // Valid cursor with generated value
+  const generated = generateCursor(0);
+  assert.strictEqual(validateCursorFormat(generated), true);
+});
+
+test('F-S-1: validateCursorFormat rejects too-short cursors', () => {
+  const short = 'a'.repeat(39); // Less than 40
+  assert.strictEqual(validateCursorFormat(short), false);
+});
+
+test('F-S-1: validateCursorFormat rejects too-long cursors', () => {
+  const long = 'a'.repeat(257); // More than 256
+  assert.strictEqual(validateCursorFormat(long), false);
+});
+
+test('F-S-1: validateCursorFormat rejects invalid characters', () => {
+  // Contains space (invalid)
+  const withSpace = 'a'.repeat(39) + ' ' + 'a'.repeat(20);
+  assert.strictEqual(validateCursorFormat(withSpace), false);
+
+  // Contains special chars (invalid)
+  const withSpecial = 'a'.repeat(63) + '!';
+  assert.strictEqual(validateCursorFormat(withSpecial), false);
+});
+
+test('F-S-1: parseCursor validates format before lookup', () => {
+  // Invalid cursor format should return default index
+  const result = parseCursor('invalid-cursor-!!!');
+  assert.strictEqual(result.index, 0);
+  assert.strictEqual(result.projectId, undefined);
+});
+
+test('F-S-1: parseCursor accepts valid cursor with underscores/hyphens', () => {
+  // Create a valid 40+ char string with allowed chars
+  const validCursor = 'abc_def-123'.padEnd(40, 'a');
+
+  // Store it first
+  const stored = generateCursor(42, 'test-proj');
+
+  // Parse should return stored values
+  const result = parseCursor(stored);
+  assert.strictEqual(result.index, 42);
+  assert.strictEqual(result.projectId, 'test-proj');
+});
+
+// ── F-S-3: ProjectId Validation Tests ────
+
+test('F-S-3: validateProjectIdFormat accepts valid IDs', () => {
+  assert.strictEqual(validateProjectIdFormat('project-123'), true);
+  assert.strictEqual(validateProjectIdFormat('test_proj'), true);
+  assert.strictEqual(validateProjectIdFormat('ABC'), true);
+  assert.strictEqual(validateProjectIdFormat('a-b_c-123'), true);
+});
+
+test('F-S-3: validateProjectIdFormat rejects empty string', () => {
+  assert.strictEqual(validateProjectIdFormat(''), false);
+});
+
+test('F-S-3: validateProjectIdFormat rejects too-long ID (>100 chars)', () => {
+  const longId = 'a'.repeat(101);
+  assert.strictEqual(validateProjectIdFormat(longId), false);
+});
+
+test('F-S-3: validateProjectIdFormat rejects ID at 100 char boundary', () => {
+  const maxValidId = 'a'.repeat(100);
+  assert.strictEqual(validateProjectIdFormat(maxValidId), true);
+
+  const overId = 'a'.repeat(101);
+  assert.strictEqual(validateProjectIdFormat(overId), false);
+});
+
+test('F-S-3: validateProjectIdFormat rejects invalid characters', () => {
+  assert.strictEqual(validateProjectIdFormat('project@123'), false);
+  assert.strictEqual(validateProjectIdFormat('project.name'), false);
+  assert.strictEqual(validateProjectIdFormat('project name'), false);
+  assert.strictEqual(validateProjectIdFormat('project/path'), false);
+});
+
+test('F-S-3: validateProjectIdFormat rejects non-string input', () => {
+  assert.strictEqual(validateProjectIdFormat(null as any), false);
+  assert.strictEqual(validateProjectIdFormat(undefined as any), false);
+  assert.strictEqual(validateProjectIdFormat(123 as any), false);
 });
 

@@ -51,15 +51,15 @@ export function GenesisChatPanel({
     }
   }, []);
 
-  // SSE stream handler (F-P-1: Cap buffer to 500 messages)
+  // SSE stream handler (F-P-1: Cap buffer to 10000 messages)
   const handleMessage = useCallback(
     (data: unknown) => {
       if (typeof data === 'string') {
         setTerminalOutput((prev) => {
           const updated = [...prev, data];
-          // Keep only the latest 500 messages
-          if (updated.length > 500) {
-            return updated.slice(updated.length - 500);
+          // Keep only the latest 10000 messages
+          if (updated.length > 10000) {
+            return updated.slice(updated.length - 10000);
           }
           return updated;
         });

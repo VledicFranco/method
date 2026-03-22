@@ -87,6 +87,7 @@ export class YamlEventPersistence implements EventPersistence {
   /**
    * Append an event with buffering and debounced flush
    * Also maintains the projectId index
+   * Throws if flush fails (after retries)
    */
   async append(event: ProjectEvent): Promise<void> {
     this.events.push(event);
@@ -104,11 +105,16 @@ export class YamlEventPersistence implements EventPersistence {
       clearTimeout(this.flushTimeout);
     }
 
-    this.flushTimeout = setTimeout(() => {
-      this.flushToDisk().catch((err) => {
-        console.error('Failed to flush events to disk:', err);
-      });
-    }, FLUSH_DEBOUNCE_MS);
+    return new Promise<void>((resolve, reject) => {
+      this.flushTimeout = setTimeout(() => {
+        this.flushToDisk()
+          .then(() => resolve())
+          .catch((err) => {
+            console.error('Failed to flush events to disk:', err);
+            reject(err);
+          });
+      }, FLUSH_DEBOUNCE_MS);
+    });
   }
 
   /**
