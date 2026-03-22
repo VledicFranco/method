@@ -37,10 +37,43 @@ export type EvolutionState = {
   readonly recompiled: boolean;
 };
 
+/** Discovery state — what M2-MDIS operates on. */
+export type DiscoveryState = {
+  readonly informalPractice: string;
+  readonly recognition: string;
+  readonly draft: string;
+  readonly trialResult: "pending" | "success" | "failed" | null;
+  readonly evaluationResult: "promote" | "archive" | "revise" | null;
+  readonly outcome: "compiled_method" | "promoted_axiom" | "archived" | null;
+  readonly candidateComponents: readonly string[];
+};
+
 /** Instantiation state — what M4-MINS operates on. */
 export type InstantiationState = {
   readonly methodId: string;
   readonly projectContext: string;
-  readonly boundMethod: boolean;
+  readonly domainMorphism: string;
+  readonly boundSteps: readonly string[];
+  readonly roleFiles: readonly string[];
   readonly validated: boolean;
+};
+
+/** Composition state — what M5-MCOM operates on. */
+export type CompositionState = {
+  readonly methodA: string;
+  readonly methodB: string;
+  readonly mergedDomain: boolean;
+  readonly composedDAG: boolean;
+  readonly unifiedRoles: boolean;
+  readonly compiled: boolean;
+};
+
+/** Derivation state — what M7-DTID operates on. */
+export type DerivationState = {
+  readonly sourceMethodId: string;
+  readonly domainAnalysis: string;
+  readonly implementationPlan: readonly string[];
+  readonly derivedArtifacts: readonly string[];
+  readonly faithfulnessChecked: boolean;
+  readonly idd: string;
 };

@@ -68,3 +68,36 @@ export * from "./meta/instantiate.js";
 export * from "./meta/evolve.js";
 export * from "./meta/project-card.js";
 export * from "./provider/claude-headless.js";
+
+// ── Phase 2: Integration (D-093, D-098, D-099, D-100) ──
+
+// Wave 8: Infrastructure foundation
+export * from "./adapter/yaml-adapter.js";
+export * from "./adapter/yaml-types.js";
+export * from "./adapter/predicate-parser.js";
+export * from "./extractor/services/filesystem.js";
+export * from "./extractor/services/http.js";
+export * from "./method/tool.js";
+export * from "./gate/runners/callback-gate.js";
+export * from "./domain/morphism.js";
+export * from "./predicate/quantifiers.js";
+
+// Wave 9: Providers + Bridge integration
+export * from "./provider/bridge-provider.js";
+export * from "./provider/spawn-claude.js";
+export * from "./runtime/bridge-hook.js";
+export * from "./runtime/reconciliation.js";
+
+// Wave 11: Advanced meta operations
+export * from "./meta/compose.js";
+export * from "./meta/derive.js";
+export * from "./meta/promotion.js";
+export * from "./meta/refinement.js";
+export * from "./meta/coherence.js";
+
+// Wave 12: Strategy expansion
+export * from "./strategy/agent-steered.js";
+
+// Wave 14: TLA+ compiler
+export * from "./tla/ast.js";
+export * from "./tla/compile.js";

@@ -23,3 +23,14 @@ export { G1_domain, G2_objective, G3_roles, G4_dag, G5_guidance, G6_serializable
 export { P0_META } from "./meta/p0-meta.js";
 export { arm_gap_severity, arm_lifecycle_design, arm_lifecycle_instantiation, arm_structural_composition, arm_structural_audit, arm_implementation_derivation, arm_discovery, arm_terminate } from "./meta/arms.js";
 export { prompts } from "./prompts.js";
+
+// ── Phase 2: Meta-methods (Wave 10) ──
+export { M2_MDIS } from "./methods/m2-mdis.js";
+export { M3_MEVO } from "./methods/m3-mevo.js";
+export { M4_MINS } from "./methods/m4-mins.js";
+export { M5_MCOM } from "./methods/m5-mcom.js";
+export { M7_DTID } from "./methods/m7-dtid.js";
+
+// ── Phase 2: Delivery methodologies (Wave 12) ──
+export { P1_EXEC } from "./methodologies/p1-exec.js";
+export { P2_SD } from "./methodologies/p2-sd.js";
