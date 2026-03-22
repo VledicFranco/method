@@ -29,6 +29,7 @@ import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './
 import { copyMethodology, copyStrategy, validateTargetIds } from './resource-copier.js';
 import { reloadConfig, validateConfig } from './config/config-reloader.js';
 import path from 'path';
+import { randomBytes } from 'crypto';
 
 // ── Event Cursor Management (Phase 1: In-Memory) ────
 
@@ -100,17 +101,28 @@ function setPersistence(persistence: EventPersistence | undefined): void {
 async function pushEventToLogWithPersistence(log: CircularEventLog, event: ProjectEvent): Promise<void> {
   pushEventToLog(log, event);
   if (globalEventPersistence) {
-    try {
-      await globalEventPersistence.append(event);
-    } catch (err) {
-      console.error('Failed to persist event:', err);
-      // Continue despite persistence failure
-    }
+    // Don't swallow persistence errors - propagate them for HTTP 5xx response
+    await globalEventPersistence.append(event);
   }
 }
 
+/**
+ * F-S-1: Validate cursor format
+ * Cursors must match: ^[a-zA-Z0-9_-]{40,256}$
+ */
+function validateCursorFormat(cursor: string): boolean {
+  return /^[a-zA-Z0-9_-]{40,256}$/.test(cursor);
+}
+
+/**
+ * F-S-2: Generate cursor using cryptographically strong RNG
+ * Returns 64-byte hex string (256 bits entropy)
+ * Matches format: ^[a-zA-Z0-9_-]{40,256}$
+ */
 function generateCursor(index: number, projectId?: string): string {
-  const cursorId = Math.random().toString(36).slice(2);
+  // F-S-2: Use crypto.randomBytes for 256 bits entropy (64 hex chars)
+  const cursorId = randomBytes(32).toString('hex');
+
   cursorMap.set(cursorId, {
     version: CURSOR_VERSION,
     eventIndex: index,
@@ -129,6 +141,11 @@ function generateCursor(index: number, projectId?: string): string {
 }
 
 function parseCursor(cursor: string): { index: number; projectId?: string } {
+  // F-S-1: Validate cursor format before lookup
+  if (!validateCursorFormat(cursor)) {
+    return { index: 0 };
+  }
+
   const state = cursorMap.get(cursor);
   if (!state) {
     return { index: 0 };
@@ -164,6 +181,20 @@ function getSessionContext(req: FastifyRequest): SessionContext {
 }
 
 // ── Isolation Enforcement ────
+
+/**
+ * F-S-3: Validate projectId for length and format
+ * Format: 1-100 characters, alphanumeric + hyphens/underscores
+ */
+function validateProjectIdFormat(projectId: string): boolean {
+  if (typeof projectId !== 'string') {
+    return false;
+  }
+  if (projectId.length < 1 || projectId.length > 100) {
+    return false;
+  }
+  return /^[a-zA-Z0-9_-]+$/.test(projectId);
+}
 
 function validateProjectAccess(
   requestedProjectId: string,
@@ -212,17 +243,24 @@ export async function registerProjectRoutes(
 
         // Emit event if discovery was stopped due to MAX_PROJECTS limit
         if (result.stopped_at_max_projects) {
-          const event = createProjectEvent(
-            ProjectEventType.DISCOVERY_INCOMPLETE,
-            'discovery',
-            {
-              reason: 'max_projects_exceeded',
-              projects_found: result.projects.length,
-              scanned_count: result.scanned_count,
-            },
-            { phase: 'phase1' },
-          );
-          await pushEventToLogWithPersistence(eventLog, event);
+          try {
+            const event = createProjectEvent(
+              ProjectEventType.DISCOVERY_INCOMPLETE,
+              'discovery',
+              {
+                reason: 'max_projects_exceeded',
+                projects_found: result.projects.length,
+                scanned_count: result.scanned_count,
+              },
+              { phase: 'phase1' },
+            );
+            await pushEventToLogWithPersistence(eventLog, event);
+          } catch (persistErr) {
+            return reply.status(500).send({
+              error: 'Event persistence failed',
+              message: (persistErr as Error).message,
+            });
+          }
         }
 
         return reply.status(200).send({
@@ -423,16 +461,23 @@ export async function registerProjectRoutes(
         }
 
         // Emit config reload event
-        const event = createProjectEvent(
-          ProjectEventType.CONFIG_UPDATED,
-          projectId,
-          {
-            config_path: configPath,
-            changes: result.diff,
-          },
-          { phase: 'phase2b' },
-        );
-        await pushEventToLogWithPersistence(eventLog, event);
+        try {
+          const event = createProjectEvent(
+            ProjectEventType.CONFIG_UPDATED,
+            projectId,
+            {
+              config_path: configPath,
+              changes: result.diff,
+            },
+            { phase: 'phase2b' },
+          );
+          await pushEventToLogWithPersistence(eventLog, event);
+        } catch (persistErr) {
+          return reply.status(500).send({
+            error: 'Event persistence failed',
+            message: (persistErr as Error).message,
+          });
+        }
 
         // Trigger registry rescan
         try {
@@ -564,7 +609,14 @@ export async function registerProjectRoutes(
           { test: true },
         );
 
-        await pushEventToLogWithPersistence(eventLog, event);
+        try {
+          await pushEventToLogWithPersistence(eventLog, event);
+        } catch (persistErr) {
+          return reply.status(500).send({
+            error: 'Event persistence failed',
+            message: (persistErr as Error).message,
+          });
+        }
 
         return reply.status(201).send(event);
       } catch (err) {
@@ -586,6 +638,14 @@ export async function registerProjectRoutes(
         if (!source_id || !method_name || !target_ids || !Array.isArray(target_ids)) {
           return reply.status(400).send({
             error: 'Missing or invalid required fields: source_id, method_name, target_ids (array)',
+          });
+        }
+
+        // F-S-3: Validate source_id format (1-100 chars, alphanumeric + hyphens/underscores)
+        if (!validateProjectIdFormat(source_id)) {
+          return reply.status(400).send({
+            error: 'Invalid source_id',
+            message: 'source_id must be 1-100 characters, alphanumeric with hyphens/underscores',
           });
         }
 
@@ -650,6 +710,14 @@ export async function registerProjectRoutes(
           });
         }
 
+        // F-S-3: Validate source_id format (1-100 chars, alphanumeric + hyphens/underscores)
+        if (!validateProjectIdFormat(source_id)) {
+          return reply.status(400).send({
+            error: 'Invalid source_id',
+            message: 'source_id must be 1-100 characters, alphanumeric with hyphens/underscores',
+          });
+        }
+
         // F-S-1: Validate target_ids bounds and format
         const targetValidation = validateTargetIds(target_ids);
         if (!targetValidation.valid) {
@@ -700,6 +768,6 @@ export async function registerProjectRoutes(
 }
 
 // Export for testing
-export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor };
+export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor, validateCursorFormat, validateProjectIdFormat };
 export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence };
 export type { CircularEventLog, CursorState };

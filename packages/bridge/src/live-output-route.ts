@@ -34,6 +34,7 @@ export function registerLiveOutputRoutes(
 ): void {
   /**
    * GET /sessions/:id/stream — SSE endpoint for live PTY output
+   * F-P-1: Caps initial transcript burst to 10K lines (oldest events dropped)
    */
   app.get<{ Params: { id: string } }>('/sessions/:id/stream', async (request, reply) => {
     const { id } = request.params;
@@ -61,8 +62,15 @@ export function registerLiveOutputRoutes(
     });
 
     // Send initial transcript burst (raw PTY data — xterm.js handles rendering)
+    // F-P-1: Cap transcript to 10K lines, dropping oldest events first
     if (session.transcript) {
-      const initialData = JSON.stringify({ text: session.transcript, timestamp: new Date().toISOString() });
+      let cappedTranscript = session.transcript;
+      const lines = cappedTranscript.split('\n');
+      if (lines.length > 10000) {
+        // Keep only the latest 10000 lines
+        cappedTranscript = lines.slice(lines.length - 10000).join('\n');
+      }
+      const initialData = JSON.stringify({ text: cappedTranscript, timestamp: new Date().toISOString() });
       reply.raw.write(`data: ${initialData}\n\n`);
     }
 
