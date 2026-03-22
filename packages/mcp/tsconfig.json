@@ -5,8 +5,7 @@
     "rootDir": "src"
   },
   "references": [
-    { "path": "../core" },
-    { "path": "../methodts" }
+    { "path": "../core" }
   ],
   "include": ["src"]
 }

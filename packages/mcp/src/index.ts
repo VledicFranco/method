@@ -5,28 +5,13 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 import { lookupTheory } from "@method/core";
-import { loadMethodFromFile, topologicalOrder } from "@method/methodts";
-import {
-  createMethodTSSessionManager,
-  listMethodologiesTS,
-  getRoutingTS,
-  startMethodologySessionTS,
-  routeMethodologyTS,
-  selectMethodologyTS,
-  loadMethodInSessionTS,
-  transitionMethodologyTS,
-  validateStepOutputTS,
-  type MethodologySessionState,
-} from "./methodts-session.js";
 import { createValidationMiddleware } from "./validate-project-access.js";
-import { loadInput, sessionInput, theoryInput, sessionIdProperty } from "./schemas.js";
+import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
 
 // Path resolution
 const ROOT = process.env.METHOD_ROOT ?? process.cwd();
-const REGISTRY = resolve(ROOT, "registry");
 const THEORY = resolve(ROOT, "theory");
 const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 
@@ -60,10 +45,6 @@ async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
   }
   return res;
 }
-
-// Session manager — isolates state by session_id (MethodTS-backed)
-const sessions = createMethodTSSessionManager();
-const methodologySessions = new Map<string, MethodologySessionState>();
 
 // Project isolation validation middleware (F-SECUR-003)
 const validateProjectAccess = createValidationMiddleware();
@@ -837,82 +818,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     switch (name) {
-      case "methodology_list": {
-        const entries = listMethodologiesTS(REGISTRY);
-        return ok(JSON.stringify(entries, null, 2));
-      }
-
-      case "methodology_load": {
-        const { methodology_id, method_id, session_id } = loadInput.parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const method = loadMethodFromFile(REGISTRY, methodology_id, method_id);
-        session.load(methodology_id, method);
-        const ordered = topologicalOrder(method.dag);
-        // Extract objective string from Predicate
-        const objective = method.objective.tag === "check" ? method.objective.label : null;
-        const response = {
-          methodologyId: methodology_id,
-          methodId: method.id,
-          methodName: method.name,
-          stepCount: ordered.length,
-          objective,
-          firstStep: { id: ordered[0].id, name: ordered[0].name },
-          message: `Loaded ${method.id} \u2014 ${method.name} (${ordered.length} steps). Call step_current to see the first step.`,
-        };
-        return ok(JSON.stringify(response, null, 2));
-      }
-
-      case "methodology_status": {
-        const { session_id } = sessionInput.parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const st = session.status();
-        return ok(JSON.stringify(st, null, 2));
-      }
-
-      case "step_current": {
-        const { session_id } = sessionInput.parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const step = session.current();
-        return ok(JSON.stringify(step, null, 2));
-      }
-
-      case "step_advance": {
-        const { session_id } = sessionInput.parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const result = session.advance();
-
-        // Auto-progress: if running in a bridge session, report step transition
-        const bridgeUrl = process.env.BRIDGE_URL;
-        const bridgeSessionId = process.env.BRIDGE_SESSION_ID;
-        if (bridgeUrl && bridgeSessionId) {
-          // Fire-and-forget: don't block step_advance on bridge response
-          const progressPayload = (type: string, content: Record<string, unknown>) =>
-            fetch(`${bridgeUrl}/sessions/${bridgeSessionId}/channels/progress`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type, content, sender: bridgeSessionId }),
-            }).catch(() => { /* non-fatal */ });
-
-          progressPayload('step_completed', {
-            methodology: result.methodologyId,
-            method: result.methodId,
-            step: result.previousStep.id,
-            step_name: result.previousStep.name,
-          });
-
-          if (result.nextStep) {
-            progressPayload('step_started', {
-              methodology: result.methodologyId,
-              method: result.methodId,
-              step: result.nextStep.id,
-              step_name: result.nextStep.name,
-            });
-          }
-        }
-
-        return ok(JSON.stringify(result, null, 2));
-      }
-
+      // theory_lookup stays local — no bridge dependency
       case "theory_lookup": {
         const { term } = theoryInput.parse(args);
         const results = lookupTheory(THEORY, term);
@@ -922,119 +828,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return ok(JSON.stringify(results, null, 2));
       }
 
-      case "methodology_get_routing": {
-        const { methodology_id } = z.object({
-          methodology_id: z.string(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const result = getRoutingTS(REGISTRY, methodology_id);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "step_context": {
-        const { session_id } = sessionInput.parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const ctx = session.context();
-        return ok(JSON.stringify(ctx, null, 2));
-      }
-
-      case "methodology_select": {
-        const { methodology_id, selected_method_id, session_id } = z.object({
-          methodology_id: z.string(),
-          selected_method_id: z.string(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const sid = session_id ?? '__default__';
-        const session = sessions.getOrCreate(sid);
-        const result = selectMethodologyTS(REGISTRY, methodology_id, selected_method_id, session, sid);
-        // Also create a methodology session for backward compatibility (PRD 004)
-        try {
-          const { session: methSession } = startMethodologySessionTS(REGISTRY, methodology_id, null, sid);
-          methSession.currentMethodId = selected_method_id;
-          methSession.status = 'executing';
-          methodologySessions.set(sid, methSession);
-        } catch {
-          // Non-critical: if methodology session creation fails, the existing select still works
-        }
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "step_validate": {
-        const { step_id, output, session_id } = z.object({
-          step_id: z.string(),
-          output: z.record(z.string(), z.unknown()),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const session = sessions.getOrCreate(session_id ?? '__default__');
-        const result = validateStepOutputTS(session, step_id, output);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "methodology_start": {
-        const { methodology_id, challenge, session_id } = z.object({
-          methodology_id: z.string(),
-          challenge: z.string().optional(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const sid = session_id ?? '__default__';
-        const { session: methSession, result } = startMethodologySessionTS(
-          REGISTRY, methodology_id, challenge ?? null, sid
-        );
-        methodologySessions.set(sid, methSession);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "methodology_route": {
-        const { challenge_predicates, session_id } = z.object({
-          challenge_predicates: z.record(z.string(), z.boolean()).optional(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const sid = session_id ?? '__default__';
-        const methSession = methodologySessions.get(sid);
-        if (!methSession) {
-          throw new Error('No methodology session active. Call methodology_start first.');
-        }
-        const result = routeMethodologyTS(REGISTRY, methSession, challenge_predicates);
-        methodologySessions.set(sid, methSession);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "methodology_load_method": {
-        const { method_id, session_id } = z.object({
-          method_id: z.string(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const sid = session_id ?? '__default__';
-        const methSession = methodologySessions.get(sid);
-        if (!methSession) {
-          throw new Error('No methodology session active. Call methodology_start first.');
-        }
-        const session = sessions.getOrCreate(sid);
-        const result = loadMethodInSessionTS(REGISTRY, methSession, method_id, session, sid);
-        methodologySessions.set(sid, methSession);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
-      case "methodology_transition": {
-        const { completion_summary, challenge_predicates, session_id } = z.object({
-          completion_summary: z.string().optional(),
-          challenge_predicates: z.record(z.string(), z.boolean()).optional(),
-          session_id: z.string().optional(),
-        }).parse(args);
-        const sid = session_id ?? '__default__';
-        const methSession = methodologySessions.get(sid);
-        if (!methSession) {
-          throw new Error('No methodology session active. Call methodology_start first.');
-        }
-        const session = sessions.getOrCreate(sid);
-        const result = transitionMethodologyTS(
-          REGISTRY, methSession, session,
-          completion_summary ?? null, challenge_predicates
-        );
-        methodologySessions.set(sid, methSession);
-        return ok(JSON.stringify(result, null, 2));
-      }
-
+      // All methodology tools are now bridge proxies
+      case "methodology_list":
+      case "methodology_load":
+      case "methodology_status":
+      case "step_current":
+      case "step_advance":
+      case "step_context":
+      case "step_validate":
+      case "methodology_get_routing":
+      case "methodology_start":
+      case "methodology_route":
+      case "methodology_select":
+      case "methodology_load_method":
+      case "methodology_transition":
       // Bridge proxy tools — delegated to bridge-tools.ts factory handlers
       case "bridge_spawn":
       case "bridge_spawn_batch":

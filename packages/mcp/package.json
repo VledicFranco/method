@@ -9,12 +9,7 @@
   },
   "dependencies": {
     "@method/core": "*",
-    "@method/methodts": "*",
     "@modelcontextprotocol/sdk": "^1.10.2",
-    "js-yaml": "^4.1.1",
     "zod": "^3.0.0"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
   }
 }

@@ -574,6 +574,217 @@ const genesis_report = createBridgeHandler({
 });
 
 // ---------------------------------------------------------------------------
+// Methodology proxy tools (bridge HTTP passthrough)
+// ---------------------------------------------------------------------------
+
+const methodology_list = createBridgeHandler({
+  schema: z.object({ session_id: z.string().optional() }),
+  handler: async (_parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/list`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_load = createBridgeHandler({
+  schema: z.object({
+    methodology_id: z.string(),
+    method_id: z.string(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/load`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        methodology_id: parsed.methodology_id,
+        method_id: parsed.method_id,
+        session_id: parsed.session_id ?? '__default__',
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_status = createBridgeHandler({
+  schema: z.object({ session_id: z.string().optional() }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/status`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const step_current = createBridgeHandler({
+  schema: z.object({ session_id: z.string().optional() }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/step/current`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const step_advance = createBridgeHandler({
+  schema: z.object({ session_id: z.string().optional() }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/step/advance`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const step_context = createBridgeHandler({
+  schema: z.object({ session_id: z.string().optional() }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/step/context`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const step_validate = createBridgeHandler({
+  schema: z.object({
+    step_id: z.string(),
+    output: z.record(z.string(), z.unknown()),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/step/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        step_id: parsed.step_id,
+        output: parsed.output,
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_get_routing = createBridgeHandler({
+  schema: z.object({
+    methodology_id: z.string(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const mid = encodeURIComponent(parsed.methodology_id);
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/${mid}/routing`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_start = createBridgeHandler({
+  schema: z.object({
+    methodology_id: z.string(),
+    challenge: z.string().optional(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        methodology_id: parsed.methodology_id,
+        challenge: parsed.challenge ?? null,
+        session_id: parsed.session_id ?? '__default__',
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_route = createBridgeHandler({
+  schema: z.object({
+    challenge_predicates: z.record(z.string(), z.boolean()).optional(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/route`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        challenge_predicates: parsed.challenge_predicates ?? {},
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_select = createBridgeHandler({
+  schema: z.object({
+    methodology_id: z.string(),
+    selected_method_id: z.string(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/select`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        methodology_id: parsed.methodology_id,
+        selected_method_id: parsed.selected_method_id,
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_load_method = createBridgeHandler({
+  schema: z.object({
+    method_id: z.string(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/load-method`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method_id: parsed.method_id,
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const methodology_transition = createBridgeHandler({
+  schema: z.object({
+    completion_summary: z.string().optional(),
+    challenge_predicates: z.record(z.string(), z.boolean()).optional(),
+    session_id: z.string().optional(),
+  }),
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const sid = encodeURIComponent(parsed.session_id ?? '__default__');
+    const res = await bridgeFetch(`${bridgeUrl}/api/methodology/sessions/${sid}/transition`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        completion_summary: parsed.completion_summary ?? null,
+        challenge_predicates: parsed.challenge_predicates ?? {},
+      }),
+    });
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Exported handler map — keyed by tool name
 // ---------------------------------------------------------------------------
 
@@ -606,4 +817,18 @@ export const bridgeHandlers: Record<
   project_get_manifest,
   project_read_events,
   genesis_report,
+  // Methodology proxy tools
+  methodology_list,
+  methodology_load,
+  methodology_status,
+  step_current,
+  step_advance,
+  step_context,
+  step_validate,
+  methodology_get_routing,
+  methodology_start,
+  methodology_route,
+  methodology_select,
+  methodology_load_method,
+  methodology_transition,
 };
