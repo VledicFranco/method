@@ -10,11 +10,13 @@
  * Phase 3: P-GH + P3-GOV + P3-DISPATCH
  */
 
-// Placeholder — populated during Phase 1b implementation
+// ── WU-6.1: Types, D_META, Predicates ──
+export * from "./types.js";
+export { D_META } from "./meta/d-meta.js";
+export { predicates } from "./predicates.js";
+
+// Placeholder — populated during later work units
 // export { P0_META } from "./meta/p0-meta.js";
 // export { M1_MDES } from "./methods/m1-mdes.js";
-// export { D_META } from "./meta/d-meta.js";
-// export * from "./predicates.js";
 // export * from "./prompts.js";
 // export * from "./gates.js";
-// export * from "./types.js";
