@@ -1,0 +1,34 @@
+retro:
+  strategy_id: S-CORE-TEST-WATCH
+  generated_by: strategy-executor
+  generated_at: '2026-03-22T05:40:35.285Z'
+  timing:
+    started_at: '2026-03-22T05:38:56.726Z'
+    completed_at: '2026-03-22T05:40:35.285Z'
+    duration_minutes: 1.64
+    critical_path:
+      - run_tests
+  execution_summary:
+    nodes_total: 2
+    nodes_completed: 2
+    nodes_failed: 0
+    speedup_ratio: 1
+  cost:
+    total_usd: 0.13049825
+    per_node:
+      - node: run_tests
+        cost_usd: 0.13049825
+      - node: parse_results
+        cost_usd: 0
+  gates:
+    total: 2
+    passed: 2
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events: []
+  artifacts_produced:
+    - id: test_output
+      producer: run_tests
+    - id: report
+      producer: parse_results

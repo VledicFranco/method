@@ -1,26 +1,27 @@
-# API Contract Review Report
-## Resource Copy Tools (MCP + HTTP API)
+# PRD 020 Phases 1-3 Security Adversarial Review
 
-**Reviewer Role:** API Contract Reviewer (A)
-**Feature:** Copy Modal UI + Backend Resource Copying
-**Branch:** feat/prd020-phase3
-**Date:** 2026-03-21
+**Review Date:** 2026-03-22
+**Commit:** 7ac27db
+**Methodology:** Sentinel Security Advisor
+**Scope:** YamlEventPersistence, Path Traversal Hardening, Event Isolation, Genesis Polling, Zod Validation, Multi-Project Discovery
+
+**Status:** REVIEW COMPLETE — 8 FINDINGS (1 CRITICAL, 3 HIGH, 4 MEDIUM)
 
 ---
 
 ## Executive Summary
 
-The resource copying API (both MCP tools and HTTP endpoints) has **moderate issues** around parameter validation, error response inconsistency, and incomplete documentation of limits. The core functionality is sound—partial failures are handled gracefully, and F-SEC-002 authorization is enforced. However, LLM clients using these tools lack clarity on several contract details.
+Comprehensive security analysis of PRD 020 multi-project bridge implementation reveals **critical vulnerabilities in cursor handling, symlink resolution, and file locking**, alongside **high-risk issues in project provider validation and path traversal**. The implementation demonstrates strong architectural principles (event isolation, timeout protection, async writes) but has **immediate gaps in cryptographic protections and atomic file operations** that must be addressed before production deployment.
 
-**Critical Issues:** 2
-**Major Issues:** 3
-**Minor Issues:** 2
+**Critical Issues:** 1
+**High Issues:** 3
+**Medium Issues:** 4
 
 ---
 
-## Findings
+## CRITICAL FINDINGS
 
-### F-A-1: Missing Parameter Boundary Validation Documentation
+### F-S-1: Cursor Injection via Direct Map Manipulation (CRITICAL)
 
 **Severity:** MAJOR
 **Category:** Parameter Validation & Documentation
