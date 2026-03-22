@@ -20,7 +20,9 @@ import { registerRegistryRoutes } from './registry-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
 import { registerGenesisRoutes } from './genesis-routes.js';
-import { eventLog, getEventsFromLog } from './project-routes.js';
+import { registerProjectRoutes, eventLog, getEventsFromLog } from './project-routes.js';
+import { DiscoveryService } from './multi-project/discovery-service.js';
+import { InMemoryProjectRegistry } from '@method/core';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -130,6 +132,16 @@ const genesisRouteContext: any = {
 
 registerGenesisRoutes(app, genesisRouteContext).catch(err => {
   console.error('Failed to register Genesis routes:', err);
+});
+
+// ---------- Project Routes (PRD 020 Phase 2A) ----------
+
+// F-I-2: Initialize and register project discovery routes
+const discoveryService = new DiscoveryService();
+const projectRegistry = new InMemoryProjectRegistry();
+
+registerProjectRoutes(app, discoveryService, projectRegistry).catch(err => {
+  console.error('Failed to register project routes:', err);
 });
 
 // ---------- Health ----------

@@ -539,7 +539,7 @@ export async function registerProjectRoutes(
           { test: true },
         );
 
-        eventLog.push(event);
+        pushEventToLog(eventLog, event);
 
         return reply.status(201).send(event);
       } catch (err) {
