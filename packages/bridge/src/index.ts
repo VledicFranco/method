@@ -17,6 +17,7 @@ import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from '.
 import { setOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
+import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -30,6 +31,7 @@ const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000'
 const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
 const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
 const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
+const GENESIS_ENABLED = process.env.GENESIS_ENABLED === 'true';
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -476,6 +478,34 @@ app.delete<{
 });
 
 /**
+ * GET /genesis/status — Get Genesis session status (PRD 020 Phase 2A)
+ */
+app.get('/genesis/status', async (_request, reply) => {
+  const sessionId = getGenesisSessionId(pool);
+  if (!sessionId) {
+    return reply.status(404).send({ error: 'Genesis not running' });
+  }
+
+  try {
+    const status = pool.status(sessionId);
+    return reply.status(200).send({
+      session_id: status.sessionId,
+      nickname: status.nickname,
+      status: status.status,
+      mode: status.mode,
+      project_id: status.metadata?.project_id ?? 'root',
+      budget_tokens_per_day: status.metadata?.budget_tokens_per_day ?? 50000,
+      queue_depth: status.queueDepth,
+      prompt_count: status.promptCount,
+      last_activity_at: status.lastActivityAt.toISOString(),
+      metadata: status.metadata,
+    });
+  } catch (err) {
+    return reply.status(500).send({ error: (err as Error).message });
+  }
+});
+
+/**
  * GET /sessions — List all sessions.
  */
 app.get('/sessions', async (_request, reply) => {
@@ -857,6 +887,18 @@ async function start() {
         app.log.warn(`Auto-killed stale sessions: ${result.killed.join(', ')}`);
       }
     }, STALE_CHECK_INTERVAL_MS);
+
+    // PRD 020 Phase 2A: Spawn Genesis on startup if enabled
+    if (GENESIS_ENABLED) {
+      try {
+        const genesisResult = await spawnGenesis(pool, process.cwd(), 50000);
+        app.log.info(
+          `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
+        );
+      } catch (err) {
+        app.log.error(`Failed to spawn Genesis: ${(err as Error).message}`);
+      }
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);
