@@ -104,6 +104,10 @@ describe("and", () => {
     // Structure: and(and(t, t), t)
     expect(p.tag).toBe("and");
   });
+
+  it("zero arguments evaluates to true (identity element)", () => {
+    expect(evaluate(and(), 0)).toBe(true);
+  });
 });
 
 // ── or ──
@@ -134,6 +138,10 @@ describe("or", () => {
   it("variadic: reduces multiple predicates left-to-right", () => {
     const p = or(f, f, t);
     expect(evaluate(p, 0)).toBe(true);
+  });
+
+  it("zero arguments evaluates to false (identity element)", () => {
+    expect(evaluate(or(), 0)).toBe(false);
   });
 });
 

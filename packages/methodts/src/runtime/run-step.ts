@@ -68,7 +68,7 @@ export function runStep<S>(
       });
     }
 
-    const maxRetries = config.maxRetries ?? 3;
+    const maxRetries = Math.max(0, config.maxRetries ?? 3);
     let lastError: RunStepError | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {

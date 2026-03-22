@@ -22,7 +22,7 @@ export type Snapshot<S> = {
   readonly sequence: number;
   readonly timestamp: Date;
   readonly delta: Diff<S> | null;
-  readonly witnesses: readonly Witness<any>[];
+  readonly witnesses: readonly Witness<S>[];
   readonly metadata: {
     readonly producedBy?: string;
     readonly stepId?: string;
@@ -51,7 +51,13 @@ export type StateTrace<S> = {
   readonly current: WorldState<S>;
 };
 
-/** Compute a structural diff between two state values. */
+/**
+ * Compute a structural diff between two state values.
+ *
+ * Note: Uses JSON.stringify for deep comparison. This has known limitations:
+ * key ordering sensitivity, undefined values being stripped, and circular
+ * references causing errors. Sufficient for Phase 1 state objects.
+ */
 export function diff<S extends Record<string, unknown>>(before: S, after: S): Diff<S> {
   const added: Record<string, unknown> = {};
   const removed: Record<string, unknown> = {};

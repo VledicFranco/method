@@ -94,6 +94,7 @@ export function recordMethod(
     loopCount: acc.loopCount + 1,
     totalTokens: acc.totalTokens + record.cost.tokens,
     totalCostUsd: acc.totalCostUsd + record.cost.usd,
+    elapsedMs: acc.elapsedMs + record.cost.duration_ms,
     completedMethods: [...acc.completedMethods, record],
   };
 }

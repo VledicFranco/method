@@ -169,12 +169,27 @@ export function runMethodology<S>(
 
       const methodResult = yield* runMethod(method, state, stepExecutor);
 
+      // Aggregate cost from step results
+      const totalCost = methodResult.stepResults.reduce(
+        (acc, sr) => ({
+          tokens: acc.tokens + sr.cost.tokens,
+          usd: acc.usd + sr.cost.usd,
+          duration_ms: acc.duration_ms + sr.cost.duration_ms,
+        }),
+        { tokens: 0, usd: 0, duration_ms: 0 },
+      );
+
+      const stepSummaries: Record<string, string> = {};
+      for (const sr of methodResult.stepResults) {
+        stepSummaries[sr.stepId] = sr.status;
+      }
+
       // Record completed method in accumulator
       const completedRecord: CompletedMethodRecord = {
         methodId: method.id,
         objectiveMet: methodResult.objectiveMet,
-        stepOutputSummaries: {},
-        cost: { tokens: 0, usd: 0, duration_ms: 0 },
+        stepOutputSummaries: stepSummaries,
+        cost: totalCost,
       };
       acc = recordMethod(acc, completedRecord);
 

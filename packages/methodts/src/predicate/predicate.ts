@@ -33,11 +33,13 @@ export function check<A>(label: string, f: (a: A) => boolean): Predicate<A> {
 
 /** Logical conjunction. */
 export function and<A>(...preds: Predicate<A>[]): Predicate<A> {
+  if (preds.length === 0) return TRUE;
   return preds.reduce((acc, p) => ({ tag: "and" as const, left: acc, right: p }));
 }
 
 /** Logical disjunction. */
 export function or<A>(...preds: Predicate<A>[]): Predicate<A> {
+  if (preds.length === 0) return FALSE;
   return preds.reduce((acc, p) => ({ tag: "or" as const, left: acc, right: p }));
 }
 
