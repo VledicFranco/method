@@ -127,9 +127,13 @@ Based on routing evaluation:
 3. Sub-agents commit their work to YOUR feature branch and push immediately
 4. Sub-agents don't make scope decisions — report back
 5. State the P1-EXEC method for each sub-agent
-6. CRITICAL: Explicitly list which files/directories each sub-agent may modify.
-   Sub-agents must not commit changes outside their declared scope.
-   Example: "You may modify files under packages/bridge/src/ only."
+6. CRITICAL: Explicitly list which files/directories each sub-agent may modify:
+   - Phase X agents: `packages/bridge/src/**`, `packages/bridge/src/__tests__/**`
+   - Phase Y agents: `docs/guides/**`
+   These paths will be passed as `allowed_paths` to `bridge_spawn` for
+   infrastructure-level enforcement (PRD 014). The bridge installs a pre-commit
+   hook that blocks commits outside these patterns and a PTY watcher that
+   detects out-of-scope writes in real time.
 7. CRITICAL: Sub-agents must NEVER push to master. They push only to the
    feature branch you created. If a sub-agent needs to push, give it the
    exact branch name.
@@ -253,6 +257,8 @@ If `bridge_spawn` MCP tool is available and the human says "fire it":
    - `initial_prompt`: the composed prompt from Step 3
    - `session_id`: from the current methodology session if one is active
    - `budget`: from `governance.budget` or default
+   - `allowed_paths`: derived from Section 9's file-scope listing (PRD 014). Convert each sub-agent's declared scope to glob patterns. Example: if Section 9 says "Phase 1 agents: `packages/bridge/src/**`", pass `["packages/bridge/src/**"]`. If the task has a broad scope (e.g., multiple packages), include all relevant patterns.
+   - `scope_mode`: `"enforce"` (default — pre-commit hook blocks out-of-scope commits)
 
 2. Report the `bridge_session_id` to the human
 3. Note: the human can monitor progress on the bridge dashboard (default: http://localhost:3456/dashboard)

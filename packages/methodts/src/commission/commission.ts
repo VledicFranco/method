@@ -25,6 +25,10 @@ export type BridgeParams = {
   readonly timeoutMs?: number;
   readonly mode?: "pty" | "print";
   readonly spawnArgs?: string[];
+  /** PRD 014: Glob patterns of files this agent is allowed to modify. Empty = no constraint. */
+  readonly allowedPaths?: readonly string[];
+  /** PRD 014: Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. */
+  readonly scopeMode?: "enforce" | "warn";
 };
 
 /** Commission metadata — governance traceability. */
