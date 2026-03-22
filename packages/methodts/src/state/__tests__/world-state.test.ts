@@ -75,8 +75,8 @@ describe("diff()", () => {
   });
 
   it("handles multiple changes in one diff", () => {
-    const before = { a: 1, b: 2, c: 3 };
-    const after = { b: 20, c: 3, d: 4 };
+    const before: Record<string, number> = { a: 1, b: 2, c: 3 };
+    const after: Record<string, number> = { b: 20, c: 3, d: 4 };
     const result = diff(before, after);
 
     expect(result.removed).toEqual({ a: 1 });
