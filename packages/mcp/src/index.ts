@@ -15,12 +15,15 @@ const ROOT = process.env.METHOD_ROOT ?? process.cwd();
 const THEORY = resolve(ROOT, "theory");
 const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 
+const BRIDGE_TIMEOUT_MS = parseInt(process.env.BRIDGE_TIMEOUT_MS ?? '30000', 10);
+
 async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(url, init);
   } catch (e) {
-    if (e instanceof TypeError) {
-      // Connection error — retry once after 1s
+    // Only retry on safe (non-mutating) methods to prevent double-fire on POST
+    const method = init?.method?.toUpperCase() ?? 'GET';
+    if (e instanceof TypeError && (method === 'GET' || method === 'HEAD')) {
       await new Promise(r => setTimeout(r, 1000));
       return await fetch(url, init);
     }
@@ -29,15 +32,26 @@ async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response
 }
 
 async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
+  // Add timeout to prevent indefinite hangs if bridge is unresponsive
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BRIDGE_TIMEOUT_MS);
+
   let res: Response;
   try {
-    res = await fetchWithRetry(url, init);
+    const mergedInit = { ...init, signal: controller.signal };
+    res = await fetchWithRetry(url, mergedInit);
   } catch (e) {
+    clearTimeout(timer);
     if (e instanceof TypeError) {
       throw new Error(`Bridge error: connection refused — is the bridge running on ${BRIDGE_URL}?`);
     }
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error(`Bridge error: request timed out after ${BRIDGE_TIMEOUT_MS}ms — bridge may be unresponsive`);
+    }
     throw e;
   }
+  clearTimeout(timer);
+
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({ error: res.statusText })) as Record<string, string>;
     const msg = [errBody.error, errBody.message].filter(Boolean).join(': ') || res.statusText;
