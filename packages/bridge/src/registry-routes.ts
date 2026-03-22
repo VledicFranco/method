@@ -12,8 +12,8 @@
  *   POST /api/registry/reload              — invalidate cache
  */
 
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { readdir, readFile, stat, access } from 'node:fs/promises';
+import { join, basename, resolve } from 'node:path';
 import yaml from 'js-yaml';
 import type { FastifyInstance } from 'fastify';
 
@@ -83,6 +83,62 @@ interface RegistryConfig {
   cacheTtlMs: number;
 }
 
+// ── Helpers ──
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isDirectory(p: string): Promise<boolean> {
+  try {
+    const s = await stat(p);
+    return s.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function isFile(p: string): Promise<boolean> {
+  try {
+    const s = await stat(p);
+    return s.isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function safeYamlLoad(filePath: string): Promise<Record<string, unknown> | null> {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    const parsed = yaml.load(content);
+    if (parsed && typeof parsed === 'object') {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate that path segments don't escape the base directory.
+ * Rejects segments containing '..', '/', or '\\' and verifies the
+ * resolved path stays within the base directory (path traversal guard).
+ */
+function safePath(base: string, ...segments: string[]): string | null {
+  for (const seg of segments) {
+    if (seg.includes('..') || seg.includes('/') || seg.includes('\\')) return null;
+  }
+  const resolved = resolve(base, ...segments);
+  if (!resolved.startsWith(resolve(base))) return null;
+  return resolved;
+}
+
 // ── Scanner ──
 
 function isMethodologyDir(name: string): boolean {
@@ -100,20 +156,7 @@ function isProtocolFile(name: string): boolean {
   );
 }
 
-function safeYamlLoad(filePath: string): Record<string, unknown> | null {
-  try {
-    const content = readFileSync(filePath, 'utf-8');
-    const parsed = yaml.load(content);
-    if (parsed && typeof parsed === 'object') {
-      return parsed as Record<string, unknown>;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function scanRegistry(config: RegistryConfig): RegistryTree {
+async function scanRegistry(config: RegistryConfig): Promise<RegistryTree> {
   const { registryDir } = config;
   const methodologies: RegistryMethodologySummary[] = [];
   let totalMethods = 0;
@@ -121,7 +164,7 @@ function scanRegistry(config: RegistryConfig): RegistryTree {
   let totalCompiled = 0;
   let totalDraft = 0;
 
-  if (!existsSync(registryDir)) {
+  if (!(await pathExists(registryDir))) {
     return {
       methodologies: [],
       totals: { methodologies: 0, methods: 0, protocols: 0, compiled: 0, draft: 0 },
@@ -129,30 +172,30 @@ function scanRegistry(config: RegistryConfig): RegistryTree {
     };
   }
 
-  const topEntries = readdirSync(registryDir);
+  const topEntries = await readdir(registryDir);
 
   for (const dirName of topEntries) {
     if (!isMethodologyDir(dirName)) continue;
 
     const methodologyDir = join(registryDir, dirName);
-    if (!statSync(methodologyDir).isDirectory()) continue;
+    if (!(await isDirectory(methodologyDir))) continue;
 
     // Read methodology-level YAML
     const methodologyYamlPath = join(methodologyDir, `${dirName}.yaml`);
-    const methodologyData = safeYamlLoad(methodologyYamlPath);
+    const methodologyData = await safeYamlLoad(methodologyYamlPath);
     const meth = (methodologyData?.methodology ?? {}) as Record<string, unknown>;
 
     const methods: RegistryMethodSummary[] = [];
-    const entries = readdirSync(methodologyDir);
+    const entries = await readdir(methodologyDir);
 
     // Scan for method subdirectories
     for (const entry of entries) {
       const entryPath = join(methodologyDir, entry);
-      if (!statSync(entryPath).isDirectory()) continue;
+      if (!(await isDirectory(entryPath))) continue;
       if (!isMethodDir(entry)) continue;
 
       const methodYamlPath = join(entryPath, `${entry}.yaml`);
-      const methodData = safeYamlLoad(methodYamlPath);
+      const methodData = await safeYamlLoad(methodYamlPath);
       if (!methodData) continue;
 
       const m = (methodData.method ?? {}) as Record<string, unknown>;
@@ -177,11 +220,11 @@ function scanRegistry(config: RegistryConfig): RegistryTree {
     // Scan for protocol files at methodology level
     for (const entry of entries) {
       const entryPath = join(methodologyDir, entry);
-      if (!statSync(entryPath).isFile()) continue;
+      if (!(await isFile(entryPath))) continue;
       if (!isProtocolFile(entry)) continue;
 
       // Skip non-protocol YAML files by parsing content
-      const data = safeYamlLoad(entryPath);
+      const data = await safeYamlLoad(entryPath);
       if (!data || !data.protocol) continue;
 
       const p = data.protocol as Record<string, unknown>;
@@ -231,26 +274,67 @@ function scanRegistry(config: RegistryConfig): RegistryTree {
   };
 }
 
-// ── Method/Protocol Detail Resolution ──
+// ── Promotion Record Resolution ──
 
-function resolveMethodFile(config: RegistryConfig, methodologyId: string, methodId: string): string | null {
+async function resolvePromotionFile(config: RegistryConfig, methodologyId: string, protocolId: string): Promise<string | null> {
   const { registryDir } = config;
 
+  // Path traversal guard: reject segments that could escape the registry directory
+  const methodologyDir = safePath(registryDir, methodologyId);
+  if (!methodologyDir) return null;
+  if (protocolId.includes('..') || protocolId.includes('/') || protocolId.includes('\\')) return null;
+
+  if (!(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
+
+  // Scan for *-PROMOTION.yaml files matching the protocol ID by filename convention.
+  // We match by filename rather than parsed YAML content because promotion files
+  // may contain YAML that fails strict parsing (e.g., mixed mapping/sequence sections).
+  // The file is then parsed separately by the route handler which returns 422 on errors.
+  const entries = await readdir(methodologyDir);
+
+  // Try exact convention: {PROTOCOL-ID}-PROMOTION.yaml
+  const exactName = `${protocolId}-PROMOTION.yaml`;
+  if (entries.includes(exactName)) {
+    const exactPath = join(methodologyDir, exactName);
+    if (await isFile(exactPath)) return exactPath;
+  }
+
+  // Fallback: scan for any *-PROMOTION.yaml that contains the protocol ID in its filename
+  for (const entry of entries) {
+    if (!entry.endsWith('-PROMOTION.yaml') && !entry.endsWith('-PROMOTION.yml')) continue;
+    if (!entry.includes(protocolId)) continue;
+    const entryPath = join(methodologyDir, entry);
+    if (await isFile(entryPath)) return entryPath;
+  }
+
+  return null;
+}
+
+// ── Method/Protocol Detail Resolution ──
+
+async function resolveMethodFile(config: RegistryConfig, methodologyId: string, methodId: string): Promise<string | null> {
+  const { registryDir } = config;
+
+  // Path traversal guard: reject segments that could escape the registry directory
+  const methodologyDir = safePath(registryDir, methodologyId);
+  if (!methodologyDir) return null;
+  const methodDir = safePath(registryDir, methodologyId, methodId);
+  if (!methodDir) return null;
+
   // Try method subdirectory first: registry/{methodology}/{method}/{method}.yaml
-  const methodDirPath = join(registryDir, methodologyId, methodId, `${methodId}.yaml`);
-  if (existsSync(methodDirPath)) return methodDirPath;
+  const methodDirPath = join(methodDir, `${methodId}.yaml`);
+  if (await pathExists(methodDirPath)) return methodDirPath;
 
   // Try protocol files at methodology level (scan by parsed ID)
-  const methodologyDir = join(registryDir, methodologyId);
-  if (!existsSync(methodologyDir) || !statSync(methodologyDir).isDirectory()) return null;
+  if (!(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
 
-  const entries = readdirSync(methodologyDir);
+  const entries = await readdir(methodologyDir);
   for (const entry of entries) {
     const entryPath = join(methodologyDir, entry);
-    if (!statSync(entryPath).isFile()) continue;
+    if (!(await isFile(entryPath))) continue;
     if (!entry.endsWith('.yaml')) continue;
 
-    const data = safeYamlLoad(entryPath);
+    const data = await safeYamlLoad(entryPath);
     if (!data) continue;
 
     // Check if this file's protocol ID matches
@@ -267,14 +351,14 @@ function resolveMethodFile(config: RegistryConfig, methodologyId: string, method
 
 // ── Manifest ──
 
-function loadManifest(config: RegistryConfig, tree: RegistryTree): ManifestResponse {
+async function loadManifest(config: RegistryConfig, tree: RegistryTree): Promise<ManifestResponse> {
   const { manifestPath } = config;
 
-  if (!existsSync(manifestPath)) {
+  if (!(await pathExists(manifestPath))) {
     return { project: 'unknown', last_updated: '', installed: [] };
   }
 
-  const data = safeYamlLoad(manifestPath);
+  const data = await safeYamlLoad(manifestPath);
   if (!data || !data.manifest) {
     return { project: 'unknown', last_updated: '', installed: [] };
   }
@@ -346,7 +430,7 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
       return reply.status(200).send(treeCache);
     }
 
-    const tree = scanRegistry(config);
+    const tree = await scanRegistry(config);
     treeCache = tree;
     treeCacheExpiry = now + config.cacheTtlMs;
 
@@ -363,12 +447,12 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
     if (treeCache && now < treeCacheExpiry) {
       tree = treeCache;
     } else {
-      tree = scanRegistry(config);
+      tree = await scanRegistry(config);
       treeCache = tree;
       treeCacheExpiry = now + config.cacheTtlMs;
     }
 
-    const manifest = loadManifest(config, tree);
+    const manifest = await loadManifest(config, tree);
     return reply.status(200).send(manifest);
   });
 
@@ -380,13 +464,49 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
   }>('/api/registry/:methodology/:method', async (request, reply) => {
     const { methodology, method } = request.params;
 
-    const filePath = resolveMethodFile(config, methodology, method);
+    // Path traversal guard: reject params with traversal characters early
+    if (!safePath(config.registryDir, methodology, method)) {
+      return reply.status(400).send({ error: 'Invalid path parameters' });
+    }
+
+    const filePath = await resolveMethodFile(config, methodology, method);
     if (!filePath) {
       return reply.status(404).send({ error: `Method ${methodology}/${method} not found` });
     }
 
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = yaml.load(content);
+      return reply.status(200).send(parsed);
+    } catch (e) {
+      return reply.status(422).send({
+        error: 'YAML parse error',
+        message: (e as Error).message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/registry/:methodology/:protocol/promotion — Promotion record for a protocol
+   */
+  app.get<{
+    Params: { methodology: string; protocol: string };
+  }>('/api/registry/:methodology/:protocol/promotion', async (request, reply) => {
+    const { methodology, protocol: protocolId } = request.params;
+
+    // Path traversal guard: reject params with traversal characters early
+    if (!safePath(config.registryDir, methodology) ||
+        protocolId.includes('..') || protocolId.includes('/') || protocolId.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid path parameters' });
+    }
+
+    const filePath = await resolvePromotionFile(config, methodology, protocolId);
+    if (!filePath) {
+      return reply.status(404).send({ error: `Promotion record for ${methodology}/${protocolId} not found` });
+    }
+
+    try {
+      const content = await readFile(filePath, 'utf-8');
       const parsed = yaml.load(content);
       return reply.status(200).send(parsed);
     } catch (e) {

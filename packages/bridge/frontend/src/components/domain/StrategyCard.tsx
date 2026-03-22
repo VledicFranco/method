@@ -2,7 +2,14 @@
  * PRD 019.3: Strategy definition card with mini-DAG thumbnail.
  *
  * Shows strategy name, ID, node/gate/trigger badges, mini-DAG,
- * and last execution summary. Interactive — click opens detail panel.
+ * last execution summary with gate pass/fail counts.
+ * Interactive — click opens detail panel.
+ *
+ * Card states:
+ * - Default: --abyss background, --border border
+ * - Hover: lift 2px, border brightens, subtle shadow
+ * - Selected: --bio border with 1px outer glow
+ * - Running: pulse-glow animation (2.5s ease-in-out)
  */
 
 import { cn } from '@/lib/cn';
@@ -25,6 +32,15 @@ function triggerBadgeVariant(type: string): 'default' | 'bio' | 'cyan' | 'solar'
     case 'channel_event': return 'nebular';
     default: return 'default';
   }
+}
+
+// ── Gate summary text ──
+
+function gateSummary(passed: number, failed: number): string {
+  const total = passed + failed;
+  if (total === 0) return '';
+  if (failed === 0) return `all ${total} gates passed`;
+  return `${passed}/${total} gates passed`;
 }
 
 export interface StrategyCardProps {
@@ -115,24 +131,35 @@ export function StrategyCard({
 
       {/* Last execution summary */}
       {last_execution ? (
-        <div className="flex items-center gap-2 pt-sp-2 border-t border-bdr">
-          <StatusBadge status={last_execution.status as Status} />
-          <span className="text-xs text-txt-muted font-mono">
-            {last_execution.completed_at
-              ? formatRelativeTime(last_execution.completed_at)
-              : last_execution.started_at
-                ? formatRelativeTime(last_execution.started_at)
-                : ''}
-          </span>
-          {last_execution.cost_usd > 0 && (
-            <span className="text-xs text-txt-dim font-mono">
-              {formatCost(last_execution.cost_usd)}
+        <div className="pt-sp-2 border-t border-bdr">
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatusBadge status={last_execution.status as Status} />
+            <span className="text-xs text-txt-muted font-mono">
+              {last_execution.completed_at
+                ? formatRelativeTime(last_execution.completed_at)
+                : last_execution.started_at
+                  ? formatRelativeTime(last_execution.started_at)
+                  : ''}
             </span>
-          )}
-          {last_execution.duration_ms > 0 && (
-            <span className="text-xs text-txt-dim font-mono">
-              {formatDuration(last_execution.duration_ms)}
-            </span>
+            {last_execution.cost_usd > 0 && (
+              <span className="text-xs text-txt-dim font-mono">
+                {formatCost(last_execution.cost_usd)}
+              </span>
+            )}
+            {last_execution.duration_ms > 0 && (
+              <span className="text-xs text-txt-dim font-mono">
+                {formatDuration(last_execution.duration_ms)}
+              </span>
+            )}
+          </div>
+          {/* Gate summary */}
+          {(last_execution.gates_passed > 0 || last_execution.gates_failed > 0) && (
+            <p className={cn(
+              'text-[0.65rem] font-mono mt-1',
+              last_execution.gates_failed > 0 ? 'text-solar' : 'text-cyan',
+            )}>
+              {gateSummary(last_execution.gates_passed, last_execution.gates_failed)}
+            </p>
           )}
         </div>
       ) : (

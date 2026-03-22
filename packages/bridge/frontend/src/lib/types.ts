@@ -211,6 +211,23 @@ export interface TriggerActionResponse {
   message: string;
 }
 
+// Webhook log types (PRD 019.4 Phase 2)
+export interface WebhookLogEntry {
+  timestamp: string;
+  method: string;
+  hmac_status: 'pass' | 'fail' | 'none';
+  filter_result: 'pass' | 'reject' | 'N/A';
+  payload_preview: string;
+  headers: Record<string, string>;
+  payload_size_bytes: number;
+}
+
+export interface WebhookLogResponse {
+  trigger_id: string;
+  requests: WebhookLogEntry[];
+  count: number;
+}
+
 // ── Strategy Definition Types (PRD 019.3) ────────────────────
 
 export interface StrategyNodeDef {

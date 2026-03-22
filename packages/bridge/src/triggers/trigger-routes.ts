@@ -1,9 +1,12 @@
 /**
  * PRD 018: Event Triggers — HTTP Trigger Management API + Webhook Routes (Phase 2a-3)
+ * PRD 019.4: Extended with trigger_config derived fields, single-trigger detail,
+ *            and webhook request log endpoint.
  *
  * Registers Fastify routes for:
  *   1. Trigger management endpoints (GET /triggers, POST /triggers/:id/enable, etc.)
  *   2. Dynamic webhook routes per registered WebhookTrigger
+ *   3. Webhook request log endpoint (GET /triggers/:id/webhook-log)
  *
  * Component 6 (HTTP API) and Component 3 (WebhookTrigger route binding).
  * Management endpoints follow the existing bridge auth model (localhost-only assumed).
@@ -12,6 +15,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TriggerRouter } from './trigger-router.js';
 import { WebhookTrigger } from './webhook-trigger.js';
+import type { TriggerConfig, TriggerRegistration } from './types.js';
 
 /**
  * Restrict a management endpoint to localhost-only access.
@@ -29,6 +33,88 @@ function requireLocalhost(request: FastifyRequest, reply: FastifyReply): boolean
 const TRIGGERS_STRATEGY_DIR = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
 
 /**
+ * PRD 019.4: Build derived config fields for a trigger registration.
+ * These are type-specific fields surfaced at the top level of each trigger
+ * in the API response so the frontend does not need to switch on trigger type
+ * to extract common display fields.
+ */
+function buildDerivedConfig(config: TriggerConfig): Record<string, unknown> {
+  const derived: Record<string, unknown> = {};
+
+  switch (config.type) {
+    case 'git_commit':
+      derived.branch_pattern = config.branch_pattern ?? null;
+      derived.path_pattern = config.path_pattern ?? null;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+
+    case 'file_watch':
+      derived.paths = config.paths;
+      derived.events = config.events ?? null;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+
+    case 'schedule':
+      derived.cron = config.cron;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+
+    case 'webhook':
+      derived.webhook_path = config.path;
+      derived.methods = config.methods ?? ['POST'];
+      derived.hmac_configured = !!config.secret_env;
+      derived.filter_expression = config.filter ?? null;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+
+    case 'pty_watcher':
+      derived.pattern = config.pattern;
+      derived.condition = config.condition ?? null;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+
+    case 'channel_event':
+      derived.event_types = config.event_types;
+      derived.filter_expression = config.filter ?? null;
+      derived.debounce_ms = config.debounce_ms ?? null;
+      derived.debounce_strategy = config.debounce_strategy ?? null;
+      derived.max_batch_size = config.max_batch_size ?? null;
+      break;
+  }
+
+  return derived;
+}
+
+/**
+ * PRD 019.4: Format a single trigger registration for API response.
+ * Includes the raw trigger_config and derived top-level fields.
+ */
+function formatTriggerResponse(t: TriggerRegistration): Record<string, unknown> {
+  return {
+    trigger_id: t.trigger_id,
+    strategy_id: t.strategy_id,
+    strategy_path: t.strategy_path,
+    type: t.trigger_config.type,
+    enabled: t.enabled,
+    max_concurrent: t.max_concurrent,
+    active_executions: t.active_executions,
+    stats: t.stats,
+    trigger_config: t.trigger_config,
+    ...buildDerivedConfig(t.trigger_config),
+  };
+}
+
+/**
  * Register all trigger management and webhook routes on the Fastify app.
  */
 export function registerTriggerRoutes(
@@ -39,7 +125,7 @@ export function registerTriggerRoutes(
   const dir = strategyDir ?? TRIGGERS_STRATEGY_DIR;
 
   // ── GET /triggers — List all registered triggers with status and stats ──
-  // PRD 019.4: Extended to return trigger_config fields for the frontend UI
+  // PRD 019.4: Extended to return trigger_config + derived fields for the frontend UI
 
   app.get<{
     Querystring: { strategy_id?: string };
@@ -52,17 +138,7 @@ export function registerTriggerRoutes(
     }
 
     return reply.status(200).send({
-      triggers: triggers.map((t) => ({
-        trigger_id: t.trigger_id,
-        strategy_id: t.strategy_id,
-        strategy_path: t.strategy_path,
-        type: t.trigger_config.type,
-        enabled: t.enabled,
-        max_concurrent: t.max_concurrent,
-        active_executions: t.active_executions,
-        stats: t.stats,
-        trigger_config: t.trigger_config,
-      })),
+      triggers: triggers.map(formatTriggerResponse),
       paused: router.isPaused,
       total: triggers.length,
       watcher_count: router.watcherCount,
@@ -75,12 +151,16 @@ export function registerTriggerRoutes(
   app.get<{
     Querystring: { limit?: string; trigger_id?: string };
   }>('/triggers/history', async (request, reply) => {
-    const limit = request.query.limit ? parseInt(request.query.limit, 10) : undefined;
-    let history = router.getHistory(limit);
+    // Filter by trigger_id first, then apply limit (F-4: filter before slice)
+    let history = router.getHistory();
 
-    // Filter by trigger_id if provided
     if (request.query.trigger_id) {
       history = history.filter((e) => e.trigger_id === request.query.trigger_id);
+    }
+
+    const limit = request.query.limit ? parseInt(request.query.limit, 10) : undefined;
+    if (limit !== undefined) {
+      history = history.slice(-limit);
     }
 
     return reply.status(200).send({
@@ -90,7 +170,8 @@ export function registerTriggerRoutes(
   });
 
   // ── GET /triggers/:id — Single trigger detail ──
-  // PRD 019.4: New endpoint for trigger detail slide-over and deep links
+  // PRD 019.4: Full detail for trigger slide-over and deep links, includes
+  // derived config fields and recent fires (last 10)
 
   app.get<{
     Params: { id: string };
@@ -105,23 +186,65 @@ export function registerTriggerRoutes(
       return reply.status(404).send({ error: `Trigger not found: ${id}` });
     }
 
-    // Get recent fires for this trigger
+    // Get recent fires for this trigger (last 10, newest last)
     const allHistory = router.getHistory();
     const recentFires = allHistory
       .filter((e) => e.trigger_id === id)
       .slice(-10);
 
     return reply.status(200).send({
-      trigger_id: trigger.trigger_id,
-      strategy_id: trigger.strategy_id,
-      strategy_path: trigger.strategy_path,
-      type: trigger.trigger_config.type,
-      enabled: trigger.enabled,
-      max_concurrent: trigger.max_concurrent,
-      active_executions: trigger.active_executions,
-      stats: trigger.stats,
-      trigger_config: trigger.trigger_config,
+      ...formatTriggerResponse(trigger),
       recent_fires: recentFires,
+    });
+  });
+
+  // ── GET /triggers/:id/webhook-log — Recent webhook requests ──
+  // PRD 019.4: Returns the ring buffer of recent webhook requests for
+  // a specific webhook trigger. Only valid for webhook-type triggers.
+
+  app.get<{
+    Params: { id: string };
+    Querystring: { limit?: string };
+  }>('/triggers/:id/webhook-log', async (request, reply) => {
+    const { id } = request.params;
+
+    // Find the trigger in registrations
+    const triggers = router.getStatus();
+    const trigger = triggers.find((t) => t.trigger_id === id);
+
+    if (!trigger) {
+      return reply.status(404).send({ error: `Trigger not found: ${id}` });
+    }
+
+    if (trigger.trigger_config.type !== 'webhook') {
+      return reply.status(400).send({
+        error: `Trigger ${id} is type '${trigger.trigger_config.type}', not 'webhook'. Webhook log is only available for webhook triggers.`,
+      });
+    }
+
+    // Resolve the live WebhookTrigger instance from the router to access its ring buffer
+    const webhooks = router.getWebhookTriggers();
+    const match = webhooks.find((w) => w.triggerId === id);
+
+    if (!match) {
+      // Trigger exists in registrations but has no active watcher (e.g., disabled)
+      return reply.status(200).send({
+        trigger_id: id,
+        requests: [],
+        count: 0,
+      });
+    }
+
+    // Parse and clamp limit: default 20, max 50
+    const rawLimit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 50);
+
+    const requests = match.watcher.getRequestLog(limit);
+
+    return reply.status(200).send({
+      trigger_id: id,
+      requests,
+      count: requests.length,
     });
   });
 
@@ -301,6 +424,7 @@ function registerWebhookRoutes(
             request.body,
             rawBuffer,
             headers,
+            request.method,
           );
 
           return reply.status(result.status).send(result.body);

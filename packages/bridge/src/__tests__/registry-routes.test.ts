@@ -204,6 +204,72 @@ describe('GET /api/registry/manifest', () => {
   });
 });
 
+describe('GET /api/registry/:methodology/:protocol/promotion', () => {
+  it('resolves promotion file for RETRO-PROTO', async () => {
+    const app = await createTestApp();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/registry/P0-META/RETRO-PROTO/promotion',
+      });
+
+      // The promotion file exists (RETRO-PROTO-PROMOTION.yaml).
+      // It may return 200 (valid YAML) or 422 (YAML parse error in the refinements section).
+      // Either way, a 404 would indicate a file resolution problem.
+      assert.ok(
+        response.statusCode === 200 || response.statusCode === 422,
+        `expected 200 or 422, got ${response.statusCode}`,
+      );
+
+      if (response.statusCode === 200) {
+        const body = JSON.parse(response.body);
+        assert.ok(body.proposal, 'should have proposal key');
+        assert.equal(body.proposal.id, 'RETRO-PROTO-PROMOTION');
+        assert.ok(body.proposal.criteria_met, 'should have criteria_met');
+        assert.ok(Array.isArray(body.proposal.criteria_met), 'criteria_met should be an array');
+      }
+
+      if (response.statusCode === 422) {
+        const body = JSON.parse(response.body);
+        assert.equal(body.error, 'YAML parse error');
+        assert.ok(body.message, 'should include parse error message');
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('returns 404 for protocol without promotion record', async () => {
+    const app = await createTestApp();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/registry/P0-META/STEER-PROTO/promotion',
+      });
+
+      assert.equal(response.statusCode, 404);
+      const body = JSON.parse(response.body);
+      assert.ok(body.error.includes('not found'));
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('returns 404 for nonexistent methodology', async () => {
+    const app = await createTestApp();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/registry/P99-FAKE/FAKE-PROTO/promotion',
+      });
+
+      assert.equal(response.statusCode, 404);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
 describe('POST /api/registry/reload', () => {
   it('invalidates cache and returns confirmation', async () => {
     const app = await createTestApp();

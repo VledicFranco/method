@@ -2,13 +2,14 @@
  * PRD 019.3: Strategies page — definition browser + execution history.
  *
  * Section 1: Strategy definition cards (2-column grid)
- * Section 2: Execution history timeline
+ * Section 2: Execution history timeline (grouped by time period)
  *
  * Cards are ordered: running > recently completed > never executed.
  * Clicking a card opens the detail slide-over panel.
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
 import { SlideOverPanel } from '@/components/layout/SlideOverPanel';
 import { Tabs } from '@/components/ui/Tabs';
@@ -18,13 +19,15 @@ import { TimelineEvent, type TimelineEventData } from '@/components/data/Timelin
 import { Badge } from '@/components/ui/Badge';
 import { StrategyCard } from '@/components/domain/StrategyCard';
 import { StrategyDefinitionPanel } from '@/components/domain/StrategyDefinitionPanel';
+import { ExecuteDialog } from '@/components/domain/ExecuteDialog';
+import { cn } from '@/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/hooks/useStrategies';
-import { formatCost, formatDuration, formatRelativeTime } from '@/lib/formatters';
-import type { StrategyDefinition, StrategyExecution, ContextInputDef } from '@/lib/types';
+import { formatCost, formatRelativeTime } from '@/lib/formatters';
+import type { StrategyDefinition, StrategyExecution } from '@/lib/types';
 import { Play, RefreshCw } from 'lucide-react';
 
 // ── Sort helpers ──
@@ -42,6 +45,34 @@ function sortDefinitions(defs: StrategyDefinition[]): StrategyDefinition[] {
 
     return a.id.localeCompare(b.id);
   });
+}
+
+// ── Time grouping for execution timeline ──
+
+function getTimeGroup(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  const eventDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (eventDay.getTime() === today.getTime()) return 'Today';
+  if (eventDay.getTime() === yesterday.getTime()) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function groupExecutionsByTime(
+  executions: StrategyExecution[],
+): Array<{ label: string; executions: StrategyExecution[] }> {
+  const groups = new Map<string, StrategyExecution[]>();
+
+  for (const exec of executions) {
+    const label = getTimeGroup(exec.started_at);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label)!.push(exec);
+  }
+
+  return Array.from(groups.entries()).map(([label, execs]) => ({ label, executions: execs }));
 }
 
 // ── Execution timeline event mapper ──
@@ -69,111 +100,12 @@ function executionToTimelineEvent(exec: StrategyExecution): TimelineEventData {
   };
 }
 
-// ── Execute confirmation dialog ──
+// ── Toast notification ──
 
-interface ExecuteDialogProps {
-  definition: StrategyDefinition;
-  open: boolean;
-  onClose: () => void;
-  onExecute: (inputs: Record<string, unknown>) => void;
-  loading: boolean;
-}
-
-function ExecuteDialog({ definition, open, onClose, onExecute, loading }: ExecuteDialogProps) {
-  const [inputs, setInputs] = useState<Record<string, unknown>>(() => {
-    const defaults: Record<string, unknown> = {};
-    for (const ci of definition.context_inputs) {
-      defaults[ci.name] = ci.default ?? '';
-    }
-    return defaults;
-  });
-
-  if (!open) return null;
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-50 bg-void/60 backdrop-blur-sm animate-backdrop-fade"
-        onClick={onClose}
-      />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="w-full max-w-md rounded-card border border-bdr bg-abyss p-sp-6 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h3 className="font-display text-md text-txt font-semibold mb-1">
-            Execute Strategy
-          </h3>
-          <p className="text-xs text-txt-dim mb-sp-4">
-            {definition.name} ({definition.id})
-          </p>
-
-          {/* Context input fields */}
-          {definition.context_inputs.length > 0 && (
-            <div className="space-y-sp-3 mb-sp-5">
-              <p className="text-xs text-txt-muted font-medium uppercase tracking-wider">
-                Context Inputs
-              </p>
-              {definition.context_inputs.map((ci: ContextInputDef) => (
-                <div key={ci.name}>
-                  <label className="block text-xs text-txt-dim mb-1">
-                    <span className="font-mono">{ci.name}</span>
-                    <Badge variant="default" label={ci.type} className="ml-2" />
-                  </label>
-                  {ci.type === 'object' ? (
-                    <textarea
-                      className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-xs font-mono text-txt focus:border-bio focus:outline-none resize-y min-h-[60px]"
-                      value={
-                        typeof inputs[ci.name] === 'string'
-                          ? (inputs[ci.name] as string)
-                          : JSON.stringify(inputs[ci.name], null, 2)
-                      }
-                      onChange={(e) => {
-                        try {
-                          setInputs({ ...inputs, [ci.name]: JSON.parse(e.target.value) });
-                        } catch {
-                          setInputs({ ...inputs, [ci.name]: e.target.value });
-                        }
-                      }}
-                    />
-                  ) : (
-                    <input
-                      type={ci.type === 'number' ? 'number' : 'text'}
-                      className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-xs font-mono text-txt focus:border-bio focus:outline-none"
-                      value={String(inputs[ci.name] ?? '')}
-                      onChange={(e) => {
-                        const val =
-                          ci.type === 'number'
-                            ? parseFloat(e.target.value) || 0
-                            : e.target.value;
-                        setInputs({ ...inputs, [ci.name]: val });
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={loading}
-              leftIcon={<Play className="h-3.5 w-3.5" />}
-              onClick={() => onExecute(inputs)}
-            >
-              Execute
-            </Button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+interface ToastState {
+  message: string;
+  variant: 'success' | 'error';
+  visible: boolean;
 }
 
 // ── Detail panel tabs ──
@@ -187,6 +119,7 @@ const DETAIL_TABS = [
 // ── Main page ──
 
 export default function Strategies() {
+  const navigate = useNavigate();
   const { data: defData, isLoading: defsLoading, refetch: refetchDefs } = useStrategyDefinitions();
   const { data: executions, isLoading: execsLoading } = useStrategyExecutions();
   const executeMutation = useExecuteStrategy();
@@ -194,6 +127,7 @@ export default function Strategies() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState('overview');
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const definitions = useMemo(
     () => sortDefinitions(defData?.definitions ?? []),
@@ -217,7 +151,7 @@ export default function Strategies() {
     [executions, selectedId],
   );
 
-  // All executions for timeline
+  // All executions for timeline (newest first)
   const allExecutions = useMemo(
     () =>
       (executions ?? []).sort(
@@ -226,6 +160,17 @@ export default function Strategies() {
       ),
     [executions],
   );
+
+  // Group executions by time period for the timeline
+  const timelineGroups = useMemo(
+    () => groupExecutionsByTime(allExecutions),
+    [allExecutions],
+  );
+
+  const showToast = useCallback((message: string, variant: 'success' | 'error') => {
+    setToast({ message, variant, visible: true });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
 
   const handleCardClick = useCallback(
     (id: string) => {
@@ -244,13 +189,30 @@ export default function Strategies() {
           context_inputs: inputs,
         },
         {
-          onSuccess: () => {
+          onSuccess: (data) => {
             setExecuteDialogOpen(false);
+            showToast(
+              `Strategy "${selectedDef.name}" started (${data.execution_id})`,
+              'success',
+            );
+          },
+          onError: (error) => {
+            showToast(
+              `Failed to execute: ${(error as Error).message}`,
+              'error',
+            );
           },
         },
       );
     },
-    [selectedDef, executeMutation],
+    [selectedDef, executeMutation, showToast],
+  );
+
+  const handleViewDetail = useCallback(
+    (id: string) => {
+      navigate(`/app/strategies/${encodeURIComponent(id)}`);
+    },
+    [navigate],
   );
 
   const loading = defsLoading || execsLoading;
@@ -274,6 +236,9 @@ export default function Strategies() {
       <section className="mb-sp-8">
         <h2 className="font-display text-sm font-semibold text-txt-dim uppercase tracking-wider mb-sp-4">
           Definitions
+          {definitions.length > 0 && (
+            <span className="ml-2 text-txt-muted font-normal">({definitions.length})</span>
+          )}
         </h2>
 
         {loading && definitions.length === 0 ? (
@@ -286,9 +251,12 @@ export default function Strategies() {
             ))}
           </div>
         ) : definitions.length === 0 ? (
-          <div className="flex items-center justify-center h-32 rounded-card border border-bdr bg-abyss">
+          <div className="flex flex-col items-center justify-center h-32 rounded-card border border-bdr bg-abyss">
             <p className="text-txt-dim text-sm">
               No strategy definitions found in .method/strategies/
+            </p>
+            <p className="text-txt-muted text-xs mt-1">
+              Add strategy YAML files and refresh.
             </p>
           </div>
         ) : (
@@ -314,6 +282,9 @@ export default function Strategies() {
       <section>
         <h2 className="font-display text-sm font-semibold text-txt-dim uppercase tracking-wider mb-sp-4">
           Execution History
+          {allExecutions.length > 0 && (
+            <span className="ml-2 text-txt-muted font-normal">({allExecutions.length})</span>
+          )}
         </h2>
 
         {allExecutions.length === 0 ? (
@@ -322,18 +293,31 @@ export default function Strategies() {
           </div>
         ) : (
           <div className="relative">
-            {allExecutions.map((exec, index) => (
-              <div
-                key={exec.execution_id}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <TimelineEvent
-                  event={executionToTimelineEvent(exec)}
-                  onClick={() => {
-                    setSelectedId(exec.strategy_id);
-                    setDetailTab('history');
-                  }}
-                />
+            {timelineGroups.map((group) => (
+              <div key={group.label} className="mb-sp-5">
+                {/* Time period header */}
+                <div className="sticky top-14 z-10 py-1 bg-void/95 backdrop-blur-sm">
+                  <span className="text-xs text-txt-muted uppercase font-display tracking-wider">
+                    {group.label}
+                  </span>
+                </div>
+
+                <div className="mt-sp-2">
+                  {group.executions.map((exec, index) => (
+                    <div
+                      key={exec.execution_id}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <TimelineEvent
+                        event={executionToTimelineEvent(exec)}
+                        onClick={() => {
+                          setSelectedId(exec.strategy_id);
+                          setDetailTab('history');
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -349,6 +333,15 @@ export default function Strategies() {
       >
         {selectedDef && (
           <>
+            {/* Strategy ID + version below header */}
+            <div className="flex items-center gap-2 mb-sp-3 -mt-sp-1">
+              <span className="font-mono text-xs text-bio">{selectedDef.id}</span>
+              <Badge variant="default" label={`v${selectedDef.version}`} />
+              {selectedDef.last_execution && (
+                <StatusBadge status={selectedDef.last_execution.status as Status} />
+              )}
+            </div>
+
             <Tabs
               tabs={DETAIL_TABS.map((t) => ({
                 ...t,
@@ -366,7 +359,7 @@ export default function Strategies() {
 
             {/* YAML tab */}
             {detailTab === 'yaml' && (
-              <div className="rounded-lg border border-bdr bg-void p-sp-4 overflow-auto">
+              <div className="rounded-lg border border-bdr bg-void p-sp-4 overflow-auto max-h-[60vh]">
                 <pre className="text-[0.7rem] text-txt-dim font-mono whitespace-pre-wrap leading-relaxed">
                   {selectedDef.raw_yaml}
                 </pre>
@@ -385,10 +378,13 @@ export default function Strategies() {
                     {selectedExecutions.map((exec) => (
                       <div
                         key={exec.execution_id}
-                        className="rounded-lg border border-bdr bg-void/50 p-sp-3"
+                        className="rounded-lg border border-bdr bg-void/50 p-sp-3 transition-colors duration-200 hover:border-bdr-hover hover:bg-abyss-light"
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono text-[0.7rem] text-txt truncate max-w-[200px]">
+                          <span
+                            className="font-mono text-[0.7rem] text-txt truncate max-w-[200px]"
+                            title={exec.execution_id}
+                          >
                             {exec.execution_id}
                           </span>
                           <StatusBadge status={exec.status as Status} />
@@ -414,6 +410,13 @@ export default function Strategies() {
             {/* Actions footer */}
             <div className="flex gap-2 mt-sp-6 pt-sp-4 border-t border-bdr">
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleViewDetail(selectedDef.id)}
+              >
+                View Full Detail
+              </Button>
+              <Button
                 variant="primary"
                 size="sm"
                 leftIcon={<Play className="h-3.5 w-3.5" />}
@@ -425,6 +428,7 @@ export default function Strategies() {
 
             {/* Execute dialog */}
             <ExecuteDialog
+              key={selectedDef.id}
               definition={selectedDef}
               open={executeDialogOpen}
               onClose={() => setExecuteDialogOpen(false)}
@@ -434,6 +438,26 @@ export default function Strategies() {
           </>
         )}
       </SlideOverPanel>
+
+      {/* Toast Notification */}
+      {toast?.visible && (
+        <div
+          className={cn(
+            'fixed bottom-6 right-6 z-50 max-w-sm rounded-card border px-sp-4 py-sp-3 shadow-xl',
+            'animate-slide-in-left',
+            toast.variant === 'error'
+              ? 'bg-error-dim border-error/30'
+              : 'bg-abyss border-bio/30',
+          )}
+        >
+          <p className={cn(
+            'text-sm',
+            toast.variant === 'error' ? 'text-error' : 'text-txt',
+          )}>
+            {toast.message}
+          </p>
+        </div>
+      )}
     </PageShell>
   );
 }

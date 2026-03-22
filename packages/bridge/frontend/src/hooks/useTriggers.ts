@@ -13,6 +13,7 @@ import type {
   TriggerDetailResponse,
   TriggerReloadResponse,
   TriggerActionResponse,
+  WebhookLogResponse,
 } from '@/lib/types';
 
 const POLL_INTERVAL = 10_000; // 10 seconds
@@ -24,6 +25,7 @@ export const triggerKeys = {
   list: () => [...triggerKeys.all, 'list'] as const,
   detail: (id: string) => [...triggerKeys.all, 'detail', id] as const,
   history: (triggerId?: string) => [...triggerKeys.all, 'history', triggerId ?? 'all'] as const,
+  webhookLog: (id: string) => [...triggerKeys.all, 'webhook-log', id] as const,
 };
 
 // ── Queries ──
@@ -60,6 +62,21 @@ export function useTriggerDetail(triggerId: string | null) {
       api.get<TriggerDetailResponse>(`/triggers/${encodeURIComponent(triggerId!)}`, signal),
     enabled: !!triggerId,
     staleTime: 5_000,
+  });
+}
+
+/** Fetch webhook request log for a webhook trigger */
+export function useWebhookLog(triggerId: string | null, limit = 20) {
+  return useQuery({
+    queryKey: triggerKeys.webhookLog(triggerId ?? ''),
+    queryFn: ({ signal }) =>
+      api.get<WebhookLogResponse>(
+        `/triggers/${encodeURIComponent(triggerId!)}/webhook-log?limit=${limit}`,
+        signal,
+      ),
+    enabled: !!triggerId,
+    staleTime: 10_000,
+    retry: false, // Endpoint may not exist yet (Phase 2 backend prerequisite)
   });
 }
 

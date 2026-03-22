@@ -13,6 +13,7 @@ export type { PtyObservation } from './pty-watcher-trigger.js';
 export { ChannelEventTrigger } from './channel-event-trigger.js';
 export type { ChannelMessageEvent } from './channel-event-trigger.js';
 export { WebhookTrigger } from './webhook-trigger.js';
+export type { WebhookRequestLogEntry } from './webhook-trigger.js';
 export { evaluateSandboxedExpression } from './sandbox-eval.js';
 
 export { DebounceEngine } from './debounce.js';
