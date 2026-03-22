@@ -98,6 +98,7 @@ npm run bridge:stop    # Stop
 | `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
 | `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
 | `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
+| `SCOPE_ENFORCEMENT_DEFAULT` | `enforce` | Default scope mode when `allowed_paths` provided (PRD 014) |
 | `TRIGGERS_ENABLED` | `true` | Master switch for the event trigger system (PRD 018) |
 | `TRIGGERS_STRATEGY_DIR` | `.method/strategies` | Directory to scan for Strategy YAML files with event triggers |
 | `TRIGGERS_SCAN_ON_STARTUP` | `true` | Auto-register triggers from strategy files on bridge start |
