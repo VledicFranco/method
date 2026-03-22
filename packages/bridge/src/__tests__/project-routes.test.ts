@@ -118,16 +118,18 @@ test('Cursor: generateCursor creates unique cursor IDs', () => {
 });
 
 test('Cursor: parseCursor retrieves stored index', () => {
-  const cursorId = generateCursor(42);
-  const index = parseCursor(cursorId);
+  const cursorId = generateCursor(42, 'proj-1');
+  const result = parseCursor(cursorId);
 
-  assert.strictEqual(index, 42);
+  assert.strictEqual(result.index, 42);
+  assert.strictEqual(result.projectId, 'proj-1');
 });
 
 test('Cursor: parseCursor returns 0 for unknown cursor', () => {
-  const index = parseCursor('unknown-cursor-xyz');
+  const result = parseCursor('unknown-cursor-xyz');
 
-  assert.strictEqual(index, 0, 'Unknown cursor should default to 0');
+  assert.strictEqual(result.index, 0, 'Unknown cursor should default to 0');
+  assert.strictEqual(result.projectId, undefined);
 });
 
 test('Cursor: getEventsSinceCursor returns events from index', () => {
@@ -181,40 +183,37 @@ test('Cursor: Cursor state expires after 24 hours', () => {
 // ── Event Log Tests ────
 
 test('Event Log: Stores and retrieves events', () => {
-  const initialLength = eventLog.length;
+  const initialCount = eventLog.count;
 
   const event = createProjectEvent(ProjectEventType.CREATED, 'test-proj', { action: 'test' });
-  eventLog.push(event);
+  pushEventToLog(eventLog, event);
 
-  assert.strictEqual(eventLog.length, initialLength + 1);
-  assert.deepStrictEqual(eventLog[eventLog.length - 1].projectId, 'test-proj');
+  assert.strictEqual(eventLog.count, initialCount + 1);
+  // Get last event from buffer
+  const lastEvent = eventLog.buffer[eventLog.buffer.length - 1];
+  assert.deepStrictEqual(lastEvent.projectId, 'test-proj');
 });
 
 test('Event Log: Supports cursor-based retrieval', () => {
-  // Clear event log for this test
-  const priorLength = eventLog.length;
-  eventLog.splice(0, eventLog.length);
+  // Create a fresh buffer for this test
+  const testLog = createCircularEventLog(100);
 
   // Add test events
   const event1 = createProjectEvent(ProjectEventType.CREATED, 'proj-1');
   const event2 = createProjectEvent(ProjectEventType.DISCOVERED, 'proj-2');
-  eventLog.push(event1, event2);
+  pushEventToLog(testLog, event1);
+  pushEventToLog(testLog, event2);
 
   // First poll from beginning
   const cursor1 = generateCursor(0);
-  const firstPoll = getEventsSinceCursor(eventLog, cursor1);
+  const allEvents = getEventsFromLog(testLog, 0);
+  const firstPoll = getEventsSinceCursor(allEvents, cursor1);
   assert.strictEqual(firstPoll.length >= 0, true); // May get all or partial
 
-  // Second poll from cursor position
-  const cursor2 = generateCursor(eventLog.length);
-  const secondPoll = getEventsSinceCursor(eventLog, cursor2);
+  // Second poll from cursor position (at end)
+  const cursor2 = generateCursor(testLog.count);
+  const secondPoll = getEventsSinceCursor(allEvents, cursor2);
   assert.strictEqual(secondPoll.length, 0, 'Second poll should be empty if at end');
-
-  // Restore
-  eventLog.splice(0, eventLog.length);
-  for (let i = 0; i < priorLength; i++) {
-    eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, `restore-${i}`));
-  }
 });
 
 // ── ProjectMetadata Structure Tests ────
@@ -297,48 +296,45 @@ test('Isolation: Same project access allowed', () => {
 // ── Event Polling Scenarios ────
 
 test('Event Polling: First poll gets all events', () => {
-  const priorLength = eventLog.length;
-  eventLog.splice(0, eventLog.length);
+  // Create a test log
+  const testLog = createCircularEventLog(100);
 
   // Add events
-  eventLog.push(createProjectEvent(ProjectEventType.CREATED, 'proj-1'));
-  eventLog.push(createProjectEvent(ProjectEventType.DISCOVERED, 'proj-2'));
+  const e1 = createProjectEvent(ProjectEventType.CREATED, 'proj-1');
+  const e2 = createProjectEvent(ProjectEventType.DISCOVERED, 'proj-2');
+  pushEventToLog(testLog, e1);
+  pushEventToLog(testLog, e2);
+
+  // Get all events from buffer
+  const allEvents = getEventsFromLog(testLog, 0);
 
   // First poll without cursor
-  const events = getEventsSinceCursor(eventLog);
+  const events = getEventsSinceCursor(allEvents);
   assert.strictEqual(events.length, 2);
-
-  // Restore
-  eventLog.splice(0, eventLog.length);
-  for (let i = 0; i < priorLength; i++) {
-    eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, `restore-${i}`));
-  }
 });
 
 test('Event Polling: Subsequent poll returns only new events', () => {
-  const priorLength = eventLog.length;
-  eventLog.splice(0, eventLog.length);
+  // Create a test log
+  const testLog = createCircularEventLog(100);
 
   // First batch
-  eventLog.push(createProjectEvent(ProjectEventType.CREATED, 'proj-1'));
-  eventLog.push(createProjectEvent(ProjectEventType.DISCOVERED, 'proj-2'));
+  const e1 = createProjectEvent(ProjectEventType.CREATED, 'proj-1');
+  const e2 = createProjectEvent(ProjectEventType.DISCOVERED, 'proj-2');
+  pushEventToLog(testLog, e1);
+  pushEventToLog(testLog, e2);
 
   // Get cursor at position 2 (after first batch)
   const cursor = generateCursor(2);
 
   // Second batch
-  eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, 'proj-3'));
+  const e3 = createProjectEvent(ProjectEventType.PUBLISHED, 'proj-3');
+  pushEventToLog(testLog, e3);
 
-  // Poll with cursor should only return new event
-  const newEvents = getEventsSinceCursor(eventLog, cursor);
+  // Get all events and poll with cursor should only return new event
+  const allEvents = getEventsFromLog(testLog, 0);
+  const newEvents = getEventsSinceCursor(allEvents, cursor);
   assert.strictEqual(newEvents.length, 1);
   assert.strictEqual(newEvents[0].projectId, 'proj-3');
-
-  // Restore
-  eventLog.splice(0, eventLog.length);
-  for (let i = 0; i < priorLength; i++) {
-    eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, `restore-${i}`));
-  }
 });
 
 // ── Error Handling Tests ────
@@ -392,33 +388,30 @@ test('Project-Scoped Events: Unauthenticated can read global events (Phase 1)', 
 });
 
 test('Isolation: Event filtering by projectId', () => {
-  // Clear and set up test events
-  const priorLength = eventLog.length;
-  eventLog.splice(0, eventLog.length);
+  // Create test log
+  const testLog = createCircularEventLog(100);
 
   // Add events for two different projects
   const eventA1 = createProjectEvent(ProjectEventType.CREATED, 'project-A', { num: 1 });
   const eventB1 = createProjectEvent(ProjectEventType.CREATED, 'project-B', { num: 2 });
   const eventA2 = createProjectEvent(ProjectEventType.DISCOVERED, 'project-A', { num: 3 });
 
-  eventLog.push(eventA1, eventB1, eventA2);
+  pushEventToLog(testLog, eventA1);
+  pushEventToLog(testLog, eventB1);
+  pushEventToLog(testLog, eventA2);
 
-  // Filter for project-A
-  const projectAEvents = eventLog.filter((e) => e.projectId === 'project-A');
+  // Get all events and filter by projectId
+  const allEvents = getEventsFromLog(testLog, 0);
+
+  const projectAEvents = allEvents.filter((e) => e.projectId === 'project-A');
   assert.strictEqual(projectAEvents.length, 2, 'Should get 2 events for project-A');
-  assert.strictEqual(projectAEvents[0].data.num, 1);
-  assert.strictEqual(projectAEvents[1].data.num, 3);
+  assert.strictEqual((projectAEvents[0].data as any).num, 1);
+  assert.strictEqual((projectAEvents[1].data as any).num, 3);
 
   // Filter for project-B
-  const projectBEvents = eventLog.filter((e) => e.projectId === 'project-B');
+  const projectBEvents = allEvents.filter((e) => e.projectId === 'project-B');
   assert.strictEqual(projectBEvents.length, 1, 'Should get 1 event for project-B');
-  assert.strictEqual(projectBEvents[0].data.num, 2);
-
-  // Restore
-  eventLog.splice(0, eventLog.length);
-  for (let i = 0; i < priorLength; i++) {
-    eventLog.push(createProjectEvent(ProjectEventType.PUBLISHED, `restore-${i}`));
-  }
+  assert.strictEqual((projectBEvents[0].data as any).num, 2);
 });
 
 test('Isolation: Multiple sessions with different projects', () => {

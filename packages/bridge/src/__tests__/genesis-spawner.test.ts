@@ -289,7 +289,7 @@ describe('Cursor Management', () => {
       cursors: [
         {
           projectId: 'test-project',
-          cursor: 'cursor-456',
+          cursor: JSON.stringify({ version: '1', projectId: 'test-project', index: 3, timestamp: new Date().toISOString() }),
           lastUpdate: new Date().toISOString(),
           eventCount: 3,
         },
@@ -297,7 +297,10 @@ describe('Cursor Management', () => {
     };
 
     const cursor = getCursorForProject(cursors, 'test-project');
-    assert.strictEqual(cursor, 'cursor-456');
+    assert(cursor.length > 0, 'Cursor should be non-empty');
+    const parsed = JSON.parse(cursor);
+    assert.strictEqual(parsed.version, '1');
+    assert.strictEqual(parsed.projectId, 'test-project');
   });
 
   it('should update cursor for existing project', () => {
@@ -306,7 +309,7 @@ describe('Cursor Management', () => {
       cursors: [
         {
           projectId: 'test-project',
-          cursor: 'cursor-old',
+          cursor: JSON.stringify({ version: '1', projectId: 'test-project', index: 1, timestamp: new Date().toISOString() }),
           lastUpdate: new Date().toISOString(),
           eventCount: 1,
         },
@@ -316,7 +319,11 @@ describe('Cursor Management', () => {
     cursors = updateCursorForProject(cursors, 'test-project', 'cursor-new', 2);
 
     assert.strictEqual(cursors.cursors.length, 1);
-    assert.strictEqual(cursors.cursors[0].cursor, 'cursor-new');
+    // Cursor is stored as JSON with version
+    const parsed = JSON.parse(cursors.cursors[0].cursor);
+    assert.strictEqual(parsed.version, '1');
+    assert.strictEqual(parsed.projectId, 'test-project');
+    assert.strictEqual(parsed.index, 2);
     assert.strictEqual(cursors.cursors[0].eventCount, 2);
   });
 
@@ -330,7 +337,10 @@ describe('Cursor Management', () => {
 
     assert.strictEqual(cursors.cursors.length, 1);
     assert.strictEqual(cursors.cursors[0].projectId, 'new-project');
-    assert.strictEqual(cursors.cursors[0].cursor, 'cursor-first');
+    // Cursor is stored as JSON with version
+    const parsed = JSON.parse(cursors.cursors[0].cursor);
+    assert.strictEqual(parsed.version, '1');
+    assert.strictEqual(parsed.projectId, 'new-project');
   });
 
   it('should update lastPolled timestamp when updating cursors', () => {
