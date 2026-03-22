@@ -1,5 +1,5 @@
 import { homedir, tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
@@ -17,6 +17,8 @@ import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from '.
 import { setOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
+import { MethodologySessionStore } from './methodology/methodology-store.js';
+import { registerMethodologyRoutes } from './methodology/methodology-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './genesis/cursor-manager.js';
@@ -793,6 +795,11 @@ registerStrategyVizRoutes(app);
 // ---------- Registry API (PRD 019.2) ----------
 
 registerRegistryRoutes(app);
+
+// ---------- Methodology API (PRD 021) ----------
+
+const methodologyStore = new MethodologySessionStore(resolve(ROOT_DIR, 'registry'));
+registerMethodologyRoutes(app, methodologyStore);
 
 // ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
 
