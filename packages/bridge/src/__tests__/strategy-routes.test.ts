@@ -16,9 +16,9 @@ import {
   generateRetro,
   computeCriticalPath,
   retroToYaml,
-  saveRetro,
 } from '../strategy/retro-generator.js';
 import type { StrategyRetro } from '../strategy/retro-generator.js';
+import { saveRetro } from '../strategy/retro-writer.js';
 import type { StrategyExecutionResult, NodeResult } from '../strategy/strategy-executor.js';
 import type { StrategyDAG } from '../strategy/strategy-parser.js';
 import type { ArtifactBundle } from '../strategy/artifact-store.js';

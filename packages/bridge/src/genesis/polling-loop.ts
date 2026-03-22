@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from '
 import { dirname } from 'node:path';
 import * as yaml from 'js-yaml';
 import type { SessionPool } from '../pool.js';
-import type { ProjectEvent } from '@method/core';
+import type { ProjectEvent } from '../events/index.js';
 
 export interface CursorState {
   projectId: string;

@@ -23,7 +23,8 @@ import { CursorMaintenanceJob } from './genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './genesis-routes.js';
 import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './project-routes.js';
 import { DiscoveryService } from './multi-project/discovery-service.js';
-import { InMemoryProjectRegistry, JsonLineEventPersistence, YamlEventPersistence } from '@method/core';
+import { InMemoryProjectRegistry } from './registry/index.js';
+import { JsonLineEventPersistence, YamlEventPersistence } from './events/index.js';
 
 // Configuration from environment variables
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();

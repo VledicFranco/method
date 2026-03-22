@@ -8,8 +8,8 @@
 
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { retroToYaml } from '@method/core';
-import type { StrategyRetro } from '@method/core';
+import { retroToYaml } from './retro-generator.js';
+import type { StrategyRetro } from './retro-generator.js';
 
 /**
  * Save a retrospective to disk.

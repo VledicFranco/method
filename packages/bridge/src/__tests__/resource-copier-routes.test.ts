@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import Fastify from 'fastify';
 import { registerProjectRoutes } from '../project-routes.js';
 import { DiscoveryService } from '../multi-project/discovery-service.js';
-import { InMemoryProjectRegistry } from '@method/core';
+import { InMemoryProjectRegistry } from '../registry/index.js';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

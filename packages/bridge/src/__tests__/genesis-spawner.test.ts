@@ -34,7 +34,7 @@ import {
   type CursorState,
 } from '../genesis/polling-loop.js';
 import type { SessionPool, SessionStatusInfo } from '../pool.js';
-import type { ProjectEvent } from '@method/core';
+import type { ProjectEvent } from '../events/index.js';
 
 // Mock SessionPool
 class MockSessionPool implements SessionPool {

@@ -16,7 +16,7 @@ import {
   getEventsFromLog,
   createCircularEventLog,
 } from '../project-routes.js';
-import { ProjectEventType, createProjectEvent } from '@method/core';
+import { ProjectEventType, createProjectEvent } from '../events/index.js';
 import type { FastifyRequest } from 'fastify';
 
 // ── Session Context Tests ────

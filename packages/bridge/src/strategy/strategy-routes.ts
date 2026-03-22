@@ -27,7 +27,8 @@ export function loadExecutorConfig(): StrategyExecutorConfig {
     retroDir: process.env.STRATEGY_RETRO_DIR ?? '.method/retros',
   };
 }
-import { generateRetro, saveRetro } from './retro-generator.js';
+import { generateRetro } from './retro-generator.js';
+import { saveRetro } from './retro-writer.js';
 import type { StrategyDAG } from './strategy-parser.js';
 
 // ── In-memory execution store ──────────────────────────────────

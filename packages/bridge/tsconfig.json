@@ -4,8 +4,6 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "references": [
-    { "path": "../core" }
-  ],
+  "references": [],
   "include": ["src"]
 }
