@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader2, AlertCircle, Zap } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import DOMPurify from 'dompurify';
 import type { ProjectEvent } from '@/lib/types';
 
 export interface EventStreamPanelProps {
@@ -94,12 +95,13 @@ export function EventStreamPanel({
         {loading && <Loader2 className="h-4 w-4 animate-spin text-txt-dim" />}
       </div>
 
-      {/* Project Filter */}
-      <div className="flex gap-sp-2">
+      {/* Project Filter (F-E-2: Mobile text wrapping) */}
+      <div className="flex gap-sp-2 flex-wrap">
         <button
           onClick={() => setFilterProjectId(undefined)}
           className={cn(
             'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+            'overflow-hidden text-ellipsis whitespace-nowrap max-w-full',
             !filterProjectId
               ? 'bg-bio text-void'
               : 'bg-abyss border border-bdr text-txt-dim hover:bg-abyss-light',
@@ -113,10 +115,12 @@ export function EventStreamPanel({
             onClick={() => setFilterProjectId(project.id)}
             className={cn(
               'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+              'overflow-hidden text-ellipsis whitespace-nowrap max-w-xs',
               filterProjectId === project.id
                 ? 'bg-bio text-void'
                 : 'bg-abyss border border-bdr text-txt-dim hover:bg-abyss-light',
             )}
+            title={project.name}
           >
             {project.name}
           </button>
@@ -179,8 +183,8 @@ export function EventStreamPanel({
                               <span className="font-mono text-xs">{key}:</span>{' '}
                               <span className="text-xs">
                                 {typeof value === 'string'
-                                  ? value.slice(0, 60)
-                                  : JSON.stringify(value).slice(0, 60)}
+                                  ? DOMPurify.sanitize(value).slice(0, 60)
+                                  : DOMPurify.sanitize(JSON.stringify(value)).slice(0, 60)}
                               </span>
                             </div>
                           ))}

@@ -1,0 +1,38 @@
+# Auto-generated retrospective — PTY activity detection (PRD 010)
+# This is a machine-observed retro, not an agent-authored one.
+
+retro:
+  session_id: "912b59ae-ba28-4dc2-804f-a4810d1c4a12"
+  nickname: "genesis-fab-ui"
+  generated_by: pty-watcher
+  generated_at: "2026-03-22T05:02:09.926Z"
+
+  timing:
+    spawned_at: "2026-03-22T03:44:30.979Z"
+    terminated_at: "2026-03-22T05:02:09.925Z"
+    duration_minutes: 78
+    active_minutes: 78
+    idle_minutes: 0
+    termination_reason: "stale"
+
+  activity_summary:
+    tool_calls: 4
+    tool_breakdown:
+      - tool: Read
+        count: 3
+      - tool: Agent
+        count: 1
+    files_touched:
+      - dashboard.html
+    git_commits: []
+
+  quality:
+    tests_run: false
+    build_succeeded: null
+    errors_observed: 0
+
+  hardest_decision: "(auto-generated — not available)"
+  observations:
+    - "Machine-observed activity profile. See activity_summary for details."
+  card_feedback:
+    essence_feedback: "(auto-generated — not available)"

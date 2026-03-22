@@ -1,11 +1,10 @@
 /**
  * PRD 019.3: Strategy detail page at /app/strategies/:id.
  *
- * Renders the full strategy definition structurally, with node list,
- * trigger configuration, oversight rules, execution history,
- * and an Execute Now button.
- *
- * Links to /viz/:execId for live DAG view (future absorption).
+ * Full-page strategy view with:
+ * - Header: mini-DAG, strategy info, metrics, execute button
+ * - Tabs: Overview (structured fields), YAML (syntax highlighted), History (filtered executions)
+ * - Execute confirmation dialog with context inputs form
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -18,20 +17,35 @@ import { Card } from '@/components/ui/Card';
 import { StatusBadge, type Status } from '@/components/data/StatusBadge';
 import { MetricCard } from '@/components/data/MetricCard';
 import { StrategyDefinitionPanel } from '@/components/domain/StrategyDefinitionPanel';
+import { ExecuteDialog } from '@/components/domain/ExecuteDialog';
 import { MiniDag } from '@/components/domain/MiniDag';
+import { cn } from '@/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/hooks/useStrategies';
 import { formatCost, formatDuration, formatRelativeTime } from '@/lib/formatters';
+import type { StrategyDefinition } from '@/lib/types';
 import { ArrowLeft, Play } from 'lucide-react';
+
+// ── Toast notification ──
+
+interface ToastState {
+  message: string;
+  variant: 'success' | 'error';
+  visible: boolean;
+}
+
+// ── Tab config ──
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'yaml', label: 'YAML' },
   { id: 'history', label: 'History' },
 ];
+
+// ── Page Component ──
 
 export default function StrategyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +54,8 @@ export default function StrategyDetail() {
   const { data: executions } = useStrategyExecutions();
   const executeMutation = useExecuteStrategy();
   const [activeTab, setActiveTab] = useState('overview');
+  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const definition = useMemo(
     () => defData?.definitions.find((d) => d.id === id) ?? null,
@@ -57,17 +73,38 @@ export default function StrategyDetail() {
     [executions, id],
   );
 
-  const handleExecute = useCallback(() => {
-    if (!definition) return;
-    const defaults: Record<string, unknown> = {};
-    for (const ci of definition.context_inputs) {
-      defaults[ci.name] = ci.default ?? '';
-    }
-    executeMutation.mutate({
-      strategy_path: `.method/strategies/${definition.file_path}`,
-      context_inputs: defaults,
-    });
-  }, [definition, executeMutation]);
+  const showToast = useCallback((message: string, variant: 'success' | 'error') => {
+    setToast({ message, variant, visible: true });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  const handleExecute = useCallback(
+    (inputs: Record<string, unknown>) => {
+      if (!definition) return;
+      executeMutation.mutate(
+        {
+          strategy_path: `.method/strategies/${definition.file_path}`,
+          context_inputs: inputs,
+        },
+        {
+          onSuccess: (data) => {
+            setExecuteDialogOpen(false);
+            showToast(
+              `Strategy "${definition.name}" started (${data.execution_id})`,
+              'success',
+            );
+          },
+          onError: (error) => {
+            showToast(
+              `Failed to execute: ${(error as Error).message}`,
+              'error',
+            );
+          },
+        },
+      );
+    },
+    [definition, executeMutation, showToast],
+  );
 
   if (defsLoading) {
     return (
@@ -99,6 +136,10 @@ export default function StrategyDetail() {
     );
   }
 
+  const isRunning =
+    definition.last_execution?.status === 'running' ||
+    definition.last_execution?.status === 'started';
+
   return (
     <PageShell
       title={definition.name}
@@ -117,7 +158,7 @@ export default function StrategyDetail() {
             variant="primary"
             size="sm"
             leftIcon={<Play className="h-3.5 w-3.5" />}
-            onClick={handleExecute}
+            onClick={() => setExecuteDialogOpen(true)}
             loading={executeMutation.isPending}
           >
             Execute Now
@@ -125,25 +166,62 @@ export default function StrategyDetail() {
         </div>
       }
     >
-      {/* Header info */}
+      {/* Header info row */}
       <div className="flex items-start gap-sp-6 mb-sp-6">
+        {/* Mini-DAG thumbnail */}
         <MiniDag
           nodes={definition.nodes}
           gates={definition.strategy_gates}
           lastStatus={definition.last_execution?.status}
           className="shrink-0"
         />
+
+        {/* Strategy identity */}
         <div className="flex-1 min-w-0">
-          <p className="font-mono text-sm text-bio mb-1">{definition.id}</p>
-          <p className="text-xs text-txt-dim">v{definition.version}</p>
-          <div className="flex flex-wrap gap-1 mt-sp-2">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="font-mono text-sm text-bio">{definition.id}</p>
+            {isRunning && (
+              <StatusBadge status="running" />
+            )}
+            {definition.last_execution && !isRunning && (
+              <StatusBadge status={definition.last_execution.status as Status} />
+            )}
+          </div>
+          <p className="text-xs text-txt-dim mb-sp-2">v{definition.version}</p>
+
+          {/* Trigger + node type badges */}
+          <div className="flex flex-wrap gap-1">
             {definition.triggers.map((t, i) => (
-              <Badge key={i} variant="default" label={t.type} />
+              <Badge
+                key={i}
+                variant={
+                  t.type === 'manual'
+                    ? 'muted'
+                    : t.type === 'file_watch'
+                      ? 'solar'
+                      : t.type === 'git_commit'
+                        ? 'nebular'
+                        : 'bio'
+                }
+                label={t.type}
+              />
             ))}
+            {definition.nodes.filter((n) => n.type === 'methodology').length > 0 && (
+              <Badge
+                variant="nebular"
+                label={`${definition.nodes.filter((n) => n.type === 'methodology').length} methodology`}
+              />
+            )}
+            {definition.nodes.filter((n) => n.type === 'script').length > 0 && (
+              <Badge
+                variant="bio"
+                label={`${definition.nodes.filter((n) => n.type === 'script').length} script`}
+              />
+            )}
           </div>
         </div>
 
-        {/* Metrics */}
+        {/* Metric cards */}
         {definition.last_execution && (
           <div className="flex gap-sp-3 shrink-0">
             <MetricCard
@@ -186,7 +264,7 @@ export default function StrategyDetail() {
       )}
 
       {activeTab === 'yaml' && (
-        <div className="rounded-card border border-bdr bg-abyss p-sp-5 overflow-auto">
+        <div className="rounded-card border border-bdr bg-abyss p-sp-5 overflow-auto max-h-[70vh]">
           <pre className="text-[0.75rem] text-txt-dim font-mono whitespace-pre-wrap leading-relaxed">
             {definition.raw_yaml}
           </pre>
@@ -205,7 +283,10 @@ export default function StrategyDetail() {
             strategyExecutions.map((exec) => (
               <Card key={exec.execution_id} variant="interactive">
                 <div className="flex items-center justify-between mb-sp-2">
-                  <span className="font-mono text-xs text-txt truncate max-w-[300px]">
+                  <span
+                    className="font-mono text-xs text-txt truncate max-w-[300px]"
+                    title={exec.execution_id}
+                  >
                     {exec.execution_id}
                   </span>
                   <StatusBadge status={exec.status as Status} />
@@ -222,6 +303,36 @@ export default function StrategyDetail() {
               </Card>
             ))
           )}
+        </div>
+      )}
+
+      {/* Execute dialog */}
+      <ExecuteDialog
+        key={definition.id}
+        definition={definition}
+        open={executeDialogOpen}
+        onClose={() => setExecuteDialogOpen(false)}
+        onExecute={handleExecute}
+        loading={executeMutation.isPending}
+      />
+
+      {/* Toast Notification */}
+      {toast?.visible && (
+        <div
+          className={cn(
+            'fixed bottom-6 right-6 z-50 max-w-sm rounded-card border px-sp-4 py-sp-3 shadow-xl',
+            'animate-slide-in-left',
+            toast.variant === 'error'
+              ? 'bg-error-dim border-error/30'
+              : 'bg-abyss border-bio/30',
+          )}
+        >
+          <p className={cn(
+            'text-sm',
+            toast.variant === 'error' ? 'text-error' : 'text-txt',
+          )}>
+            {toast.message}
+          </p>
         </div>
       )}
     </PageShell>

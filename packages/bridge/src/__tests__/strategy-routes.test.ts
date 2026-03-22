@@ -711,3 +711,434 @@ strategy:
     assert.ok(['started', 'running', 'completed'].includes(body.status));
   });
 });
+
+// ── Strategy Definitions Endpoint Tests (PRD 019.3 Component 1) ─
+
+describe('GET /api/strategies/definitions', () => {
+  // Each test creates a temp directory with strategy YAML files,
+  // sets TRIGGERS_STRATEGY_DIR to point to it, and cleans up after.
+
+  const FULL_STRATEGY_YAML = `
+strategy:
+  id: S-TEST-FULL
+  name: "Full Test Strategy"
+  version: "2.1"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths:
+        - "src/**/*.ts"
+      events: [modify, create]
+      debounce_ms: 2000
+
+  context:
+    inputs:
+      - { name: project_name, type: string, default: "test-project" }
+      - { name: task_count, type: number }
+
+  dag:
+    nodes:
+      - id: analyze
+        type: methodology
+        methodology: P2-SD
+        method_hint: M3-TMP
+        inputs: [project_name]
+        outputs: [analysis]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 2
+
+      - id: summarize
+        type: script
+        script: "return { summary: 'done' };"
+        inputs: [analysis]
+        outputs: [report]
+        depends_on: [analyze]
+
+    strategy_gates:
+      - id: final_check
+        depends_on: [summarize]
+        type: algorithmic
+        check: "artifacts.report !== undefined"
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 5.00", action: warn_human }
+      - { condition: "step_duration_ms > 300000", action: kill_and_requeue }
+
+  outputs:
+    - type: channel_event
+      target: bridge
+`;
+
+  const MINIMAL_STRATEGY_YAML = `
+strategy:
+  id: S-TEST-MINIMAL
+  name: "Minimal Strategy"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: only
+        type: script
+        script: "return {};"
+        inputs: []
+        outputs: []
+`;
+
+  async function buildAppWithStrategyDir() {
+    const strategyDir = join(tmpdir(), `test-definitions-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await fs.mkdir(strategyDir, { recursive: true });
+
+    // Save original env and set strategy dir
+    const origDir = process.env.TRIGGERS_STRATEGY_DIR;
+    process.env.TRIGGERS_STRATEGY_DIR = strategyDir;
+
+    const Fastify = (await import('fastify')).default;
+    const { registerStrategyRoutes } = await import('../strategy/strategy-routes.js');
+    const app = Fastify({ logger: false });
+
+    const mockProvider = {
+      async invoke() {
+        return {
+          result: '```json\n{"analysis": "test"}\n```',
+          is_error: false,
+          duration_ms: 100,
+          duration_api_ms: 80,
+          num_turns: 1,
+          session_id: 'mock',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 5 },
+          model_usage: {},
+          permission_denials: [],
+          stop_reason: 'end_turn',
+          subtype: 'success',
+        };
+      },
+      async invokeStreaming() {
+        throw new Error('Not implemented');
+      },
+    };
+
+    const retroDir = join(tmpdir(), `test-retro-def-${Date.now()}`);
+    registerStrategyRoutes(app, mockProvider, { retroDir });
+
+    return {
+      app,
+      strategyDir,
+      retroDir,
+      async cleanup() {
+        if (origDir === undefined) {
+          delete process.env.TRIGGERS_STRATEGY_DIR;
+        } else {
+          process.env.TRIGGERS_STRATEGY_DIR = origDir;
+        }
+        await fs.rm(strategyDir, { recursive: true, force: true }).catch(() => {});
+        await fs.rm(retroDir, { recursive: true, force: true }).catch(() => {});
+      },
+    };
+  }
+
+  it('returns empty definitions array when strategy directory is empty', async () => {
+    const { app, cleanup } = await buildAppWithStrategyDir();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.ok(Array.isArray(body.definitions));
+      assert.equal(body.definitions.length, 0);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('returns error message when strategy directory does not exist', async () => {
+    const origDir = process.env.TRIGGERS_STRATEGY_DIR;
+    process.env.TRIGGERS_STRATEGY_DIR = join(tmpdir(), 'nonexistent-strategy-dir-' + Date.now());
+
+    const Fastify = (await import('fastify')).default;
+    const { registerStrategyRoutes } = await import('../strategy/strategy-routes.js');
+    const app = Fastify({ logger: false });
+    const mockProvider = {
+      async invoke() { return {} as any; },
+      async invokeStreaming() { throw new Error('Not implemented'); },
+    };
+    registerStrategyRoutes(app, mockProvider);
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.deepEqual(body.definitions, []);
+      assert.ok(body.error);
+      assert.ok(body.error.includes('Failed to read strategy directory'));
+    } finally {
+      if (origDir === undefined) {
+        delete process.env.TRIGGERS_STRATEGY_DIR;
+      } else {
+        process.env.TRIGGERS_STRATEGY_DIR = origDir;
+      }
+    }
+  });
+
+  it('parses a full strategy YAML and returns all expected fields', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'full-test.yaml'), FULL_STRATEGY_YAML);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+
+      const def = body.definitions[0];
+      assert.equal(def.id, 'S-TEST-FULL');
+      assert.equal(def.name, 'Full Test Strategy');
+      assert.equal(def.version, '2.1');
+      assert.equal(def.file_path, 'full-test.yaml');
+
+      // Triggers
+      assert.equal(def.triggers.length, 2);
+      assert.equal(def.triggers[0].type, 'manual');
+      assert.equal(def.triggers[1].type, 'file_watch');
+      assert.deepEqual(def.triggers[1].config.paths, ['src/**/*.ts']);
+      assert.deepEqual(def.triggers[1].config.events, ['modify', 'create']);
+      assert.equal(def.triggers[1].config.debounce_ms, 2000);
+
+      // Nodes
+      assert.equal(def.nodes.length, 2);
+      const analyzeNode = def.nodes.find((n: any) => n.id === 'analyze');
+      assert.ok(analyzeNode);
+      assert.equal(analyzeNode.type, 'methodology');
+      assert.equal(analyzeNode.methodology, 'P2-SD');
+      assert.equal(analyzeNode.method_hint, 'M3-TMP');
+      assert.deepEqual(analyzeNode.inputs, ['project_name']);
+      assert.deepEqual(analyzeNode.outputs, ['analysis']);
+      assert.equal(analyzeNode.gates.length, 1);
+      assert.equal(analyzeNode.gates[0].type, 'algorithmic');
+      assert.equal(analyzeNode.gates[0].max_retries, 2);
+
+      const summarizeNode = def.nodes.find((n: any) => n.id === 'summarize');
+      assert.ok(summarizeNode);
+      assert.equal(summarizeNode.type, 'script');
+      assert.deepEqual(summarizeNode.depends_on, ['analyze']);
+
+      // Strategy gates
+      assert.equal(def.strategy_gates.length, 1);
+      assert.equal(def.strategy_gates[0].id, 'final_check');
+      assert.deepEqual(def.strategy_gates[0].depends_on, ['summarize']);
+      assert.equal(def.strategy_gates[0].type, 'algorithmic');
+
+      // Oversight rules
+      assert.equal(def.oversight_rules.length, 2);
+      assert.equal(def.oversight_rules[0].condition, 'total_cost_usd > 5.00');
+      assert.equal(def.oversight_rules[0].action, 'warn_human');
+
+      // Context inputs
+      assert.equal(def.context_inputs.length, 2);
+      assert.equal(def.context_inputs[0].name, 'project_name');
+      assert.equal(def.context_inputs[0].type, 'string');
+      assert.equal(def.context_inputs[0].default, 'test-project');
+      assert.equal(def.context_inputs[1].name, 'task_count');
+      assert.equal(def.context_inputs[1].type, 'number');
+
+      // Outputs
+      assert.equal(def.outputs.length, 1);
+      assert.equal(def.outputs[0].type, 'channel_event');
+      assert.equal(def.outputs[0].target, 'bridge');
+
+      // Raw YAML included
+      assert.ok(def.raw_yaml);
+      assert.ok(def.raw_yaml.includes('S-TEST-FULL'));
+
+      // No execution yet
+      assert.equal(def.last_execution, null);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('parses multiple strategy files', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'full.yaml'), FULL_STRATEGY_YAML);
+      await fs.writeFile(join(strategyDir, 'minimal.yaml'), MINIMAL_STRATEGY_YAML);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 2);
+
+      const ids = body.definitions.map((d: any) => d.id).sort();
+      assert.deepEqual(ids, ['S-TEST-FULL', 'S-TEST-MINIMAL']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('handles minimal strategy with missing optional fields', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'minimal.yaml'), MINIMAL_STRATEGY_YAML);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+
+      const def = body.definitions[0];
+      assert.equal(def.id, 'S-TEST-MINIMAL');
+      assert.equal(def.name, 'Minimal Strategy');
+      assert.equal(def.version, '1.0');
+
+      // Optional fields default to empty arrays
+      assert.deepEqual(def.triggers, []);
+      assert.deepEqual(def.strategy_gates, []);
+      assert.deepEqual(def.oversight_rules, []);
+      assert.deepEqual(def.context_inputs, []);
+      assert.deepEqual(def.outputs, []);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('includes error field for YAML files that fail to parse', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'broken.yaml'), 'not: valid: yaml: [[[');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+
+      const def = body.definitions[0];
+      assert.equal(def.file_path, 'broken.yaml');
+      assert.ok(def.error);
+      assert.ok(def.error.includes('Failed to parse'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('includes error field for YAML files missing strategy.id', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'no-id.yaml'), 'strategy:\n  name: "No ID"\n');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+
+      const def = body.definitions[0];
+      assert.equal(def.file_path, 'no-id.yaml');
+      assert.ok(def.error);
+      assert.ok(def.error.includes('Missing strategy.id'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('ignores non-yaml files in the strategy directory', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'valid.yaml'), MINIMAL_STRATEGY_YAML);
+      await fs.writeFile(join(strategyDir, 'readme.md'), '# Not a strategy');
+      await fs.writeFile(join(strategyDir, 'notes.txt'), 'Some notes');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+      assert.equal(body.definitions[0].id, 'S-TEST-MINIMAL');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('mixes valid and invalid files in the same response', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'good.yaml'), FULL_STRATEGY_YAML);
+      await fs.writeFile(join(strategyDir, 'bad.yaml'), 'not: valid: yaml: [[[');
+      await fs.writeFile(join(strategyDir, 'no-id.yaml'), 'strategy:\n  name: "Missing ID"\n');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 3);
+
+      const good = body.definitions.find((d: any) => d.id === 'S-TEST-FULL');
+      assert.ok(good);
+      assert.ok(!good.error);
+
+      const bad = body.definitions.find((d: any) => d.file_path === 'bad.yaml');
+      assert.ok(bad);
+      assert.ok(bad.error);
+
+      const noId = body.definitions.find((d: any) => d.file_path === 'no-id.yaml');
+      assert.ok(noId);
+      assert.ok(noId.error);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('also picks up .yml extension files', async () => {
+    const { app, strategyDir, cleanup } = await buildAppWithStrategyDir();
+    try {
+      await fs.writeFile(join(strategyDir, 'test.yml'), MINIMAL_STRATEGY_YAML);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/strategies/definitions',
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.definitions.length, 1);
+      assert.equal(body.definitions[0].id, 'S-TEST-MINIMAL');
+      assert.equal(body.definitions[0].file_path, 'test.yml');
+    } finally {
+      await cleanup();
+    }
+  });
+});

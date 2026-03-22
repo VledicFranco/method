@@ -203,10 +203,20 @@ describe('Genesis HTTP Routes', () => {
       genesisSessionId,
     });
 
+    // F-N-1: Get CSRF token from status endpoint
+    const statusResponse = await app.inject({
+      method: 'GET',
+      url: '/genesis/status',
+    });
+    assert.strictEqual(statusResponse.statusCode, 200);
+    const statusData = JSON.parse(statusResponse.body);
+    const csrfToken = statusData.csrf_token;
+    assert(csrfToken, 'CSRF token must be present in status response');
+
     const response = await app.inject({
       method: 'POST',
       url: '/genesis/prompt',
-      payload: { message: 'Observe current state' },
+      payload: { message: 'Observe current state', csrf_token: csrfToken },
     });
 
     assert.strictEqual(response.statusCode, 200);
@@ -314,10 +324,18 @@ describe('Genesis HTTP Routes', () => {
       genesisSessionId,
     });
 
+    // F-N-1: Get CSRF token from status endpoint
+    const statusResponse = await app.inject({
+      method: 'GET',
+      url: '/genesis/status',
+    });
+    const statusData = JSON.parse(statusResponse.body);
+    const csrfToken = statusData.csrf_token;
+
     const response = await app.inject({
       method: 'POST',
       url: '/genesis/prompt',
-      payload: { message: 'Test', timeoutMs: 5000 },
+      payload: { message: 'Test', timeoutMs: 5000, csrf_token: csrfToken },
     });
 
     assert.strictEqual(response.statusCode, 200);
@@ -335,11 +353,19 @@ describe('Genesis HTTP Routes', () => {
       genesisSessionId,
     });
 
+    // F-N-1: Get CSRF token from status endpoint
+    const statusResponse = await app.inject({
+      method: 'GET',
+      url: '/genesis/status',
+    });
+    const statusData = JSON.parse(statusResponse.body);
+    const csrfToken = statusData.csrf_token;
+
     // First, send a prompt to create an in-flight prompt
     const postResponse = await app.inject({
       method: 'POST',
       url: '/genesis/prompt',
-      payload: { message: 'Test prompt to abort' },
+      payload: { message: 'Test prompt to abort', csrf_token: csrfToken },
     });
     assert.strictEqual(postResponse.statusCode, 200);
     const postData = JSON.parse(postResponse.body);
@@ -388,10 +414,18 @@ describe('Genesis HTTP Routes', () => {
       genesisSessionId,
     });
 
+    // F-N-1: Get CSRF token from status endpoint
+    const statusResponse = await app.inject({
+      method: 'GET',
+      url: '/genesis/status',
+    });
+    const statusData = JSON.parse(statusResponse.body);
+    const csrfToken = statusData.csrf_token;
+
     const response = await app.inject({
       method: 'POST',
       url: '/genesis/prompt',
-      payload: { message: '  Test with whitespace  ' },
+      payload: { message: '  Test with whitespace  ', csrf_token: csrfToken },
     });
 
     assert.strictEqual(response.statusCode, 200);

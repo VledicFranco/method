@@ -1,26 +1,25 @@
 /**
  * PRD 019.2 Component 3: Method Detail View (Main Content)
  *
- * 5-tab detail view for methods:
- *   1. Navigation (what/who/why/how/when)
- *   2. Domain Theory (sorts, predicates, function symbols, axioms)
- *   3. Steps (phase list with details)
- *   4. Compilation Record (G0-G6 gate checklist)
- *   5. Known WIP
+ * Tabbed detail view for methods and protocols:
+ *   Methods:   Navigation, Domain Theory, Steps, Compilation Record, Known WIP, Evolution (placeholder)
+ *   Protocols: Navigation, Domain Theory, Installation, Promotion, Known WIP, Evolution (placeholder)
  *
- * Protocol items adapt the tab set (Installation, Promotion tabs).
+ * Protocol items show a lifecycle pipeline (draft -> trial -> promoted) and
+ * a Promotion tab with criteria checklist when a promotion record exists.
  */
 
 import { useState } from 'react';
 import {
   Check, X, Minus, AlertTriangle,
   BookOpen, Atom, ListOrdered, ShieldCheck, AlertCircle,
-  Package, Award, Star, FlaskConical, Circle, ArrowRight,
+  Package, Award, Star, FlaskConical, Circle, ArrowRight, History,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Tabs } from '@/components/ui/Tabs';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { usePromotionRecord } from '@/hooks/useRegistry';
 import type {
   MethodDetail as MethodDetailData,
   MethodNavigation,
@@ -28,6 +27,8 @@ import type {
   StepPhase,
   CompilationGate,
   KnownWipItem,
+  PromotionRecord,
+  PromotionCriterion,
 } from '@/lib/registry-types';
 
 // ── Sub-components ──
@@ -501,6 +502,141 @@ function InstallationTab({ installation }: { installation: NonNullable<MethodDet
   );
 }
 
+// ── Tab: Promotion (Protocol) ──
+
+function PromotionTab({
+  promotionRecord,
+  isLoading,
+  isError,
+}: {
+  promotionRecord: PromotionRecord | undefined;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3 animate-pulse">
+        <div className="h-6 w-48 bg-abyss-light rounded" />
+        <div className="h-16 bg-abyss-light rounded-card" />
+        <div className="h-16 bg-abyss-light rounded-card" />
+      </div>
+    );
+  }
+
+  if (isError || !promotionRecord?.proposal) {
+    return (
+      <Card padding="lg">
+        <div className="text-center py-4">
+          <Award className="h-8 w-8 text-txt-muted mx-auto mb-3" />
+          <p className="text-sm text-txt-dim">
+            No promotion criteria recorded. Promotion data will appear here when a
+            promotion proposal exists for this protocol.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  const { proposal } = promotionRecord;
+  const criteria = proposal.criteria_met ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* Proposal header */}
+      <Card padding="md">
+        <div className="flex items-start gap-3">
+          <Award className="h-5 w-5 text-cyan shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-sm text-bio font-medium">{proposal.id}</span>
+              {proposal.status && (
+                <Badge
+                  variant={proposal.status === 'approved' ? 'bio' : proposal.status === 'pending' ? 'solar' : 'muted'}
+                  label={proposal.status}
+                  size="sm"
+                />
+              )}
+            </div>
+            <p className="font-display text-sm font-semibold text-txt mt-1">{proposal.name}</p>
+            {proposal.date && (
+              <p className="text-[0.75rem] text-txt-muted mt-1">{proposal.date}</p>
+            )}
+            {proposal.summary && (
+              <p className="text-sm text-txt-dim mt-2 leading-relaxed">{proposal.summary}</p>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Criteria checklist */}
+      {criteria.length > 0 && (
+        <div>
+          <h3 className="font-display text-sm font-semibold text-txt mb-3">Promotion Criteria</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-bdr">
+                  <th className="text-left py-2 pr-4 font-mono text-[0.7rem] text-txt-muted uppercase tracking-wider w-8" />
+                  <th className="text-left py-2 pr-4 font-mono text-[0.7rem] text-txt-muted uppercase tracking-wider">Criterion</th>
+                  <th className="text-left py-2 pr-4 font-mono text-[0.7rem] text-txt-muted uppercase tracking-wider">Result</th>
+                  <th className="text-left py-2 font-mono text-[0.7rem] text-txt-muted uppercase tracking-wider">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {criteria.map((c: PromotionCriterion, i: number) => (
+                  <tr key={i} className="border-b border-bdr/50">
+                    <td className="py-2 pr-4">
+                      <div
+                        className={cn(
+                          'h-5 w-5 rounded-full flex items-center justify-center',
+                          c.met ? 'bg-bio-dim' : 'bg-error-dim',
+                        )}
+                      >
+                        {c.met ? (
+                          <Check className="h-3 w-3 text-bio" />
+                        ) : (
+                          <X className="h-3 w-3 text-error" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-4 font-mono text-[0.8rem] text-txt">
+                      {c.criterion ?? c.metric ?? '--'}
+                    </td>
+                    <td className="py-2 pr-4 text-[0.8rem] text-txt-dim">
+                      {c.result ?? c.threshold ?? '--'}
+                    </td>
+                    <td className="py-2 text-[0.75rem] text-txt-muted max-w-[300px]">
+                      {c.evidence ?? '--'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tab: Evolution (Placeholder — Phase 2) ──
+
+function EvolutionTab() {
+  return (
+    <Card padding="lg">
+      <div className="text-center py-8">
+        <History className="h-10 w-10 text-txt-muted mx-auto mb-4" />
+        <p className="font-display text-sm font-semibold text-txt mb-2">Evolution History</p>
+        <p className="text-sm text-txt-dim max-w-md mx-auto leading-relaxed">
+          Coming soon — evolution history will appear here. Version timelines, gap candidate
+          tracking, and pre/post evolution observation rates will be visualized from
+          EVOLUTION-LEDGER.yaml and CHANGELOG.yaml data.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 // ── Main Component ──
 
 export interface MethodDetailProps {
@@ -512,6 +648,20 @@ export interface MethodDetailProps {
 export function MethodDetail({ data, methodologyId, className }: MethodDetailProps) {
   const isProtocol = !!data.protocol;
   const meta = data.method ?? data.protocol;
+  const protocolId = isProtocol ? meta?.id ?? null : null;
+
+  // Fetch promotion record for protocols (hook is always called, but disabled for methods)
+  const {
+    data: promotionRecord,
+    isLoading: promotionLoading,
+    isError: promotionError,
+  } = usePromotionRecord(
+    isProtocol ? methodologyId : null,
+    protocolId,
+  );
+
+  const [activeTab, setActiveTab] = useState('navigation');
+
   if (!meta) return null;
 
   const id = meta.id;
@@ -528,10 +678,10 @@ export function MethodDetail({ data, methodologyId, className }: MethodDetailPro
     ...(data.compilation_record ? [{ id: 'compilation', label: 'Compilation', icon: <ShieldCheck className="h-3.5 w-3.5" /> }] : []),
     ...(!data.compilation_record && isProtocol ? [{ id: 'compilation', label: 'Compilation', icon: <ShieldCheck className="h-3.5 w-3.5" /> }] : []),
     ...(isProtocol && data.protocol?.installation ? [{ id: 'installation', label: 'Installation', icon: <Package className="h-3.5 w-3.5" /> }] : []),
+    ...(isProtocol ? [{ id: 'promotion', label: 'Promotion', icon: <Award className="h-3.5 w-3.5" /> }] : []),
     { id: 'wip', label: 'Known WIP', icon: <AlertCircle className="h-3.5 w-3.5" />, count: data.known_wip?.length ?? 0 },
+    { id: 'evolution', label: 'Evolution', icon: <History className="h-3.5 w-3.5" /> },
   ];
-
-  const [activeTab, setActiveTab] = useState('navigation');
 
   // Get phases from either phases array or step_dag
   const phases = data.phases ?? data.step_dag?.steps ?? [];
@@ -589,8 +739,20 @@ export function MethodDetail({ data, methodologyId, className }: MethodDetailPro
           <InstallationTab installation={data.protocol!.installation} />
         )}
 
+        {activeTab === 'promotion' && isProtocol && (
+          <PromotionTab
+            promotionRecord={promotionRecord}
+            isLoading={promotionLoading}
+            isError={promotionError}
+          />
+        )}
+
         {activeTab === 'wip' && (
           <WipTab items={data.known_wip ?? []} />
+        )}
+
+        {activeTab === 'evolution' && (
+          <EvolutionTab />
         )}
       </div>
     </div>

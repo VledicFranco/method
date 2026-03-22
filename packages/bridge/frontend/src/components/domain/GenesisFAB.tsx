@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -7,6 +7,11 @@ interface GenesisFABProps {
   isOpen: boolean;
   status: 'active' | 'idle';
 }
+
+// F-P-11: Cache rotation calculation
+const computeRotationTransform = (isOpen: boolean, position: { x: number; y: number }): string => {
+  return `translate(${position.x}px, ${position.y}px) rotate(${isOpen ? 45 : 0}deg)`;
+};
 
 export function GenesisFAB({ onToggle, isOpen, status }: GenesisFABProps) {
   const fabRef = useRef<HTMLButtonElement>(null);
@@ -24,6 +29,8 @@ export function GenesisFAB({ onToggle, isOpen, status }: GenesisFABProps) {
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // F-P-11: Memoized transform string
+  const transformStyle = computeRotationTransform(isOpen, position);
 
   // Handle drag start
   const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -84,7 +91,7 @@ export function GenesisFAB({ onToggle, isOpen, status }: GenesisFABProps) {
         isOpen && 'rotate-45',
       )}
       style={{
-        transform: `translate(${position.x}px, ${position.y}px) ${isOpen ? 'rotate(45deg)' : 'rotate(0deg)'}`,
+        transform: transformStyle,
       }}
       title={status === 'active' ? 'Genesis is active' : 'Genesis is idle'}
     >

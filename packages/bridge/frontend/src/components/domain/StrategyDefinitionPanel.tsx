@@ -2,7 +2,13 @@
  * PRD 019.3: Structured YAML rendering for the strategy detail slide-over.
  *
  * Renders the strategy definition as structured UI elements:
- * identity, DAG nodes, strategy gates, triggers, oversight rules, outputs.
+ * 1. Identity — ID, name, version, file_path
+ * 2. Context Inputs — input parameters with types and defaults
+ * 3. DAG Nodes — node cards with type dot, metadata, gates
+ * 4. Strategy Gates — gate cards with diamond icon, check expression
+ * 5. Triggers — trigger config items with type badges
+ * 6. Oversight Rules — condition (solar) + action
+ * 7. Outputs — type and target
  */
 
 import { cn } from '@/lib/cn';
@@ -90,7 +96,7 @@ function NodeCard({ node }: { node: StrategyNodeDef }) {
             {node.gates.map((g, i) => (
               <div key={i} className="pl-3 text-[0.7rem] text-txt-dim">
                 <span className="text-cyan font-mono">{g.type}</span>
-                {' — '}
+                {' -- '}
                 <span className="font-mono text-txt-muted">{g.check}</span>
                 <span className="text-txt-muted"> (retries: {g.max_retries})</span>
               </div>
@@ -135,6 +141,41 @@ function GateCard({ gate }: { gate: StrategyGateDef }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Trigger config card ──
+
+function TriggerConfigCard({ trigger }: { trigger: { type: string; config: Record<string, unknown> } }) {
+  const variant =
+    trigger.type === 'manual'
+      ? 'muted' as const
+      : trigger.type === 'file_watch'
+        ? 'solar' as const
+        : trigger.type === 'git_commit'
+          ? 'nebular' as const
+          : trigger.type === 'schedule'
+            ? 'cyan' as const
+            : 'bio' as const;
+
+  return (
+    <div className="rounded-lg border border-bdr bg-void/50 p-sp-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Badge variant={variant} label={trigger.type} />
+      </div>
+      {Object.keys(trigger.config).length > 0 && (
+        <div className="pl-1 space-y-0.5">
+          {Object.entries(trigger.config).map(([key, val]) => (
+            <p key={key} className="text-[0.7rem] text-txt-dim">
+              <span className="text-txt-muted">{key}:</span>{' '}
+              <span className="font-mono">
+                {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -215,7 +256,7 @@ export function StrategyDefinitionPanel({
       {/* Strategy Gates */}
       {definition.strategy_gates.length > 0 && (
         <>
-          <SectionHeading>Strategy Gates</SectionHeading>
+          <SectionHeading>Strategy Gates ({definition.strategy_gates.length})</SectionHeading>
           <div>
             {definition.strategy_gates.map((gate) => (
               <GateCard key={gate.id} gate={gate} />
@@ -227,37 +268,10 @@ export function StrategyDefinitionPanel({
       {/* Triggers */}
       {definition.triggers.length > 0 && (
         <>
-          <SectionHeading>Triggers</SectionHeading>
+          <SectionHeading>Triggers ({definition.triggers.length})</SectionHeading>
           <div className="space-y-sp-2">
             {definition.triggers.map((t, i) => (
-              <div key={i} className="rounded-lg border border-bdr bg-void/50 p-sp-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge
-                    variant={
-                      t.type === 'manual'
-                        ? 'muted'
-                        : t.type === 'file_watch'
-                          ? 'solar'
-                          : t.type === 'git_commit'
-                            ? 'nebular'
-                            : 'bio'
-                    }
-                    label={t.type}
-                  />
-                </div>
-                {Object.keys(t.config).length > 0 && (
-                  <div className="pl-1 space-y-0.5">
-                    {Object.entries(t.config).map(([key, val]) => (
-                      <p key={key} className="text-[0.7rem] text-txt-dim">
-                        <span className="text-txt-muted">{key}:</span>{' '}
-                        <span className="font-mono">
-                          {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <TriggerConfigCard key={i} trigger={t} />
             ))}
           </div>
         </>
@@ -266,7 +280,7 @@ export function StrategyDefinitionPanel({
       {/* Oversight Rules */}
       {definition.oversight_rules.length > 0 && (
         <>
-          <SectionHeading>Oversight Rules</SectionHeading>
+          <SectionHeading>Oversight Rules ({definition.oversight_rules.length})</SectionHeading>
           <div>
             {definition.oversight_rules.map((rule, i) => (
               <OversightRuleCard key={i} rule={rule} />
@@ -281,7 +295,7 @@ export function StrategyDefinitionPanel({
           <SectionHeading>Outputs</SectionHeading>
           <div>
             {definition.outputs.map((o, i) => (
-              <FieldRow key={i} label="type" value={`${o.type} → ${o.target}`} />
+              <FieldRow key={i} label="type" value={`${o.type} -> ${o.target}`} />
             ))}
           </div>
         </>

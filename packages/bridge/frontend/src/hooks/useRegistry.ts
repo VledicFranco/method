@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { RegistryTree, ManifestResponse, MethodDetail } from '@/lib/registry-types';
+import type { RegistryTree, ManifestResponse, MethodDetail, PromotionRecord } from '@/lib/registry-types';
 
 /** Fetch the full registry tree */
 export function useRegistryTree() {
@@ -23,6 +23,18 @@ export function useMethodDetail(methodologyId: string | null, methodId: string |
       api.get<MethodDetail>(`/api/registry/${methodologyId}/${methodId}`, signal),
     enabled: !!methodologyId && !!methodId,
     staleTime: 60_000,
+  });
+}
+
+/** Fetch a protocol's promotion record (if one exists) */
+export function usePromotionRecord(methodologyId: string | null, protocolId: string | null) {
+  return useQuery<PromotionRecord>({
+    queryKey: ['registry', 'promotion', methodologyId, protocolId],
+    queryFn: ({ signal }) =>
+      api.get<PromotionRecord>(`/api/registry/${methodologyId}/${protocolId}/promotion`, signal),
+    enabled: !!methodologyId && !!protocolId,
+    staleTime: 60_000,
+    retry: false, // 404 is expected for protocols without promotion records
   });
 }
 
