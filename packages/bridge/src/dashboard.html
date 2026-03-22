@@ -803,6 +803,200 @@ body::after {
   display: none;
 }
 
+/* ── COPY MODAL ─────────────────────────────────────── */
+.copy-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5,9,16,.85);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.copy-overlay.active { display: flex; }
+
+.copy-form {
+  background: var(--abyss);
+  border: 1px solid rgba(0,212,176,.15);
+  border-radius: 4px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  position: relative;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.copy-form-title {
+  font-family: var(--font-d);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.copy-field {
+  margin-bottom: 1.25rem;
+}
+
+.copy-label {
+  display: block;
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bio);
+  opacity: .7;
+  margin-bottom: .4rem;
+}
+
+.copy-source-info {
+  background: rgba(5,9,16,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  padding: .75rem;
+  font-family: var(--font-m);
+  font-size: .78rem;
+  color: var(--stellar);
+}
+
+.copy-select {
+  width: 100%;
+  background: rgba(5,9,16,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  color: var(--stellar);
+  font-family: var(--font-m);
+  font-size: .78rem;
+  padding: .55rem .75rem;
+  outline: none;
+  transition: border-color .2s;
+  max-height: 200px;
+}
+.copy-select:focus {
+  border-color: rgba(0,212,176,.3);
+}
+
+.copy-projects-list {
+  background: rgba(5,9,16,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: .5rem;
+}
+
+.copy-project-item {
+  display: flex;
+  align-items: center;
+  padding: .5rem .75rem;
+  margin-bottom: .25rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.copy-project-item:hover {
+  background: rgba(0,212,176,.08);
+}
+
+.copy-project-item input[type="checkbox"] {
+  margin-right: .5rem;
+  cursor: pointer;
+  accent-color: var(--bio);
+}
+
+.copy-project-item label {
+  flex: 1;
+  cursor: pointer;
+  font-family: var(--font-m);
+  font-size: .78rem;
+  color: var(--stellar);
+}
+
+.copy-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.copy-cancel {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  color: var(--dim2);
+  font-family: var(--font-m);
+  font-size: .68rem;
+  padding: .5rem 1rem;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.copy-cancel:hover { color: var(--dim); border-color: rgba(255,255,255,.15); }
+
+.copy-submit {
+  background: rgba(0,212,176,.15);
+  border: 1px solid rgba(0,212,176,.3);
+  border-radius: 2px;
+  color: var(--bio);
+  font-family: var(--font-m);
+  font-size: .68rem;
+  font-weight: 500;
+  padding: .5rem 1.25rem;
+  cursor: pointer;
+  transition: background .2s;
+}
+.copy-submit:hover { background: rgba(0,212,176,.25); color: var(--bio-bright); }
+.copy-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+.copy-error {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--red);
+  margin-top: .75rem;
+  display: none;
+}
+
+.copy-status {
+  font-family: var(--font-m);
+  font-size: .72rem;
+  color: var(--bio);
+  margin-top: .75rem;
+  display: none;
+}
+
+.copy-results {
+  background: rgba(5,9,16,.4);
+  border: 1px solid rgba(0,212,176,.1);
+  border-radius: 2px;
+  padding: 1rem;
+  margin-top: 1rem;
+  max-height: 250px;
+  overflow-y: auto;
+  display: none;
+}
+
+.copy-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem 0;
+  font-family: var(--font-m);
+  font-size: .72rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+
+.copy-result-item:last-child {
+  border-bottom: none;
+}
+
+.copy-result-success {
+  color: var(--bio);
+}
+
+.copy-result-error {
+  color: var(--red);
+}
+
 /* ── TOUCH-FRIENDLY TARGETS ────────────────────────── */
 .session-table td {
   min-height: 48px;
@@ -938,6 +1132,41 @@ body::after {
         <button class="spawn-submit" id="spawn-submit" onclick="submitSpawn()">Spawn</button>
       </div>
       <div class="spawn-error" id="spawn-error"></div>
+    </div>
+  </div>
+
+  <!-- Copy Modal (PRD 020 Phase 3) -->
+  <div class="copy-overlay" id="copy-overlay" onclick="if(event.target===this)closeCopyModal()">
+    <div class="copy-form">
+      <div class="copy-form-title">Copy <span id="copy-resource-type"></span> to Projects</div>
+
+      <div class="copy-field">
+        <label class="copy-label">Source</label>
+        <div class="copy-source-info">
+          <strong id="copy-source-name"></strong><br>
+          <span style="color: var(--dim2); font-size: .7rem;">Project: <span id="copy-source-project"></span></span>
+        </div>
+      </div>
+
+      <div class="copy-field">
+        <label class="copy-label">Target Projects (select at least one)</label>
+        <div class="copy-projects-list" id="copy-projects-list">
+          <p style="color: var(--dim2); padding: .5rem .75rem; font-size: .72rem;">Loading projects...</p>
+        </div>
+      </div>
+
+      <div class="copy-actions">
+        <button class="copy-cancel" onclick="closeCopyModal()">Cancel</button>
+        <button class="copy-submit" id="copy-submit" onclick="submitCopy()" disabled>Copy</button>
+      </div>
+
+      <div class="copy-error" id="copy-error"></div>
+      <div class="copy-status" id="copy-status"></div>
+
+      <div class="copy-results" id="copy-results">
+        <div style="font-family: var(--font-m); font-size: .72rem; color: var(--bio); margin-bottom: .75rem; font-weight: 500;">Copy Results:</div>
+        <div id="copy-results-list"></div>
+      </div>
     </div>
   </div>
 
@@ -1204,8 +1433,209 @@ function submitSpawn() {
 }
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeSpawnModal();
+  if (e.key === 'Escape') {
+    closeSpawnModal();
+    closeCopyModal();
+  }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COPY MODAL FUNCTIONS (PRD 020 Phase 3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+var copyModalState = {
+  resourceType: null,      // 'methodology' | 'strategy'
+  resourceName: null,      // e.g., 'P2-SD', 'S-CODE-REVIEW'
+  sourceId: null,          // e.g., 'root', 'project-a'
+  selectedTargets: new Set() // Set of selected project IDs
+};
+
+function openCopyModal(resourceType, resourceName, sourceId) {
+  copyModalState.resourceType = resourceType;
+  copyModalState.resourceName = resourceName;
+  copyModalState.sourceId = sourceId;
+  copyModalState.selectedTargets.clear();
+
+  // Update modal title and source info
+  document.getElementById('copy-resource-type').textContent = resourceType === 'methodology' ? 'Methodology' : 'Strategy';
+  document.getElementById('copy-source-name').textContent = resourceName;
+  document.getElementById('copy-source-project').textContent = sourceId;
+
+  // Clear previous results
+  document.getElementById('copy-error').style.display = 'none';
+  document.getElementById('copy-status').style.display = 'none';
+  document.getElementById('copy-results').style.display = 'none';
+  document.getElementById('copy-results-list').innerHTML = '';
+
+  // Disable submit button until projects are loaded
+  document.getElementById('copy-submit').disabled = true;
+
+  // Fetch and populate projects list
+  fetchProjectsForCopy();
+
+  // Show modal
+  document.getElementById('copy-overlay').classList.add('active');
+}
+
+function closeCopyModal() {
+  document.getElementById('copy-overlay').classList.remove('active');
+  copyModalState.selectedTargets.clear();
+}
+
+function fetchProjectsForCopy() {
+  var projectsList = document.getElementById('copy-projects-list');
+  projectsList.innerHTML = '<p style="color: var(--dim2); padding: .5rem .75rem; font-size: .72rem;">Loading projects...</p>';
+
+  fetch(API_BASE + '/api/genesis/projects/list')
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Failed to load projects'); });
+      return res.json();
+    })
+    .then(function(data) {
+      var projects = data.projects || [];
+
+      // Filter out the source project
+      var targetProjects = projects.filter(function(p) {
+        return p.id !== copyModalState.sourceId;
+      });
+
+      if (targetProjects.length === 0) {
+        projectsList.innerHTML = '<p style="color: var(--dim2); padding: .5rem .75rem; font-size: .72rem;">No other projects available.</p>';
+        return;
+      }
+
+      // Build project list with checkboxes
+      projectsList.innerHTML = '';
+      targetProjects.forEach(function(project) {
+        var label = project.id;
+        if (project.description) {
+          label += ' — ' + project.description;
+        }
+
+        var item = document.createElement('div');
+        item.className = 'copy-project-item';
+        item.innerHTML = '<input type="checkbox" id="copy-proj-' + project.id + '" value="' + project.id + '" onchange="toggleProjectSelection(\'' + project.id + '\', this.checked)"><label for="copy-proj-' + project.id + '">' + label + '</label>';
+        projectsList.appendChild(item);
+      });
+    })
+    .catch(function(e) {
+      projectsList.innerHTML = '<p style="color: var(--red); padding: .5rem .75rem; font-size: .72rem;">Error loading projects: ' + e.message + '</p>';
+    });
+}
+
+function toggleProjectSelection(projectId, isChecked) {
+  if (isChecked) {
+    copyModalState.selectedTargets.add(projectId);
+  } else {
+    copyModalState.selectedTargets.delete(projectId);
+  }
+
+  // Enable/disable submit button based on selection
+  var submitBtn = document.getElementById('copy-submit');
+  submitBtn.disabled = copyModalState.selectedTargets.size === 0;
+}
+
+function submitCopy() {
+  var submitBtn = document.getElementById('copy-submit');
+  var errEl = document.getElementById('copy-error');
+  var statusEl = document.getElementById('copy-status');
+  var resultsDiv = document.getElementById('copy-results');
+
+  if (copyModalState.selectedTargets.size === 0) {
+    errEl.textContent = 'Please select at least one target project.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = copyModalState.resourceType === 'methodology' ? 'Copying Methodology...' : 'Copying Strategy...';
+  errEl.style.display = 'none';
+  statusEl.style.display = 'none';
+  resultsDiv.style.display = 'none';
+
+  var endpoint = copyModalState.resourceType === 'methodology'
+    ? '/api/resources/copy-methodology'
+    : '/api/resources/copy-strategy';
+
+  var body = {
+    source_id: copyModalState.sourceId,
+    target_ids: Array.from(copyModalState.selectedTargets)
+  };
+
+  // Add appropriate field name based on resource type
+  if (copyModalState.resourceType === 'methodology') {
+    body.method_name = copyModalState.resourceName;
+  } else {
+    body.strategy_name = copyModalState.resourceName;
+  }
+
+  fetch(API_BASE + endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || d.message || 'Copy failed'); });
+      return res.json();
+    })
+    .then(function(data) {
+      // Display results
+      var resultsList = document.getElementById('copy-results-list');
+      resultsList.innerHTML = '';
+
+      var copied_to = data.copied_to || [];
+      var successCount = 0;
+      var errorCount = 0;
+
+      copied_to.forEach(function(result) {
+        var resultItem = document.createElement('div');
+        resultItem.className = 'copy-result-item';
+
+        if (result.status === 'success') {
+          successCount++;
+          resultItem.innerHTML = '<span style="color: var(--bio);">✓ ' + result.project_id + '</span>';
+        } else {
+          errorCount++;
+          resultItem.innerHTML = '<span style="color: var(--red);">✗ ' + result.project_id + '</span>';
+          if (result.error_detail) {
+            var detail = document.createElement('div');
+            detail.style.fontSize = '.65rem';
+            detail.style.color = 'var(--dim2)';
+            detail.style.marginTop = '.25rem';
+            detail.textContent = result.error_detail;
+            resultItem.appendChild(detail);
+          }
+        }
+
+        resultsList.appendChild(resultItem);
+      });
+
+      resultsDiv.style.display = 'block';
+
+      if (errorCount === 0 && successCount > 0) {
+        statusEl.textContent = 'Successfully copied ' + copyModalState.resourceName + ' to ' + successCount + ' project' + (successCount === 1 ? '' : 's') + '.';
+        statusEl.style.color = 'var(--bio)';
+        statusEl.style.display = 'block';
+
+        // Auto-close modal on success after 2 seconds
+        setTimeout(function() {
+          closeCopyModal();
+        }, 2000);
+      } else if (successCount > 0) {
+        statusEl.textContent = 'Copied to ' + successCount + ' project' + (successCount === 1 ? '' : 's') + ', failed on ' + errorCount + '.';
+        statusEl.style.color = 'var(--solar)';
+        statusEl.style.display = 'block';
+      }
+    })
+    .catch(function(e) {
+      errEl.textContent = 'Copy operation failed: ' + e.message;
+      errEl.style.display = 'block';
+    })
+    .finally(function() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = copyModalState.resourceType === 'methodology' ? 'Copy Methodology' : 'Copy Strategy';
+    });
+}
 
 // --- Auto-refresh: fetch dashboard HTML and update dynamic sections ---
 // Replaces meta refresh — preserves form state, expanded rows, modal state
@@ -1216,8 +1646,9 @@ document.addEventListener('keydown', function(e) {
   setInterval(function() {
     // Don't refresh if modal is open or actively interacting
     if (refreshing) return;
-    var modal = document.getElementById('spawn-overlay');
-    if (modal && modal.classList.contains('active')) return;
+    var spawnModal = document.getElementById('spawn-overlay');
+    var copyModal = document.getElementById('copy-overlay');
+    if ((spawnModal && spawnModal.classList.contains('active')) || (copyModal && copyModal.classList.contains('active'))) return;
 
     refreshing = true;
     fetch(window.location.href)
