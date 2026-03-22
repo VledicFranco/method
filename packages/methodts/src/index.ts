@@ -23,13 +23,26 @@ export * from "./methodology/safety.js";
 export * from "./methodology/retraction.js";
 
 // ── Phase 1b: Integration (Effect services + runtime) ──
-// Uncomment as components are implemented:
 
-// export * from "./gate/gate.js";
-// export * from "./extractor/extractor.js";
-// export * from "./commission/commission.js";
+// Wave 2: Foundation types + leaf modules
+export * from "./gate/gate.js";
+export * from "./gate/runners/script-gate.js";
+export { type Extractor } from "./extractor/extractor.js";
+export { type ExtractionError as ExtractorError } from "./extractor/extractor.js";
+export * from "./extractor/services/command.js";
+export * from "./extractor/services/git.js";
+export * from "./commission/commission.js";
+export * from "./commission/templates.js";
+export * from "./provider/agent-provider.js";
+export * from "./provider/mock-provider.js";
+export * from "./runtime/errors.js";
+export * from "./runtime/events.js";
+export * from "./runtime/suspension.js";
+export * from "./runtime/accumulator.js";
+export * from "./runtime/config.js";
+
+// Wave 3+: Uncomment as components are implemented:
 // export * from "./strategy/controller.js";
 // export * from "./runtime/run-methodology.js";
-// export * from "./provider/agent-provider.js";
 // export * from "./meta/compile.js";
 // export * from "./meta/instantiate.js";
