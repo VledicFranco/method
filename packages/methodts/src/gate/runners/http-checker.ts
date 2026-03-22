@@ -46,7 +46,7 @@ export function httpChecker<S>(
   expected: HttpExpectation,
   fetchFn?: FetchFn,
 ): Gate<S> {
-  const doFetch = fetchFn ?? (globalThis.fetch as unknown as FetchFn);
+  const doFetch: FetchFn = fetchFn ?? ((url) => globalThis.fetch(url).then(r => ({ status: r.status, text: () => r.text() })));
   const expectedStatus = expected.status ?? 200;
 
   return {

@@ -59,21 +59,21 @@ describe("asMethodology", () => {
     expect(meth.name).toBe("Test Method");
   });
 
-  it("creates exactly 2 arms: execute (priority 1) and terminate (priority 2)", () => {
+  it("creates exactly 2 arms: terminate (priority 1) and execute (priority 2)", () => {
     const meth = asMethodology(testMethod);
     expect(meth.arms).toHaveLength(2);
 
-    const [exec, term] = meth.arms;
-
-    expect(exec.label).toBe("execute");
-    expect(exec.priority).toBe(1);
-    expect(exec.condition).toEqual({ tag: "val", value: true });
-    expect(exec.selects).toBe(testMethod);
+    const [term, exec] = meth.arms;
 
     expect(term.label).toBe("terminate");
-    expect(term.priority).toBe(2);
+    expect(term.priority).toBe(1);
     expect(term.condition).toBe(objective);
     expect(term.selects).toBeNull();
+
+    expect(exec.label).toBe("execute");
+    expect(exec.priority).toBe(2);
+    expect(exec.condition).toEqual({ tag: "val", value: true });
+    expect(exec.selects).toBe(testMethod);
   });
 
   it("uses the method objective as methodology objective", () => {

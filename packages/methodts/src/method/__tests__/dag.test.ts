@@ -99,6 +99,20 @@ describe("topologicalOrder — Kahn's algorithm (F1-FTH Def 4.4)", () => {
     expect(order.map((s) => s.id)).toEqual(["A"]);
   });
 
+  it("throws on cyclic DAG", () => {
+    const a = makeStep("A");
+    const b = makeStep("B");
+
+    const cyclicDag: StepDAG<TestState> = {
+      steps: [a, b],
+      edges: [{ from: "A", to: "B" }, { from: "B", to: "A" }],
+      initial: "A",
+      terminal: "B",
+    };
+
+    expect(() => topologicalOrder(cyclicDag)).toThrow(/[Cc]ycle/);
+  });
+
   it("parallel branches (A->C, B->C) accepts both valid orderings", () => {
     const a = makeStep("A");
     const b = makeStep("B");

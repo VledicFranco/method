@@ -19,6 +19,8 @@ export function checkSafety(
   bounds: SafetyBounds,
   acc: ExecutionAccumulator,
 ): { safe: boolean; violation?: { bound: keyof SafetyBounds; limit: number; actual: number } } {
+  // Note: maxDepth is not checked here — it is enforced at the strategy level
+  // when nested methodology calls are supported (Phase 2).
   if (acc.loopCount >= bounds.maxLoops) {
     return { safe: false, violation: { bound: "maxLoops", limit: bounds.maxLoops, actual: acc.loopCount } };
   }

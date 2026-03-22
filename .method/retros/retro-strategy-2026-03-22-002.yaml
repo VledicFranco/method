@@ -1,24 +1,23 @@
 retro:
   strategy_id: S-CORE-TEST-WATCH
   generated_by: strategy-executor
-  generated_at: '2026-03-22T01:10:00.615Z'
+  generated_at: '2026-03-22T00:52:29.150Z'
   timing:
-    started_at: '2026-03-22T01:09:00.163Z'
-    completed_at: '2026-03-22T01:10:00.615Z'
-    duration_minutes: 1.01
+    started_at: '2026-03-22T00:51:46.733Z'
+    completed_at: '2026-03-22T00:52:29.150Z'
+    duration_minutes: 0.71
     critical_path:
       - run_tests
-      - parse_results
   execution_summary:
     nodes_total: 2
     nodes_completed: 0
     nodes_failed: 2
     speedup_ratio: 1
   cost:
-    total_usd: 0.0387324
+    total_usd: 0.11224575
     per_node:
       - node: run_tests
-        cost_usd: 0.0387324
+        cost_usd: 0.11224575
       - node: parse_results
         cost_usd: 0
   gates:

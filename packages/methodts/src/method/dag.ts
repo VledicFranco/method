@@ -51,6 +51,10 @@ export function topologicalOrder<S>(dag: StepDAG<S>): Step<S>[] {
     }
   }
 
+  if (result.length < dag.steps.length) {
+    throw new Error(`Cycle detected in StepDAG: only ${result.length} of ${dag.steps.length} steps are reachable`);
+  }
+
   return result;
 }
 

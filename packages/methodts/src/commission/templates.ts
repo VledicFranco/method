@@ -64,15 +64,13 @@ export const templates = {
   ): Prompt<ImplementationConfig> => {
     const role = new Prompt<ImplementationConfig>(
       (c) =>
-        `You are an implementation sub-agent. Task: ${c.description ?? defaults?.description ?? ""}`,
+        `You are an implementation sub-agent. Task: ${c.description}`,
     );
     const scopeSection = new Prompt<ImplementationConfig>((c) => {
-      const items = c.scope ?? defaults?.scope;
-      return bulletList(items);
+      return bulletList(c.scope);
     });
     const constraints = new Prompt<ImplementationConfig>((c) => {
-      const items = c.rules ?? defaults?.rules;
-      return numberedList(items);
+      return numberedList(c.rules);
     });
     const git = new Prompt<ImplementationConfig>(
       (c) =>
@@ -97,11 +95,10 @@ export const templates = {
       "You are a review sub-agent. Evaluate the target against the listed criteria.",
     );
     const target = new Prompt<ReviewConfig>(
-      (c) => `Target: ${c.target ?? defaults?.target ?? ""}`,
+      (c) => `Target: ${c.target}`,
     );
     const criteria = new Prompt<ReviewConfig>((c) => {
-      const items = c.criteria ?? defaults?.criteria;
-      return numberedList(items);
+      return numberedList(c.criteria);
     });
     const advisors = new Prompt<ReviewConfig>((c) => {
       const items = c.advisors ?? defaults?.advisors;
@@ -129,8 +126,7 @@ export const templates = {
       "You are running a steering council session. Review the agenda and produce decisions.",
     );
     const agenda = new Prompt<CouncilConfig>((c) => {
-      const items = c.agenda ?? defaults?.agenda;
-      return numberedList(items);
+      return numberedList(c.agenda);
     });
     const participants = new Prompt<CouncilConfig>((c) => {
       const items = c.participants ?? defaults?.participants;
@@ -164,10 +160,10 @@ export const templates = {
       "You are a retrospective agent. Analyze the session trace and produce a structured retrospective.",
     );
     const sessionSection = new Prompt<RetroConfig>(
-      (c) => `Session ID: ${c.sessionId ?? defaults?.sessionId ?? ""}`,
+      (c) => `Session ID: ${c.sessionId}`,
     );
     const trace = new Prompt<RetroConfig>(
-      (c) => c.trace ?? defaults?.trace ?? "",
+      (c) => c.trace,
     );
     const focus = new Prompt<RetroConfig>(
       (c) => `Focus area: ${c.focus ?? defaults?.focus ?? ""}`,

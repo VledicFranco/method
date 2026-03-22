@@ -15,7 +15,7 @@ export type Method<S> = {
   readonly id: string;
   readonly name: string;
   readonly domain: DomainTheory<S>;
-  readonly roles: readonly Role<S, any>[];
+  readonly roles: readonly Role<S, unknown>[];
   readonly dag: StepDAG<S>;
   readonly objective: Predicate<S>;
   readonly measures: readonly Measure<S>[];

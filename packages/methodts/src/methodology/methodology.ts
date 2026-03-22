@@ -59,17 +59,17 @@ export function asMethodology<S>(method: Method<S>): Methodology<S> {
     arms: [
       {
         priority: 1,
-        label: "execute",
-        condition: { tag: "val", value: true },
-        selects: method,
-        rationale: "Single-method methodology — always selects this method.",
-      },
-      {
-        priority: 2,
         label: "terminate",
         condition: method.objective,
         selects: null,
         rationale: "Terminate when method objective is met.",
+      },
+      {
+        priority: 2,
+        label: "execute",
+        condition: { tag: "val", value: true },
+        selects: method,
+        rationale: "Single-method methodology — always selects this method.",
       },
     ],
     objective: method.objective,

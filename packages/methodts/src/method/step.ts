@@ -59,7 +59,7 @@ export type StepExecution<S> =
     };
 
 /** When to yield control to the caller. */
-export type SuspensionPolicy<S = any> =
+export type SuspensionPolicy<S = unknown> =
   | "never"
   | "on_failure"
   | "always"
