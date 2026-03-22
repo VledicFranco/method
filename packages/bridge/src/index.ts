@@ -588,8 +588,8 @@ app.post<{
     const channels = pool.getChannels(id);
     const sequence = appendMessage(channels.events, sender ?? id, type, content ?? {});
 
-    // Push notification to parent (PRD 008 Component 2)
-    const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale']);
+    // Push notification to parent (PRD 008 Component 2, PRD 014: scope_violation)
+    const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale', 'scope_violation']);
     if (PUSHABLE_EVENTS.has(type)) {
       try {
         const status = pool.status(id);
@@ -603,7 +603,7 @@ app.post<{
                 ? `Commission: ${status.metadata.commission_id} — ${status.metadata.task_summary ?? 'no summary'}`
                 : `Session: ${status.nickname} (${id.substring(0, 8)})`,
               `Details: ${JSON.stringify(content ?? {})}`,
-              `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : 'Investigate stale session'}`,
+              `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : type === 'scope_violation' ? 'Child is writing outside its allowed scope — intervene or adjust allowed_paths' : 'Investigate stale session'}`,
             ].join('\n');
 
             // Fire-and-forget — don't await, don't block on response

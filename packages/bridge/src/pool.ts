@@ -619,12 +619,16 @@ export function createPool(options?: PoolOptions): SessionPool {
             }
           };
 
+          // PRD 014: Pass allowed_paths to watcher for scope violation detection
+          const sessionAllowedPaths = metadata?.allowed_paths as string[] | undefined;
+
           const watcher = createPtyWatcher(
             sessionId,
             channels,
             (cb) => session.onOutput(cb),
             watcherConfig,
             diagnosticsCallback,
+            sessionAllowedPaths,
           );
           sessionWatchers.set(sessionId, watcher);
 
