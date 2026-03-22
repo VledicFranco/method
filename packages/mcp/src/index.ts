@@ -6,20 +6,20 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { lookupTheory } from "@method/core";
+import { loadMethodFromFile, topologicalOrder } from "@method/methodts";
 import {
-  createSessionManager,
-  createMethodologySessionManager,
-  listMethodologies,
-  loadMethodology,
-  getMethodologyRouting,
-  lookupTheory,
-  selectMethodology,
-  validateStepOutput,
-  startMethodologySession,
-  routeMethodology,
-  loadMethodInSession,
-  transitionMethodology,
-} from "@method/core";
+  createMethodTSSessionManager,
+  listMethodologiesTS,
+  getRoutingTS,
+  startMethodologySessionTS,
+  routeMethodologyTS,
+  selectMethodologyTS,
+  loadMethodInSessionTS,
+  transitionMethodologyTS,
+  validateStepOutputTS,
+  type MethodologySessionState,
+} from "./methodts-session.js";
 import { createValidationMiddleware } from "./validate-project-access.js";
 
 // Path resolution
@@ -59,9 +59,9 @@ async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
   return res;
 }
 
-// Session manager — isolates state by session_id
-const sessions = createSessionManager();
-const methodologySessions = createMethodologySessionManager();
+// Session manager — isolates state by session_id (MethodTS-backed)
+const sessions = createMethodTSSessionManager();
+const methodologySessions = new Map<string, MethodologySessionState>();
 
 // Project isolation validation middleware (F-SECUR-003)
 const validateProjectAccess = createValidationMiddleware();
@@ -860,23 +860,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     switch (name) {
       case "methodology_list": {
-        const entries = listMethodologies(REGISTRY);
+        const entries = listMethodologiesTS(REGISTRY);
         return ok(JSON.stringify(entries, null, 2));
       }
 
       case "methodology_load": {
         const { methodology_id, method_id, session_id } = loadInput.parse(args);
         const session = sessions.getOrCreate(session_id ?? '__default__');
-        const method = loadMethodology(REGISTRY, methodology_id, method_id);
-        session.load(method);
+        const method = loadMethodFromFile(REGISTRY, methodology_id, method_id);
+        session.load(methodology_id, method);
+        const ordered = topologicalOrder(method.dag);
+        // Extract objective string from Predicate
+        const objective = method.objective.tag === "check" ? method.objective.label : null;
         const response = {
-          methodologyId: method.methodologyId,
-          methodId: method.methodId,
+          methodologyId: methodology_id,
+          methodId: method.id,
           methodName: method.name,
-          stepCount: method.steps.length,
-          objective: method.objective ?? null,
-          firstStep: { id: method.steps[0].id, name: method.steps[0].name },
-          message: `Loaded ${method.methodId} — ${method.name} (${method.steps.length} steps). Call step_current to see the first step.`,
+          stepCount: ordered.length,
+          objective,
+          firstStep: { id: ordered[0].id, name: ordered[0].name },
+          message: `Loaded ${method.id} \u2014 ${method.name} (${ordered.length} steps). Call step_current to see the first step.`,
         };
         return ok(JSON.stringify(response, null, 2));
       }
@@ -946,7 +949,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           methodology_id: z.string(),
           session_id: z.string().optional(),
         }).parse(args);
-        const result = getMethodologyRouting(REGISTRY, methodology_id);
+        const result = getRoutingTS(REGISTRY, methodology_id);
         return ok(JSON.stringify(result, null, 2));
       }
 
@@ -965,10 +968,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }).parse(args);
         const sid = session_id ?? '__default__';
         const session = sessions.getOrCreate(sid);
-        const result = selectMethodology(REGISTRY, methodology_id, selected_method_id, session, sid);
+        const result = selectMethodologyTS(REGISTRY, methodology_id, selected_method_id, session, sid);
         // Also create a methodology session for backward compatibility (PRD 004)
         try {
-          const { session: methSession } = startMethodologySession(REGISTRY, methodology_id, null, sid);
+          const { session: methSession } = startMethodologySessionTS(REGISTRY, methodology_id, null, sid);
           methSession.currentMethodId = selected_method_id;
           methSession.status = 'executing';
           methodologySessions.set(sid, methSession);
@@ -985,7 +988,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           session_id: z.string().optional(),
         }).parse(args);
         const session = sessions.getOrCreate(session_id ?? '__default__');
-        const result = validateStepOutput(session, step_id, output);
+        const result = validateStepOutputTS(session, step_id, output);
         return ok(JSON.stringify(result, null, 2));
       }
 
@@ -996,7 +999,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           session_id: z.string().optional(),
         }).parse(args);
         const sid = session_id ?? '__default__';
-        const { session: methSession, result } = startMethodologySession(
+        const { session: methSession, result } = startMethodologySessionTS(
           REGISTRY, methodology_id, challenge ?? null, sid
         );
         methodologySessions.set(sid, methSession);
@@ -1013,7 +1016,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!methSession) {
           throw new Error('No methodology session active. Call methodology_start first.');
         }
-        const result = routeMethodology(REGISTRY, methSession, challenge_predicates);
+        const result = routeMethodologyTS(REGISTRY, methSession, challenge_predicates);
         methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
       }
@@ -1029,7 +1032,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('No methodology session active. Call methodology_start first.');
         }
         const session = sessions.getOrCreate(sid);
-        const result = loadMethodInSession(REGISTRY, methSession, method_id, session, sid);
+        const result = loadMethodInSessionTS(REGISTRY, methSession, method_id, session, sid);
         methodologySessions.set(sid, methSession);
         return ok(JSON.stringify(result, null, 2));
       }
@@ -1046,7 +1049,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('No methodology session active. Call methodology_start first.');
         }
         const session = sessions.getOrCreate(sid);
-        const result = transitionMethodology(
+        const result = transitionMethodologyTS(
           REGISTRY, methSession, session,
           completion_summary ?? null, challenge_predicates
         );
