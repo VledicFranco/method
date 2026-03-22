@@ -9,8 +9,6 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
-import * as fsModule from 'fs';
-import { createRequire } from 'module';
 import { YamlEventPersistence } from '../events/yaml-event-persistence.js';
 import {
   ProjectEventType,
@@ -18,16 +16,6 @@ import {
   serializeProjectEvent,
   deserializeProjectEvent,
 } from '../events/index.js';
-
-// For Jest-style mocking (when running in Jest environment)
-// This allows us to mock fs operations
-let jestMockSetup = false;
-try {
-  require('jest');
-  jestMockSetup = true;
-} catch {
-  // Not running in Jest - that's okay, we'll skip Jest-specific tests
-}
 
 describe('YamlEventPersistence', () => {
   let testDir: string;
