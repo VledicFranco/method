@@ -52,8 +52,13 @@ export * from "./runtime/event-bus.js";
 export * from "./runtime/hooks.js";
 export * from "./runtime/middleware.js";
 
-// Wave 4+: Uncomment as components are implemented:
+// Wave 4: Runtime execution engine
+export * from "./runtime/run-step.js";
+export * from "./runtime/run-method.js";
+export * from "./runtime/run-methodology.js";
+export * from "./runtime/retro.js";
+
+// Wave 5+: Uncomment as components are implemented:
 // export * from "./strategy/controller.js";
-// export * from "./runtime/run-methodology.js";
 // export * from "./meta/compile.js";
 // export * from "./meta/instantiate.js";
