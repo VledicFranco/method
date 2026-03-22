@@ -17,6 +17,7 @@ export * from './strategy/index.js';
 export {
   type MethodologySpec,
   type VerifyResult,
+  type ProjectConfig,
   type ProjectRegistry,
   InMemoryProjectRegistry,
 } from './registry/index.js';

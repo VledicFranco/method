@@ -7,10 +7,13 @@
  * - Error handling (corrupted repos, missing .method/, permission denied)
  * - Resumable discovery with checkpoint support
  * - Performance target: < 500ms for 20 projects
+ *
+ * F-THANE-2: On discovery, loads manifest.yaml and validates project configs
  */
 
-import { existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import yaml from 'js-yaml';
 
 export interface ProjectMetadata {
   id: string;
@@ -18,6 +21,9 @@ export interface ProjectMetadata {
   status: 'healthy' | 'git_corrupted' | 'missing_config' | 'permission_denied';
   git_valid: boolean;
   method_dir_exists: boolean;
+  config_loaded?: boolean;
+  config_valid?: boolean;
+  config_error?: string;
   error_detail?: string;
   discovered_at: string;
 }
@@ -172,6 +178,8 @@ export class DiscoveryService {
    * Analyze a project directory (parent of .git/)
    * Returns ProjectMetadata even for corrupted repos (never returns undefined)
    * Marks corrupted repos with status: 'git_corrupted'
+   *
+   * F-THANE-2: Also loads and validates project-config.yaml
    */
   private analyzeProject(gitDir: string): ProjectMetadata | undefined {
     try {
@@ -204,12 +212,47 @@ export class DiscoveryService {
         }
       }
 
+      // F-THANE-2: Load and validate project config
+      let configLoaded = false;
+      let configValid = false;
+      let configError: string | undefined;
+
+      const configPath = join(methodDir, 'project-config.yaml');
+      if (existsSync(configPath)) {
+        try {
+          const configContent = readFileSync(configPath, 'utf-8');
+          const configData = yaml.load(configContent);
+
+          // Validate required fields: id and name
+          if (
+            configData &&
+            typeof configData === 'object' &&
+            'id' in configData &&
+            'name' in configData &&
+            typeof configData.id === 'string' &&
+            typeof configData.name === 'string'
+          ) {
+            configValid = true;
+            configLoaded = true;
+          } else {
+            configError = 'Missing required fields: id and name';
+            configLoaded = false;
+          }
+        } catch (err) {
+          configError = `Failed to parse config: ${(err as Error).message}`;
+          configLoaded = false;
+        }
+      }
+
       return {
         id: projectName,
         path: projectPath,
         status: gitIsValid ? 'healthy' : 'git_corrupted',
         git_valid: gitIsValid,
         method_dir_exists: methodExists,
+        config_loaded: configLoaded,
+        config_valid: configValid,
+        config_error: configError,
         error_detail: errorDetail,
         discovered_at: new Date().toISOString(),
       };
