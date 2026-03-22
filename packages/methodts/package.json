@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./stdlib": "./dist/stdlib/index.js"
+    "./stdlib": "./dist/stdlib/index.js",
+    "./stdlib/metadata": "./dist/stdlib/metadata/index.js"
   },
   "scripts": {
     "build": "tsc -b",
