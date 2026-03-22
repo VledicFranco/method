@@ -42,6 +42,7 @@ export interface PollingLoopConfig {
 
 const DEFAULT_INTERVAL_MS = 5000; // 5 seconds
 const DEFAULT_CURSOR_FILE = '.method/genesis-cursors.yaml';
+const CURSOR_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Load cursors from .method/genesis-cursors.yaml
@@ -90,15 +91,65 @@ export function saveCursors(cursors: GenesisCursors, filePath: string = DEFAULT_
 }
 
 /**
+ * Clean up cursors older than 7 days
+ * Removes stale cursor entries to prevent unbounded memory growth
+ */
+export function cleanupStaleCursors(cursors: GenesisCursors): GenesisCursors {
+  const now = Date.now();
+  const initialCount = cursors.cursors.length;
+
+  cursors.cursors = cursors.cursors.filter((cursor) => {
+    const lastUpdateTime = new Date(cursor.lastUpdate).getTime();
+    const age = now - lastUpdateTime;
+    return age < CURSOR_TTL_MS;
+  });
+
+  const removedCount = initialCount - cursors.cursors.length;
+  if (removedCount > 0) {
+    console.log(`Genesis: Cleaned up ${removedCount} stale cursor(s)`);
+  }
+
+  return cursors;
+}
+
+/**
  * Get or create cursor for a project
+ * Includes version field for Phase 3 migration compatibility
+ * Checks TTL and removes expired cursors
+ * Backward compatible: accepts both plain strings and versioned JSON cursors
  */
 export function getCursorForProject(cursors: GenesisCursors, projectId: string): string {
+  // F-P-2: Check TTL on access and remove expired cursors
+  const now = Date.now();
+  cursors.cursors = cursors.cursors.filter((cursor) => {
+    const lastUpdateTime = new Date(cursor.lastUpdate).getTime();
+    const age = now - lastUpdateTime;
+    return age < CURSOR_TTL_MS;
+  });
+
   const existing = cursors.cursors.find((c) => c.projectId === projectId);
-  return existing?.cursor ?? '';
+  if (!existing?.cursor) {
+    return '';
+  }
+
+  // Try to parse as versioned cursor (Phase 1+)
+  try {
+    const parsed = JSON.parse(existing.cursor);
+    if (parsed.version && parsed.version !== '1') {
+      console.warn(`Cursor version mismatch for project ${projectId}: expected 1, got ${parsed.version}. Resetting.`);
+      return '';
+    }
+    // Valid versioned cursor
+    return existing.cursor;
+  } catch {
+    // Not JSON - backward compatible: return plain string cursor as-is
+    return existing.cursor;
+  }
 }
 
 /**
  * Update cursor for a project
+ * Cursor now includes: { version, projectId, index, timestamp }
  */
 export function updateCursorForProject(
   cursors: GenesisCursors,
@@ -108,9 +159,17 @@ export function updateCursorForProject(
 ): GenesisCursors {
   const existing = cursors.cursors.findIndex((c) => c.projectId === projectId);
 
+  // Format cursor as structured object with version
+  const cursorObject = {
+    version: '1',
+    projectId,
+    index: eventCount,
+    timestamp: new Date().toISOString(),
+  };
+
   const updated: CursorState = {
     projectId,
-    cursor: newCursor,
+    cursor: JSON.stringify(cursorObject),
     lastUpdate: new Date().toISOString(),
     eventCount,
   };
@@ -143,6 +202,9 @@ export class GenesisPollingLoop {
     this.intervalMs = config?.intervalMs ?? DEFAULT_INTERVAL_MS;
     this.cursorFilePath = config?.cursorFilePath ?? DEFAULT_CURSOR_FILE;
     this.cursors = loadCursors(this.cursorFilePath);
+
+    // F-P-2: Clean up stale cursors on startup (older than 7 days)
+    this.cursors = cleanupStaleCursors(this.cursors);
   }
 
   /**

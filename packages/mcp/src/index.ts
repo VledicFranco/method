@@ -748,6 +748,73 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["source_id", "strategy_name", "target_ids"],
       },
     },
+    {
+      name: "project_list",
+      description: "List all discovered projects with their metadata and status.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
+    {
+      name: "project_get",
+      description: "Get metadata for a specific project by ID.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+    {
+      name: "project_get_manifest",
+      description: "Read manifest.yaml from a project.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+    {
+      name: "project_read_events",
+      description: "Read project events with cursor-based pagination.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (optional, filters by project)",
+          },
+          since_cursor: {
+            type: "string",
+            description: "Cursor from previous read (optional, for pagination)",
+          },
+        },
+      },
+    },
+    {
+      name: "genesis_report",
+      description: "Report findings to human. Genesis session only (project_id='root'). Non-Genesis sessions get 403.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          message: {
+            type: "string",
+            description: "Report message",
+          },
+        },
+        required: ["message"],
+      },
+    },
   ],
 }));
 
@@ -1436,6 +1503,68 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           body: JSON.stringify({ source_id, strategy_name, target_ids }),
         });
 
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "project_list": {
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/genesis/projects/list`, {
+          method: 'GET',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "project_get": {
+        const { project_id } = z.object({
+          project_id: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/genesis/projects/${encodeURIComponent(project_id)}`, {
+          method: 'GET',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "project_get_manifest": {
+        const { project_id } = z.object({
+          project_id: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/genesis/projects/${encodeURIComponent(project_id)}/manifest`, {
+          method: 'GET',
+        });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "project_read_events": {
+        const { project_id, since_cursor } = z.object({
+          project_id: z.string().optional(),
+          since_cursor: z.string().optional(),
+        }).parse(args);
+
+        const params = new URLSearchParams();
+        if (project_id) params.set('project_id', project_id);
+        if (since_cursor) params.set('since_cursor', since_cursor);
+
+        const url = `${BRIDGE_URL}/api/genesis/projects/events?${params.toString()}`;
+        const res = await bridgeFetch(url, { method: 'GET' });
+        const data = await res.json();
+        return ok(JSON.stringify(data, null, 2));
+      }
+
+      case "genesis_report": {
+        const { message } = z.object({
+          message: z.string(),
+        }).parse(args);
+
+        const res = await bridgeFetch(`${BRIDGE_URL}/api/genesis/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        });
         const data = await res.json();
         return ok(JSON.stringify(data, null, 2));
       }

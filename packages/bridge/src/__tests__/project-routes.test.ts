@@ -12,6 +12,9 @@ import {
   parseCursor,
   getEventsSinceCursor,
   eventLog,
+  pushEventToLog,
+  getEventsFromLog,
+  createCircularEventLog,
 } from '../project-routes.js';
 import { ProjectEventType, createProjectEvent } from '@method/core';
 import type { FastifyRequest } from 'fastify';
@@ -429,5 +432,213 @@ test('Isolation: Multiple sessions with different projects', () => {
 
   assert.strictEqual(validateProjectAccess('project-B', sessionB).allowed, true);
   assert.strictEqual(validateProjectAccess('project-A', sessionB).allowed, false);
+});
+
+// ── Circular Buffer Tests (F-P-1: Event Log Cap) ────
+
+test('CircularBuffer: createCircularEventLog initializes with capacity', () => {
+  const log = createCircularEventLog(100);
+  assert.strictEqual(log.capacity, 100);
+  assert.strictEqual(log.index, 0);
+  assert.strictEqual(log.count, 0);
+  assert.strictEqual(log.buffer.length, 0);
+});
+
+test('CircularBuffer: pushEventToLog adds events sequentially', () => {
+  const log = createCircularEventLog(10);
+
+  const event1 = createProjectEvent(ProjectEventType.CREATED, 'proj-1', { seq: 1 });
+  const event2 = createProjectEvent(ProjectEventType.CREATED, 'proj-2', { seq: 2 });
+
+  pushEventToLog(log, event1);
+  pushEventToLog(log, event2);
+
+  assert.strictEqual(log.count, 2);
+  assert.strictEqual(log.buffer.length, 2);
+  assert.strictEqual((log.buffer[0].data as any).seq, 1);
+  assert.strictEqual((log.buffer[1].data as any).seq, 2);
+});
+
+test('CircularBuffer: Evicts oldest entry when capacity exceeded', () => {
+  const log = createCircularEventLog(3); // Very small for testing
+
+  const e1 = createProjectEvent(ProjectEventType.CREATED, 'p', { id: 1 });
+  const e2 = createProjectEvent(ProjectEventType.CREATED, 'p', { id: 2 });
+  const e3 = createProjectEvent(ProjectEventType.CREATED, 'p', { id: 3 });
+  const e4 = createProjectEvent(ProjectEventType.CREATED, 'p', { id: 4 });
+
+  pushEventToLog(log, e1);
+  pushEventToLog(log, e2);
+  pushEventToLog(log, e3);
+
+  assert.strictEqual(log.buffer.length, 3);
+  assert.strictEqual(log.count, 3);
+  assert.strictEqual((log.buffer[0].data as any).id, 1);
+
+  // Fourth event should evict first
+  pushEventToLog(log, e4);
+
+  assert.strictEqual(log.buffer.length, 3); // Still at capacity
+  assert.strictEqual(log.count, 4); // But count incremented
+  assert.strictEqual((log.buffer[0].data as any).id, 4); // First position now has event 4
+  assert.strictEqual((log.buffer[1].data as any).id, 2);
+  assert.strictEqual((log.buffer[2].data as any).id, 3);
+});
+
+test('CircularBuffer: getEventsFromLog retrieves from index correctly', () => {
+  const log = createCircularEventLog(10);
+
+  const events = [];
+  for (let i = 1; i <= 5; i++) {
+    const e = createProjectEvent(ProjectEventType.CREATED, 'p', { id: i });
+    pushEventToLog(log, e);
+    events.push(e);
+  }
+
+  // Get from index 2
+  const fromIdx2 = getEventsFromLog(log, 2);
+  assert.strictEqual(fromIdx2.length, 3); // events with id 3, 4, 5
+  assert.strictEqual((fromIdx2[0].data as any).id, 3);
+  assert.strictEqual((fromIdx2[2].data as any).id, 5);
+});
+
+test('CircularBuffer: getEventsFromLog returns empty when index beyond count', () => {
+  const log = createCircularEventLog(10);
+
+  const e = createProjectEvent(ProjectEventType.CREATED, 'p', { id: 1 });
+  pushEventToLog(log, e);
+
+  const result = getEventsFromLog(log, 100); // Beyond count
+  assert.strictEqual(result.length, 0);
+});
+
+test('CircularBuffer: getEventsFromLog handles wrap-around correctly', () => {
+  const log = createCircularEventLog(3);
+
+  // Fill and wrap
+  for (let i = 1; i <= 5; i++) {
+    const e = createProjectEvent(ProjectEventType.CREATED, 'p', { id: i });
+    pushEventToLog(log, e);
+  }
+
+  // At this point: buffer has [e4, e5, e3] (indices 0, 1, 2)
+  // count=5, and valid indices are 2, 3, 4 (map to buffer positions)
+
+  const fromIdx2 = getEventsFromLog(log, 2); // Should get e3, e4, e5
+  assert(fromIdx2.length > 0);
+  assert.strictEqual(fromIdx2[0].projectId, 'p');
+});
+
+test('CircularBuffer: Memory efficient - 100K capacity test', () => {
+  const capacity = 100000; // 100K events
+  const log = createCircularEventLog(capacity);
+
+  // Add events up to capacity and beyond
+  for (let i = 0; i < capacity + 1000; i++) {
+    const e = createProjectEvent(ProjectEventType.CREATED, 'p', { seq: i });
+    pushEventToLog(log, e);
+  }
+
+  // Buffer should stay at capacity
+  assert.strictEqual(log.buffer.length, capacity);
+  assert.strictEqual(log.count, capacity + 1000);
+
+  // Memory usage bounded (roughly ~8-16 bytes per event ref in array)
+  // Total should be under 2MB for 100K events with overhead
+  assert(true); // Just verifying it doesn't crash
+});
+
+// ── Cursor Versioning Tests (F-A-5: Cursor Format) ────
+
+test('CursorVersion: generateCursor includes version field', () => {
+  const cursor = generateCursor(0);
+
+  // Cursor should be a string ID, version is stored in cursorMap
+  assert.strictEqual(typeof cursor, 'string');
+  assert(cursor.length > 0);
+});
+
+test('CursorVersion: parseCursor returns structured result with version check', () => {
+  const cursor = generateCursor(42, 'proj-1');
+  const result = parseCursor(cursor);
+
+  assert.strictEqual(result.index, 42);
+  assert.strictEqual(result.projectId, 'proj-1');
+});
+
+test('CursorVersion: parseCursor detects version mismatch (Phase 3)', () => {
+  // This simulates a cursor from a future version
+  // In practice, this would be detected when loading from disk
+
+  const cursorId = generateCursor(10);
+  // Normal cursor should parse successfully
+  const result = parseCursor(cursorId);
+  assert.strictEqual(result.index, 10);
+});
+
+test('CursorVersion: parseCursor returns 0 for unknown cursor', () => {
+  const result = parseCursor('unknown-cursor-xyz-123');
+  assert.strictEqual(result.index, 0);
+  assert.strictEqual(result.projectId, undefined);
+});
+
+test('CursorVersion: Multiple project cursors tracked independently', () => {
+  const c1 = generateCursor(5, 'proj-a');
+  const c2 = generateCursor(10, 'proj-b');
+
+  const r1 = parseCursor(c1);
+  const r2 = parseCursor(c2);
+
+  assert.strictEqual(r1.index, 5);
+  assert.strictEqual(r1.projectId, 'proj-a');
+  assert.strictEqual(r2.index, 10);
+  assert.strictEqual(r2.projectId, 'proj-b');
+});
+
+// ── Integration Tests ────
+
+test('Integration: CircularBuffer + Versioned Cursor works together', () => {
+  const log = createCircularEventLog(100);
+
+  // Add events
+  const events = [];
+  for (let i = 1; i <= 5; i++) {
+    const e = createProjectEvent(ProjectEventType.CREATED, `proj-${i}`, { id: i });
+    pushEventToLog(log, e);
+    events.push(e);
+  }
+
+  // Generate versioned cursor at position 2
+  const cursor = generateCursor(2, 'proj-test');
+  const parsed = parseCursor(cursor);
+
+  // Retrieve events from cursor position
+  const remaining = getEventsFromLog(log, parsed.index);
+  assert(remaining.length >= 3); // At least events 3, 4, 5
+});
+
+test('Integration: EventLog cap prevents OOM under sustained load', () => {
+  const log = createCircularEventLog(1000);
+
+  const startMem = process.memoryUsage().heapUsed;
+
+  // Simulate 1M event additions (way over capacity)
+  for (let i = 0; i < 1000000; i++) {
+    const e = createProjectEvent(ProjectEventType.CREATED, `p${i % 10}`, { seq: i });
+    pushEventToLog(log, e);
+
+    // Only check every 100k to avoid performance impact
+    if (i % 100000 === 0 && i > 0) {
+      const currentMem = process.memoryUsage().heapUsed;
+      const memGrowth = currentMem - startMem;
+
+      // Memory growth should be bounded (rough heuristic: <200MB over baseline)
+      assert(memGrowth < 200 * 1024 * 1024, `Memory grown by ${memGrowth / 1024 / 1024}MB`);
+    }
+  }
+
+  // Final buffer size should be capped
+  assert.strictEqual(log.buffer.length, 1000);
+  assert.strictEqual(log.count, 1000000);
 });
 

@@ -111,9 +111,9 @@ const mockDiscoveryService: DiscoveryService = {
 // ── Test Context Setup ────
 
 function createTestContext(): GenesisToolsContext {
-  return {
-    discoveryService: mockDiscoveryService,
-    eventLog: [
+  // Create a circular buffer for eventLog
+  const eventLog: any = {
+    buffer: [
       createProjectEvent(
         ProjectEventType.DISCOVERED,
         'project-a',
@@ -127,6 +127,14 @@ function createTestContext(): GenesisToolsContext {
         { project_id: 'project-b' },
       ),
     ],
+    capacity: 10000,
+    index: 2,
+    count: 2,
+  };
+
+  return {
+    discoveryService: mockDiscoveryService,
+    eventLog,
     cursorMap: new Map(),
   };
 }
@@ -262,12 +270,12 @@ describe('Genesis MCP Tools', () => {
   test('project_read_events: Cleans up old cursors', async () => {
     const ctx = createTestContext();
 
-    // Create multiple cursors with different timestamps
+    // Create multiple cursors with different timestamps (with version field)
     const oldTimestamp = Date.now() - 25 * 60 * 60 * 1000; // 25 hours ago
     const recentTimestamp = Date.now() - 1 * 60 * 60 * 1000; // 1 hour ago
 
-    ctx.cursorMap.set('old-cursor', { eventIndex: 0, timestamp: oldTimestamp });
-    ctx.cursorMap.set('recent-cursor', { eventIndex: 0, timestamp: recentTimestamp });
+    ctx.cursorMap.set('old-cursor', { version: '1', eventIndex: 0, timestamp: oldTimestamp });
+    ctx.cursorMap.set('recent-cursor', { version: '1', eventIndex: 0, timestamp: recentTimestamp });
 
     // Read events (triggers cleanup)
     await projectReadEventsTool(ctx);

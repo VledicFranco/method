@@ -18,6 +18,8 @@ import { setOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
+import { GenesisPollingLoop } from './genesis/polling-loop.js';
+import { eventLog, getEventsFromLog } from './project-routes.js';
 
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
@@ -32,6 +34,7 @@ const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? 
 const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
 const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
 const GENESIS_ENABLED = process.env.GENESIS_ENABLED === 'true';
+const GENESIS_POLLING_INTERVAL_MS = parseInt(process.env.GENESIS_POLLING_INTERVAL_MS ?? '5000', 10);
 
 const pool = createPool({
   maxSessions: MAX_SESSIONS,
@@ -52,6 +55,8 @@ const tokenTracker = createTokenTracker({
 const transcriptReader = createTranscriptReader({
   sessionsDir: CLAUDE_SESSIONS_DIR,
 });
+
+let genesisPollingLoop: GenesisPollingLoop | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -895,6 +900,69 @@ async function start() {
         app.log.info(
           `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
         );
+
+        // F-A-3: Instantiate and start Genesis polling loop
+        genesisPollingLoop = new GenesisPollingLoop({
+          intervalMs: GENESIS_POLLING_INTERVAL_MS,
+          cursorFilePath: '.method/genesis-cursors.yaml',
+        });
+
+        // Create eventFetcher callback that fetches from the event log
+        const eventFetcher = async (_projectId: string, cursor: string): Promise<any[]> => {
+          try {
+            // Parse cursor to get starting index
+            let startIndex = 0;
+            if (cursor) {
+              // Simple cursor parsing: try to extract index from cursor string
+              // In production, would use proper cursor format
+              const parsed = parseInt(cursor, 10);
+              if (!isNaN(parsed)) {
+                startIndex = parsed;
+              }
+            }
+
+            // Get all events from the log
+            const allEvents = getEventsFromLog(eventLog, startIndex);
+            return allEvents;
+          } catch (err) {
+            app.log.warn(`Event fetcher error: ${(err as Error).message}`);
+            return [];
+          }
+        };
+
+        // Create callback for new events
+        const onNewEvents = async (_projectId: string, events: any[]): Promise<void> => {
+          if (!genesisResult.sessionId || events.length === 0) return;
+
+          try {
+            // Generate a summary of the events for Genesis
+            const eventSummary = events.map(e => {
+              const type = typeof e.type === 'string' ? e.type : JSON.stringify(e.type);
+              const projectId = e.projectId || 'unknown';
+              return `${type} (${projectId})`;
+            }).join(', ');
+
+            // Dispatch prompt to Genesis
+            const prompt = `Observed ${events.length} new event(s): ${eventSummary}\n\nUse project_read_events() to fetch details and analyze the impact on project state.`;
+
+            // Fire async prompt but don't wait (Genesis session handles it)
+            pool.prompt(genesisResult.sessionId, prompt, 10000).catch(err => {
+              app.log.warn(`Failed to send prompt to Genesis: ${(err as Error).message}`);
+            });
+          } catch (err) {
+            app.log.warn(`Event callback error: ${(err as Error).message}`);
+          }
+        };
+
+        // Start the polling loop
+        genesisPollingLoop.start(
+          genesisResult.sessionId,
+          pool,
+          eventFetcher,
+          onNewEvents,
+        );
+
+        app.log.info(`Genesis polling loop started (interval: ${GENESIS_POLLING_INTERVAL_MS}ms)`);
       } catch (err) {
         app.log.error(`Failed to spawn Genesis: ${(err as Error).message}`);
       }
@@ -912,6 +980,11 @@ function gracefulShutdown(signal: string) {
   app.close().then(() => {
     // Stop usage polling
     usagePoller.stop();
+
+    // Stop Genesis polling loop if running
+    if (genesisPollingLoop) {
+      genesisPollingLoop.stop();
+    }
 
     // Stop trigger watchers (PRD 018)
     if (triggerRouter) {

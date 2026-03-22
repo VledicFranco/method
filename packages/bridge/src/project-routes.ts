@@ -28,17 +28,74 @@ import path from 'path';
 
 // ── Event Cursor Management (Phase 1: In-Memory) ────
 
+// Configuration from environment variables
+const EVENT_LOG_MAX_SIZE = parseInt(process.env.EVENT_LOG_MAX_SIZE ?? '100000', 10);
+const CURSOR_VERSION = '1'; // Version 1: { version, projectId, index, timestamp }
+
 interface CursorState {
+  version: string;
   eventIndex: number;
   timestamp: number;
+  projectId?: string;
+}
+
+// Circular buffer implementation for event log
+interface CircularEventLog {
+  buffer: ProjectEvent[];
+  capacity: number;
+  index: number; // Next write position
+  count: number; // Total events ever added (for absolute indexing)
+}
+
+function createCircularEventLog(capacity: number): CircularEventLog {
+  return {
+    buffer: [],
+    capacity,
+    index: 0,
+    count: 0,
+  };
+}
+
+function pushEventToLog(log: CircularEventLog, event: ProjectEvent): void {
+  if (log.buffer.length < log.capacity) {
+    log.buffer.push(event);
+  } else {
+    // Evict oldest entry at current index
+    log.buffer[log.index] = event;
+  }
+  log.index = (log.index + 1) % log.capacity;
+  log.count++;
+}
+
+function getEventsFromLog(log: CircularEventLog, fromIndex: number): ProjectEvent[] {
+  if (fromIndex >= log.count) {
+    return []; // Index beyond current count
+  }
+
+  // Clamp fromIndex to valid range: max(0, count - capacity)
+  const minValidIndex = Math.max(0, log.count - log.capacity);
+  const clampedIndex = Math.max(minValidIndex, fromIndex);
+  const offset = clampedIndex - (log.count - log.buffer.length);
+
+  if (offset >= log.buffer.length) {
+    return [];
+  }
+
+  const startPos = Math.max(0, offset);
+  return log.buffer.slice(startPos);
 }
 
 const cursorMap = new Map<string, CursorState>();
-const eventLog: ProjectEvent[] = [];
+const eventLog = createCircularEventLog(EVENT_LOG_MAX_SIZE);
 
-function generateCursor(index: number): string {
+function generateCursor(index: number, projectId?: string): string {
   const cursorId = Math.random().toString(36).slice(2);
-  cursorMap.set(cursorId, { eventIndex: index, timestamp: Date.now() });
+  cursorMap.set(cursorId, {
+    version: CURSOR_VERSION,
+    eventIndex: index,
+    timestamp: Date.now(),
+    projectId,
+  });
 
   // Cleanup old cursors (>24h)
   for (const [id, state] of cursorMap.entries()) {
@@ -50,16 +107,23 @@ function generateCursor(index: number): string {
   return cursorId;
 }
 
-function parseCursor(cursor: string): number {
+function parseCursor(cursor: string): { index: number; projectId?: string } {
   const state = cursorMap.get(cursor);
   if (!state) {
-    return 0; // Default to first event
+    return { index: 0 };
   }
-  return state.eventIndex;
+
+  // Check version compatibility (Phase 3 migration point)
+  if (state.version !== CURSOR_VERSION) {
+    console.warn(`Cursor version mismatch: expected ${CURSOR_VERSION}, got ${state.version}. Resetting.`);
+    return { index: 0 };
+  }
+
+  return { index: state.eventIndex, projectId: state.projectId };
 }
 
 function getEventsSinceCursor(events: ProjectEvent[], cursorId?: string): ProjectEvent[] {
-  const index = cursorId ? parseCursor(cursorId) : 0;
+  const { index } = cursorId ? parseCursor(cursorId) : { index: 0 };
   return events.slice(index);
 }
 
@@ -133,7 +197,7 @@ export async function registerProjectRoutes(
             },
             { phase: 'phase1' },
           );
-          eventLog.push(event);
+          pushEventToLog(eventLog, event);
         }
 
         return reply.status(200).send({
@@ -343,7 +407,7 @@ export async function registerProjectRoutes(
           },
           { phase: 'phase2b' },
         );
-        eventLog.push(event);
+        pushEventToLog(eventLog, event);
 
         // Trigger registry rescan
         try {
@@ -381,11 +445,14 @@ export async function registerProjectRoutes(
       try {
         const { since_cursor } = req.query || {};
 
-        // Get events since cursor
-        const newEvents = getEventsSinceCursor(eventLog, since_cursor);
+        // Get all events from circular buffer
+        const allEvents = getEventsFromLog(eventLog, 0);
 
-        // Generate next cursor for next poll
-        const nextCursor = generateCursor(eventLog.length);
+        // Get events since cursor
+        const newEvents = getEventsSinceCursor(allEvents, since_cursor);
+
+        // Generate next cursor for next poll (use count to handle wrap-around)
+        const nextCursor = generateCursor(eventLog.count);
         const hasMore = newEvents.length > 0;
 
         return reply.status(200).send({
@@ -425,14 +492,15 @@ export async function registerProjectRoutes(
           });
         }
 
-        // Filter events by projectId
-        const projectEvents = eventLog.filter((e) => e.projectId === projectId);
+        // Get all events from circular buffer and filter by projectId
+        const allEvents = getEventsFromLog(eventLog, 0);
+        const projectEvents = allEvents.filter((e) => e.projectId === projectId);
 
         // Get events since cursor
         const newEvents = getEventsSinceCursor(projectEvents, since_cursor);
 
         // Generate next cursor for next poll
-        const nextCursor = generateCursor(projectEvents.length);
+        const nextCursor = generateCursor(eventLog.count, projectId);
         const hasMore = newEvents.length > 0;
 
         return reply.status(200).send({
@@ -544,4 +612,5 @@ export async function registerProjectRoutes(
 
 // Export for testing
 export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor };
-export { eventLog };
+export { eventLog, pushEventToLog, getEventsFromLog, createCircularEventLog };
+export type { CircularEventLog, CursorState };

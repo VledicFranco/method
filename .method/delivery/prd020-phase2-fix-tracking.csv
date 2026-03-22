@@ -1,0 +1,48 @@
+Finding ID,Severity,Category,Bucket,Title,Effort (hrs),Owner,Deadline,Status,Notes
+F-A-1,CRITICAL,Integration,FIX NOW,Genesis Tools Not Registered in MCP,2,Bridge,Pre-merge,PENDING,Register 5 tools in ListToolsRequestSchema + CallToolRequestSchema
+F-A-3,CRITICAL,Integration,FIX NOW,Genesis Polling Loop Never Started,3,Bridge,Pre-merge,PENDING,Instantiate polling loop in index.ts after Genesis spawn
+F-P-1,CRITICAL,Stability,FIX NOW,Event Log Unbounded Growth,2,Bridge,Pre-merge,PENDING,Implement ring buffer (max 10K events) with oldest pruning
+F-P-2,CRITICAL,Stability,FIX NOW,Cursor Map Unbounded Leak,1,Bridge,Pre-merge,PENDING,Add 1-min interval cleanup + LRU bound (max 1000 cursors)
+F-NIKA-1,CRITICAL,Safety,FIX NOW,Genesis Cannot Execute Read-Only Tools,1,Bridge,Pre-merge,PENDING,Add enforceGenesisPrivilege check to genesis-tools.ts
+F-THANE-2,HIGH,Functionality,FIX NOW,Project-Config Not Initialized,1.5,Bridge,Pre-merge,PENDING,Generate project-config.yaml on discovery with git metadata
+F-THANE-4,HIGH,Testing,FIX NOW,No E2E Portfolio Discovery Test,2,QA,Pre-merge,PENDING,Create integration test: 3 repos → discover all → verify .method/
+F-NIKA-6,HIGH,Testing,FIX NOW,Cross-Project Isolation Not Validated,1,QA,Pre-merge,PENDING,Unit test: verify projectA manifest doesn't leak to projectB
+F-THANE-6,HIGH,Testing,FIX NOW,Performance Metrics Not Measured,1.5,QA,Pre-merge,PENDING,Benchmark discovery for 5/10/20 projects; assert <2s
+F-A-5,HIGH,Design,FIX NOW,Cursor Format Not Versioned,0.5,Bridge,Pre-merge,PENDING,Add version field to genesis-cursors.yaml (v1.0)
+F-A-9,MEDIUM,Safety,FIX NOW,Genesis Abort Returns Fake Success,1.5,Bridge,Pre-merge,PENDING,Either implement real abort or return 501 Not Implemented
+F-P-3,HIGH,Performance,PHASE 3,Cursor Writes Every 5 Seconds,1,Bridge,PRD-031,DEFER,Batch cursor saves: shutdown + every 5 min
+F-P-4,HIGH,Performance,PHASE 3,File Watcher Triggers Full Registry Rescan,2,Bridge,PRD-031,DEFER,File-level rescan: only parse changed file
+F-P-5,HIGH,Performance,PHASE 3,Discovery Blocks Every Project List Call,3,Bridge,PRD-031,DEFER,Cache discovery results (5-10 min TTL)
+F-P-6,HIGH,Performance,PHASE 3,Dashboard Event Stream Unbounded Memory,1,Frontend,PRD-031,DEFER,Max-size sliding window + virtual list rendering
+F-P-7,MEDIUM,Reliability,PHASE 3,Genesis Polling Lacks Error Recovery,0.5,Bridge,PRD-031,DEFER,Add error budget: stop after N consecutive errors
+F-A-2,HIGH,Config,PHASE 3,Genesis Budget/Polling Interval Hardcoded,1,Bridge,PRD-031,DEFER,Read from env + project config
+F-A-4,MEDIUM,Design,PHASE 3,File Watcher Debounce Coupled to Rescan,1,Bridge,PRD-031,DEFER,Document debounce assumptions; add timeout to rescan
+F-A-8,MEDIUM,Documentation,PHASE 3,Missing Architecture Documentation (DR-12),3,Tech Debt,PRD-031,DEFER,Create 4 docs: genesis.md config-reload.md resource-copy.md cursor.md
+F-THANE-5,MEDIUM,Specification,PHASE 3,Genesis Behavioral Rules Not Concrete,2,Design,PRD-031,DEFER,Create Genesis Behavioral Spec: report triggers escalation criteria
+F-NIKA-4,MEDIUM,Methodology,PHASE 3,Genesis Not Positioned in Methodology,1,Design,PRD-031,DEFER,Document: Is Genesis M4-GENESIS or bridge infrastructure?
+F-NIKA-5,MEDIUM,Architecture,PHASE 3,Event Aggregation No Backpressure,2,Design,PRD-031,DEFER,Design Event Log Lifecycle: size limits pruning archival
+F-HARLAN-1,HIGH,Observability,PHASE 3,Dashboard Metrics Not Implemented,3,Frontend,PRD-031,DEFER,Implement charts: events/sec per project memory usage cursor count
+F-HARLAN-3,HIGH,Testing,PHASE 3,No Integration Test (Genesis + Polling + Tools + Events),4,QA,PRD-031,DEFER,E2E test combining spawn polling execution event emission
+F-HARLAN-5,MEDIUM,Testing,PHASE 3,File Watcher Race Condition Tests Missing,2,QA,PRD-031,DEFER,Rapid file edits; verify rescan debounce works
+F-HARLAN-6,MEDIUM,Testing,PHASE 3,Abort Mechanism Test Missing,1,QA,PRD-031,DEFER,Test DELETE /genesis/prompt behavior verify no race
+F-HARLAN-7,MEDIUM,Consistency,PHASE 3,Error Reporting Inconsistent,1,Bridge,PRD-031,DEFER,Standardize error format across bridge endpoints
+F-HARLAN-8,LOW,Documentation,PHASE 3,Test Documentation Sparse,1,Tech Debt,PRD-031,DEFER,Add docstrings to new test files
+F-A-6,MEDIUM,Validation,PHASE 3,Config Validation Too Permissive,1,Bridge,PRD-031,DEFER,Use Zod schema for manifest/config validation
+F-A-7,MEDIUM,Security,PHASE 3,Resource Copier Path Traversal Risk,1,Bridge,PRD-031,DEFER,Add fs.realpathSync() check verify path within root
+F-ORION-1,HIGH,Performance,PHASE 3,No Load Test 100+ Projects,3,QA,PRD-031,DEFER,Load test with 100 projects measure discovery polling event growth
+F-ORION-2,MEDIUM,Testing,PHASE 3,Multi-Project Event Isolation Not Tested,2,QA,PRD-031,DEFER,Verify events from projectA don't appear in projectB stream
+F-ORION-3,MEDIUM,Testing,PHASE 3,Genesis Budget Configuration Not Tested,1,QA,PRD-031,DEFER,Test: spawn with custom budget override verify respected
+F-ORION-4,LOW,Documentation,PHASE 3,PRD 020 Glossary Missing,1,Tech Debt,PRD-031,DEFER,Document terms: cursor genesis_events portfolio portfolio_status
+F-ORION-5,LOW,Testing,PHASE 3,Discovery Timeout Behavior Not Tested,1,QA,PRD-031,DEFER,Test: 1000 projects exceed timeout verify partial results
+F-ORION-6,LOW,Documentation,PHASE 3,Config Schema Changelog Missing,0.5,Tech Debt,PRD-031,DEFER,Document ProjectConfigSchema additions (genesis_budget etc)
+F-REVA-1,HIGH,Functionality,PHASE 3,Multi-Project Genesis Polling Not Implemented,4,Bridge,PRD-031,DEFER,Extend polling loop to iterate all discovered projects
+F-REVA-2,MEDIUM,Testing,PHASE 3,Multi-Project Event Correlation Not Tested,2,QA,PRD-031,DEFER,Test: events from multiple projects routed to correct streams
+F-REVA-3,MEDIUM,Safety,PHASE 3,Config Reload Race Conditions Possible,2,Bridge,PRD-031,DEFER,Add file lock or atomic swap for config writes
+F-REVA-4,LOW,Testing,PHASE 3,Genesis Lifecycle Integration Not Fully Tested,1.5,QA,PRD-031,DEFER,Test: spawn polling stop lifecycle consistency
+F-REVA-5,LOW,Documentation,PHASE 3,Project Config Versioning Strategy Missing,1,Design,PRD-031,DEFER,Document: how to handle project-config.yaml schema evolution
+F-REVA-6,LOW,Observability,PHASE 3,Genesis Metrics Not Collected,1,Bridge,PRD-031,DEFER,Collect metrics: polling frequency event rate memory usage
+F-REVA-7,MEDIUM,Testing,PHASE 3,Cursor Cleanup Verification Missing,1,QA,PRD-031,DEFER,Test: generate 1000 cursors over 24h verify old ones cleaned
+F-REVA-8,LOW,Documentation,PHASE 3,Bridge Deployment Guide Not Created,2,Tech Debt,PRD-031,DEFER,Document: deployment checklist config tuning ops runbook
+F-THANE-1,LOW,Scope,REJECT,Genesis Overscoped for Phase 1,0,N/A,N/A,N/A,Already deferred to Phase 2; verdict: acknowledge
+F-THANE-3,MEDIUM,Testing,PHASE 3,Resource Copying Validation Deferred,1,QA,PRD-031,DEFER,Add unit test for resource isolation validation
+F-A-10,LOW,Integration,REJECT,Genesis Budget Not Wired to Token Tracker,0,N/A,N/A,N/A,Maintenance; defer to Phase 3 token-budget enforcement

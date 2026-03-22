@@ -312,14 +312,26 @@ describe('Genesis HTTP Routes', () => {
       genesisSessionId,
     });
 
-    const response = await app.inject({
+    // First, send a prompt to create an in-flight prompt
+    const postResponse = await app.inject({
+      method: 'POST',
+      url: '/genesis/prompt',
+      payload: { message: 'Test prompt to abort' },
+    });
+    assert.strictEqual(postResponse.statusCode, 200);
+    const postData = JSON.parse(postResponse.body);
+    assert(postData.prompt_id); // Should have a prompt_id
+
+    // Now abort the in-flight prompt
+    const deleteResponse = await app.inject({
       method: 'DELETE',
       url: '/genesis/prompt',
     });
 
-    assert.strictEqual(response.statusCode, 200);
-    const data = JSON.parse(response.body);
-    assert.strictEqual(data.aborted, true);
+    assert.strictEqual(deleteResponse.statusCode, 200);
+    const deleteData = JSON.parse(deleteResponse.body);
+    assert.strictEqual(deleteData.aborted, true);
+    assert(deleteData.cancelled_prompt_id); // Should have cancelled a prompt
 
     await app.close();
   });

@@ -16,8 +16,8 @@ import type { ProjectEvent } from '@method/core';
 
 export interface GenesisToolsContext {
   discoveryService: DiscoveryService;
-  eventLog: ProjectEvent[];
-  cursorMap: Map<string, { eventIndex: number; timestamp: number }>;
+  eventLog: { buffer: ProjectEvent[]; capacity: number; index: number; count: number };
+  cursorMap: Map<string, { version: string; eventIndex: number; timestamp: number; projectId?: string }>;
 }
 
 /**
@@ -111,17 +111,26 @@ export async function projectReadEventsTool(
   project_id?: string,
   since_cursor?: string,
 ) {
-  // Parse cursor to get starting index
+  // Parse cursor to get starting index (handle version mismatch)
   let startIndex = 0;
   if (since_cursor) {
     const cursorState = ctx.cursorMap.get(since_cursor);
     if (cursorState) {
-      startIndex = cursorState.eventIndex;
+      // Check version compatibility (Phase 3 migration point)
+      if (cursorState.version !== '1') {
+        console.warn(`Cursor version mismatch: expected 1, got ${cursorState.version}. Resetting.`);
+        startIndex = 0;
+      } else {
+        startIndex = cursorState.eventIndex;
+      }
     }
   }
 
+  // Get all events from circular buffer
+  const allEvents = getEventsFromCircularLog(ctx.eventLog, startIndex);
+
   // Filter events by project_id if provided
-  let events = ctx.eventLog.slice(startIndex);
+  let events = allEvents;
   if (project_id) {
     events = events.filter(e =>
       (e.metadata?.project_id === project_id || !e.metadata?.project_id)
@@ -131,8 +140,10 @@ export async function projectReadEventsTool(
   // Generate next cursor
   const nextCursorId = Math.random().toString(36).slice(2);
   ctx.cursorMap.set(nextCursorId, {
-    eventIndex: ctx.eventLog.length,
+    version: '1',
+    eventIndex: ctx.eventLog.count,
     timestamp: Date.now(),
+    projectId: project_id,
   });
 
   // Cleanup old cursors (>24h)
@@ -148,6 +159,27 @@ export async function projectReadEventsTool(
     hasMore: events.length > 0,
     filter: project_id ? { project_id } : undefined,
   };
+}
+
+/**
+ * Helper: Get events from circular buffer starting at index
+ */
+function getEventsFromCircularLog(log: { buffer: ProjectEvent[]; capacity: number; index: number; count: number }, fromIndex: number): ProjectEvent[] {
+  if (fromIndex >= log.count) {
+    return []; // Index beyond current count
+  }
+
+  // Clamp fromIndex to valid range: max(0, count - capacity)
+  const minValidIndex = Math.max(0, log.count - log.capacity);
+  const clampedIndex = Math.max(minValidIndex, fromIndex);
+  const offset = clampedIndex - (log.count - log.buffer.length);
+
+  if (offset >= log.buffer.length) {
+    return [];
+  }
+
+  const startPos = Math.max(0, offset);
+  return log.buffer.slice(startPos);
 }
 
 /**
