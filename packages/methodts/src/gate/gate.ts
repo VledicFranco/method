@@ -68,6 +68,9 @@ export type GateSuite<S> = {
 // ── Re-exports for convenience ──
 
 export { scriptGate } from "./runners/script-gate.js";
+export { testRunner } from "./runners/test-runner.js";
+export { httpChecker } from "./runners/http-checker.js";
+export { checklistGate, renderChecklistInstructions, parseAttestations, evaluateChecklist } from "./runners/checklist-gate.js";
 
 // ── Composition helpers ──
 

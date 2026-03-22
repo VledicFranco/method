@@ -41,7 +41,18 @@ export * from "./runtime/suspension.js";
 export * from "./runtime/accumulator.js";
 export * from "./runtime/config.js";
 
-// Wave 3+: Uncomment as components are implemented:
+// Wave 3: Gate runners + Context + EventBus + Middleware
+export * from "./gate/runners/test-runner.js";
+export * from "./gate/runners/http-checker.js";
+export * from "./gate/runners/checklist-gate.js";
+export * from "./runtime/context.js";
+export * from "./runtime/insight-store.js";
+export * from "./runtime/domain-facts.js";
+export * from "./runtime/event-bus.js";
+export * from "./runtime/hooks.js";
+export * from "./runtime/middleware.js";
+
+// Wave 4+: Uncomment as components are implemented:
 // export * from "./strategy/controller.js";
 // export * from "./runtime/run-methodology.js";
 // export * from "./meta/compile.js";
