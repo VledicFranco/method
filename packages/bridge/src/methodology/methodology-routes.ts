@@ -22,10 +22,13 @@
 
 import type { FastifyInstance } from "fastify";
 import type { MethodologySessionStore } from "./methodology-store.js";
+import type { SessionPool } from "../pool.js";
+import { appendMessage } from "../channels.js";
 
 export function registerMethodologyRoutes(
   app: FastifyInstance,
   store: MethodologySessionStore,
+  pool: SessionPool,
 ): void {
 
   // ── GET /api/methodology/list ──
@@ -99,7 +102,35 @@ export function registerMethodologyRoutes(
     Params: { sid: string };
   }>("/api/methodology/sessions/:sid/step/advance", async (request, reply) => {
     try {
-      const result = store.advanceStep(request.params.sid);
+      const sid = request.params.sid;
+      const result = store.advanceStep(sid) as {
+        methodologyId: string;
+        methodId: string;
+        previousStep: { id: string; name: string };
+        nextStep: { id: string; name: string } | null;
+      };
+
+      // Fire-and-forget: emit step progress to channels if available
+      try {
+        const channels = pool.getChannels(sid);
+        if (result.previousStep) {
+          appendMessage(channels.progress, sid, 'step_completed', {
+            methodology: result.methodologyId,
+            method: result.methodId,
+            step: result.previousStep.id,
+            step_name: result.previousStep.name,
+          });
+        }
+        if (result.nextStep) {
+          appendMessage(channels.progress, sid, 'step_started', {
+            methodology: result.methodologyId,
+            method: result.methodId,
+            step: result.nextStep.id,
+            step_name: result.nextStep.name,
+          });
+        }
+      } catch { /* non-fatal — channels may not exist for this session */ }
+
       return reply.status(200).send(result);
     } catch (e) {
       const msg = (e as Error).message;

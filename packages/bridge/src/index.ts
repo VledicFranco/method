@@ -799,7 +799,7 @@ registerRegistryRoutes(app);
 // ---------- Methodology API (PRD 021) ----------
 
 const methodologyStore = new MethodologySessionStore(resolve(ROOT_DIR, 'registry'));
-registerMethodologyRoutes(app, methodologyStore);
+registerMethodologyRoutes(app, methodologyStore, pool);
 
 // ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
 
