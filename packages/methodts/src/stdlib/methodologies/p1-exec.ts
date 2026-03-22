@@ -15,8 +15,12 @@
  */
 
 import type { Methodology, Arm } from "../../methodology/methodology.js";
+import type { Method } from "../../method/method.js";
 import type { DomainTheory } from "../../domain/domain-theory.js";
 import { check } from "../../predicate/predicate.js";
+import { M1_COUNCIL } from "../methods/p1/m1-council.js";
+import { M2_ORCH } from "../methods/p1/m2-orch.js";
+import { M3_TMP } from "../methods/p1/m3-tmp.js";
 
 // ── State type ──
 
@@ -111,7 +115,7 @@ export const arm_adversarial_dispatch: Arm<ExecState> = {
     "not_selected_and_adversarial",
     (s) => s.selectedMethod === null && s.adversarialPressureBeneficial,
   ),
-  selects: null, // M1-COUNCIL not yet ported — placeholder
+  selects: M1_COUNCIL as unknown as Method<ExecState>,
   rationale:
     "Adversarial pressure is beneficial: uncertain framing, multiple defensible positions, " +
     "high-stakes preconditions, or silent assumption risk. Route to structured debate.",
@@ -128,7 +132,7 @@ export const arm_orchestration_dispatch: Arm<ExecState> = {
     "not_selected_and_decomposable",
     (s) => s.selectedMethod === null && !s.adversarialPressureBeneficial && s.decomposableBeforeExecution,
   ),
-  selects: null, // M2-ORCH not yet ported — placeholder
+  selects: M2_ORCH as unknown as Method<ExecState>,
   rationale:
     "No adversarial need, but the challenge decomposes into independent parallel sub-tasks. " +
     "Route to parallel orchestration.",
@@ -145,7 +149,7 @@ export const arm_sequential_dispatch: Arm<ExecState> = {
     "not_selected_and_sequential",
     (s) => s.selectedMethod === null && !s.adversarialPressureBeneficial && !s.decomposableBeforeExecution,
   ),
-  selects: null, // M3-TMP not yet ported — placeholder
+  selects: M3_TMP as unknown as Method<ExecState>,
   rationale:
     "No adversarial need, not decomposable. Default: single-agent sequential reasoning. " +
     "M3-TMP is the zero-overhead baseline.",

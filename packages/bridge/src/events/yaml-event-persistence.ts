@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, accessSync, constants as fsConstants } from 'fs';
 import path from 'path';
 import YAML from 'js-yaml';
 import type { EventFilter, EventPersistence } from './event-persistence.js';
@@ -29,6 +29,50 @@ interface SerializedEvent {
   metadata: Record<string, any>;
 }
 
+/**
+ * Validate that a directory exists and is writable
+ * F-R-003: Directory Permission Validation
+ */
+function validateDirectoryWritable(dirPath: string): boolean {
+  try {
+    accessSync(dirPath, fsConstants.W_OK);
+    return true;
+  } catch (err: any) {
+    // EACCES = permission denied, ENOENT = doesn't exist
+    if (err.code === 'EACCES' || err.code === 'ENOENT') {
+      return false;
+    }
+    // Re-throw unexpected errors
+    throw err;
+  }
+}
+
+/**
+ * Validate that a directory can be created and written to
+ * F-R-003: Directory Permission Validation
+ * Allows creation as long as an ancestor directory exists and is writable
+ */
+function validateDirectoryCreatable(dirPath: string): boolean {
+  // If directory exists, it must be writable
+  if (existsSync(dirPath)) {
+    return validateDirectoryWritable(dirPath);
+  }
+
+  // Walk up the tree to find an existing ancestor directory
+  let currentPath = dirPath;
+  while (!existsSync(currentPath)) {
+    const parentPath = path.dirname(currentPath);
+    // If we've reached the root and it doesn't exist, fail
+    if (parentPath === currentPath) {
+      return false;
+    }
+    currentPath = parentPath;
+  }
+
+  // We found an existing ancestor. Check if it's writable.
+  return validateDirectoryWritable(currentPath);
+}
+
 export class YamlEventPersistence implements EventPersistence {
   private filePath: string;
   private events: ProjectEvent[] = [];
@@ -42,6 +86,23 @@ export class YamlEventPersistence implements EventPersistence {
 
   constructor(filePath: string) {
     this.filePath = filePath;
+
+    // F-R-003: Validate directory permissions on initialization
+    const dirPath = path.dirname(filePath);
+
+    if (!validateDirectoryCreatable(dirPath)) {
+      // Find the problematic ancestor directory for a better error message
+      let ancestorPath = dirPath;
+      while (!existsSync(ancestorPath)) {
+        ancestorPath = path.dirname(ancestorPath);
+      }
+
+      throw new Error(
+        `Cannot initialize YamlEventPersistence: ` +
+        `ancestor directory ${ancestorPath} does not have write permissions. ` +
+        `Check permissions and try again.`
+      );
+    }
   }
 
   /**
@@ -50,6 +111,15 @@ export class YamlEventPersistence implements EventPersistence {
   async recover(): Promise<void> {
     try {
       const dirPath = path.dirname(this.filePath);
+
+      // F-R-003: Pre-recovery check - validate directory is creatable before attempting recovery
+      if (!validateDirectoryCreatable(dirPath)) {
+        throw new Error(
+          `Directory ${dirPath} cannot be created or is not writable. ` +
+          `Cannot proceed with event recovery.`
+        );
+      }
+
       if (!existsSync(dirPath)) {
         await fs.mkdir(dirPath, { recursive: true });
       }

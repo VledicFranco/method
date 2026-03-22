@@ -12,6 +12,14 @@
  */
 
 import type { Methodology, Arm } from "../../methodology/methodology.js";
+import type { Method } from "../../method/method.js";
+import { M7_PRDS } from "../methods/p2/m7-prds.js";
+import { M6_ARFN } from "../methods/p2/m6-arfn.js";
+import { M5_PLAN } from "../methods/p2/m5-plan.js";
+import { M2_DIMPL } from "../methods/p2/m2-dimpl.js";
+import { M1_IMPL } from "../methods/p2/m1-impl.js";
+import { M3_PHRV } from "../methods/p2/m3-phrv.js";
+import { M4_DDAG } from "../methods/p2/m4-ddag.js";
 import type { DomainTheory } from "../../domain/domain-theory.js";
 import { check, and, not } from "../../predicate/predicate.js";
 
@@ -106,7 +114,7 @@ export const arm_section: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_prd_section", (s) => s.taskType === "prd_section"),
   ),
-  selects: null, // M7-PRDS not yet ported
+  selects: M7_PRDS as unknown as Method<SDState>,
   rationale: "Full PRD needs sectioning before any downstream work.",
 };
 
@@ -121,7 +129,7 @@ export const arm_architecture: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_architecture", (s) => s.taskType === "architecture"),
   ),
-  selects: null, // M6-ARFN not yet ported
+  selects: M6_ARFN as unknown as Method<SDState>,
   rationale: "Architecture refinement needed — ArchDoc is a prerequisite for planning and implementation.",
 };
 
@@ -136,7 +144,7 @@ export const arm_plan: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_planning", (s) => s.taskType === "planning"),
   ),
-  selects: null, // M5-PLAN not yet ported
+  selects: M5_PLAN as unknown as Method<SDState>,
   rationale: "PRDSection + ArchDoc ready — produce PhaseDoc for implementation.",
 };
 
@@ -151,7 +159,7 @@ export const arm_orchestrated_implement: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_parallel_impl", (s) => s.taskType === "parallel_impl"),
   ),
-  selects: null, // M5-ORCH / M2-DIMPL not yet ported
+  selects: M2_DIMPL as unknown as Method<SDState>,
   rationale: "Multi-task scope — parallel orchestration with quality gates.",
 };
 
@@ -166,7 +174,7 @@ export const arm_implement: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_implementation", (s) => s.taskType === "implementation"),
   ),
-  selects: null, // M4-IMPL / M1-IMPL not yet ported
+  selects: M1_IMPL as unknown as Method<SDState>,
   rationale: "Single-agent sequential implementation — default for implement challenges.",
 };
 
@@ -181,7 +189,7 @@ export const arm_review: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_review", (s) => s.taskType === "review"),
   ),
-  selects: null, // M6-PHRV / M3-PHRV not yet ported
+  selects: M3_PHRV as unknown as Method<SDState>,
   rationale: "Phase completed — post-implementation review.",
 };
 
@@ -196,7 +204,7 @@ export const arm_audit: Arm<SDState> = {
     not(check<SDState>("completed", (s) => s.completed)),
     check<SDState>("is_audit", (s) => s.taskType === "audit"),
   ),
-  selects: null, // M7-PRDS / M4-DDAG not yet ported
+  selects: M4_DDAG as unknown as Method<SDState>,
   rationale: "Cross-phase drift analysis.",
 };
 

@@ -11,14 +11,21 @@
 
 import { check } from "../../predicate/predicate.js";
 import type { Arm } from "../../methodology/methodology.js";
+import type { Method } from "../../method/method.js";
 import type { MetaState } from "../types.js";
+import { M1_MDES } from "../methods/m1-mdes.js";
+import { M2_MDIS } from "../methods/m2-mdis.js";
+import { M3_MEVO } from "../methods/m3-mevo.js";
+import { M4_MINS } from "../methods/m4-mins.js";
+import { M5_MCOM } from "../methods/m5-mcom.js";
+import { M7_DTID } from "../methods/m7-dtid.js";
 
 /** Arm 1: Gap with HIGH/CRITICAL severity -> M3-MEVO (evolution). */
 export const arm_gap_severity: Arm<MetaState> = {
   priority: 1,
   label: "gap_severity_first",
   condition: check<MetaState>("has_high_gap", (s) => s.highGapMethods.length > 0),
-  selects: null, // M3_MEVO not yet ported — placeholder
+  selects: M3_MEVO as unknown as Method<MetaState>,
   rationale: "HIGH/CRITICAL gaps in compiled methods must be addressed first via evolution.",
 };
 
@@ -27,7 +34,7 @@ export const arm_lifecycle_design: Arm<MetaState> = {
   priority: 2,
   label: "lifecycle_design",
   condition: check<MetaState>("has_informal", (s) => s.informalPractices.length > 0),
-  selects: null, // M1_MDES not yet ported — placeholder
+  selects: M1_MDES as unknown as Method<MetaState>,
   rationale: "Informal practices need to be designed into formal methods.",
 };
 
@@ -36,7 +43,7 @@ export const arm_lifecycle_instantiation: Arm<MetaState> = {
   priority: 3,
   label: "lifecycle_instantiation",
   condition: check<MetaState>("needs_instantiation", (s) => s.needsInstantiation.length > 0),
-  selects: null, // M4_MINS not yet ported — placeholder
+  selects: M4_MINS as unknown as Method<MetaState>,
   rationale: "Compiled methods need project-specific instances.",
 };
 
@@ -45,7 +52,7 @@ export const arm_structural_composition: Arm<MetaState> = {
   priority: 4,
   label: "structural_composition",
   condition: check<MetaState>("has_composable", (s) => s.composablePairs.length > 0),
-  selects: null, // M5_MCOM not yet ported — placeholder
+  selects: M5_MCOM as unknown as Method<MetaState>,
   rationale: "Composable method pairs should be composed.",
 };
 
@@ -56,7 +63,7 @@ export const arm_structural_audit: Arm<MetaState> = {
   condition: check<MetaState>("not_self_consistent", (s) =>
     s.compiledMethods.some((m) => !s.selfConsistentMethods.includes(m)),
   ),
-  selects: null, // M6_MAUD not yet ported — placeholder
+  selects: null, // M6_MAUD — not in registry (deferred)
   rationale: "Compiled methods lacking self-consistency need structural audit.",
 };
 
@@ -65,7 +72,7 @@ export const arm_implementation_derivation: Arm<MetaState> = {
   priority: 6,
   label: "implementation_derivation",
   condition: check<MetaState>("compiled_exists", (s) => s.compiledMethods.length > 0),
-  selects: null, // M7_DTID not yet ported — placeholder
+  selects: M7_DTID as unknown as Method<MetaState>,
   rationale: "Compiled methods need implementation derivation documents.",
 };
 
@@ -76,7 +83,7 @@ export const arm_discovery: Arm<MetaState> = {
   condition: check<MetaState>("target_has_uncompiled", (s) =>
     s.targetRegistry.some((m) => !s.compiledMethods.includes(m)),
   ),
-  selects: null, // M2_MDIS not yet ported — placeholder
+  selects: M2_MDIS as unknown as Method<MetaState>,
   rationale: "Target registry has methods not yet compiled — discover and design.",
 };
 
