@@ -756,6 +756,14 @@ type Predicate<A> =
 - `evaluate(pred, value) → boolean` — pure evaluation
 - `evaluateWithTrace(pred, value) → EvalTrace` — diagnostic trace showing which sub-predicates contributed to the result
 
+```typescript
+type EvalTrace = {
+  label: string                       // predicate label or combinator name (e.g., "AND", "compiled")
+  result: boolean                     // evaluation result at this node
+  children: EvalTrace[]               // sub-predicate traces (empty for leaf nodes)
+}
+```
+
 **Algebraic laws (verified by property tests):**
 - De Morgan: `not(and(p, q)) ≡ or(not(p), not(q))`
 - Double negation: `not(not(p)) ≡ p` (under evaluation)
@@ -928,6 +936,18 @@ type Method<S> = {
   objective: Predicate<S>
   measures: Measure<S>[]
 }
+
+type StepEdge = {
+  from: string                        // step ID
+  to: string                          // step ID
+}
+
+type StepDAG<S> = {
+  steps: Step<S>[]                    // V — finite set of steps
+  edges: StepEdge[]                   // E — directed composability edges
+  initial: string                     // σ_init step ID
+  terminal: string                    // σ_term step ID
+}
 ```
 
 **Design note on tools:** The `tools` field on `Step<S>` preserves F1-FTH Def 4.1's 4-tuple `(pre, post, guidance, tools)`. In Phase 1, tools are referenced by name string (matching MCP tool IDs). A full `Tool<S>` type with Hoare-typed pre/postconditions (Def 3.1) is deferred to Phase 2 — TypeScript's type system cannot express the dependent typing that Hoare-indexed computations require without significant encoding overhead.
@@ -994,8 +1014,16 @@ type Methodology<S> = {
 **Operations:**
 - `evaluateTransition(methodology, state) → TransitionResult<S>` — deterministic δ_Φ evaluation with full trace
 - `checkSafety(methodology, executionState) → { safe, violation? }` — verify bounds before next method
-- `simulateRun(methodology, states) → SimulationResult` — dry-run δ_Φ routing over a provided state sequence. Evaluates which method would be selected at each state. Does **not** execute method steps (agent or script). Zero tokens, zero cost.
+- `simulateRun(methodology, states) → SimulationResult<S>` — dry-run δ_Φ routing over a provided state sequence. Evaluates which method would be selected at each state. Does **not** execute method steps (agent or script). Zero tokens, zero cost.
 - `validateMethodology(methodology) → { valid, errors[] }` — structural validation (arm completeness, all methods declared, objective expressible)
+
+```typescript
+type SimulationResult<S> = {
+  selections: TransitionResult<S>[]   // one per input state
+  terminatesAt: number | null         // index of first None selection (methodology would terminate)
+  methodSequence: string[]            // method IDs in selection order (excludes None)
+}
+```
 
 **Safety enforcement:** Before each `evaluateTransition` call, the runtime checks `SafetyBounds`. If any bound is exceeded, the methodology terminates with a `safety_violation` status instead of selecting the next method.
 
@@ -1006,7 +1034,15 @@ type Methodology<S> = {
 - [ ] `simulateRun` — dry-run simulation (routing only, no execution)
 - [ ] `validateMethodology` — structural validation
 - [ ] `asMethodology(method)` — wrap a single `Method<S>` as a trivial one-arm `Methodology<S>` (convenience for running a single method through the methodology runtime)
-- [ ] `Retraction<P, C>` type with `embed`, `project` functions
+- [ ] `Retraction<P, C>` type:
+  ```typescript
+  type Retraction<P, C> = {
+    id: string
+    embed: (parent: P) => C           // inject parent state into child domain
+    project: (child: C) => P          // project child result back to parent domain
+  }
+  // Retraction condition: project(embed(s)) = s on the touched subspace (Def 6.3)
+  ``` with `embed`, `project` functions
 - [ ] `verifyRetraction(retraction, testStates, compare?)` — round-trip verification
 - [ ] Tests with P1-EXEC and P2-SD routing logic as fixtures, retraction round-trip tests
 
@@ -1189,7 +1225,7 @@ A Strategy wraps methodology execution with: objectives (what "done" means at th
 
 **Core types:**
 ```typescript
-type StrategyController<S> = {
+type StrategyController<S, R = never> = {
   id: string
   name: string
 
@@ -1199,11 +1235,13 @@ type StrategyController<S> = {
   /** Strategy-level gates — evaluated after each methodology completion */
   gates: Gate<S>[]
 
-  /** Called on each runtime suspension — decides resolution */
-  onSuspend: (suspended: SuspendedMethodology<S>) => Effect<Resolution<S>, never, never>
+  /** Called on each runtime suspension — decides resolution.
+   *  R parameter: services the controller needs (e.g., console IO for interactive,
+   *  AgentProvider for agent-steered). R = never for automated controllers. */
+  onSuspend: (suspended: SuspendedMethodology<S>) => Effect<Resolution<S>, never, R>
 
   /** Called on methodology completion — decides if strategy continues */
-  onComplete: (result: MethodologyResult<S>) => Effect<StrategyDecision<S>, never, never>
+  onComplete: (result: MethodologyResult<S>) => Effect<StrategyDecision<S>, never, R>
 
   /** Strategy-level safety bounds (across all methodology runs within this strategy) */
   safety: SafetyBounds
@@ -1393,7 +1431,8 @@ function runStep<S>(
 
 **Result types:**
 ```typescript
-type RuntimeServices = AgentProvider | CommandService | GitService | ClockService | EventBus<any>
+// Effect R parameter uses intersection (&) — all services must be provided
+type RuntimeServices = AgentProvider & CommandService & GitService & ClockService & EventBus<any>
 
 type ExecutionAccumulator = {
   loopCount: number                 // δ_Φ invocations
@@ -1450,7 +1489,7 @@ type Diff<S> = {
 }
 
 // Union of Effect services required by the runtime (used as R parameter)
-type WorldServices = CommandService | GitService    // extractor services
+type WorldServices = CommandService & GitService     // extractor services (Effect R intersection)
 type HookServices = WorldServices                   // hooks may need the same services
 type StepError = { _tag: "StepError"; stepId: string; message: string; cause?: unknown }
 
@@ -1567,7 +1606,9 @@ On SUSPEND:
 - **SEMIAUTO:** Steps have `suspension: "on_failure"`. The resolver auto-continues on `checkpoint`, presents to human on `error`/`gate_review`/`safety_warning`.
 - **FULLAUTO:** Steps have `suspension: "on_failure"`. The resolver auto-continues on everything, auto-retries on failure, aborts only on safety violation.
 
-**Suspension serialization:** `SuspendedMethodology<S>` must be serializable to YAML/JSON (DR-T06) for: persisting across process restarts, displaying in dashboards, sending via bridge channels, storing for scheduled resume. The `resume` function is not serializable — on deserialization, the runtime reconstructs it from the serialized position + methodology definition. This enables: stop execution → shut down process → later restart → deserialize suspended state → resume from exact position.
+**Suspension implementation mechanism:** The runtime loop (`runMethodology`) runs as a single Effect computation. Suspension is implemented by having inner functions (`runMethod`, `runStep`) signal suspension needs via a typed error channel variant `SuspensionSignal<S>` (not a user-visible error — an internal control flow mechanism). The outer `runMethodology` loop catches `SuspensionSignal`, packages the current state into `SuspendedMethodology<S>`, and yields to the caller. The `resume` function completes an internal `Effect.Deferred<Resolution<S>>` that the loop is awaiting, causing execution to continue from the suspension point. This is the standard Effect Fiber + Deferred coroutine pattern.
+
+**Suspension serialization:** `SuspendedMethodology<S>` must be serializable to YAML/JSON (DR-T06) for: persisting across process restarts, displaying in dashboards, sending via bridge channels, storing for scheduled resume. The `resume` function is not serializable — on deserialization, the runtime uses a **checkpoint-and-replay** strategy: it re-executes the methodology from the beginning using the serialized `StateTrace<S>` as a replay log. Steps whose snapshots exist in the trace are fast-forwarded (postconditions applied directly from the snapshot, no agent/script execution). When the replay reaches the serialized `position`, execution transitions to live mode and the reconstructed `resume` function is returned. Serializability is limited to well-defined suspension points (post-step, post-gate, method-boundary) — mid-step suspensions are not serializable.
 
 #### 12.2 Script Step Execution
 
@@ -2790,7 +2831,7 @@ packages/methodts/
 
 ### Theory extensions (documented, formalized in Phase 2)
 - `WorldState<S>` adds explicit state tracking (currently implicit in Mod(D))
-- `StateTrace<S>` adds execution history (discussed in §8.3 MDP extension)
+- `StateTrace<S>` adds execution history (discussed in F1-FTH §8.3 MDP extension)
 - `Snapshot<S>` adds observable transition records (no theory counterpart)
 
 ### Deferred theory concepts
