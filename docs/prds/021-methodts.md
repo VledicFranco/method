@@ -1,6 +1,6 @@
 # PRD 021: MethodTS — Typed Methodology SDK
 
-**Status:** Phase 2 In Progress (2026-03-22). 1171 tests, 72 test files. MCP rewire + shared types deferred to Phase 2b.
+**Status:** Phase 2 Complete (2026-03-22). 1171 methodts tests + 1045 monorepo tests. MCP rewired, core cleaned, @method/types shared package created.
 **Owner:** Steering Council
 **Methodology:** P2-SD v2.0
 **Depends on:** PRD 017 (strategy pipelines), PRD 004 (methodology runtime), F1-FTH (formal theory)
