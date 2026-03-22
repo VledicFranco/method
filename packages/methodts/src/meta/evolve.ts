@@ -36,6 +36,9 @@ export function aggregateEvidence(retros: MethodologyRetro[]): EvidenceSummary {
     totalRuns: retros.length,
     avgCostUsd: totalCost / retros.length,
     failureRate: failures / retros.length,
+    // Phase 1 placeholder — step-level failure tracking requires StepResult data
+    // in MethodologyRetro, which is not yet available. Will be implemented when
+    // retro schema includes per-step failure counts.
     stepFailureRates: {},
   };
 }

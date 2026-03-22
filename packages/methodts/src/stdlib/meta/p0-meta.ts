@@ -13,32 +13,10 @@
  */
 
 import type { Methodology } from "../../methodology/methodology.js";
-import type { DomainTheory } from "../../domain/domain-theory.js";
 import { check } from "../../predicate/predicate.js";
 import type { MetaState } from "../types.js";
 import { META_ARMS } from "./arms.js";
-
-/**
- * Simplified D_META domain theory for P0_META.
- *
- * The full D_META with complete signature and axioms will be provided
- * by WU-6.1 (d-meta.ts). This simplified version captures only the
- * structural validity axiom needed for P0_META routing.
- */
-const D_META_SIMPLIFIED: DomainTheory<MetaState> = {
-  id: "D_META",
-  signature: {
-    sorts: [
-      { name: "Method", description: "A formal method", cardinality: "unbounded" },
-      { name: "Status", description: "Compilation status", cardinality: "finite" },
-    ],
-    functionSymbols: [],
-    predicates: {},
-  },
-  axioms: {
-    "Ax-1": check<MetaState>("target_nonempty", (s) => s.targetRegistry.length > 0),
-  },
-};
+import { D_META } from "./d-meta.js";
 
 /**
  * P0_META — Genesis Methodology for the Meta-Method Family.
@@ -53,7 +31,7 @@ const D_META_SIMPLIFIED: DomainTheory<MetaState> = {
 export const P0_META: Methodology<MetaState> = {
   id: "P0-META",
   name: "Genesis Methodology for the Meta-Method Family",
-  domain: D_META_SIMPLIFIED,
+  domain: D_META,
   arms: META_ARMS,
   objective: check<MetaState>(
     "all_compiled",

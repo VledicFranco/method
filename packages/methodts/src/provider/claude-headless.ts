@@ -45,7 +45,7 @@ export function buildCliArgs(prompt: string, config: ClaudeHeadlessConfig, sessi
     "--output-format", "json",
     "--model", cfg.model,
   ];
-  if (cfg.maxBudgetUsd) {
+  if (cfg.maxBudgetUsd != null) {
     args.push("--max-budget-usd", String(cfg.maxBudgetUsd));
   }
   if (sessionId) {

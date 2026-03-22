@@ -18,11 +18,11 @@ export const predicates = {
     check(label, s => field(s) === value),
 
   /** Check if an array field is non-empty. */
-  nonEmpty: <S>(label: string, field: (s: S) => readonly any[]): Predicate<S> =>
+  nonEmpty: <S>(label: string, field: (s: S) => readonly unknown[]): Predicate<S> =>
     check(label, s => field(s).length > 0),
 
   /** Check if an array field is empty. */
-  isEmpty: <S>(label: string, field: (s: S) => readonly any[]): Predicate<S> =>
+  isEmpty: <S>(label: string, field: (s: S) => readonly unknown[]): Predicate<S> =>
     check(label, s => field(s).length === 0),
 
   /** Check if a numeric field meets a threshold. */

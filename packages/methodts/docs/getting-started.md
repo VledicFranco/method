@@ -291,7 +291,7 @@ const testStates: TaskState[] = [
 const report = compileMethod(taskMethod, testStates);
 
 console.log(report.overall);
-// => "needs_review" (G5 flags agent prompts for manual review)
+// => "compiled" (all gates pass — no agent steps means G5 passes cleanly)
 
 for (const gate of report.gates) {
   console.log(`${gate.gate}: ${gate.status} — ${gate.details}`);
@@ -300,7 +300,7 @@ for (const gate of report.gates) {
 // G2-objective: pass — Objective is a typed Predicate<S>
 // G3-roles: pass — All step roles have definitions
 // G4-dag: pass — All edges composable
-// G5-guidance: pass — No agent steps
+// G5-guidance: pass — All steps are script steps (no agent review needed)
 // G6-serializable: pass — Method structure serializable
 ```
 

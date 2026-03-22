@@ -51,6 +51,9 @@ export type StrategyDAG<S> = {
  * instance should only be used for one execution run.
  */
 export function fromStrategyDAG<S>(dag: StrategyDAG<S>): StrategyController<S> {
+  if (dag.nodes.length === 0) {
+    throw new Error("StrategyDAG must have at least one node");
+  }
   const ordered = topologicalSort(dag.nodes);
   let currentIndex = 0;
 
@@ -98,6 +101,7 @@ export function compileToYaml<S>(dag: StrategyDAG<S>): string {
       max_tokens: dag.safety.maxTokens,
       max_cost_usd: dag.safety.maxCostUsd,
       max_duration_ms: dag.safety.maxDurationMs,
+      max_depth: dag.safety.maxDepth,
     },
   };
   return yaml.dump(yamlObj);
@@ -105,22 +109,43 @@ export function compileToYaml<S>(dag: StrategyDAG<S>): string {
 
 // ── Internal helpers ──
 
-/** Simple topological sort for DAG nodes using Kahn's algorithm. */
+/** Topological sort for DAG nodes using Kahn's algorithm with cycle detection. */
 function topologicalSort<S>(nodes: readonly StrategyDAGNode<S>[]): StrategyDAGNode<S>[] {
-  const result: StrategyDAGNode<S>[] = [];
-  const visited = new Set<string>();
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const inDegree = new Map<string, number>();
+  const adjacency = new Map<string, string[]>();
 
-  function visit(id: string): void {
-    if (visited.has(id)) return;
-    visited.add(id);
-    const node = nodeMap.get(id)!;
-    for (const dep of node.dependsOn) {
-      visit(dep);
-    }
-    result.push(node);
+  for (const node of nodes) {
+    inDegree.set(node.id, 0);
+    adjacency.set(node.id, []);
   }
 
-  for (const node of nodes) visit(node.id);
+  for (const node of nodes) {
+    for (const dep of node.dependsOn) {
+      if (!nodeMap.has(dep)) {
+        throw new Error(`StrategyDAG node "${node.id}" depends on unknown node "${dep}"`);
+      }
+      adjacency.get(dep)!.push(node.id);
+      inDegree.set(node.id, (inDegree.get(node.id) ?? 0) + 1);
+    }
+  }
+
+  const queue = [...inDegree.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+  const result: StrategyDAGNode<S>[] = [];
+
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    result.push(nodeMap.get(id)!);
+    for (const neighbor of adjacency.get(id) ?? []) {
+      const newDeg = (inDegree.get(neighbor) ?? 1) - 1;
+      inDegree.set(neighbor, newDeg);
+      if (newDeg === 0) queue.push(neighbor);
+    }
+  }
+
+  if (result.length < nodes.length) {
+    throw new Error(`Cycle detected in StrategyDAG: only ${result.length} of ${nodes.length} nodes reachable`);
+  }
+
   return result;
 }

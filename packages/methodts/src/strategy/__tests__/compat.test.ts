@@ -296,17 +296,18 @@ describe("compileToYaml", () => {
     expect(parsed.nodes[1].methodology_id).toBe("M-B");
   });
 
-  it("maps safety bounds to snake_case", () => {
+  it("maps safety bounds to snake_case including max_depth", () => {
     const dag = makeTwoNodeDAG();
     const output = compileToYaml(dag);
     const parsed = yaml.load(output) as {
-      safety: { max_loops: number; max_tokens: number; max_cost_usd: number; max_duration_ms: number };
+      safety: { max_loops: number; max_tokens: number; max_cost_usd: number; max_duration_ms: number; max_depth: number };
     };
 
     expect(parsed.safety.max_loops).toBe(10);
     expect(parsed.safety.max_tokens).toBe(500_000);
     expect(parsed.safety.max_cost_usd).toBe(50);
     expect(parsed.safety.max_duration_ms).toBe(300_000);
+    expect(parsed.safety.max_depth).toBe(5);
   });
 
   it("includes gates with id and description", () => {
@@ -354,5 +355,68 @@ describe("StrategyDAG type construction", () => {
 
     const decision = Effect.runSync(ctrl.onComplete(makeResult()));
     expect(decision.tag).toBe("done");
+  });
+});
+
+// ── Error handling tests ──
+
+describe("fromStrategyDAG error handling", () => {
+  it("throws on empty DAG (no nodes)", () => {
+    const dag: StrategyDAG<TestState> = {
+      id: "S-EMPTY",
+      name: "Empty Strategy",
+      nodes: [],
+      gates: [],
+      safety: testSafety,
+    };
+
+    expect(() => fromStrategyDAG(dag)).toThrow("StrategyDAG must have at least one node");
+  });
+
+  it("throws on cycle: A → B → A", () => {
+    const dag: StrategyDAG<TestState> = {
+      id: "S-CYCLE",
+      name: "Cyclic Strategy",
+      nodes: [
+        { id: "N-A", methodology: methodA, dependsOn: ["N-B"] },
+        { id: "N-B", methodology: methodB, dependsOn: ["N-A"] },
+      ],
+      gates: [],
+      safety: testSafety,
+    };
+
+    expect(() => fromStrategyDAG(dag)).toThrow(/Cycle detected/);
+  });
+
+  it("throws on cycle: A → B → C → A", () => {
+    const dag: StrategyDAG<TestState> = {
+      id: "S-CYCLE-3",
+      name: "Three-Node Cycle",
+      nodes: [
+        { id: "N-A", methodology: methodA, dependsOn: ["N-C"] },
+        { id: "N-B", methodology: methodB, dependsOn: ["N-A"] },
+        { id: "N-C", methodology: methodC, dependsOn: ["N-B"] },
+      ],
+      gates: [],
+      safety: testSafety,
+    };
+
+    expect(() => fromStrategyDAG(dag)).toThrow(/Cycle detected/);
+  });
+
+  it("throws on unknown dependency ID", () => {
+    const dag: StrategyDAG<TestState> = {
+      id: "S-UNKNOWN-DEP",
+      name: "Unknown Dep Strategy",
+      nodes: [
+        { id: "N-A", methodology: methodA, dependsOn: ["N-NONEXISTENT"] },
+      ],
+      gates: [],
+      safety: testSafety,
+    };
+
+    expect(() => fromStrategyDAG(dag)).toThrow(
+      'StrategyDAG node "N-A" depends on unknown node "N-NONEXISTENT"',
+    );
   });
 });
