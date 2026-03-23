@@ -4,7 +4,7 @@ import { GenesisFAB } from '@/domains/genesis/GenesisFAB';
 import { GenesisChatPanel } from '@/domains/genesis/GenesisChatPanel';
 import { ProjectListView } from '@/domains/projects/ProjectListView';
 import { EventStreamPanel } from '@/domains/projects/EventStreamPanel';
-import { BridgeHealthCards } from '@/components/domain/BridgeHealthCards';
+import { BridgeHealthCards } from '@/shared/data/BridgeHealthCards';
 import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
 import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
 import { api } from '@/shared/lib/api';
