@@ -6,7 +6,7 @@ import {
   parseExtraUsage,
   type UsagePoller,
   type SubscriptionUsage,
-} from '../usage-poller.js';
+} from './usage-poller.js';
 
 // ── Fetch Mock Infrastructure ────────────────────────────────────
 

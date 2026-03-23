@@ -3,8 +3,9 @@ import { join, resolve } from 'node:path';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
 import { createPool } from './pool.js';
-import { createUsagePoller } from './usage-poller.js';
-import { createTokenTracker } from './token-tracker.js';
+import { createUsagePoller } from './domains/tokens/usage-poller.js';
+import { createTokenTracker } from './domains/tokens/tracker.js';
+import { registerTokenRoutes } from './domains/tokens/routes.js';
 import { registerLiveOutputRoutes } from './live-output-route.js';
 import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
@@ -162,24 +163,7 @@ app.get('/pool/stats', async (_request, reply) => {
 
 // ---------- Token & Usage API ----------
 
-app.get('/api/tokens', async (_request, reply) => {
-  const aggregate = tokenTracker.getAggregate();
-  return reply.status(200).send(aggregate);
-});
-
-app.get<{ Params: { id: string } }>('/api/tokens/:id', async (request, reply) => {
-  const usage = tokenTracker.refreshUsage(request.params.id);
-  if (!usage) {
-    return reply.status(404).send({ error: 'Session not found or no token data' });
-  }
-  return reply.status(200).send(usage);
-});
-
-app.get('/api/usage', async (_request, reply) => {
-  const status = usagePoller.getStatus();
-  const cached = usagePoller.getCached();
-  return reply.status(200).send({ status, usage: cached });
-});
+registerTokenRoutes(app, tokenTracker, usagePoller);
 
 // ---------- Routes ----------
 

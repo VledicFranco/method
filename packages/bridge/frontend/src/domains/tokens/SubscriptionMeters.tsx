@@ -5,7 +5,7 @@
 
 import { cn } from '@/lib/cn';
 import { ProgressBar } from '@/components/data/ProgressBar';
-import { useSubscriptionUsage } from '@/hooks/useTokens';
+import { useSubscriptionUsage } from '@/domains/tokens/useTokens';
 import { Gauge, AlertTriangle, WifiOff } from 'lucide-react';
 import type { UsageBucket } from '@/lib/types';
 import { formatRelativeTime } from '@/lib/formatters';

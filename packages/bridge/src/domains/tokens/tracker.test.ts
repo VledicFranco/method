@@ -1,13 +1,13 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTokenTracker, deriveProjectDirName } from '../token-tracker.js';
+import { createTokenTracker, deriveProjectDirName } from './tracker.js';
 import { mkdirSync, rmSync, writeFileSync, readFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const FIXTURE_PATH = join(import.meta.dirname!, 'fixtures', 'session.jsonl');
+const FIXTURE_PATH = join(import.meta.dirname!, '..', '..', '__tests__', 'fixtures', 'session.jsonl');
 
 function makeTmpDir(): string {
   return join(os.tmpdir(), `token-tracker-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);

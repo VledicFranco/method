@@ -5,8 +5,8 @@ import { GenesisChatPanel } from '@/components/domain/GenesisChatPanel';
 import { ProjectListView } from '@/components/domain/ProjectListView';
 import { EventStreamPanel } from '@/components/domain/EventStreamPanel';
 import { BridgeHealthCards } from '@/components/domain/BridgeHealthCards';
-import { TokenAggregateCards } from '@/components/domain/TokenAggregateCards';
-import { SubscriptionMeters } from '@/components/domain/SubscriptionMeters';
+import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
+import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
 import { api } from '@/lib/api';
 import type { ProjectMetadata } from '@/lib/types';
 

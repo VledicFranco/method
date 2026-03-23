@@ -5,7 +5,7 @@
 
 import { MetricCard } from '@/components/data/MetricCard';
 import { formatTokens } from '@/lib/formatters';
-import { useAggregateTokens } from '@/hooks/useTokens';
+import { useAggregateTokens } from '@/domains/tokens/useTokens';
 import { cn } from '@/lib/cn';
 
 export interface TokenAggregateCardsProps {

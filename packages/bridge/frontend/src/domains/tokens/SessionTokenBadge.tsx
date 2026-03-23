@@ -6,7 +6,7 @@
 
 import { cn } from '@/lib/cn';
 import { formatTokens } from '@/lib/formatters';
-import { useSessionTokens } from '@/hooks/useTokens';
+import { useSessionTokens } from '@/domains/tokens/useTokens';
 import { Database } from 'lucide-react';
 
 export interface SessionTokenBadgeProps {

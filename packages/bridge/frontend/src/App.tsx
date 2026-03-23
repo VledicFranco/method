@@ -8,7 +8,7 @@ const Strategies = lazy(() => import('./pages/Strategies'));
 const StrategyDetail = lazy(() => import('./pages/StrategyDetail'));
 const Triggers = lazy(() => import('./pages/Triggers'));
 const Governance = lazy(() => import('./pages/Governance'));
-const Analytics = lazy(() => import('./pages/Analytics'));
+const Analytics = lazy(() => import('./domains/tokens/Analytics'));
 const Registry = lazy(() => import('./pages/Registry'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ExecutionView = lazy(() => import('./pages/ExecutionView'));
