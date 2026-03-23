@@ -1,4 +1,4 @@
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
@@ -30,42 +30,41 @@ import { setOnExecutionChangeHook } from './domains/strategies/strategy-routes.j
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 import { JsonLineEventPersistence, YamlEventPersistence } from './domains/projects/events/index.js';
+import { loadSessionsConfig } from './domains/sessions/config.js';
+import { loadTokensConfig } from './domains/tokens/config.js';
+import { loadTriggersConfig } from './domains/triggers/config.js';
+import { loadGenesisConfig } from './domains/genesis/config.js';
+import { loadStrategiesConfig } from './domains/strategies/config.js';
 
-// Configuration from environment variables
+// ── Domain configuration (Zod-validated, env-backed) ──────────
+const sessionsConfig = loadSessionsConfig();
+const tokensConfig = loadTokensConfig();
+const triggersConfig = loadTriggersConfig();
+const genesisConfig = loadGenesisConfig();
+const strategiesConfig = loadStrategiesConfig();
+
+// Composition-level config (stays in server-entry)
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
-const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
-const SETTLE_DELAY_MS = parseInt(process.env.SETTLE_DELAY_MS ?? '1000', 10);
-const MAX_SESSIONS = parseInt(process.env.MAX_SESSIONS ?? '10', 10);
-const CLAUDE_OAUTH_TOKEN = process.env.CLAUDE_OAUTH_TOKEN ?? null;
-const USAGE_POLL_INTERVAL_MS = parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '600000', 10);
-const CLAUDE_SESSIONS_DIR = process.env.CLAUDE_SESSIONS_DIR ?? join(homedir(), '.claude', 'projects');
-const DEAD_SESSION_TTL_MS = parseInt(process.env.DEAD_SESSION_TTL_MS ?? '300000', 10);
-const STALE_CHECK_INTERVAL_MS = parseInt(process.env.STALE_CHECK_INTERVAL_MS ?? '60000', 10);
-const BATCH_STAGGER_MS = parseInt(process.env.BATCH_STAGGER_MS ?? '3000', 10);
-const MIN_SPAWN_GAP_MS = parseInt(process.env.MIN_SPAWN_GAP_MS ?? '2000', 10);
-const GENESIS_ENABLED = process.env.GENESIS_ENABLED === 'true';
-const GENESIS_POLLING_INTERVAL_MS = parseInt(process.env.GENESIS_POLLING_INTERVAL_MS ?? '5000', 10);
-const CURSOR_CLEANUP_INTERVAL_MS = parseInt(process.env.CURSOR_CLEANUP_INTERVAL_MS ?? '3600000', 10);
 
 const pool = createPool({
-  maxSessions: MAX_SESSIONS,
-  claudeBin: CLAUDE_BIN,
-  settleDelayMs: SETTLE_DELAY_MS,
-  minSpawnGapMs: MIN_SPAWN_GAP_MS,
+  maxSessions: sessionsConfig.maxSessions,
+  claudeBin: sessionsConfig.claudeBin,
+  settleDelayMs: sessionsConfig.settleDelayMs,
+  minSpawnGapMs: sessionsConfig.minSpawnGapMs,
 });
 
 const usagePoller = createUsagePoller({
-  oauthToken: CLAUDE_OAUTH_TOKEN,
-  pollIntervalMs: USAGE_POLL_INTERVAL_MS,
+  oauthToken: tokensConfig.oauthToken,
+  pollIntervalMs: tokensConfig.pollIntervalMs,
 });
 
 const tokenTracker = createTokenTracker({
-  sessionsDir: CLAUDE_SESSIONS_DIR,
+  sessionsDir: tokensConfig.sessionsDir,
 });
 
 const transcriptReader = createTranscriptReader({
-  sessionsDir: CLAUDE_SESSIONS_DIR,
+  sessionsDir: tokensConfig.sessionsDir,
 });
 
 let genesisPollingLoop: GenesisPollingLoop | null = null;
@@ -175,17 +174,15 @@ registerSessionRoutes(app, {
   pool,
   tokenTracker,
   writePidFile,
-  batchStaggerMs: BATCH_STAGGER_MS,
+  batchStaggerMs: sessionsConfig.batchStaggerMs,
   triggerChannels,
   gracefulShutdown,
 });
 
 // ---------- Strategy Pipelines (PRD 017) ----------
 
-const STRATEGY_ENABLED = process.env.STRATEGY_ENABLED !== 'false';
-
-if (STRATEGY_ENABLED) {
-  const strategyProvider = new ClaudeCodeProvider(CLAUDE_BIN);
+if (strategiesConfig.enabled) {
+  const strategyProvider = new ClaudeCodeProvider(sessionsConfig.claudeBin);
   registerStrategyRoutes(app, strategyProvider);
 }
 
@@ -200,7 +197,7 @@ registerMethodologyRoutes(app, methodologyStore, pool);
 
 // ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
 
-const FRONTEND_ENABLED = process.env.FRONTEND_ENABLED !== 'false';
+const FRONTEND_ENABLED = process.env.FRONTEND_ENABLED !== 'false';  // composition-level
 
 if (FRONTEND_ENABLED) {
   registerFrontendRoutes(app);
@@ -208,14 +205,11 @@ if (FRONTEND_ENABLED) {
 
 // ---------- Event Triggers (PRD 018) ----------
 
-const TRIGGERS_ENABLED = process.env.TRIGGERS_ENABLED !== 'false';
-const TRIGGERS_STRATEGY_DIR = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
-
 // PRD 018 Phase 2a-4: triggerChannels created above with session routes registration
 
 let triggerRouter: TriggerRouter | null = null;
 
-if (TRIGGERS_ENABLED) {
+if (triggersConfig.enabled) {
   triggerRouter = new TriggerRouter({
     baseDir: ROOT_DIR,
     bridgeUrl: `http://localhost:${PORT}`,
@@ -265,7 +259,7 @@ if (TRIGGERS_ENABLED) {
   });
 
   // PRD 018 Phase 2a-3: Register trigger management API + webhook routes
-  registerTriggerRoutes(app, triggerRouter, TRIGGERS_STRATEGY_DIR);
+  registerTriggerRoutes(app, triggerRouter, triggersConfig.strategyDir);
 }
 
 // ---------- Start ----------
@@ -291,15 +285,15 @@ async function start() {
 
     // Dead session cleanup timer
     setInterval(() => {
-      const removed = pool.removeDead(DEAD_SESSION_TTL_MS);
+      const removed = pool.removeDead(sessionsConfig.deadSessionTtlMs);
       if (removed > 0) {
-        app.log.info(`Cleaned up ${removed} dead session(s) (TTL: ${DEAD_SESSION_TTL_MS}ms)`);
+        app.log.info(`Cleaned up ${removed} dead session(s) (TTL: ${sessionsConfig.deadSessionTtlMs}ms)`);
       }
     }, 60_000); // Check every minute
 
     // PRD 018: Scan strategy files and register event triggers
     if (triggerRouter) {
-      scanAndRegisterTriggers(triggerRouter, TRIGGERS_STRATEGY_DIR, {
+      scanAndRegisterTriggers(triggerRouter, triggersConfig.strategyDir, {
         info: (msg) => app.log.info(msg),
         warn: (msg) => app.log.warn(msg),
         error: (msg) => app.log.error(msg),
@@ -328,10 +322,10 @@ async function start() {
       if (result.killed.length > 0) {
         app.log.warn(`Auto-killed stale sessions: ${result.killed.join(', ')}`);
       }
-    }, STALE_CHECK_INTERVAL_MS);
+    }, sessionsConfig.staleCheckIntervalMs);
 
     // PRD 020 Phase 2A: Spawn Genesis on startup if enabled
-    if (GENESIS_ENABLED) {
+    if (genesisConfig.enabled) {
       try {
         const genesisResult = await spawnGenesis(pool, ROOT_DIR, 50000);
         app.log.info(
@@ -340,7 +334,7 @@ async function start() {
 
         // F-A-3: Instantiate and start Genesis polling loop
         genesisPollingLoop = new GenesisPollingLoop({
-          intervalMs: GENESIS_POLLING_INTERVAL_MS,
+          intervalMs: genesisConfig.pollingIntervalMs,
           cursorFilePath: '.method/genesis-cursors.yaml',
         });
 
@@ -406,12 +400,12 @@ async function start() {
           projectProvider,
         );
 
-        app.log.info(`Genesis polling loop started (interval: ${GENESIS_POLLING_INTERVAL_MS}ms)`);
+        app.log.info(`Genesis polling loop started (interval: ${genesisConfig.pollingIntervalMs}ms)`);
 
         // F-T-2: Start cursor maintenance job
         cursorMaintenanceJob = new CursorMaintenanceJob(
           join(ROOT_DIR, '.method', 'genesis-cursors.yaml'),
-          CURSOR_CLEANUP_INTERVAL_MS,
+          genesisConfig.cursorCleanupIntervalMs,
         );
         cursorMaintenanceJob.start();
       } catch (err) {
