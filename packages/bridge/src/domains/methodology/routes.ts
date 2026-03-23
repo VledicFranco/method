@@ -21,9 +21,9 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import type { MethodologySessionStore } from "./methodology-store.js";
-import type { SessionPool } from "../pool.js";
-import { appendMessage } from "../channels.js";
+import type { MethodologySessionStore } from "./store.js";
+import type { SessionPool } from "../../pool.js";
+import { appendMessage } from "../../channels.js";
 
 export function registerMethodologyRoutes(
   app: FastifyInstance,

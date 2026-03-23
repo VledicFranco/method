@@ -11,7 +11,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
-import { MethodologySessionStore } from '../methodology/methodology-store.js';
+import { MethodologySessionStore } from './store.js';
 
 import { existsSync } from 'node:fs';
 

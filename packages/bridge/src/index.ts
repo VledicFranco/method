@@ -15,8 +15,8 @@ import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from '.
 import { addOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
-import { MethodologySessionStore } from './methodology/methodology-store.js';
-import { registerMethodologyRoutes } from './methodology/methodology-routes.js';
+import { MethodologySessionStore } from './domains/methodology/store.js';
+import { registerMethodologyRoutes } from './domains/methodology/routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './genesis/cursor-manager.js';
