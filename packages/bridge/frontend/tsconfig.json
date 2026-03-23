@@ -15,7 +15,6 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@domains/*": ["./src/domains/*"],
       "@server-types/*": ["../../src/domains/*/types"]
     },
     "baseUrl": "."

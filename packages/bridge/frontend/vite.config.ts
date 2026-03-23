@@ -9,7 +9,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
-      '@domains': resolve(__dirname, 'src/domains'),
     },
   },
   build: {
