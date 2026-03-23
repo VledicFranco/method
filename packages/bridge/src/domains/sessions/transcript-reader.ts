@@ -1,6 +1,5 @@
 import { join, resolve } from 'node:path';
 import type { FileSystemProvider } from '../../ports/file-system.js';
-import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -35,8 +34,6 @@ export type TranscriptReader = {
 
 // ── Implementation ─────────────────────────────────────────────
 
-const defaultFs = new NodeFileSystemProvider();
-
 /**
  * Derive the Claude Code project directory name from a workdir path.
  * Matches the logic in token-tracker.ts.
@@ -61,9 +58,9 @@ function findProjectDir(fs: FileSystemProvider, sessionsDir: string, workdir: st
 export function createTranscriptReader(config: {
   sessionsDir: string;
   /** PRD 023 D2: File system provider for dependency injection. */
-  fs?: FileSystemProvider;
+  fs: FileSystemProvider;
 }): TranscriptReader {
-  const fs = config.fs ?? defaultFs;
+  const fs = config.fs;
 
   return {
     listSessions(workdir: string): SessionSummary[] {

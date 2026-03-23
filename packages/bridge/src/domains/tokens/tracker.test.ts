@@ -4,6 +4,9 @@ import { createTokenTracker, deriveProjectDirName } from './tracker.js';
 import { mkdirSync, rmSync, writeFileSync, readFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+
+const fs = new NodeFileSystemProvider();
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -60,12 +63,12 @@ describe('TokenTracker (PRD 013)', () => {
 
   describe('registerSession + getUsage', () => {
     it('returns null for unregistered session', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       assert.equal(tracker.getUsage('nonexistent'), null);
     });
 
     it('returns null cached value before refreshUsage', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('sess-1', 'C:\\Users\\test\\project', new Date());
       assert.equal(tracker.getUsage('sess-1'), null);
     });
@@ -75,7 +78,7 @@ describe('TokenTracker (PRD 013)', () => {
 
   describe('getAggregate', () => {
     it('returns zeroes when no sessions registered', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       const agg = tracker.getAggregate();
       assert.equal(agg.totalTokens, 0);
       assert.equal(agg.inputTokens, 0);
@@ -87,7 +90,7 @@ describe('TokenTracker (PRD 013)', () => {
     });
 
     it('returns zeroes when sessions have no cached usage', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', 'C:\\Users\\test\\a', new Date());
       tracker.registerSession('s2', 'C:\\Users\\test\\b', new Date());
       const agg = tracker.getAggregate();
@@ -116,7 +119,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'assistant', message: { role: 'assistant', content: 'hi', usage: { input_tokens: 200, output_tokens: 100, cache_read_input_tokens: 150, cache_creation_input_tokens: 20 } } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir1, new Date());
       tracker.registerSession('s2', workdir2, new Date());
       tracker.refreshUsage('s1');
@@ -142,7 +145,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'assistant', message: { role: 'assistant', content: 'x', usage: { input_tokens: 200, output_tokens: 50, cache_read_input_tokens: 800, cache_creation_input_tokens: 0 } } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       tracker.refreshUsage('s1');
 
@@ -156,12 +159,12 @@ describe('TokenTracker (PRD 013)', () => {
 
   describe('refreshUsage', () => {
     it('returns null for unregistered session', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       assert.equal(tracker.refreshUsage('nonexistent'), null);
     });
 
     it('returns null when project dir not found', () => {
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', 'C:\\nonexistent\\path', new Date());
       assert.equal(tracker.refreshUsage('s1'), null);
     });
@@ -178,7 +181,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'result', message: { role: 'assistant', content: 'done', usage: { input_tokens: 500, output_tokens: 100, cache_read_input_tokens: 400, cache_creation_input_tokens: 25 } } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -201,7 +204,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'assistant', usage: { input_tokens: 300, output_tokens: 150, cache_read_input_tokens: 200, cache_creation_input_tokens: 10 } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -228,7 +231,7 @@ describe('TokenTracker (PRD 013)', () => {
       ].join('\n') + '\n';
       writeFileSync(join(projDir, 'session.jsonl'), content, 'utf-8');
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -248,7 +251,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'assistant', message: { role: 'assistant', content: 'x', usage: { input_tokens: 500, output_tokens: 200 } } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
 
       // Before refresh, getUsage returns null
@@ -273,7 +276,7 @@ describe('TokenTracker (PRD 013)', () => {
         { type: 'human', message: { role: 'user', content: 'hello' } },
       ]);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -293,7 +296,7 @@ describe('TokenTracker (PRD 013)', () => {
       const fixtureContent = readFileSync(FIXTURE_PATH, 'utf-8');
       writeFileSync(join(projDir, 'fixture-session.jsonl'), fixtureContent, 'utf-8');
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -314,7 +317,7 @@ describe('TokenTracker (PRD 013)', () => {
 
   describe('edge cases', () => {
     it('handles missing sessionsDir gracefully', () => {
-      const tracker = createTokenTracker({ sessionsDir: '/nonexistent/sessions' });
+      const tracker = createTokenTracker({ sessionsDir: '/nonexistent/sessions', fs });
       tracker.registerSession('s1', 'C:\\project', new Date());
       assert.equal(tracker.refreshUsage('s1'), null);
     });
@@ -328,7 +331,7 @@ describe('TokenTracker (PRD 013)', () => {
 
       writeFileSync(join(projDir, 'empty.jsonl'), '', 'utf-8');
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 
@@ -357,7 +360,7 @@ describe('TokenTracker (PRD 013)', () => {
       const now = new Date();
       utimesSync(newerPath, now, now);
 
-      const tracker = createTokenTracker({ sessionsDir });
+      const tracker = createTokenTracker({ sessionsDir, fs });
       tracker.registerSession('s1', workdir, new Date());
       const usage = tracker.refreshUsage('s1');
 

@@ -5,6 +5,9 @@ import type { TranscriptTurn } from './transcript-reader.js';
 import { mkdirSync, rmSync, writeFileSync, readFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+
+const fs = new NodeFileSystemProvider();
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -73,7 +76,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       { type: 'human', message: { role: 'user', content: 'Hello world' }, timestamp: '2026-03-15T10:00:00.000Z' },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -99,7 +102,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -131,7 +134,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -164,7 +167,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -192,7 +195,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -223,7 +226,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -242,7 +245,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       { type: 'human', message: { role: 'user', content: 'hi' }, timestamp: '2026-03-15T10:00:00.000Z' },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -260,7 +263,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       { type: 'human', message: { role: 'user', content: 'real message' }, timestamp: '2026-03-15T10:00:01.000Z' },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -282,7 +285,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
     ].join('\n') + '\n';
     writeFileSync(join(projDir, 'session.jsonl'), content, 'utf-8');
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(join(projDir, 'session.jsonl'));
 
     assert.equal(turns.length, 2);
@@ -308,7 +311,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -333,7 +336,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -353,7 +356,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       { type: 'human', message: { role: 'user', content: 'no tokens here' }, timestamp: '2026-03-15T10:00:00.000Z' },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -379,7 +382,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -402,7 +405,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
       },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
 
     assert.equal(turns.length, 1);
@@ -412,7 +415,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
   // ── File not found → empty array ───────────────────────────────
 
   it('returns empty array for nonexistent file', () => {
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript('/nonexistent/path/session.jsonl');
     assert.deepEqual(turns, []);
   });
@@ -426,7 +429,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
     const filepath = join(projDir, 'empty.jsonl');
     writeFileSync(filepath, '', 'utf-8');
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
     assert.deepEqual(turns, []);
   });
@@ -442,7 +445,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
     ]);
 
     const before = new Date().toISOString();
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(filepath);
     const after = new Date().toISOString();
 
@@ -455,7 +458,7 @@ describe('TranscriptReader — getTranscript (PRD 013)', () => {
   // ── Fixture file integration test ──────────────────────────────
 
   it('parses the realistic transcript.jsonl fixture correctly', () => {
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const turns = reader.getTranscript(FIXTURE_PATH);
 
     // The fixture has:
@@ -561,13 +564,13 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
   // ── Empty / nonexistent dir ────────────────────────────────────
 
   it('returns empty array when sessions dir does not exist', () => {
-    const reader = createTranscriptReader({ sessionsDir: '/nonexistent/sessions' });
+    const reader = createTranscriptReader({ sessionsDir: '/nonexistent/sessions', fs });
     const sessions = reader.listSessions('C:\\Users\\test\\project');
     assert.deepEqual(sessions, []);
   });
 
   it('returns empty array when project dir does not exist', () => {
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     // No project dir created for this workdir
     const sessions = reader.listSessions(join(tmpDir, 'no-project'));
     assert.deepEqual(sessions, []);
@@ -580,7 +583,7 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
     // Write a non-JSONL file
     writeFileSync(join(projDir, 'notes.txt'), 'not a jsonl', 'utf-8');
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const sessions = reader.listSessions(workdir);
     assert.deepEqual(sessions, []);
   });
@@ -595,7 +598,7 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
       { type: 'human', message: { role: 'user', content: 'hello' } },
     ]);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const sessions = reader.listSessions(workdir);
 
     assert.equal(sessions.length, 1);
@@ -627,7 +630,7 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
     const recent = new Date('2026-03-15T12:00:00.000Z');
     utimesSync(newerPath, recent, recent);
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const sessions = reader.listSessions(workdir);
 
     assert.equal(sessions.length, 2);
@@ -651,7 +654,7 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
     writeFileSync(join(projDir, 'notes.txt'), 'not a session', 'utf-8');
     writeFileSync(join(projDir, 'data.json'), '{}', 'utf-8');
 
-    const reader = createTranscriptReader({ sessionsDir });
+    const reader = createTranscriptReader({ sessionsDir, fs });
     const sessions = reader.listSessions(workdir);
 
     assert.equal(sessions.length, 1);

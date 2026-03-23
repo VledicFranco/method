@@ -1,6 +1,5 @@
 import { join, resolve } from 'node:path';
 import type { FileSystemProvider } from '../../ports/file-system.js';
-import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 export type SessionTokenUsage = {
   inputTokens: number;
@@ -34,15 +33,13 @@ interface SessionRecord {
   cached: SessionTokenUsage | null;
 }
 
-const defaultFs = new NodeFileSystemProvider();
-
 export function createTokenTracker(config: {
   sessionsDir: string;
   /** PRD 023 D2: File system provider for dependency injection. */
-  fs?: FileSystemProvider;
+  fs: FileSystemProvider;
 }): TokenTracker {
   const sessions = new Map<string, SessionRecord>();
-  const fs = config.fs ?? defaultFs;
+  const fs = config.fs;
 
   return {
     registerSession(sessionId: string, workdir: string, startedAt: Date): void {
