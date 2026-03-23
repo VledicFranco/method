@@ -11,15 +11,15 @@ import { Button } from "@/shared/components/Button";
 import { Card } from "@/shared/components/Card";
 import { Badge } from "@/shared/components/Badge";
 import { StatusBadge, type Status } from "@/shared/data/StatusBadge";
-import { StrategyDag } from "@/domains/strategies/dag/StrategyDag";
-import { CostOverlay } from "@/domains/strategies/dag/CostOverlay";
+import { StrategyDag } from "@/domains/strategies/StrategyDag";
+import { CostOverlay } from "@/domains/strategies/CostOverlay";
 import {
   useExecutionStatus,
   useStrategyDag,
-} from "@/domains/strategies/dag/hooks/useExecutionStatus";
+} from "@/domains/strategies/hooks/useExecutionStatus";
 import { cn } from "@/shared/lib/cn";
 import { formatCost, formatDuration } from "@/shared/lib/formatters";
-import type { NodeResult } from "@/domains/strategies/dag/lib/types";
+import type { NodeResult } from "@/domains/strategies/lib/types";
 import { ArrowLeft } from "lucide-react";
 
 // ---- Gantt Timeline ----

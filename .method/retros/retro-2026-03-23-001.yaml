@@ -1,0 +1,61 @@
+retro:
+  session_id: prd-023-d1-d2-deferred
+  date: "2026-03-23"
+  methodology: P2-SD v2.0
+  method: M2-DIMPL
+  instance: I2-METHOD
+  duration_minutes: ~15
+  commits:
+    - fd1f8da  # D1: domain config extraction
+    - 7109d2a  # D2: cross-domain port extraction
+
+hardest_decision: >
+  Whether to run D1 and D2 in parallel (as M2-DIMPL prescribes) or sequentially.
+  Both modify server-entry.ts constructor calls — D1 changes config args, D2 adds
+  port provider args. Parallel execution would cause merge conflicts on the same
+  function calls. Chose sequential (D1 → D2) to avoid conflict resolution overhead.
+  The trade-off: ~2x wall-clock time vs zero merge risk. Correct call — the
+  sub-agents completed cleanly with no rework.
+
+observations:
+  - category: sub-agent-quality
+    detail: >
+      D2 sub-agent reported clean tsc but LSP diagnostics showed real issues
+      (stale references, type mismatches). Investigation revealed diagnostics
+      were stale — the actual tsc run confirmed clean compilation. Lesson:
+      always verify diagnostics with an actual tsc run rather than trusting
+      IDE-reported diagnostics, especially after sub-agent file writes.
+
+  - category: sequencing
+    detail: >
+      D1 and D2 were specified as parallel in the commission but share a
+      critical modification target (server-entry.ts). The commission's M2-DIMPL
+      routing assumed independent file scopes. When scopes overlap on a
+      composition layer file, sequential execution is the safer pattern.
+
+  - category: test-stability
+    detail: >
+      JsonLineEventPersistence has a flaky test (file rotation timing). It fails
+      intermittently (~1 in 3 runs). Not in our modified scope. Pre-existing.
+
+card_feedback:
+  essence:
+    purpose_served: true
+    invariant_held: true
+    notes: >
+      Both D1 and D2 are structural improvements that make the bridge more
+      testable and domain-isolated. Config schemas with Zod add validation
+      that didn't exist before. Port interfaces enable dependency injection
+      for testing without module mocking.
+  delivery_rules:
+    - rule: DR-03
+      status: satisfied
+      notes: Each domain now owns its config. No domain leaks env vars into shared code.
+    - rule: DR-09
+      status: satisfied
+      notes: Config schemas use Zod with defaults matching documented env var defaults.
+    - rule: DR-14
+      status: satisfied
+      notes: Existing test coverage preserved (1222/1223 pass, 1 pre-existing flaky).
+
+proposed_deltas: []

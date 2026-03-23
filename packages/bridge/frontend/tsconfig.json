@@ -14,8 +14,7 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@server-types/*": ["../../src/domains/*/types"]
+      "@/*": ["./src/*"]
     },
     "baseUrl": "."
   },
