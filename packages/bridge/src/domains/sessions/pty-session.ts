@@ -1,7 +1,7 @@
-import * as pty from 'node-pty';
 import PQueue from 'p-queue';
 import { extractResponse } from './parser.js';
 import { AdaptiveSettleDelay } from './adaptive-settle.js';
+import type { PtyProvider } from '../../ports/pty-provider.js';
 
 export type SessionStatus = 'initializing' | 'ready' | 'working' | 'dead';
 
@@ -40,6 +40,8 @@ export interface SpawnOptions {
   spawnArgs?: string[];
   /** PRD 012 Phase 2: Adaptive settle delay instance (enables adaptive algorithm). */
   adaptiveSettle?: AdaptiveSettleDelay;
+  /** PRD 023 D2: PTY provider for dependency injection. */
+  ptyProvider: PtyProvider;
 }
 
 const DEFAULT_SETTLE_DELAY_MS = 1000;
@@ -131,6 +133,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
     initialPrompt,
     spawnArgs,
     adaptiveSettle = null,
+    ptyProvider,
   } = options;
 
   let status: SessionStatus = 'initializing';
@@ -147,7 +150,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
   const args = process.platform === 'win32' ? ['/c', fullCmd] : ['-c', fullCmd];
 
-  const ptyProcess = pty.spawn(shell, args, {
+  const ptyProcess = ptyProvider.spawn(shell, args, {
     name: 'xterm-256color',
     cols: 200,
     rows: 50,
@@ -206,7 +209,7 @@ export function spawnSession(options: SpawnOptions): PtySession {
   dataCallback = initWatcher;
 
   // Handle unexpected exit
-  ptyProcess.onExit(({ exitCode }) => {
+  ptyProcess.onExit((exitCode) => {
     status = 'dead';
     dataCallback = null;
     for (const cb of exitCallbacks) {

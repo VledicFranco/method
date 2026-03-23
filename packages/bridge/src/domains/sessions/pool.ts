@@ -10,6 +10,7 @@ import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { AdaptiveSettleDelay, parseAdaptiveSettleConfig, isAdaptiveSettleEnabled } from './adaptive-settle.js';
 import { SpawnQueue } from './spawn-queue.js';
 import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
+import type { PtyProvider } from '../../ports/pty-provider.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -118,6 +119,8 @@ export interface PoolOptions {
   claudeBin?: string;
   settleDelayMs?: number;
   minSpawnGapMs?: number;
+  /** PRD 023 D2: PTY provider for dependency injection. */
+  ptyProvider?: PtyProvider;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -158,6 +161,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const claudeBin = options?.claudeBin;
   const settleDelayMs = options?.settleDelayMs;
+  const ptyProvider = options?.ptyProvider;
   const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
@@ -507,6 +511,9 @@ export function createPool(options?: PoolOptions): SessionPool {
           : undefined;
 
         // SpawnQueue enforces MIN_SPAWN_GAP_MS between consecutive spawns
+        if (!ptyProvider) {
+          throw new Error('PtyProvider is required for PTY-mode sessions');
+        }
         session = await spawnQueue.enqueue(() => Promise.resolve(spawnSession({
           id: sessionId,
           workdir: effectiveWorkdir,
@@ -515,6 +522,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           initialPrompt: activationPrompt,
           spawnArgs,
           adaptiveSettle,
+          ptyProvider,
         })));
       }
 

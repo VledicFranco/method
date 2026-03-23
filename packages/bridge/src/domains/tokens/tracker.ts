@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 export type SessionTokenUsage = {
   inputTokens: number;
@@ -33,10 +34,15 @@ interface SessionRecord {
   cached: SessionTokenUsage | null;
 }
 
+const defaultFs = new NodeFileSystemProvider();
+
 export function createTokenTracker(config: {
   sessionsDir: string;
+  /** PRD 023 D2: File system provider for dependency injection. */
+  fs?: FileSystemProvider;
 }): TokenTracker {
   const sessions = new Map<string, SessionRecord>();
+  const fs = config.fs ?? defaultFs;
 
   return {
     registerSession(sessionId: string, workdir: string, startedAt: Date): void {
@@ -52,7 +58,7 @@ export function createTokenTracker(config: {
       if (!record) return null;
 
       try {
-        const usage = parseSessionTokens(config.sessionsDir, record.workdir, record.startedAt);
+        const usage = parseSessionTokens(fs, config.sessionsDir, record.workdir, record.startedAt);
         if (usage) {
           record.cached = usage;
         }
@@ -126,19 +132,19 @@ export function deriveProjectDirName(workdir: string): string {
  * Find the project directory under sessionsDir that corresponds to workdir.
  * Tries the derived name first, then falls back to scanning directory names.
  */
-function findProjectDir(sessionsDir: string, workdir: string): string | null {
+function findProjectDir(fs: FileSystemProvider, sessionsDir: string, workdir: string): string | null {
   try {
-    if (!existsSync(sessionsDir)) return null;
+    if (!fs.existsSync(sessionsDir)) return null;
 
     const derived = deriveProjectDirName(workdir);
 
     // Try exact match first
     const exactPath = join(sessionsDir, derived);
-    if (existsSync(exactPath)) return exactPath;
+    if (fs.existsSync(exactPath)) return exactPath;
 
     // Fallback: scan directory names for ones that contain the workdir basename
     const absWorkdir = resolve(workdir);
-    const entries = readdirSync(sessionsDir, { withFileTypes: true });
+    const entries = fs.readdirSync(sessionsDir, { withFileTypes: true });
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
@@ -165,9 +171,9 @@ function findProjectDir(sessionsDir: string, workdir: string): string | null {
  * (not in a sessions/ subdirectory). Files are named {uuid}.jsonl.
  * We pick the most recently modified one.
  */
-function findSessionFile(projectDir: string, _startedAt: Date): string | null {
+function findSessionFile(fs: FileSystemProvider, projectDir: string, _startedAt: Date): string | null {
   try {
-    const files = readdirSync(projectDir)
+    const files = fs.readdirSync(projectDir)
       .filter((f) => f.endsWith('.jsonl'));
 
     if (files.length === 0) return null;
@@ -176,7 +182,7 @@ function findSessionFile(projectDir: string, _startedAt: Date): string | null {
     const withStats = files.map((f) => {
       const fullPath = join(projectDir, f);
       try {
-        const stat = statSync(fullPath);
+        const stat = fs.statSync(fullPath);
         return { path: fullPath, mtime: stat.mtimeMs };
       } catch {
         return { path: fullPath, mtime: 0 };
@@ -194,18 +200,19 @@ function findSessionFile(projectDir: string, _startedAt: Date): string | null {
  * Parse token usage from a Claude Code JSONL session file.
  */
 function parseSessionTokens(
+  fs: FileSystemProvider,
   sessionsDir: string,
   workdir: string,
   startedAt: Date,
 ): SessionTokenUsage | null {
-  const projectDir = findProjectDir(sessionsDir, workdir);
+  const projectDir = findProjectDir(fs, sessionsDir, workdir);
   if (!projectDir) return null;
 
-  const sessionFile = findSessionFile(projectDir, startedAt);
+  const sessionFile = findSessionFile(fs, projectDir, startedAt);
   if (!sessionFile) return null;
 
   try {
-    const content = readFileSync(sessionFile, 'utf-8');
+    const content = fs.readFileSync(sessionFile, 'utf-8');
     const lines = content.split('\n').filter((l) => l.trim().length > 0);
 
     let inputTokens = 0;

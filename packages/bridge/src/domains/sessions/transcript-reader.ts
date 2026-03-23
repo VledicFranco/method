@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export type TranscriptReader = {
 
 // ── Implementation ─────────────────────────────────────────────
 
+const defaultFs = new NodeFileSystemProvider();
+
 /**
  * Derive the Claude Code project directory name from a workdir path.
  * Matches the logic in token-tracker.ts.
@@ -43,12 +46,12 @@ export function deriveProjectDirName(workdir: string): string {
   return abs.replace(/:/g, '-').replace(/[\\/]/g, '-').replace(/^-/, '');
 }
 
-function findProjectDir(sessionsDir: string, workdir: string): string | null {
+function findProjectDir(fs: FileSystemProvider, sessionsDir: string, workdir: string): string | null {
   try {
-    if (!existsSync(sessionsDir)) return null;
+    if (!fs.existsSync(sessionsDir)) return null;
     const derived = deriveProjectDirName(workdir);
     const exactPath = join(sessionsDir, derived);
-    if (existsSync(exactPath)) return exactPath;
+    if (fs.existsSync(exactPath)) return exactPath;
     return null;
   } catch {
     return null;
@@ -57,20 +60,24 @@ function findProjectDir(sessionsDir: string, workdir: string): string | null {
 
 export function createTranscriptReader(config: {
   sessionsDir: string;
+  /** PRD 023 D2: File system provider for dependency injection. */
+  fs?: FileSystemProvider;
 }): TranscriptReader {
+  const fs = config.fs ?? defaultFs;
+
   return {
     listSessions(workdir: string): SessionSummary[] {
-      const projectDir = findProjectDir(config.sessionsDir, workdir);
+      const projectDir = findProjectDir(fs, config.sessionsDir, workdir);
       if (!projectDir) return [];
 
       try {
-        const files = readdirSync(projectDir)
+        const files = fs.readdirSync(projectDir)
           .filter(f => f.endsWith('.jsonl'));
 
         return files.map(f => {
           const fullPath = join(projectDir, f);
           try {
-            const stat = statSync(fullPath);
+            const stat = fs.statSync(fullPath);
             return {
               file: fullPath,
               modifiedAt: stat.mtime.toISOString(),
@@ -91,7 +98,7 @@ export function createTranscriptReader(config: {
 
     getTranscript(sessionFile: string): TranscriptTurn[] {
       try {
-        const content = readFileSync(sessionFile, 'utf-8');
+        const content = fs.readFileSync(sessionFile, 'utf-8');
         const lines = content.split('\n').filter(l => l.trim().length > 0);
         const turns: TranscriptTurn[] = [];
 

@@ -35,6 +35,8 @@ import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
 import { loadStrategiesConfig } from './domains/strategies/config.js';
+import { NodePtyProvider } from './ports/pty-provider.js';
+import { NodeFileSystemProvider } from './ports/file-system.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -47,11 +49,16 @@ const strategiesConfig = loadStrategiesConfig();
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 
+// PRD 023 D2: Instantiate port providers for dependency injection
+const ptyProvider = new NodePtyProvider();
+const fsProvider = new NodeFileSystemProvider();
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
   settleDelayMs: sessionsConfig.settleDelayMs,
   minSpawnGapMs: sessionsConfig.minSpawnGapMs,
+  ptyProvider,
 });
 
 const usagePoller = createUsagePoller({
@@ -61,10 +68,12 @@ const usagePoller = createUsagePoller({
 
 const tokenTracker = createTokenTracker({
   sessionsDir: tokensConfig.sessionsDir,
+  fs: fsProvider,
 });
 
 const transcriptReader = createTranscriptReader({
   sessionsDir: tokensConfig.sessionsDir,
+  fs: fsProvider,
 });
 
 let genesisPollingLoop: GenesisPollingLoop | null = null;
