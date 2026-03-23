@@ -105,11 +105,11 @@ export function createSessionChannels(): SessionChannels {
   };
 }
 
-// ── PRD 018 Phase 2a-2: onMessage hook for trigger system ────
+// ── PRD 018 Phase 2a-2: onMessage hooks (multi-listener) ─────
 
 /**
  * Callback invoked on every appendMessage call.
- * Used by the TriggerRouter to subscribe to channel events.
+ * Used by the TriggerRouter and WsHub to subscribe to channel events.
  */
 export type OnMessageCallback = (info: {
   channel_name: string;
@@ -119,14 +119,28 @@ export type OnMessageCallback = (info: {
   session_id?: string;
 }) => void;
 
-let _onMessageHook: OnMessageCallback | null = null;
+const _onMessageHooks = new Set<OnMessageCallback>();
 
 /**
- * Set the global onMessage hook. Only one hook is active at a time.
- * Pass null to remove the hook.
+ * Add an onMessage hook. Multiple hooks can be active simultaneously.
+ * Returns a removal function for convenience.
  */
+export function addOnMessageHook(hook: OnMessageCallback): () => void {
+  _onMessageHooks.add(hook);
+  return () => { _onMessageHooks.delete(hook); };
+}
+
+/**
+ * Remove a previously added onMessage hook.
+ */
+export function removeOnMessageHook(hook: OnMessageCallback): void {
+  _onMessageHooks.delete(hook);
+}
+
+/** @deprecated Use addOnMessageHook instead. Sets a single hook (clears others). */
 export function setOnMessageHook(hook: OnMessageCallback | null): void {
-  _onMessageHook = hook;
+  _onMessageHooks.clear();
+  if (hook) _onMessageHooks.add(hook);
 }
 
 /**
@@ -154,10 +168,10 @@ export function appendMessage(
   // O(1) push — ring buffer handles eviction internally
   ring.push(message);
 
-  // PRD 018: Invoke onMessage hook for trigger system
-  if (_onMessageHook) {
+  // PRD 018: Invoke onMessage hooks (trigger system, WsHub, etc.)
+  for (const hook of _onMessageHooks) {
     try {
-      _onMessageHook({
+      hook({
         channel_name: channel.name,
         sender,
         type,

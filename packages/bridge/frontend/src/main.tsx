@@ -2,7 +2,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
+import { wsManager } from './lib/ws-manager';
+import { useWsStore } from './stores/ws-store';
 import './styles/vidtecci.css';
+
+// Connect WebSocket and sync connection state to Zustand store
+wsManager.onConnectionChange((connected) => {
+  useWsStore.getState().setConnected(connected);
+});
+wsManager.connect();
 
 const queryClient = new QueryClient({
   defaultOptions: {

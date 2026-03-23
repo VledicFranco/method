@@ -53,6 +53,27 @@ interface ExecutionEntry {
 
 const executions = new Map<string, ExecutionEntry>();
 
+// ── Execution status hook (wired by WsHub in index.ts) ──────
+
+type OnExecutionChangeCallback = (entry: { execution_id: string; strategy_id: string; status: string }) => void;
+let _onExecutionChangeHook: OnExecutionChangeCallback | null = null;
+
+export function setOnExecutionChangeHook(hook: OnExecutionChangeCallback | null): void {
+  _onExecutionChangeHook = hook;
+}
+
+function notifyExecutionChange(entry: ExecutionEntry): void {
+  if (_onExecutionChangeHook) {
+    try {
+      _onExecutionChangeHook({
+        execution_id: entry.execution_id,
+        strategy_id: entry.strategy_id,
+        status: entry.status,
+      });
+    } catch { /* non-fatal */ }
+  }
+}
+
 /**
  * Evict stale completed executions from the in-memory store.
  * 1. Remove completed executions older than EXECUTION_TTL_MS.
@@ -175,6 +196,7 @@ export function registerStrategyRoutes(
 
     // Start execution asynchronously
     entry.status = 'running';
+    notifyExecutionChange(entry);
     executor
       .execute(dag, context_inputs ?? {})
       .then(async (result) => {
@@ -182,6 +204,7 @@ export function registerStrategyRoutes(
         entry.result = result;
         entry.cost_usd = result.cost_usd;
         entry.completed_at = new Date().toISOString();
+        notifyExecutionChange(entry);
 
         // Generate and save retrospective
         try {
@@ -202,6 +225,7 @@ export function registerStrategyRoutes(
         entry.result = undefined;
         entry.error = (e as Error).message;
         entry.completed_at = new Date().toISOString();
+        notifyExecutionChange(entry);
         app.log.error(
           `Strategy ${dag.id} execution ${executionId} failed: ${(e as Error).message}`,
         );

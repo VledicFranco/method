@@ -4,6 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useWebSocket } from './useWebSocket';
 import type {
   StrategyDefinitionsResponse,
   StrategyExecution,
@@ -30,13 +31,22 @@ export function useStrategyDefinitions() {
   });
 }
 
-/** Fetch all strategy executions (polling at 5s for live updates) */
+/** Fetch all strategy executions (WebSocket push for live updates) */
 export function useStrategyExecutions(enabled = true) {
+  const queryClient = useQueryClient();
+
+  // WebSocket invalidation — any execution status change triggers a refetch
+  useWebSocket('executions', {
+    enabled,
+    onMessage: () => {
+      queryClient.invalidateQueries({ queryKey: strategyKeys.executions() });
+    },
+  });
+
   return useQuery({
     queryKey: strategyKeys.executions(),
     queryFn: ({ signal }) =>
       api.get<StrategyExecution[]>('/strategies', signal),
-    refetchInterval: 5_000,
     enabled,
   });
 }

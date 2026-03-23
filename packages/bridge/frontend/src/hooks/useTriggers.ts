@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useWebSocket } from './useWebSocket';
 import type {
   TriggerListResponse,
   TriggerHistoryResponse,
@@ -15,8 +16,6 @@ import type {
   TriggerActionResponse,
   WebhookLogResponse,
 } from '@/lib/types';
-
-const POLL_INTERVAL = 10_000; // 10 seconds
 
 // ── Query Keys ──
 
@@ -30,17 +29,26 @@ export const triggerKeys = {
 
 // ── Queries ──
 
-/** Fetch all registered triggers with status, stats, and config */
+/** Fetch all registered triggers with status, stats, and config (WebSocket push) */
 export function useTriggerList() {
+  const queryClient = useQueryClient();
+
+  // WebSocket invalidation — trigger fires and state changes trigger a refetch
+  useWebSocket('triggers', {
+    onMessage: () => {
+      queryClient.invalidateQueries({ queryKey: triggerKeys.list() });
+      queryClient.invalidateQueries({ queryKey: triggerKeys.history() });
+    },
+  });
+
   return useQuery({
     queryKey: triggerKeys.list(),
     queryFn: ({ signal }) => api.get<TriggerListResponse>('/triggers', signal),
-    refetchInterval: POLL_INTERVAL,
     staleTime: 5_000,
   });
 }
 
-/** Fetch trigger fire history (all or filtered by trigger ID) */
+/** Fetch trigger fire history (all or filtered by trigger ID). WS-invalidated via useTriggerList. */
 export function useTriggerHistory(triggerId?: string, limit = 50) {
   const path = triggerId
     ? `/triggers/history?trigger_id=${encodeURIComponent(triggerId)}&limit=${limit}`
@@ -49,7 +57,6 @@ export function useTriggerHistory(triggerId?: string, limit = 50) {
   return useQuery({
     queryKey: triggerKeys.history(triggerId),
     queryFn: ({ signal }) => api.get<TriggerHistoryResponse>(path, signal),
-    refetchInterval: POLL_INTERVAL,
     staleTime: 5_000,
   });
 }

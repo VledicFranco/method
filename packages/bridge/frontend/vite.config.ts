@@ -36,6 +36,7 @@ export default defineConfig({
       '/strategies': 'http://localhost:3456',
       '/triggers': 'http://localhost:3456',
       '/api': 'http://localhost:3456',
+      '/ws': { target: 'ws://localhost:3456', ws: true },
     },
   },
 });

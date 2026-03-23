@@ -98,11 +98,24 @@ function setPersistence(persistence: EventPersistence | undefined): void {
   globalEventPersistence = persistence;
 }
 
+// ── Event publish hook (wired by WsHub in index.ts) ─────────
+
+type OnEventCallback = (event: ProjectEvent) => void;
+let _onEventHook: OnEventCallback | null = null;
+
+function setOnEventHook(hook: OnEventCallback | null): void {
+  _onEventHook = hook;
+}
+
 async function pushEventToLogWithPersistence(log: CircularEventLog, event: ProjectEvent): Promise<void> {
   pushEventToLog(log, event);
   if (globalEventPersistence) {
     // Don't swallow persistence errors - propagate them for HTTP 5xx response
     await globalEventPersistence.append(event);
+  }
+  // Push to WebSocket subscribers
+  if (_onEventHook) {
+    try { _onEventHook(event); } catch { /* non-fatal */ }
   }
 }
 
@@ -769,5 +782,5 @@ export async function registerProjectRoutes(
 
 // Export for testing
 export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor, validateCursorFormat, validateProjectIdFormat };
-export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence };
+export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence, setOnEventHook };
 export type { CircularEventLog, CursorState };

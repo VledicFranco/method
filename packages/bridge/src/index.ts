@@ -11,7 +11,7 @@ import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
-import { setOnMessageHook } from './channels.js';
+import { addOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './registry-routes.js';
 import { MethodologySessionStore } from './methodology/methodology-store.js';
@@ -20,7 +20,11 @@ import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
 import { GenesisPollingLoop } from './genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './genesis-routes.js';
-import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './project-routes.js';
+import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './project-routes.js';
+import websocket from '@fastify/websocket';
+import { WsHub } from './ws-hub.js';
+import { registerWsRoute } from './ws-route.js';
+import { setOnExecutionChangeHook } from './strategy/strategy-routes.js';
 import { DiscoveryService } from './multi-project/discovery-service.js';
 import { InMemoryProjectRegistry } from './registry/index.js';
 import { JsonLineEventPersistence, YamlEventPersistence } from './events/index.js';
@@ -84,6 +88,23 @@ function removePidFile(): void {
 
 const app = Fastify({ logger: true });
 
+// ---------- WebSocket (real-time push) ----------
+
+app.register(websocket);
+const wsHub = new WsHub();
+registerWsRoute(app, wsHub);
+
+// Wire WsHub to data sources
+setOnEventHook((event) => {
+  wsHub.publish('events', event, (filter) =>
+    !filter.project_id || filter.project_id === event.projectId,
+  );
+});
+setOnExecutionChangeHook((entry) => {
+  wsHub.publish('executions', entry, (filter) =>
+    !filter.execution_id || filter.execution_id === entry.execution_id,
+  );
+});
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
 registerLiveOutputRoutes(app, pool);
@@ -824,6 +845,15 @@ if (TRIGGERS_ENABLED) {
           payload: event.payload,
         },
       );
+      // Push to WebSocket subscribers
+      wsHub.publish('triggers', {
+        type: 'fire',
+        trigger_id: event.trigger_id,
+        trigger_type: event.trigger_type,
+        strategy_id: event.strategy_id,
+      }, (filter) =>
+        !filter.trigger_id || filter.trigger_id === event.trigger_id,
+      );
     },
   });
 
@@ -835,7 +865,7 @@ if (TRIGGERS_ENABLED) {
   });
 
   // PRD 018 Phase 2a-2: Wire channel event hook
-  setOnMessageHook((info) => {
+  addOnMessageHook((info) => {
     if (triggerRouter) {
       triggerRouter.onChannelMessage(info);
     }
@@ -1024,9 +1054,11 @@ function gracefulShutdown(signal: string) {
       triggerRouter.shutdown().catch(() => { /* non-fatal */ });
     }
 
-    // Disconnect hooks to prevent trigger callbacks during teardown
+    // Disconnect hooks and close WebSocket connections during teardown
     pool.setObservationHook(null);
-    setOnMessageHook(null);
+    wsHub.destroy();
+    setOnEventHook(null);
+    setOnExecutionChangeHook(null);
 
     // Kill all sessions (triggers auto-retro via handleSessionDeath)
     const sessions = pool.list();
