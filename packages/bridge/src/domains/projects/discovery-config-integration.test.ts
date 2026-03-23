@@ -13,9 +13,9 @@ import assert from 'node:assert';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { DiscoveryService } from '../multi-project/discovery-service.js';
-import { discoverAndRegister, loadProjectConfig, rescanAndReloadConfigs } from '../multi-project/discovery-registry-integration.js';
-import { InMemoryProjectRegistry } from '../domains/registry/index.js';
+import { DiscoveryService } from './discovery-service.js';
+import { discoverAndRegister, loadProjectConfig, rescanAndReloadConfigs } from './discovery-registry-integration.js';
+import { InMemoryProjectRegistry } from '../registry/index.js';
 
 // Helper to create a mock git repository
 function createMockGitRepo(basePath: string, projectName: string): string {

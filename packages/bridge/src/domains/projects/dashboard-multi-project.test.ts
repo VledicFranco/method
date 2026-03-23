@@ -5,8 +5,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { ProjectEventType } from '../events/index.js';
-import type { ProjectMetadata } from '../multi-project/discovery-service.js';
+import { ProjectEventType } from './events/index.js';
+import type { ProjectMetadata } from './discovery-service.js';
 
 // ── Mock Data ────
 

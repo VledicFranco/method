@@ -34,7 +34,7 @@ import {
   type CursorState,
 } from './polling-loop.js';
 import type { SessionPool, SessionStatusInfo } from '../../pool.js';
-import type { ProjectEvent } from '../../events/index.js';
+import type { ProjectEvent } from '../projects/events/index.js';
 
 // Mock SessionPool
 class MockSessionPool implements SessionPool {

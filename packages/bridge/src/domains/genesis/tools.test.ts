@@ -6,10 +6,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { describe } from 'node:test';
-import type { DiscoveryService } from '../../multi-project/discovery-service.js';
-import type { ProjectMetadata } from '../../multi-project/discovery-service.js';
-import type { ProjectEvent } from '../../events/index.js';
-import { ProjectEventType, createProjectEvent } from '../../events/index.js';
+import type { DiscoveryService } from '../projects/discovery-service.js';
+import type { ProjectMetadata } from '../projects/discovery-service.js';
+import type { ProjectEvent } from '../projects/events/index.js';
+import { ProjectEventType, createProjectEvent } from '../projects/events/index.js';
 import {
   projectListTool,
   projectGetTool,

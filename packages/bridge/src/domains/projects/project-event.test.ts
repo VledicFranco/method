@@ -10,7 +10,7 @@ import {
   serializeProjectEvent,
   deserializeProjectEvent,
   type ProjectEvent,
-} from '../events/project-event.js';
+} from './events/project-event.js';
 
 describe('ProjectEvent', () => {
   describe('createProjectEvent', () => {

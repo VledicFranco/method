@@ -14,8 +14,8 @@ import { tmpdir } from 'node:os';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { GenesisPollingLoop } from '../domains/genesis/polling-loop.js';
-import type { ProjectEvent } from '../events/index.js';
-import { ProjectEventType, createProjectEvent } from '../events/index.js';
+import type { ProjectEvent } from '../domains/projects/events/index.js';
+import { ProjectEventType, createProjectEvent } from '../domains/projects/events/index.js';
 
 // Helper to create mock events
 function createMockEvent(projectId: string, index: number): ProjectEvent {

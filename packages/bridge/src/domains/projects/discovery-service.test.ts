@@ -8,7 +8,7 @@ import assert from 'node:assert';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { DiscoveryService } from '../multi-project/discovery-service.js';
+import { DiscoveryService } from './discovery-service.js';
 
 // Helper to create a mock git repository
 function createMockGitRepo(basePath: string, projectName: string): string {

@@ -19,7 +19,7 @@ import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, statSync } 
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as yaml from 'js-yaml';
-import { DiscoveryService } from '../multi-project/discovery-service.js';
+import { DiscoveryService } from '../domains/projects/discovery-service.js';
 import {
   loadCursors,
   saveCursors,

@@ -11,7 +11,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCursor, parseCursor, cursorMap } from '../project-routes.js';
+import { generateCursor, parseCursor, cursorMap } from '../domains/projects/routes.js';
 import {
   loadCursors,
   saveCursors,

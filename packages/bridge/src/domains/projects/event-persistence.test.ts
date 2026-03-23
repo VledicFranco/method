@@ -8,8 +8,8 @@ import {
   type EventPersistence,
   type EventFilter,
   createTestEvent,
-} from '../events/event-persistence.js';
-import { ProjectEventType, createProjectEvent } from '../events/project-event.js';
+} from './events/event-persistence.js';
+import { ProjectEventType, createProjectEvent } from './events/project-event.js';
 
 /**
  * Simple in-memory implementation for testing the contract

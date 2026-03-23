@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useEventStream } from '@/hooks/useEventStream';
-import { useProjects } from '@/hooks/useProjects';
+import { useEventStream } from '@/domains/projects/useEventStream';
+import { useProjects } from '@/domains/projects/useProjects';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader2, AlertCircle, Zap } from 'lucide-react';

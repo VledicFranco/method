@@ -18,9 +18,9 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import type { EventPersistence, EventFilter } from '../events/event-persistence.js';
-import { createTestEvent } from '../events/event-persistence.js';
-import { ProjectEventType } from '../events/project-event.js';
+import type { EventPersistence, EventFilter } from './events/event-persistence.js';
+import { createTestEvent } from './events/event-persistence.js';
+import { ProjectEventType } from './events/project-event.js';
 
 /**
  * Run the EventPersistence contract test suite against an implementation

@@ -9,13 +9,13 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
-import { YamlEventPersistence } from '../events/yaml-event-persistence.js';
+import { YamlEventPersistence } from './events/yaml-event-persistence.js';
 import {
   ProjectEventType,
   createProjectEvent,
   serializeProjectEvent,
   deserializeProjectEvent,
-} from '../events/index.js';
+} from './events/index.js';
 
 describe('YamlEventPersistence', () => {
   let testDir: string;

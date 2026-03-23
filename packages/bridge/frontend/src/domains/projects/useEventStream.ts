@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { useWsStore } from '@/stores/ws-store';
 import type { ProjectEvent } from '@/lib/types';
 

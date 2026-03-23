@@ -27,7 +27,7 @@ import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as yaml from 'js-yaml';
-import { DiscoveryService } from '../../multi-project/discovery-service.js';
+import { DiscoveryService } from '../projects/discovery-service.js';
 import {
   spawnGenesis,
   getGenesisSessionId,
@@ -41,8 +41,8 @@ import {
   GenesisPollingLoop,
 } from './polling-loop.js';
 import type { SessionPool, SessionStatusInfo } from '../../pool.js';
-import type { ProjectEvent } from '../../events/index.js';
-import { ProjectEventType, createProjectEvent } from '../../events/index.js';
+import type { ProjectEvent } from '../projects/events/index.js';
+import { ProjectEventType, createProjectEvent } from '../projects/events/index.js';
 
 // ─── Mock SessionPool for E2E Testing ───
 

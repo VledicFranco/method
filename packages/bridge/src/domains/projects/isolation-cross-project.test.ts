@@ -24,8 +24,8 @@ import {
   getEventsFromLog,
   createCircularEventLog,
   type CircularEventLog,
-} from '../project-routes.js';
-import { ProjectEventType, createProjectEvent } from '../events/index.js';
+} from './routes.js';
+import { ProjectEventType, createProjectEvent } from './events/index.js';
 import type { FastifyRequest } from 'fastify';
 
 // ── Test Setup ────

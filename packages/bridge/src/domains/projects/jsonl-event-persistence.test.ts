@@ -10,13 +10,13 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import YAML from 'js-yaml';
-import { JsonLineEventPersistence } from '../events/jsonl-event-persistence.js';
+import { JsonLineEventPersistence } from './events/jsonl-event-persistence.js';
 import {
   ProjectEventType,
   createProjectEvent,
   serializeProjectEvent,
   deserializeProjectEvent,
-} from '../events/index.js';
+} from './events/index.js';
 
 describe('JsonLineEventPersistence', () => {
   let testDir: string;

@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
-import { DiscoveryService } from '../multi-project/discovery-service.js';
+import { DiscoveryService } from './discovery-service.js';
 
 // Helper to create a real git repository
 function createRealGitRepo(basePath: string, projectName: string): string {

@@ -7,8 +7,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
-import { registerProjectRoutes } from '../../project-routes.js';
-import { DiscoveryService } from '../../multi-project/discovery-service.js';
+import { registerProjectRoutes } from '../projects/routes.js';
+import { DiscoveryService } from '../projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './index.js';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';

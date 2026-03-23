@@ -16,18 +16,18 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ProjectEvent, EventPersistence } from './events/index.js';
 import {
   DefaultIsolationValidator,
-} from './validation/index.js';
+} from '../../validation/index.js';
 import {
   InMemoryProjectRegistry,
-} from './domains/registry/index.js';
+} from '../registry/index.js';
 import {
   ProjectEventType,
   createProjectEvent,
   createTestEvent,
 } from './events/index.js';
-import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
-import { copyMethodology, copyStrategy, validateTargetIds } from './domains/registry/resource-copier.js';
-import { reloadConfig, validateConfig } from './config/config-reloader.js';
+import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './discovery-service.js';
+import { copyMethodology, copyStrategy, validateTargetIds } from '../registry/resource-copier.js';
+import { reloadConfig, validateConfig } from '../../config/config-reloader.js';
 import path from 'path';
 import { randomBytes } from 'crypto';
 

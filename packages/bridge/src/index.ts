@@ -21,14 +21,14 @@ import { spawnGenesis, getGenesisSessionId } from './domains/genesis/spawner.js'
 import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
-import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './project-routes.js';
+import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './domains/projects/routes.js';
 import websocket from '@fastify/websocket';
 import { WsHub } from './ws-hub.js';
 import { registerWsRoute } from './ws-route.js';
 import { setOnExecutionChangeHook } from './strategy/strategy-routes.js';
-import { DiscoveryService } from './multi-project/discovery-service.js';
+import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
-import { JsonLineEventPersistence, YamlEventPersistence } from './events/index.js';
+import { JsonLineEventPersistence, YamlEventPersistence } from './domains/projects/events/index.js';
 
 // Configuration from environment variables
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
