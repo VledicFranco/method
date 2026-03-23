@@ -26,7 +26,7 @@ import {
   getCursorForProject,
   updateCursorForProject,
   type GenesisCursors,
-} from '../genesis/polling-loop.js';
+} from '../domains/genesis/polling-loop.js';
 
 // ─── Helper: Create mock git repo ───
 

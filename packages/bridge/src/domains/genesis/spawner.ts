@@ -8,8 +8,8 @@
  * - Maintain across bridge restarts
  */
 
-import type { SessionPool } from '../pool.js';
-import type { SessionStatusInfo } from '../pool.js';
+import type { SessionPool } from '../../pool.js';
+import type { SessionStatusInfo } from '../../pool.js';
 import { getGenesisInitializationPrompt } from './initialization.js';
 
 export interface GenesisConfig {

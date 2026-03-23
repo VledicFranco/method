@@ -20,7 +20,7 @@ import {
   cleanupStaleCursors,
   type GenesisCursors,
   type CursorState,
-} from '../genesis/polling-loop.js';
+} from '../domains/genesis/polling-loop.js';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import * as fs from 'node:fs';

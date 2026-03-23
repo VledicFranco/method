@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { GenesisPollingLoop } from '../genesis/polling-loop.js';
+import { GenesisPollingLoop } from '../domains/genesis/polling-loop.js';
 import type { ProjectEvent } from '../events/index.js';
 import { ProjectEventType, createProjectEvent } from '../events/index.js';
 

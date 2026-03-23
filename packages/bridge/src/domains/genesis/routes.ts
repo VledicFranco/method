@@ -24,7 +24,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { SessionPool, SessionStatusInfo } from './pool.js';
+import type { SessionPool, SessionStatusInfo } from '../../pool.js';
 import { randomBytes } from 'crypto';
 import {
   projectListTool,
@@ -33,8 +33,8 @@ import {
   projectReadEventsTool,
   genesisReportTool,
   type GenesisToolsContext,
-} from './genesis/tools.js';
-import { validateProjectAccess, getSessionContext } from './project-routes.js';
+} from './tools.js';
+import { validateProjectAccess, getSessionContext } from '../../project-routes.js';
 
 export interface GenesisRouteContext {
   sessionPool: SessionPool;

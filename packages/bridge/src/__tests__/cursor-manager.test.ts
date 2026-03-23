@@ -15,7 +15,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import * as yaml from 'js-yaml';
-import { CursorFileLock, CursorMaintenanceJob, type CursorState, type GenesisCursors } from '../genesis/cursor-manager.js';
+import { CursorFileLock, CursorMaintenanceJob, type CursorState, type GenesisCursors } from '../domains/genesis/cursor-manager.js';
 
 describe('Cursor Manager Concurrency Tests', () => {
   let testDir: string;

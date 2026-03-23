@@ -22,8 +22,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as yaml from 'js-yaml';
-import type { SessionPool } from '../pool.js';
-import type { ProjectEvent } from '../events/index.js';
+import type { SessionPool } from '../../pool.js';
+import type { ProjectEvent } from '../../events/index.js';
 
 export interface CursorState {
   projectId: string;

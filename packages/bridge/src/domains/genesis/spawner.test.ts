@@ -16,14 +16,14 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { getGenesisInitializationPrompt } from '../genesis/initialization.js';
+import { getGenesisInitializationPrompt } from './initialization.js';
 import {
   spawnGenesis,
   getGenesisStatus,
   isGenesisRunning,
   getGenesisSessionId,
   type GenesisSpawnResult,
-} from '../genesis/spawner.js';
+} from './spawner.js';
 import {
   loadCursors,
   saveCursors,
@@ -32,9 +32,9 @@ import {
   GenesisPollingLoop,
   type GenesisCursors,
   type CursorState,
-} from '../genesis/polling-loop.js';
-import type { SessionPool, SessionStatusInfo } from '../pool.js';
-import type { ProjectEvent } from '../events/index.js';
+} from './polling-loop.js';
+import type { SessionPool, SessionStatusInfo } from '../../pool.js';
+import type { ProjectEvent } from '../../events/index.js';
 
 // Mock SessionPool
 class MockSessionPool implements SessionPool {

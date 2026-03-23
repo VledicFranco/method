@@ -9,10 +9,10 @@ import assert from 'node:assert';
 import { describe } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
-import { registerGenesisRoutes, type GenesisRouteContext } from '../genesis-routes.js';
-import type { SessionPool, SessionStatusInfo } from '../pool.js';
-import type { PtySession } from '../pty-session.js';
-import type { GenesisToolsContext } from '../genesis/tools.js';
+import { registerGenesisRoutes, type GenesisRouteContext } from './routes.js';
+import type { SessionPool, SessionStatusInfo } from '../../pool.js';
+import type { PtySession } from '../../pty-session.js';
+import type { GenesisToolsContext } from './tools.js';
 
 // ── Mock Genesis Tools Context ────
 

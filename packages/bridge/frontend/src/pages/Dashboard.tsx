@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PageShell } from '@/components/layout/PageShell';
-import { GenesisFAB } from '@/components/domain/GenesisFAB';
-import { GenesisChatPanel } from '@/components/domain/GenesisChatPanel';
+import { GenesisFAB } from '@/domains/genesis/GenesisFAB';
+import { GenesisChatPanel } from '@/domains/genesis/GenesisChatPanel';
 import { ProjectListView } from '@/components/domain/ProjectListView';
 import { EventStreamPanel } from '@/components/domain/EventStreamPanel';
 import { BridgeHealthCards } from '@/components/domain/BridgeHealthCards';

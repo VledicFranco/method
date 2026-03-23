@@ -6,10 +6,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { describe } from 'node:test';
-import type { DiscoveryService } from '../multi-project/discovery-service.js';
-import type { ProjectMetadata } from '../multi-project/discovery-service.js';
-import type { ProjectEvent } from '../events/index.js';
-import { ProjectEventType, createProjectEvent } from '../events/index.js';
+import type { DiscoveryService } from '../../multi-project/discovery-service.js';
+import type { ProjectMetadata } from '../../multi-project/discovery-service.js';
+import type { ProjectEvent } from '../../events/index.js';
+import { ProjectEventType, createProjectEvent } from '../../events/index.js';
 import {
   projectListTool,
   projectGetTool,
@@ -17,7 +17,7 @@ import {
   projectReadEventsTool,
   genesisReportTool,
   type GenesisToolsContext,
-} from '../genesis/tools.js';
+} from './tools.js';
 // Note: These imports are tested through the MCP bridge integration
 // For unit testing, we'll just test the core tool functions directly
 type SessionContextForGenesis = { project_id?: string; session_id?: string };
