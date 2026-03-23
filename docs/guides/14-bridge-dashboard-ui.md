@@ -1,3 +1,16 @@
+---
+guide: 14
+title: "Extending the Bridge Dashboard UI"
+domain: bridge
+audience: [contributors]
+summary: >-
+  Dashboard rendering architecture, Vidtecci OS design system, adding panels and pages.
+prereqs: [10]
+touches:
+  - packages/bridge/src/index.ts
+  - packages/bridge/frontend/
+---
+
 # Guide 14 — Extending the Bridge Dashboard UI
 
 How to add new features and views to the bridge dashboard. Covers the rendering architecture, the design system, and patterns for new panels, endpoints, and pages.
@@ -53,6 +66,8 @@ The bridge serves multiple pages, each as a route + template pair:
 | `GET /sessions/:id/live` | Inline HTML in `live-output-route.ts` | xterm.js terminal emulator with live PTY stream |
 | `GET /sessions/:id/transcript` | Inline HTML in `transcript-route.ts` | Transcript browser with JSONL parsing and stats |
 | `GET /transcripts` | Inline HTML in `transcript-route.ts` | List of all available transcript sessions |
+| `GET /app/*` | React SPA (`frontend-route.ts`) | Narrative Flow frontend — unified React SPA with client-side routing. Controlled by `FRONTEND_ENABLED` env var (default: `true`). Serves built assets from `packages/bridge/frontend/`. See Guide 17. |
+| `GET /viz/*` | React SPA (`strategy-viz-route.ts`) | Strategy DAG Visualizer — interactive pipeline visualization SPA. Serves built assets from `packages/bridge/viz/`. |
 
 ## Design System
 
@@ -116,7 +131,7 @@ The dashboard follows the **Vidtecci OS Design System**. Reference files are in 
 
 ## Dashboard Panels
 
-The main dashboard has seven panels, each with its own data source and rendering logic.
+The main dashboard has eight panels, each with its own data source and rendering logic.
 
 ### 1. Bridge status (health cards)
 
@@ -161,6 +176,12 @@ Data source: per-session progress channel (`pool.channels.progress`). Entries co
 Global feed of the 20 most recent events across all sessions. Each entry shows time, session nickname, color-coded event badge (completed = bio, error = red, stale = solar, etc.), and summary.
 
 Data source: aggregated events channel (`pool.channels.events`). Includes both agent-reported events and auto-detected events.
+
+### 7. Triggers panel (PRD 018 Phase 2a-4)
+
+Registered event triggers with live status. Each trigger row shows: name, status badge (active/warning/disabled/paused), fire count, last fired timestamp, and error count. A maintenance banner appears when the trigger system is paused.
+
+Data source: `triggerDataProvider` — a lazy proxy that resolves to `triggerRouter.getStatus()` and `triggerRouter.getHistory()` at request time. See `packages/bridge/src/index.ts` (around line 110) for the provider wiring.
 
 ## Adding a New Panel
 

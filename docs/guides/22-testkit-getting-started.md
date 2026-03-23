@@ -1,3 +1,16 @@
+---
+guide: 22
+title: "Testkit: Getting Started"
+domain: testkit
+audience: [method-designers]
+summary: >-
+  Building and running methodology tests with assertions, builders, and harnesses.
+prereqs: [1, 2]
+touches:
+  - packages/testkit/src/
+  - packages/methodts/src/
+---
+
 # Guide 22 — Testkit: Getting Started
 
 The `@method/testkit` package provides builders, assertions, harnesses, and test doubles for testing MethodTS methodologies, methods, steps, predicates, and domain theories. It eliminates the boilerplate of constructing typed values, running Effect-based execution, and interpreting failures.

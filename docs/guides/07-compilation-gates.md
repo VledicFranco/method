@@ -1,3 +1,15 @@
+---
+guide: 7
+title: "Compilation Gates (G0-G6)"
+domain: registry
+audience: [method-designers]
+summary: >-
+  What each compilation gate checks, common failures, and how to fix them.
+prereqs: [1, 3]
+touches:
+  - registry/
+---
+
 # Guide 7 — Compilation Gates (G0-G6)
 
 Every method in the system must pass 7 acceptance gates before it's considered **compiled**. The gates verify structural completeness — they check that the method is well-formed, not that it's good. A method can pass all gates and still be poorly designed; but a method that fails a gate has a structural defect that will cause problems at runtime.

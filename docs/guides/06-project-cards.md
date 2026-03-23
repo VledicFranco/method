@@ -1,10 +1,22 @@
+---
+guide: 6
+title: "Project Cards and Instantiation"
+domain: governance
+audience: [project-leads]
+summary: >-
+  How to write a project card to parameterize a methodology for your project.
+prereqs: [1, 2]
+touches:
+  - .method/project-card.yaml
+---
+
 # Guide 6 — Project Cards & Instantiation
 
 Abstract methodologies like P2-SD define universal processes. Your project has specific constraints: tech stack, tool protocols, governance rules, code conventions. A **project card** bridges the gap.
 
 ## What is a Project Card?
 
-A YAML file in your project repo that declares what's specific to your project. About 50-80 lines. No formal theory required — just project knowledge.
+A YAML file in your project repo that declares what's specific to your project. A mature card is typically 200-300 lines (pv-method's is ~283). No formal theory required — just project knowledge.
 
 ```yaml
 project_card:
@@ -105,7 +117,68 @@ The core of the card. Each rule is a prose constraint that names which methods a
 - If the rule requires a specific artifact (worksheet, checklist), name it
 - If the rule is conditional (every 3 phases), add a trigger
 
-### 4. Role Notes
+### 4. Essence
+
+The project's identity — purpose, invariant, and optimization priorities. The steering council guards these:
+
+```yaml
+  essence:
+    purpose: "What this project is and why it exists"
+    invariant: "The one thing that must never be violated"
+    optimize_for:
+      - "Priority 1 > Priority 2 > Priority 3"
+```
+
+The essence is checked before every council decision (see [Guide 12](12-steering-council.md)).
+
+### 5. Governance
+
+How autonomy and oversight work for this project:
+
+```yaml
+  governance:
+    autonomy: M2-SEMIAUTO
+    session_cadence: "weekly or on-demand"
+    veto_authority: product_owner
+    max_autonomous_decisions: 3
+    essence_escalation: always
+    council_path: ".method/council/"
+```
+
+Three autonomy modes: INTERACTIVE (human confirms everything), SEMIAUTO (council decides clear cases, escalates ambiguity), FULLAUTO (council decides everything within budget).
+
+### 6. Architecture & Source Layout
+
+Where docs and code live. Helps agents navigate your project:
+
+```yaml
+  architecture:
+    docs_root: "docs/"
+    architecture_path: "docs/arch/"
+    prd_path: "docs/prds/"
+
+  source_layout:
+    monorepo: true
+    packages:
+      - name: "@method/core"
+        path: "packages/core/"
+        purpose: "Pure logic, no transport"
+      - name: "@method/mcp"
+        path: "packages/mcp/"
+        purpose: "MCP server — wires core to tools"
+```
+
+### 7. Card Version
+
+Tracks the card's own version, independent of the methodology version:
+
+```yaml
+  card_version: "1.4"
+```
+
+Bump this when you add delivery rules, update essence, or change governance settings. The manifest may reference this version.
+
+### 8. Role Notes
 
 Per-role guidance for your project. Supplements the abstract method's role description:
 
@@ -148,7 +221,7 @@ Every method that references compilation picks up the change. No methodology cha
 P2-SD v3.0 adds M8-PERF (performance testing). Your card is unchanged — M8-PERF gets default behavior. When you want project-specific constraints for it, add delivery rules with `applies_to: [M8-PERF]`.
 
 **New project adopts the methodology:**
-Copy the card template, fill in your project's details. The abstract methodology is unchanged. The new card is ~50 lines, not ~500 lines of handwritten role files.
+Copy the card template, fill in your project's details. The abstract methodology is unchanged. The new card starts small and grows as the project matures — not ~500 lines of handwritten role files.
 
 ## Instance Tracking
 
@@ -157,7 +230,7 @@ The method registry tracks which projects have instantiated which methodologies:
 ```
 registry/instances/
   I1-T1X.yaml      ← t1-cortex, P2-SD v2.0, 20 rules, active
-  I2-METHOD.yaml    ← pv-method, P2-SD v2.0, 12 rules, active
+  I2-METHOD.yaml    ← pv-method, P2-SD v2.0, 14 rules, active
 ```
 
 Each entry records: project, methodology, version, card location, status. Status lifecycle:

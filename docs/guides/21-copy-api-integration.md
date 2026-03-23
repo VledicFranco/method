@@ -1,4 +1,18 @@
-# Guide 19 — Copy API Integration (PRD 020 Phase 3)
+---
+guide: 21
+title: "Copy API Integration"
+domain: multi-project
+audience: [contributors]
+summary: >-
+  HTTP and MCP interfaces for copying methodologies and strategies between projects.
+prereqs: [19, 20]
+touches:
+  - packages/bridge/src/resource-copier.ts
+  - packages/bridge/src/project-routes.ts
+  - packages/mcp/src/index.ts
+---
+
+# Guide 21 — Copy API Integration (PRD 020 Phase 3)
 
 How to programmatically copy methodologies and strategies between projects. For developers building automation, CI/CD pipelines, and orchestration systems that distribute resources at scale.
 
@@ -315,12 +329,12 @@ def copy_with_partial_retry(source_id, method_name, target_ids):
 ### Handle Authorization Errors
 
 ```python
-def copy_with_auth_check(source_id, method_name, target_ids, session_headers=None):
+def copy_with_auth_check(source_id, method_name, target_ids, project_id=None):
     """Copy with authorization checks."""
 
     headers = {"Content-Type": "application/json"}
-    if session_headers:
-        headers.update(session_headers)
+    if project_id:
+        headers["x-project-id"] = project_id
 
     response = requests.post(
         f"{BRIDGE_URL}/api/resources/copy-methodology",
@@ -336,9 +350,8 @@ def copy_with_auth_check(source_id, method_name, target_ids, session_headers=Non
         error = response.json()
         print(f"Authorization denied: {error.get('reason')}")
         print("Possible causes:")
-        print("  1. No read access to source project")
-        print("  2. No write access to one or more target projects")
-        print("  3. Session token expired or invalid")
+        print("  1. x-project-id header does not match the source project")
+        print("  2. x-project-id header does not match one or more target projects")
         raise PermissionError(error.get('reason'))
 
     return response.json()
@@ -575,18 +588,18 @@ except RuntimeError:
     print("Error: Bridge is down. Cannot proceed with copy.")
 ```
 
-### Authentication & Session Context
+### Session Context
 
-If your deployment requires session validation:
+The bridge uses the `x-project-id` header for session context (no Bearer token authentication). `getSessionContext()` reads only this header. If the header is set, `validateProjectAccess` checks that it matches the requested project ID. If omitted, read-only discovery access is allowed.
 
 ```python
-def copy_with_session(source_id, method_name, target_ids, session_token=None):
-    """Copy with session context (if required by deployment)."""
+def copy_with_session_context(source_id, method_name, target_ids, project_id=None):
+    """Copy with session context via x-project-id header."""
 
     headers = {"Content-Type": "application/json"}
 
-    if session_token:
-        headers["Authorization"] = f"Bearer {session_token}"
+    if project_id:
+        headers["x-project-id"] = project_id
 
     response = requests.post(
         f"{BRIDGE_URL}/api/resources/copy-methodology",
@@ -598,8 +611,9 @@ def copy_with_session(source_id, method_name, target_ids, session_token=None):
         }
     )
 
-    if response.status_code == 401:
-        raise PermissionError("Invalid or expired session token")
+    if response.status_code == 403:
+        error = response.json()
+        raise PermissionError(error.get('reason', 'Access denied'))
 
     return response.json()
 ```
@@ -608,7 +622,7 @@ def copy_with_session(source_id, method_name, target_ids, session_token=None):
 
 ## See Also
 
-- **Guide 18:** Resource Sharing — UI and operational guide
+- **Guide 20:** Resource Sharing — UI and operational guide
 - **Guide 13:** Installation — How methodologies are installed
 - **API Reference:** `/api/resources/copy-methodology` and `/api/resources/copy-strategy` endpoints
 

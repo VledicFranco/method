@@ -1,3 +1,16 @@
+---
+guide: 10
+title: "Bridge Orchestration"
+domain: bridge
+audience: [agent-operators]
+summary: >-
+  Using the bridge MCP proxy tools for multi-method sessions with sub-agents.
+prereqs: [1, 2]
+touches:
+  - packages/bridge/src/
+  - packages/mcp/src/
+---
+
 # Guide 10 — Bridge Orchestration: Multi-Method Sessions with Sub-Agents
 
 How to use the bridge MCP proxy tools together with the runtime methodology tools (PRD 004) to orchestrate multi-method sessions where sub-agents execute methods autonomously.
@@ -198,9 +211,8 @@ Sub-agents (or the PTY watcher — see below) report structured progress updates
 ```
 bridge_progress({
   bridge_session_id: "abc-123",
-  type: "step_advance",
-  step: "sigma_2",
-  description: "Council positions established"
+  type: "step_completed",
+  content: { step: "sigma_2", description: "Council positions established" }
 })
 ```
 
@@ -208,18 +220,18 @@ bridge_progress({
 ```
 bridge_read_progress({
   bridge_session_id: "abc-123",
-  cursor: 0
+  since_sequence: 0
 })
 → {
     messages: [
-      { sequence: 1, sender: "abc-123", type: "step_advance", content: { step: "sigma_2", ... } },
+      { sequence: 1, sender: "abc-123", type: "step_started", content: { step: "sigma_2", ... } },
       { sequence: 2, sender: "pty-watcher", type: "tool_call", content: { tool: "Edit", ... } }
     ],
-    next_cursor: 2
+    last_sequence: 2
   }
 ```
 
-The `cursor` parameter enables incremental reading — pass the `next_cursor` from the previous call to get only new messages.
+The `since_sequence` parameter enables incremental reading — pass the `last_sequence` from the previous call to get only new messages.
 
 ### Events channel
 
@@ -243,13 +255,14 @@ bridge_event({
 | `error` | Unrecoverable error | Yes |
 | `escalation` | Sub-agent needs orchestrator decision | Yes |
 | `budget_warning` | Approaching depth or agent budget limit | Yes |
+| `scope_violation` | Agent wrote outside its `allowed_paths` (PRD 014) | Yes |
 | `stale` | Session inactive for 30+ minutes | Yes |
 | `killed` | Session killed | No |
 | `retro_generated` | Auto-retrospective written | No |
 
 ### Push notifications
 
-When a child session emits a pushable event (`completed`, `error`, `escalation`, `budget_warning`, `stale`), the bridge automatically sends a notification prompt to the parent agent. The orchestrator doesn't need to poll — it receives a prompt with the event summary and suggested action.
+When a child session emits a pushable event (`completed`, `error`, `escalation`, `budget_warning`, `scope_violation`, `stale`), the bridge automatically sends a notification prompt to the parent agent. The orchestrator doesn't need to poll — it receives a prompt with the event summary and suggested action.
 
 Push delivery is fire-and-forget: if the parent is busy processing another prompt, the notification queues. If delivery fails, it's non-fatal.
 
@@ -258,11 +271,13 @@ Push delivery is fire-and-forget: if the parent is busy processing another promp
 For council-level oversight or human monitoring:
 
 ```
-bridge_all_events({ cursor: 0, type: "completed" })
-→ { messages: [...all completed events across all sessions...], next_cursor: 5 }
+bridge_all_events({ since_sequence: 0, filter_type: "completed" })
+→ { events: [...all completed events across all sessions...], last_sequence: 5 }
 ```
 
-The optional `type` filter limits results to specific event types.
+The optional `filter_type` filter limits results to specific event types.
+
+**Trigger fire events:** When the event trigger system (PRD 018) fires a trigger, a `trigger_fired` event appears in the aggregated events feed with `bridge_session_id: 'triggers'`. Filter with `filter_type: "trigger_fired"` to see only trigger events.
 
 ## PTY Activity Auto-Detection (PRD 010)
 
@@ -727,10 +742,13 @@ The bridge proxy MCP tools call the bridge HTTP API internally. This section doc
 | `/health` | `GET` | Health check — JSON with status, session count, uptime |
 | `/dashboard` | `GET` | Browser dashboard (HTML) |
 | `/sessions/:id/status` | `GET` | Single session status, metadata, chain info, stale flag |
+| `/sessions/:id/resize` | `POST` | Resize PTY terminal dimensions (`cols`, `rows`) |
 | `/sessions/:id/stream` | `GET` | SSE stream of raw PTY output (for xterm.js) |
 | `/sessions/:id/live` | `GET` | HTML page with embedded xterm.js terminal emulator |
 | `/sessions/:id/transcript` | `GET` | Transcript browser for a specific session |
 | `/transcripts` | `GET` | List all available transcript sessions |
+| `/pool/stats` | `GET` | Pool statistics: `max_sessions`, `active_count`, `dead_count`, `total_spawned`, `uptime_ms` |
+| `/shutdown` | `POST` | Graceful shutdown (localhost only) — cleans up sessions before exit |
 
 ### POST /sessions
 
@@ -746,11 +764,20 @@ The bridge proxy MCP tools call the bridge HTTP API internally. This section doc
   "nickname": "council",
   "purpose": "Execute M1-COUNCIL debate",
   "persistent": false,
-  "timeout_ms": 1800000
+  "timeout_ms": 1800000,
+  "mode": "pty",
+  "spawn_delay_ms": 0
 }
 ```
 
-Response: `{ "session_id": "abc-123", "nickname": "council", "status": "ready", "worktree_path": null, "metals_available": true }`
+**Parameters of note:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `mode` | `'pty' \| 'print'` | `'pty'` | Session mode. `pty` spawns an interactive PTY with TUI rendering. `print` runs `claude --print` headlessly — no PTY, no settle delay, no split prompt delivery. Use `print` for batch/scripted workloads. |
+| `spawn_delay_ms` | `number` | `0` | Delay in milliseconds before spawning the PTY process. Useful for staggering manual spawns. |
+
+Response: `{ "session_id": "abc-123", "nickname": "council", "status": "ready", "mode": "pty", "worktree_path": null, "metals_available": true }`
 
 ### POST /sessions/:id/prompt
 
@@ -773,11 +800,12 @@ Response: array of `{ session_id, nickname, status, stale, queue_depth, metadata
 
 ### POST /sessions/:id/channels/progress
 
+Progress type must be one of: `step_started`, `step_completed`, `working_on`, `sub_agent_spawned`.
+
 ```json
 {
-  "type": "step_advance",
-  "step": "sigma_2",
-  "description": "Council positions established"
+  "type": "step_completed",
+  "content": { "step": "sigma_2", "description": "Council positions established" }
 }
 ```
 
@@ -790,9 +818,19 @@ Response: array of `{ session_id, nickname, status, stale, queue_depth, metadata
 }
 ```
 
-### GET /sessions/:id/channels/progress?cursor=0
+### GET /sessions/:id/channels/progress?since_sequence=0
 
-Response: `{ "messages": [...], "next_cursor": 5 }`
+Query parameters:
+- `since_sequence` — read messages after this sequence number (default `0` for full history)
+- `reader_id` — optional named cursor; the server auto-advances it so the next call with the same `reader_id` returns only new messages
+
+Response: `{ "messages": [...], "last_sequence": 5, "has_more": false }`
+
+### GET /sessions/:id/channels/events?since_sequence=0
+
+Same query parameters as progress (`since_sequence`, `reader_id`).
+
+Response: `{ "messages": [...], "last_sequence": 5, "has_more": false }`
 
 ### Configuration
 
@@ -816,6 +854,7 @@ Response: `{ "messages": [...], "next_cursor": 5 }`
 | `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
 | `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |
 | `BATCH_STAGGER_MS` | `3000` | Default stagger between batch spawns |
+| `MIN_SPAWN_GAP_MS` | `2000` | Minimum gap between PTY process launches (enforced by spawn queue) |
 | `ADAPTIVE_SETTLE_ENABLED` | `true` | Enable adaptive settle delay algorithm |
 | `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
 | `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |

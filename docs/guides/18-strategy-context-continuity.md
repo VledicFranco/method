@@ -1,3 +1,16 @@
+---
+guide: 18
+title: "Strategy Context Continuity"
+domain: strategy
+audience: [agent-operators]
+summary: >-
+  Maintaining LLM context across strategy pipeline steps and sub-agent calls via refresh_context.
+prereqs: [16]
+touches:
+  - packages/bridge/src/strategy/strategy-executor.ts
+  - packages/bridge/src/strategy/strategy-parser.ts
+---
+
 # Guide 18: Strategy Context Continuity
 
 > **What this covers:** How to use `refresh_context` to control when strategy nodes start fresh LLM sessions vs. continuing the session from the previous node.
@@ -132,13 +145,15 @@ strategy:
       # Parse the results into a structured report
       - id: parse_results
         type: script
-        refresh_context: false  # script nodes can also use refresh_context
+        refresh_context: false  # accepted but has no functional effect on script nodes
 ```
 
 Both nodes use `refresh_context: false` (default), so:
 - `run_tests` starts a fresh session
 - `parse_results` continues the same session
 - The LLM has context from the test execution and can reference it when parsing
+
+> **Note:** `refresh_context` has no functional effect on `script` nodes since they execute pure state transforms without invoking an LLM. The parameter is accepted for schema consistency but does not change behavior — there is no LLM session to refresh or continue.
 
 ## Common Patterns
 
@@ -178,7 +193,7 @@ Minimize context where possible:
 ## Troubleshooting
 
 **Q: My node isn't seeing prior context. Why?**
-A: Make sure the prior node has `refresh_context: false` (or omit it — default is false). If it's true, that node started a fresh session.
+A: Check whether the *current* node has `refresh_context: true` — if so, it started a fresh session and discarded prior chat history. When `refresh_context: false` (the default), the node continues the session from the previous node, so prior context flows through. The setting controls the current node's behavior, not the prior node's.
 
 **Q: My node is taking too long. Can I make it faster?**
 A: Set `refresh_context: true` on that node (or before it) to reduce context size. Each node will have a smaller context window, making inference faster.

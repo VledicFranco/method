@@ -1,3 +1,16 @@
+---
+guide: 13
+title: "Installation and the .method/ Directory"
+domain: governance
+audience: [project-leads]
+summary: >-
+  The .method/ directory structure, manifest, installation specs, committed vs ephemeral artifacts.
+prereqs: [1, 2, 6]
+touches:
+  - .method/
+  - .method/manifest.yaml
+---
+
 # Guide 13 — Installation and the .method/ Directory
 
 Every project that adopts the method system gets a `.method/` directory. This is the home for methodology execution artifacts — project cards, retrospectives, council state, delivery logs. It sits alongside your source code and `docs/`, but serves a different purpose: `docs/` holds human knowledge (architecture specs, PRDs, RFCs), while `.method/` holds methodology runtime state.
@@ -13,6 +26,7 @@ The `.method/` directory contains everything the method system needs to operate 
 - **Retrospectives** — structured feedback from every methodology session
 - **Council artifacts** — steering council state (if you use governance)
 - **Delivery artifacts** — phase docs, session logs, reviews, audit reports
+- **Strategies** — strategy YAML files for the event trigger system (see bridge configuration)
 
 Without `.method/`, agents fall back to abstract methodology guidance with no project-specific constraints. The directory is what makes a methodology *yours*.
 
@@ -40,6 +54,12 @@ manifest:
         - delivery/reviews/
         - delivery/audits/
 
+    - id: P1-EXEC
+      type: methodology
+      version: "1.1"
+      note: "Execution substrate — routes challenges to COUNCIL/ORCH/TMP"
+      artifacts: []
+
     - id: RETRO-PROTO
       type: protocol
       version: "1.0"
@@ -58,6 +78,15 @@ manifest:
         - council/inbox/
         - council/outbox/
         - council/sub-councils/
+
+    - id: CMEM-PROTO
+      type: protocol
+      version: "0.1"
+      status: draft
+      extends: M1-COUNCIL
+      artifacts:
+        - council/memory/
+        - council/memory/INDEX.yaml
 ```
 
 Each entry has:
@@ -105,6 +134,13 @@ Every methodology and protocol in the registry declares an `installation` sectio
 | `council/sub-councils/` | directory | yes | no | Artifacts from spawned sub-council sessions |
 
 The "human input needed" column matters: TEAM.yaml and AGENDA.yaml require you to define council members and initial priorities. LOG.yaml starts empty and is populated by sessions.
+
+**CMEM-PROTO** (Council Memory Protocol) adds persistent cross-session character memory, extending M1-COUNCIL:
+
+| Artifact | Type | Committed? | Human input? | Purpose |
+|----------|------|-----------|-------------|---------|
+| `council/memory/` | directory | yes | no | Persistent character memory store |
+| `council/memory/INDEX.yaml` | file | yes | no | Memory index and retrieval metadata |
 
 ## How to Adopt a Methodology
 
@@ -228,7 +264,7 @@ Not everything in `.method/` belongs in version control. The rule is simple: **e
 |----------|-----------|-----|
 | `project-card.yaml` | Yes | Versioned configuration — the project's methodology identity |
 | `manifest.yaml` | Yes | Tracks what's installed — changes are reviewed like config changes |
-| `CHANGELOG.yaml` | Yes | Card version history with retro evidence |
+| `genesis-cursors.yaml` | Yes | Session genesis tracking |
 | `retros/` | Yes | Evidence base for card and method evolution |
 | `delivery/reviews/` | Yes | Review reports are evidence for quality tracking |
 | `council/` (all files) | Yes | Governance state — continuity depends on persistence |
@@ -244,8 +280,10 @@ Here is what pv-method's `.method/` directory looks like in practice:
 
 ```
 .method/
-  project-card.yaml          ← I2-METHOD, P2-SD v2.0, 13 delivery rules
-  manifest.yaml              ← P2-SD + P1-EXEC + RETRO-PROTO + STEER-PROTO
+  project-card.yaml          ← I2-METHOD, P2-SD v2.0, 14 delivery rules
+  manifest.yaml              ← P2-SD + P1-EXEC + RETRO-PROTO + STEER-PROTO + CMEM-PROTO
+  genesis-cursors.yaml       ← session genesis tracking
+  strategies/                ← strategy YAML files for the event trigger system
   retros/
     retro-2026-03-14-001.yaml
     retro-2026-03-14-002.yaml
@@ -255,12 +293,16 @@ Here is what pv-method's `.method/` directory looks like in practice:
     retro-prd003-p1-m1-impl.yaml
     ...                      ← 15+ retros accumulated
   council/
-    TEAM.yaml                ← 6 persistent council members
+    TEAM.yaml                ← 5 persistent council members
     AGENDA.yaml              ← prioritized work items (P0/P1/P2)
     LOG.yaml                 ← append-only session decisions
-    inbox/                   ← inter-project messages received
-    outbox/                  ← inter-project messages sent
+    pending-deltas.yaml      ← proposed methodology deltas
+    logs/                    ← individual session log files
+    memory/                  ← persistent cross-session character memory (CMEM-PROTO)
+    memory/INDEX.yaml        ← memory index
+    rfcs/                    ← request-for-comment documents
     sub-councils/            ← specialist sub-council artifacts
+    theory-council/          ← theory-focused sub-council artifacts
   delivery/
     phases/                  ← gitignored — ephemeral
     sessions/                ← gitignored — ephemeral
@@ -268,7 +310,7 @@ Here is what pv-method's `.method/` directory looks like in practice:
     audits/                  ← gitignored — ephemeral
 ```
 
-The manifest declares four installed entries: P2-SD and P1-EXEC as methodologies, RETRO-PROTO and STEER-PROTO as protocols. The retros directory has accumulated 15+ retrospective files from real methodology sessions — each one is structured YAML with observations, severity ratings, and improvement targets. The council directory has a standing 6-member team that meets weekly to steer priorities.
+The manifest declares five installed entries: P2-SD and P1-EXEC as methodologies, RETRO-PROTO, STEER-PROTO, and CMEM-PROTO as protocols. The retros directory has accumulated 15+ retrospective files from real methodology sessions — each one is structured YAML with observations, severity ratings, and improvement targets. The council directory has a standing 5-member team that meets weekly to steer priorities.
 
 ## How Installation Relates to the Project Card
 

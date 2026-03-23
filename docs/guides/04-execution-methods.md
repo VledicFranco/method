@@ -1,14 +1,27 @@
+---
+guide: 4
+title: "Execution Methods (P1)"
+domain: registry
+audience: [agent-operators]
+summary: >-
+  COUNCIL, ORCH, TMP, ADVREV — when to use each, how delta_EXEC routing works.
+prereqs: [1, 2]
+touches:
+  - registry/P1-EXEC/
+---
+
 # Guide 4 — Execution Methods (P1)
 
-P1-EXEC is the universal execution layer. Every challenge an agent encounters can be executed through one of three methods. The methodology's job is to pick the right one.
+P1-EXEC is the universal execution layer. Every challenge an agent encounters can be executed through one of four methods. The methodology's transition function (δ_EXEC) routes challenges to one of three routable methods; a fourth method is delegation-only.
 
-## The Three Methods
+## The Four Methods
 
-| Method | When | How | Overhead |
-|--------|------|-----|----------|
-| **M1-COUNCIL** | Multiple defensible positions, needs adversarial debate | Cast of characters with opposing convictions debate the challenge | High — multi-turn, multiple perspectives |
-| **M2-ORCH** | Decomposable into parallel independent sub-tasks | Orchestrator dispatches sub-agents, integrates results | Medium — coordination + integration |
-| **M3-TMP** | Well-scoped, single correct answer, sequential | One agent: orient → execute → verify | Low — three steps, zero overhead |
+| Method | When | How | Overhead | Invocation |
+|--------|------|-----|----------|------------|
+| **M1-COUNCIL** | Multiple defensible positions, needs adversarial debate | Cast of characters with opposing convictions debate the challenge | High — multi-turn, multiple perspectives | Routable via δ_EXEC |
+| **M2-ORCH** | Decomposable into parallel independent sub-tasks | Orchestrator dispatches sub-agents, integrates results | Medium — coordination + integration | Routable via δ_EXEC |
+| **M3-TMP** | Well-scoped, single correct answer, sequential | One agent: orient → execute → verify | Low — three steps, zero overhead | Routable via δ_EXEC |
+| **M4-ADVREV** | Artifact needs multi-perspective adversarial review | Parallel isolated advisors attack, then parallel synthesizers defend and prioritize | Medium-high — parallel sub-agents, two phases | Delegation only (RP-5) |
 
 ## M3-TMP — Traditional Meta-Prompting
 
@@ -63,11 +76,34 @@ Structured adversarial debate. Four steps:
 - **Cast plurality (Ax-1):** At least 2 contrarians — otherwise it's a monologue with a moderator
 - **Position non-repetition (Ax-3):** No restating positions without responding to a counter-argument
 - **Conviction stability (Ax-4):** No position updates without acknowledging a counter-argument
-- **Diminishing returns halt (Ax-7):** Leader can halt the debate when returns are diminishing
+- **Diminishing returns halt (Ax-7):** Leader can halt the debate when returns are diminishing (minimum-turns guard: at least 2 * |Questions| turns before halt)
+- **Anti-capitulation clause integrity (Ax-8):** Every character prompt must include both (a) defend your positions — don't agree to avoid friction, AND (b) acknowledge genuinely good counter-arguments honestly. Neither clause may be removed independently. Evidence: EXP-003 showed defend-only produces 56% position rigidity; acknowledge-only produces capitulation. Both clauses together produce zero capitulation with widest conviction spread.
 
 **Principal failure mode:** Characters converge too quickly because the executing LLM can't maintain epistemic separation between characters it plays simultaneously. Ax-3 and Ax-4 structurally resist this, but the residual risk is real.
 
 **Use when:** The problem has multiple defensible solution philosophies. You need minority views surfaced. A decision must be made, not an implementation executed.
+
+**CMEM-PROTO resume precondition (v1.2+):** M1-COUNCIL's σ₀ (Setup) now branches between a fresh path and a resume path. If CMEM-PROTO memory exists for the topic (checked via `.method/council/memory/INDEX.yaml`), σ₀ takes the resume path: it loads the prior cast, decisions, open questions, and tensions from the memory file, and presents them to the PO for re-approval before continuing. Characters re-affirm or update their positions at the start of σ₂, grounded in the loaded context. This enables multi-session council debates where cast expertise and prior decisions persist across conversations.
+
+## M4-ADVREV — Adversarial Review Pipeline
+
+Structured adversarial review where parallel contrarian advisors independently attack an artifact from complementary dimensions, followed by parallel synthesizers who defend, refine, and sequence findings into an Action Plan. Trial status, v0.1.
+
+```
+σ₀ Target Identification → Confirm artifact, type, and review scope with PO
+σ₁ Cast Design           → Design 3-5 advisor dimensions with mandatory coverage
+σ₂ Advisor Dispatch      → Parallel isolated sub-agents attack the artifact
+σ₃ Review Report         → Collect advisor findings into structured report
+σ₄ Synthesizer Dispatch  → Parallel synthesizers (Defender, Pragmatist, Strategist, Integrator) respond
+σ₅ Action Plan           → Consensus matrix: accept, accept-with-refinement, defer, acknowledge, reject, merge
+σ₆ Iteration Check       → Optional re-review after fixes
+```
+
+**What makes it different from M1-COUNCIL:** M1-COUNCIL uses debate (characters influence each other). M4-ADVREV uses parallel isolation — advisors cannot see each other's findings. This prevents convergence and ensures genuinely independent attack vectors. Evidence: EXP-002 showed isolated agents produce 2x position shifts and +43% counter-arguments vs single-context execution.
+
+**Invocation model:** M4-ADVREV is not routed by δ_EXEC. It's a delegation-only method (RP-5 in P1-EXEC) — invoked by parent methods via retraction pairs or direct load when an artifact needs adversarial review. It can also be invoked standalone for ad-hoc review.
+
+**Use when:** An artifact has real stakes — a design, RFC, PR, data model, or implementation that could fail in ways not obvious from a single perspective.
 
 ## How δ_EXEC Routes
 
@@ -91,11 +127,13 @@ If ANY of these is true, route to COUNCIL. If none is true but the challenge dec
 
 ### The ORCH→TMP Fallback
 
-There's one cross-method path: if M2-ORCH's σ₀ (Orient) determines the challenge is NOT decomposable (the dispatcher got it wrong), it rejects. The methodology falls back to M3-TMP. This is the only error recovery in v1.1 — other cross-method transitions (COUNCIL→TMP, ORCH→COUNCIL) are deferred to v2.0.
+There's one cross-method path: if M2-ORCH's σ₀ (Orient) determines the challenge is NOT decomposable (the dispatcher got it wrong), it rejects. The methodology falls back to M3-TMP. This is the only error recovery in v1.1 — other cross-method transitions (COUNCIL→TMP, ORCH→COUNCIL) are deferred to v2.0. M4-ADVREV is outside this routing entirely — it's a delegation-only method invoked via RP-5.
 
-## Execution Binding
+## Execution Binding (Proposed)
 
-P1-EXEC's methods aren't just for top-level challenges. Any method step in ANY methodology can declare an **execution binding** — which P1-EXEC method it uses:
+> **Status: proposed.** Execution binding is a prototype analysis artifact (`EXECUTION-BINDING-PROTOTYPE.yaml`) — it is not implemented in any compiled method. The concept below describes the intended design if the spec is adopted.
+
+P1-EXEC's methods aren't just for top-level challenges. Any method step in ANY methodology could declare an **execution binding** — which P1-EXEC method it uses:
 
 ```yaml
 - id: sigma_1

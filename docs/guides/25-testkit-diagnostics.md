@@ -1,3 +1,16 @@
+---
+guide: 25
+title: "Testkit: Diagnostics"
+domain: testkit
+audience: [method-designers]
+summary: >-
+  Compilation diagnostics, trace evaluation, simulation, and custom output formatting.
+prereqs: [22, 23]
+touches:
+  - packages/testkit/src/
+  - packages/methodts/src/
+---
+
 # Guide 25 — Testkit: Diagnostics and Custom Output
 
 The testkit provides formatting utilities for predicate traces, compilation reports, and coherence results. These are used internally by assertions (they power the detailed failure messages) but are also available for custom test output and debugging.

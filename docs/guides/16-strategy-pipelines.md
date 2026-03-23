@@ -1,3 +1,17 @@
+---
+guide: 16
+title: "Strategy Pipelines"
+domain: strategy
+audience: [delivery-teams]
+summary: >-
+  Automated DAG workflows that compose methodology invocations, gates, and scripts with event triggers.
+prereqs: [1, 2, 10]
+touches:
+  - packages/bridge/src/strategy/
+  - packages/bridge/src/triggers/
+  - .method/strategies/
+---
+
 # Guide 16 — Strategy Pipelines: Automated Methodology DAG Execution
 
 How to define and run Strategy Pipelines — automated DAG workflows that compose methodology invocations, algorithmic gates, and scripts into repeatable pipelines that fire on project events.
@@ -111,6 +125,7 @@ strategy:
     rules:
       - { condition: "total_cost_usd > 5.00", action: warn_human }
       - { condition: "step_duration_ms > 600000", action: kill_and_requeue }
+      - { condition: "total_cost_usd > 20.00", action: escalate_to_human }
 
   outputs:
     - type: channel_event
@@ -255,6 +270,18 @@ curl -X POST http://localhost:3456/strategies/execute \
 {"execution_id": "exec-S-MY-STRATEGY-1774011072980", "status": "started"}
 ```
 
+### `strategy_yaml` Parameter
+
+Instead of a file path, you can pass the strategy YAML inline:
+
+```bash
+curl -X POST http://localhost:3456/strategies/execute \
+  -H "Content-Type: application/json" \
+  -d '{"strategy_yaml": "strategy:\n  id: S-INLINE\n  name: Inline test\n  ...", "context_inputs": {}}'
+```
+
+The body accepts either `strategy_path` (reads from disk) or `strategy_yaml` (inline YAML string). Exactly one must be provided.
+
 ### Polling Status
 
 ```bash
@@ -262,6 +289,30 @@ curl http://localhost:3456/strategies/exec-S-MY-STRATEGY-1774011072980/status
 ```
 
 Returns node statuses, cost, gate results, artifacts, and retro path.
+
+### Listing Executions
+
+```bash
+curl http://localhost:3456/strategies
+```
+
+Returns all strategy executions in memory with `execution_id`, `strategy_id`, `strategy_name`, `status`, `started_at`, `cost_usd`, and `retro_path`.
+
+### DAG Structure
+
+```bash
+curl http://localhost:3456/api/strategies/exec-S-MY-STRATEGY-1774011072980/dag
+```
+
+Returns the parsed DAG for a given execution: nodes (with `id`, `type`, `depends_on`, `inputs`, `outputs`, `gates`, `config`), `strategy_gates`, `capabilities`, `oversight_rules`, and `context_inputs`. Used by the dashboard visualizer.
+
+### Strategy Definitions
+
+```bash
+curl http://localhost:3456/api/strategies/definitions
+```
+
+Lists all strategy YAML definitions found in `.method/strategies/`. Each entry includes the parsed `id`, `name`, `version`, `triggers`, `nodes`, `strategy_gates`, `oversight_rules`, `context_inputs`, `outputs`, and `last_execution` (cross-referenced from in-memory executions). Files that fail to parse are included with an `error` field.
 
 ### MCP Tools
 
@@ -286,12 +337,54 @@ trigger_reload     — hot reload strategy files
 curl http://localhost:3456/triggers
 ```
 
+Response includes the `triggers` array plus top-level metadata:
+
+```json
+{
+  "triggers": [ ... ],
+  "paused": false,
+  "total": 3,
+  "watcher_count": 5
+}
+```
+
+Each trigger object includes `trigger_id`, `strategy_id`, `strategy_path`, `type`, `enabled`, `max_concurrent`, `active_executions`, `stats`, `trigger_config`, and type-specific derived fields (e.g., `branch_pattern` for `git_commit`, `webhook_path` for `webhook`).
+
+### Single Trigger Detail
+
+```bash
+curl http://localhost:3456/triggers/{trigger_id}
+```
+
+Returns the full trigger object (same fields as the list entry) plus `recent_fires` — the last 10 fire events for this trigger, newest last.
+
+### Trigger Fire History
+
+```bash
+curl http://localhost:3456/triggers/history
+curl http://localhost:3456/triggers/history?limit=20
+curl http://localhost:3456/triggers/history?trigger_id=S-MY-STRATEGY:git_commit:0
+```
+
+Global trigger fire history. Optional `limit` query param caps the number of events returned (from the end of history). Optional `trigger_id` param filters to a single trigger's fires. Returns `{ events: [...], count: N }`.
+
+### Webhook Request Log
+
+```bash
+curl http://localhost:3456/triggers/{trigger_id}/webhook-log
+curl http://localhost:3456/triggers/{trigger_id}/webhook-log?limit=10
+```
+
+Returns the ring buffer of recent webhook HTTP requests for a webhook-type trigger. Default limit is 20, max 50. Returns 400 if the trigger is not a `webhook` type.
+
 ### Enable/Disable
 
 ```bash
 curl -X POST http://localhost:3456/triggers/{trigger_id}/enable
 curl -X POST http://localhost:3456/triggers/{trigger_id}/disable
 ```
+
+> **Localhost only:** Enable, disable, pause, resume, and reload endpoints require the request to originate from localhost (`127.0.0.1`, `::1`, or `::ffff:127.0.0.1`). Non-local requests receive a `403 Forbidden` response.
 
 ### Maintenance Mode
 
@@ -318,6 +411,36 @@ The bridge dashboard at `http://localhost:3456/dashboard` includes a **Triggers*
 - Maintenance mode banner when triggers are paused
 
 The panel auto-refreshes every 5 seconds.
+
+## Oversight Actions
+
+Oversight rules evaluate conditions against execution state after each dependency level completes. Three actions are available:
+
+| Action | Behavior |
+|--------|----------|
+| `warn_human` | Logs a warning and emits an oversight event. Execution continues. |
+| `kill_and_requeue` | Kills the current node and requeues it for retry. |
+| `escalate_to_human` | Sets execution status to `suspended` and halts the pipeline immediately. Strategy gates are skipped. The execution remains in memory for inspection. |
+
+```yaml
+oversight:
+  rules:
+    - { condition: "total_cost_usd > 5.00", action: warn_human }
+    - { condition: "step_duration_ms > 600000", action: kill_and_requeue }
+    - { condition: "total_cost_usd > 20.00", action: escalate_to_human }
+```
+
+## Execution Statuses
+
+| Status | Meaning |
+|--------|---------|
+| `started` | Execution created, about to begin DAG traversal. |
+| `running` | Actively executing nodes. |
+| `completed` | All nodes and strategy gates passed. |
+| `failed` | One or more nodes or strategy gates failed after all retries. |
+| `suspended` | Halted by an `escalate_to_human` oversight rule. Execution is frozen for human inspection. |
+
+Statuses `completed`, `failed`, and `suspended` are terminal — these executions are eligible for eviction from the in-memory store after `STRATEGY_EXECUTION_TTL_MS`.
 
 ## Execution Flow
 
@@ -353,6 +476,10 @@ The panel auto-refreshes every 5 seconds.
 | `STRATEGY_MAX_PARALLEL` | `3` | Max concurrent nodes per execution |
 | `STRATEGY_DEFAULT_GATE_RETRIES` | `3` | Default max retries for algorithmic gates |
 | `STRATEGY_DEFAULT_TIMEOUT_MS` | `600000` | Per-node timeout (10 min) |
+| `STRATEGY_DEFAULT_BUDGET_USD` | *(none)* | Per-execution LLM cost budget cap (USD) |
+| `STRATEGY_RETRO_DIR` | `.method/retros` | Override retro output directory |
+| `STRATEGY_EXECUTION_TTL_MS` | `3600000` | TTL for completed executions in memory (1 hour) |
+| `STRATEGY_MAX_EXECUTIONS` | `50` | Max executions retained in memory |
 | `TRIGGERS_ENABLED` | `true` | Master switch for event triggers |
 | `TRIGGERS_STRATEGY_DIR` | `.method/strategies` | Directory scanned for strategy YAML |
 | `TRIGGERS_DEFAULT_DEBOUNCE_MS` | `5000` | Default debounce window |
@@ -426,7 +553,7 @@ Every strategy execution generates a retro at `.method/retros/retro-strategy-YYY
 
 - **No sub-strategy composition** — strategies cannot invoke other strategies as nodes (Phase 3)
 - **No LLM review gates** — gates are algorithmic expressions only, not LLM-evaluated (Phase 2b)
-- **No suspension/resumption** — interrupted executions cannot be resumed (Phase 2b)
+- **No resumption** — suspended executions (from `escalate_to_human`) cannot be resumed; they must be re-executed (Phase 2b)
 - **No runtime DAG visualization** — the dashboard shows trigger status but not live execution graph (Phase 2b)
 - **Script node timeout** cannot interrupt synchronous infinite loops — use short scripts
 - **Sandbox is not a security boundary** — `new Function()` with shadowed globals, known escape vectors documented

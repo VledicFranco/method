@@ -1,3 +1,15 @@
+---
+guide: 1
+title: "What is a Method?"
+domain: concepts
+audience: [everyone]
+summary: >-
+  The 5-tuple formal structure, steps, objectives, and why formalism matters.
+touches:
+  - registry/
+  - theory/
+---
+
 # Guide 1 — What is a Method?
 
 A method is a formal specification of how to get something done. Not a vague process description — a precise structure with defined inputs, steps, roles, and success criteria.

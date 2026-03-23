@@ -1,3 +1,16 @@
+---
+guide: 17
+title: "Narrative Flow UI"
+domain: bridge
+audience: [contributors]
+summary: >-
+  React SPA frontend for visualizing methodology execution as interactive narratives.
+prereqs: [10, 14]
+touches:
+  - packages/bridge/frontend/
+  - packages/bridge/src/frontend-route.ts
+---
+
 # Guide 17 — Narrative Flow: Bridge Frontend Design Guide
 
 How to build and extend the bridge frontend using the Narrative Flow design language. This guide covers the design principles, component patterns, and implementation guidance for anyone contributing to the bridge UI.
@@ -249,37 +262,73 @@ Animations should feel like living things:
 
 ## File Structure
 
+> **Note:** This frontend is fully built and served at `/app/*` (controlled by `FRONTEND_ENABLED` env var, default `true`). The structure below reflects the current implementation.
+
 ```
 packages/bridge/frontend/
 ├── src/
-│   ├── components/          # Shared components
-│   │   ├── Navigation.tsx
-│   │   ├── AttentionBanner.tsx
-│   │   ├── SessionCard.tsx
-│   │   ├── TimelineEvent.tsx
-│   │   ├── SlideOverPanel.tsx
-│   │   ├── StatusBadge.tsx
-│   │   ├── MetricCard.tsx
-│   │   └── ProgressBar.tsx
-│   ├── pages/               # Route-level pages
-│   │   ├── Dashboard.tsx
-│   │   ├── Sessions.tsx
-│   │   ├── Strategies.tsx
-│   │   ├── Governance.tsx
-│   │   ├── Analytics.tsx
-│   │   ├── Triggers.tsx
-│   │   └── System.tsx
-│   ├── hooks/               # Data fetching + state
-│   │   ├── useSessions.ts
-│   │   ├── useTimeline.ts
-│   │   ├── useLiveExecution.ts
-│   │   └── useAttentionItems.ts
-│   ├── lib/                 # Utilities
-│   │   ├── types.ts
+│   ├── App.tsx                    # Root app component
+│   ├── main.tsx                   # Entry point
+│   ├── vite-env.d.ts
+│   ├── components/
+│   │   ├── data/                  # Data display components
+│   │   │   ├── MetricCard.tsx
+│   │   │   ├── ProgressBar.tsx
+│   │   │   ├── StatusBadge.tsx
+│   │   │   └── TimelineEvent.tsx
+│   │   ├── domain/                # Domain-specific components
+│   │   │   ├── CopyMethodologyModal.tsx
+│   │   │   ├── EventStreamPanel.tsx
+│   │   │   ├── ExecuteDialog.tsx
+│   │   │   ├── GenesisChatPanel.tsx
+│   │   │   ├── GenesisFAB.tsx
+│   │   │   ├── MethodDetail.tsx
+│   │   │   ├── MiniDag.tsx
+│   │   │   ├── ProjectListView.tsx
+│   │   │   ├── RegistryTree.tsx
+│   │   │   ├── StrategyCard.tsx
+│   │   │   ├── StrategyDefinitionPanel.tsx
+│   │   │   ├── TriggerCard.tsx
+│   │   │   └── TriggerDetail.tsx
+│   │   ├── layout/                # Layout shells
+│   │   │   ├── AttentionBanner.tsx
+│   │   │   ├── NavBar.tsx
+│   │   │   ├── PageShell.tsx
+│   │   │   └── SlideOverPanel.tsx
+│   │   └── ui/                    # Generic UI primitives
+│   │       ├── Badge.tsx
+│   │       ├── Button.tsx
+│   │       ├── Card.tsx
+│   │       ├── Tabs.tsx
+│   │       └── Tooltip.tsx
+│   ├── domain/
+│   │   └── strategies/            # Strategy visualization
+│   │       ├── CostOverlay.tsx
+│   │       ├── StrategyDag.tsx
+│   │       ├── edges/
+│   │       ├── hooks/
+│   │       ├── lib/
+│   │       └── nodes/
+│   ├── hooks/                     # Data fetching + state
+│   │   ├── useEventStream.ts
+│   │   ├── useProjects.ts
+│   │   ├── useRegistry.ts
+│   │   ├── useResourceCopy.ts
+│   │   ├── useSSE.ts
+│   │   ├── useStrategies.ts
+│   │   └── useTriggers.ts
+│   ├── stores/                    # Client-side state
+│   │   ├── preference-store.ts
+│   │   └── ui-store.ts
+│   ├── lib/                       # Utilities
 │   │   ├── api.ts
-│   │   └── formatters.ts
+│   │   ├── cn.ts
+│   │   ├── constants.ts
+│   │   ├── formatters.ts
+│   │   ├── registry-types.ts
+│   │   └── types.ts
 │   └── styles/
-│       └── vidtecci.css     # Design tokens
+│       └── vidtecci.css           # Design tokens
 ├── index.html
 ├── package.json
 ├── tsconfig.json

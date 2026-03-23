@@ -14,15 +14,18 @@ npm test
 
 ```
 packages/
-  core/       Pure methodology logic — YAML loader, sessions, theory lookup (zero transport deps)
-  mcp/        MCP server — 24 tools (14 methodology + 10 bridge proxy)
+  core/       Pure methodology logic — YAML loader, theory lookup (zero transport deps)
+  methodts/   TypeScript methodology type system and stdlib catalog (runtime source of truth)
+  testkit/    Testing framework — assertions, builders, diagnostics, runners
+  types/      Shared TypeScript types across packages
+  mcp/        MCP server — 39 tools (14 methodology + 10 bridge + 2 strategy + 6 trigger + 2 resource + 4 project + 1 genesis)
   bridge/     HTTP server — PTY session pool, channels, dashboard, token tracking
 registry/     Compiled methodology YAML specs (production artifacts — do not modify casually)
 theory/       Formal theory files (F1-FTH, F4-PHI)
 docs/
   arch/       Architecture specs (one concern per file)
   prds/       Product requirement documents
-  guides/     Usage guides (14 guides)
+  guides/     Usage guides (25 guides)
 .method/      Methodology execution home
   project-card.yaml   Essence, delivery rules, processes, governance
   manifest.yaml       Installed methodologies and protocols
@@ -68,9 +71,12 @@ npm run bridge:stop    # Stop
 | `GET /sessions/:id/output.html` | HTML page with embedded xterm.js terminal emulator |
 | `POST /sessions/:id/channels/progress` | Agent reports structured progress |
 | `POST /sessions/:id/channels/events` | Agent reports lifecycle events (with push notifications) |
-| `GET /sessions/:id/channels/progress` | Parent reads child progress (cursor-based) |
-| `GET /sessions/:id/channels/events` | Parent reads child events (cursor-based) |
+| `GET /sessions/:id/channels/progress` | Parent reads child progress (since_sequence cursor) |
+| `GET /sessions/:id/channels/events` | Parent reads child events (since_sequence cursor) |
 | `GET /channels/events` | Aggregated events across all sessions |
+| `POST /sessions/:id/resize` | Resize PTY terminal dimensions (cols, rows) |
+| `GET /pool/stats` | Pool statistics — max, active, dead, total spawned, uptime |
+| `POST /shutdown` | Graceful shutdown (localhost only) |
 
 ### Configuration
 
@@ -110,6 +116,18 @@ npm run bridge:stop    # Stop
 | `TRIGGERS_WEBHOOK_MAX_PAYLOAD_BYTES` | `1048576` | Max webhook payload size (1 MB) |
 | `TRIGGERS_MAX_WATCHERS` | `50` | Max total active file/git watchers (prevents inotify exhaustion) |
 | `TRIGGERS_LOG_FIRES` | `true` | Log trigger fires to stdout |
+| `MIN_SPAWN_GAP_MS` | `2000` | Minimum gap between PTY process launches (spawn queue) |
+| `FRONTEND_ENABLED` | `true` | Serve Narrative Flow React SPA at `/app/*` |
+| `GENESIS_ENABLED` | `false` | Enable multi-project Genesis agent |
+| `GENESIS_POLLING_INTERVAL_MS` | `5000` | Genesis project polling interval |
+| `STRATEGY_ENABLED` | `true` | Enable strategy pipeline execution |
+| `STRATEGY_MAX_PARALLEL` | `3` | Max parallel strategy nodes |
+| `STRATEGY_DEFAULT_GATE_RETRIES` | `2` | Default retry count for gate failures |
+| `STRATEGY_DEFAULT_TIMEOUT_MS` | `600000` | Default node execution timeout (10 min) |
+| `STRATEGY_DEFAULT_BUDGET_USD` | `5` | Per-execution LLM cost budget cap |
+| `STRATEGY_RETRO_DIR` | `.method/retros` | Override retro output directory |
+| `STRATEGY_EXECUTION_TTL_MS` | `3600000` | TTL for completed executions in memory (1 hr) |
+| `STRATEGY_MAX_EXECUTIONS` | `50` | Max executions retained in memory |
 
 ### Key Bridge Features
 
@@ -123,11 +141,11 @@ npm run bridge:stop    # Stop
 
 **Orphaned process cleanup:** `npm run bridge:stop` kills both the bridge process and any orphaned `claude.exe` processes. Graceful shutdown includes a 500ms PTY cleanup delay and a 5s force-exit timeout.
 
-**Connection retry:** All MCP proxy tools retry once (after 1s) on connection errors to the bridge, handling transient failures automatically.
+**Connection retry:** MCP proxy tools using GET/HEAD retry once (after 1s) on connection errors. POST-based tools (spawn, prompt, progress, event) do not retry to prevent double-fire on mutating operations.
 
 ### MCP Proxy Tools
 
-The MCP server exposes 10 bridge proxy tools. Configure with `BRIDGE_URL` env var (default `http://localhost:3456`). All tools include automatic retry (1 retry after 1s on connection error).
+The MCP server exposes 10 bridge proxy tools, plus additional strategy, trigger, resource, project, and genesis tools (39 total). Configure with `BRIDGE_URL` env var (default `http://localhost:3456`).
 
 **Session management:**
 - `bridge_spawn` — spawn a session (auto-correlates methodology session ID; supports `persistent` flag)
@@ -143,7 +161,28 @@ The MCP server exposes 10 bridge proxy tools. Configure with `BRIDGE_URL` env va
 - `bridge_read_events` — read child's events (cursor-based)
 - `bridge_all_events` — aggregated events across all sessions
 
-Push notifications: when a child emits `completed`, `error`, `escalation`, `budget_warning`, or `stale` events, the bridge auto-prompts the parent agent.
+Push notifications: when a child emits `completed`, `error`, `escalation`, `budget_warning`, `stale`, or `scope_violation` events, the bridge auto-prompts the parent agent.
+
+**Strategy tools:**
+- `strategy_execute` — execute a strategy pipeline from YAML path or inline YAML
+- `strategy_status` — check execution status and node progress
+
+**Trigger tools:**
+- `trigger_list` — list registered triggers with status
+- `trigger_enable` / `trigger_disable` — enable or disable a trigger
+- `trigger_pause_all` / `trigger_resume_all` — global trigger pause/resume
+- `trigger_reload` — reload triggers from strategy files
+
+**Resource tools:**
+- `resource_copy_methodology` — copy a methodology to target projects
+- `resource_copy_strategy` — copy a strategy to target projects
+
+**Project tools (PRD 020):**
+- `project_list` — list discovered projects
+- `project_get` — get project metadata
+- `project_get_manifest` — get project manifest
+- `project_read_events` — read project events
+- `genesis_report` — Genesis agent reporting tool
 
 ## Delivery Rules (Summary)
 
@@ -155,7 +194,7 @@ Push notifications: when a child emits `completed`, `error`, `escalation`, `budg
 - **DR-12:** Architecture docs follow horizontal pattern — one file per concern in `docs/arch/`.
 - **DR-13:** Validate YAML after registry edits: `node -e "require('js-yaml').load(require('fs').readFileSync('file.yaml','utf8'))"`.
 
-See `.method/project-card.yaml` for the full set (DR-01 through DR-13).
+See `.method/project-card.yaml` for the full set (DR-01 through DR-14).
 
 ## Methodology & Governance
 
@@ -170,9 +209,10 @@ This project uses the method system it builds. Instance: I2-METHOD, methodology:
 ### Installed (`.method/manifest.yaml`)
 
 - **P2-SD v2.0** — software delivery methodology (7 methods)
-- **P1-EXEC v1.1** — execution methodology (M1-COUNCIL, M2-ORCH, M3-TMP)
+- **P1-EXEC v1.1** — execution methodology (M1-COUNCIL, M2-ORCH, M3-TMP, M4-ADVREV)
 - **RETRO-PROTO v1.0** — retrospective protocol (promoted)
-- **STEER-PROTO v0.1** — steering council protocol (trial)
+- **STEER-PROTO v0.1** — steering council protocol (draft)
+- **CMEM-PROTO v0.1** — council memory protocol (draft, extends M1-COUNCIL)
 
 ### Steering Council
 

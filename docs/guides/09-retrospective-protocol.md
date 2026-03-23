@@ -1,3 +1,16 @@
+---
+guide: 9
+title: "The Retrospective Protocol"
+domain: governance
+audience: [everyone]
+summary: >-
+  Self-improvement loop via mandatory retrospectives. Schema, aggregation, thresholds, and empirical results.
+prereqs: [1]
+touches:
+  - registry/P0-META/RETROSPECTIVE-PROTOCOL.yaml
+  - .method/retros/
+---
+
 # Guide 9 — The Retrospective Protocol
 
 How methodologies improve themselves. A compiled method is precise and verifiable, but it is also frozen. Without a feedback mechanism, the same gaps persist across every session and every project. The Retrospective Protocol is the self-improvement loop that closes this gap.
@@ -114,7 +127,6 @@ Retrospectives are stored in the project repository:
 your-project/
   .method/
     project-card.yaml
-    CHANGELOG.yaml
     retros/
       retro-2026-03-14-001.yaml
       retro-2026-03-14-002.yaml
@@ -152,9 +164,8 @@ The project lead processes retrospectives from `.method/retros/`:
 1. Read all unprocessed retros
 2. Split observations by improvement_target (card vs. method)
 3. Check card-level thresholds — does any delivery rule have enough feedback to warrant revision?
-4. Apply card changes, update `.method/CHANGELOG.yaml`
-5. Extract method-level observations into `.method/submissions/`
-6. Submit to the method registry (`pv-method/registry/submissions/incoming/`)
+4. Apply card changes
+5. Extract method-level observations and submit to the method registry (`registry/submissions/incoming/`)
 
 ### Registry-Level: Method Aggregation
 
@@ -219,12 +230,9 @@ The observation rate comparison is the closed loop. If sigma_B3 generated fricti
 
 ### Changelogs
 
-Two kinds:
+Registry-level changelogs live at `registry/{methodology}/CHANGELOG.yaml` and track methodology and method version history. Each entry traces to gap candidates and submission evidence, so that any change can be traced backward: from the new guidance, to the gap candidate, to the observations, to the specific sessions and projects where the problem was observed.
 
-- **Project-level** (`.method/CHANGELOG.yaml`) — tracks card version history. Each entry lists the changes, the retros that provided evidence, and the gap candidate ID.
-- **Registry-level** (`registry/{methodology}/CHANGELOG.yaml`) — tracks methodology and method version history. Each entry traces to gap candidates and submission evidence.
-
-Both changelogs exist so that any change can be traced backward: from the new guidance, to the gap candidate, to the observations, to the specific sessions and projects where the problem was observed.
+> **Note:** A project-level `.method/CHANGELOG.yaml` for tracking card version history is a planned convention but is not yet implemented. Card changes are currently tracked through retrospective evidence and commit history.
 
 ## Empirical Basis
 

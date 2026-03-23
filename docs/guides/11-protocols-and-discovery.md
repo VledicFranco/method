@@ -1,4 +1,16 @@
-# Guide 10 — Protocols and Method Discovery
+---
+guide: 11
+title: "Protocols and Method Discovery"
+domain: registry
+audience: [method-designers]
+summary: >-
+  How informal practices become formal methods through the protocol R&D pipeline.
+prereqs: [1, 2, 3]
+touches:
+  - registry/P0-META/
+---
+
+# Guide 11 — Protocols and Method Discovery
 
 How informal practices become formal methods. The protocol system is the method system's R&D pipeline — it's how new methods and methodologies are discovered, validated, and promoted.
 
@@ -112,21 +124,21 @@ The Steering Protocol (drafted, not yet trialed) is the second protocol in the s
 
 Here's the key insight: **protocols are how the method system discovers what it's missing.**
 
-P0-META has a WIP arm (priority 7 in δ_META) for method discovery (M2-MDIS). M2-MDIS was never compiled because nobody knew how to formalize the act of discovering methods. Protocols are the answer:
+P0-META has arm 7 in δ_META for method discovery (M2-MDIS). M2-MDIS is now compiled (v1.0, all G0-G6 gates PASS) — it formalizes the protocol lifecycle that was already working informally. The protocol system validated the discovery pattern empirically (RETRO-PROTO, STEER-PROTO), and that evidence enabled M2-MDIS to be compiled as a proper method with domain theory, step DAG, and full compilation gates.
 
 ```
 Informal practice observed in execution
-    ↓ someone writes a protocol
-Protocol trial produces evidence
-    ↓ evidence shows the practice works
-M1-MDES formalizes it into a compiled method
-    ↓ method enters the registry
-δ_META can now route to it
+    ↓ M2-MDIS sigma_0: recognize and validate the observation
+Protocol drafted (schema + enforcement + trial criteria)
+    ↓ M2-MDIS sigma_1-2: draft and trial
+Trial produces evidence
+    ↓ M2-MDIS sigma_3: evaluate against promotion criteria
+    ↓ M2-MDIS sigma_4: promote (compile to method, axiom, or archive)
+Compiled method enters the registry
+    ↓ δ_META can now route to it
 ```
 
-The protocol lifecycle IS the method discovery process. Every protocol that gets promoted to a method is a successful M2-MDIS execution. The protocol system operationalizes M2-MDIS without M2-MDIS itself needing to be compiled first.
-
-This is self-bootstrapping: the method for discovering methods is itself discovered through the protocol mechanism.
+The protocol lifecycle IS the method discovery process, and M2-MDIS is its compiled formalization. Every protocol that gets promoted to a method is a successful M2-MDIS execution. The system is self-bootstrapping: the protocol mechanism validated the discovery pattern, which then enabled M2-MDIS itself to be compiled.
 
 ## When to Write a Protocol
 
@@ -160,6 +172,7 @@ Delivery rules are project-specific and lightweight. Protocols are universal but
 registry/P0-META/
   RETROSPECTIVE-PROTOCOL.yaml    ← promoted (universal axiom)
   STEERING-PROTOCOL.yaml         ← draft (awaiting trial)
+  COUNCIL-MEMORY-PROTOCOL.yaml   ← draft v0.1 (persistent cross-session context for M1-COUNCIL)
   RETRO-ARTIFACTS.yaml           ← companion spec for RETRO-PROTO
   RETRO-PROTO-PROMOTION.yaml     ← promotion proposal (approved)
 ```

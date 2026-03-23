@@ -1,3 +1,15 @@
+---
+guide: 5
+title: "Software Delivery (P2)"
+domain: registry
+audience: [delivery-teams]
+summary: >-
+  The full PRD-to-audit delivery loop, all 7 methods, worked example.
+prereqs: [1, 2]
+touches:
+  - registry/P2-SD/
+---
+
 # Guide 5 — Software Delivery (P2)
 
 P2-SD is the methodology for delivering software. It covers the full loop from PRD to production-ready code, organized in discrete sessions with formal quality gates.

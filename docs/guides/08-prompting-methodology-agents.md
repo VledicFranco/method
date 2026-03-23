@@ -1,3 +1,16 @@
+---
+guide: 8
+title: "Prompting Methodology Agents"
+domain: bridge
+audience: [agent-operators]
+summary: >-
+  How to write orchestrator prompts, bridge_spawn parameters, and empirical patterns from production sessions.
+prereqs: [1, 2, 10]
+touches:
+  - packages/mcp/src/
+  - packages/bridge/src/pool.ts
+---
+
 # Guide 8 — Prompting Methodology Agents
 
 How to write an orchestrator prompt that gets an agent to follow a methodology correctly. Based on empirical evidence from 4 production sessions across 2 projects.
@@ -146,21 +159,50 @@ When spawning sub-agents:
 
 ### Spawning Sub-Agents via Bridge
 
-When the orchestrator uses the bridge to spawn sub-agents, use `bridge_spawn` with permission bypass:
+When the orchestrator uses the bridge to spawn sub-agents, use `bridge_spawn` with the full parameter set:
 
 ```
 bridge_spawn({
   workdir: "/path/to/project",
   spawn_args: ["--allowedTools", "mcp__method__*"],
-  session_id: "current-session-id"
+  session_id: "current-session-id",
+  nickname: "impl-auth-module",
+  purpose: "Implement the auth module per PRD 003 section 2",
+  parent_session_id: "orchestrator-bridge-session-id",
+  depth: 1,
+  budget: { max_depth: 3, max_agents: 10 },
+  isolation: "worktree",
+  timeout_ms: 1800000,
+  mode: "pty",
+  allowed_paths: ["packages/auth/**", "packages/shared/types/**"],
+  scope_mode: "enforce"
 })
 ```
+
+**Parameter reference:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `workdir` | Yes | Working directory for the spawned agent |
+| `spawn_args` | No | CLI arguments for the Claude Code process |
+| `initial_prompt` | No | Initial prompt sent on spawn |
+| `session_id` | No | Methodology session ID to correlate with the bridge session |
+| `nickname` | No | Human-readable agent name (auto-generated if omitted) |
+| `purpose` | No | Why this agent was spawned (1-2 sentences for operator context) |
+| `parent_session_id` | No | Bridge session ID of the parent (creates parent-child chain) |
+| `depth` | No | Recursion depth (0 = root, increments per level) |
+| `budget` | No | Chain constraints: `max_depth` (default 3), `max_agents` (default 10) |
+| `isolation` | No | `"worktree"` (git worktree per agent) or `"shared"` (default) |
+| `timeout_ms` | No | Stale timeout in ms (default: 30 minutes). Auto-killed at 2x. |
+| `mode` | No | `"pty"` (interactive TUI) or `"print"` (headless JSON). Default: `"pty"`. |
+| `allowed_paths` | No | Glob patterns of files the agent may modify (PRD 014). Empty = no constraint. |
+| `scope_mode` | No | `"enforce"` (pre-commit hook, requires worktree) or `"warn"` (events only). Default: `"enforce"`. |
 
 The `spawn_args` field passes CLI flags to the spawned Claude Code process:
 - `["--dangerously-skip-permissions"]` — bypass all permission prompts (development only)
 - `["--allowedTools", "mcp__method__*"]` — allow methodology MCP tools without prompting (production)
 
-The `session_id` parameter auto-correlates the methodology session with the bridge session — no manual ID mapping needed.
+The `session_id` parameter auto-correlates the methodology session with the bridge session — no manual ID mapping needed. The `parent_session_id` + `depth` + `budget` fields enable parent-child session chains with budget enforcement (PRD 006). The `nickname` and `purpose` fields give agents human-readable identity for dashboard observability (PRD 007). The `isolation` and `allowed_paths` + `scope_mode` fields enable worktree-based scope enforcement (PRD 014).
 
 **The critical constraint:** "Do not let sub-agents make scope decisions." In every session, the orchestrator made better scope decisions than sub-agents would have because it holds the full context.
 

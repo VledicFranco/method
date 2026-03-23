@@ -1,3 +1,15 @@
+---
+guide: 23
+title: "Testkit Reference"
+domain: testkit
+audience: [method-designers]
+summary: >-
+  Full API reference for assertions, builders, harnesses, providers, and diagnostics.
+prereqs: [22]
+touches:
+  - packages/testkit/src/
+---
+
 # Guide 23 — Testkit Reference
 
 Complete API reference for `@method/testkit`.
@@ -281,7 +293,7 @@ Test doubles for `AgentProvider`.
 
 ### `RecordingProvider(config): { layer, recordings }`
 
-Wraps `MockAgentProvider` with recording. Same match-based config.
+Match-based agent provider with recording. Accepts the same config shape as `MockAgentProvider` but re-implements the match logic directly using `Layer.succeed` rather than wrapping `MockAgentProvider`. Captures every commission and result for post-execution inspection.
 
 ```typescript
 const { layer, recordings } = RecordingProvider({
@@ -303,16 +315,23 @@ recordings[0].result?.raw        // what was returned
 recordings[0].error              // AgentError if failOn matched
 ```
 
-### `SequenceProvider(responses, fallback?): { layer, recordings }`
+### `SequenceProvider(responses: AgentResult[], fallback?: AgentResult): { layer, recordings }`
 
-Sequential responses without match functions. Simpler when order is all you need.
+Sequential responses without match functions. Simpler when order is all you need. The optional `fallback` parameter is returned for any call after the `responses` array is exhausted. Without a fallback, exhausted calls fail with `AgentSpawnFailed`.
 
 ```typescript
 const { layer, recordings } = SequenceProvider([
   { raw: "first", cost: { tokens: 10, usd: 0.001, duration_ms: 100 } },
   { raw: "second", cost: { tokens: 20, usd: 0.002, duration_ms: 200 } },
 ]);
-// Call 1 → "first", Call 2 → "second", Call 3+ → fallback or AgentSpawnFailed
+// Call 1 → "first", Call 2 → "second", Call 3+ → AgentSpawnFailed
+
+// With fallback:
+const { layer, recordings } = SequenceProvider(
+  [{ raw: "first", cost: { tokens: 10, usd: 0.001, duration_ms: 100 } }],
+  { raw: "default", cost: { tokens: 5, usd: 0, duration_ms: 50 } },
+);
+// Call 1 → "first", Call 2+ → "default" (fallback used when responses exhausted)
 ```
 
 ### `silentProvider(): Layer<AgentProvider>`

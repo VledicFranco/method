@@ -1,3 +1,17 @@
+---
+guide: 19
+title: "Multi-Project Genesis Agent"
+domain: multi-project
+audience: [agent-operators, project-leads]
+summary: >-
+  Genesis persistent coordinator, project discovery service, cross-project event routing.
+prereqs: [1, 2, 10]
+touches:
+  - packages/bridge/src/genesis/
+  - packages/bridge/src/project-routes.ts
+  - packages/bridge/src/discovery-service.ts
+---
+
 # Guide 19: PRD 020 — Multi-Project Genesis Agent
 
 **Audience:** Agent operators, project leads
@@ -31,17 +45,21 @@ Each discovered project gets a `ProjectMetadata` record:
 ```yaml
 id: "my-project"                  # Derived from directory name
 path: "/path/to/my-project"       # Absolute filesystem path
-status: "healthy"                 # One of: healthy, git_corrupted, missing_config
+status: "healthy"                 # One of: healthy, git_corrupted, missing_config, permission_denied
 git_valid: true                   # Is .git/ directory intact?
 method_dir_exists: true           # Does .method/ exist?
-config_loaded: true               # Was .method/manifest.yaml loaded?
-config_valid: true                # Is manifest valid YAML?
+config_loaded: true               # Was .method/project-config.yaml loaded?
+config_valid: true                # Is config valid YAML with required fields (id, name)?
+config_error: null                # Error message if config loading/validation failed (optional)
+error_detail: null                # Detailed error info, e.g. git validation errors (optional)
 discovered_at: "2026-03-22T..."   # ISO timestamp
 ```
 
+**Note:** Discovery auto-creates the `.method/` directory for any project that lacks one. If directory creation fails (e.g., permissions), the project is still discovered but `method_dir_exists` will be `false`.
+
 ### Discovery Endpoints
 
-The bridge exposes three HTTP endpoints for discovering projects:
+The bridge exposes HTTP endpoints for project discovery and management:
 
 **`GET /api/projects`** — List all discovered projects
 ```json
@@ -57,19 +75,69 @@ The bridge exposes three HTTP endpoints for discovering projects:
 }
 ```
 
-**`POST /api/projects/:id/reload`** — Trigger discovery refresh for one project (or all if `:id` = "root")
+**`GET /api/projects/:id`** — Get a single project's metadata (with isolation check)
 ```json
-{ "reloaded": true, "metadata": { ... } }
+{ "id": "method", "path": "...", "status": "healthy", "git_valid": true, ... }
 ```
 
-**`GET /api/projects/:id/events`** — Stream recent project events (cursor-based pagination)
+**`POST /api/projects/validate`** — Resume discovery from a checkpoint
+```json
+{ "checkpoint": { "last_scanned_dir": "..." } }
+```
+
+**`POST /api/projects/:id/repair`** — Diagnose a corrupted repository
+```json
+{
+  "status": "git_corrupted",
+  "diagnosis": "Git repository is corrupted or invalid.",
+  "repair_steps": ["Run: git fsck --full", "..."]
+}
+```
+
+**`POST /api/projects/:id/reload`** — Reload project config (atomic manifest write with audit logging)
+
+Takes a body with `newConfig` and performs an atomic write for that specific project. Validates config structure, writes atomically (temp file + rename), emits a `CONFIG_UPDATED` event, and triggers a registry rescan.
+```bash
+curl -X POST http://localhost:3456/api/projects/my-project/reload \
+  -H "Content-Type: application/json" \
+  -d '{ "manifest": { "project": "my-project", "last_updated": "...", "installed": [...] } }'
+```
+```json
+{
+  "success": true,
+  "message": "Config reloaded and rescanned successfully",
+  "old_config": { ... },
+  "new_config": { ... },
+  "changes": "~ manifest: ..."
+}
+```
+
+**`GET /api/events`** — Global event polling (cursor-based, unfiltered)
+```json
+{
+  "events": [ ... ],
+  "nextCursor": "a1b2c3...",
+  "hasMore": true
+}
+```
+
+**`GET /api/projects/:id/events`** — Project-scoped event polling (cursor-based, with isolation check)
 ```json
 {
   "events": [
     { "id": "proj-evt-1", "type": "config_loaded", "project_id": "my-project", "timestamp": "...", "data": {...} }
   ],
-  "next_cursor": "1|proj-evt-2|1234567890"
+  "nextCursor": "a1b2c3...",
+  "hasMore": true,
+  "project_id": "my-project"
 }
+```
+
+**`POST /api/events/test`** — Append a test event (for testing/development)
+```bash
+curl -X POST http://localhost:3456/api/events/test \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "my-project", "type": "config_loaded" }'
 ```
 
 ### Configuring Discovery
@@ -80,6 +148,7 @@ Discovery behavior is controlled via environment variables on the bridge:
 |----------|---------|---------|
 | `DISCOVERY_TIMEOUT_MS` | 60000 | Max time to scan filesystem (30s–60s typical) |
 | `DISCOVERY_MAX_PROJECTS` | 1000 | Stop scanning after finding N projects |
+| `DISCOVERY_CACHE_TTL_MS` | 1800000 | Cache TTL for discovery results (30 minutes) |
 
 ```bash
 npm run bridge:dev
@@ -126,22 +195,27 @@ Check if Genesis is running:
 curl http://localhost:3456/genesis/status
 ```
 
-Response:
+Response when running (200):
 
 ```json
 {
-  "status": "spawned",
-  "session_id": "genesis-root-...",
-  "project_id": "root",
-  "budget": { "used": 2450, "remaining": 47550 },
-  "uptime_ms": 123456,
-  "polling": {
-    "active": true,
-    "interval_ms": 5000,
-    "last_poll": "2026-03-22T02:15:30Z"
-  }
+  "sessionId": "genesis-root-...",
+  "status": "idle",
+  "nickname": "genesis",
+  "csrf_token": "a1b2c3d4e5f6..."
 }
 ```
+
+Response when disabled (503):
+
+```json
+{
+  "error": "Genesis not running",
+  "message": "Genesis session has not been initialized. Check GENESIS_ENABLED env var."
+}
+```
+
+**Important:** The `csrf_token` returned here is required for `POST /genesis/prompt` requests.
 
 ### Genesis Event Polling Loop
 
@@ -168,15 +242,26 @@ Genesis Loop (every 5 seconds):
 ### Controlling Genesis
 
 **`POST /genesis/prompt`** — Send a message to Genesis
+
+Requires a valid `csrf_token` obtained from `GET /genesis/status`.
+
 ```bash
+# 1. Get a CSRF token
+CSRF=$(curl -s http://localhost:3456/genesis/status | jq -r '.csrf_token')
+
+# 2. Send the prompt
 curl -X POST http://localhost:3456/genesis/prompt \
   -H "Content-Type: application/json" \
-  -d '{
-    "text": "Summarize recent events across all projects"
-  }'
+  -d "{
+    \"message\": \"Summarize recent events across all projects\",
+    \"csrf_token\": \"$CSRF\"
+  }"
 ```
 
-**`DELETE /genesis/prompt`** — Kill Genesis and clear its session
+**`DELETE /genesis/prompt`** — Abort the current in-flight prompt
+
+Sends a CTRL-C interrupt to the Genesis PTY session to cancel whatever is currently being processed. Does **not** kill or clear the Genesis session itself.
+
 ```bash
 curl -X DELETE http://localhost:3456/genesis/prompt
 ```
@@ -184,6 +269,41 @@ curl -X DELETE http://localhost:3456/genesis/prompt
 **Restart Genesis** — it will spawn with a fresh budget:
 ```bash
 GENESIS_ENABLED=true npm run bridge
+```
+
+### Genesis Project Tool Endpoints
+
+These endpoints expose Genesis's project tools over HTTP. They require the Genesis tools context to be initialized (i.e., Genesis must be enabled and running).
+
+**`GET /api/genesis/projects/list`** — List all discovered projects (Genesis/root only)
+```json
+{
+  "projects": [ ... ],
+  "stopped_at_max_projects": false,
+  "scanned_count": 42,
+  "discovery_incomplete": false
+}
+```
+
+**`GET /api/genesis/projects/:projectId`** — Get project metadata (with isolation check)
+```json
+{ "id": "my-project", "summary": "...", "metadata": { ... } }
+```
+
+**`GET /api/genesis/projects/:projectId/manifest`** — Get project manifest YAML (with isolation check)
+
+**`GET /api/genesis/projects/events`** — Read project events (cursor-based pagination)
+
+Supports optional query parameters: `project_id` (filter by project) and `since_cursor` (pagination).
+```bash
+curl "http://localhost:3456/api/genesis/projects/events?project_id=my-project&since_cursor=abc123..."
+```
+
+**`POST /api/genesis/report`** — Report findings (Genesis session only, project_id must be "root")
+```bash
+curl -X POST http://localhost:3456/api/genesis/report \
+  -H "Content-Type: application/json" \
+  -d '{ "message": "Detected config drift in project X" }'
 ```
 
 ---
@@ -313,10 +433,10 @@ Check Genesis performance:
 curl http://localhost:3456/genesis/status
 ```
 
-Check event log size:
+Check event log:
 
 ```bash
-curl http://localhost:3456/api/projects | jq '.events | length'
+curl http://localhost:3456/api/events | jq '.events | length'
 ```
 
 ---
@@ -364,23 +484,26 @@ ls -la /path/to/project
 # 2. Check for .git/
 ls -la /path/to/project/.git
 
-# 3. Trigger a manual reload
-curl -X POST http://localhost:3456/api/projects/root/reload
+# 3. Use the repair endpoint for diagnostics
+curl -X POST http://localhost:3456/api/projects/my-project/repair
 
-# 4. Check discovery logs in bridge output
+# 4. Re-run discovery to pick up the project
+curl http://localhost:3456/api/projects
+
+# 5. Check discovery logs in bridge output
 # (look for "Scanning..." and error messages)
 ```
 
-### Task 5: Clear Genesis and restart fresh
+### Task 5: Abort Genesis prompt and restart fresh
 
 ```bash
-# 1. Kill Genesis
+# 1. Abort any in-flight prompt (sends CTRL-C to PTY)
 curl -X DELETE http://localhost:3456/genesis/prompt
 
-# 2. Verify it's dead
-curl http://localhost:3456/genesis/status  # Should show "not_spawned"
+# 2. Check Genesis status
+curl http://localhost:3456/genesis/status  # 503 if not running, 200 with session info if alive
 
-# 3. Restart bridge (or just let Genesis respawn in 30s)
+# 3. Restart bridge to get a fresh Genesis session
 GENESIS_ENABLED=true npm run bridge:dev
 ```
 
@@ -394,7 +517,7 @@ GENESIS_ENABLED=true npm run bridge:dev
 - ✅ Event polling loop: 5-second cadence, cursor management, 7-day TTL cleanup
 - ✅ Cross-project isolation: Only projects with `.method/` participate
 - ✅ Resource copying: Atomic methodology/strategy copies with validation
-- ✅ HTTP API: 7 endpoints (projects, events, resources, Genesis status/prompt)
+- ✅ HTTP API: 18 endpoints (10 project/event/resource routes + 8 Genesis routes)
 - ✅ Dashboard: Multi-project event stream view
 - ✅ Performance: Baseline validation for < 20 projects
 
@@ -419,5 +542,7 @@ GENESIS_ENABLED=true npm run bridge:dev
 - **PRD 020 spec:** `docs/prds/020.md`
 - **Bridge architecture:** `packages/bridge/src/README.md`
 - **Genesis implementation:** `packages/bridge/src/genesis/`
-- **Project isolation:** `packages/bridge/src/project-routes.ts`
+- **Project routes:** `packages/bridge/src/project-routes.ts`
+- **Genesis routes:** `packages/bridge/src/genesis-routes.ts`
+- **Discovery service:** `packages/bridge/src/multi-project/discovery-service.ts`
 - **Test suite:** `packages/bridge/src/__tests__/isolation-cross-project.test.ts` (18 tests)

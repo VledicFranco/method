@@ -1,3 +1,15 @@
+---
+guide: 24
+title: "Testkit: Migration"
+domain: testkit
+audience: [contributors]
+summary: >-
+  Migrating existing manual test patterns to the testkit framework.
+prereqs: [22, 23]
+touches:
+  - packages/testkit/src/
+---
+
 # Guide 24 — Testkit: Migrating from Manual Test Patterns
 
 If you have existing methodology tests written against `@method/methodts` directly (like the e2e tests in `packages/methodts/src/__tests__/`), this guide shows how to incrementally adopt `@method/testkit`.
@@ -17,7 +29,7 @@ import type { Method } from "../method/method.js";
 import type { Methodology } from "../methodology/methodology.js";
 import { evaluateTransition } from "../methodology/transition.js";
 import { runMethodology } from "../runtime/run-methodology.js";
-import { MockAgentProvider } from "../provider/mock-provider.js";
+import { MockAgentProvider } from "@method/methodts";
 import type { WorldState } from "../state/world-state.js";
 
 type TaskState = { ... };

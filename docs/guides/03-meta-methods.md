@@ -1,6 +1,18 @@
+---
+guide: 3
+title: "The Meta-Method Family (P0)"
+domain: registry
+audience: [method-designers]
+summary: >-
+  How methods are designed, compiled, evolved, and composed. The P0-META methodology and its methods.
+prereqs: [1, 2]
+touches:
+  - registry/P0-META/
+---
+
 # Guide 3 — The Meta-Method Family (P0)
 
-P0-META is the methodology that governs how methods are built, evolved, and maintained. It's the self-referential foundation: the method system that produces method systems.
+P0-META (v1.2) is the methodology that governs how methods are built, evolved, and maintained. It's the self-referential foundation: the method system that produces method systems.
 
 ## What P0-META Does
 
@@ -56,9 +68,21 @@ Takes a compiled method and a project context, produces a project instance. This
 
 Takes two compiled methods that share an interface and produces a composite method that runs them sequentially. The interface is the set of sorts that one method's output shares with the other method's input.
 
+### M2-MDIS — Method Discovery from Informal Practice
+
+Takes an observed informal practice — a recurring pattern identified from retrospective signals, council debates, cross-project examination, or human intuition — and structures it through the protocol lifecycle: recognize, draft, trial, evaluate, promote. Produces either a compiled method (via M1-MDES), a promoted axiom/protocol, or an archived learning. Five linear steps: recognize (validate the observation) -> draft (write protocol YAML) -> trial (enforce on one project, collect data) -> evaluate (check promotion criteria) -> promote (formalize or archive). This is the mechanism by which the method system grows from execution evidence rather than top-down design. Compiled v1.0, all gates PASS.
+
+### M6-MAUD — Method Audit (Planned)
+
+Referenced in δ_META arm 5 (priority 5: informal method needs formalization -> M6-MAUD), but M6-MAUD has no compiled YAML in the registry and no registry directory yet. Its domain theory D_MAUD is referenced in P0-META's RP-5 retraction pair but is not formally declared. Compiling M6-MAUD is an open work item — it would formalize informal methods through a structural audit analogous to the compilation gates.
+
 ### M7-DTID — Domain Theory to Implementation Derivation
 
 Takes a compiled method and derives a software implementation from its domain theory. This bridges theory and code — the implementation must be *faithful* to the domain theory (every sort maps to a type, every predicate maps to a check, every axiom maps to an invariant).
+
+## CMEM-PROTO — Council Memory Protocol
+
+CMEM-PROTO (draft v0.1) is a protocol under P0-META that extends M1-COUNCIL with persistent cross-session context. Each topic gets a memory file that accumulates the active cast, decisions made, open questions, key tensions, and evolution history. When a council session resumes a topic, it loads the memory file to restore continuity. CMEM-PROTO's effect on M1-COUNCIL is described in [Guide 4](04-execution-methods.md).
 
 ## Self-Application
 
@@ -81,20 +105,27 @@ The meta-method family manages a **registry** — a set of methods with their co
 
 ```
 registry/
-  P0-META/           ← the meta-methodology itself
+  P0-META/           ← the meta-methodology (v1.2)
     M1-MDES/          compiled v1.0
+    M2-MDIS/          compiled v1.0 (all gates PASS)
     M3-MEVO/          compiled v0.1
     M4-MINS/          compiled v1.2
     M5-MCOM/          compiled v1.1
+    M6-MAUD/          uncompiled (referenced in δ_META arm 5, no registry directory yet)
     M7-DTID/          compiled v1.1
+    CMEM-PROTO        draft v0.1 (Council Memory Protocol — extends M1-COUNCIL)
   P1-EXEC/           ← execution methodology
-    M1-COUNCIL/       compiled v1.1
+    M1-COUNCIL/       compiled v1.3
     M2-ORCH/          compiled v1.0
     M3-TMP/           compiled v1.0
+    M4-ADVREV/        trial v0.1
   P2-SD/             ← software delivery methodology
     M1-IMPL/          compiled v3.1
     M2-DIMPL/         compiled v1.0
     ...7 methods total
+  P3-DISPATCH/       ← dispatch methodology (v1.0, compiled)
+  P3-GOV/            ← governance methodology (v0.1, draft)
+  P-GH/              ← GitHub operations methodology (v1.0, compiled)
 ```
 
 δ_META evaluates the registry state and selects the next meta-method to run. When all methods in the target scope are `compiled_clean`, δ_META returns None — the registry is complete.
@@ -109,4 +140,4 @@ If you're **instantiating** methods for a project (adapting M1-IMPL for your spe
 
 ## Next
 
-[Guide 4](04-execution-methods.md) explains P1-EXEC's three execution methods — when to debate, when to orchestrate, when to reason sequentially.
+[Guide 4](04-execution-methods.md) explains P1-EXEC's four execution methods — when to debate, when to orchestrate, when to reason sequentially, and when to run adversarial review.

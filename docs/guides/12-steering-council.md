@@ -1,3 +1,17 @@
+---
+guide: 12
+title: "The Steering Council Protocol"
+domain: governance
+audience: [project-leads]
+summary: >-
+  Persistent governance council, essence guardianship, session structure, and CMEM-PROTO memory.
+prereqs: [1, 2, 6]
+touches:
+  - registry/P1-EXEC/M1-COUNCIL/
+  - registry/P0-META/STEERING-PROTOCOL.yaml
+  - .method/council/
+---
+
 # Guide 12 — The Steering Council Protocol
 
 How to govern a project with a persistent council of synthetic experts that champions the project's essence and steers its direction.
@@ -99,12 +113,19 @@ All in `.method/council/`:
 
 ```
 .method/council/
-  TEAM.yaml       — persistent members (committed)
-  AGENDA.yaml     — work items with priorities and owners (committed)
-  LOG.yaml        — append-only session decisions (committed)
-  inbox/          — messages from other project councils
-  outbox/         — messages to other project councils
+  TEAM.yaml              — persistent members (committed)
+  AGENDA.yaml            — work items with priorities and owners (committed)
+  LOG.yaml               — append-only session decisions (committed)
+  pending-deltas.yaml    — proposed methodology deltas awaiting council review
+  logs/                  — individual session log files
+  memory/                — persistent cross-session character memory (CMEM-PROTO)
+  memory/INDEX.yaml      — memory index and retrieval metadata
+  rfcs/                  — request-for-comment documents
+  sub-councils/          — artifacts from spawned sub-council sessions
+  theory-council/        — theory-focused sub-council artifacts
 ```
+
+The `memory/` directory is managed by CMEM-PROTO (Council Memory Protocol), which extends M1-COUNCIL to give council members persistent cross-session character memory. See the manifest for installation details.
 
 ### The Agenda
 

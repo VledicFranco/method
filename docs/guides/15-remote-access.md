@@ -1,3 +1,15 @@
+---
+guide: 15
+title: "Remote Access via Tailscale"
+domain: bridge
+audience: [agent-operators]
+summary: >-
+  Accessing the bridge from a phone or remote machine over Tailscale.
+prereqs: [10]
+touches:
+  - packages/bridge/src/index.ts
+---
+
 # Guide 15 — Remote Access via Tailscale
 
 How to access the bridge from a phone or another machine using Tailscale + passkey auth. Covers the full stack: network tunnel, authentication portal, mobile dashboard, voice input, and persistent sessions.
@@ -58,7 +70,7 @@ curl https://mission-control.emu-cosmological.ts.net:4430/health
 
 Expected response:
 ```json
-{ "status": "ok", "sessions": 0, "uptime": "2h 15m" }
+{ "status": "ok", "active_sessions": 0, "max_sessions": 10, "uptime_ms": 8100000, "version": "0.3.0" }
 ```
 
 If this works, open the portal in a browser at `https://mission-control.emu-cosmological.ts.net:4430` — you'll be prompted to authenticate with your passkey, then redirected to the bridge dashboard.

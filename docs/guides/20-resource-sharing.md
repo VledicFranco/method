@@ -1,4 +1,17 @@
-# Guide 18 — Resource Sharing (PRD 020 Phase 3)
+---
+guide: 20
+title: "Resource Sharing"
+domain: multi-project
+audience: [agent-operators]
+summary: >-
+  Copying methodologies and strategies across projects with per-target error reporting.
+prereqs: [19]
+touches:
+  - packages/bridge/src/resource-copier.ts
+  - packages/bridge/src/project-routes.ts
+---
+
+# Guide 20 — Resource Sharing (PRD 020 Phase 3)
 
 How to copy methodologies and strategies between projects. Covers the copy modal interface, API endpoints, manifest management, and operational safety features.
 
@@ -8,7 +21,7 @@ How to copy methodologies and strategies between projects. Covers the copy modal
 
 - **Methodology distribution** — Copy a tested methodology (P2-SD, P1-EXEC) from one project to many
 - **Strategy replication** — Share pipeline strategies and execution plans across teams
-- **Bulk operations** — Copy to multiple targets atomically with per-target error reporting
+- **Bulk operations** — Copy to multiple targets with per-target error reporting
 - **Safe concurrency** — File locking prevents manifest corruption under concurrent access
 
 ### When to Use Resource Sharing
@@ -74,16 +87,22 @@ Modal displays: N succeeded, M failed
 
 #### 1. Target Access Validation (F-SEC-002)
 ```typescript
-// Before copying, verify requester has write access to ALL targets
+// Before copying, verify requester can access ALL targets
+// validateProjectAccess checks that the session's x-project-id header matches the target.
+// No role-based auth — anonymous/unauthenticated requests (no x-project-id) are allowed for reads.
 for (const targetId of target_ids) {
   const validation = validateProjectAccess(targetId, sessionContext);
   if (!validation.allowed) {
-    return reply.status(403).send({ error: 'Access denied', reason: `Cannot copy to project ${targetId}` });
+    return reply.status(403).send({
+      error: 'Access denied to one or more target projects',
+      reason: `Cannot copy to project ${targetId} — permission denied`,
+      message: validation.reason || 'Not authorized to write to target project'
+    });
   }
 }
 ```
 
-**Protection:** Prevents unauthorized cross-project data access.
+**Protection:** Prevents cross-project writes when a session is bound to a different project via `x-project-id`.
 
 #### 2. Manifest Write Lock (F-R-2)
 ```typescript
@@ -205,11 +224,12 @@ curl -X POST http://localhost:3456/api/resources/copy-strategy \
 #### User Has No Access to Target
 ```json
 {
-  "error": "Access denied",
-  "reason": "Cannot copy to project forbidden-proj — permission denied"
+  "error": "Access denied to one or more target projects",
+  "reason": "Cannot copy to project forbidden-proj — permission denied",
+  "message": "Not authorized to write to target project"
 }
 ```
-→ Check your role/permissions in the target project.
+→ Check that your `x-project-id` header matches the target project, or omit it for read-only discovery access.
 
 #### Source Not Found
 ```json
@@ -389,15 +409,17 @@ node -e "const yaml = require('js-yaml'); console.log(yaml.load(require('fs').re
 **Symptom:** Copy fails with "Cannot copy to project X — permission denied".
 
 **Check:**
-1. Do you have write access to target project? (not read-only)
-2. Is your session authenticated? (x-project-id header set correctly)
+1. Is your `x-project-id` header set to a value that matches the target? (`validateProjectAccess` checks that the session's `x-project-id` matches the requested project ID. There is no role-based auth.)
+2. If you omit `x-project-id`, the request is allowed for reads but the copy endpoint requires matching context.
 3. Does target project exist? (has `.git` directory)
 
-**Fix:** Verify access.
+**Fix:** Verify that your `x-project-id` header matches the target project, or remove it if your deployment allows anonymous access.
 ```bash
-# Can you write to target?
-ls -ld target-proj  # Should NOT have -r-- (read-only)
-# Try copying to a different target you know you can write to
+# Verify with explicit project context
+curl -X POST http://localhost:3456/api/resources/copy-methodology \
+  -H "Content-Type: application/json" \
+  -H "x-project-id: target-proj" \
+  -d '{ "source_id": "source-proj", "method_name": "P2-SD", "target_ids": ["target-proj"] }'
 ```
 
 ### Manifest Has Duplicate Entries
@@ -438,6 +460,8 @@ x-project-id: <source or root>  [optional, for session context]
 }
 ```
 
+**`target_ids` format constraint:** Each ID must match `/^[a-z0-9_-]{3,64}$/` (lowercase alphanumeric, hyphens, underscores; 3-64 characters). The array must contain 1-100 items.
+
 **Response (200 OK):**
 ```json
 {
@@ -459,8 +483,9 @@ x-project-id: <source or root>  [optional, for session context]
 **Response (403 Forbidden):**
 ```json
 {
-  "error": "Access denied",
-  "reason": "Cannot copy from project SOURCE — permission denied"
+  "error": "Access denied to one or more target projects",
+  "reason": "Cannot copy to project TARGET — permission denied",
+  "message": "Not authorized to write to target project"
 }
 ```
 

@@ -1,3 +1,16 @@
+---
+guide: 2
+title: "What is a Methodology?"
+domain: concepts
+audience: [everyone]
+summary: >-
+  How methodologies route to methods via transition functions. P1-EXEC as worked example.
+prereqs: [1]
+touches:
+  - registry/
+  - packages/core/src/
+---
+
 # Guide 2 — What is a Methodology?
 
 A method tells you how to do one thing. A methodology tells you **which method to use**.
@@ -20,7 +33,7 @@ A methodology doesn't have steps or a step DAG — it has a **transition functio
 
 ## Example: P1-EXEC (Execution Methodology)
 
-P1-EXEC receives a challenge and decides how to execute it: structured debate (M1-COUNCIL), parallel orchestration (M2-ORCH), or sequential reasoning (M3-TMP).
+P1-EXEC receives a challenge and decides how to execute it: structured debate (M1-COUNCIL), parallel orchestration (M2-ORCH), sequential reasoning (M3-TMP), or adversarial review (M4-ADVREV).
 
 ```
 D_Φ = { Challenge, ChallengeProperties, MethodChoice, ExecutionResult, State }
@@ -33,7 +46,7 @@ D_Φ = { Challenge, ChallengeProperties, MethodChoice, ExecutionResult, State }
 O_Φ = method_completed AND result_of(s) ≠ None AND addresses(result, challenge)
 ```
 
-That's the whole methodology. It evaluates two predicates (does this need debate? can we parallelize?) and routes to one of three methods. The selected method runs to completion. The methodology succeeds when the method completes and the result addresses the challenge.
+That's the whole methodology. It evaluates two predicates (does this need debate? can we parallelize?) and routes to one of three methods. A fourth method, M4-ADVREV (adversarial review), is also part of P1-EXEC but is delegation-only — invoked by parent methods via retraction pairs or direct load, not by δ_EXEC predicate evaluation. The selected method runs to completion. The methodology succeeds when the method completes and the result addresses the challenge.
 
 ### The Transition Function (δ)
 
@@ -45,7 +58,7 @@ Priority 2: decomposable_before_execution?   → M2-ORCH
 Priority 3: default                          → M3-TMP
 ```
 
-This is deterministic: every challenge maps to exactly one method. The priority order reflects a design judgment — adversarial pressure is checked first because the cost of missing it (shallow single-perspective answer on a contested problem) is higher than the cost of unnecessary debate (overhead on a simple task).
+This is deterministic: every challenge maps to exactly one routable method. The priority order reflects a design judgment — adversarial pressure is checked first because the cost of missing it (shallow single-perspective answer on a contested problem) is higher than the cost of unnecessary debate (overhead on a simple task). M4-ADVREV is outside this routing — it's a delegable method invoked directly by parent methods when an artifact needs adversarial review.
 
 ### Predicate Operationalization
 
@@ -75,7 +88,7 @@ A method is for execution. A methodology is for routing.
 
 ## How Methods and Methodologies Compose
 
-Methodologies **contain** methods. P1-EXEC contains M1-COUNCIL, M2-ORCH, and M3-TMP. P2-SD contains M7-PRDS, M6-ARFN, M5-PLAN, M2-DIMPL, M1-IMPL, M3-PHRV, and M4-DDAG.
+Methodologies **contain** methods. P1-EXEC contains M1-COUNCIL, M2-ORCH, M3-TMP, and M4-ADVREV. P2-SD contains M7-PRDS, M6-ARFN, M5-PLAN, M2-DIMPL, M1-IMPL, M3-PHRV, and M4-DDAG.
 
 When a methodology selects a method, it uses **retraction pairs** to thread state:
 
@@ -124,6 +137,19 @@ A method terminates when its step DAG completes (finite steps, each executes onc
 
 P1-EXEC has a termination certificate: `ν = 2 - |invocations|`. It fires at most twice (initial selection + one ORCH-to-TMP fallback). P2-SD has `ν = 1` — it fires exactly once per challenge.
 
+## The Full Registry
+
+The registry contains six methodologies:
+
+| Methodology | Name | Version | Status | Methods |
+|-------------|------|---------|--------|---------|
+| **P0-META** | Genesis Methodology | v1.2 | compiled | M1-MDES, M2-MDIS, M3-MEVO, M4-MINS, M5-MCOM, M7-DTID |
+| **P1-EXEC** | Execution Methodology | v1.1 | compiled | M1-COUNCIL, M2-ORCH, M3-TMP, M4-ADVREV |
+| **P2-SD** | Software Delivery | v2.0 | compiled | M7-PRDS, M6-ARFN, M5-PLAN, M2-DIMPL, M1-IMPL, M3-PHRV, M4-DDAG |
+| **P3-DISPATCH** | Dispatch Methodology | v1.0 | compiled | M1-INTERACTIVE, M2-SEMIAUTO, M3-FULLAUTO |
+| **P3-GOV** | Governance Methodology | v0.1 | draft | M1-DRAFT, M2-REVIEW, M3-APPROVE, M4-HANDOFF |
+| **P-GH** | GitHub Operations | v1.0 | compiled | M1-TRIAGE, M2-REVIEW, M3-RESOLVE, M4-WORK |
+
 ## The Meta-Methodology (P0-META)
 
 There's a methodology that governs the methodologies themselves: P0-META. Its transition function δ_META selects meta-methods:
@@ -132,6 +158,7 @@ There's a methodology that governs the methodologies themselves: P0-META. Its tr
 - Domain sketch ready → M1-MDES (design a new method)
 - Method needs project instance → M4-MINS (instantiate it)
 - Two methods composable → M5-MCOM (compose them)
+- Informal practice → M2-MDIS (discover and formalize it)
 
 This is the self-referential core: P0-META was designed using M1-MDES, and can be evolved using M3-MEVO. The method system maintains itself.
 
