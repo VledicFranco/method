@@ -4,11 +4,13 @@ import { GenesisFAB } from '@/components/domain/GenesisFAB';
 import { GenesisChatPanel } from '@/components/domain/GenesisChatPanel';
 import { ProjectListView } from '@/components/domain/ProjectListView';
 import { EventStreamPanel } from '@/components/domain/EventStreamPanel';
+import { BridgeHealthCards } from '@/components/domain/BridgeHealthCards';
+import { TokenAggregateCards } from '@/components/domain/TokenAggregateCards';
+import { SubscriptionMeters } from '@/components/domain/SubscriptionMeters';
 import { api } from '@/lib/api';
 import type { ProjectMetadata } from '@/lib/types';
 
 const GENESIS_SESSION_ID = 'genesis-root';
-const DEFAULT_BUDGET = 50000; // 50K tokens
 
 export default function Dashboard() {
   const [isChatOpen, setIsChatOpen] = useState(() => {
@@ -79,9 +81,20 @@ export default function Dashboard() {
   return (
     <>
       <PageShell title="Dashboard">
-        <div className="space-y-sp-8">
+        <div className="space-y-sp-6">
+          {/* Bridge Health Cards */}
+          <BridgeHealthCards />
+
+          {/* Token Aggregate Cards */}
+          <TokenAggregateCards />
+
+          {/* Subscription Usage Meters */}
+          <SubscriptionMeters />
+
           {/* Project List Section */}
-          <ProjectListView onProjectSelect={setSelectedProject} />
+          <div className="pt-sp-4 border-t border-bdr">
+            <ProjectListView onProjectSelect={setSelectedProject} />
+          </div>
 
           {/* Event Stream Section */}
           <div className="pt-sp-4 border-t border-bdr">

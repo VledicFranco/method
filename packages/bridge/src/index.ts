@@ -1,17 +1,14 @@
 import { homedir, tmpdir } from 'node:os';
-import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
 import { createPool } from './pool.js';
 import { createUsagePoller } from './usage-poller.js';
 import { createTokenTracker } from './token-tracker.js';
-import { registerDashboardRoute } from './dashboard-route.js';
 import { registerLiveOutputRoutes } from './live-output-route.js';
 import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './strategy/strategy-routes.js';
-import { registerStrategyVizRoutes } from './strategy/strategy-viz-route.js';
 import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
 import { setOnMessageHook } from './channels.js';
@@ -87,45 +84,13 @@ function removePidFile(): void {
 
 const app = Fastify({ logger: true });
 
-// ---------- PWA static files ----------
-
-const __pwaDirname = dirname(fileURLToPath(import.meta.url));
-
-app.get('/manifest.json', async (_req, reply) => {
-  return reply.type('application/json').send(readFileSync(join(__pwaDirname, 'manifest.json'), 'utf-8'));
-});
-
-app.get('/icon-192.svg', async (_req, reply) => {
-  return reply.type('image/svg+xml').send(readFileSync(join(__pwaDirname, 'icon-192.svg'), 'utf-8'));
-});
-
-app.get('/icon-512.svg', async (_req, reply) => {
-  return reply.type('image/svg+xml').send(readFileSync(join(__pwaDirname, 'icon-512.svg'), 'utf-8'));
-});
-
-// ---------- Dashboard ----------
-
-// PRD 018 Phase 2a-4: triggerRouter is created later; pass a lazy provider
-// that resolves at request time (dashboard route handler is async per-request)
-const triggerDataProvider = {
-  getStatus: () => triggerRouter?.getStatus() ?? [],
-  getHistory: (limit?: number) => triggerRouter?.getHistory(limit) ?? [],
-  get isPaused() { return triggerRouter?.isPaused ?? false; },
-};
-
-registerDashboardRoute(app, pool, usagePoller, tokenTracker, {
-  port: PORT,
-  startedAt: BRIDGE_STARTED_AT,
-  version: '0.3.0',
-}, triggerDataProvider);
-
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
-registerLiveOutputRoutes(app, pool, tokenTracker);
+registerLiveOutputRoutes(app, pool);
 
 // ---------- Transcript Browser (PRD 007 Phase 3) ----------
 
-registerTranscriptRoutes(app, pool, tokenTracker, transcriptReader);
+registerTranscriptRoutes(app, pool, transcriptReader);
 
 // ---------- Project Routes (PRD 020 Phase 2A) ----------
 
@@ -172,6 +137,27 @@ app.get('/pool/stats', async (_request, reply) => {
     total_spawned: stats.totalSpawned,
     uptime_ms: Date.now() - stats.startedAt.getTime(),
   });
+});
+
+// ---------- Token & Usage API ----------
+
+app.get('/api/tokens', async (_request, reply) => {
+  const aggregate = tokenTracker.getAggregate();
+  return reply.status(200).send(aggregate);
+});
+
+app.get<{ Params: { id: string } }>('/api/tokens/:id', async (request, reply) => {
+  const usage = tokenTracker.refreshUsage(request.params.id);
+  if (!usage) {
+    return reply.status(404).send({ error: 'Session not found or no token data' });
+  }
+  return reply.status(200).send(usage);
+});
+
+app.get('/api/usage', async (_request, reply) => {
+  const status = usagePoller.getStatus();
+  const cached = usagePoller.getCached();
+  return reply.status(200).send({ status, usage: cached });
 });
 
 // ---------- Routes ----------
@@ -787,10 +773,6 @@ if (STRATEGY_ENABLED) {
   const strategyProvider = new ClaudeCodeProvider(CLAUDE_BIN);
   registerStrategyRoutes(app, strategyProvider);
 }
-
-// ---------- Strategy Visualizer (PRD 018 Phase 2b-viz) ----------
-
-registerStrategyVizRoutes(app);
 
 // ---------- Registry API (PRD 019.2) ----------
 

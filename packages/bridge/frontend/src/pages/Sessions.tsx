@@ -1,21 +1,25 @@
 /**
  * PRD 019.1: Sessions page with session list and xterm.js terminal viewer.
  * Shows all bridge sessions with status, metadata, and live terminal output.
+ * Now uses libified hooks and components (SpawnSessionModal, PromptBar, SessionTokenBadge).
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { PageShell } from "@/components/layout/PageShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { StatusBadge, type Status } from "@/components/data/StatusBadge";
 import { SlideOverPanel } from "@/components/layout/SlideOverPanel";
-import { api } from "@/lib/api";
+import { SpawnSessionModal } from "@/components/domain/SpawnSessionModal";
+import { PromptBar } from "@/components/domain/PromptBar";
+import { SessionTokenBadge } from "@/components/domain/SessionTokenBadge";
+import { useSessions } from "@/hooks/useSessions";
+import { useSessionTokens } from "@/hooks/useTokens";
 import { cn } from "@/lib/cn";
-import { formatDuration } from "@/lib/formatters";
+import { formatDuration, formatTokens } from "@/lib/formatters";
 import type { SessionSummary } from "@/lib/types";
-import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users } from "lucide-react";
+import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus } from "lucide-react";
 
 // ---- xterm.js Terminal ----
 
@@ -168,28 +172,62 @@ function SessionCard({
             </span>
           )}
         </div>
-        <span>{formatDuration(idleMs)} ago</span>
+        <SessionTokenBadge sessionId={session.session_id} />
       </div>
 
-      <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-bdr">
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<Eye className="h-3 w-3" />}
-          onClick={(e) => { e.stopPropagation(); onSelect(); }}
-        >
-          View
-        </Button>
-        {session.status !== "dead" && (
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-bdr">
+        <span className="text-[0.55rem] text-txt-muted">{formatDuration(idleMs)} ago</span>
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            leftIcon={<Trash2 className="h-3 w-3 text-error" />}
-            onClick={(e) => { e.stopPropagation(); onKill(); }}
+            leftIcon={<Eye className="h-3 w-3" />}
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
           >
-            Kill
+            View
           </Button>
-        )}
+          {session.status !== "dead" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Trash2 className="h-3 w-3 text-error" />}
+              onClick={(e) => { e.stopPropagation(); onKill(); }}
+            >
+              Kill
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Session Detail Token Info ----
+
+function SessionDetailTokens({ sessionId }: { sessionId: string }) {
+  const { data: tokens } = useSessionTokens(sessionId);
+  if (!tokens) return null;
+
+  const rateColor =
+    tokens.cacheHitRate >= 70 ? 'text-bio' : tokens.cacheHitRate >= 40 ? 'text-solar' : 'text-txt-muted';
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Tokens</p>
+        <p className="font-mono text-sm text-txt">{formatTokens(tokens.totalTokens)}</p>
+        <p className="font-mono text-[0.6rem] text-txt-muted">
+          in: {formatTokens(tokens.inputTokens)} / out: {formatTokens(tokens.outputTokens)}
+        </p>
+      </div>
+      <div>
+        <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Cache Hit Rate</p>
+        <p className={cn('font-mono text-sm font-medium', rateColor)}>
+          {tokens.cacheHitRate.toFixed(1)}%
+        </p>
+        <p className="font-mono text-[0.6rem] text-txt-muted">
+          {formatTokens(tokens.cacheReadTokens)} cached
+        </p>
       </div>
     </div>
   );
@@ -198,33 +236,25 @@ function SessionCard({
 // ---- Main Sessions Page ----
 
 export default function Sessions() {
-  const queryClient = useQueryClient();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [spawnOpen, setSpawnOpen] = useState(false);
 
-  const { data: sessions = [], isLoading, error } = useQuery({
-    queryKey: ["sessions"],
-    queryFn: ({ signal }) => api.get<SessionSummary[]>("/sessions", signal),
-    refetchInterval: 5000,
-  });
-
-  const killMutation = useMutation({
-    mutationFn: (sessionId: string) => api.del(`/sessions/${sessionId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-    },
-  });
+  const {
+    sessions,
+    activeSessions,
+    deadSessions,
+    isLoading,
+    error,
+    refresh,
+    kill,
+    spawn,
+    isSpawning,
+  } = useSessions();
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.session_id === selectedSessionId),
     [sessions, selectedSessionId],
   );
-
-  const activeSessions = sessions.filter((s) => s.status !== "dead");
-  const deadSessions = sessions.filter((s) => s.status === "dead");
-
-  const handleRefresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["sessions"] });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -243,7 +273,7 @@ export default function Sessions() {
       <PageShell title="Sessions">
         <Card>
           <p className="text-error text-sm">
-            Failed to load sessions: {(error as Error).message}
+            Failed to load sessions: {error.message}
           </p>
         </Card>
       </PageShell>
@@ -256,8 +286,11 @@ export default function Sessions() {
       actions={
         <div className="flex items-center gap-2">
           <Badge variant="default" label={`${activeSessions.length} active`} />
-          <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />} onClick={handleRefresh}>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />} onClick={refresh}>
             Refresh
+          </Button>
+          <Button variant="primary" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setSpawnOpen(true)}>
+            Spawn
           </Button>
         </div>
       }
@@ -266,9 +299,12 @@ export default function Sessions() {
         <div className="flex flex-col items-center justify-center h-64 rounded-card border border-bdr bg-abyss">
           <TerminalIcon className="h-8 w-8 text-txt-muted mb-3" />
           <p className="text-txt-dim text-sm mb-1">No Sessions</p>
-          <p className="text-txt-muted text-xs">
+          <p className="text-txt-muted text-xs mb-4">
             Sessions appear here when spawned via the bridge API or MCP tools.
           </p>
+          <Button variant="primary" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setSpawnOpen(true)}>
+            Spawn Session
+          </Button>
         </div>
       ) : (
         <div className="space-y-sp-6">
@@ -285,7 +321,7 @@ export default function Sessions() {
                     session={session}
                     selected={selectedSessionId === session.session_id}
                     onSelect={() => setSelectedSessionId(session.session_id)}
-                    onKill={() => killMutation.mutate(session.session_id)}
+                    onKill={() => kill(session.session_id)}
                   />
                 ))}
               </div>
@@ -305,7 +341,7 @@ export default function Sessions() {
                     session={session}
                     selected={selectedSessionId === session.session_id}
                     onSelect={() => setSelectedSessionId(session.session_id)}
-                    onKill={() => killMutation.mutate(session.session_id)}
+                    onKill={() => kill(session.session_id)}
                   />
                 ))}
               </div>
@@ -314,7 +350,7 @@ export default function Sessions() {
         </div>
       )}
 
-      {/* Session detail slide-over with terminal */}
+      {/* Session detail slide-over with terminal + prompt bar */}
       <SlideOverPanel
         open={selectedSession !== null}
         onClose={() => setSelectedSessionId(null)}
@@ -354,6 +390,9 @@ export default function Sessions() {
               </div>
             </div>
 
+            {/* Token usage detail */}
+            <SessionDetailTokens sessionId={selectedSession.session_id} />
+
             {selectedSession.parent_session_id && (
               <div>
                 <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Parent</p>
@@ -380,9 +419,22 @@ export default function Sessions() {
                 enabled={selectedSession.status !== "dead"}
               />
             </div>
+
+            {/* Prompt bar for live sessions */}
+            {selectedSession.status !== "dead" && selectedSession.mode === "pty" && (
+              <PromptBar sessionId={selectedSession.session_id} />
+            )}
           </div>
         )}
       </SlideOverPanel>
+
+      {/* Spawn modal */}
+      <SpawnSessionModal
+        open={spawnOpen}
+        onClose={() => setSpawnOpen(false)}
+        onSpawn={spawn}
+        isSpawning={isSpawning}
+      />
     </PageShell>
   );
 }
