@@ -159,7 +159,6 @@ describe('F-R-003: Directory Permission Validation', () => {
 
     it('validates each instance independently', () => {
       const dir1 = path.join(tempDir, 'writable');
-      const dir2 = path.join(tempDir, 'nested', 'missing');
 
       // Create first directory
       mkdirSync(dir1, { recursive: true });
@@ -169,10 +168,17 @@ describe('F-R-003: Directory Permission Validation', () => {
       const persistence1 = new YamlEventPersistence(file1);
       assert.ok(persistence1);
 
-      // Second instance with non-existent parent should fail
+      // Second instance under writable ancestor should also succeed
+      // (nested/missing doesn't exist yet, but tempDir is writable so it's creatable)
+      const dir2 = path.join(tempDir, 'nested', 'missing');
       const file2 = path.join(dir2, 'events.yaml');
+      const persistence2 = new YamlEventPersistence(file2);
+      assert.ok(persistence2);
+
+      // Instance under nonexistent drive should fail
+      const unreachable = path.join('Z:', 'no-' + randomUUID().slice(0, 8), 'events.yaml');
       assert.throws(() => {
-        new YamlEventPersistence(file2);
+        new YamlEventPersistence(unreachable);
       });
     });
   });

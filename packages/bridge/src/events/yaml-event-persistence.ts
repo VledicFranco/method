@@ -94,7 +94,9 @@ export class YamlEventPersistence implements EventPersistence {
       // Find the problematic ancestor directory for a better error message
       let ancestorPath = dirPath;
       while (!existsSync(ancestorPath)) {
-        ancestorPath = path.dirname(ancestorPath);
+        const parent = path.dirname(ancestorPath);
+        if (parent === ancestorPath) break; // reached filesystem root
+        ancestorPath = parent;
       }
 
       throw new Error(
