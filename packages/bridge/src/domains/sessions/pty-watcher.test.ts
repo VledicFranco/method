@@ -8,10 +8,10 @@ import {
   matchBuildResult,
   matchError,
   PROMPT_CHAR_RE,
-} from '../pattern-matchers.js';
-import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type WatcherConfig } from '../pty-watcher.js';
-import { createSessionChannels, readMessages, type SessionChannels } from '../channels.js';
-import { generateAutoRetro, type AutoRetroInput } from '../auto-retro.js';
+} from './pattern-matchers.js';
+import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type WatcherConfig } from './pty-watcher.js';
+import { createSessionChannels, readMessages, type SessionChannels } from './channels.js';
+import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';

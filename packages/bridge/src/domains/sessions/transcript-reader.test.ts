@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTranscriptReader, deriveProjectDirName } from '../transcript-reader.js';
-import type { TranscriptTurn } from '../transcript-reader.js';
+import { createTranscriptReader, deriveProjectDirName } from './transcript-reader.js';
+import type { TranscriptTurn } from './transcript-reader.js';
 import { mkdirSync, rmSync, writeFileSync, readFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';

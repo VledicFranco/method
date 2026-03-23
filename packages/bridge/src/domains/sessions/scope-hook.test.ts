@@ -9,7 +9,7 @@ import {
   installScopeHook,
   isPathAllowed,
   matchGlobPattern,
-} from '../scope-hook.js';
+} from './scope-hook.js';
 
 // ── Hook Script Generation Tests ──────────────────────────────
 

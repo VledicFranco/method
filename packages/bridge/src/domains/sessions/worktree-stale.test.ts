@@ -7,14 +7,14 @@ import {
   type WorktreeInfo,
   type IsolationMode,
   type StaleConfig,
-} from '../pool.js';
-import type { PtySession, SessionStatus } from '../pty-session.js';
+} from './pool.js';
+import type { PtySession, SessionStatus } from './pty-session.js';
 import {
   createSessionChannels,
   appendMessage,
   readMessages,
   type SessionChannels,
-} from '../channels.js';
+} from './channels.js';
 
 /**
  * Create a fake PtySession for testing without spawning a real PTY process.

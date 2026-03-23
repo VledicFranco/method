@@ -40,7 +40,7 @@ import {
   updateCursorForProject,
   GenesisPollingLoop,
 } from './polling-loop.js';
-import type { SessionPool, SessionStatusInfo } from '../../pool.js';
+import type { SessionPool, SessionStatusInfo } from '../sessions/pool.js';
 import type { ProjectEvent } from '../projects/events/index.js';
 import { ProjectEventType, createProjectEvent } from '../projects/events/index.js';
 

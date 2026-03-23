@@ -1,9 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { DiagnosticsTracker } from '../diagnostics.js';
-import { matchPermissionPrompt } from '../pattern-matchers.js';
-import { createPtyWatcher, parseWatcherConfig, type WatcherConfig } from '../pty-watcher.js';
-import { createSessionChannels, readMessages, type SessionChannels } from '../channels.js';
+import { DiagnosticsTracker } from './diagnostics.js';
+import { matchPermissionPrompt } from './pattern-matchers.js';
+import { createPtyWatcher, parseWatcherConfig, type WatcherConfig } from './pty-watcher.js';
+import { createSessionChannels, readMessages, type SessionChannels } from './channels.js';
 
 // ── DiagnosticsTracker Unit Tests ────────────────────────────────
 

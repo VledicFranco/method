@@ -6,7 +6,7 @@ import {
   readMessages,
   type Channel,
   type SessionChannels,
-} from '../channels.js';
+} from './channels.js';
 
 describe('Channel Infrastructure (PRD 008)', () => {
   // ── createSessionChannels() ───────────────────────────────────

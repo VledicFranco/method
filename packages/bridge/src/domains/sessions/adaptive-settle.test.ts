@@ -4,7 +4,7 @@ import {
   AdaptiveSettleDelay,
   parseAdaptiveSettleConfig,
   isAdaptiveSettleEnabled,
-} from '../adaptive-settle.js';
+} from './adaptive-settle.js';
 
 // ── AdaptiveSettleDelay Unit Tests ───────────────────────────────
 
@@ -228,7 +228,7 @@ describe('isAdaptiveSettleEnabled', () => {
 describe('AdaptiveSettleDelay + DiagnosticsTracker integration', () => {
   it('diagnostics reports adaptive delay as current_settle_delay_ms', async () => {
     // Import DiagnosticsTracker dynamically to avoid circular issues
-    const { DiagnosticsTracker } = await import('../diagnostics.js');
+    const { DiagnosticsTracker } = await import('./diagnostics.js');
 
     const adaptive = new AdaptiveSettleDelay({ initialDelayMs: 300 });
     const tracker = new DiagnosticsTracker(1000, adaptive);
@@ -245,7 +245,7 @@ describe('AdaptiveSettleDelay + DiagnosticsTracker integration', () => {
   });
 
   it('diagnostics reports false_positive_settles from adaptive', async () => {
-    const { DiagnosticsTracker } = await import('../diagnostics.js');
+    const { DiagnosticsTracker } = await import('./diagnostics.js');
 
     const adaptive = new AdaptiveSettleDelay();
     const tracker = new DiagnosticsTracker(1000, adaptive);
@@ -260,7 +260,7 @@ describe('AdaptiveSettleDelay + DiagnosticsTracker integration', () => {
   });
 
   it('diagnostics recordPromptCompletion uses adaptive delay for overhead', async () => {
-    const { DiagnosticsTracker } = await import('../diagnostics.js');
+    const { DiagnosticsTracker } = await import('./diagnostics.js');
 
     const adaptive = new AdaptiveSettleDelay({ initialDelayMs: 300 });
     const tracker = new DiagnosticsTracker(1000, adaptive);
@@ -276,7 +276,7 @@ describe('AdaptiveSettleDelay + DiagnosticsTracker integration', () => {
   });
 
   it('diagnostics uses fixed delay when no adaptive settle', async () => {
-    const { DiagnosticsTracker } = await import('../diagnostics.js');
+    const { DiagnosticsTracker } = await import('./diagnostics.js');
 
     const tracker = new DiagnosticsTracker(1000);
 

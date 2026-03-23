@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractResponse } from '../parser.js';
+import { extractResponse } from './parser.js';
 
 describe('extractResponse', () => {
   it('extracts basic response between ● and ❯', () => {

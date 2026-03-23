@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { SpawnQueue } from '../spawn-queue.js';
+import { SpawnQueue } from './spawn-queue.js';
 
 describe('SpawnQueue', () => {
   it('executes a single enqueued operation', async () => {

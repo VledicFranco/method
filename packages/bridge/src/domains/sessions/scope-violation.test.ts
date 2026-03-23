@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createScopeViolationMatcher } from '../pattern-matchers.js';
-import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes } from '../pty-watcher.js';
-import { createSessionChannels, readMessages } from '../channels.js';
+import { createScopeViolationMatcher } from './pattern-matchers.js';
+import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes } from './pty-watcher.js';
+import { createSessionChannels, readMessages } from './channels.js';
 
 // ── Scope Violation Pattern Matcher Tests (PRD 014 Phase 2) ────
 

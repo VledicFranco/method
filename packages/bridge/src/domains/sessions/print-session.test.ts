@@ -74,7 +74,7 @@ function createMockProcess(jsonOutput: Record<string, unknown>, exitCode = 0) {
 const canMockModules = typeof mock.module === 'function';
 
 let mockSpawn: ReturnType<typeof mock.fn> | undefined;
-let createPrintSession: typeof import('../print-session.js').createPrintSession | undefined;
+let createPrintSession: typeof import('./print-session.js').createPrintSession | undefined;
 
 if (canMockModules) {
   mockSpawn = mock.fn(() => createMockProcess(MOCK_JSON_RESULT));
@@ -85,14 +85,14 @@ if (canMockModules) {
     },
   });
 
-  const mod = await import('../print-session.js');
+  const mod = await import('./print-session.js');
   createPrintSession = mod.createPrintSession;
 }
 
 // Separate import path for non-mocked tests (public interface only)
 // This import uses the real child_process, but we only call methods
 // that don't trigger spawn (status, kill, resize, etc.)
-const realMod = canMockModules ? null : await import('../print-session.js');
+const realMod = canMockModules ? null : await import('./print-session.js');
 const createSession = createPrintSession ?? realMod!.createPrintSession;
 
 // ── Tests ────────────────────────────────────────────────────────

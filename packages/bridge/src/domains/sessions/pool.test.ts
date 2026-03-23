@@ -1,8 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPool, type SessionPool, type SessionChainInfo, type WorktreeInfo, type IsolationMode } from '../pool.js';
-import type { PtySession, SessionStatus } from '../pty-session.js';
-import { createSessionChannels, type SessionChannels } from '../channels.js';
+import { createPool, type SessionPool, type SessionChainInfo, type WorktreeInfo, type IsolationMode } from './pool.js';
+import type { PtySession, SessionStatus } from './pty-session.js';
+import { createSessionChannels, type SessionChannels } from './channels.js';
 
 /**
  * Create a fake PtySession for testing without spawning a real PTY process.

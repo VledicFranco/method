@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Sessions = lazy(() => import('./pages/Sessions'));
+const Sessions = lazy(() => import('./domains/sessions/Sessions'));
 const Strategies = lazy(() => import('./domains/strategies/Strategies'));
 const StrategyDetail = lazy(() => import('./domains/strategies/StrategyDetail'));
 const Triggers = lazy(() => import('./domains/triggers/Triggers'));

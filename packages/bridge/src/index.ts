@@ -2,17 +2,17 @@ import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
-import { createPool } from './pool.js';
+import { createPool } from './domains/sessions/pool.js';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
 import { createTokenTracker } from './domains/tokens/tracker.js';
 import { registerTokenRoutes } from './domains/tokens/routes.js';
-import { registerLiveOutputRoutes } from './live-output-route.js';
-import { registerTranscriptRoutes } from './transcript-route.js';
-import { createTranscriptReader } from './transcript-reader.js';
+import { registerLiveOutputRoutes } from './domains/sessions/live-output-route.js';
+import { registerTranscriptRoutes } from './domains/sessions/transcript-route.js';
+import { createTranscriptReader } from './domains/sessions/transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
-import { addOnMessageHook } from './channels.js';
+import { addOnMessageHook } from './domains/sessions/channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';
 import { MethodologySessionStore } from './domains/methodology/store.js';
@@ -548,7 +548,7 @@ app.get('/sessions', async (_request, reply) => {
 
 // ---------- Channels (PRD 008) ----------
 
-import { appendMessage, readMessages, createSessionChannels, type ChannelMessage } from './channels.js';
+import { appendMessage, readMessages, createSessionChannels, type ChannelMessage } from './domains/sessions/channels.js';
 
 /**
  * POST /sessions/:id/channels/progress — Agent reports progress

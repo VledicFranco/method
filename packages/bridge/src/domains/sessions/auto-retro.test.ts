@@ -1,11 +1,11 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateAutoRetro, type AutoRetroInput } from '../auto-retro.js';
+import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import type { ActivityObservation } from '../pty-watcher.js';
-import type { ObservationCategory } from '../pattern-matchers.js';
+import type { ActivityObservation } from './pty-watcher.js';
+import type { ObservationCategory } from './pattern-matchers.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
