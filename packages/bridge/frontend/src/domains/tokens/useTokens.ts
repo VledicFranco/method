@@ -9,7 +9,7 @@ import type {
   AggregateTokenUsage,
   SessionTokenUsage,
   UsageResponse,
-} from '@/lib/types';
+} from '@/domains/tokens/types';
 
 /** Aggregate token usage across all bridge sessions. Polls every 10s. */
 export function useAggregateTokens(opts?: { enabled?: boolean; refetchInterval?: number }) {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProjectEvent } from '@/lib/types';
+import type { ProjectEvent } from '@/domains/projects/types';
 
 interface WsState {
   /** Whether the WebSocket connection is currently open */

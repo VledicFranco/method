@@ -11,7 +11,7 @@ import {
   Check, Circle, Star, FlaskConical, ChevronRight, Search, AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
-import type { RegistryMethodologySummary, RegistryMethodSummary } from '@/lib/registry-types';
+import type { RegistryMethodologySummary, RegistryMethodSummary } from '@/domains/registry/types';
 
 // ── Status Icons ──
 

@@ -9,7 +9,7 @@ import type {
   StrategyDefinitionsResponse,
   StrategyExecution,
   StrategyExecuteResponse,
-} from '@/lib/types';
+} from '@/domains/strategies/types';
 
 // ── Query Keys ──────────────────────────────────────────────────
 

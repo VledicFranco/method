@@ -18,7 +18,7 @@ import { useSessions } from "@/domains/sessions/useSessions";
 import { useSessionTokens } from "@/domains/tokens/useTokens";
 import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatTokens } from "@/shared/lib/formatters";
-import type { SessionSummary } from "@/lib/types";
+import type { SessionSummary } from "@/domains/sessions/types";
 import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus } from "lucide-react";
 
 // ---- xterm.js Terminal ----

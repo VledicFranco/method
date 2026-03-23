@@ -1,4 +1,4 @@
-import type { ApiError } from '@/lib/types';
+import type { ApiError } from '@/domains/sessions/types';
 
 export interface ApiClientOptions {
   baseUrl?: string;

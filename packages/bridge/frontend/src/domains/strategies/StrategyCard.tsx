@@ -13,7 +13,7 @@
  */
 
 import { cn } from '@/shared/lib/cn';
-import type { StrategyDefinition } from '@/lib/types';
+import type { StrategyDefinition } from '@/domains/strategies/types';
 import { Badge } from '@/shared/components/Badge';
 import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
 import { formatRelativeTime, formatCost, formatDuration } from '@/shared/lib/formatters';

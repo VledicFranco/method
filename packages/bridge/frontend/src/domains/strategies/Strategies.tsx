@@ -27,7 +27,7 @@ import {
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
 import { formatCost, formatRelativeTime } from '@/shared/lib/formatters';
-import type { StrategyDefinition, StrategyExecution } from '@/lib/types';
+import type { StrategyDefinition, StrategyExecution } from '@/domains/strategies/types';
 import { Play, RefreshCw } from 'lucide-react';
 
 // ── Sort helpers ──

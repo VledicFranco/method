@@ -22,7 +22,7 @@ import {
   useToggleTrigger,
   useWebhookLog,
 } from '@/domains/triggers/useTriggers';
-import type { TriggerListItem, TriggerFireEvent, TriggerType, WebhookLogEntry } from '@/lib/types';
+import type { TriggerListItem, TriggerFireEvent, TriggerType, WebhookLogEntry } from '@/domains/triggers/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ── Props ──

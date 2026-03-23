@@ -7,7 +7,7 @@
 
 import { cn } from '@/shared/lib/cn';
 import { Card } from '@/shared/components/Card';
-import type { TriggerListItem, TriggerType, TriggerFireEvent } from '@/lib/types';
+import type { TriggerListItem, TriggerType, TriggerFireEvent } from '@/domains/triggers/types';
 import { formatTime } from '@/shared/lib/formatters';
 import {
   GitBranch,

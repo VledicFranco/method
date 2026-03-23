@@ -26,7 +26,7 @@ import {
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
 import { formatCost, formatDuration, formatRelativeTime } from '@/shared/lib/formatters';
-import type { StrategyExecution } from '@/lib/types';
+import type { StrategyExecution } from '@/domains/strategies/types';
 import { ArrowLeft, Play, GitCompare, ExternalLink } from 'lucide-react';
 
 // ── Toast notification ──

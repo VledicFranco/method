@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/shared/lib/api';
-import type { ProjectMetadata, ProjectsListResponse } from '@/lib/types';
+import type { ProjectMetadata, ProjectsListResponse } from '@/domains/projects/types';
 
 export interface UseProjectsResult {
   projects: ProjectMetadata[];

@@ -15,7 +15,7 @@ import type {
   TriggerReloadResponse,
   TriggerActionResponse,
   WebhookLogResponse,
-} from '@/lib/types';
+} from '@/domains/triggers/types';
 
 // ── Query Keys ──
 

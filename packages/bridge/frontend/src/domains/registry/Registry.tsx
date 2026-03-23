@@ -16,7 +16,7 @@ import { MethodDetail } from '@/domains/registry/MethodDetail';
 import { CopyMethodologyModal } from '@/domains/registry/CopyMethodologyModal';
 import { useRegistryTree, useMethodDetail, useRegistryManifest, useRegistryReload } from '@/domains/registry/useRegistry';
 import { cn } from '@/shared/lib/cn';
-import type { ManifestEntry } from '@/lib/registry-types';
+import type { ManifestEntry } from '@/domains/registry/types';
 
 // ── Manifest View ──
 

@@ -19,7 +19,7 @@ import type {
   StrategyGateDef,
   OversightRuleDef,
   ContextInputDef,
-} from '@/lib/types';
+} from '@/domains/strategies/types';
 
 // ── Section components ──────────────────────────────────────────
 

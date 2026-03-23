@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/lib/api';
-import type { RegistryTree, ManifestResponse, MethodDetail, PromotionRecord } from '@/lib/registry-types';
+import type { RegistryTree, ManifestResponse, MethodDetail, PromotionRecord } from '@/domains/registry/types';
 
 /** Fetch the full registry tree */
 export function useRegistryTree() {

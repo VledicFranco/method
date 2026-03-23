@@ -29,7 +29,7 @@ import type {
   KnownWipItem,
   PromotionRecord,
   PromotionCriterion,
-} from '@/lib/registry-types';
+} from '@/domains/registry/types';
 
 // ── Sub-components ──
 

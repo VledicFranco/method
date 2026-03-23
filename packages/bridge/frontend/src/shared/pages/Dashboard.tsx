@@ -8,7 +8,7 @@ import { BridgeHealthCards } from '@/shared/data/BridgeHealthCards';
 import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
 import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
 import { api } from '@/shared/lib/api';
-import type { ProjectMetadata } from '@/lib/types';
+import type { ProjectMetadata } from '@/domains/projects/types';
 
 const GENESIS_SESSION_ID = 'genesis-root';
 

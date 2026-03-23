@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib/cn';
 import { ProgressBar } from '@/shared/data/ProgressBar';
 import { useSubscriptionUsage } from '@/domains/tokens/useTokens';
 import { Gauge, AlertTriangle, WifiOff } from 'lucide-react';
-import type { UsageBucket } from '@/lib/types';
+import type { UsageBucket } from '@/domains/tokens/types';
 import { formatRelativeTime } from '@/shared/lib/formatters';
 
 export interface SubscriptionMetersProps {

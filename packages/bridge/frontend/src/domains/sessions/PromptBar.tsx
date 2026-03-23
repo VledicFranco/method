@@ -8,7 +8,7 @@ import { useMutation } from '@tanstack/react-query';
 import { api } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/cn';
 import { Send, Loader2 } from 'lucide-react';
-import type { PromptResponse } from '@/lib/types';
+import type { PromptResponse } from '@/domains/sessions/types';
 
 export interface PromptBarProps {
   sessionId: string;

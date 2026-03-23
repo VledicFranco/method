@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/Button';
 import { Loader2, AlertCircle, Zap } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import DOMPurify from 'dompurify';
-import type { ProjectEvent } from '@/lib/types';
+import type { ProjectEvent } from '@/domains/projects/types';
 
 export interface EventStreamPanelProps {
   /** Optional initial project ID filter */

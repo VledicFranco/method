@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/shared/components/Button';
 import { Badge } from '@/shared/components/Badge';
-import type { StrategyDefinition, ContextInputDef } from '@/lib/types';
+import type { StrategyDefinition, ContextInputDef } from '@/domains/strategies/types';
 import { Play } from 'lucide-react';
 
 export interface ExecuteDialogProps {

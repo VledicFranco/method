@@ -8,7 +8,7 @@ import { api } from '@/shared/lib/api';
 import { MetricCard } from '@/shared/data/MetricCard';
 import { formatDuration } from '@/shared/lib/formatters';
 import { cn } from '@/shared/lib/cn';
-import type { PoolStatsResponse } from '@/lib/types';
+import type { PoolStatsResponse } from '@/domains/sessions/types';
 
 export interface BridgeHealthCardsProps {
   className?: string;

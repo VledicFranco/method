@@ -6,7 +6,7 @@
  * gates are rotated squares. Layout uses a simple topological level approach.
  */
 
-import type { StrategyNodeDef, StrategyGateDef } from '@/lib/types';
+import type { StrategyNodeDef, StrategyGateDef } from '@/domains/strategies/types';
 
 interface MiniDagProps {
   nodes: StrategyNodeDef[];

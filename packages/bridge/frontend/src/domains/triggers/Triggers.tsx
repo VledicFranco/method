@@ -16,7 +16,8 @@ import { TimelineEvent, type TimelineEventData } from '@/shared/data/TimelineEve
 import { TriggerCard } from '@/domains/triggers/TriggerCard';
 import { TriggerDetail } from '@/domains/triggers/TriggerDetail';
 import { cn } from '@/shared/lib/cn';
-import type { TriggerType, TriggerFireEvent, TriggerListItem, StrategyDefinition } from '@/lib/types';
+import type { TriggerType, TriggerFireEvent, TriggerListItem } from '@/domains/triggers/types';
+import type { StrategyDefinition } from '@/domains/strategies/types';
 import {
   useTriggerList,
   useTriggerHistory,
