@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ClaudeCodeProvider } from '../strategy/claude-code-provider.js';
+import { ClaudeCodeProvider } from './claude-code-provider.js';
 
 // ── ClaudeCodeProvider Unit Tests (PRD 012 Phase 4) ──────────────
 

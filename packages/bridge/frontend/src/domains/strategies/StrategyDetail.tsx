@@ -16,15 +16,15 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge, type Status } from '@/components/data/StatusBadge';
 import { MetricCard } from '@/components/data/MetricCard';
-import { StrategyDefinitionPanel } from '@/components/domain/StrategyDefinitionPanel';
-import { ExecuteDialog } from '@/components/domain/ExecuteDialog';
-import { MiniDag } from '@/components/domain/MiniDag';
+import { StrategyDefinitionPanel } from '@/domains/strategies/StrategyDefinitionPanel';
+import { ExecuteDialog } from '@/domains/strategies/ExecuteDialog';
+import { MiniDag } from '@/domains/strategies/MiniDag';
 import { cn } from '@/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
-} from '@/hooks/useStrategies';
+} from '@/domains/strategies/useStrategies';
 import { formatCost, formatDuration, formatRelativeTime } from '@/lib/formatters';
 import type { StrategyExecution } from '@/lib/types';
 import { ArrowLeft, Play, GitCompare, ExternalLink } from 'lucide-react';

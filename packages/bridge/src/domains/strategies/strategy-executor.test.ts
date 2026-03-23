@@ -13,11 +13,11 @@ import {
   parseStrategyObject,
   validateStrategyDAG,
   topologicalSort,
-} from '../strategy/strategy-parser.js';
-import type { StrategyYaml, StrategyDAG } from '../strategy/strategy-parser.js';
-import { StrategyExecutor } from '../strategy/strategy-executor.js';
-import type { StrategyExecutorConfig } from '../strategy/strategy-executor.js';
-import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from '../strategy/llm-provider.js';
+} from './strategy-parser.js';
+import type { StrategyYaml, StrategyDAG } from './strategy-parser.js';
+import { StrategyExecutor } from './strategy-executor.js';
+import type { StrategyExecutorConfig } from './strategy-executor.js';
+import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from './llm-provider.js';
 
 // ── Test Fixtures ───────────────────────────────────────────────
 

@@ -16,12 +16,12 @@ import {
   generateRetro,
   computeCriticalPath,
   retroToYaml,
-} from '../strategy/retro-generator.js';
-import type { StrategyRetro } from '../strategy/retro-generator.js';
-import { saveRetro } from '../strategy/retro-writer.js';
-import type { StrategyExecutionResult, NodeResult } from '../strategy/strategy-executor.js';
-import type { StrategyDAG } from '../strategy/strategy-parser.js';
-import type { ArtifactBundle } from '../strategy/artifact-store.js';
+} from './retro-generator.js';
+import type { StrategyRetro } from './retro-generator.js';
+import { saveRetro } from './retro-writer.js';
+import type { StrategyExecutionResult, NodeResult } from './strategy-executor.js';
+import type { StrategyDAG } from './strategy-parser.js';
+import type { ArtifactBundle } from './artifact-store.js';
 
 // ── Test Fixtures ───────────────────────────────────────────────
 
@@ -457,7 +457,7 @@ describe('evictStaleExecutions', () => {
   // The executions map is module-level, so we exercise it through routes.
 
   it('eviction function is callable without errors', async () => {
-    const { evictStaleExecutions: evict } = await import('../strategy/strategy-routes.js');
+    const { evictStaleExecutions: evict } = await import('./strategy-routes.js');
     // Should not throw even when map is empty
     evict();
   });
@@ -551,7 +551,7 @@ describe('Strategy Routes', () => {
 
   async function buildApp() {
     const Fastify = (await import('fastify')).default;
-    const { registerStrategyRoutes } = await import('../strategy/strategy-routes.js');
+    const { registerStrategyRoutes } = await import('./strategy-routes.js');
     const app = Fastify({ logger: false });
 
     // Mock LLM provider that returns structured JSON
@@ -796,7 +796,7 @@ strategy:
     process.env.TRIGGERS_STRATEGY_DIR = strategyDir;
 
     const Fastify = (await import('fastify')).default;
-    const { registerStrategyRoutes } = await import('../strategy/strategy-routes.js');
+    const { registerStrategyRoutes } = await import('./strategy-routes.js');
     const app = Fastify({ logger: false });
 
     const mockProvider = {
@@ -862,7 +862,7 @@ strategy:
     process.env.TRIGGERS_STRATEGY_DIR = join(tmpdir(), 'nonexistent-strategy-dir-' + Date.now());
 
     const Fastify = (await import('fastify')).default;
-    const { registerStrategyRoutes } = await import('../strategy/strategy-routes.js');
+    const { registerStrategyRoutes } = await import('./strategy-routes.js');
     const app = Fastify({ logger: false });
     const mockProvider = {
       async invoke() { return {} as any; },

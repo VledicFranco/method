@@ -24,7 +24,7 @@ import {
   useResumeTriggers,
   useReloadTriggers,
 } from '@/hooks/useTriggers';
-import { useStrategyDefinitions } from '@/hooks/useStrategies';
+import { useStrategyDefinitions } from '@/domains/strategies/useStrategies';
 import {
   RefreshCw,
   Pause,

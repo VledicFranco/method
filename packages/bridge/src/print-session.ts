@@ -1,6 +1,6 @@
 import PQueue from 'p-queue';
-import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
-import type { LlmResponse } from './strategy/llm-provider.js';
+import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
+import type { LlmResponse } from './domains/strategies/llm-provider.js';
 import type { PtySession, SessionStatus } from './pty-session.js';
 import type { AdaptiveSettleDelay } from './adaptive-settle.js';
 

@@ -6,8 +6,8 @@ import {
   buildRetryFeedback,
   getDefaultRetries,
   getDefaultTimeout,
-} from '../strategy/gates.js';
-import type { GateConfig, GateContext } from '../strategy/gates.js';
+} from './gates.js';
+import type { GateConfig, GateContext } from './gates.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { InMemoryArtifactStore, createArtifactStore } from '../strategy/artifact-store.js';
-import type { ArtifactStore } from '../strategy/artifact-store.js';
+import { InMemoryArtifactStore, createArtifactStore } from './artifact-store.js';
+import type { ArtifactStore } from './artifact-store.js';
 
 // ── ArtifactStore Unit Tests (PRD 017 Phase 1a) ──────────────
 
