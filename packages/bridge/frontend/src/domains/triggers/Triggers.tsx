@@ -13,8 +13,8 @@ import { AttentionBanner } from '@/components/layout/AttentionBanner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { TimelineEvent, type TimelineEventData } from '@/components/data/TimelineEvent';
-import { TriggerCard } from '@/components/domain/TriggerCard';
-import { TriggerDetail } from '@/components/domain/TriggerDetail';
+import { TriggerCard } from '@/domains/triggers/TriggerCard';
+import { TriggerDetail } from '@/domains/triggers/TriggerDetail';
 import { cn } from '@/lib/cn';
 import type { TriggerType, TriggerFireEvent, TriggerListItem, StrategyDefinition } from '@/lib/types';
 import {
@@ -23,7 +23,7 @@ import {
   usePauseTriggers,
   useResumeTriggers,
   useReloadTriggers,
-} from '@/hooks/useTriggers';
+} from '@/domains/triggers/useTriggers';
 import { useStrategyDefinitions } from '@/domains/strategies/useStrategies';
 import {
   RefreshCw,

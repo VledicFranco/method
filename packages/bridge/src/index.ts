@@ -11,7 +11,7 @@ import { registerTranscriptRoutes } from './transcript-route.js';
 import { createTranscriptReader } from './transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
-import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
+import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
 import { addOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';

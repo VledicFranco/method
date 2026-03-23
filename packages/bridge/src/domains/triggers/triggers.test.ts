@@ -19,19 +19,19 @@ import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 
 import { createHmac } from 'node:crypto';
-import { DebounceEngine } from '../triggers/debounce.js';
-import { minimatch } from '../triggers/glob-match.js';
-import { FileWatchTrigger } from '../triggers/file-watch-trigger.js';
-import { GitCommitTrigger } from '../triggers/git-commit-trigger.js';
-import { TriggerRouter } from '../triggers/trigger-router.js';
-import { parseStrategyTriggers, hasEventTriggers } from '../triggers/trigger-parser.js';
-import { scanAndRegisterTriggers } from '../triggers/startup-scan.js';
-import { ScheduleTrigger, parseCron, cronMatches, nextCronFire } from '../triggers/schedule-trigger.js';
-import { PtyWatcherTrigger } from '../triggers/pty-watcher-trigger.js';
-import { ChannelEventTrigger } from '../triggers/channel-event-trigger.js';
-import { WebhookTrigger } from '../triggers/webhook-trigger.js';
-import { evaluateSandboxedExpression } from '../triggers/sandbox-eval.js';
-import type { TimerInterface, DebouncedTriggerFire } from '../triggers/types.js';
+import { DebounceEngine } from './debounce.js';
+import { minimatch } from './glob-match.js';
+import { FileWatchTrigger } from './file-watch-trigger.js';
+import { GitCommitTrigger } from './git-commit-trigger.js';
+import { TriggerRouter } from './trigger-router.js';
+import { parseStrategyTriggers, hasEventTriggers } from './trigger-parser.js';
+import { scanAndRegisterTriggers } from './startup-scan.js';
+import { ScheduleTrigger, parseCron, cronMatches, nextCronFire } from './schedule-trigger.js';
+import { PtyWatcherTrigger } from './pty-watcher-trigger.js';
+import { ChannelEventTrigger } from './channel-event-trigger.js';
+import { WebhookTrigger } from './webhook-trigger.js';
+import { evaluateSandboxedExpression } from './sandbox-eval.js';
+import type { TimerInterface, DebouncedTriggerFire } from './types.js';
 
 // ── Mock Timer ──────────────────────────────────────────────────
 
@@ -2863,7 +2863,7 @@ strategy:
 // ═══════════════════════════════════════════════════════════════
 
 // Dashboard trigger panel render tests removed — replaced by frontend Triggers page.
-import { triggerStatusClass } from '../utils.js';
+import { triggerStatusClass } from '../../utils.js';
 
 describe('Phase 2a-4: triggerStatusClass', () => {
   it('returns trigger-active for enabled, not paused, no errors', () => {

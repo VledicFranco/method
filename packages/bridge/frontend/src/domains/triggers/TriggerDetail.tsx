@@ -21,7 +21,7 @@ import {
   useTriggerHistory,
   useToggleTrigger,
   useWebhookLog,
-} from '@/hooks/useTriggers';
+} from '@/domains/triggers/useTriggers';
 import type { TriggerListItem, TriggerFireEvent, TriggerType, WebhookLogEntry } from '@/lib/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
