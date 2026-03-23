@@ -8,7 +8,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
-import { registerRegistryRoutes } from '../registry-routes.js';
+import { registerRegistryRoutes } from './routes.js';
 
 process.env.REGISTRY_DIR = 'registry';
 process.env.MANIFEST_PATH = '.method/manifest.yaml';

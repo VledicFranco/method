@@ -5,7 +5,7 @@
  * Pure sync validation — no I/O, no side effects.
  */
 
-import type { ProjectRegistry } from '../registry/project-registry.js';
+import type { ProjectRegistry } from '../domains/registry/project-registry.js';
 
 export interface Violation {
   rule: string;

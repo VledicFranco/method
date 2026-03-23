@@ -19,14 +19,14 @@ import {
 } from './validation/index.js';
 import {
   InMemoryProjectRegistry,
-} from './registry/index.js';
+} from './domains/registry/index.js';
 import {
   ProjectEventType,
   createProjectEvent,
   createTestEvent,
 } from './events/index.js';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './multi-project/discovery-service.js';
-import { copyMethodology, copyStrategy, validateTargetIds } from './resource-copier.js';
+import { copyMethodology, copyStrategy, validateTargetIds } from './domains/registry/resource-copier.js';
 import { reloadConfig, validateConfig } from './config/config-reloader.js';
 import path from 'path';
 import { randomBytes } from 'crypto';

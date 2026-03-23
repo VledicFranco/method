@@ -13,7 +13,7 @@
 
 import { watch, existsSync, readdirSync, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
-import type { ProjectRegistry } from '../registry/index.js';
+import type { ProjectRegistry } from '../domains/registry/index.js';
 
 export type FileWatcherCallback = () => Promise<void>;
 

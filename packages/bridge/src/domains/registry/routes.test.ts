@@ -9,7 +9,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
-import { registerRegistryRoutes } from '../registry-routes.js';
+import { registerRegistryRoutes } from './routes.js';
 
 // Set env vars for registry paths before creating app
 process.env.REGISTRY_DIR = 'registry';

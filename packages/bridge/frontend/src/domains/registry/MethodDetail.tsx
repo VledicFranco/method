@@ -19,7 +19,7 @@ import { cn } from '@/lib/cn';
 import { Tabs } from '@/components/ui/Tabs';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { usePromotionRecord } from '@/hooks/useRegistry';
+import { usePromotionRecord } from '@/domains/registry/useRegistry';
 import type {
   MethodDetail as MethodDetailData,
   MethodNavigation,

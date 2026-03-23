@@ -14,7 +14,7 @@ import { ClaudeCodeProvider } from './strategy/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './triggers/index.js';
 import { addOnMessageHook } from './channels.js';
 import { registerFrontendRoutes } from './frontend-route.js';
-import { registerRegistryRoutes } from './registry-routes.js';
+import { registerRegistryRoutes } from './domains/registry/routes.js';
 import { MethodologySessionStore } from './domains/methodology/store.js';
 import { registerMethodologyRoutes } from './domains/methodology/routes.js';
 import { spawnGenesis, getGenesisSessionId } from './genesis/spawner.js';
@@ -27,7 +27,7 @@ import { WsHub } from './ws-hub.js';
 import { registerWsRoute } from './ws-route.js';
 import { setOnExecutionChangeHook } from './strategy/strategy-routes.js';
 import { DiscoveryService } from './multi-project/discovery-service.js';
-import { InMemoryProjectRegistry } from './registry/index.js';
+import { InMemoryProjectRegistry } from './domains/registry/index.js';
 import { JsonLineEventPersistence, YamlEventPersistence } from './events/index.js';
 
 // Configuration from environment variables

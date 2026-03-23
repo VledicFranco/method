@@ -23,7 +23,7 @@ import {
   type ConfigReloadResult,
 } from '../config/config-reloader.js';
 import { FileWatcher } from '../config/file-watcher.js';
-import { InMemoryProjectRegistry } from '../registry/index.js';
+import { InMemoryProjectRegistry } from '../domains/registry/index.js';
 
 // ── Validation Tests ────
 

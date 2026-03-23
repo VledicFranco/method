@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import type { ProjectRegistry, ProjectConfig } from '../registry/index.js';
+import type { ProjectRegistry, ProjectConfig } from '../domains/registry/index.js';
 import { DiscoveryService, type ProjectMetadata, type DiscoveryResult } from './discovery-service.js';
 
 export interface DiscoveryWithRegistryResult extends DiscoveryResult {

@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import { copyMethodology, copyStrategy, validateTargetIds } from '../resource-copier.js';
+import { copyMethodology, copyStrategy, validateTargetIds } from './resource-copier.js';
 
 // ── Test Helpers ────
 

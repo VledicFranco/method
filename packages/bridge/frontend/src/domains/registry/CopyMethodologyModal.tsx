@@ -12,8 +12,8 @@ import { SlideOverPanel } from '@/components/layout/SlideOverPanel';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { useProjectList, useCopyMethodology } from '@/hooks/useResourceCopy';
-import type { ProjectMetadata } from '@/hooks/useResourceCopy';
+import { useProjectList, useCopyMethodology } from '@/domains/registry/useResourceCopy';
+import type { ProjectMetadata } from '@/domains/registry/useResourceCopy';
 
 export interface CopyMethodologyModalProps {
   open: boolean;

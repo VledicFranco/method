@@ -5,7 +5,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
-import { InMemoryProjectRegistry, type MethodologySpec } from '../registry/project-registry.js';
+import { InMemoryProjectRegistry, type MethodologySpec } from './project-registry.js';
 
 const REGISTRY_PATH = path.join(process.cwd(), 'registry');
 

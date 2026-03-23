@@ -5,7 +5,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DefaultIsolationValidator } from '../validation/isolation-validator.js';
-import { InMemoryProjectRegistry } from '../registry/project-registry.js';
+import { InMemoryProjectRegistry } from '../domains/registry/project-registry.js';
 import path from 'path';
 
 describe('IsolationValidator', () => {
