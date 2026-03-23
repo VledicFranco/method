@@ -1,6 +1,6 @@
 # PRD 023: FCA Bridge Refactor — Domain-Co-located Architecture
 
-**Status:** Draft (post-review v2 — 32 findings, 15 fixes applied)
+**Status:** Implemented (PR #46 — Phases 0-10, 12 complete + last-mile types/routes extraction)
 **Date:** 2026-03-23
 **Owner:** Steering Council
 **Methodology:** P2-SD v2.0
@@ -618,3 +618,149 @@ No change needed. The frontend `tsconfig.json` has `include: ["src"]`, which cov
 | **PRD 020** (Multi-Project) | Project discovery, event persistence, and genesis files move to their respective domains. |
 | **PRD 017-018** (Strategies + Triggers) | Strategy and trigger files move to their respective domains. |
 | **FCA** | This PRD implements FCA Principle 8 (co-locate all artifacts) adapted for dual-build-root monorepos. |
+
+---
+
+## 10. Implementation Status & Deferred Work
+
+**PR:** #46 (`feat/prd-023-fca-bridge-refactor`) — 15 commits, ~270 files changed
+**Quality Review:** Kael (Quality Samurai) — 8.0/10 pre-last-mile, READY TO SHIP
+**Review artifact:** `tmp/kael-quality-review-prd023-2026-03-23.md`
+
+### Completed
+
+| Phase | Commit | What |
+|-------|--------|------|
+| 0 | `9b19e80` | Scaffold: `src/domains/`, `src/shared/`, `src/ports/`, `frontend/src/domains/`, `frontend/src/shared/`, vite + tsconfig aliases |
+| 1 | `76f28d9` | Tokens domain: tracker, usage-poller, 2 tests, 5 frontend files |
+| 2 | `7e9a244` | Methodology domain: store, routes, 1 test |
+| 3 | `ff8f54e` | Registry domain: project-registry, resource-copier, routes, 5 tests, 6 frontend files |
+| 4 | `cdd3827` | Genesis domain: spawner, polling-loop, cursor-manager, tools, init, routes, 4 tests, 2 frontend files |
+| 5 | `0d5ac47` | Projects domain: project-routes.ts (787 lines) moved intact, events/, multi-project/, 11 tests, 4 frontend files |
+| 6 | `21e3d5c` | Strategies domain: strategy/ dir (10 files), 5 tests, 8 frontend files + DAG viz tree (9 files) |
+| 7 | `6cebd0b` | Triggers domain: triggers/ dir (15 files), 1 test, 4 frontend files |
+| 8 | `ead9cdc` | Sessions domain (hub): 15 source files, 13 tests, 4 frontend files |
+| 9 | `184e264` | Shared extraction: websocket, utils, validation, config, UI/data/layout components, lib, stores, composition pages |
+| 10 | `aaf9705` | Composition: `index.ts` → `server-entry.ts`, package.json + scripts updated, empty dirs removed |
+| 12 | `bc65078` | Documentation: 6 domain READMEs with FCA frontmatter |
+| cleanup | `6ebf7ea` | Quality review fixes: BridgeHealthCards moved, .gitkeep cleanup |
+| last-mile | `868d5e9` | Types decomposition: `lib/types.ts` (406 lines) split into 5 domain type files, `registry-types.ts` moved |
+| last-mile | `32cbf1a` | Session route extraction: 15 route handlers → `domains/sessions/routes.ts`, server-entry.ts 1080→489 lines |
+
+### Deferred Work
+
+Two items remain. Each is a self-contained follow-up task.
+
+#### D1: Domain Config Extraction (M5 from quality review)
+
+**Problem:** All 18 environment variables are read centrally in `server-entry.ts` lines 34-48. Each domain should own its configuration via a `config.ts` file with a Zod schema.
+
+**What to do:**
+
+For each domain that reads env vars, create `src/domains/{name}/config.ts`:
+
+```typescript
+import { z } from 'zod';
+
+export const TokensConfig = z.object({
+  sessionsDir: z.string().default(join(homedir(), '.claude', 'projects')),
+  oauthToken: z.string().nullable().default(null),
+  pollIntervalMs: z.number().default(600000),
+});
+
+export type TokensConfig = z.infer<typeof TokensConfig>;
+
+export function loadTokensConfig(): TokensConfig {
+  return TokensConfig.parse({
+    sessionsDir: process.env.CLAUDE_SESSIONS_DIR,
+    oauthToken: process.env.CLAUDE_OAUTH_TOKEN ?? null,
+    pollIntervalMs: parseInt(process.env.USAGE_POLL_INTERVAL_MS ?? '600000', 10),
+  });
+}
+```
+
+**Domains that need config.ts:**
+
+| Domain | Env vars to move |
+|--------|-----------------|
+| `sessions` | `MAX_SESSIONS`, `SETTLE_DELAY_MS`, `DEAD_SESSION_TTL_MS`, `STALE_CHECK_INTERVAL_MS`, `BATCH_STAGGER_MS`, `MIN_SPAWN_GAP_MS`, `CLAUDE_BIN` |
+| `tokens` | `CLAUDE_SESSIONS_DIR`, `CLAUDE_OAUTH_TOKEN`, `USAGE_POLL_INTERVAL_MS` |
+| `triggers` | `TRIGGERS_ENABLED`, `TRIGGERS_STRATEGY_DIR` |
+| `genesis` | `GENESIS_ENABLED`, `GENESIS_POLLING_INTERVAL_MS`, `CURSOR_CLEANUP_INTERVAL_MS` |
+| `strategies` | `STRATEGY_ENABLED` |
+| `(composition)` | `PORT`, `ROOT_DIR`, `FRONTEND_ENABLED` — these stay in `server-entry.ts` |
+
+**Steps:**
+1. Create `src/domains/{name}/config.ts` for each domain above
+2. Update `server-entry.ts` to call `load{Name}Config()` instead of inline `process.env` reads
+3. Pass config objects to constructors/register functions
+4. Verify: `tsc --noEmit`, tests, `vite build`
+5. Commit per domain (5 commits) or batched (1 commit)
+
+**Acceptance:** `server-entry.ts` contains zero `process.env` reads except `PORT`, `ROOT_DIR`, and `FRONTEND_ENABLED`. Each domain's config has a Zod schema with defaults matching the current env var defaults in CLAUDE.md.
+
+#### D2: Cross-Domain Port Extraction (Phase 11)
+
+**Problem:** Three external dependencies are used directly across domains without abstraction: `node-pty` (sessions), `fs` (tokens, projects, genesis), `js-yaml` (projects, strategies). FCA Principle 3 requires port interfaces for external dependencies.
+
+**What to do:**
+
+Create port interfaces in `src/ports/`:
+
+**`src/ports/pty-provider.ts`:**
+```typescript
+export interface PtyProvider {
+  spawn(file: string, args: string[], options: PtySpawnOptions): PtyProcess;
+}
+export interface PtyProcess {
+  onData: (callback: (data: string) => void) => void;
+  onExit: (callback: (exitCode: number) => void) => void;
+  write(data: string): void;
+  resize(cols: number, rows: number): void;
+  kill(signal?: string): void;
+  pid: number;
+}
+export interface PtySpawnOptions {
+  name?: string;
+  cols?: number;
+  rows?: number;
+  cwd?: string;
+  env?: Record<string, string>;
+}
+```
+
+**`src/ports/file-system.ts`:**
+```typescript
+export interface FileSystemProvider {
+  readFile(path: string, encoding: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  readdir(path: string): Promise<string[]>;
+  stat(path: string): Promise<{ mtimeMs: number; isFile(): boolean; isDirectory(): boolean }>;
+}
+```
+
+**`src/ports/yaml-loader.ts`:**
+```typescript
+export interface YamlLoader {
+  load(content: string): unknown;
+  dump(value: unknown): string;
+}
+```
+
+**Steps:**
+1. Create the 3 port interfaces above
+2. Update `src/domains/sessions/pool.ts` to accept `PtyProvider` as a constructor parameter instead of importing `node-pty` directly
+3. Update `src/domains/tokens/tracker.ts` and `src/domains/sessions/transcript-reader.ts` to accept `FileSystemProvider`
+4. Create production implementations in each domain (thin wrappers around the real libraries)
+5. In `server-entry.ts`, instantiate the production implementations and inject them
+6. Verify: `tsc --noEmit`, tests, `vite build`
+
+**Acceptance:** No domain file directly imports `node-pty`, `fs`, or `js-yaml`. All external I/O goes through port interfaces. Tests can substitute providers without mocking modules.
+
+### Learnings (from retro)
+
+- **Single agent with full context outperforms many small agents** for sequential refactoring work. The Phases 1-9 agent had 447 tool uses and maintained perfect context about import changes across phases.
+- **4-gate quality protocol works:** `tsc --noEmit` (server), `tsc --noEmit` (frontend), `node --test`, `vite build`. Run after every phase. Trust `tsc` over LSP diagnostics.
+- **Leaf-first phase ordering** (tokens → methodology → registry → genesis → projects → strategies → triggers → sessions) minimizes import churn — when the hub domain moves last, all its dependencies are already in final locations.
+- **Types decomposition and route extraction are predictable last-mile items** that should be budgeted upfront in structural refactoring PRDs, not discovered during review.
