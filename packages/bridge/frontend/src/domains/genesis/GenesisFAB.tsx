@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 
 interface GenesisFABProps {
   onToggle: (isOpen: boolean) => void;

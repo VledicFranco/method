@@ -10,23 +10,23 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageShell } from '@/components/layout/PageShell';
-import { SlideOverPanel } from '@/components/layout/SlideOverPanel';
-import { Tabs } from '@/components/ui/Tabs';
-import { Button } from '@/components/ui/Button';
-import { StatusBadge, type Status } from '@/components/data/StatusBadge';
-import { TimelineEvent, type TimelineEventData } from '@/components/data/TimelineEvent';
-import { Badge } from '@/components/ui/Badge';
+import { PageShell } from '@/shared/layout/PageShell';
+import { SlideOverPanel } from '@/shared/layout/SlideOverPanel';
+import { Tabs } from '@/shared/components/Tabs';
+import { Button } from '@/shared/components/Button';
+import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
+import { TimelineEvent, type TimelineEventData } from '@/shared/data/TimelineEvent';
+import { Badge } from '@/shared/components/Badge';
 import { StrategyCard } from '@/domains/strategies/StrategyCard';
 import { StrategyDefinitionPanel } from '@/domains/strategies/StrategyDefinitionPanel';
 import { ExecuteDialog } from '@/domains/strategies/ExecuteDialog';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
-import { formatCost, formatRelativeTime } from '@/lib/formatters';
+import { formatCost, formatRelativeTime } from '@/shared/lib/formatters';
 import type { StrategyDefinition, StrategyExecution } from '@/lib/types';
 import { Play, RefreshCw } from 'lucide-react';
 

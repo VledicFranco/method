@@ -3,10 +3,10 @@
  * Consumes GET /api/tokens (aggregate).
  */
 
-import { MetricCard } from '@/components/data/MetricCard';
-import { formatTokens } from '@/lib/formatters';
+import { MetricCard } from '@/shared/data/MetricCard';
+import { formatTokens } from '@/shared/lib/formatters';
 import { useAggregateTokens } from '@/domains/tokens/useTokens';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 
 export interface TokenAggregateCardsProps {
   className?: string;

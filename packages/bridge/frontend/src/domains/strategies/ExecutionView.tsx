@@ -5,20 +5,20 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { PageShell } from "@/components/layout/PageShell";
-import { SlideOverPanel } from "@/components/layout/SlideOverPanel";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { StatusBadge, type Status } from "@/components/data/StatusBadge";
+import { PageShell } from "@/shared/layout/PageShell";
+import { SlideOverPanel } from "@/shared/layout/SlideOverPanel";
+import { Button } from "@/shared/components/Button";
+import { Card } from "@/shared/components/Card";
+import { Badge } from "@/shared/components/Badge";
+import { StatusBadge, type Status } from "@/shared/data/StatusBadge";
 import { StrategyDag } from "@/domains/strategies/dag/StrategyDag";
 import { CostOverlay } from "@/domains/strategies/dag/CostOverlay";
 import {
   useExecutionStatus,
   useStrategyDag,
 } from "@/domains/strategies/dag/hooks/useExecutionStatus";
-import { cn } from "@/lib/cn";
-import { formatCost, formatDuration } from "@/lib/formatters";
+import { cn } from "@/shared/lib/cn";
+import { formatCost, formatDuration } from "@/shared/lib/formatters";
 import type { NodeResult } from "@/domains/strategies/dag/lib/types";
 import { ArrowLeft } from "lucide-react";
 

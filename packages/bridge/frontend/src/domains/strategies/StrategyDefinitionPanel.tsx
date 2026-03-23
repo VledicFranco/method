@@ -11,8 +11,8 @@
  * 7. Outputs — type and target
  */
 
-import { cn } from '@/lib/cn';
-import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/shared/lib/cn';
+import { Badge } from '@/shared/components/Badge';
 import type {
   StrategyDefinition,
   StrategyNodeDef,

@@ -8,7 +8,7 @@ import os from 'node:os';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const FIXTURE_PATH = join(import.meta.dirname!, 'fixtures', 'transcript.jsonl');
+const FIXTURE_PATH = join(import.meta.dirname!, '..', '..', 'shared', 'test-fixtures', 'transcript.jsonl');
 
 function makeTmpDir(): string {
   return join(os.tmpdir(), `transcript-reader-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);

@@ -6,8 +6,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/shared/components/Button';
+import { Badge } from '@/shared/components/Badge';
 import type { StrategyDefinition, ContextInputDef } from '@/lib/types';
 import { Play } from 'lucide-react';
 

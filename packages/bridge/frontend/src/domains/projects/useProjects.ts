@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api } from '@/shared/lib/api';
 import type { ProjectMetadata, ProjectsListResponse } from '@/lib/types';
 
 export interface UseProjectsResult {

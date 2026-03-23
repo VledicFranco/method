@@ -1,8 +1,8 @@
 /** Floating cost/status overlay for the execution view */
 
-import { cn } from '@/lib/cn';
-import { formatCost, formatDuration } from '@/lib/formatters';
-import { StatusBadge, type Status } from '@/components/data/StatusBadge';
+import { cn } from '@/shared/lib/cn';
+import { formatCost, formatDuration } from '@/shared/lib/formatters';
+import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
 
 interface CostOverlayProps {
   status: string;

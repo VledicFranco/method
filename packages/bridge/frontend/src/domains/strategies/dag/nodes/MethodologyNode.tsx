@@ -3,8 +3,8 @@
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { MethodologyNodeData } from '../lib/types';
-import { cn } from '@/lib/cn';
-import { formatDuration, formatCost } from '@/lib/formatters';
+import { cn } from '@/shared/lib/cn';
+import { formatDuration, formatCost } from '@/shared/lib/formatters';
 
 const STATUS_STYLES: Record<string, string> = {
   pending: 'border-bdr bg-abyss',

@@ -7,11 +7,11 @@
 
 import { useState, useEffect } from 'react';
 import { Copy, AlertCircle, CheckCircle, X } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { SlideOverPanel } from '@/components/layout/SlideOverPanel';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/shared/lib/cn';
+import { SlideOverPanel } from '@/shared/layout/SlideOverPanel';
+import { Button } from '@/shared/components/Button';
+import { Card } from '@/shared/components/Card';
+import { Badge } from '@/shared/components/Badge';
 import { useProjectList, useCopyMethodology } from '@/domains/registry/useResourceCopy';
 import type { ProjectMetadata } from '@/domains/registry/useResourceCopy';
 

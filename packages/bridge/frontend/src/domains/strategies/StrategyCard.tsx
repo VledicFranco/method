@@ -12,11 +12,11 @@
  * - Running: pulse-glow animation (2.5s ease-in-out)
  */
 
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import type { StrategyDefinition } from '@/lib/types';
-import { Badge } from '@/components/ui/Badge';
-import { StatusBadge, type Status } from '@/components/data/StatusBadge';
-import { formatRelativeTime, formatCost, formatDuration } from '@/lib/formatters';
+import { Badge } from '@/shared/components/Badge';
+import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
+import { formatRelativeTime, formatCost, formatDuration } from '@/shared/lib/formatters';
 import { MiniDag } from './MiniDag';
 
 // ── Trigger badge color mapping ──

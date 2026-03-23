@@ -3,8 +3,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { api } from '@/shared/lib/api';
+import { useWebSocket } from '@/shared/websocket/useWebSocket';
 import type {
   StrategyDefinitionsResponse,
   StrategyExecution,

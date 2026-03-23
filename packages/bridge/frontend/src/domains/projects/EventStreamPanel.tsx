@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useEventStream } from '@/domains/projects/useEventStream';
 import { useProjects } from '@/domains/projects/useProjects';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card } from '@/shared/components/Card';
+import { Button } from '@/shared/components/Button';
 import { Loader2, AlertCircle, Zap } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import DOMPurify from 'dompurify';
 import type { ProjectEvent } from '@/lib/types';
 

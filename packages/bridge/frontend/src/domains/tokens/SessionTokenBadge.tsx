@@ -4,8 +4,8 @@
  * Green >= 70%, yellow 40-69%, dim < 40%.
  */
 
-import { cn } from '@/lib/cn';
-import { formatTokens } from '@/lib/formatters';
+import { cn } from '@/shared/lib/cn';
+import { formatTokens } from '@/shared/lib/formatters';
 import { useSessionTokens } from '@/domains/tokens/useTokens';
 import { Database } from 'lucide-react';
 

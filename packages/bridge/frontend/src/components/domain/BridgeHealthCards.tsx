@@ -4,10 +4,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { MetricCard } from '@/components/data/MetricCard';
-import { formatDuration } from '@/lib/formatters';
-import { cn } from '@/lib/cn';
+import { api } from '@/shared/lib/api';
+import { MetricCard } from '@/shared/data/MetricCard';
+import { formatDuration } from '@/shared/lib/formatters';
+import { cn } from '@/shared/lib/cn';
 import type { PoolStatsResponse } from '@/lib/types';
 
 export interface BridgeHealthCardsProps {

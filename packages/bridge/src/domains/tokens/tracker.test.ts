@@ -7,7 +7,7 @@ import os from 'node:os';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const FIXTURE_PATH = join(import.meta.dirname!, '..', '..', '__tests__', 'fixtures', 'session.jsonl');
+const FIXTURE_PATH = join(import.meta.dirname!, '..', '..', 'shared', 'test-fixtures', 'session.jsonl');
 
 function makeTmpDir(): string {
   return join(os.tmpdir(), `token-tracker-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);

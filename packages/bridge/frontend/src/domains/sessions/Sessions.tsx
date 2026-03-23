@@ -5,19 +5,19 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { PageShell } from "@/components/layout/PageShell";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { StatusBadge, type Status } from "@/components/data/StatusBadge";
-import { SlideOverPanel } from "@/components/layout/SlideOverPanel";
+import { PageShell } from "@/shared/layout/PageShell";
+import { Card } from "@/shared/components/Card";
+import { Button } from "@/shared/components/Button";
+import { Badge } from "@/shared/components/Badge";
+import { StatusBadge, type Status } from "@/shared/data/StatusBadge";
+import { SlideOverPanel } from "@/shared/layout/SlideOverPanel";
 import { SpawnSessionModal } from "@/domains/sessions/SpawnSessionModal";
 import { PromptBar } from "@/domains/sessions/PromptBar";
 import { SessionTokenBadge } from "@/domains/tokens/SessionTokenBadge";
 import { useSessions } from "@/domains/sessions/useSessions";
 import { useSessionTokens } from "@/domains/tokens/useTokens";
-import { cn } from "@/lib/cn";
-import { formatDuration, formatTokens } from "@/lib/formatters";
+import { cn } from "@/shared/lib/cn";
+import { formatDuration, formatTokens } from "@/shared/lib/formatters";
 import type { SessionSummary } from "@/lib/types";
 import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus } from "lucide-react";
 

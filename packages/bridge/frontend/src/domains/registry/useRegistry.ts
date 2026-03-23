@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api } from '@/shared/lib/api';
 import type { RegistryTree, ManifestResponse, MethodDetail, PromotionRecord } from '@/lib/registry-types';
 
 /** Fetch the full registry tree */

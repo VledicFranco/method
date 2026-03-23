@@ -10,12 +10,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SlideOverPanel } from '@/components/layout/SlideOverPanel';
-import { Tabs } from '@/components/ui/Tabs';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { cn } from '@/lib/cn';
-import { formatTime } from '@/lib/formatters';
+import { SlideOverPanel } from '@/shared/layout/SlideOverPanel';
+import { Tabs } from '@/shared/components/Tabs';
+import { Button } from '@/shared/components/Button';
+import { Badge } from '@/shared/components/Badge';
+import { cn } from '@/shared/lib/cn';
+import { formatTime } from '@/shared/lib/formatters';
 import {
   useTriggerDetail,
   useTriggerHistory,

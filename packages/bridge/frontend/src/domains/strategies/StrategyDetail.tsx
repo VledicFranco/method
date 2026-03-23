@@ -9,23 +9,23 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PageShell } from '@/components/layout/PageShell';
-import { Tabs } from '@/components/ui/Tabs';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
-import { StatusBadge, type Status } from '@/components/data/StatusBadge';
-import { MetricCard } from '@/components/data/MetricCard';
+import { PageShell } from '@/shared/layout/PageShell';
+import { Tabs } from '@/shared/components/Tabs';
+import { Button } from '@/shared/components/Button';
+import { Badge } from '@/shared/components/Badge';
+import { Card } from '@/shared/components/Card';
+import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
+import { MetricCard } from '@/shared/data/MetricCard';
 import { StrategyDefinitionPanel } from '@/domains/strategies/StrategyDefinitionPanel';
 import { ExecuteDialog } from '@/domains/strategies/ExecuteDialog';
 import { MiniDag } from '@/domains/strategies/MiniDag';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
-import { formatCost, formatDuration, formatRelativeTime } from '@/lib/formatters';
+import { formatCost, formatDuration, formatRelativeTime } from '@/shared/lib/formatters';
 import type { StrategyExecution } from '@/lib/types';
 import { ArrowLeft, Play, GitCompare, ExternalLink } from 'lucide-react';
 

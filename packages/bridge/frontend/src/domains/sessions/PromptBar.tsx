@@ -5,8 +5,8 @@
 
 import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { cn } from '@/lib/cn';
+import { api } from '@/shared/lib/api';
+import { cn } from '@/shared/lib/cn';
 import { Send, Loader2 } from 'lucide-react';
 import type { PromptResponse } from '@/lib/types';
 

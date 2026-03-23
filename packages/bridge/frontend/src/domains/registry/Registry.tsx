@@ -7,15 +7,15 @@
 
 import { useState, useCallback } from 'react';
 import { RefreshCw, BookOpen, Package, Copy } from 'lucide-react';
-import { PageShell } from '@/components/layout/PageShell';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { PageShell } from '@/shared/layout/PageShell';
+import { Card } from '@/shared/components/Card';
+import { Badge } from '@/shared/components/Badge';
+import { Button } from '@/shared/components/Button';
 import { RegistryTree } from '@/domains/registry/RegistryTree';
 import { MethodDetail } from '@/domains/registry/MethodDetail';
 import { CopyMethodologyModal } from '@/domains/registry/CopyMethodologyModal';
 import { useRegistryTree, useMethodDetail, useRegistryManifest, useRegistryReload } from '@/domains/registry/useRegistry';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import type { ManifestEntry } from '@/lib/registry-types';
 
 // ── Manifest View ──

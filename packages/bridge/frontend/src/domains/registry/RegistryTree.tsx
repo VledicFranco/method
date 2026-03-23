@@ -10,7 +10,7 @@ import { useState, useMemo } from 'react';
 import {
   Check, Circle, Star, FlaskConical, ChevronRight, Search, AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import type { RegistryMethodologySummary, RegistryMethodSummary } from '@/lib/registry-types';
 
 // ── Status Icons ──

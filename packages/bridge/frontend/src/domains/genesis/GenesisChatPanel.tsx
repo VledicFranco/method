@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { useSSE } from '@/hooks/useSSE';
-import { api } from '@/lib/api';
+import { cn } from '@/shared/lib/cn';
+import { useSSE } from '@/shared/websocket/useSSE';
+import { api } from '@/shared/lib/api';
 
 interface GenesisChatPanelProps {
   isOpen: boolean;

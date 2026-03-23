@@ -15,10 +15,10 @@ import {
   BookOpen, Atom, ListOrdered, ShieldCheck, AlertCircle,
   Package, Award, Star, FlaskConical, Circle, ArrowRight, History,
 } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { Tabs } from '@/components/ui/Tabs';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/shared/lib/cn';
+import { Tabs } from '@/shared/components/Tabs';
+import { Card } from '@/shared/components/Card';
+import { Badge } from '@/shared/components/Badge';
 import { usePromotionRecord } from '@/domains/registry/useRegistry';
 import type {
   MethodDetail as MethodDetailData,

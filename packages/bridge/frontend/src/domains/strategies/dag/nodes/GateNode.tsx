@@ -3,7 +3,7 @@
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { GateNodeData } from '../lib/types';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 
 export function GateNode({ data }: NodeProps) {
   const d = data as unknown as GateNodeData;

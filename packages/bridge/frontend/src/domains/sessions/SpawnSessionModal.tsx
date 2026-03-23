@@ -4,9 +4,9 @@
  */
 
 import { useState, useCallback, type FormEvent } from 'react';
-import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/cn';
-import { usePreferenceStore } from '@/stores/preference-store';
+import { Button } from '@/shared/components/Button';
+import { cn } from '@/shared/lib/cn';
+import { usePreferenceStore } from '@/shared/stores/preference-store';
 import { X, Terminal, FolderOpen } from 'lucide-react';
 import type { SpawnRequest } from '@/lib/types';
 

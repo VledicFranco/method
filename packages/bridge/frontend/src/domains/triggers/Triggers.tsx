@@ -8,14 +8,14 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PageShell } from '@/components/layout/PageShell';
-import { AttentionBanner } from '@/components/layout/AttentionBanner';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { TimelineEvent, type TimelineEventData } from '@/components/data/TimelineEvent';
+import { PageShell } from '@/shared/layout/PageShell';
+import { AttentionBanner } from '@/shared/layout/AttentionBanner';
+import { Button } from '@/shared/components/Button';
+import { Badge } from '@/shared/components/Badge';
+import { TimelineEvent, type TimelineEventData } from '@/shared/data/TimelineEvent';
 import { TriggerCard } from '@/domains/triggers/TriggerCard';
 import { TriggerDetail } from '@/domains/triggers/TriggerDetail';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import type { TriggerType, TriggerFireEvent, TriggerListItem, StrategyDefinition } from '@/lib/types';
 import {
   useTriggerList,

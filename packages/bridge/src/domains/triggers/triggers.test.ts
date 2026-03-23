@@ -2863,7 +2863,7 @@ strategy:
 // ═══════════════════════════════════════════════════════════════
 
 // Dashboard trigger panel render tests removed — replaced by frontend Triggers page.
-import { triggerStatusClass } from '../../utils.js';
+import { triggerStatusClass } from '../../shared/utils.js';
 
 describe('Phase 2a-4: triggerStatusClass', () => {
   it('returns trigger-active for enabled, not paused, no errors', () => {

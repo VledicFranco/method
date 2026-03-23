@@ -3,12 +3,12 @@
  * Ported from old dashboard. Color-coded progress bars with utilization %.
  */
 
-import { cn } from '@/lib/cn';
-import { ProgressBar } from '@/components/data/ProgressBar';
+import { cn } from '@/shared/lib/cn';
+import { ProgressBar } from '@/shared/data/ProgressBar';
 import { useSubscriptionUsage } from '@/domains/tokens/useTokens';
 import { Gauge, AlertTriangle, WifiOff } from 'lucide-react';
 import type { UsageBucket } from '@/lib/types';
-import { formatRelativeTime } from '@/lib/formatters';
+import { formatRelativeTime } from '@/shared/lib/formatters';
 
 export interface SubscriptionMetersProps {
   className?: string;

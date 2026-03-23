@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useWsStore } from '@/stores/ws-store';
+import { useWebSocket } from '@/shared/websocket/useWebSocket';
+import { useWsStore } from '@/shared/websocket/ws-store';
 import type { ProjectEvent } from '@/lib/types';
 
 export interface UseEventStreamOptions {

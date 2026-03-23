@@ -1,9 +1,9 @@
 import { useProjects } from '@/domains/projects/useProjects';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Card } from '@/shared/components/Card';
+import { Badge } from '@/shared/components/Badge';
+import { Button } from '@/shared/components/Button';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 import type { ProjectMetadata } from '@/lib/types';
 import { memo } from 'react';
 

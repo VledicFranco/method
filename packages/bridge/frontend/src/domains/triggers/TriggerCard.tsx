@@ -5,10 +5,10 @@
  * config summary, fire/error counts, and a fire rate sparkline.
  */
 
-import { cn } from '@/lib/cn';
-import { Card } from '@/components/ui/Card';
+import { cn } from '@/shared/lib/cn';
+import { Card } from '@/shared/components/Card';
 import type { TriggerListItem, TriggerType, TriggerFireEvent } from '@/lib/types';
-import { formatTime } from '@/lib/formatters';
+import { formatTime } from '@/shared/lib/formatters';
 import {
   GitBranch,
   FolderOpen,

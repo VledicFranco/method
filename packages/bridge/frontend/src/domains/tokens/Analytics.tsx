@@ -1,4 +1,4 @@
-import { PageShell } from '@/components/layout/PageShell';
+import { PageShell } from '@/shared/layout/PageShell';
 
 export default function Analytics() {
   return (

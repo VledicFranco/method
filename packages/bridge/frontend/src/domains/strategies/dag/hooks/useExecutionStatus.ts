@@ -1,8 +1,8 @@
 /** TanStack Query hooks for execution status polling and DAG fetching */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { api } from '@/shared/lib/api';
+import { useWebSocket } from '@/shared/websocket/useWebSocket';
 import type { ExecutionStatusResponse, StrategyDAG } from '../lib/types';
 
 /** Subscribe to execution status via WebSocket, with REST initial fetch */
