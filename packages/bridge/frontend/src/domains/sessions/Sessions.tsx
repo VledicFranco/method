@@ -352,7 +352,7 @@ export default function Sessions() {
 
       {/* Session detail slide-over with terminal + prompt bar */}
       <SlideOverPanel
-        open={selectedSession !== null}
+        open={selectedSession != null}
         onClose={() => setSelectedSessionId(null)}
         title={selectedSession?.nickname ?? ""}
         subtitle={selectedSession?.session_id}
