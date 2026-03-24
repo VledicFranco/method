@@ -9,7 +9,7 @@ import {
   AgentProvider,
   evaluateWithTrace,
   type EvalTrace,
-} from "@method/methodts";
+} from "../../index.js";
 import { silentProvider, SequenceProvider } from "../provider/recording-provider.js";
 import type { Recording } from "../provider/recording-provider.js";
 

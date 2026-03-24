@@ -21,7 +21,7 @@ import {
   assertAxiomsHold,
   assertAxiomsViolated,
   evaluateTransition,
-} from "@method/testkit";
+} from "../../testkit/index.js";
 import {
   P3_GOV,
   D_GOV,

@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { check, and } from "@method/methodts";
-import { Prompt } from "@method/methodts";
+import { check, and } from "../../index.js";
+import { Prompt } from "../../index.js";
 import {
   scriptStep,
   agentStep,

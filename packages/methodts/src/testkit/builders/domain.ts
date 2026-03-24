@@ -8,7 +8,7 @@ import {
   type FunctionDecl,
   type Predicate,
   check,
-} from "@method/methodts";
+} from "../../index.js";
 
 type DomainBuilderState<S> = {
   id: string;

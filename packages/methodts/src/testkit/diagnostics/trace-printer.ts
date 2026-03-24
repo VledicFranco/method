@@ -2,7 +2,7 @@
  * Pretty-print EvalTrace trees for diagnostic output on assertion failure.
  */
 
-import type { EvalTrace } from "@method/methodts";
+import type { EvalTrace } from "../../index.js";
 
 /**
  * Format an EvalTrace into a human-readable tree string.

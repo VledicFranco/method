@@ -8,7 +8,7 @@ import {
   type CompilationReport,
   topologicalOrder,
   checkComposability,
-} from "@method/methodts";
+} from "../../index.js";
 import { formatCompilationReport } from "../diagnostics/report-printer.js";
 
 /**

@@ -3,7 +3,6 @@
   "references": [
     { "path": "packages/mcp" },
     { "path": "packages/bridge" },
-    { "path": "packages/methodts" },
-    { "path": "packages/testkit" }
+    { "path": "packages/methodts" }
   ]
 }

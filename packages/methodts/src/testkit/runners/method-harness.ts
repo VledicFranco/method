@@ -17,7 +17,7 @@ import {
   runMethod,
   runMethodology,
   AgentProvider,
-} from "@method/methodts";
+} from "../../index.js";
 import { silentProvider, SequenceProvider } from "../provider/recording-provider.js";
 import type { Recording, RecordingProviderResult } from "../provider/recording-provider.js";
 

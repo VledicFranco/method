@@ -10,7 +10,7 @@ import {
   assertCompiles,
   assertSignatureValid,
   assertDAGAcyclic,
-} from "@method/testkit";
+} from "../../testkit/index.js";
 import { topologicalOrder } from "../../method/dag.js";
 import { compileMethod } from "../../meta/compile.js";
 import { M1_COUNCIL, type CouncilState } from "../methods/p1/m1-council.js";

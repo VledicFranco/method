@@ -77,4 +77,4 @@ export {
   type Retraction, verifyRetraction,
   // Prompt
   Prompt,
-} from "@method/methodts";
+} from "../index.js";

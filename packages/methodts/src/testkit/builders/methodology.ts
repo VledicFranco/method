@@ -11,7 +11,7 @@ import {
   type SafetyBounds,
   type TerminationCertificate,
   TRUE,
-} from "@method/methodts";
+} from "../../index.js";
 
 type MethodologyBuilderState<S> = {
   id: string;

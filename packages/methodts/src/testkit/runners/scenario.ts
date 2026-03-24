@@ -5,7 +5,7 @@
  * then run all assertions at once.
  */
 
-import { type Methodology, evaluateTransition } from "@method/methodts";
+import { type Methodology, evaluateTransition } from "../../index.js";
 
 type ScenarioStep<S> =
   | { type: "given"; state: S }

@@ -19,7 +19,7 @@ import {
   assertRoutingTotal,
   assertAxiomsSatisfied,
   evaluateTransition,
-} from "@method/testkit";
+} from "../../testkit/index.js";
 import {
   P3_DISPATCH,
   D_DISPATCH,

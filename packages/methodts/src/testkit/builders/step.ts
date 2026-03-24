@@ -10,7 +10,7 @@ import {
   type Prompt,
   type StepContext,
   TRUE,
-} from "@method/methodts";
+} from "../../index.js";
 
 /** Options for building a script step. */
 export type ScriptStepOptions<S> = {

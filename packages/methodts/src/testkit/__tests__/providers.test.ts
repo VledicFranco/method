@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Effect } from "effect";
-import { AgentProvider, type AgentResult } from "@method/methodts";
+import { AgentProvider, type AgentResult } from "../../index.js";
 import { RecordingProvider, SequenceProvider, silentProvider } from "../index.js";
 
 describe("RecordingProvider", () => {

@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Effect } from "effect";
-import { check, and, not, evaluate } from "@method/methodts";
+import { check, and, not, evaluate } from "../../index.js";
 import {
   domainBuilder,
   scriptStep,

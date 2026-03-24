@@ -2,7 +2,7 @@
  * Retraction pair assertions — verify project ∘ embed = id.
  */
 
-import { type Retraction, verifyRetraction } from "@method/methodts";
+import { type Retraction, verifyRetraction } from "../../index.js";
 
 /**
  * Assert that a retraction pair satisfies project(embed(s)) = s

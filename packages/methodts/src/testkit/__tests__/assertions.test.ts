@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { check, and, not, evaluate, type Predicate } from "@method/methodts";
+import { check, and, not, evaluate, type Predicate } from "../../index.js";
 import {
   domainBuilder,
   scriptStep,

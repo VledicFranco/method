@@ -6,7 +6,7 @@ import {
   type Predicate,
   evaluate,
   evaluateWithTrace,
-} from "@method/methodts";
+} from "../../index.js";
 import { formatTraceWithFailures } from "../diagnostics/trace-printer.js";
 
 /**

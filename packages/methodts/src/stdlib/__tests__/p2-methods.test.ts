@@ -11,7 +11,7 @@ import {
   assertCompiles,
   assertSignatureValid,
   assertDAGAcyclic,
-} from "@method/testkit";
+} from "../../testkit/index.js";
 import { topologicalOrder } from "../../method/dag.js";
 import { compileMethod } from "../../meta/compile.js";
 import { M1_IMPL } from "../methods/p2/m1-impl.js";

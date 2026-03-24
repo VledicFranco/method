@@ -21,7 +21,7 @@ import {
   assertRoutingTotal,
   assertAxiomsSatisfied,
   evaluateTransition,
-} from "@method/testkit";
+} from "../../testkit/index.js";
 import {
   P_GH,
   D_GH,

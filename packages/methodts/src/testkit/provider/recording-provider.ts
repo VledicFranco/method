@@ -9,7 +9,7 @@ import {
   type AgentError,
   type AgentCommission,
   type MockAgentProviderConfig,
-} from "@method/methodts";
+} from "../../index.js";
 
 /** A recorded agent interaction. */
 export type Recording = {

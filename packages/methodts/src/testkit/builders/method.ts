@@ -12,7 +12,7 @@ import {
   type Measure,
   type Predicate,
   TRUE,
-} from "@method/methodts";
+} from "../../index.js";
 
 type MethodBuilderState<S> = {
   id: string;

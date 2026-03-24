@@ -2,8 +2,8 @@
  * Pretty-print CompilationReport and CoherenceResult for diagnostic output.
  */
 
-import type { CompilationReport, CompilationGateResult } from "@method/methodts";
-import type { CoherenceResult } from "@method/methodts";
+import type { CompilationReport, CompilationGateResult } from "../../index.js";
+import type { CoherenceResult } from "../../index.js";
 
 /** Format a CompilationReport into a readable string. */
 export function formatCompilationReport(report: CompilationReport): string {

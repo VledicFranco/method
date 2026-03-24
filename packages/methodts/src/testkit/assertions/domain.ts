@@ -6,7 +6,7 @@ import {
   type DomainTheory,
   validateSignature,
   validateAxioms,
-} from "@method/methodts";
+} from "../../index.js";
 
 /**
  * Assert that a domain theory's signature is well-formed.

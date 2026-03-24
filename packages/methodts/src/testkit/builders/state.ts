@@ -2,7 +2,7 @@
  * WorldState helper — construct WorldState<S> values with minimal ceremony.
  */
 
-import type { WorldState } from "@method/methodts";
+import type { WorldState } from "../../index.js";
 
 /**
  * Create a WorldState<S> from a plain state value.

@@ -8,7 +8,7 @@ import {
   checkCoherence,
   type CoherenceResult,
   evaluate,
-} from "@method/methodts";
+} from "../../index.js";
 import { formatCoherenceResult } from "../diagnostics/report-printer.js";
 
 /**
