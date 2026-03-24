@@ -189,11 +189,15 @@ export default function Registry() {
     reload.mutate();
   }, [reload]);
 
+  const breadcrumbs = selectedMethod
+    ? [{ label: 'Registry', path: '/registry' }, { label: `${selectedMethodology} / ${selectedMethod}` }]
+    : [{ label: 'Registry' }];
+
   return (
     <>
       <PageShell
         wide
-        breadcrumbs={[{ label: 'Registry' }]}
+        breadcrumbs={breadcrumbs}
         actions={
           <div className="flex items-center gap-2">
             {/* View toggle */}
@@ -238,9 +242,9 @@ export default function Registry() {
         {viewMode === 'manifest' ? (
           <ManifestView onCopyClick={handleCopyClick} />
       ) : (
-        <div className="flex gap-0 -mx-sp-4">
+        <div className="grid grid-cols-[340px,1fr] -mx-sp-4">
           {/* Sidebar tree (340px) */}
-          <div className="w-[340px] shrink-0 border-r border-bdr h-[calc(100vh-130px)] sticky top-[82px]">
+          <div className="border-r border-bdr h-[calc(100vh-130px)] sticky top-[82px]">
             {treeLoading ? (
               <div className="p-4 space-y-3 animate-pulse">
                 <div className="h-5 w-24 bg-abyss-light rounded" />
@@ -266,7 +270,7 @@ export default function Registry() {
           </div>
 
           {/* Main detail panel */}
-          <div className="flex-1 min-w-0 px-sp-6 py-sp-2 max-w-[720px]">
+          <div className="flex-1 min-w-0 px-sp-6 py-sp-2">
             {!selectedMethod ? (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <BookOpen className="h-10 w-10 text-txt-muted mb-4" />

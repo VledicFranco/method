@@ -2,7 +2,7 @@
  * WS-3: Sessions page with mobile-first chat interface.
  *
  * Mobile (< 768px): session detail is full-screen with terminal + sticky input at bottom.
- * Desktop: slide-over panel (existing pattern).
+ * Desktop (>= 768px): horizontal split-pane — session list left, detail panel right.
  *
  * Terminal uses xterm.js for PTY sessions, plain text for print-mode sessions.
  * Prompt bar is always visible at the bottom of the session detail view.
@@ -25,7 +25,7 @@ import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatTokens } from "@/shared/lib/formatters";
 import { useProjects } from "@/domains/projects/useProjects";
 import type { SessionSummary } from "@/domains/sessions/types";
-import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus, ArrowLeft } from "lucide-react";
+import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus, ArrowLeft, X } from "lucide-react";
 
 // ---- xterm.js Terminal ----
 
@@ -383,6 +383,126 @@ function SessionDetailContent({ session }: { session: SessionSummary }) {
   );
 }
 
+// ---- Session List (extracted for split-pane reuse) ----
+
+function SessionList({
+  activeSessions,
+  deadSessions,
+  selectedSessionId,
+  onSelect,
+  onKill,
+  onSpawnOpen,
+  compact = false,
+}: {
+  activeSessions: SessionSummary[];
+  deadSessions: SessionSummary[];
+  selectedSessionId: string | null;
+  onSelect: (id: string) => void;
+  onKill: (id: string) => void;
+  onSpawnOpen: () => void;
+  compact?: boolean;
+}) {
+  if (activeSessions.length === 0 && deadSessions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 rounded-card border border-bdr bg-abyss">
+        <TerminalIcon className="h-8 w-8 text-txt-muted mb-3" />
+        <p className="text-txt-dim text-sm mb-1">No Sessions</p>
+        <p className="text-txt-muted text-xs mb-4">
+          Sessions appear here when spawned via the bridge API or MCP tools.
+        </p>
+        <Button variant="primary" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={onSpawnOpen}>
+          Spawn Session
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-sp-6">
+      {activeSessions.length > 0 && (
+        <div>
+          <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+            Active ({activeSessions.length})
+          </h3>
+          <div className={cn("grid gap-3", compact ? "grid-cols-1" : "md:grid-cols-2")}>
+            {activeSessions.map((session) => (
+              <SessionCard
+                key={session.session_id}
+                session={session}
+                selected={selectedSessionId === session.session_id}
+                onSelect={() => onSelect(session.session_id)}
+                onKill={() => onKill(session.session_id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {deadSessions.length > 0 && (
+        <div>
+          <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+            Completed ({deadSessions.length})
+          </h3>
+          <div className={cn("grid gap-3", compact ? "grid-cols-1" : "md:grid-cols-2")}>
+            {deadSessions.map((session) => (
+              <SessionCard
+                key={session.session_id}
+                session={session}
+                selected={selectedSessionId === session.session_id}
+                onSelect={() => onSelect(session.session_id)}
+                onKill={() => onKill(session.session_id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Desktop Detail Panel (inline, no overlay) ----
+
+function DesktopDetailPanel({
+  session,
+  onClose,
+}: {
+  session: SessionSummary;
+  onClose: () => void;
+}) {
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-bdr px-sp-4 py-sp-3 shrink-0">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <TerminalIcon className="h-4 w-4 text-bio shrink-0" />
+            <span className="font-display text-sm font-semibold text-txt truncate">
+              {session.nickname}
+            </span>
+            <StatusBadge
+              status={(session.status === "idle" ? "running" : session.status) as Status}
+              size="sm"
+            />
+          </div>
+          <p className="text-xs text-txt-dim truncate mt-0.5 font-mono">{session.session_id}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+          aria-label="Close detail panel"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-sp-4">
+        <SessionDetailContent session={session} />
+      </div>
+    </div>
+  );
+}
+
 // ---- Main Sessions Page ----
 
 export default function Sessions() {
@@ -418,6 +538,10 @@ export default function Sessions() {
     );
   }
 
+  const breadcrumbs = selectedSession
+    ? [{ label: 'Sessions', path: '/sessions' }, { label: selectedSession.nickname }]
+    : [{ label: 'Sessions' }];
+
   if (isLoading) {
     return (
       <PageShell breadcrumbs={[{ label: 'Sessions' }]}>
@@ -444,7 +568,8 @@ export default function Sessions() {
 
   return (
     <PageShell
-      breadcrumbs={[{ label: 'Sessions' }]}
+      wide={selectedSession != null}
+      breadcrumbs={breadcrumbs}
       actions={
         <div className="flex items-center gap-2">
           <Badge variant="default" label={`${activeSessions.length} active`} />
@@ -457,63 +582,44 @@ export default function Sessions() {
         </div>
       }
     >
-      {sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 rounded-card border border-bdr bg-abyss">
-          <TerminalIcon className="h-8 w-8 text-txt-muted mb-3" />
-          <p className="text-txt-dim text-sm mb-1">No Sessions</p>
-          <p className="text-txt-muted text-xs mb-4">
-            Sessions appear here when spawned via the bridge API or MCP tools.
-          </p>
-          <Button variant="primary" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setSpawnOpen(true)}>
-            Spawn Session
-          </Button>
+      {/* Desktop split-pane: session list left, detail right */}
+      {!isMobile && selectedSession ? (
+        <div className="hidden md:grid md:grid-cols-[1fr,1fr] md:gap-4">
+          {/* Left: session list (single-column when in split mode) */}
+          <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
+            <SessionList
+              activeSessions={activeSessions}
+              deadSessions={deadSessions}
+              selectedSessionId={selectedSessionId}
+              onSelect={(id) => setSelectedSessionId(id)}
+              onKill={(id) => kill(id)}
+              onSpawnOpen={() => setSpawnOpen(true)}
+              compact
+            />
+          </div>
+
+          {/* Right: detail panel */}
+          <div className="border-l border-bdr pl-4 max-h-[calc(100vh-160px)] overflow-hidden">
+            <DesktopDetailPanel
+              session={selectedSession}
+              onClose={() => setSelectedSessionId(null)}
+            />
+          </div>
         </div>
       ) : (
-        <div className="space-y-sp-6">
-          {/* Active sessions */}
-          {activeSessions.length > 0 && (
-            <div>
-              <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
-                Active ({activeSessions.length})
-              </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                {activeSessions.map((session) => (
-                  <SessionCard
-                    key={session.session_id}
-                    session={session}
-                    selected={selectedSessionId === session.session_id}
-                    onSelect={() => setSelectedSessionId(session.session_id)}
-                    onKill={() => kill(session.session_id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Dead sessions */}
-          {deadSessions.length > 0 && (
-            <div>
-              <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
-                Completed ({deadSessions.length})
-              </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                {deadSessions.map((session) => (
-                  <SessionCard
-                    key={session.session_id}
-                    session={session}
-                    selected={selectedSessionId === session.session_id}
-                    onSelect={() => setSelectedSessionId(session.session_id)}
-                    onKill={() => kill(session.session_id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        /* No session selected (or mobile fallback) — full-width session list */
+        <SessionList
+          activeSessions={activeSessions}
+          deadSessions={deadSessions}
+          selectedSessionId={selectedSessionId}
+          onSelect={(id) => setSelectedSessionId(id)}
+          onKill={(id) => kill(id)}
+          onSpawnOpen={() => setSpawnOpen(true)}
+        />
       )}
 
-      {/* Desktop: session detail slide-over with terminal + prompt bar */}
-      {!isMobile && (
+      {/* Mobile: session detail slide-over (kept for < 768px) */}
+      {isMobile && (
         <SlideOverPanel
           open={selectedSession != null}
           onClose={() => setSelectedSessionId(null)}
