@@ -1,0 +1,40 @@
+session_id: "com-20260324-1457-prd-026-phase-2-domain-migration"
+task: "PRD 026 Phase 2: Full Domain Migration"
+phase: C
+iteration: 1
+nu_B_remaining: 4
+continuation_depth: 0
+tasks_completed:
+  - "T1: Strategies domain — bus emission (strategy.started/completed/failed)"
+  - "T2: Projects domain — bus emission (project.* events)"
+  - "T3: Methodology domain — bus emission (methodology.step_completed/started)"
+  - "T4: PTY observation — bus emission (session.observation)"
+  - "T5: Triggers domain — bus producer (trigger.fired) + consumer (bus subscriptions)"
+  - "T6: Server-entry.ts — remove 5 legacy hooks, inject eventBus into 4 domains"
+  - "T7: MCP adapter layer — toChannelMessage + toAllEventsWrapper (5 tests)"
+  - "Hygiene: remove dead barrel exports (setOnEventHook, addOnMessageHook)"
+tasks_remaining: []
+review_findings_pending:
+  - id: "6d"
+    classification: "ADJACENT"
+    status: "deferred"
+    description: "Injection pattern inconsistency (setter vs constructor) — inherited"
+  - id: "6e"
+    classification: "IN_SCOPE"
+    status: "documented"
+    description: "WebSocket payload shape change — intentional, documented in PR"
+  - id: "6f"
+    classification: "IN_SCOPE"
+    status: "documented"
+    description: "Channel event type semantics changed — no active triggers affected"
+gate_status:
+  compile: "PASS"
+  test: "PASS"
+  lint: "PASS"
+mandate_card_path: ".method/sessions/com-20260324-1457-prd-026-phase-2-domain-migration/mandate-card.md"
+branch: "feat/prd-026-phase-2-domain-migration"
+base_branch: "master"
+pr_number: 53
+last_commit: "2bcceaf"
+pr_comments_checked: "2026-03-24T21:32:00Z"
+changeset_lines: 440

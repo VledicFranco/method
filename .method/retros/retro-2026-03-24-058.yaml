@@ -1,0 +1,37 @@
+session_id: "com-20260324-1457-prd-026-phase-2-domain-migration"
+methodology: "P2-SD"
+method: "com"
+date: "2026-03-24"
+pr: 53
+hardest_decision: >
+  Deciding how TriggerRouter should consume bus events. The trigger system is both
+  producer (trigger.fired) AND consumer (observations + channel events). Chose to
+  subscribe in the constructor with domain-to-ChannelMessageEvent shape mapping,
+  plus explicit feedback loop prevention (skip domain === 'trigger'). This keeps
+  the watcher interfaces unchanged while the data source shifts from hooks to bus.
+observations:
+  - >
+    Phase 2 was significantly simpler than the PRD estimated (2-3 sessions). The
+    EventBus port pattern from Phase 1 made domain migration mechanical — add import,
+    add setter/option, emit in the existing callback points, wrap in try/catch. The
+    hard architecture work was already done in Phase 1.
+  - >
+    The dual-emit strategy (bus + legacy hooks) made the migration safe but creates
+    cleanup debt. Every domain now has dead code paths (if _onEventHook, etc.) that
+    will never fire because server-entry doesn't wire them. Phase 3 should remove
+    these alongside the channel system replacement.
+  - >
+    WebSocket payload shapes silently changed when legacy hooks were removed. The
+    WebSocketSink publishes event.payload (BridgeEvent format) instead of the
+    hand-crafted shapes the legacy hooks sent. Frontend consumers may need updates
+    if they rely on exact field names.
+card_feedback:
+  essence: >
+    Essence was helpful — "faithfulness > simplicity" guided the dual-emit choice
+    (preserve behavior before optimizing). The invariant wasn't relevant to this
+    infrastructure work.
+  delivery_rules: >
+    DR-15 (port discipline) was the most useful — every domain migration was validated
+    against it. DR-14 (test coverage) drove the adapter tests. DR-03 (core has zero
+    transport deps) confirmed all work stays at L4.
+proposed_deltas: []
