@@ -16,6 +16,7 @@ import {
   access as nodeAccess,
   mkdir as nodeMkdir,
   writeFile as nodeWriteFile,
+  appendFile as nodeAppendFile,
 } from 'node:fs/promises';
 
 // ── Port interface ──────────────────────────────────────────────
@@ -50,6 +51,7 @@ export interface FileSystemProvider {
   // ── Async methods (PRD 024: for domains using fs/promises) ──
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
   writeFile(path: string, content: string, encoding: BufferEncoding): Promise<void>;
+  appendFile(path: string, content: string, encoding: BufferEncoding): Promise<void>;
   readdir(path: string): Promise<string[]>;
   stat(path: string): Promise<FileStat>;
   access(path: string): Promise<void>;
@@ -108,6 +110,10 @@ export class NodeFileSystemProvider implements FileSystemProvider {
 
   async writeFile(path: string, content: string, encoding: BufferEncoding): Promise<void> {
     await nodeWriteFile(path, content, encoding);
+  }
+
+  async appendFile(path: string, content: string, encoding: BufferEncoding): Promise<void> {
+    await nodeAppendFile(path, content, encoding);
   }
 
   async readdir(path: string): Promise<string[]> {

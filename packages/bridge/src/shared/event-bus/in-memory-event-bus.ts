@@ -206,6 +206,19 @@ export class InMemoryEventBus implements EventBus {
     return this.buffer.query(filter, options);
   }
 
+  importEvent(event: BridgeEvent): void {
+    // Update sequence to prevent collisions with future emits
+    if (event.sequence > this.sequence) {
+      this.sequence = event.sequence;
+    }
+
+    // Store in ring buffer
+    this.buffer.push(event);
+
+    // Dispatch to sinks and subscribers
+    this.dispatch(event);
+  }
+
   registerSink(sink: EventSink): void {
     this.sinks.push(sink);
   }

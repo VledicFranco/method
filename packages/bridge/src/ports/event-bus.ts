@@ -113,6 +113,13 @@ export interface EventBus {
    */
   emit(event: BridgeEventInput): BridgeEvent;
 
+  /**
+   * Import a pre-existing event (e.g., from replay) without reassigning
+   * id, timestamp, or sequence. Pushes to ring buffer and dispatches to
+   * sinks/subscribers. Updates internal sequence counter to avoid collisions.
+   */
+  importEvent(event: BridgeEvent): void;
+
   /** Subscribe to events matching a filter. */
   subscribe(filter: EventFilter, handler: (event: BridgeEvent) => void): EventSubscription;
 

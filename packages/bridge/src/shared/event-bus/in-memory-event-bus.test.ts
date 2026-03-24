@@ -307,6 +307,90 @@ describe('InMemoryEventBus', () => {
     });
   });
 
+  describe('importEvent', () => {
+    it('imports event without reassigning id, timestamp, or sequence', () => {
+      const event: BridgeEvent = {
+        id: 'custom-id',
+        version: 1,
+        timestamp: '2026-01-01T00:00:00.000Z',
+        sequence: 42,
+        domain: 'session',
+        type: 'session.spawned',
+        severity: 'info',
+        payload: { test: true },
+        source: 'replay',
+      };
+
+      bus.importEvent(event);
+
+      const results = bus.query({});
+      assert.equal(results.length, 1);
+      assert.equal(results[0].id, 'custom-id');
+      assert.equal(results[0].timestamp, '2026-01-01T00:00:00.000Z');
+      assert.equal(results[0].sequence, 42);
+    });
+
+    it('updates internal sequence to prevent collisions', () => {
+      bus.importEvent({
+        id: 'imported-1',
+        version: 1,
+        timestamp: '2026-01-01T00:00:00.000Z',
+        sequence: 100,
+        domain: 'session',
+        type: 'session.spawned',
+        severity: 'info',
+        payload: {},
+        source: 'replay',
+      });
+
+      // New emit should get sequence > 100
+      const newEvent = bus.emit(makeEvent());
+      assert.ok(newEvent.sequence > 100, `expected > 100, got ${newEvent.sequence}`);
+    });
+
+    it('dispatches to registered sinks', () => {
+      const sink = collectingSink();
+      bus.registerSink(sink);
+
+      const event: BridgeEvent = {
+        id: 'sink-test',
+        version: 1,
+        timestamp: new Date().toISOString(),
+        sequence: 1,
+        domain: 'session',
+        type: 'session.spawned',
+        severity: 'info',
+        payload: {},
+        source: 'replay',
+      };
+
+      bus.importEvent(event);
+
+      assert.equal(sink.events.length, 1);
+      assert.equal(sink.events[0].id, 'sink-test');
+    });
+
+    it('dispatches to matching subscribers', () => {
+      const received: BridgeEvent[] = [];
+      bus.subscribe({ domain: 'session' }, e => received.push(e));
+
+      bus.importEvent({
+        id: 'sub-test',
+        version: 1,
+        timestamp: new Date().toISOString(),
+        sequence: 1,
+        domain: 'session',
+        type: 'session.spawned',
+        severity: 'info',
+        payload: {},
+        source: 'replay',
+      });
+
+      assert.equal(received.length, 1);
+      assert.equal(received[0].id, 'sub-test');
+    });
+  });
+
   describe('ring buffer eviction', () => {
     it('evicts oldest events when capacity exceeded', () => {
       const smallBus = new InMemoryEventBus({ capacity: 3 });

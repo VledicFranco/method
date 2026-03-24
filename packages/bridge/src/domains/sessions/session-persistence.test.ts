@@ -57,6 +57,10 @@ function createMemoryFs(): FileSystemProvider {
     async writeFile(path: string, content: string): Promise<void> {
       this.writeFileSync(path, content);
     },
+    async appendFile(path: string, content: string): Promise<void> {
+      const existing = files.get(norm(path)) ?? '';
+      files.set(norm(path), existing + content);
+    },
     async readdir(path: string): Promise<string[]> {
       return this.readdirSync(path) as string[];
     },
