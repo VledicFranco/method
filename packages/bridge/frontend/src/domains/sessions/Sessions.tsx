@@ -1,7 +1,11 @@
 /**
- * PRD 019.1: Sessions page with session list and xterm.js terminal viewer.
- * Shows all bridge sessions with status, metadata, and live terminal output.
- * Now uses libified hooks and components (SpawnSessionModal, PromptBar, SessionTokenBadge).
+ * WS-3: Sessions page with mobile-first chat interface.
+ *
+ * Mobile (< 768px): session detail is full-screen with terminal + sticky input at bottom.
+ * Desktop: slide-over panel (existing pattern).
+ *
+ * Terminal uses xterm.js for PTY sessions, plain text for print-mode sessions.
+ * Prompt bar is always visible at the bottom of the session detail view.
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -16,14 +20,15 @@ import { PromptBar } from "@/domains/sessions/PromptBar";
 import { SessionTokenBadge } from "@/domains/tokens/SessionTokenBadge";
 import { useSessions } from "@/domains/sessions/useSessions";
 import { useSessionTokens } from "@/domains/tokens/useTokens";
+import { useIsMobile } from "@/shared/layout/useIsMobile";
 import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatTokens } from "@/shared/lib/formatters";
 import type { SessionSummary } from "@/domains/sessions/types";
-import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus } from "lucide-react";
+import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus, ArrowLeft } from "lucide-react";
 
 // ---- xterm.js Terminal ----
 
-function TerminalViewer({ sessionId, enabled }: { sessionId: string; enabled: boolean }) {
+function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; enabled: boolean; isMobile?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -57,7 +62,7 @@ function TerminalViewer({ sessionId, enabled }: { sessionId: string; enabled: bo
           white: "#c8cdd2",
         },
         fontFamily: "JetBrains Mono, monospace",
-        fontSize: 13,
+        fontSize: isMobile ? 11 : 13,
         cursorBlink: false,
         disableStdin: true,
         scrollback: 5000,
@@ -100,12 +105,15 @@ function TerminalViewer({ sessionId, enabled }: { sessionId: string; enabled: bo
       termRef.current = null;
       cleanup?.then((fn) => fn?.());
     };
-  }, [sessionId, enabled]);
+  }, [sessionId, enabled, isMobile]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-[400px] rounded-lg overflow-hidden border border-bdr"
+      className={cn(
+        "w-full rounded-lg overflow-hidden border border-bdr",
+        isMobile ? "h-full" : "h-[400px]",
+      )}
     />
   );
 }
@@ -233,11 +241,142 @@ function SessionDetailTokens({ sessionId }: { sessionId: string }) {
   );
 }
 
+// ---- Mobile Full-Screen Session Detail ----
+
+function MobileSessionDetail({
+  session,
+  onBack,
+}: {
+  session: SessionSummary;
+  onBack: () => void;
+}) {
+  return (
+    <PageShell fullScreen>
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-bdr px-sp-4 py-sp-3 shrink-0">
+        <button
+          onClick={onBack}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <TerminalIcon className="h-4 w-4 text-bio shrink-0" />
+            <span className="font-display text-sm font-semibold text-txt truncate">
+              {session.nickname}
+            </span>
+            <StatusBadge
+              status={(session.status === "idle" ? "running" : session.status) as Status}
+              size="sm"
+            />
+          </div>
+          {session.purpose && (
+            <p className="text-xs text-txt-dim truncate mt-0.5">{session.purpose}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Terminal area — fills remaining space above prompt bar */}
+      <div className="flex-1 overflow-hidden p-sp-3">
+        <TerminalViewer
+          sessionId={session.session_id}
+          enabled={session.status !== "dead"}
+          isMobile={true}
+        />
+      </div>
+
+      {/* Sticky prompt bar at bottom — always visible, above keyboard on mobile */}
+      {session.status !== "dead" && session.mode === "pty" && (
+        <div className="shrink-0 border-t border-bdr p-sp-3 bg-abyss">
+          <PromptBar sessionId={session.session_id} />
+        </div>
+      )}
+    </PageShell>
+  );
+}
+
+// ---- Session Detail Content (shared between desktop slide-over and mobile) ----
+
+function SessionDetailContent({ session }: { session: SessionSummary }) {
+  return (
+    <div className="space-y-sp-4">
+      <div>
+        <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Status</p>
+        <StatusBadge status={(session.status === "idle" ? "running" : session.status) as Status} />
+      </div>
+
+      {session.purpose && (
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Purpose</p>
+          <p className="text-sm text-txt">{session.purpose}</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Depth</p>
+          <p className="font-mono text-sm text-txt">{session.depth}</p>
+        </div>
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Prompts</p>
+          <p className="font-mono text-sm text-txt">{session.prompt_count}</p>
+        </div>
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Mode</p>
+          <p className="font-mono text-sm text-txt">{session.mode}</p>
+        </div>
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Isolation</p>
+          <p className="font-mono text-sm text-txt">{session.isolation}</p>
+        </div>
+      </div>
+
+      {/* Token usage detail */}
+      <SessionDetailTokens sessionId={session.session_id} />
+
+      {session.parent_session_id && (
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Parent</p>
+          <p className="font-mono text-xs text-bio">{session.parent_session_id}</p>
+        </div>
+      )}
+
+      {session.children.length > 0 && (
+        <div>
+          <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Children</p>
+          <div className="space-y-1">
+            {session.children.map((childId) => (
+              <p key={childId} className="font-mono text-xs text-txt-dim">{childId}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Live terminal */}
+      <div>
+        <p className="text-[0.65rem] text-txt-muted uppercase mb-2">Terminal Output</p>
+        <TerminalViewer
+          sessionId={session.session_id}
+          enabled={session.status !== "dead"}
+        />
+      </div>
+
+      {/* Prompt bar for live sessions */}
+      {session.status !== "dead" && session.mode === "pty" && (
+        <PromptBar sessionId={session.session_id} />
+      )}
+    </div>
+  );
+}
+
 // ---- Main Sessions Page ----
 
 export default function Sessions() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [spawnOpen, setSpawnOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const {
     sessions,
@@ -255,6 +394,16 @@ export default function Sessions() {
     () => sessions.find((s) => s.session_id === selectedSessionId),
     [sessions, selectedSessionId],
   );
+
+  // Mobile: show full-screen session detail
+  if (isMobile && selectedSession) {
+    return (
+      <MobileSessionDetail
+        session={selectedSession}
+        onBack={() => setSelectedSessionId(null)}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -350,83 +499,17 @@ export default function Sessions() {
         </div>
       )}
 
-      {/* Session detail slide-over with terminal + prompt bar */}
-      <SlideOverPanel
-        open={selectedSession != null}
-        onClose={() => setSelectedSessionId(null)}
-        title={selectedSession?.nickname ?? ""}
-        subtitle={selectedSession?.session_id}
-      >
-        {selectedSession && (
-          <div className="space-y-sp-4">
-            <div>
-              <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Status</p>
-              <StatusBadge status={(selectedSession.status === "idle" ? "running" : selectedSession.status) as Status} />
-            </div>
-
-            {selectedSession.purpose && (
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Purpose</p>
-                <p className="text-sm text-txt">{selectedSession.purpose}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Depth</p>
-                <p className="font-mono text-sm text-txt">{selectedSession.depth}</p>
-              </div>
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Prompts</p>
-                <p className="font-mono text-sm text-txt">{selectedSession.prompt_count}</p>
-              </div>
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Mode</p>
-                <p className="font-mono text-sm text-txt">{selectedSession.mode}</p>
-              </div>
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Isolation</p>
-                <p className="font-mono text-sm text-txt">{selectedSession.isolation}</p>
-              </div>
-            </div>
-
-            {/* Token usage detail */}
-            <SessionDetailTokens sessionId={selectedSession.session_id} />
-
-            {selectedSession.parent_session_id && (
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Parent</p>
-                <p className="font-mono text-xs text-bio">{selectedSession.parent_session_id}</p>
-              </div>
-            )}
-
-            {selectedSession.children.length > 0 && (
-              <div>
-                <p className="text-[0.65rem] text-txt-muted uppercase mb-1">Children</p>
-                <div className="space-y-1">
-                  {selectedSession.children.map((childId) => (
-                    <p key={childId} className="font-mono text-xs text-txt-dim">{childId}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Live terminal */}
-            <div>
-              <p className="text-[0.65rem] text-txt-muted uppercase mb-2">Terminal Output</p>
-              <TerminalViewer
-                sessionId={selectedSession.session_id}
-                enabled={selectedSession.status !== "dead"}
-              />
-            </div>
-
-            {/* Prompt bar for live sessions */}
-            {selectedSession.status !== "dead" && selectedSession.mode === "pty" && (
-              <PromptBar sessionId={selectedSession.session_id} />
-            )}
-          </div>
-        )}
-      </SlideOverPanel>
+      {/* Desktop: session detail slide-over with terminal + prompt bar */}
+      {!isMobile && (
+        <SlideOverPanel
+          open={selectedSession != null}
+          onClose={() => setSelectedSessionId(null)}
+          title={selectedSession?.nickname ?? ""}
+          subtitle={selectedSession?.session_id}
+        >
+          {selectedSession && <SessionDetailContent session={selectedSession} />}
+        </SlideOverPanel>
+      )}
 
       {/* Spawn modal */}
       <SpawnSessionModal

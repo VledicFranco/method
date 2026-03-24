@@ -29,3 +29,8 @@ export type { SessionRouteDeps } from './routes.js';
 export { registerLiveOutputRoutes } from './live-output-route.js';
 export { registerTranscriptRoutes } from './transcript-route.js';
 export { createTranscriptReader } from './transcript-reader.js';
+
+export { createSessionPersistenceStore } from './session-persistence.js';
+export type { SessionPersistenceStore, PersistedSession } from './session-persistence.js';
+export { registerPersistenceRoutes } from './persistence-routes.js';
+export type { PersistenceRouteDeps } from './persistence-routes.js';

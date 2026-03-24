@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useCallback } from 'react';
 import { cn } from '@/shared/lib/cn';
-import { X } from 'lucide-react';
+import { useIsMobile } from '@/shared/layout/useIsMobile';
+import { X, ArrowLeft } from 'lucide-react';
 
 export interface SlideOverPanelProps {
   open: boolean;
@@ -19,6 +20,8 @@ export function SlideOverPanel({
   children,
   className,
 }: SlideOverPanelProps) {
+  const isMobile = useIsMobile();
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -35,6 +38,46 @@ export function SlideOverPanel({
 
   if (!open) return null;
 
+  // Mobile: full-screen overlay (no backdrop, fills entire viewport)
+  if (isMobile) {
+    return (
+      <div
+        className={cn(
+          'fixed inset-0 z-50 flex flex-col bg-abyss',
+          className,
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title ?? 'Detail panel'}
+      >
+        {/* Header with back button */}
+        <div className="flex items-center gap-3 border-b border-bdr px-sp-4 py-sp-3">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            {title && (
+              <h2 className="font-display text-md text-txt font-semibold truncate">{title}</h2>
+            )}
+            {subtitle && (
+              <p className="text-xs text-txt-dim truncate">{subtitle}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Content — fills remaining space */}
+        <div className="flex-1 overflow-y-auto p-sp-4">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: standard slide-over panel
   return (
     <>
       {/* Backdrop */}

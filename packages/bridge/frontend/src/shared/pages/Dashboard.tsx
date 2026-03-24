@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/shared/layout/PageShell';
 import { GenesisFAB } from '@/domains/genesis/GenesisFAB';
 import { GenesisChatPanel } from '@/domains/genesis/GenesisChatPanel';
@@ -7,12 +8,16 @@ import { EventStreamPanel } from '@/domains/projects/EventStreamPanel';
 import { BridgeHealthCards } from '@/shared/data/BridgeHealthCards';
 import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
 import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
+import { useSessions } from '@/domains/sessions/useSessions';
 import { api } from '@/shared/lib/api';
 import type { ProjectMetadata } from '@/domains/projects/types';
 
 const GENESIS_SESSION_ID = 'genesis-root';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { spawn, isSpawning } = useSessions();
+
   const [isChatOpen, setIsChatOpen] = useState(() => {
     const saved = localStorage.getItem('genesis-chat-open');
     return saved ? JSON.parse(saved) : false;
@@ -20,6 +25,27 @@ export default function Dashboard() {
   const [genesisStatus, setGenesisStatus] = useState<'active' | 'idle'>('idle');
   const [budgetPercent, setBudgetPercent] = useState(0);
   const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
+  const [spawningProjectId, setSpawningProjectId] = useState<string | null>(null);
+
+  // One-tap spawn from project list
+  const handleProjectSpawn = useCallback(
+    async (project: ProjectMetadata) => {
+      setSpawningProjectId(project.id);
+      try {
+        await spawn({
+          workdir: project.path,
+          purpose: `Session for ${project.name}`,
+          mode: 'pty',
+        });
+        navigate('/sessions');
+      } catch (err) {
+        console.error('Spawn failed:', err);
+      } finally {
+        setSpawningProjectId(null);
+      }
+    },
+    [spawn, navigate],
+  );
 
   // Fetch Genesis status periodically
   useEffect(() => {
@@ -91,9 +117,14 @@ export default function Dashboard() {
           {/* Subscription Usage Meters */}
           <SubscriptionMeters />
 
-          {/* Project List Section */}
+          {/* Project List Section — with one-tap spawn */}
           <div className="pt-sp-4 border-t border-bdr">
-            <ProjectListView onProjectSelect={setSelectedProject} />
+            <ProjectListView
+              onProjectSelect={setSelectedProject}
+              onProjectSpawn={handleProjectSpawn}
+              isSpawning={isSpawning}
+              spawningProjectId={spawningProjectId}
+            />
           </div>
 
           {/* Event Stream Section */}
