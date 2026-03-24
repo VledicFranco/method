@@ -1,0 +1,59 @@
+retro:
+  session_type: M2-DIMPL
+  methodology: P2-SD v2.0
+  instance: I2-METHOD
+  date: "2026-03-24"
+  task: "PRD 024 — FCA Port Wiring + Boundary Cleanup"
+  pr: "https://github.com/VledicFranco/method/pull/47"
+
+  hardest_decision: >
+    Whether to use strict throw-on-missing-port (forcing every test file to
+    explicitly configure ports) or lazy-init with production defaults (backward
+    compatible but weaker enforcement). Chose lazy-init because the port pattern
+    is in place for substitution and the composition root still wires explicitly,
+    while 200+ test failures from strict enforcement would have required touching
+    30+ test files with boilerplate. The seam exists; enforcement can be tightened
+    later if test doubles are needed.
+
+  observations:
+    - >
+      The module-level setter pattern (setXPorts) works well for domains with
+      multiple files sharing the same port. It avoids threading ports through
+      every function signature while keeping the injection point explicit. The
+      downside: it's global mutable state. For this codebase where domains run
+      in a single process, this is acceptable. For multi-instance scenarios,
+      constructor DI (like InMemoryProjectRegistry) would be better.
+    - >
+      The FileSystemProvider port needed significant extension — from 7 sync
+      methods to 16 methods (sync + async). This suggests the original port was
+      designed for the two initial consumers (tokenTracker, transcriptReader)
+      and didn't anticipate the broader adoption. Future ports should be designed
+      with the full usage surface in mind.
+    - >
+      Cross-domain boundary violations were concentrated in 3 specific patterns:
+      (1) sessions importing from strategies (LlmProvider), (2) methodology
+      importing from sessions (appendMessage), (3) projects importing from
+      registry (copyMethodology/copyStrategy). All three were callback injection
+      fixes — the simplest and most reversible pattern.
+
+  card_feedback:
+    essence_feedback: >
+      The project card's emphasis on "faithfulness > simplicity > registry
+      integrity" is well-served by this work. The port pattern makes the
+      architecture more faithful to FCA principles without sacrificing
+      simplicity — lazy-init defaults mean no behavioral change for existing
+      consumers.
+    delivery_rule_feedback:
+      - rule: DR-03
+        note: >
+          Core package (zero transport deps) was not in scope for this PRD.
+          MG-4 from the action plan targets core and should be a separate
+          deliverable. Verified DR-03 remains unviolated by this change.
+      - rule: DR-14
+        note: >
+          No new test files were created for port contracts specifically.
+          Existing tests exercise the ports through their domain consumers.
+          If port behavior diverges from Node fs/yaml semantics, domain
+          tests will catch it.
+
+  proposed_deltas: []
