@@ -137,6 +137,33 @@ describe('InMemorySource — substitutability proof', () => {
     assert.strictEqual(source.getMethodology('X'), undefined);
   });
 
+  it('getMethod() returns injected method by compound key', () => {
+    // Use a real method from stdlib to prove the found-path works
+    const stdlibSource = new StdlibSource();
+    const realMethod = stdlibSource.getMethod('P2-SD', 'M1-IMPL');
+    assert.ok(realMethod !== undefined, 'precondition: M1-IMPL exists in stdlib');
+
+    const source = new InMemorySource(testCatalog, [
+      { key: 'P2-SD/M1-IMPL', method: realMethod! },
+    ]);
+    const result = source.getMethod('P2-SD', 'M1-IMPL');
+    assert.ok(result !== undefined, 'should return the injected method');
+    assert.strictEqual(result!.id, 'M1-IMPL');
+  });
+
+  it('getMethodology() returns injected methodology by ID', () => {
+    const stdlibSource = new StdlibSource();
+    const realMethodology = stdlibSource.getMethodology('P2-SD');
+    assert.ok(realMethodology !== undefined, 'precondition: P2-SD exists in stdlib');
+
+    const source = new InMemorySource(testCatalog, [], [
+      { id: 'P2-SD', methodology: realMethodology! },
+    ]);
+    const result = source.getMethodology('P2-SD');
+    assert.ok(result !== undefined, 'should return the injected methodology');
+    assert.strictEqual(result!.id, 'P2-SD');
+  });
+
   it('consumer code works identically with either implementation', () => {
     // This test proves substitutability: a function that accepts MethodologySource
     // works with both StdlibSource and InMemorySource

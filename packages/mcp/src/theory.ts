@@ -6,6 +6,8 @@
  *
  * This is the only piece of @method/core that MCP consumed. Inlining it here
  * allows @method/mcp to drop its @method/core dependency entirely.
+ *
+ * Accepts an optional TheoryFs parameter for testability (DR-15 port pattern).
  */
 
 import * as nodeFs from 'fs';
@@ -27,14 +29,25 @@ type TheorySection = {
   content: string;
 };
 
+/** Filesystem interface for theory file access (testability seam). */
+export interface TheoryFs {
+  readFileSync(path: string, encoding: 'utf-8'): string;
+  readdirSync(path: string, options: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
+}
+
+const defaultFs: TheoryFs = {
+  readFileSync: (p, enc) => nodeFs.readFileSync(p, enc),
+  readdirSync: (p, opts) => nodeFs.readdirSync(p, opts) as Array<{ name: string; isDirectory(): boolean }>,
+};
+
 // ── Internal ──
 
 const cache = new Map<string, TheorySection[]>();
 
 const LABEL_PATTERN = /\*\*(?:Definition|Proposition|Observation|Clarification|Corollary|Sketch)\s*[\d.]*\s*(?:\(([^)]+)\))?\.?\*\*/;
 
-function parseTheoryFile(filePath: string): TheorySection[] {
-  const raw = nodeFs.readFileSync(filePath, 'utf-8');
+function parseTheoryFile(filePath: string, fs: TheoryFs = defaultFs): TheorySection[] {
+  const raw = fs.readFileSync(filePath, 'utf-8');
   const source = basename(filePath);
   const sections: TheorySection[] = [];
 
@@ -79,9 +92,9 @@ function parseTheoryFile(filePath: string): TheorySection[] {
   return sections;
 }
 
-function getSections(filePath: string): TheorySection[] {
+function getSections(filePath: string, fs: TheoryFs = defaultFs): TheorySection[] {
   if (!cache.has(filePath)) {
-    cache.set(filePath, parseTheoryFile(filePath));
+    cache.set(filePath, parseTheoryFile(filePath, fs));
   }
   return cache.get(filePath)!;
 }
@@ -115,14 +128,14 @@ function normalizeForSearch(text: string): string {
 
 // ── Public API ──
 
-export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
-  const files = nodeFs.readdirSync(theoryPath, { withFileTypes: true })
+export function lookupTheory(theoryPath: string, term: string, fs: TheoryFs = defaultFs): TheoryResult[] {
+  const files = fs.readdirSync(theoryPath, { withFileTypes: true })
     .filter(f => f.name.endsWith('.md'))
     .map(f => join(theoryPath, f.name));
 
   const allSections: TheorySection[] = [];
   for (const f of files) {
-    allSections.push(...getSections(f));
+    allSections.push(...getSections(f, fs));
   }
 
   const normalizedTerm = normalizeForSearch(term);
