@@ -543,4 +543,179 @@ describe('MethodologySessionStore', () => {
       );
     });
   });
+
+  // ══════════════════════════════════════════════════════════════
+  // Edge Cases — Branch Coverage
+  // ══════════════════════════════════════════════════════════════
+
+  describe('validateStep() edge cases', () => {
+    it('throws mismatch error when step_id does not match current step', () => {
+      store.loadMethod('val-mm-1', 'P0-META', 'M1-MDES');
+
+      assert.throws(
+        () => store.validateStep('val-mm-1', 'wrong_step_id', { data: 'test' }),
+        /mismatch/i,
+        'should throw step_id mismatch error',
+      );
+    });
+
+    it('validates correctly when step_id matches current step', () => {
+      store.loadMethod('val-ok-1', 'P0-META', 'M1-MDES');
+      const current = store.getCurrentStep('val-ok-1') as { step: { id: string } };
+
+      const result = store.validateStep('val-ok-1', current.step.id, {
+        decision: 'proceed',
+      }) as { valid: boolean; recommendation: string };
+
+      assert.ok(typeof result.valid === 'boolean');
+      assert.ok(['advance', 'retry', 'escalate'].includes(result.recommendation));
+    });
+  });
+
+  describe('advanceStep() edge cases', () => {
+    it('throws at terminal step (already at last step)', () => {
+      store.loadMethod('adv-term-1', 'P0-META', 'M1-MDES');
+
+      const status = store.getStatus('adv-term-1') as { totalSteps: number };
+      // Advance to the last step
+      for (let i = 0; i < status.totalSteps - 1; i++) {
+        store.advanceStep('adv-term-1');
+      }
+
+      // Now at terminal — should throw
+      assert.throws(
+        () => store.advanceStep('adv-term-1'),
+        /terminal step/i,
+        'should throw "already at terminal step" error',
+      );
+    });
+
+    it('throws when no methodology is loaded', () => {
+      assert.throws(
+        () => store.advanceStep('no-load-adv'),
+        /no methodology loaded/i,
+        'should throw when no method is loaded',
+      );
+    });
+  });
+
+  describe('loadMethodInSession() edge cases', () => {
+    it('throws when session status is "executing"', () => {
+      store.startSession('lm-exec-1', 'P2-SD', null);
+      const list = store.list() as Array<{
+        methodologyId: string;
+        methods: Array<{ methodId: string }>;
+      }>;
+      const p2sd = list.find((m) => m.methodologyId === 'P2-SD');
+      assert.ok(p2sd);
+      const firstMethodId = p2sd!.methods[0].methodId;
+
+      // Load a method — sets status to "executing"
+      store.loadMethodInSession('lm-exec-1', firstMethodId);
+
+      // Try to load another method while executing — should throw
+      assert.throws(
+        () => store.loadMethodInSession('lm-exec-1', firstMethodId),
+        /Cannot load method/i,
+        'should throw when status is executing',
+      );
+    });
+
+    it('throws when no methodology session active', () => {
+      assert.throws(
+        () => store.loadMethodInSession('no-meth-sess', 'M1-MDES'),
+        /No methodology session active/i,
+        'should throw when no methodology session exists',
+      );
+    });
+
+    it('throws when method is not in methodology repertoire', () => {
+      store.startSession('lm-not-in-1', 'P2-SD', null);
+
+      assert.throws(
+        () => store.loadMethodInSession('lm-not-in-1', 'NONEXISTENT-METHOD'),
+        /not in methodology/i,
+        'should throw when method is not in repertoire',
+      );
+    });
+  });
+
+  describe('transition() edge cases', () => {
+    it('throws when session status is not executing', () => {
+      store.startSession('trans-init-1', 'P2-SD', null);
+
+      // Status is "initialized", not "executing"
+      assert.throws(
+        () => store.transition('trans-init-1', 'done'),
+        /Cannot transition/i,
+        'should throw when status is not executing',
+      );
+    });
+
+    it('throws when no methodology session active', () => {
+      assert.throws(
+        () => store.transition('no-meth-trans', null),
+        /No methodology session active/i,
+        'should throw when no methodology session exists',
+      );
+    });
+  });
+
+  describe('select() edge cases', () => {
+    it('throws when methodology does not exist', () => {
+      assert.throws(
+        () => store.select('sel-err-1', 'NONEXISTENT', 'M1-FOO'),
+        /not found/i,
+        'should throw for non-existent methodology',
+      );
+    });
+
+    it('throws when method is not in methodology repertoire', () => {
+      assert.throws(
+        () => store.select('sel-err-2', 'P2-SD', 'NONEXISTENT-METHOD'),
+        /not in methodology/i,
+        'should throw when method not in repertoire',
+      );
+    });
+  });
+
+  describe('getCurrentStep() edge cases', () => {
+    it('throws when no methodology is loaded', () => {
+      assert.throws(
+        () => store.getCurrentStep('no-load-curr'),
+        /no methodology loaded/i,
+        'should throw when no method loaded',
+      );
+    });
+  });
+
+  describe('getStepContext() edge cases', () => {
+    it('throws when no methodology is loaded', () => {
+      assert.throws(
+        () => store.getStepContext('no-load-ctx'),
+        /no methodology loaded/i,
+        'should throw when no method loaded',
+      );
+    });
+  });
+
+  describe('route() edge cases', () => {
+    it('throws when no methodology session active', () => {
+      assert.throws(
+        () => store.route('no-meth-route'),
+        /No methodology session active/i,
+        'should throw when no methodology session exists',
+      );
+    });
+  });
+
+  describe('startSession() edge cases', () => {
+    it('throws for non-existent methodology', () => {
+      assert.throws(
+        () => store.startSession('start-err-1', 'NONEXISTENT', null),
+        /not found/i,
+        'should throw for non-existent methodology',
+      );
+    });
+  });
 });
