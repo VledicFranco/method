@@ -1,0 +1,40 @@
+session_id: "com-20260324-1142-prd-026-universal-event-bus"
+methodology: "P2-SD"
+method: "com"
+date: "2026-03-24"
+pr: 52
+branch: "feat/prd-026-universal-event-bus"
+
+hardest_decision: >
+  Whether to make the EventBus port interface's query() method synchronous or async.
+  Chose synchronous because Phase 1 is ring-buffer-only; making it async now would add
+  unnecessary Promise wrapping to every query call. The interface can be versioned when
+  PersistenceSink arrives in Phase 3.
+
+observations:
+  - >
+    The 3-advisor parallel review was highly effective — FCA advisor confirmed clean
+    boundaries, while TypeScript and resilience advisors found 5 real bugs (glob escape,
+    filter logic, dispatch mutation, capacity guard, async test gap). The adversarial
+    coverage caught issues that self-review missed.
+  - >
+    Dual-emit pattern (legacy appendMessage + new bus emit) is clean to implement but
+    creates 4 parallel code paths in pool.ts. Phase 2 should prioritize collapsing these
+    to prevent the dual-emit from becoming permanent tech debt.
+  - >
+    The EventBus port follows the methodology-source.ts pattern (interface-only port file,
+    implementation in shared/) rather than the pty-provider.ts pattern (co-located). This
+    divergence was noted by the FCA advisor as MEDIUM. The separated pattern is arguably
+    better FCA practice — worth considering as the standard for future complex ports.
+
+card_feedback:
+  essence: >
+    Essence was helpful — "faithfulness > simplicity" guided the decision to implement
+    the full BridgeEvent schema from PRD 026 rather than a simplified subset. The invariant
+    about theory being source of truth wasn't directly relevant to this infrastructure work.
+  delivery_rules: >
+    DR-15 (port discipline) was the most-referenced rule — it validated the EventBus-as-port
+    design. DR-14 (bridge testing) drove the comprehensive test suite. DR-03 (core zero
+    transport deps) confirmed the bus correctly lives at L4, not lower.
+
+proposed_deltas: []
