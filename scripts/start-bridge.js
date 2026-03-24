@@ -68,6 +68,32 @@ if (!oauthToken) {
   console.log(`\x1b[32m[bridge]\x1b[0m Subscription meters enabled\n`);
 }
 
+// ── Ensure frontend is built ─────────────────────────────────
+
+const frontendDir = join(process.cwd(), 'packages', 'bridge', 'frontend');
+const frontendDist = join(frontendDir, 'dist');
+
+if (process.env.FRONTEND_ENABLED !== 'false' && !existsSync(frontendDist)) {
+  console.log(`\x1b[33m[bridge]\x1b[0m Frontend not built — building now...`);
+
+  // Install deps if needed
+  if (!existsSync(join(frontendDir, 'node_modules'))) {
+    console.log(`\x1b[33m[bridge]\x1b[0m Installing frontend dependencies...`);
+    const install = spawn('npm', ['install'], { cwd: frontendDir, stdio: 'inherit', shell: true });
+    await new Promise((resolve, reject) => {
+      install.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`npm install failed (exit ${code})`)));
+    });
+  }
+
+  // Build
+  const build = spawn('npm', ['run', 'build'], { cwd: frontendDir, stdio: 'inherit', shell: true });
+  await new Promise((resolve, reject) => {
+    build.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`Frontend build failed (exit ${code})`)));
+  });
+
+  console.log(`\x1b[32m[bridge]\x1b[0m Frontend built successfully\n`);
+}
+
 // ── Launch bridge ────────────────────────────────────────────
 
 const env = { ...process.env };
