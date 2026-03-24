@@ -22,7 +22,7 @@ import { join, relative, sep } from 'node:path';
 
 const BRIDGE_SRC = join(import.meta.dirname, '..'); // packages/bridge/src
 const DOMAINS_DIR = join(BRIDGE_SRC, 'domains');
-const CORE_SRC = join(BRIDGE_SRC, '..', '..', 'core', 'src');
+
 const METHODTS_SRC = join(BRIDGE_SRC, '..', '..', 'methodts', 'src');
 const MCP_SRC = join(BRIDGE_SRC, '..', '..', 'mcp', 'src');
 const TYPES_SRC = join(BRIDGE_SRC, '..', '..', 'types', 'src');
@@ -219,7 +219,7 @@ function isDomainDir(name: string): boolean {
 // ── G-LAYER: Lower-layer packages do not import higher layers ────
 
 describe('G-LAYER: Package layer ordering is respected', () => {
-  // Layer stack: L0 types → L1 core → L2 methodts → L3 mcp → L4 bridge
+  // Layer stack: L0 types → L2 methodts → L3 mcp → L4 bridge (core removed)
   const LAYER_VIOLATIONS: Array<{
     name: string;
     srcDir: string;
@@ -228,11 +228,6 @@ describe('G-LAYER: Package layer ordering is respected', () => {
     {
       name: '@method/types (L0)',
       srcDir: TYPES_SRC,
-      forbidden: ['@method/core', '@method/methodts', '@method/mcp', '@method/bridge'],
-    },
-    {
-      name: '@method/core (L1)',
-      srcDir: CORE_SRC,
       forbidden: ['@method/methodts', '@method/mcp', '@method/bridge'],
     },
     {

@@ -6,8 +6,8 @@
   ],
   "scripts": {
     "build": "tsc -b && npm run build --workspace=packages/bridge --if-present",
-    "test": "npx tsx --test packages/core/src/__tests__/*.test.ts \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
-    "test:coverage": "c8 --reporter=text --reporter=html npx tsx --test packages/core/src/__tests__/*.test.ts \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
+    "test": "npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
+    "test:coverage": "c8 --reporter=text --reporter=html npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:stop": "node scripts/kill-port.js",
