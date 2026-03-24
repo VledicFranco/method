@@ -87,13 +87,14 @@ export function registerPersistenceRoutes(app: FastifyInstance, deps: Persistenc
         return reply.status(404).send({ error: `Persisted session ${id} not found` });
       }
 
-      // Spawn a new session with the same workdir
+      // Resume with the SAME session ID so Claude Code's --resume restores conversation context
       const result = await pool.create({
         workdir: persisted.workdir,
         initialPrompt: initial_prompt,
         nickname: `${persisted.nickname}-resumed`,
         purpose: persisted.purpose ?? undefined,
         mode: mode ?? persisted.mode,
+        session_id: id,  // reuse original ID for Claude Code --resume
         metadata: {
           resumed_from: id,
           original_nickname: persisted.nickname,

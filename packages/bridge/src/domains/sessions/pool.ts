@@ -100,6 +100,8 @@ export interface SessionPool {
     allowed_paths?: string[];
     /** PRD 014: Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. */
     scope_mode?: 'enforce' | 'warn';
+    /** Optional session ID — if provided, reuses this ID instead of generating a new UUID. Used for resuming sessions with Claude Code's --resume flag. */
+    session_id?: string;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
   status(sessionId: string): SessionStatusInfo;
@@ -331,7 +333,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -385,7 +387,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         }
       }
 
-      const sessionId = randomUUID();
+      const sessionId = session_id ?? randomUUID();
 
       // PRD 007: Generate and register nickname
       const assignedNickname = generateNickname(nickname, metadata);
