@@ -1,6 +1,12 @@
-import { readFileSync, readdirSync } from 'fs';
+import * as nodeFs from 'fs';
 import { join, basename } from 'path';
-import type { TheoryResult } from './types.js';
+import type { TheoryResult, CoreFileSystem } from './types.js';
+
+const defaultFs: CoreFileSystem = {
+  readFileSync: nodeFs.readFileSync as CoreFileSystem['readFileSync'],
+  readdirSync: nodeFs.readdirSync as CoreFileSystem['readdirSync'],
+  existsSync: nodeFs.existsSync,
+};
 
 type TheorySection = {
   source: string;
@@ -13,8 +19,8 @@ const cache = new Map<string, TheorySection[]>();
 
 const LABEL_PATTERN = /\*\*(?:Definition|Proposition|Observation|Clarification|Corollary|Sketch)\s*[\d.]*\s*(?:\(([^)]+)\))?\.?\*\*/;
 
-function parseTheoryFile(filePath: string): TheorySection[] {
-  const raw = readFileSync(filePath, 'utf-8');
+function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] {
+  const raw = fs.readFileSync(filePath, 'utf-8');
   const source = basename(filePath);
   const sections: TheorySection[] = [];
 
@@ -68,9 +74,9 @@ function parseTheoryFile(filePath: string): TheorySection[] {
   return sections;
 }
 
-function getSections(filePath: string): TheorySection[] {
+function getSections(filePath: string, fs: CoreFileSystem): TheorySection[] {
   if (!cache.has(filePath)) {
-    cache.set(filePath, parseTheoryFile(filePath));
+    cache.set(filePath, parseTheoryFile(filePath, fs));
   }
   return cache.get(filePath)!;
 }
@@ -102,14 +108,14 @@ function normalizeForSearch(text: string): string {
   return result.toLowerCase();
 }
 
-export function lookupTheory(theoryPath: string, term: string): TheoryResult[] {
-  const files = readdirSync(theoryPath)
-    .filter(f => f.endsWith('.md'))
-    .map(f => join(theoryPath, f));
+export function lookupTheory(theoryPath: string, term: string, fs: CoreFileSystem = defaultFs): TheoryResult[] {
+  const files = fs.readdirSync(theoryPath, { withFileTypes: true })
+    .filter((f: { name: string; isDirectory(): boolean }) => f.name.endsWith('.md'))
+    .map((f: { name: string }) => join(theoryPath, f.name));
 
   const allSections: TheorySection[] = [];
   for (const f of files) {
-    allSections.push(...getSections(f));
+    allSections.push(...getSections(f, fs));
   }
 
   const normalizedTerm = normalizeForSearch(term);

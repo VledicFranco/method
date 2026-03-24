@@ -36,3 +36,10 @@ export type TheoryResult = {
   label?: string;
   content: string;
 };
+
+/** Minimal filesystem abstraction for core (DR-03: zero transport deps). */
+export interface CoreFileSystem {
+  readFileSync(path: string, encoding: 'utf-8'): string;
+  readdirSync(path: string, options: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
+  existsSync(path: string): boolean;
+}

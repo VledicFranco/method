@@ -37,6 +37,7 @@ import { loadGenesisConfig } from './domains/genesis/config.js';
 import { loadStrategiesConfig } from './domains/strategies/config.js';
 import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
+import { JsYamlLoader } from './ports/yaml-loader.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -52,6 +53,7 @@ const PORT = parseInt(process.env.PORT ?? '3456', 10);
 // PRD 023 D2: Instantiate port providers for dependency injection
 const ptyProvider = new NodePtyProvider();
 const fsProvider = new NodeFileSystemProvider();
+const yamlLoader = new JsYamlLoader();
 
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,

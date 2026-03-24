@@ -5,7 +5,7 @@ import { mkdir } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
-import { YamlEventPersistence } from '../domains/projects/events/yaml-event-persistence.js';
+import { YamlEventPersistence } from './yaml-event-persistence.js';
 
 /**
  * F-R-003: Directory Permission Validation Tests

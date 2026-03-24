@@ -1,10 +1,16 @@
-import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
+import * as nodeFs from 'fs';
 import { join, basename } from 'path';
 import yaml from 'js-yaml';
-import type { Step, LoadedMethod, MethodEntry, MethodologyEntry } from './types.js';
+import type { Step, LoadedMethod, MethodEntry, MethodologyEntry, CoreFileSystem } from './types.js';
 
-function readYaml(filePath: string): Record<string, unknown> {
-  const raw = readFileSync(filePath, 'utf-8');
+const defaultFs: CoreFileSystem = {
+  readFileSync: nodeFs.readFileSync as CoreFileSystem['readFileSync'],
+  readdirSync: nodeFs.readdirSync as CoreFileSystem['readdirSync'],
+  existsSync: nodeFs.existsSync,
+};
+
+function readYaml(filePath: string, fs: CoreFileSystem): Record<string, unknown> {
+  const raw = fs.readFileSync(filePath, 'utf-8');
   const parsed = yaml.load(raw);
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error(`Failed to parse ${filePath}: YAML did not produce an object`);
@@ -57,15 +63,15 @@ function extractPhases(parsed: Record<string, unknown>, filePath: string): Step[
   });
 }
 
-export function loadMethodology(registryPath: string, methodologyId: string, methodId: string): LoadedMethod {
+export function loadMethodology(registryPath: string, methodologyId: string, methodId: string, fs: CoreFileSystem = defaultFs): LoadedMethod {
   // Primary path: registry/{mid}/{methid}/{methid}.yaml
   let filePath = join(registryPath, methodologyId, methodId, `${methodId}.yaml`);
 
-  if (!existsSync(filePath)) {
+  if (!fs.existsSync(filePath)) {
     // Fallback: registry/{mid}/{mid}.yaml only when loading the methodology itself
     if (methodologyId === methodId) {
       const fallback = join(registryPath, methodologyId, `${methodologyId}.yaml`);
-      if (existsSync(fallback)) {
+      if (fs.existsSync(fallback)) {
         filePath = fallback;
       } else {
         throw new Error(`Method ${methodId} not found under methodology ${methodologyId}`);
@@ -77,7 +83,7 @@ export function loadMethodology(registryPath: string, methodologyId: string, met
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = readYaml(filePath);
+    parsed = readYaml(filePath, fs);
   } catch (e) {
     if ((e as Error).message.startsWith('Failed to parse') || (e as Error).message.startsWith('Method ') || (e as Error).message.startsWith('YAML at')) {
       throw e;
@@ -105,13 +111,13 @@ export function loadMethodology(registryPath: string, methodologyId: string, met
   };
 }
 
-function findYamlFiles(dirPath: string): string[] {
+function findYamlFiles(dirPath: string, fs: CoreFileSystem): string[] {
   const results: string[] = [];
-  const entries = readdirSync(dirPath, { withFileTypes: true });
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(dirPath, entry.name);
     if (entry.isDirectory()) {
-      results.push(...findYamlFiles(fullPath));
+      results.push(...findYamlFiles(fullPath, fs));
     } else if (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')) {
       results.push(fullPath);
     }
@@ -119,15 +125,15 @@ function findYamlFiles(dirPath: string): string[] {
   return results;
 }
 
-export function listMethodologies(registryPath: string): MethodologyEntry[] {
-  const entries = readdirSync(registryPath, { withFileTypes: true });
-  const methodologyDirs = entries.filter(e => e.isDirectory());
+export function listMethodologies(registryPath: string, fs: CoreFileSystem = defaultFs): MethodologyEntry[] {
+  const entries = fs.readdirSync(registryPath, { withFileTypes: true });
+  const methodologyDirs = entries.filter((e: { name: string; isDirectory(): boolean }) => e.isDirectory());
 
   const result: MethodologyEntry[] = [];
 
   for (const dir of methodologyDirs) {
     const methodologyDir = join(registryPath, dir.name);
-    const yamlFiles = findYamlFiles(methodologyDir);
+    const yamlFiles = findYamlFiles(methodologyDir, fs);
 
     let methodologyId = dir.name;
     let methodologyName = dir.name;
@@ -137,7 +143,7 @@ export function listMethodologies(registryPath: string): MethodologyEntry[] {
     for (const filePath of yamlFiles) {
       let parsed: Record<string, unknown>;
       try {
-        parsed = readYaml(filePath);
+        parsed = readYaml(filePath, fs);
       } catch {
         continue; // skip unparseable files
       }

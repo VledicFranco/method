@@ -34,7 +34,7 @@ import {
   genesisReportTool,
   type GenesisToolsContext,
 } from './tools.js';
-import { validateProjectAccess, getSessionContext } from '../projects/routes.js';
+import { validateProjectAccess, getSessionContext } from '../../shared/validation/index.js';
 
 export interface GenesisRouteContext {
   sessionPool: SessionPool;

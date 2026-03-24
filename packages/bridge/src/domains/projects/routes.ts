@@ -16,6 +16,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ProjectEvent, EventPersistence } from './events/index.js';
 import {
   DefaultIsolationValidator,
+  getSessionContext,
+  validateProjectAccess,
 } from '../../shared/validation/index.js';
 import {
   InMemoryProjectRegistry,
@@ -178,21 +180,6 @@ function getEventsSinceCursor(events: ProjectEvent[], cursorId?: string): Projec
   return events.slice(index);
 }
 
-// ── Session/Isolation Context ────
-
-interface SessionContext {
-  projectId?: string;
-  isAdmin?: boolean;
-}
-
-function getSessionContext(req: FastifyRequest): SessionContext {
-  // In Phase 1, extract from headers or query params
-  // Will be replaced with proper session middleware in Phase 2
-  // NOTE: x-admin header removed (F-SECUR-002). Admin checks require cryptographic session binding.
-  const projectId = (req.headers['x-project-id'] as string) || undefined;
-  return { projectId };
-}
-
 // ── Isolation Enforcement ────
 
 /**
@@ -207,26 +194,6 @@ function validateProjectIdFormat(projectId: string): boolean {
     return false;
   }
   return /^[a-zA-Z0-9_-]+$/.test(projectId);
-}
-
-function validateProjectAccess(
-  requestedProjectId: string,
-  sessionContext: SessionContext,
-): { allowed: boolean; reason?: string } {
-  // Sessions must match project_id (F-SECUR-002: removed header-based admin escalation)
-  if (sessionContext.projectId && sessionContext.projectId !== requestedProjectId) {
-    return {
-      allowed: false,
-      reason: `Access denied: project ${requestedProjectId} not accessible to session project ${sessionContext.projectId}`,
-    };
-  }
-
-  // If no project context, deny write operations (Phase 1: discovery-only, no writes)
-  if (!sessionContext.projectId) {
-    return { allowed: true }; // Read-only discovery access
-  }
-
-  return { allowed: true };
 }
 
 // ── Routes Registration ────
@@ -780,7 +747,11 @@ export async function registerProjectRoutes(
   );
 }
 
+// Re-export from shared for backward compatibility
+export { getSessionContext, validateProjectAccess } from '../../shared/validation/index.js';
+export type { SessionContext } from '../../shared/validation/index.js';
+
 // Export for testing
-export { getSessionContext, validateProjectAccess, generateCursor, parseCursor, getEventsSinceCursor, validateCursorFormat, validateProjectIdFormat };
+export { generateCursor, parseCursor, getEventsSinceCursor, validateCursorFormat, validateProjectIdFormat };
 export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence, setOnEventHook };
 export type { CircularEventLog, CursorState };
