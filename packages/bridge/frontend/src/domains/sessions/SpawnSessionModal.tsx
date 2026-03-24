@@ -1,13 +1,15 @@
 /**
- * Modal for spawning a new bridge session.
- * Ported from the old dashboard's spawn form — now a pluggable component.
+ * WS-3: Modal for spawning a new bridge session.
+ * Now with workdir autocomplete from discovered projects.
+ * If only one project exists, auto-fills workdir immediately.
  */
 
-import { useState, useCallback, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, useMemo, type FormEvent } from 'react';
 import { Button } from '@/shared/components/Button';
 import { cn } from '@/shared/lib/cn';
 import { usePreferenceStore } from '@/shared/stores/preference-store';
-import { X, Terminal, FolderOpen } from 'lucide-react';
+import { useProjects } from '@/domains/projects/useProjects';
+import { X, Terminal, FolderOpen, ChevronDown } from 'lucide-react';
 import type { SpawnRequest } from '@/domains/sessions/types';
 
 export interface SpawnSessionModalProps {
@@ -15,6 +17,8 @@ export interface SpawnSessionModalProps {
   onClose: () => void;
   onSpawn: (req: SpawnRequest) => Promise<unknown>;
   isSpawning?: boolean;
+  /** Pre-fill workdir (e.g. from project spawn action) */
+  initialWorkdir?: string;
 }
 
 export function SpawnSessionModal({
@@ -22,14 +26,42 @@ export function SpawnSessionModal({
   onClose,
   onSpawn,
   isSpawning = false,
+  initialWorkdir,
 }: SpawnSessionModalProps) {
   const defaultWorkdir = usePreferenceStore((s) => s.defaultWorkdir);
+  const { projects } = useProjects();
 
-  const [workdir, setWorkdir] = useState(defaultWorkdir || '');
+  const [workdir, setWorkdir] = useState(initialWorkdir || defaultWorkdir || '');
   const [prompt, setPrompt] = useState('');
   const [nickname, setNickname] = useState('');
   const [purpose, setPurpose] = useState('');
   const [mode, setMode] = useState<'pty' | 'print'>('pty');
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+
+  // Auto-fill workdir when only one project exists
+  useEffect(() => {
+    if (!workdir && projects.length === 1) {
+      setWorkdir(projects[0].path);
+    }
+  }, [projects, workdir]);
+
+  // Update workdir when initialWorkdir changes
+  useEffect(() => {
+    if (initialWorkdir) {
+      setWorkdir(initialWorkdir);
+    }
+  }, [initialWorkdir]);
+
+  // Filter projects based on workdir input for autocomplete
+  const filteredProjects = useMemo(() => {
+    if (!workdir.trim()) return projects;
+    const lower = workdir.toLowerCase();
+    return projects.filter(
+      (p) =>
+        p.path.toLowerCase().includes(lower) ||
+        p.name.toLowerCase().includes(lower),
+    );
+  }, [projects, workdir]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -52,6 +84,14 @@ export function SpawnSessionModal({
       onClose();
     },
     [workdir, prompt, nickname, purpose, mode, onSpawn, onClose],
+  );
+
+  const handleSelectProject = useCallback(
+    (path: string) => {
+      setWorkdir(path);
+      setShowProjectPicker(false);
+    },
+    [],
   );
 
   if (!open) return null;
@@ -93,20 +133,55 @@ export function SpawnSessionModal({
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-sp-5 space-y-sp-4">
-            {/* Workdir */}
-            <div>
+            {/* Workdir with project picker */}
+            <div className="relative">
               <label className="block text-xs text-txt-dim font-medium mb-1.5">
                 <FolderOpen className="inline h-3 w-3 mr-1" />
                 Working Directory
               </label>
-              <input
-                type="text"
-                value={workdir}
-                onChange={(e) => setWorkdir(e.target.value)}
-                placeholder="/path/to/project"
-                required
-                className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={workdir}
+                  onChange={(e) => {
+                    setWorkdir(e.target.value);
+                    if (projects.length > 0) setShowProjectPicker(true);
+                  }}
+                  onFocus={() => {
+                    if (projects.length > 0) setShowProjectPicker(true);
+                  }}
+                  placeholder={projects.length > 0 ? 'Select a project or type a path...' : '/path/to/project'}
+                  required
+                  className="flex-1 rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                />
+                {projects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowProjectPicker(!showProjectPicker)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-bdr bg-void text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+                    aria-label="Pick project"
+                  >
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', showProjectPicker && 'rotate-180')} />
+                  </button>
+                )}
+              </div>
+
+              {/* Project autocomplete dropdown */}
+              {showProjectPicker && filteredProjects.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-48 overflow-y-auto rounded-lg border border-bdr bg-void shadow-lg">
+                  {filteredProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-abyss-light transition-colors border-b border-bdr last:border-b-0"
+                      onClick={() => handleSelectProject(p.path)}
+                    >
+                      <div className="text-sm text-txt font-medium">{p.name}</div>
+                      <div className="font-mono text-[0.65rem] text-txt-muted truncate">{p.path}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Nickname + Mode row */}

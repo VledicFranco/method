@@ -3,6 +3,8 @@ export const ROUTES = {
   DASHBOARD: '/',
   SESSIONS: '/sessions',
   SESSION_DETAIL: '/sessions/:id',
+  PROJECTS: '/projects',
+  PROJECT_DETAIL: '/projects/:id',
   STRATEGIES: '/strategies',
   STRATEGY_DETAIL: '/strategies/:id',
   TRIGGERS: '/triggers',

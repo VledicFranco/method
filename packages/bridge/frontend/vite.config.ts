@@ -29,6 +29,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/sessions/history': 'http://localhost:3456',
       '/sessions': 'http://localhost:3456',
       '/channels': 'http://localhost:3456',
       '/health': 'http://localhost:3456',

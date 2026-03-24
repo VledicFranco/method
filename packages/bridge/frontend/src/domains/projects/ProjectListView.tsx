@@ -2,17 +2,28 @@ import { useProjects } from '@/domains/projects/useProjects';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
-import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, Play } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import type { ProjectMetadata } from '@/domains/projects/types';
 import { memo } from 'react';
 
 export interface ProjectListViewProps {
   onProjectSelect?: (project: ProjectMetadata) => void;
+  /** Callback for one-tap spawn from a project */
+  onProjectSpawn?: (project: ProjectMetadata) => void;
+  /** Whether a spawn is currently in progress */
+  isSpawning?: boolean;
+  /** ID of the project currently being spawned */
+  spawningProjectId?: string | null;
 }
 
 // F-P-3: Memoize with custom comparator
-function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
+function ProjectListViewComponent({
+  onProjectSelect,
+  onProjectSpawn,
+  isSpawning = false,
+  spawningProjectId = null,
+}: ProjectListViewProps) {
   const { projects, loading, error, refetch } = useProjects();
 
   const getStatusColor = (status: string): 'bio' | 'solar' | 'error' | 'nebular' | 'cyan' => {
@@ -102,12 +113,14 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
           <table className="w-full text-sm" role="table">
             <thead>
               <tr className="border-b border-bdr" role="row">
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">ID</th>
                 <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Name</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Description</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden md:table-cell" role="columnheader">Description</th>
                 <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Status</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Methodologies</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Last Scanned</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden lg:table-cell" role="columnheader">Methodologies</th>
+                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden md:table-cell" role="columnheader">Last Scanned</th>
+                {onProjectSpawn && (
+                  <th className="px-sp-4 py-sp-3 text-right font-medium text-txt-dim" role="columnheader">Action</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -127,14 +140,9 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
                     }
                   }}
                 >
-                  <td className="px-sp-4 py-sp-3" role="cell">
-                    <code className="text-xs bg-void/50 px-2 py-1 rounded text-txt-muted">
-                      {project.id.slice(0, 8)}
-                    </code>
-                  </td>
                   <td className="px-sp-4 py-sp-3 font-medium text-txt" role="cell">{project.name}</td>
-                  <td className="px-sp-4 py-sp-3 text-txt-dim max-w-xs truncate" role="cell">
-                    {project.description || '—'}
+                  <td className="px-sp-4 py-sp-3 text-txt-dim max-w-xs truncate hidden md:table-cell" role="cell">
+                    {project.description || '\u2014'}
                   </td>
                   <td className="px-sp-4 py-sp-3" role="cell">
                     <Badge
@@ -145,7 +153,7 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
                       {getStatusLabel(project.status)}
                     </Badge>
                   </td>
-                  <td className="px-sp-4 py-sp-3" role="cell">
+                  <td className="px-sp-4 py-sp-3 hidden lg:table-cell" role="cell">
                     {project.installed_methodologies && project.installed_methodologies.length > 0 ? (
                       <div className="flex gap-1 flex-wrap max-w-xs">
                         {project.installed_methodologies.slice(0, 3).map((method) => (
@@ -163,9 +171,29 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
                       <span className="text-txt-muted">None</span>
                     )}
                   </td>
-                  <td className="px-sp-4 py-sp-3 text-xs text-txt-muted whitespace-nowrap" role="cell">
+                  <td className="px-sp-4 py-sp-3 text-xs text-txt-muted whitespace-nowrap hidden md:table-cell" role="cell">
                     {formatDate(project.last_scanned)}
                   </td>
+                  {onProjectSpawn && (
+                    <td className="px-sp-4 py-sp-3 text-right" role="cell">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={
+                          isSpawning && spawningProjectId === project.id
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Play className="h-3 w-3" />
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onProjectSpawn(project);
+                        }}
+                        disabled={isSpawning && spawningProjectId === project.id}
+                      >
+                        Spawn
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -178,6 +206,10 @@ function ProjectListViewComponent({ onProjectSelect }: ProjectListViewProps) {
 
 // F-P-3: Export memoized component
 export const ProjectListView = memo(ProjectListViewComponent, (prevProps, nextProps) => {
-  // Re-render only if onProjectSelect callback changes (functions are compared by reference)
-  return prevProps.onProjectSelect === nextProps.onProjectSelect;
+  return (
+    prevProps.onProjectSelect === nextProps.onProjectSelect &&
+    prevProps.onProjectSpawn === nextProps.onProjectSpawn &&
+    prevProps.isSpawning === nextProps.isSpawning &&
+    prevProps.spawningProjectId === nextProps.spawningProjectId
+  );
 });

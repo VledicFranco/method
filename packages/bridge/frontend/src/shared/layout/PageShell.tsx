@@ -12,12 +12,24 @@ export interface PageShellProps {
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Full-screen mode: hides nav, removes padding, fills viewport. Used for mobile chat. */
+  fullScreen?: boolean;
+  /** Hide the navbar (e.g. for full-screen chat on mobile) */
+  hideNav?: boolean;
 }
 
-export function PageShell({ title, wide = false, actions, children, className }: PageShellProps) {
+export function PageShell({ title, wide = false, actions, children, className, fullScreen = false, hideNav = false }: PageShellProps) {
+  if (fullScreen) {
+    return (
+      <div className="h-dvh flex flex-col bg-void overflow-hidden">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-void">
-      <NavBar items={[...NAV_ITEMS]} />
+      <NavBar items={[...NAV_ITEMS]} hidden={hideNav} />
       <main
         className={cn(
           'mx-auto px-sp-4 py-sp-6',

@@ -14,6 +14,8 @@ import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
 import { addOnMessageHook, createSessionChannels, appendMessage } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
+import { createSessionPersistenceStore, type SessionPersistenceStore } from './domains/sessions/session-persistence.js';
+import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
 import { registerFrontendRoutes } from './shared/frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';
 import { MethodologySessionStore } from './domains/methodology/store.js';
@@ -102,6 +104,9 @@ const pool = createPool({
   llmProvider,
   fsProvider,
 });
+
+// WS-3: Session persistence store for print-mode sessions
+const sessionPersistence = createSessionPersistenceStore(ROOT_DIR, fsProvider);
 
 const usagePoller = createUsagePoller({
   oauthToken: tokensConfig.oauthToken,
@@ -229,6 +234,37 @@ registerSessionRoutes(app, {
   batchStaggerMs: sessionsConfig.batchStaggerMs,
   triggerChannels,
   gracefulShutdown,
+});
+
+// ---------- Session Persistence (WS-3) ----------
+
+// Persist session state periodically by scanning pool
+setInterval(() => {
+  const sessions = pool.list();
+  for (const s of sessions) {
+    sessionPersistence.save({
+      session_id: s.sessionId,
+      workdir: s.workdir,
+      nickname: s.nickname,
+      purpose: s.purpose,
+      mode: s.mode,
+      status: s.status as any,
+      created_at: new Date(Date.now() - (Date.now() - s.lastActivityAt.getTime())).toISOString(),
+      last_activity_at: s.lastActivityAt.toISOString(),
+      prompt_count: s.promptCount,
+      depth: s.chain.depth,
+      parent_session_id: s.chain.parent_session_id,
+      isolation: s.worktree.isolation,
+      metadata: s.metadata,
+    }).catch(() => { /* non-fatal */ });
+  }
+}, 30_000); // Every 30 seconds
+
+registerPersistenceRoutes(app, {
+  persistence: sessionPersistence,
+  pool,
+  tokenTracker,
+  writePidFile,
 });
 
 // ---------- Strategy Pipelines (PRD 017) ----------
