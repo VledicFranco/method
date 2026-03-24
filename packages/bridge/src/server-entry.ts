@@ -43,7 +43,7 @@ import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
-import { InMemoryEventBus, WebSocketSink } from './shared/event-bus/index.js';
+import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink } from './shared/event-bus/index.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -99,6 +99,49 @@ setDiscoveryRegistryPorts(fsProvider, yamlLoader);
 
 // PRD 026: Universal Event Bus — single event backbone for all domains
 const eventBus = new InMemoryEventBus();
+
+// PRD 026 Phase 3: PersistenceSink + ChannelSink (created early, initialized in start())
+const persistenceSink = new PersistenceSink({
+  fs: fsProvider,
+  logPath: process.env.EVENT_LOG_PATH ?? join(ROOT_DIR, '.method', 'events.jsonl'),
+  cursorsPath: join(ROOT_DIR, '.method', 'events-cursors.json'),
+  replayWindowHours: parseInt(process.env.EVENT_REPLAY_WINDOW_HOURS ?? '24', 10),
+});
+persistenceSink.setOverflowCallback((msg) => {
+  try {
+    eventBus.emit({
+      version: 1,
+      domain: 'system',
+      type: 'system.sink_overflow',
+      severity: 'error',
+      payload: { sink: 'persistence', error: msg },
+      source: 'bridge/event-bus/persistence-sink',
+    });
+  } catch { /* double fault */ }
+});
+
+const channelSink = new ChannelSink({
+  capacity: 200,
+  pushToParent: (sessionId, event) => {
+    try {
+      const status = pool.status(sessionId);
+      const parentId = status.chain.parent_session_id;
+      if (parentId) {
+        const parentStatus = pool.status(parentId);
+        if (parentStatus.status !== 'dead') {
+          const notification = [
+            `BRIDGE NOTIFICATION — Child agent [${status.nickname}] event: ${event.type} (${event.severity})`,
+            status.metadata?.commission_id
+              ? `Commission: ${status.metadata.commission_id} — ${(status.metadata as Record<string, unknown>).task_summary ?? 'no summary'}`
+              : `Session: ${status.nickname} (${sessionId.substring(0, 8)})`,
+            `Details: ${JSON.stringify(event.payload)}`,
+          ].join('\n');
+          pool.prompt(parentId, notification).catch(() => { /* non-fatal */ });
+        }
+      }
+    } catch { /* parent lookup failure is non-fatal */ }
+  },
+});
 
 // PRD 026 Phase 2: Inject EventBus into all producing domains
 setStrategyRoutesEventBus(eventBus);
@@ -164,7 +207,9 @@ registerWsRoute(app, wsHub);
 // PRD 026: Register WebSocketSink — session domain events flow through the bus to WsHub
 eventBus.registerSink(new WebSocketSink(wsHub));
 
-// PRD 026 Phase 2: Legacy hooks removed — WebSocketSink handles all WS push via bus
+// PRD 026 Phase 3: Register PersistenceSink + ChannelSink
+eventBus.registerSink(persistenceSink);
+eventBus.registerSink(channelSink);
 
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
@@ -226,6 +271,47 @@ app.get('/pool/stats', async (_request, reply) => {
 
 registerTokenRoutes(app, tokenTracker, usagePoller);
 
+// ---------- Unified Events API (PRD 026 Phase 3) ----------
+
+app.get<{
+  Querystring: {
+    domain?: string;
+    type?: string;
+    severity?: string;
+    projectId?: string;
+    sessionId?: string;
+    since?: string;
+    limit?: string;
+  };
+}>('/api/events', async (request, reply) => {
+  const { domain, type, severity, projectId, sessionId, since, limit } = request.query;
+
+  const filter: Record<string, unknown> = {};
+  if (domain) filter.domain = domain;
+  if (type) filter.type = type;
+  if (severity) filter.severity = severity;
+  if (projectId) filter.projectId = projectId;
+  if (sessionId) filter.sessionId = sessionId;
+
+  const events = eventBus.query(
+    filter as any,
+    {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      since: since ?? undefined,
+    },
+  );
+
+  const nextCursor = events.length > 0
+    ? events[events.length - 1].timestamp
+    : since ?? new Date().toISOString();
+
+  return reply.status(200).send({
+    events,
+    nextCursor,
+    hasMore: false,
+  });
+});
+
 // ---------- Session Routes (extracted to domains/sessions/routes.ts) ----------
 // NOTE: triggerChannels is created early so session routes can access it for cross-session aggregation
 
@@ -238,6 +324,8 @@ registerSessionRoutes(app, {
   batchStaggerMs: sessionsConfig.batchStaggerMs,
   triggerChannels,
   gracefulShutdown,
+  channelSink,
+  eventBus,
 });
 
 // ---------- Session Persistence (WS-3) ----------
@@ -326,6 +414,19 @@ if (triggersConfig.enabled) {
 
 async function start() {
   try {
+    // PRD 026 Phase 3: Initialize sinks + replay events from disk
+    await persistenceSink.init();
+    const cursors = await persistenceSink.loadCursors();
+    channelSink.initFromCursor(cursors['channels'] ?? 0);
+
+    const replayedEvents = await persistenceSink.replay();
+    if (replayedEvents.length > 0) {
+      for (const event of replayedEvents) {
+        eventBus.importEvent(event);
+      }
+      app.log.info(`Replayed ${replayedEvents.length} events from disk`);
+    }
+
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
 
@@ -498,6 +599,12 @@ function gracefulShutdown(signal: string) {
     if (cursorMaintenanceJob) {
       cursorMaintenanceJob.stop();
     }
+
+    // PRD 026 Phase 3: Flush PersistenceSink + save ChannelSink cursor
+    persistenceSink.dispose().catch(() => { /* non-fatal */ });
+    persistenceSink.loadCursors()
+      .then(cursors => persistenceSink.saveCursors({ ...cursors, channels: channelSink.cursor }))
+      .catch(() => { /* non-fatal */ });
 
     // Stop trigger watchers (PRD 018)
     if (triggerRouter) {

@@ -20,6 +20,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionPool } from './pool.js';
 import { appendMessage, readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
+import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
+import type { EventBus } from '../../ports/event-bus.js';
 
 export interface SessionRouteDeps {
   pool: SessionPool;
@@ -28,10 +30,14 @@ export interface SessionRouteDeps {
   batchStaggerMs: number;
   triggerChannels: SessionChannels;
   gracefulShutdown: (signal: string) => void;
+  /** PRD 026 Phase 3: ChannelSink for reading events from bus. */
+  channelSink?: ChannelSink;
+  /** PRD 026 Phase 3: EventBus for POST channel endpoints. */
+  eventBus?: EventBus;
 }
 
 export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDeps): void {
-  const { pool, tokenTracker, writePidFile, batchStaggerMs, triggerChannels, gracefulShutdown } = deps;
+  const { pool, tokenTracker, writePidFile, batchStaggerMs, triggerChannels, gracefulShutdown, channelSink, eventBus } = deps;
 
   // ── POST /sessions — Spawn a new session ──
 
@@ -391,6 +397,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     try {
       const channels = pool.getChannels(id);
       const sequence = appendMessage(channels.progress, sender ?? id, type, content ?? {});
+
+      // PRD 026 Phase 3: Emit to bus for ChannelSink
+      if (eventBus) {
+        try {
+          eventBus.emit({
+            version: 1,
+            domain: 'session',
+            type: `session.channel.${type}`,
+            severity: 'info',
+            sessionId: id,
+            payload: { channelTarget: 'progress', sender: sender ?? id, ...content },
+            source: 'bridge/sessions/channels',
+          });
+        } catch { /* bus emission non-fatal */ }
+      }
+
       return reply.status(201).send({ sequence, acknowledged: true });
     } catch (e) {
       const message = (e as Error).message;
@@ -412,8 +434,25 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       const channels = pool.getChannels(id);
       const sequence = appendMessage(channels.events, sender ?? id, type, content ?? {});
 
-      // Push notification to parent (PRD 008, PRD 014: scope_violation)
+      // PRD 026 Phase 3: Emit to bus for ChannelSink (push notifications handled by ChannelSink)
       const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale', 'scope_violation']);
+      const severity = PUSHABLE_EVENTS.has(type) ? 'warning' as const : 'info' as const;
+      if (eventBus) {
+        try {
+          eventBus.emit({
+            version: 1,
+            domain: 'session',
+            type: `session.channel.${type}`,
+            severity,
+            sessionId: id,
+            payload: { channelTarget: 'events', sender: sender ?? id, ...content },
+            source: 'bridge/sessions/channels',
+          });
+        } catch { /* bus emission non-fatal */ }
+      }
+
+      // Legacy push notification to parent (PRD 008, PRD 014: scope_violation)
+      // Retained alongside ChannelSink push until appendMessage removal (B4)
       if (PUSHABLE_EVENTS.has(type)) {
         try {
           const status = pool.status(id);
@@ -451,6 +490,12 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     const sinceSequence = parseInt(request.query.since_sequence ?? '0', 10);
     const readerId = request.query.reader_id;
     try {
+      // PRD 026 Phase 3: Read from ChannelSink when available
+      if (channelSink) {
+        const result = channelSink.getEvents(id, sinceSequence, 'progress');
+        return reply.status(200).send(result);
+      }
+      // Fallback to legacy channels
       const channels = pool.getChannels(id);
       const result = readMessages(channels.progress, sinceSequence, readerId);
       return reply.status(200).send(result);
@@ -469,6 +514,12 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     const sinceSequence = parseInt(request.query.since_sequence ?? '0', 10);
     const readerId = request.query.reader_id;
     try {
+      // PRD 026 Phase 3: Read from ChannelSink when available
+      if (channelSink) {
+        const result = channelSink.getEvents(id, sinceSequence, 'events');
+        return reply.status(200).send(result);
+      }
+      // Fallback to legacy channels
       const channels = pool.getChannels(id);
       const result = readMessages(channels.events, sinceSequence, readerId);
       return reply.status(200).send(result);
@@ -487,6 +538,13 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     const sinceSequence = parseInt(_request.query.since_sequence ?? '0', 10);
     const filterType = _request.query.filter_type;
 
+    // PRD 026 Phase 3: Read from ChannelSink when available
+    if (channelSink) {
+      const result = channelSink.getAggregated(sinceSequence, filterType);
+      return reply.status(200).send(result);
+    }
+
+    // Fallback to legacy channels
     const sessions = pool.list();
     const events: Array<{
       bridge_session_id: string;

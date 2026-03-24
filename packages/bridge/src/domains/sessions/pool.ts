@@ -714,6 +714,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             diagnosticsCallback,
             sessionAllowedPaths,
             scopeViolationPush,
+            eventBus,
           );
           sessionWatchers.set(sessionId, watcher);
 
