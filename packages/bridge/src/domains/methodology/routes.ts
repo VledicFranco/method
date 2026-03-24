@@ -145,7 +145,10 @@ export function registerMethodologyRoutes(
             step_name: result.nextStep.name,
           });
         }
-      } catch { /* non-fatal — channels may not exist for this session */ }
+      } catch (err) {
+        // Log channel errors — silent swallowing hides broken progress reporting (F-P-6)
+        console.warn(`[methodology] appendMessage failed for session ${sid}: ${(err as Error).message}`);
+      }
 
       return reply.status(200).send(result);
     } catch (e) {

@@ -10,6 +10,7 @@ import type { DiscoveryService } from '../projects/discovery-service.js';
 import type { ProjectMetadata } from '../projects/discovery-service.js';
 import type { ProjectEvent } from '../projects/events/index.js';
 import { ProjectEventType, createProjectEvent } from '../projects/events/index.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
 import {
   projectListTool,
   projectGetTool,
@@ -135,6 +136,7 @@ function createTestContext(): GenesisToolsContext {
   return {
     discoveryService: mockDiscoveryService,
     rootDir: '/test-root',
+    fs: new NodeFileSystemProvider(),
     eventLog,
     cursorMap: new Map(),
   };

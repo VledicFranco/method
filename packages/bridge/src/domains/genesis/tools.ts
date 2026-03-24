@@ -10,7 +10,7 @@
  */
 
 import { join } from 'node:path';
-import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { DiscoveryService } from '../projects/discovery-service.js';
 import type { ProjectEvent } from '../projects/events/index.js';
 
@@ -19,8 +19,8 @@ export interface GenesisToolsContext {
   rootDir: string;
   eventLog: { buffer: ProjectEvent[]; capacity: number; index: number; count: number };
   cursorMap: Map<string, { version: string; eventIndex: number; timestamp: number; projectId?: string }>;
-  /** PRD 024 MG-1: FileSystem port for file operations */
-  fs?: FileSystemProvider;
+  /** PRD 024 MG-1: FileSystem port for file operations (required — injected by composition root) */
+  fs: FileSystemProvider;
 }
 
 /**
@@ -88,8 +88,7 @@ export async function projectGetManifestTool(
   const manifestPath = join(project.path, '.method', 'manifest.yaml');
 
   try {
-    const fsPort = ctx.fs ?? new NodeFileSystemProvider();
-    const content = fsPort.readFileSync(manifestPath, 'utf-8');
+    const content = ctx.fs.readFileSync(manifestPath, 'utf-8');
     return {
       project_id,
       manifest_path: manifestPath,

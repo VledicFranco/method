@@ -13,6 +13,7 @@ import { registerGenesisRoutes, type GenesisRouteContext } from './routes.js';
 import type { SessionPool, SessionStatusInfo } from '../sessions/pool.js';
 import type { PtySession } from '../sessions/pty-session.js';
 import type { GenesisToolsContext } from './tools.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 // ── Mock Genesis Tools Context ────
 
@@ -27,6 +28,7 @@ function createMockGenesisToolsContext(): GenesisToolsContext {
       }),
     } as any,
     rootDir: '/test-root',
+    fs: new NodeFileSystemProvider(),
     eventLog: {
       buffer: [],
       capacity: 1000,

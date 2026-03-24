@@ -7,7 +7,7 @@
 
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { LlmProvider } from './llm-provider.js';
+import type { LlmProvider } from '../../ports/llm-provider.js';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
