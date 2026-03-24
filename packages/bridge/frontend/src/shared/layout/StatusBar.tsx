@@ -35,7 +35,7 @@ export function StatusBar({ segments, inline = false, className }: StatusBarProp
         'scrollbar-none',
         inline
           ? 'flex-1 min-w-0 mx-3'
-          : 'px-sp-4 py-sp-2 border-b border-bdr bg-void/50',
+          : 'justify-center py-sp-2 border-b border-bdr bg-void/50',
         className,
       )}
     >
