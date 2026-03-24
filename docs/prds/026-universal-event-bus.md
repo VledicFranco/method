@@ -1,10 +1,13 @@
-# PRD 026: Universal Event Bus — Bridge Event Backbone
+# PRD 026: Universal Event Bus (UEB) — Bridge Event Backbone
+
+**Nickname:** UEB (Universal Event Bus) — the backend system event bus.
+Distinct from GES (Genesis Event Store, PRD 025) which handles frontend user activity.
 
 **Status:** Draft
 **Author:** PO + Lysica
 **Date:** 2026-03-24
 **Depends on:** None (foundational infrastructure)
-**Enables:** PRD 025 (Genesis page awareness), WS-2 (strategy events), WS-3 (session persistence)
+**Enables:** PRD 025 (Genesis ambient awareness via UEB → GenesisSink), WS-2 (strategy events), WS-3 (session persistence)
 
 ## Problem
 

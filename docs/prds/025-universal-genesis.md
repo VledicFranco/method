@@ -1,9 +1,13 @@
 # PRD 025: Universal Genesis — Ambient Agent UI
 
+**Nickname:** GES (Genesis Event Store) — the frontend user activity & page context system.
+Distinct from UEB (Universal Event Bus, PRD 026) which handles backend system events.
+
 **Status:** Draft
 **Author:** PO + Lysica
 **Date:** 2026-03-24
 **Depends on:** None (foundational — WS-3 session UX builds on top)
+**Complementary:** PRD 026 (UEB) — Genesis consumes both GES (user activity) and UEB (system events)
 
 ## Problem
 
@@ -44,6 +48,76 @@ domains/registry/      ──write context──→
 
 No domain imports another domain. The store IS the port.
 
+### Genesis Dual-Source Intelligence: GES + UEB
+
+Genesis achieves full situational awareness by consuming two complementary event sources:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     GENESIS AGENT                               │
+│                                                                 │
+│  "User is on the Registry page looking at M1-IMPL v3.1.        │
+│   Meanwhile, session abc-123 has been idle for 8 minutes        │
+│   and strategy smoke-test has a failed gate."                   │
+│                                                                 │
+│         ┌──────────────┐          ┌──────────────┐              │
+│         │   GES input  │          │   UEB input  │              │
+│         │  (frontend)  │          │  (backend)   │              │
+│         └──────┬───────┘          └──────┬───────┘              │
+└────────────────┼─────────────────────────┼──────────────────────┘
+                 │                         │
+    ┌────────────▼────────────┐  ┌─────────▼──────────────┐
+    │  GES — Genesis Store    │  │  UEB — Universal Event  │
+    │  (PRD 025, frontend)    │  │  Bus (PRD 026, backend) │
+    │                         │  │                         │
+    │  • User navigation      │  │  • Session lifecycle    │
+    │  • Page context          │  │  • Strategy execution   │
+    │  • Selected project     │  │  • Trigger fires        │
+    │  • UI interactions      │  │  • Methodology steps    │
+    │  • Chat state           │  │  • PTY observations     │
+    │  • Idle detection       │  │  • System health        │
+    │                         │  │                         │
+    │  Zustand store          │  │  EventBus port          │
+    │  Client-side only       │  │  Server-side only       │
+    │  Per-browser instance   │  │  Per-bridge instance    │
+    └─────────────────────────┘  └─────────────────────────┘
+```
+
+**GES (this PRD)** tells Genesis what the **user** is doing:
+- Which page they're on, what they've selected, how long they've been looking at it
+- What they typed in the chat, what actions they triggered from the UI
+- Whether they're idle (tab backgrounded) or actively engaged
+- Per-client, per-browser — no server round-trip needed
+
+**UEB (PRD 026)** tells Genesis what the **system** is doing:
+- Which sessions are running, stale, or dead
+- Which strategy gates passed or failed
+- Which triggers fired and what they spawned
+- What methodology steps were advanced
+- Delivered via GenesisSink — batched, filtered, summarized every 30s
+
+**Why two systems, not one:**
+- User activity is client-specific — two users looking at different pages should each have
+  their own Genesis context. Sending user clicks through the backend bus would leak
+  cross-client state.
+- System events are global — a strategy gate failure matters regardless of which page
+  the user is on. The backend bus is the right place for this.
+- Latency: GES is in-process (Zustand read = synchronous). UEB round-trips through
+  WebSocket + GenesisSink batching (~30s delay). User context needs to be instant;
+  system context can be batched.
+
+**How Genesis combines them:**
+The Genesis chat panel reads from GES (page context, chat history) and receives UEB
+summaries via the GenesisSink prompt. When composing a response, Genesis has:
+1. **Immediate context** (GES): "User is on /registry, looking at M1-IMPL"
+2. **System context** (UEB): "3 sessions active, 1 stale, strategy gate failed 2 min ago"
+3. **Chat history** (GES): previous conversation messages
+4. **Action capability** (GES): can navigate user, highlight elements, spawn sessions
+
+This is what makes Genesis an **ambient agent** rather than a chatbot — it doesn't just
+answer questions, it proactively notices situations across both user behavior and system
+state, and can act on both.
+
 ### State Model
 
 ```typescript
@@ -67,6 +141,14 @@ interface GenesisState {
   };
   selectedProject: ProjectMetadata | null;
 
+  // ── System awareness (received from UEB via WebSocket) ──
+  systemSummary: {
+    activeSessions: number;
+    staleSessions: string[];
+    recentEvents: Array<{ type: string; summary: string; timestamp: string }>;
+    lastUpdated: string;
+  } | null;
+
   // ── UI control (written by Genesis, read by pages) ──
   pendingAction: GenesisAction | null;
 
@@ -75,6 +157,7 @@ interface GenesisState {
   addMessage: (msg: ChatMessage) => void;
   setPageContext: (page: string, domain: string, context: Record<string, unknown>) => void;
   setSelectedProject: (project: ProjectMetadata | null) => void;
+  setSystemSummary: (summary: GenesisState['systemSummary']) => void;
   dispatchAction: (action: GenesisAction) => void;
   consumeAction: () => GenesisAction | null;
 }
