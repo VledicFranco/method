@@ -3,7 +3,7 @@
 **Nickname:** UEB (Universal Event Bus) — the backend system event bus.
 Distinct from GES (Genesis Event Store, PRD 025) which handles frontend user activity.
 
-**Status:** Draft
+**Status:** Phase 3 Complete (2026-03-24). Phases 4-5 remaining.
 **Author:** PO + Lysica
 **Date:** 2026-03-24
 **Depends on:** None (foundational infrastructure)
@@ -364,39 +364,100 @@ transient — documented in Phase 2 and retired at the completion gate.
 
 ## Phases
 
-### Phase 1: Port + InMemoryEventBus + Migration
-- Define `EventBus` and `EventSink` port interfaces in `ports/event-bus.ts`
-- Implement `InMemoryEventBus` (in-memory, no persistence) in `shared/`
-- Define `BridgeEvent` schema and all event types
-- Migrate ONE domain (sessions) to emit through the bus
-- WebSocketSink replaces the sessions `wsHub.publish` call
-- Verify: frontend receives session events via new bus
+### Phase 1: Port + InMemoryEventBus + Migration ✅ DONE (PR #52)
+- ✅ EventBus + EventSink port interfaces in `ports/event-bus.ts`
+- ✅ InMemoryEventBus with 10K ring buffer, glob filters, 64KB payload limit
+- ✅ BridgeEvent schema (version:1, domain, type, severity, payload, source, correlationId)
+- ✅ Sessions domain dual-emit (session.spawned, session.killed, session.stale)
+- ✅ WebSocketSink with legacy topic mapping
+- ✅ 62 unit tests
 
-### Phase 2: Full Domain Migration
-- Migrate remaining domains: strategies, triggers, projects, methodology (fix silent error swallowing), pty-watcher
-- Migrate all 7 event pathways identified in the Problem section (including `addOnMessageHook`)
-- Strategy domain enriches events beyond current minimal hook (current: 3 fields via `setOnExecutionChangeHook` → new: full BridgeEvent with node_id, gate_result, cost_usd, retro_path)
-- TriggerRouter's `ChannelEventTrigger` subscribes to bus events (replacing `addOnMessageHook`)
-- Remove all hook callbacks from server-entry.ts (`setOnEventHook`, `setOnExecutionChangeHook`, `onTriggerFired`, `pool.setObservationHook`, `addOnMessageHook`)
-- Update `bridge_read_events` and `bridge_all_events` MCP tools with adapter layer for legacy shapes
-- Dual-emit period: old + new mechanisms active simultaneously until verified
-- Composition root wires bus → domains via injection
-- Verify: all current WebSocket topics still work on frontend
-- **Completion gate: zero temporary G-BOUNDARY exceptions remaining. All cross-domain event wiring flows through the bus port.**
+### Phase 2: Full Domain Migration ✅ DONE (PR #53)
+- ✅ 6 domains migrated: strategies, triggers (producer + consumer), projects, methodology, pty-watcher
+- ✅ All 7 event pathways emit through bus
+- ✅ TriggerRouter subscribes to bus events (replacing addOnMessageHook)
+- ✅ 5 legacy hooks removed from server-entry.ts
+- ✅ MCP adapter layer (toChannelMessage + toAllEventsWrapper, 5 tests)
+- ✅ Architecture gates pass (G-PORT, G-BOUNDARY, G-LAYER)
+- ✅ 1350 tests pass
 
-### Phase 3: PersistenceSink + Event Replay
-- Implement PersistenceSink (JSONL, uses FileSystemProvider port)
-- Replace project-specific `pushEventToLogWithPersistence` with the bus
-- Event replay on bridge restart: replay events from configurable window (default 24 hours, env: `EVENT_REPLAY_WINDOW_HOURS`). Sink cursors persisted alongside event log for cursor recovery.
-- Migrate existing project JSONL event logs to unified format (or support reading both during transition)
-- HTTP endpoint: `GET /api/events` queries the bus (replaces current project-only endpoint)
-- Verify: events survive bridge restart
+### Phase 3: PersistenceSink + Event Replay ✅ DONE (PR #54)
+- ✅ PersistenceSink — JSONL write-ahead batching (1s/100 events) via FileSystemProvider
+- ✅ Event replay on restart (configurable 24h window, cursor recovery)
+- ✅ importEvent() preserves original id/timestamp/sequence
+- ✅ ChannelSink — per-session ring buffers (200 cap), severity-based push notifications
+- ✅ Unified `GET /api/events` endpoint with filters
+- ✅ appendMessage removed from all domains (pool, pty-watcher, methodology)
+- ✅ 110+ new tests (21 persistence, 22 channel, 67 bus)
 
-### Phase 4: GenesisSink + Frontend Event Store
-- Implement GenesisSink (buffers events, prompts Genesis with summaries)
-- Frontend: replace `ws-store.ts` with `event-store.ts` backed by unified event subscription
-- Frontend: `useBridgeEvents(filter)` hook for any page to subscribe to any domain's events
-- Verify: Genesis receives all event types, frontend can subscribe to any domain
+**Deferred from Phase 3 (cleanup, not blocking):**
+- Project-specific persistence removal (JsonLineEventPersistence still exists alongside bus)
+- Genesis polling migration to bus.query() (uses eventFetcher callback, still works)
+- channels.ts full removal (retained as legacy fallback, dead code)
+- ChannelEventTrigger migration (trigger subscribes to bus, old path dead)
+
+### Phase 4: GenesisSink + Frontend Event Store ⬜ NEXT
+
+**Description:** Genesis gains full system awareness via batched event summaries. Frontend
+gains unified event subscription replacing the ad-hoc ws-store.
+
+**4a. GenesisSink (backend)**
+
+GenesisSink is an EventSink registered in the composition root. It accumulates events in
+time-windowed batches and delivers summarized prompts to the Genesis session.
+
+- Receives events via `onEvent()` like any sink
+- Filters: only `severity: warning | error | critical` by default (configurable)
+- Batching: accumulates events in a 30-second window. At window close, summarizes
+  buffered events into a single human-readable prompt
+- Delivery: calls `promptSession(sessionId, summaryText)` — a narrow callback
+  injected by the composition root (NOT a direct SessionPool import — G-BOUNDARY)
+- If Genesis session doesn't exist or is dead, drops silently (non-fatal)
+- Estimated volume: ~45 prompts/hour vs ~2,700 raw events/hour at 7 active sessions
+
+Acceptance criteria:
+- [ ] GenesisSink implements EventSink interface
+- [ ] Registered in composition root with narrow `promptSession` callback (no SessionPool import)
+- [ ] Filters events by severity (default: warning + error + critical)
+- [ ] Batches events in 30s windows (configurable via `GENESIS_SINK_BATCH_MS`)
+- [ ] Generates readable summary: "3 sessions stale, 1 strategy gate failed, 2 triggers fired"
+- [ ] Graceful when Genesis session is dead or missing (no crash, no error spam)
+- [ ] Co-located tests proving batching, filtering, summary generation, dead-session handling
+- [ ] No G-BOUNDARY violations (verified by architecture gate test)
+- [ ] `system.bus_stats` periodic event emitted (bus self-monitoring, mentioned in PRD but not yet implemented)
+
+**4b. Frontend Event Store**
+
+Replace `ws-store.ts` (project-events-only Zustand store) with a unified `event-store.ts`
+that receives all BridgeEvents via WebSocket.
+
+- `event-store.ts` Zustand store: `{ events: BridgeEvent[], connected: boolean }`
+- `useBridgeEvents(filter: EventFilter)` hook: subscribe to filtered events from the store.
+  Returns `BridgeEvent[]` matching the filter. Memoized to avoid re-render loops (the
+  Zustand selector bug we fixed earlier).
+- WebSocket subscription: subscribe to domains, not hardcoded topics. WebSocketSink already
+  maps domains → topics, so the frontend can subscribe by domain and receive the right events.
+- `useEventStream` (projects domain) migrates from ws-store to event-store internally.
+  Public API unchanged — existing pages don't need to change.
+- PRD 025 GES integration: genesis-store's `systemSummary` field populated from event-store.
+  The store watches for bus events and updates `{ activeSessions, staleSessions, recentEvents }`.
+
+Acceptance criteria:
+- [ ] `event-store.ts` Zustand store receives BridgeEvents via WebSocket
+- [ ] `useBridgeEvents({ domain: 'strategy' })` returns strategy events in real-time
+- [ ] `useBridgeEvents({ domain: 'session', sessionId: 'abc' })` filters by session
+- [ ] `useEventStream` (projects domain) works unchanged (internal migration to event-store)
+- [ ] No Zustand selector infinite-loop bug (individual selectors, not compound objects)
+- [ ] `ws-store.ts` removed or deprecated
+- [ ] Genesis store `systemSummary` populated from event-store (PRD 025 GES connection)
+- [ ] Frontend builds cleanly, no console errors on Dashboard/Sessions/Strategies pages
+- [ ] Playwright smoke test: navigate pages, verify events appear in real-time
+
+**Phase 3 deferred cleanup (can be done alongside Phase 4):**
+- [ ] Remove JsonLineEventPersistence + YamlEventPersistence from projects domain
+- [ ] Migrate genesis polling to use bus.query() instead of eventFetcher callback
+- [ ] Remove dead code in channels.ts (or delete entirely if no remaining consumers)
+- [ ] Migrate ChannelEventTrigger to bus subscription (currently trigger subscribes to bus directly, old path is dead)
 
 ### Phase 5: Connector Architecture
 - Define `EventConnector` interface extending `EventSink` with lifecycle (connect, disconnect, health)
