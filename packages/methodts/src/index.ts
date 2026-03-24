@@ -98,6 +98,62 @@ export * from "./meta/coherence.js";
 // Wave 12: Strategy expansion
 export * from "./strategy/agent-steered.js";
 
+// Wave 13: Strategy DAG unification (WS-2)
+// Selective re-exports to avoid name collisions with compat.ts StrategyDAG<S>
+// and runtime/retro.ts generateRetro<S>.
+export type {
+  DagGateType,
+  DagGateConfig,
+  DagGateContext,
+  DagGateResult,
+  MethodologyNodeConfig as DagMethodologyNodeConfig,
+  ScriptNodeConfig as DagScriptNodeConfig,
+  StrategyNode as DagStrategyNode,
+  OversightRule as DagOversightRule,
+  StrategyGateDecl,
+  StrategyDAG as PipelineDAG,
+  StrategyYaml as PipelineStrategyYaml,
+  StrategyValidationResult as PipelineValidationResult,
+  ArtifactVersion,
+  ArtifactBundle,
+  ArtifactStore,
+  NodeStatus as DagNodeStatus,
+  NodeResult as DagNodeResult,
+  OversightEvent as DagOversightEvent,
+  StrategyExecutionResult as DagExecutionResult,
+  ExecutionStateSnapshot as DagExecutionStateSnapshot,
+  StrategyExecutorConfig as DagExecutorConfig,
+  StrategyRetro as DagStrategyRetro,
+} from "./strategy/dag-types.js";
+export {
+  parseStrategyYaml,
+  parseStrategyObject,
+  validateStrategyDAG as validatePipelineDAG,
+  topologicalSort as dagTopologicalSort,
+  getDefaultRetries as dagGetDefaultRetries,
+  getDefaultTimeout as dagGetDefaultTimeout,
+} from "./strategy/dag-parser.js";
+export {
+  evaluateGateExpression as dagEvaluateGateExpression,
+  evaluateGate as dagEvaluateGate,
+  buildRetryFeedback as dagBuildRetryFeedback,
+} from "./strategy/dag-gates.js";
+export {
+  InMemoryArtifactStore,
+  createArtifactStore,
+} from "./strategy/dag-artifact-store.js";
+export {
+  DagStrategyExecutor,
+  type DagNodeExecutor,
+} from "./strategy/dag-executor.js";
+export {
+  generateRetro as generateDagRetro,
+  computeCriticalPath as dagComputeCriticalPath,
+  retroToYaml as dagRetroToYaml,
+} from "./strategy/dag-retro.js";
+export type { StrategySource, StrategyInfo } from "./strategy/strategy-source.js";
+export { StdlibStrategySource } from "./strategy/stdlib-strategy-source.js";
+
 // Wave 14: TLA+ compiler
 export * from "./tla/ast.js";
 export * from "./tla/compile.js";
