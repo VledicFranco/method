@@ -14,3 +14,27 @@ tmp/*
 !tmp/.gitkeep
 .claude/worktrees/
 coverage/
+
+# agent-generated junk (review artifacts, logs, debug output)
+*.stackdump
+test-output.*
+test-run-*.log
+verify-changes.js
+.playwright-mcp/
+
+# agent review/synthesis artifacts — never track these
+API_CONTRACT_REVIEW.md
+ARCH_REVIEW_PRD020*.md
+CONSENSUS_VOTING_TALLY.md
+FINDINGS_TO_INITIATIVES_MAPPING.csv
+INTEGRATION_SYNTHESIS_FINAL.json
+INTEGRATOR_SYNTHESIS_EXECUTIVE.md
+PERFORMANCE_REVIEW_PRD020.md
+PHASE_A_RECHECK_COMPLETE.txt
+PRAGMATIC_SYNTHESIS_PHASE2.md
+SECURITY_REVIEW_PRD020_INITIATIVES.json
+reliability-review-prd020.json
+
+# stale .claude working files (skills are fine)
+.claude/WAVE1_WORK.md
+.claude/wave1-commission.md

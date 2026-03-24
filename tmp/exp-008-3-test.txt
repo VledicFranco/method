@@ -1,3 +1,0 @@
-BRIDGE_URL=
-NODE_ENV=
-PATH_EXISTS=/mingw64/bin:/usr/bi
