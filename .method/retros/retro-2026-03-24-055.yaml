@@ -1,0 +1,80 @@
+retro:
+  id: retro-2026-03-24-055
+  session: WS-3
+  methodology: P2-SD v2.0
+  method: M2-DIMPL
+  instance: I2-METHOD
+  date: "2026-03-24"
+  commission: "WS-3 — Session UX Overhaul (Spawn, Chat, Mobile, Persistence)"
+
+  hardest_decision: >
+    Whether to use a third-party split-pane library (react-split-pane) or pure CSS/Tailwind
+    breakpoints for the responsive layout. Chose CSS-only approach because: (a) the existing
+    Tailwind v4 setup already has excellent breakpoint support, (b) adding a dependency for
+    a single layout concern violates simplicity optimization, (c) the mobile-first pattern
+    (full-screen on mobile, slide-over on desktop) is a binary breakpoint, not a continuous
+    resizable split. The react-split-pane library would have been dead weight.
+
+  observations:
+    - label: "Worktree file path trap"
+      detail: >
+        All file creation and editing tools default to the main repo path, not the worktree
+        path. This caused all changes to land in the wrong working directory initially. Had
+        to copy files from main repo to worktree and revert main. This is a systematic risk
+        for any agent working in git worktrees — the tooling has no concept of "current
+        worktree" and always resolves paths from the process cwd or the project root.
+      severity: high
+      actionable: true
+
+    - label: "dvh + interactive-widget is the modern keyboard avoidance pattern"
+      detail: >
+        The CSS dvh unit combined with the viewport meta tag interactive-widget=resizes-content
+        is now Baseline Widely Available (June 2025). This replaces all the JavaScript-based
+        VisualViewport hacks from 2022-2024. Simple, declarative, and works across all
+        modern browsers. Research validated this was the right approach over JS-based solutions.
+      severity: info
+      actionable: false
+
+    - label: "xterm.js has limited mobile touch support"
+      detail: >
+        xterm.js does not support ballistic touch scrolling natively (issue #594 still open).
+        For mobile, the terminal is read-only (disableStdin: true) which avoids most touch
+        input issues. Reduced font size to 11px on mobile for better content density. The
+        prompt bar is separate from the terminal, so touch input goes through standard HTML
+        textarea which has excellent mobile support.
+      severity: info
+      actionable: false
+
+    - label: "Session persistence uses sync FileSystemProvider methods"
+      detail: >
+        The FileSystemProvider port interface has async methods (readFile, writeFile, mkdir)
+        but not async exists() or rename(). The session persistence store uses sync methods
+        (readFileSync, writeFileSync, existsSync, renameSync) for simplicity and because
+        the persistence operations are infrequent (flush every 200ms debounced). This is
+        acceptable for the bridge context but would need revisiting for high-throughput
+        scenarios.
+      severity: low
+      actionable: false
+
+  card_feedback:
+    essence: >
+      The session UX overhaul serves the runtime's purpose by making agent interaction
+      frictionless. One-tap spawn and session persistence are foundational for the
+      "agent memory per project" vision. The invariant (theory > implementation) was
+      not tested in this commission since it's pure UX/infra work.
+    delivery_rules:
+      - rule: DR-14
+        feedback: "8 unit tests added for session-persistence covering core logic paths."
+      - rule: DR-15
+        feedback: "Session persistence uses FileSystemProvider port — no direct node:fs imports."
+      - rule: DR-06
+        feedback: "Path normalization test explicitly verifies Windows backslash handling."
+
+  proposed_deltas:
+    - id: DELTA-WS3-001
+      type: process
+      description: >
+        When working in git worktrees, all file creation/editing should explicitly use
+        the worktree path prefix. Consider adding a worktree-aware path resolver to the
+        agent tooling or documenting the worktree path trap in commission templates.
+      priority: medium
