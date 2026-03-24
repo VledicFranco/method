@@ -8,18 +8,26 @@
 
 ## Problem
 
-The bridge has 5+ independent event emission mechanisms:
+The bridge has 7 distinct event emission/consumption mechanisms:
 
 | Domain | Mechanism | Consumers |
 |--------|-----------|-----------|
 | Sessions | `appendMessage` to ring-buffered channels | Parent agents (via `bridge_read_events`) |
 | Projects | `pushEventToLogWithPersistence` + `_onEventHook` | WsHub → frontend, JSONL persistence |
-| Triggers | `onTriggerFired` callback on TriggerRouter | WsHub → frontend, trigger channels |
+| Triggers (producer) | `onTriggerFired` callback on TriggerRouter | WsHub → frontend, trigger channels |
+| Triggers (consumer) | `addOnMessageHook` on SessionChannels | TriggerRouter (channel-event-trigger.ts) |
 | Strategies | `setOnExecutionChangeHook` callback | WsHub → frontend |
 | Methodology | `appendMessage` inside route handlers | Session channels (silent swallow on error) |
 | PTY Watcher | `observation` hook on pool | TriggerRouter |
 
-Each domain invented its own event plumbing. The result:
+Note: the trigger system is both a producer (emits `trigger.fired`) and a consumer
+(subscribes to session/methodology events to evaluate trigger conditions). The bus
+must support this bidirectional pattern.
+
+Each domain has functional event plumbing coordinated through the composition root,
+but the patterns diverge — ring-buffered channels for sessions, hook callbacks for
+strategies and triggers, persistence wrappers for projects. The bus consolidates
+these into one pattern. The result of the current divergence:
 - **Genesis can only see project events** — session lifecycle, strategy execution, trigger fires,
   methodology transitions are invisible to it
 - **Frontend gets a partial picture** — WebSocket topics (`events`, `sessions`, `executions`,
@@ -147,7 +155,10 @@ interface EventSubscription {
 }
 
 interface EventBus {
-  /** Emit an event to all subscribers. Bus assigns id, timestamp, sequence. */
+  /**
+   * Emit an event to all subscribers. Bus assigns id, timestamp, sequence.
+   * Non-blocking: sinks receive events asynchronously. No sink failure blocks emit().
+   */
   emit(event: Omit<BridgeEvent, 'id' | 'timestamp' | 'sequence'>): BridgeEvent;
 
   /** Subscribe to events matching a filter. */
@@ -167,6 +178,25 @@ interface EventSink {
 }
 ```
 
+### Capacity & Execution Model
+
+**InMemoryEventBus** uses a ring buffer with configurable capacity (default 10,000 events).
+Oldest events evicted on overflow. Memory footprint at ~1KB per event: ~10MB default cap.
+
+**Sink execution:** Each sink receives events asynchronously via an internal bounded queue
+(default 500 events). On queue overflow: drop oldest, emit `system.sink_overflow` event.
+`onError` captures sink failures without blocking the bus. PersistenceSink uses
+write-ahead batching (flush every 1s or 100 events, whichever comes first).
+
+**Performance budgets:** Max event payload 64KB (enforced at emit). Events passed by
+reference within-process; serialization occurs only at sink boundaries (WebSocket JSON,
+PersistenceSink JSONL). PTY watcher retains its existing rate limiting and dedup logic —
+the bus transports already-throttled observations.
+
+```typescript
+// (remaining types continued below)
+```
+
 ### Built-in Sinks
 
 #### WebSocketSink
@@ -180,17 +210,49 @@ ALL events to a unified event log (JSONL). Enables event replay on bridge restar
 queries, and audit trails.
 
 #### GenesisSink
-New. Feeds events to the Genesis agent session. Genesis receives a stream of everything
-happening in the bridge — session lifecycle, strategy execution, trigger fires, methodology
-transitions. This is the foundation for Genesis intelligence:
+New. Feeds events to the Genesis agent session via a narrow callback interface — NOT
+a direct SessionPool import (which would violate G-BOUNDARY).
+
+```typescript
+// GenesisSink receives a prompt callback, not the pool itself
+interface GenesisPromptCallback {
+  (sessionId: string, prompt: string): Promise<void>;
+}
+
+// Composition root wires it:
+const genesisSink = new GenesisSink({
+  promptSession: (id, text) => pool.prompt(id, text, 10000),
+  sessionId: genesisSessionId,
+  batchWindowMs: 30_000,  // Summarize events every 30s
+  filter: { severity: ['warning', 'error', 'critical'] },  // Ignore info-level noise
+});
+```
+
+GenesisSink accumulates events in a time-windowed buffer (configurable, default 30s).
+At window close, it summarizes buffered events into a single prompt. Estimated volume:
+~45 summarized prompts/hour (vs. ~2,700 raw events/hour at 7 active sessions).
+
+This is the foundation for Genesis intelligence:
 - **Reactive:** Genesis sees a `strategy.gate_failed` event → advises the user
 - **Proactive:** Genesis sees 3 `session.stale` events in 10 minutes → alerts the user
 - **Autonomous:** Genesis sees a `trigger.fired` event → decides to spawn a session to handle it
 
 #### ChannelSink
 Replaces the current `appendMessage` pattern for parent-agent visibility. Parent agents
-subscribe to child session events via `bridge_read_events` — the channel sink filters events
-by sessionId and buffers them for cursor-based reading.
+subscribe to child session events via `bridge_read_events`. ChannelSink filters events
+by `sessionId` match, maintains a per-session ring buffer (default 200 events, matching
+current channel capacity), and provides cursor-based reads with identical semantics to
+the current system.
+
+#### WebSocketSink Topic Migration
+WebSocketSink maps legacy topics to domain filters during the transition period:
+- topic `events` → domain `project`
+- topic `executions` → domain `strategy`
+- topic `triggers` → domain `trigger`
+
+New clients subscribe by domain directly. Legacy topic subscriptions supported through
+Phase 4. PTY observations (currently bypassing WebSocket entirely) flow through the bus
+as `session.observation` events to WebSocketSink.
 
 ### Frontend Integration
 
@@ -242,11 +304,11 @@ registerMethodologyRoutes(app, methodologyStore, { pool, appendMessage, eventBus
 
 | FCA Principle | How this PRD respects it |
 |---------------|--------------------------|
-| P3 (Port pattern) | EventBus is a port interface. Domains depend on the interface, not concrete sinks. |
-| P5 (Pure composition) | server-entry.ts creates the bus, registers sinks, injects into domains. Zero logic. |
-| P7 (Boundary enforcement) | Domains emit events without knowing who consumes them. Sinks consume without knowing who produces. |
-| P8 (Co-location) | EventBus port in `ports/event-bus.ts`. InMemoryEventBus in `shared/`. Domain-specific event types co-located with their domain. |
-| P9 (Observable) | The event bus IS the observability layer — every domain action becomes a typed, queryable event. |
+| P3 (Port pattern) | EventBus is a port interface in `ports/event-bus.ts` (follows existing bridge port conventions alongside pty-provider, file-system, yaml-loader). Domains depend on the interface, not concrete sinks. |
+| P5 (Pure composition) | server-entry.ts creates the bus, registers sinks, injects into domains. Zero logic. Sink registration occurs ONLY in the composition root — no domain registers sinks. |
+| P7 (Boundary enforcement) | Domains emit events without knowing who consumes them. Sinks consume without knowing who produces. Event type strings are plain strings owned by each domain — not a shared enum. The `EventDomain` union in the port is a type-level constraint, not a runtime import. |
+| P8 (Co-location) | EventBus port in `ports/event-bus.ts`. InMemoryEventBus in `shared/`. Domain-specific event types co-located with their domain (e.g., sessions domain defines `'session.spawned'`). |
+| P9 (Observable) | The event bus enables domain observability by providing a typed, queryable event stream through the port pattern (P3 enables P9). The bus itself emits `system.bus_error` and `system.bus_stats` events for self-monitoring. |
 
 ### Architecture Gate Impact
 
@@ -266,14 +328,20 @@ registerMethodologyRoutes(app, methodologyStore, { pool, appendMessage, eventBus
 
 ### Phase 2: Full Domain Migration
 - Migrate remaining domains: strategies, triggers, projects, methodology, pty-watcher
-- Remove all ad-hoc hook callbacks from server-entry.ts (`setOnEventHook`, `setOnExecutionChangeHook`, `onTriggerFired`, `pool.setObservationHook`)
+- Migrate all 7 event pathways identified in the Problem section (including `addOnMessageHook`)
+- TriggerRouter's `ChannelEventTrigger` subscribes to bus events (replacing `addOnMessageHook`)
+- Remove all hook callbacks from server-entry.ts (`setOnEventHook`, `setOnExecutionChangeHook`, `onTriggerFired`, `pool.setObservationHook`, `addOnMessageHook`)
+- Update `bridge_read_events` and `bridge_all_events` MCP tools with adapter layer for legacy shapes
+- Dual-emit period: old + new mechanisms active simultaneously until verified
 - Composition root wires bus → domains via injection
 - Verify: all current WebSocket topics still work on frontend
+- **Completion gate: zero temporary G-BOUNDARY exceptions remaining. All cross-domain event wiring flows through the bus port.**
 
 ### Phase 3: PersistenceSink + Event Replay
 - Implement PersistenceSink (JSONL, uses FileSystemProvider port)
 - Replace project-specific `pushEventToLogWithPersistence` with the bus
-- Event replay on bridge restart (read JSONL, populate in-memory buffer)
+- Event replay on bridge restart: replay events from configurable window (default 24 hours, env: `EVENT_REPLAY_WINDOW_HOURS`). Sink cursors persisted alongside event log for cursor recovery.
+- Migrate existing project JSONL event logs to unified format (or support reading both during transition)
 - HTTP endpoint: `GET /api/events` queries the bus (replaces current project-only endpoint)
 - Verify: events survive bridge restart
 
@@ -288,6 +356,62 @@ registerMethodologyRoutes(app, methodologyStore, { pool, appendMessage, eventBus
 - Implement one external connector as proof of concept (webhook or Slack)
 - Configuration: connectors declared in `.method/manifest.yaml` or environment variables
 - Verify: external system receives bridge events
+
+## Migration & Backward Compatibility
+
+### Dual-Emit Period (Phase 2)
+
+During Phase 2, domains emit to BOTH the old mechanism and the new bus. This ensures
+zero consumer disruption while migration proceeds domain by domain:
+
+- Sessions: `appendMessage` continues alongside `eventBus.emit()` until ChannelSink is verified
+- Projects: `pushEventToLogWithPersistence` continues alongside bus until PersistenceSink is verified
+- Strategies: `setOnExecutionChangeHook` continues alongside bus
+
+### MCP Tool Response Shape Adapter
+
+MCP tools (`bridge_read_events`, `bridge_all_events`, `bridge_read_progress`) currently
+serialize REST responses in legacy shapes (ChannelMessage, ProjectEvent wrappers). During
+migration, an adapter layer translates BridgeEvent back to current shapes:
+
+```typescript
+// Adapter: BridgeEvent → legacy ChannelMessage shape
+function toChannelMessage(event: BridgeEvent): ChannelMessage {
+  return {
+    sequence: event.sequence,
+    timestamp: event.timestamp,
+    sender: event.sessionId ?? event.source,
+    type: event.type.split('.')[1] ?? event.type,  // 'session.spawned' → 'spawned'
+    content: event.payload,
+  };
+}
+```
+
+Old pathways removed only when all consumers confirmed working on new shapes.
+
+### Trigger System Migration
+
+The trigger system is both a producer and consumer. In Phase 2:
+- TriggerRouter's `ChannelEventTrigger` subscribes to bus events (replacing `addOnMessageHook`)
+- TriggerRouter emits `trigger.fired` events to the bus (replacing `onTriggerFired` callback)
+- Trigger evaluation continues to use domain-specific logic; only the event transport changes
+
+### Push Notification Criteria
+
+Push notifications to parent agents transition from type-based filtering (current
+`PUSHABLE_EVENTS` set: completed, error, escalation, budget_warning, stale, scope_violation)
+to configurable criteria (type + severity). Mapping during migration:
+- `completed` → severity `info` (no auto-push)
+- `error` → severity `error` (push)
+- `escalation` → severity `warning` (push)
+- `budget_warning` → severity `warning` (push)
+- `stale` → severity `warning` (push)
+- `scope_violation` → severity `error` (push)
+
+### Schema Versioning
+
+BridgeEvent includes a `version: 1` field for future schema evolution. Consumers that
+cannot parse a newer version fall back to the adapter layer.
 
 ## Non-Goals
 
