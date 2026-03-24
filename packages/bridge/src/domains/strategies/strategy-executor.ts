@@ -19,6 +19,7 @@ import {
   DagStrategyExecutor,
   type DagNodeExecutor,
 } from '@method/methodts/strategy/dag-executor.js';
+import type { StrategyExecutorConfig } from '@method/methodts/strategy/dag-types.js';
 
 // Re-export types from methodts (preserving bridge's type surface)
 export type {
@@ -199,15 +200,6 @@ function parseNodeOutput(result: string): Record<string, unknown> {
 
 // ── Executor ────────────────────────────────────────────────────
 
-/** Configuration for the StrategyExecutor (bridge-level type alias). */
-export interface BridgeExecutorConfig {
-  maxParallel: number;
-  defaultGateRetries: number;
-  defaultTimeoutMs: number;
-  defaultBudgetUsd?: number;
-  retroDir: string;
-}
-
 /**
  * Bridge-level StrategyExecutor — thin wrapper over methodts DagStrategyExecutor.
  *
@@ -219,7 +211,7 @@ export class StrategyExecutor {
 
   constructor(
     provider: LlmProvider,
-    config: BridgeExecutorConfig,
+    config: StrategyExecutorConfig,
   ) {
     const nodeExecutor = new LlmNodeExecutor(
       provider,

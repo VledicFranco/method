@@ -2,6 +2,12 @@
  * Strategy compatibility layer — bridge between PRD 017 static strategy DAGs
  * and MethodTS adaptive strategy controllers.
  *
+ * @deprecated WS-2: This module is superseded by the unified DAG pipeline
+ * (dag-executor.ts, dag-parser.ts, dag-gates.ts). The DAG pipeline is the
+ * canonical execution model for strategy YAML. This compat layer mapped typed
+ * DAGs to the adaptive controller loop, which is no longer the production path.
+ * Retained for backward compatibility — will be removed in a future release.
+ *
  * fromStrategyDAG: wraps a static DAG as a StrategyController that advances
  * through nodes in dependency order.
  *
