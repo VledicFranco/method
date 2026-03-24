@@ -5,3 +5,4 @@ export type { LlmProvider, LlmRequest, LlmResponse, LlmUsage, LlmStreamEvent } f
 export type { MethodologySource } from './methodology-source.js';
 export { StdlibSource } from './stdlib-source.js';
 export { InMemorySource } from './in-memory-source.js';
+export type { EventBus, EventSink, EventFilter, EventSubscription, BridgeEvent, BridgeEventInput, EventDomain, EventSeverity } from './event-bus.js';

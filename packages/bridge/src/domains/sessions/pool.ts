@@ -13,6 +13,7 @@ import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
 import type { PtyProvider } from '../../ports/pty-provider.js';
 import type { LlmProvider } from '../../ports/llm-provider.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { EventBus } from '../../ports/event-bus.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -129,6 +130,8 @@ export interface PoolOptions {
   llmProvider?: LlmProvider;
   /** PRD 024 MG-1: FileSystem provider for auto-retro and other fs operations. */
   fsProvider?: FileSystemProvider;
+  /** PRD 026: Event bus for unified event emission. */
+  eventBus?: EventBus;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -172,6 +175,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const ptyProvider = options?.ptyProvider;
   const llmProvider = options?.llmProvider;
   const fsProvider = options?.fsProvider;
+  const eventBus = options?.eventBus;
   const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
@@ -583,6 +587,26 @@ export function createPool(options?: PoolOptions): SessionPool {
         mode: effectiveMode,
       });
 
+      // PRD 026: Emit session.spawned to event bus (dual-emit during migration)
+      if (eventBus) {
+        eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: 'session.spawned',
+          severity: 'info',
+          sessionId,
+          payload: {
+            session_id: sessionId,
+            parent_session_id: parentSessionId ?? null,
+            depth: effectiveDepth,
+            mode: effectiveMode,
+            workdir,
+            nickname,
+          },
+          source: 'bridge/sessions/pool',
+        });
+      }
+
       // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
@@ -860,6 +884,24 @@ export function createPool(options?: PoolOptions): SessionPool {
         });
       }
 
+      // PRD 026: Emit session.killed to event bus (dual-emit during migration)
+      if (eventBus) {
+        eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: 'session.killed',
+          severity: 'info',
+          sessionId,
+          payload: {
+            session_id: sessionId,
+            killed_by: 'api',
+            worktree_action: worktreeAction ?? 'keep',
+            worktree_cleaned: worktreeCleaned,
+          },
+          source: 'bridge/sessions/pool',
+        });
+      }
+
       return { sessionId: session.id, killed: true, worktree_cleaned: worktreeCleaned };
     },
 
@@ -990,6 +1032,23 @@ export function createPool(options?: PoolOptions): SessionPool {
             });
           }
 
+          // PRD 026: Emit session.stale (auto-killed) to event bus
+          if (eventBus) {
+            eventBus.emit({
+              version: 1,
+              domain: 'session',
+              type: 'session.stale',
+              severity: 'warning',
+              sessionId,
+              payload: {
+                session_id: sessionId,
+                inactive_ms: inactiveMs,
+                action: 'auto_killed',
+              },
+              source: 'bridge/sessions/pool',
+            });
+          }
+
           killedIds.push(sessionId);
           sessionStaleFlags.set(sessionId, true);
           continue;
@@ -1006,6 +1065,24 @@ export function createPool(options?: PoolOptions): SessionPool {
               inactive_ms: inactiveMs,
               action: 'marked_stale',
               kill_in_ms: config.kill_timeout_ms - inactiveMs,
+            });
+          }
+
+          // PRD 026: Emit session.stale (marked) to event bus
+          if (eventBus) {
+            eventBus.emit({
+              version: 1,
+              domain: 'session',
+              type: 'session.stale',
+              severity: 'warning',
+              sessionId,
+              payload: {
+                session_id: sessionId,
+                inactive_ms: inactiveMs,
+                action: 'marked_stale',
+                kill_in_ms: config.kill_timeout_ms - inactiveMs,
+              },
+              source: 'bridge/sessions/pool',
             });
           }
 

@@ -42,6 +42,7 @@ import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
+import { InMemoryEventBus, WebSocketSink } from './shared/event-bus/index.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -95,6 +96,9 @@ import { setDiscoveryRegistryPorts } from './domains/projects/discovery-registry
 setDiscoveryServicePorts(fsProvider, yamlLoader);
 setDiscoveryRegistryPorts(fsProvider, yamlLoader);
 
+// PRD 026: Universal Event Bus — single event backbone for all domains
+const eventBus = new InMemoryEventBus();
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
@@ -103,6 +107,7 @@ const pool = createPool({
   ptyProvider,
   llmProvider,
   fsProvider,
+  eventBus,
 });
 
 // WS-3: Session persistence store for print-mode sessions
@@ -151,7 +156,10 @@ app.register(websocket);
 const wsHub = new WsHub();
 registerWsRoute(app, wsHub);
 
-// Wire WsHub to data sources
+// PRD 026: Register WebSocketSink — session domain events flow through the bus to WsHub
+eventBus.registerSink(new WebSocketSink(wsHub));
+
+// Wire WsHub to data sources (legacy hooks — retained during Phase 1 dual-emit period)
 setOnEventHook((event) => {
   wsHub.publish('events', event, (filter) =>
     !filter.project_id || filter.project_id === event.projectId,
