@@ -6,7 +6,15 @@
   "exports": {
     ".": "./dist/index.js",
     "./stdlib": "./dist/stdlib/index.js",
-    "./stdlib/metadata": "./dist/stdlib/metadata/index.js"
+    "./stdlib/metadata": "./dist/stdlib/metadata/index.js",
+    "./strategy/dag-types.js": "./dist/strategy/dag-types.js",
+    "./strategy/dag-parser.js": "./dist/strategy/dag-parser.js",
+    "./strategy/dag-gates.js": "./dist/strategy/dag-gates.js",
+    "./strategy/dag-artifact-store.js": "./dist/strategy/dag-artifact-store.js",
+    "./strategy/dag-executor.js": "./dist/strategy/dag-executor.js",
+    "./strategy/dag-retro.js": "./dist/strategy/dag-retro.js",
+    "./strategy/strategy-source.js": "./dist/strategy/strategy-source.js",
+    "./strategy/stdlib-strategy-source.js": "./dist/strategy/stdlib-strategy-source.js"
   },
   "scripts": {
     "build": "tsc -b",
