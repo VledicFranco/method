@@ -67,7 +67,8 @@ project_card:
       - name: "@method/core"
         path: "packages/core/"
         layer: L1
-        purpose: "YAML loader, theory lookup — pure logic, zero transport deps"
+        status: deprecated
+        purpose: "DEPRECATED — legacy YAML loader, replaced by MethodologySource port (StdlibSource)"
       - name: "@method/methodts"
         path: "packages/methodts/"
         layer: L2
