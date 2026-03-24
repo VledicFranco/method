@@ -2,12 +2,14 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# impl plans are volatile scratch — only the README is tracked
-docs/impl/*
-!docs/impl/README.md
-!docs/impl/prompt-*.md
-!docs/impl/*-phasedoc.md
-!docs/impl/session-*.md
+# stale docs — experiments, impl scratch, research
+docs/exp/
+docs/impl/
+docs/research/
+docs/bridge-observations.md
+docs/prds/*PHASE*
+docs/prds/*RECHECK*
+docs/prds/*BLOCKER*
 
 # volatile artifacts
 tmp/*
