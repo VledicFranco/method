@@ -28,10 +28,15 @@ This project follows FCA (see `docs/fractal-component-architecture/`). The core 
 L4  @method/bridge     Application — HTTP server, wires everything, owns the process
 L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over core
 L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
-L1  @method/core       Domain logic — YAML loader, theory lookup (zero transport deps)
+L1  @method/core       DEPRECATED — legacy YAML loader, replaced by MethodologySource port
 L0  @method/types      Pure type definitions, no behavior
     @method/testkit    Testing framework (assertions, builders, runners)
 ```
+
+> **Note:** Methodology operations now go through the `MethodologySource` port (defined in
+> `packages/bridge/src/ports/methodology-source.ts`), backed by `StdlibSource` which wraps
+> the `@method/methodts` stdlib catalog. The old `@method/core` YAML loader is deprecated
+> and should not be used for new work. See `docs/arch/methodology-source.md` for details.
 
 **Rules:** Higher layers may depend on lower. Never the reverse. Core has zero transport dependencies. MCP handlers are thin wrappers — parse input, call core, format output.
 

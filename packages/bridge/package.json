@@ -7,11 +7,10 @@
     "build": "tsc",
     "start": "node dist/server-entry.js",
     "dev": "tsx src/server-entry.ts",
-    "test": "node --import tsx --test \"src/domains/**/*.test.ts\" \"src/shared/**/*.test.ts\""
+    "test": "node --import tsx --test \"src/domains/**/*.test.ts\" \"src/shared/**/*.test.ts\" \"src/ports/**/*.test.ts\""
   },
   "dependencies": {
     "@fastify/websocket": "^11.2.0",
-    "@method/core": "*",
     "@method/methodts": "*",
     "fastify": "^5.0.0",
     "js-yaml": "^4.1.1",

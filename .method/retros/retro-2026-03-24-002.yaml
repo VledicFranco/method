@@ -1,0 +1,66 @@
+retro:
+  date: "2026-03-24"
+  session_id: "WS-1-methodology-source-port"
+  methodology: P2-SD
+  method: M2-DIMPL
+  instance: I2-METHOD
+  task: "WS-1: Registry v2 — Unified MethodologySource Port"
+  pr: "https://github.com/VledicFranco/method/pull/49"
+
+  hardest_decision: >
+    Whether to inline lookupTheory into MCP or keep it as a documented
+    exception in @method/core. SC-1 required "zero imports from @method/core"
+    while the commission text allowed "lookupTheory may stay in core temporarily."
+    Chose to inline — eliminates the dependency entirely, avoids creating a
+    documented exception that could become permanent technical debt. The function
+    is 150 lines, self-contained, and has no external dependencies beyond fs.
+
+  observations:
+    - >
+      The migration was simpler than expected because MethodologySessionStore
+      had already been refactored away from @method/core in a prior session.
+      The store was using @method/methodts/stdlib directly — the port pattern
+      was essentially formalizing an interface that already existed implicitly.
+      This validates the incremental migration approach: each session moved
+      one piece, and by the time WS-1 arrived, the hard work was done.
+    - >
+      The 5-phase execution completed in a single session with no blockers.
+      Each phase had a clear go/no-go gate (build + test), and all gates
+      passed on first attempt. Well-decomposed commissions with explicit
+      success criteria and phase gates enable efficient single-session execution.
+    - >
+      The InMemorySource substitutability proof (15 tests) was small but
+      effective. The contract test pattern (shared tests running against both
+      StdlibSource and InMemorySource) catches interface violations early.
+      Port interfaces need substitutability tests, not just unit tests.
+
+  card_feedback:
+    essence_feedback: >
+      The port pattern advances the "simplicity" optimization — dependency
+      injection through ports is cleaner than direct module coupling. Purpose
+      and invariant remain accurate. The MethodologySource port is now the
+      fourth port type (joining PtyProvider, FileSystemProvider, YamlLoader),
+      establishing DR-15 as a well-exercised pattern.
+    delivery_rule_feedback:
+      - rule: DR-15
+        note: >
+          DR-15 (port interfaces for external dependencies) is now demonstrated
+          with a fourth port type. The pattern is well-established and should
+          be the default for any new external dependency access.
+      - rule: DR-03
+        note: >
+          DR-03 (core has zero transport deps) is preserved. Core is deprecated
+          but not removed — it retains its zero-transport-dep invariant.
+
+  proposed_deltas:
+    - id: D-WS1-001
+      type: cleanup
+      description: >
+        Remove @method/core package entirely once all core tests are migrated
+        or confirmed redundant. The package is deprecated but still built.
+    - id: D-WS1-002
+      type: bugfix
+      description: >
+        Fix the flaky "EventLog cap prevents OOM under sustained load" test
+        in packages/bridge/src/domains/projects/routes.test.ts. It fails
+        intermittently based on garbage collection timing.

@@ -5,26 +5,19 @@
  * validation, methodology sessions (start/route/select/transition),
  * session isolation, and error handling.
  *
- * Uses real YAML fixtures from the project's registry/ directory (DR-09).
+ * Uses StdlibSource (real stdlib catalog) as the MethodologySource (DR-09).
  */
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
 import { MethodologySessionStore } from './store.js';
-
-import { existsSync } from 'node:fs';
-
-// Handle both: running from repo root (npm test) and from packages/bridge/ (direct)
-const fromRoot = resolve(process.cwd(), 'registry');
-const fromBridge = resolve(process.cwd(), '..', '..', 'registry');
-const registryDir = existsSync(fromRoot) ? fromRoot : fromBridge;
+import { StdlibSource } from '../../ports/stdlib-source.js';
 
 describe('MethodologySessionStore', () => {
   let store: MethodologySessionStore;
 
   beforeEach(() => {
-    store = new MethodologySessionStore(registryDir);
+    store = new MethodologySessionStore(new StdlibSource());
   });
 
   // ══════════════════════════════════════════════════════════════

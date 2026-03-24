@@ -1,11 +1,25 @@
+/**
+ * Theory Lookup — inlined from @method/core for WS-1 dependency elimination.
+ *
+ * Searches formal theory files (F1-FTH, F4-PHI) for terms and definitions.
+ * Three-pass lookup: label match > heading match > keyword search.
+ *
+ * This is the only piece of @method/core that MCP consumed. Inlining it here
+ * allows @method/mcp to drop its @method/core dependency entirely.
+ *
+ * Accepts an optional TheoryFs parameter for testability (DR-15 port pattern).
+ */
+
 import * as nodeFs from 'fs';
 import { join, basename } from 'path';
-import type { TheoryResult, CoreFileSystem } from './types.js';
 
-const defaultFs: CoreFileSystem = {
-  readFileSync: nodeFs.readFileSync as CoreFileSystem['readFileSync'],
-  readdirSync: nodeFs.readdirSync as CoreFileSystem['readdirSync'],
-  existsSync: nodeFs.existsSync,
+// ── Types ──
+
+export type TheoryResult = {
+  source: string;
+  section: string;
+  label?: string;
+  content: string;
 };
 
 type TheorySection = {
@@ -15,16 +29,28 @@ type TheorySection = {
   content: string;
 };
 
+/** Filesystem interface for theory file access (testability seam). */
+export interface TheoryFs {
+  readFileSync(path: string, encoding: 'utf-8'): string;
+  readdirSync(path: string, options: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
+}
+
+const defaultFs: TheoryFs = {
+  readFileSync: (p, enc) => nodeFs.readFileSync(p, enc),
+  readdirSync: (p, opts) => nodeFs.readdirSync(p, opts) as Array<{ name: string; isDirectory(): boolean }>,
+};
+
+// ── Internal ──
+
 const cache = new Map<string, TheorySection[]>();
 
 const LABEL_PATTERN = /\*\*(?:Definition|Proposition|Observation|Clarification|Corollary|Sketch)\s*[\d.]*\s*(?:\(([^)]+)\))?\.?\*\*/;
 
-function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] {
+function parseTheoryFile(filePath: string, fs: TheoryFs = defaultFs): TheorySection[] {
   const raw = fs.readFileSync(filePath, 'utf-8');
   const source = basename(filePath);
   const sections: TheorySection[] = [];
 
-  // Split on ## headings
   const headingPattern = /^## /m;
   const parts = raw.split(headingPattern);
 
@@ -34,7 +60,6 @@ function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] 
     const heading = newlineIdx >= 0 ? part.substring(0, newlineIdx).trim() : part.trim();
     const body = newlineIdx >= 0 ? part.substring(newlineIdx + 1) : '';
 
-    // Split body into sub-sections at definition/proposition labels
     const lines = body.split('\n');
     let currentLabel: string | null = null;
     let currentContent: string[] = [];
@@ -43,14 +68,8 @@ function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] 
     for (const line of lines) {
       const match = line.match(LABEL_PATTERN);
       if (match) {
-        // Flush previous sub-section
         if (currentContent.length > 0 || hasSubSections) {
-          sections.push({
-            source,
-            heading,
-            label: currentLabel,
-            content: currentContent.join('\n').trim(),
-          });
+          sections.push({ source, heading, label: currentLabel, content: currentContent.join('\n').trim() });
         }
         hasSubSections = true;
         currentLabel = match[1] ?? null;
@@ -60,7 +79,6 @@ function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] 
       }
     }
 
-    // Flush final sub-section (or the whole section if no labels found)
     if (currentContent.length > 0) {
       sections.push({
         source,
@@ -74,7 +92,7 @@ function parseTheoryFile(filePath: string, fs: CoreFileSystem): TheorySection[] 
   return sections;
 }
 
-function getSections(filePath: string, fs: CoreFileSystem): TheorySection[] {
+function getSections(filePath: string, fs: TheoryFs = defaultFs): TheorySection[] {
   if (!cache.has(filePath)) {
     cache.set(filePath, parseTheoryFile(filePath, fs));
   }
@@ -108,11 +126,12 @@ function normalizeForSearch(text: string): string {
   return result.toLowerCase();
 }
 
-/** @deprecated Theory lookup has been inlined into consumers. */
-export function lookupTheory(theoryPath: string, term: string, fs: CoreFileSystem = defaultFs): TheoryResult[] {
+// ── Public API ──
+
+export function lookupTheory(theoryPath: string, term: string, fs: TheoryFs = defaultFs): TheoryResult[] {
   const files = fs.readdirSync(theoryPath, { withFileTypes: true })
-    .filter((f: { name: string; isDirectory(): boolean }) => f.name.endsWith('.md'))
-    .map((f: { name: string }) => join(theoryPath, f.name));
+    .filter(f => f.name.endsWith('.md'))
+    .map(f => join(theoryPath, f.name));
 
   const allSections: TheorySection[] = [];
   for (const f of files) {
@@ -142,11 +161,7 @@ export function lookupTheory(theoryPath: string, term: string, fs: CoreFileSyste
     const results: TheoryResult[] = [];
     for (const [, secs] of headingMatches) {
       const merged = secs.map(s => s.content).join('\n\n');
-      results.push({
-        source: secs[0].source,
-        section: secs[0].heading,
-        content: merged.trim(),
-      });
+      results.push({ source: secs[0].source, section: secs[0].heading, content: merged.trim() });
     }
     return results;
   }

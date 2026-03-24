@@ -23,6 +23,7 @@ import { join, relative, sep } from 'node:path';
 const BRIDGE_SRC = join(import.meta.dirname, '..'); // packages/bridge/src
 const DOMAINS_DIR = join(BRIDGE_SRC, 'domains');
 const CORE_SRC = join(BRIDGE_SRC, '..', '..', 'core', 'src');
+const METHODTS_SRC = join(BRIDGE_SRC, '..', '..', 'methodts', 'src');
 const MCP_SRC = join(BRIDGE_SRC, '..', '..', 'mcp', 'src');
 const TYPES_SRC = join(BRIDGE_SRC, '..', '..', 'types', 'src');
 
@@ -233,6 +234,11 @@ describe('G-LAYER: Package layer ordering is respected', () => {
       name: '@method/core (L1)',
       srcDir: CORE_SRC,
       forbidden: ['@method/methodts', '@method/mcp', '@method/bridge'],
+    },
+    {
+      name: '@method/methodts (L2)',
+      srcDir: METHODTS_SRC,
+      forbidden: ['@method/mcp', '@method/bridge'],
     },
     {
       name: '@method/mcp (L3)',

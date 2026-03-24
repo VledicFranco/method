@@ -2,7 +2,7 @@
  * PRD 017: Strategy Pipelines — Retrospective Writer
  *
  * Filesystem operations for saving strategy retrospectives.
- * Split from retro-generator.ts per DR-03: pure logic lives in @method/core,
+ * Split from retro-generator.ts per DR-03: pure logic lives locally,
  * I/O operations stay in @method/bridge.
  */
 

@@ -30,8 +30,8 @@ With the bridge MCP proxy tools + methodology tools, the orchestrator:
 ```
 Orchestrator (human's Claude Code session)
     │
-    ├── MCP methodology tools ──→ @method/mcp ──→ @method/core
-    │   methodology_start        (initialize session)
+    ├── MCP methodology tools ──→ @method/mcp ──→ MethodologySource port ──→ StdlibSource
+    │   methodology_start        (initialize session)        (@method/methodts stdlib)
     │   methodology_route         (evaluate delta_phi)
     │   methodology_load_method   (load method in session)
     │   step_context              (get step + prior method outputs)
@@ -50,6 +50,11 @@ Orchestrator (human's Claude Code session)
         bridge_read_events        (read child events)   → GET /sessions/:id/channels/events
         bridge_all_events         (all session events)  → GET /channels/events
 ```
+
+> **Deprecation note:** The previous diagram showed methodology tools flowing through
+> `@method/core` (the legacy YAML loader). As of WS-1, methodology data access goes through
+> the `MethodologySource` port backed by `StdlibSource` (wrapping `@method/methodts` stdlib).
+> `@method/core` is deprecated for methodology loading. See `docs/arch/methodology-source.md`.
 
 The MCP server exposes both methodology tools and bridge proxy tools. The orchestrator calls everything through MCP — methodology tools for intelligence, bridge proxy tools for agent labor. The proxy tools internally call the bridge HTTP API, so the orchestrator never needs to make raw HTTP requests.
 

@@ -2,8 +2,8 @@
  * Methodology Session Store
  *
  * Wraps @method/methodts types in the interactive session interface that
- * HTTP route handlers expect. Migrated from @method/mcp's methodts-session.ts
- * into a self-contained class that takes registryDir in the constructor.
+ * HTTP route handlers expect. All methodology data access goes through
+ * the injected MethodologySource port (DR-15).
  *
  * CRITICAL: All return shapes must be identical to what the MCP tool handlers
  * produced so that downstream consumers see the same JSON output.
@@ -11,21 +11,12 @@
 
 import {
   topologicalOrder,
-  evaluateTransition,
 } from "@method/methodts";
 import type {
   Method,
   Step,
-  Methodology,
-  Arm,
-  DomainTheory,
 } from "@method/methodts";
-import {
-  getStdlibCatalog,
-  getMethod,
-  getMethodology,
-} from "@method/methodts/stdlib";
-// fs/path/yaml no longer needed for methodology loading (stdlib-backed)
+import type { MethodologySource } from "../../ports/methodology-source.js";
 
 // ── Types matching core's output shapes ──
 
@@ -525,58 +516,6 @@ type MethodologyRouteResult = {
   message: string;
 };
 
-type MethodologySelectResult = {
-  methodologySessionId: string;
-  selectedMethod: {
-    methodId: string;
-    name: string;
-    stepCount: number;
-    firstStep: { id: string; name: string };
-  };
-  message: string;
-};
-
-type MethodologyLoadMethodResult = {
-  methodologySessionId: string;
-  method: {
-    id: string;
-    name: string;
-    stepCount: number;
-    firstStep: { id: string; name: string };
-  };
-  methodologyProgress: {
-    methodsCompleted: number;
-    methodsRemaining: number | "unknown";
-    currentMethodIndex: number;
-  };
-  priorMethodOutputs: Array<{
-    methodId: string;
-    stepOutputs: Array<{ stepId: string; summary: string }>;
-  }>;
-  message: string;
-};
-
-type MethodologyTransitionResult = {
-  completedMethod: {
-    id: string;
-    name: string;
-    stepCount: number;
-    outputsRecorded: number;
-  };
-  methodologyProgress: {
-    methodsCompleted: number;
-    globalObjectiveStatus: GlobalObjectiveStatus;
-  };
-  nextMethod: {
-    id: string;
-    name: string;
-    stepCount: number;
-    description: string;
-    routingRationale: string;
-  } | null;
-  message: string;
-};
-
 type ValidationResult = {
   valid: boolean;
   findings: ValidationFinding[];
@@ -591,23 +530,24 @@ type ValidationResult = {
 export class MethodologySessionStore {
   private readonly stepSessions = new Map<string, MethodTSSession>();
   private readonly methodologySessions = new Map<string, MethodologySessionState>();
+  private readonly source: MethodologySource;
 
   /**
-   * Constructor accepts registryDir for backward compatibility but no longer
-   * reads from the filesystem — all methodology data comes from the stdlib catalog.
+   * Constructor accepts a MethodologySource port (DR-15).
+   * All methodology data access goes through this port.
    */
-  constructor(_registryDir?: string) {
-    // registryDir is ignored — stdlib is the canonical source
+  constructor(source: MethodologySource) {
+    this.source = source;
   }
 
   // ── Method loading (from stdlib catalog) ──
 
-  private loadMethodFromStdlib(methodologyId: string, methodId: string): Method<S> {
-    const method = getMethod(methodologyId, methodId);
+  private loadMethodFromSource(methodologyId: string, methodId: string): Method<S> {
+    const method = this.source.getMethod(methodologyId, methodId);
     if (!method) {
       throw new Error(
         `Method ${methodId} not found in methodology ${methodologyId}. ` +
-        `Available methods: ${getStdlibCatalog().find(m => m.methodologyId === methodologyId)?.methods.map(m => m.methodId).join(", ") ?? "none"}`,
+        `Available methods: ${this.source.list().find(m => m.methodologyId === methodologyId)?.methods.map(m => m.methodId).join(", ") ?? "none"}`,
       );
     }
     return method as Method<S>;
@@ -625,7 +565,7 @@ export class MethodologySessionStore {
   // ── List methodologies (from stdlib catalog) ──
 
   private listMethodologiesInternal(): MethodologyEntry[] {
-    return getStdlibCatalog().map((entry) => ({
+    return this.source.list().map((entry) => ({
       methodologyId: entry.methodologyId,
       name: entry.name,
       description: entry.description,
@@ -641,9 +581,9 @@ export class MethodologySessionStore {
   // ── Get routing info (from stdlib typed methodology) ──
 
   private getRoutingInternal(methodologyId: string): RoutingInfo {
-    const methodology = getMethodology(methodologyId);
+    const methodology = this.source.getMethodology(methodologyId);
     if (!methodology) {
-      throw new Error(`Methodology ${methodologyId} not found in stdlib`);
+      throw new Error(`Methodology ${methodologyId} not found`);
     }
 
     // Extract predicates from domain theory
@@ -927,7 +867,7 @@ export class MethodologySessionStore {
    */
   loadMethod(sessionId: string, methodologyId: string, methodId: string): object {
     const session = this.getOrCreateStepSession(sessionId);
-    const method = this.loadMethodFromStdlib(methodologyId, methodId);
+    const method = this.loadMethodFromSource(methodologyId, methodId);
     session.load(methodologyId, method);
     const ordered = topologicalOrder(method.dag);
     // Extract objective string from Predicate
@@ -1010,7 +950,7 @@ export class MethodologySessionStore {
 
     // 3. Extract objective from typed methodology
     let objective: string | null = null;
-    const typedMethodology = getMethodology(methodologyId);
+    const typedMethodology = this.source.getMethodology(methodologyId);
     if (typedMethodology && typedMethodology.objective.tag === "check") {
       objective = typedMethodology.objective.label;
     }
@@ -1088,7 +1028,7 @@ export class MethodologySessionStore {
     }
 
     // 3. Load the method via MethodTS
-    const method = this.loadMethodFromStdlib(methodologyId, selectedMethodId);
+    const method = this.loadMethodFromSource(methodologyId, selectedMethodId);
     session.load(methodologyId, method);
 
     // 4. Record methodology context
@@ -1166,7 +1106,7 @@ export class MethodologySessionStore {
     }
 
     // 3. Load the method via MethodTS
-    const method = this.loadMethodFromStdlib(methSession.methodologyId, methodId);
+    const method = this.loadMethodFromSource(methSession.methodologyId, methodId);
     const ordered = topologicalOrder(method.dag);
 
     // 4. Load into session

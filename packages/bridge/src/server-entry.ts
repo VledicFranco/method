@@ -1,5 +1,5 @@
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import Fastify from 'fastify';
 import { createPool } from './domains/sessions/pool.js';
@@ -18,7 +18,7 @@ import { registerFrontendRoutes } from './shared/frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';
 import { MethodologySessionStore } from './domains/methodology/store.js';
 import { registerMethodologyRoutes } from './domains/methodology/routes.js';
-import { spawnGenesis, getGenesisSessionId } from './domains/genesis/spawner.js';
+import { spawnGenesis } from './domains/genesis/spawner.js';
 import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
@@ -30,7 +30,7 @@ import { registerWsRoute } from './shared/websocket/route.js';
 import { setOnExecutionChangeHook } from './domains/strategies/strategy-routes.js';
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
-import { JsonLineEventPersistence, YamlEventPersistence } from './domains/projects/events/index.js';
+import { JsonLineEventPersistence } from './domains/projects/events/index.js';
 import { loadSessionsConfig } from './domains/sessions/config.js';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
@@ -39,6 +39,7 @@ import { loadStrategiesConfig } from './domains/strategies/config.js';
 import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
+import { StdlibSource } from './ports/stdlib-source.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -242,7 +243,8 @@ registerRegistryRoutes(app, { fs: fsProvider, yaml: yamlLoader });
 
 // ---------- Methodology API (PRD 021) ----------
 
-const methodologyStore = new MethodologySessionStore(resolve(ROOT_DIR, 'registry'));
+const methodologySource = new StdlibSource();
+const methodologyStore = new MethodologySessionStore(methodologySource);
 registerMethodologyRoutes(app, methodologyStore, {
   pool,
   appendMessage,

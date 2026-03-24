@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerMethodologyRoutes } from './routes.js';
 import { MethodologySessionStore } from './store.js';
+import { StdlibSource } from '../../ports/stdlib-source.js';
 import type { SessionPool } from '../sessions/pool.js';
 import type { AppendMessageFn } from './routes.js';
 
@@ -43,7 +44,7 @@ async function createTestApp(opts?: {
   store?: MethodologySessionStore;
 }): Promise<{ app: FastifyInstance; store: MethodologySessionStore }> {
   const app = Fastify({ logger: false });
-  const store = opts?.store ?? new MethodologySessionStore();
+  const store = opts?.store ?? new MethodologySessionStore(new StdlibSource());
   const pool = opts?.pool ?? createMockPool();
   const appendMessage = opts?.appendMessage ?? createMockAppendMessage();
   registerMethodologyRoutes(app, store, { pool, appendMessage });
