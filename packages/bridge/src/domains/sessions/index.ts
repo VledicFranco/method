@@ -19,7 +19,6 @@ export {
   appendMessage,
   readMessages,
   createSessionChannels,
-  addOnMessageHook,
 } from './channels.js';
 export type { ChannelMessage, SessionChannels } from './channels.js';
 

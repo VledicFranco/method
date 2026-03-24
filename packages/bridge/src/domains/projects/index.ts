@@ -3,7 +3,6 @@ export {
   eventLog,
   cursorMap,
   getEventsFromLog,
-  setOnEventHook,
   getSessionContext,
   validateProjectAccess,
   generateCursor,
