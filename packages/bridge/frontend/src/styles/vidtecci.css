@@ -60,6 +60,16 @@ body {
   min-height: 100vh;
 }
 
+/* ── Hidden scrollbar utility (horizontal swipe, no visible bar) ── */
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Scrollbar — thin, dark, Vidtecci-styled ── */
 
 * {

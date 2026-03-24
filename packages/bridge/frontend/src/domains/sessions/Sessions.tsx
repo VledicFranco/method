@@ -420,7 +420,7 @@ export default function Sessions() {
 
   if (isLoading) {
     return (
-      <PageShell title="Sessions">
+      <PageShell breadcrumbs={[{ label: 'Sessions' }]}>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-28 rounded-card bg-abyss-light/50 animate-pulse border border-bdr" />
@@ -432,7 +432,7 @@ export default function Sessions() {
 
   if (error) {
     return (
-      <PageShell title="Sessions">
+      <PageShell breadcrumbs={[{ label: 'Sessions' }]}>
         <Card>
           <p className="text-error text-sm">
             Failed to load sessions: {error.message}
@@ -444,7 +444,8 @@ export default function Sessions() {
 
   return (
     <PageShell
-            actions={
+      breadcrumbs={[{ label: 'Sessions' }]}
+      actions={
         <div className="flex items-center gap-2">
           <Badge variant="default" label={`${activeSessions.length} active`} />
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />} onClick={refresh}>

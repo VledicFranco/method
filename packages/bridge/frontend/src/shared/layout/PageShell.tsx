@@ -2,14 +2,17 @@ import { type ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 import { NavBar } from './NavBar';
 import { NAV_ITEMS } from '@/shared/lib/constants';
+import type { BreadcrumbSegment } from './StatusBar';
 
 export interface PageShellProps {
-  /** Page title for the header */
+  /** Page title for the header (optional — removed from most pages) */
   title?: string;
   /** Expand content area to 1200px for DAG/analytics views */
   wide?: boolean;
   /** Optional right-side action elements in the header */
   actions?: ReactNode;
+  /** Breadcrumb segments for contextual navigation */
+  breadcrumbs?: BreadcrumbSegment[];
   children: ReactNode;
   className?: string;
   /** Full-screen mode: hides nav, removes padding, fills viewport. Used for mobile chat. */
@@ -18,7 +21,7 @@ export interface PageShellProps {
   hideNav?: boolean;
 }
 
-export function PageShell({ title, wide = false, actions, children, className, fullScreen = false, hideNav = false }: PageShellProps) {
+export function PageShell({ title, wide = false, actions, breadcrumbs, children, className, fullScreen = false, hideNav = false }: PageShellProps) {
   if (fullScreen) {
     return (
       <div className="h-dvh flex flex-col bg-void overflow-hidden">
@@ -29,7 +32,7 @@ export function PageShell({ title, wide = false, actions, children, className, f
 
   return (
     <div className="min-h-screen bg-void">
-      <NavBar items={[...NAV_ITEMS]} hidden={hideNav} />
+      {!hideNav && <NavBar items={[...NAV_ITEMS]} breadcrumbs={breadcrumbs} />}
       <main
         className={cn(
           'mx-auto px-sp-4 py-sp-6',

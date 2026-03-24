@@ -267,7 +267,7 @@ export default function StrategyDetail() {
 
   if (defsLoading) {
     return (
-      <PageShell  wide>
+      <PageShell wide breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: '...' }]}>
         <div className="h-64 rounded-card bg-abyss-light/50 animate-pulse border border-bdr" />
       </PageShell>
     );
@@ -275,7 +275,7 @@ export default function StrategyDetail() {
 
   if (!definition) {
     return (
-      <PageShell  wide>
+      <PageShell wide breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: '...' }]}>
         <Card>
           <p className="text-txt-dim text-sm">
             Strategy <span className="font-mono text-bio">{id}</span> not found in
@@ -301,8 +301,8 @@ export default function StrategyDetail() {
 
   return (
     <PageShell
-      title={definition.name}
       wide
+      breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: definition.name }]}
       actions={
         <div className="flex items-center gap-2">
           <Button

@@ -193,6 +193,7 @@ export default function Registry() {
     <>
       <PageShell
         wide
+        breadcrumbs={[{ label: 'Registry' }]}
         actions={
           <div className="flex items-center gap-2">
             {/* View toggle */}

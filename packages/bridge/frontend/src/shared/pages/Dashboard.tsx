@@ -106,7 +106,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageShell>
+      <PageShell breadcrumbs={[{ label: 'Dashboard' }]}>
         <div className="space-y-sp-6">
           {/* Projects — primary action area */}
           <ProjectListView

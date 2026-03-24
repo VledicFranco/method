@@ -219,7 +219,8 @@ export default function Strategies() {
 
   return (
     <PageShell
-            wide
+      wide
+      breadcrumbs={[{ label: 'Strategies' }]}
       actions={
         <Button
           variant="ghost"

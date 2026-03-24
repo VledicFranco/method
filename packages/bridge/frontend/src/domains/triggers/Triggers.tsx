@@ -257,7 +257,7 @@ export default function Triggers() {
   );
 
   return (
-    <PageShell  actions={toolbarActions}>
+    <PageShell breadcrumbs={[{ label: 'Triggers' }]} actions={toolbarActions}>
       {/* Maintenance Mode Banner */}
       {paused && (
         <AttentionBanner

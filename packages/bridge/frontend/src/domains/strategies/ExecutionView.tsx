@@ -203,7 +203,7 @@ export default function ExecutionView() {
 
   if (dagLoading) {
     return (
-      <PageShell  wide>
+      <PageShell wide breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: 'Execution' }]}>
         <div className="h-96 rounded-card bg-abyss-light/50 animate-pulse border border-bdr" />
       </PageShell>
     );
@@ -211,7 +211,7 @@ export default function ExecutionView() {
 
   if (dagError || execError) {
     return (
-      <PageShell  wide>
+      <PageShell wide breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: 'Execution' }]}>
         <Card>
           <p className="text-error text-sm mb-sp-3">
             {(dagError as Error)?.message ?? (execError as Error)?.message ?? "Failed to load execution"}
@@ -226,7 +226,7 @@ export default function ExecutionView() {
 
   if (!dag) {
     return (
-      <PageShell  wide>
+      <PageShell wide breadcrumbs={[{ label: 'Strategies', path: '/strategies' }, { label: 'Execution' }]}>
         <Card><p className="text-txt-dim text-sm">No DAG data available for this execution.</p></Card>
       </PageShell>
     );
