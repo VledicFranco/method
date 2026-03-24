@@ -7,7 +7,7 @@
  */
 
 import { join } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { retroToYaml } from './retro-generator.js';
 import type { StrategyRetro } from './retro-generator.js';
 
@@ -20,7 +20,7 @@ export function setRetroWriterFs(fs: FileSystemProvider): void {
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured. Call setRetroWriterFs() first.');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 

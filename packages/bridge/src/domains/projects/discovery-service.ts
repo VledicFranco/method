@@ -12,8 +12,8 @@
  */
 
 import { join, resolve } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-1/MG-2: Module-level ports
 let _fs: FileSystemProvider | null = null;
@@ -26,11 +26,11 @@ export function setDiscoveryServicePorts(fs: FileSystemProvider, yaml: YamlLoade
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured for discovery-service');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for discovery-service');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 

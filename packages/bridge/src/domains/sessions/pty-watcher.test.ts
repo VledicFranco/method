@@ -15,6 +15,9 @@ import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+
+const testFs = new NodeFileSystemProvider();
 
 // ── Pattern Matcher Tests ───────────────────────────────────────
 
@@ -557,6 +560,7 @@ describe('Auto-Retro Generator (PRD 010)', () => {
       terminatedAt: new Date('2026-03-15T14:30:00Z'),
       terminationReason: 'killed',
       projectRoot: tmpDir,
+      fs: testFs,
     };
 
     const result = generateAutoRetro(input);
@@ -582,6 +586,7 @@ describe('Auto-Retro Generator (PRD 010)', () => {
       terminatedAt: new Date(),
       terminationReason: 'exited',
       projectRoot: '/nonexistent/path',
+      fs: testFs,
     });
 
     assert.equal(result.written, false);
@@ -598,6 +603,7 @@ describe('Auto-Retro Generator (PRD 010)', () => {
       terminatedAt: new Date(),
       terminationReason: 'exited',
       projectRoot: tmpDir,
+      fs: testFs,
     };
 
     const r1 = generateAutoRetro(base);

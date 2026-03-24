@@ -8,8 +8,8 @@
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { LlmProvider } from './llm-provider.js';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-1/MG-2: Module-level ports, set via setStrategyRoutesPorts()
 let _fs: FileSystemProvider | null = null;
@@ -157,7 +157,7 @@ export function registerStrategyRoutes(
       yamlContent = strategy_yaml;
     } else if (strategy_path) {
       try {
-        yamlContent = await _fs!.readFile(strategy_path, 'utf-8');
+        yamlContent = await (_fs ?? new NodeFileSystemProvider()).readFile(strategy_path, 'utf-8');
       } catch (e) {
         return reply.status(400).send({
           error: `Failed to read strategy file: ${(e as Error).message}`,
@@ -380,7 +380,7 @@ export function registerStrategyRoutes(
 
     let files: string[];
     try {
-      const entries = await _fs!.readdir(strategyDir);
+      const entries = await (_fs ?? new NodeFileSystemProvider()).readdir(strategyDir);
       files = entries.filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
     } catch (e) {
       return reply.status(200).send({
@@ -394,8 +394,8 @@ export function registerStrategyRoutes(
     for (const file of files) {
       const filePath = join(strategyDir, file);
       try {
-        const content = await _fs!.readFile(filePath, 'utf-8');
-        const raw = _yaml!.load(content) as StrategyYaml;
+        const content = await (_fs ?? new NodeFileSystemProvider()).readFile(filePath, 'utf-8');
+        const raw = (_yaml ?? new JsYamlLoader()).load(content) as StrategyYaml;
         const s = raw?.strategy;
 
         if (!s || !s.id) {

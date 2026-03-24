@@ -14,8 +14,8 @@
  */
 
 import * as path from 'path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-1/MG-2: Module-level port references, set via setResourceCopierPorts()
 let _fs: FileSystemProvider | null = null;
@@ -28,12 +28,12 @@ export function setResourceCopierPorts(fs: FileSystemProvider, yaml: YamlLoader)
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured. Call setResourceCopierPorts() first.');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured. Call setResourceCopierPorts() first.');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 

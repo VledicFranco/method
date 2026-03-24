@@ -15,7 +15,12 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import * as yaml from 'js-yaml';
-import { CursorFileLock, CursorMaintenanceJob, type CursorState, type GenesisCursors } from './cursor-manager.js';
+import { CursorFileLock, CursorMaintenanceJob, setCursorManagerPorts, type CursorState, type GenesisCursors } from './cursor-manager.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024: Configure ports for tests
+setCursorManagerPorts(new NodeFileSystemProvider(), new JsYamlLoader());
 
 describe('Cursor Manager Concurrency Tests', () => {
   let testDir: string;

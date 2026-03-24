@@ -32,6 +32,18 @@ import { ChannelEventTrigger } from './channel-event-trigger.js';
 import { WebhookTrigger } from './webhook-trigger.js';
 import { evaluateSandboxedExpression } from './sandbox-eval.js';
 import type { TimerInterface, DebouncedTriggerFire } from './types.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader } from '../../ports/yaml-loader.js';
+import { setTriggerRouterPorts } from './trigger-router.js';
+import { setStartupScanFs } from './startup-scan.js';
+import { setTriggerParserYaml } from './trigger-parser.js';
+
+// PRD 024: Configure ports for tests
+const testFs = new NodeFileSystemProvider();
+const testYaml = new JsYamlLoader();
+setTriggerRouterPorts(testFs, testYaml);
+setStartupScanFs(testFs);
+setTriggerParserYaml(testYaml);
 
 // ── Mock Timer ──────────────────────────────────────────────────
 

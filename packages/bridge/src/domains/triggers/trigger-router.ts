@@ -13,8 +13,8 @@
 
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-1/MG-2: Module-level ports for trigger-router read/write
 let _fs: FileSystemProvider | null = null;
@@ -27,11 +27,11 @@ export function setTriggerRouterPorts(fs: FileSystemProvider, yaml: YamlLoader):
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured for trigger-router');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 function getYamlPort(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for trigger-router');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 import { DebounceEngine } from './debounce.js';

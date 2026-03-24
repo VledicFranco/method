@@ -8,7 +8,7 @@
  * Pure logic only — filesystem operations (saveRetro) live in @method/bridge.
  */
 
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-2: Module-level yaml port
 let _yaml: YamlLoader | null = null;
@@ -19,7 +19,7 @@ export function setRetroGeneratorYaml(yaml: YamlLoader): void {
 }
 
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for retro-generator');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 import type { StrategyExecutionResult, NodeResult } from './strategy-executor.js';

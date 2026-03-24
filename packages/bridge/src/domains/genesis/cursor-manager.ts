@@ -20,10 +20,10 @@
  */
 
 import { dirname } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
-// PRD 024 MG-1/MG-2: Module-level ports
+// PRD 024 MG-1/MG-2: Module-level ports (lazy-init with production defaults)
 let _fs: FileSystemProvider | null = null;
 let _yaml: YamlLoader | null = null;
 
@@ -34,11 +34,11 @@ export function setCursorManagerPorts(fs: FileSystemProvider, yaml: YamlLoader):
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured for cursor-manager');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for cursor-manager');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 

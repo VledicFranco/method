@@ -22,6 +22,20 @@ import { saveRetro } from './retro-writer.js';
 import type { StrategyExecutionResult, NodeResult } from './strategy-executor.js';
 import type { StrategyDAG } from './strategy-parser.js';
 import type { ArtifactBundle } from './artifact-store.js';
+import { JsYamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+import { setRetroGeneratorYaml } from './retro-generator.js';
+import { setRetroWriterFs } from './retro-writer.js';
+import { setStrategyParserYaml } from './strategy-parser.js';
+import { setStrategyRoutesPorts } from './strategy-routes.js';
+
+// PRD 024: Configure ports for tests
+const testYaml = new JsYamlLoader();
+const testFs = new NodeFileSystemProvider();
+setRetroGeneratorYaml(testYaml);
+setRetroWriterFs(testFs);
+setStrategyParserYaml(testYaml);
+setStrategyRoutesPorts(testFs, testYaml);
 
 // ── Test Fixtures ───────────────────────────────────────────────
 

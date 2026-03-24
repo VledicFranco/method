@@ -18,6 +18,14 @@ import type { StrategyYaml, StrategyDAG } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig } from './strategy-executor.js';
 import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from './llm-provider.js';
+import { JsYamlLoader } from '../../ports/yaml-loader.js';
+import { setStrategyParserYaml } from './strategy-parser.js';
+import { setRetroGeneratorYaml } from './retro-generator.js';
+
+// PRD 024: Configure ports for tests
+const testYaml = new JsYamlLoader();
+setStrategyParserYaml(testYaml);
+setRetroGeneratorYaml(testYaml);
 
 // ── Test Fixtures ───────────────────────────────────────────────
 

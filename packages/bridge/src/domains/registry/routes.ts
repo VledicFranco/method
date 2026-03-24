@@ -15,8 +15,8 @@
 
 import { join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { FileSystemProvider, FileStat } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider, type FileStat } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // ── Stdlib imports ──
 
@@ -427,9 +427,9 @@ async function loadManifest(
 // ── Route Registration ──
 
 export function registerRegistryRoutes(app: FastifyInstance, deps?: RegistryRoutesDeps): void {
-  const fsPort = deps?.fs;
-  const yamlPort = deps?.yaml;
-  const helpers = fsPort && yamlPort ? createHelpers(fsPort, yamlPort) : null;
+  const fsPort = deps?.fs ?? new NodeFileSystemProvider();
+  const yamlPort = deps?.yaml ?? new JsYamlLoader();
+  const helpers = createHelpers(fsPort, yamlPort);
 
   const config: RegistryConfig = {
     registryDir: process.env.REGISTRY_DIR ?? join(process.cwd(), 'registry'),
@@ -467,7 +467,7 @@ export function registerRegistryRoutes(app: FastifyInstance, deps?: RegistryRout
       treeCacheExpiry = now + config.cacheTtlMs;
     }
 
-    const manifest = await loadManifest(config, tree, helpers!);
+    const manifest = await loadManifest(config, tree, helpers);
     return reply.status(200).send(manifest);
   });
 
@@ -491,14 +491,14 @@ export function registerRegistryRoutes(app: FastifyInstance, deps?: RegistryRout
     }
 
     // Try YAML resolution
-    const filePath = await resolveMethodFile(config, methodology, method, helpers!, fsPort!);
+    const filePath = await resolveMethodFile(config, methodology, method, helpers, fsPort);
     if (!filePath) {
       return reply.status(404).send({ error: `Method ${methodology}/${method} not found` });
     }
 
     try {
-      const content = await fsPort!.readFile(filePath, 'utf-8');
-      const parsed = yamlPort!.load(content);
+      const content = await fsPort.readFile(filePath, 'utf-8');
+      const parsed = yamlPort.load(content);
       return reply.status(200).send(parsed);
     } catch (e) {
       return reply.status(422).send({
@@ -521,14 +521,14 @@ export function registerRegistryRoutes(app: FastifyInstance, deps?: RegistryRout
       return reply.status(400).send({ error: 'Invalid path parameters' });
     }
 
-    const filePath = await resolvePromotionFile(config, methodology, protocolId, helpers!, fsPort!);
+    const filePath = await resolvePromotionFile(config, methodology, protocolId, helpers, fsPort);
     if (!filePath) {
       return reply.status(404).send({ error: `Promotion record for ${methodology}/${protocolId} not found` });
     }
 
     try {
-      const content = await fsPort!.readFile(filePath, 'utf-8');
-      const parsed = yamlPort!.load(content);
+      const content = await fsPort.readFile(filePath, 'utf-8');
+      const parsed = yamlPort.load(content);
       return reply.status(200).send(parsed);
     } catch (e) {
       return reply.status(422).send({

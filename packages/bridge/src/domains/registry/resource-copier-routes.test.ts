@@ -10,10 +10,14 @@ import Fastify from 'fastify';
 import { registerProjectRoutes } from '../projects/routes.js';
 import { DiscoveryService } from '../projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './index.js';
+import { copyMethodology, copyStrategy } from './resource-copier.js';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
+
+// PRD 024: Resource copier deps for test registration
+const resourceCopierDeps = { copyMethodology, copyStrategy };
 
 /**
  * Helper: Create a minimal git repository
@@ -83,7 +87,7 @@ test('POST /api/resources/copy-methodology: copies methodology between projects'
     process.chdir(baseDir);
 
     try {
-      await registerProjectRoutes(app, discoveryService, registry);
+      await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
       await app.ready();
 
       try {
@@ -153,7 +157,7 @@ test('POST /api/resources/copy-strategy: copies strategy between projects', asyn
     process.chdir(baseDir);
 
     try {
-      await registerProjectRoutes(app, discoveryService, registry);
+      await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
       await app.ready();
 
       try {
@@ -189,7 +193,7 @@ test('POST /api/resources/copy-methodology: returns 400 for missing fields', asy
   const discoveryService = new DiscoveryService();
   const registry = new InMemoryProjectRegistry();
 
-  await registerProjectRoutes(app, discoveryService, registry);
+  await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
   await app.ready();
 
   try {
@@ -248,7 +252,7 @@ test('POST /api/resources/copy-methodology: handles partial failures gracefully'
     process.chdir(baseDir);
 
     try {
-      await registerProjectRoutes(app, discoveryService, registry);
+      await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
       await app.ready();
 
       try {
@@ -322,7 +326,7 @@ test('POST /api/resources/copy-methodology: Returns 403 when requester cannot ac
     process.chdir(baseDir);
 
     try {
-      await registerProjectRoutes(app, discoveryService, registry);
+      await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
       await app.ready();
 
       try {
@@ -393,7 +397,7 @@ test('POST /api/resources/copy-strategy: Returns 403 when requester cannot acces
     process.chdir(baseDir);
 
     try {
-      await registerProjectRoutes(app, discoveryService, registry);
+      await registerProjectRoutes(app, discoveryService, registry, undefined, undefined, resourceCopierDeps);
       await app.ready();
 
       try {

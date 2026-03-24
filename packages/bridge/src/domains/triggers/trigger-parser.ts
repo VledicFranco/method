@@ -6,7 +6,7 @@
  * Backward compatible — manual and mcp_tool triggers still work unchanged.
  */
 
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 import type { TriggerConfig, TriggerType } from './types.js';
 
 // PRD 024 MG-2: Module-level yaml port
@@ -18,7 +18,7 @@ export function setTriggerParserYaml(yaml: YamlLoader): void {
 }
 
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for trigger-parser');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 

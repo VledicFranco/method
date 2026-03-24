@@ -6,7 +6,7 @@
  * expression syntax, unique IDs).
  */
 
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // PRD 024 MG-2: Module-level yaml port
 let _yaml: YamlLoader | null = null;
@@ -17,7 +17,7 @@ export function setStrategyParserYaml(yaml: YamlLoader): void {
 }
 
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for strategy-parser');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 import type { GateConfig, GateType } from './gates.js';

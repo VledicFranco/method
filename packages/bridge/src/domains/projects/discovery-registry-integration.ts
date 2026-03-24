@@ -9,8 +9,8 @@
  */
 
 import { join } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 import type { ProjectRegistry, ProjectConfig } from '../registry/index.js';
 import { DiscoveryService, type ProjectMetadata, type DiscoveryResult } from './discovery-service.js';
 
@@ -25,11 +25,11 @@ export function setDiscoveryRegistryPorts(fs: FileSystemProvider, yaml: YamlLoad
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured for discovery-registry-integration');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 function getYaml(): YamlLoader {
-  if (!_yaml) throw new Error('YamlLoader not configured for discovery-registry-integration');
+  if (!_yaml) _yaml = new JsYamlLoader();
   return _yaml;
 }
 

@@ -10,7 +10,7 @@
  */
 
 import { join, resolve } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
+import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 
 // PRD 024 MG-1: Module-level fs port
 let _fs: FileSystemProvider | null = null;
@@ -21,7 +21,7 @@ export function setStartupScanFs(fs: FileSystemProvider): void {
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) throw new Error('FileSystemProvider not configured for startup-scan');
+  if (!_fs) _fs = new NodeFileSystemProvider();
   return _fs;
 }
 import { TriggerRouter } from './trigger-router.js';

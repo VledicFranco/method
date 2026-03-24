@@ -6,8 +6,11 @@ import { join } from 'node:path';
 import os from 'node:os';
 import type { ActivityObservation } from './pty-watcher.js';
 import type { ObservationCategory } from './pattern-matchers.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
+
+const testFs = new NodeFileSystemProvider();
 
 function makeInput(projectRoot: string, overrides?: Partial<AutoRetroInput>): AutoRetroInput {
   return {
@@ -18,6 +21,7 @@ function makeInput(projectRoot: string, overrides?: Partial<AutoRetroInput>): Au
     terminatedAt: new Date('2026-03-15T14:30:00Z'),
     terminationReason: 'completed',
     projectRoot,
+    fs: testFs,
     ...overrides,
   };
 }
