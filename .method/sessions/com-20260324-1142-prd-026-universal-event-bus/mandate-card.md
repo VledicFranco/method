@@ -52,7 +52,7 @@ stopping_conditions:
   stop_impossible: "spec contradicts itself, architecture can't support requirement"
 
 progress:
-  phase: "B"
-  iteration: "0 of 5"
-  completed: []
-  remaining: [T1, T2, T3, T4, T5]
+  phase: "C"
+  iteration: "2 of 5"
+  completed: [T1, T2, T3, T4, T5, "review fixes"]
+  remaining: []

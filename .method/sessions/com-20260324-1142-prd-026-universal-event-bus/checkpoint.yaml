@@ -1,0 +1,38 @@
+session_id: "com-20260324-1142-prd-026-universal-event-bus"
+task: "PRD 026: Universal Event Bus (UEB)"
+phase: C
+iteration: 2
+nu_B_remaining: 3
+continuation_depth: 0
+tasks_completed:
+  - "T1: EventBus port interface + BridgeEvent types"
+  - "T2: InMemoryEventBus with ring buffer"
+  - "T3: InMemoryEventBus unit tests (24 tests)"
+  - "T4: WebSocketSink"
+  - "T5: Composition root wiring + session domain dual-emit"
+  - "Review fixes: glob escape, sink filter AND logic, dispatch snapshot, capacity guard"
+tasks_remaining: []
+review_findings_pending:
+  - id: "F5/R2"
+    classification: "ADJACENT"
+    status: "deferred"
+  - id: "F3"
+    classification: "OUT_OF_SCOPE"
+    status: "deferred"
+  - id: "F9"
+    classification: "ADJACENT"
+    status: "deferred"
+  - id: "FCA-M"
+    classification: "OUT_OF_SCOPE"
+    status: "deferred"
+gate_status:
+  compile: "PASS"
+  test: "PASS"
+  lint: "PASS"
+mandate_card_path: ".method/sessions/com-20260324-1142-prd-026-universal-event-bus/mandate-card.md"
+branch: "feat/prd-026-universal-event-bus"
+base_branch: "master"
+pr_number: 52
+last_commit: "cc5660a"
+pr_comments_checked: "2026-03-24T11:58:00Z"
+changeset_lines: 950
