@@ -2,3 +2,4 @@
 
 export { InMemoryEventBus, type InMemoryEventBusOptions } from './in-memory-event-bus.js';
 export { WebSocketSink } from './websocket-sink.js';
+export { toChannelMessage, toAllEventsWrapper } from './adapters.js';

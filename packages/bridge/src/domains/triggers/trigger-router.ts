@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
+import type { EventBus, EventSubscription, BridgeEvent } from '../../ports/event-bus.js';
 
 // PRD 024 MG-1/MG-2: Module-level ports for trigger-router read/write
 let _fs: FileSystemProvider | null = null;
@@ -115,6 +116,8 @@ export interface TriggerRouterOptions {
    * GET /channels/events for dashboard visibility.
    */
   onTriggerFired?: (event: TriggerEvent) => void;
+  /** PRD 026: EventBus for trigger domain events and bus-based subscriptions */
+  eventBus?: EventBus;
 }
 
 // ── Internal state for a registered trigger (extends TriggerRegistration) ──
@@ -137,6 +140,10 @@ export class TriggerRouter {
     onTriggerFired: ((event: TriggerEvent) => void) | null;
   };
 
+  /** PRD 026: EventBus for bus-based event production and subscription */
+  private readonly eventBus: EventBus | null;
+  private readonly busSubscriptions: EventSubscription[] = [];
+
   private paused = false;
   private totalWatcherCount = 0;
 
@@ -156,6 +163,45 @@ export class TriggerRouter {
       executor: options.executor ?? null,
       onTriggerFired: options.onTriggerFired ?? null,
     };
+    this.eventBus = options.eventBus ?? null;
+
+    // PRD 026: Subscribe to bus events for observations and channel messages
+    if (this.eventBus) {
+      // Subscribe to PTY observations → route to PtyWatcherTrigger instances
+      this.busSubscriptions.push(
+        this.eventBus.subscribe(
+          { domain: 'session', type: 'session.observation' },
+          (event: BridgeEvent) => {
+            const observation: PtyObservation = {
+              category: event.payload.category as string,
+              detail: (event.payload.detail as Record<string, unknown>) ?? {},
+              session_id: event.sessionId ?? '',
+            };
+            this.onObservation(observation);
+          },
+        ),
+      );
+
+      // Subscribe to all domain events → route to ChannelEventTrigger instances
+      // Map BridgeEvent → ChannelMessageEvent shape for backward compat
+      this.busSubscriptions.push(
+        this.eventBus.subscribe(
+          {}, // all events
+          (event: BridgeEvent) => {
+            // Skip trigger domain events to avoid feedback loops
+            if (event.domain === 'trigger') return;
+            const message: ChannelMessageEvent = {
+              channel_name: event.domain,
+              sender: event.source,
+              type: event.type,
+              content: event.payload,
+              session_id: event.sessionId,
+            };
+            this.onChannelMessage(message);
+          },
+        ),
+      );
+    }
   }
 
   /**
@@ -355,6 +401,12 @@ export class TriggerRouter {
    * Shutdown: stop all watchers, clear all state.
    */
   async shutdown(): Promise<void> {
+    // PRD 026: Unsubscribe from bus events
+    for (const sub of this.busSubscriptions) {
+      sub.unsubscribe();
+    }
+    this.busSubscriptions.length = 0;
+
     for (const reg of this.registrations.values()) {
       this.stopWatcher(reg);
     }
@@ -830,7 +882,27 @@ export class TriggerRouter {
       );
     }
 
-    // PRD 018 Phase 2a-4: Emit trigger_fired event to channel system
+    // PRD 026: Emit trigger.fired event to Universal Event Bus
+    if (this.eventBus) {
+      try {
+        this.eventBus.emit({
+          version: 1,
+          domain: 'trigger',
+          type: 'trigger.fired',
+          severity: 'info',
+          payload: {
+            trigger_id: triggerEvent.trigger_id,
+            trigger_type: triggerEvent.trigger_type,
+            strategy_id: triggerEvent.strategy_id,
+            debounced_count: triggerEvent.debounced_count,
+            payload: triggerEvent.payload,
+          },
+          source: 'bridge/triggers/router',
+        });
+      } catch { /* bus emission must never block trigger execution */ }
+    }
+
+    // Legacy callback — retained during migration, removed in T6
     if (this.options.onTriggerFired) {
       try {
         this.options.onTriggerFired(triggerEvent);

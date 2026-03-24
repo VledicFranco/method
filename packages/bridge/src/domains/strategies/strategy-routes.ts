@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import type { LlmProvider } from '../../ports/llm-provider.js';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
+import type { EventBus } from '../../ports/event-bus.js';
 
 // PRD 024 MG-1/MG-2: Module-level ports, set via setStrategyRoutesPorts()
 let _fs: FileSystemProvider | null = null;
@@ -19,6 +20,14 @@ let _yaml: YamlLoader | null = null;
 export function setStrategyRoutesPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
   _fs = fs;
   _yaml = yaml;
+}
+
+// PRD 026: EventBus port for strategy events
+let _eventBus: EventBus | null = null;
+
+/** PRD 026: Configure EventBus for strategy domain events. Called from composition root. */
+export function setStrategyRoutesEventBus(bus: EventBus): void {
+  _eventBus = bus;
 }
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
 import type { StrategyYaml } from './strategy-parser.js';
@@ -73,6 +82,35 @@ export function setOnExecutionChangeHook(hook: OnExecutionChangeCallback | null)
 }
 
 function notifyExecutionChange(entry: ExecutionEntry): void {
+  // PRD 026: Emit enriched event to the Universal Event Bus
+  if (_eventBus) {
+    try {
+      const eventType = entry.status === 'failed'
+        ? 'strategy.failed'
+        : entry.status === 'completed' || entry.status === 'suspended'
+          ? 'strategy.completed'
+          : 'strategy.started';
+
+      _eventBus.emit({
+        version: 1,
+        domain: 'strategy',
+        type: eventType,
+        severity: entry.status === 'failed' ? 'error' : 'info',
+        payload: {
+          execution_id: entry.execution_id,
+          strategy_id: entry.strategy_id,
+          strategy_name: entry.strategy_name,
+          status: entry.status,
+          cost_usd: entry.cost_usd,
+          retro_path: entry.retro_path ?? null,
+          error: entry.error ?? null,
+        },
+        source: 'bridge/strategies/routes',
+      });
+    } catch { /* non-fatal — bus emission must never block execution */ }
+  }
+
+  // Legacy hook — retained during migration, removed in T6
   if (_onExecutionChangeHook) {
     try {
       _onExecutionChangeHook({

@@ -15,6 +15,7 @@ export {
   createCircularEventLog,
   pushEventToLogWithPersistence,
   setPersistence,
+  setProjectRoutesEventBus,
 } from './routes.js';
 export type { CircularEventLog, CursorState } from './routes.js';
 export { DiscoveryService } from './discovery-service.js';

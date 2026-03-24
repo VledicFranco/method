@@ -655,7 +655,25 @@ export function createPool(options?: PoolOptions): SessionPool {
               diagnosticsTracker.recordActivity();
             }
 
-            // PRD 018 Phase 2a-2: Forward observation to trigger system
+            // PRD 026: Emit observation to Universal Event Bus
+            if (eventBus && !isIdle) {
+              try {
+                eventBus.emit({
+                  version: 1,
+                  domain: 'session',
+                  type: 'session.observation',
+                  severity: 'info',
+                  sessionId,
+                  payload: {
+                    category: match.category,
+                    detail: match.content ?? {},
+                  },
+                  source: 'bridge/sessions/pool',
+                });
+              } catch { /* bus emission must never block PTY processing */ }
+            }
+
+            // PRD 018 Phase 2a-2: Forward observation to trigger system (legacy — removed in T6)
             if (observationHook && !isIdle) {
               try {
                 observationHook({

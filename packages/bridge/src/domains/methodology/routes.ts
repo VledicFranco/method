@@ -23,6 +23,7 @@
 import type { FastifyInstance } from "fastify";
 import type { MethodologySessionStore } from "./store.js";
 import type { SessionPool } from "../sessions/pool.js";
+import type { EventBus } from "../../ports/event-bus.js";
 
 /** PRD 024 MG-6: Callback for emitting messages to channels — injected by composition root */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +39,8 @@ export interface MethodologyRoutesDeps {
   pool: SessionPool;
   /** PRD 024 MG-6: Injected callback replacing direct import of sessions/channels.appendMessage */
   appendMessage: AppendMessageFn;
+  /** PRD 026: EventBus for methodology domain events */
+  eventBus?: EventBus;
 }
 
 export function registerMethodologyRoutes(
@@ -45,7 +48,7 @@ export function registerMethodologyRoutes(
   store: MethodologySessionStore,
   deps: MethodologyRoutesDeps,
 ): void {
-  const { pool, appendMessage } = deps;
+  const { pool, appendMessage, eventBus } = deps;
 
   // ── GET /api/methodology/list ──
 
@@ -126,7 +129,45 @@ export function registerMethodologyRoutes(
         nextStep: { id: string; name: string } | null;
       };
 
-      // Fire-and-forget: emit step progress to channels if available
+      // PRD 026: Emit step events to Universal Event Bus
+      if (eventBus) {
+        try {
+          if (result.previousStep) {
+            eventBus.emit({
+              version: 1,
+              domain: 'methodology',
+              type: 'methodology.step_completed',
+              severity: 'info',
+              sessionId: sid,
+              payload: {
+                methodology: result.methodologyId,
+                method: result.methodId,
+                step: result.previousStep.id,
+                step_name: result.previousStep.name,
+              },
+              source: 'bridge/methodology/routes',
+            });
+          }
+          if (result.nextStep) {
+            eventBus.emit({
+              version: 1,
+              domain: 'methodology',
+              type: 'methodology.step_started',
+              severity: 'info',
+              sessionId: sid,
+              payload: {
+                methodology: result.methodologyId,
+                method: result.methodId,
+                step: result.nextStep.id,
+                step_name: result.nextStep.name,
+              },
+              source: 'bridge/methodology/routes',
+            });
+          }
+        } catch { /* non-fatal — bus emission must never block step advance */ }
+      }
+
+      // Fire-and-forget: emit step progress to channels (legacy — retained until Phase 3)
       try {
         const channels = pool.getChannels(sid);
         if (result.previousStep) {

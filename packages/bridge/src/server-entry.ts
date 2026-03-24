@@ -12,7 +12,7 @@ import { createTranscriptReader } from './domains/sessions/transcript-reader.js'
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
-import { addOnMessageHook, createSessionChannels, appendMessage } from './domains/sessions/channels.js';
+import { createSessionChannels, appendMessage } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
 import { createSessionPersistenceStore, type SessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
@@ -24,12 +24,13 @@ import { spawnGenesis } from './domains/genesis/spawner.js';
 import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
-import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './domains/projects/routes.js';
+import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './domains/projects/routes.js';
+import { setProjectRoutesEventBus } from './domains/projects/routes.js';
 import { copyMethodology, copyStrategy, setResourceCopierPorts } from './domains/registry/resource-copier.js';
 import websocket from '@fastify/websocket';
 import { WsHub } from './shared/websocket/hub.js';
 import { registerWsRoute } from './shared/websocket/route.js';
-import { setOnExecutionChangeHook } from './domains/strategies/strategy-routes.js';
+import { setStrategyRoutesEventBus } from './domains/strategies/strategy-routes.js';
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 import { JsonLineEventPersistence } from './domains/projects/events/index.js';
@@ -99,6 +100,10 @@ setDiscoveryRegistryPorts(fsProvider, yamlLoader);
 // PRD 026: Universal Event Bus — single event backbone for all domains
 const eventBus = new InMemoryEventBus();
 
+// PRD 026 Phase 2: Inject EventBus into all producing domains
+setStrategyRoutesEventBus(eventBus);
+setProjectRoutesEventBus(eventBus);
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
@@ -159,17 +164,8 @@ registerWsRoute(app, wsHub);
 // PRD 026: Register WebSocketSink — session domain events flow through the bus to WsHub
 eventBus.registerSink(new WebSocketSink(wsHub));
 
-// Wire WsHub to data sources (legacy hooks — retained during Phase 1 dual-emit period)
-setOnEventHook((event) => {
-  wsHub.publish('events', event, (filter) =>
-    !filter.project_id || filter.project_id === event.projectId,
-  );
-});
-setOnExecutionChangeHook((entry) => {
-  wsHub.publish('executions', entry, (filter) =>
-    !filter.execution_id || filter.execution_id === entry.execution_id,
-  );
-});
+// PRD 026 Phase 2: Legacy hooks removed — WebSocketSink handles all WS push via bus
+
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
 registerLiveOutputRoutes(app, pool);
@@ -292,6 +288,7 @@ const methodologyStore = new MethodologySessionStore(methodologySource);
 registerMethodologyRoutes(app, methodologyStore, {
   pool,
   appendMessage,
+  eventBus,
 });
 
 // ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
@@ -317,44 +314,8 @@ if (triggersConfig.enabled) {
       warn: (msg) => app.log.warn(msg),
       error: (msg) => app.log.error(msg),
     },
-    // PRD 018 Phase 2a-4: Emit trigger_fired events to the global trigger channel
-    onTriggerFired: (event) => {
-      appendMessage(
-        triggerChannels.events,
-        event.strategy_id,
-        'trigger_fired',
-        {
-          trigger_id: event.trigger_id,
-          trigger_type: event.trigger_type,
-          strategy_id: event.strategy_id,
-          debounced_count: event.debounced_count,
-          payload: event.payload,
-        },
-      );
-      // Push to WebSocket subscribers
-      wsHub.publish('triggers', {
-        type: 'fire',
-        trigger_id: event.trigger_id,
-        trigger_type: event.trigger_type,
-        strategy_id: event.strategy_id,
-      }, (filter) =>
-        !filter.trigger_id || filter.trigger_id === event.trigger_id,
-      );
-    },
-  });
-
-  // PRD 018 Phase 2a-2: Wire PTY watcher observation forwarding
-  pool.setObservationHook((observation) => {
-    if (triggerRouter) {
-      triggerRouter.onObservation(observation);
-    }
-  });
-
-  // PRD 018 Phase 2a-2: Wire channel event hook
-  addOnMessageHook((info) => {
-    if (triggerRouter) {
-      triggerRouter.onChannelMessage(info);
-    }
+    // PRD 026 Phase 2: EventBus replaces onTriggerFired, observation, and channel hooks
+    eventBus,
   });
 
   // PRD 018 Phase 2a-3: Register trigger management API + webhook routes
@@ -543,11 +504,8 @@ function gracefulShutdown(signal: string) {
       triggerRouter.shutdown().catch(() => { /* non-fatal */ });
     }
 
-    // Disconnect hooks and close WebSocket connections during teardown
-    pool.setObservationHook(null);
+    // Close WebSocket connections during teardown
     wsHub.destroy();
-    setOnEventHook(null);
-    setOnExecutionChangeHook(null);
 
     // Kill all sessions (triggers auto-retro via handleSessionDeath)
     const sessions = pool.list();

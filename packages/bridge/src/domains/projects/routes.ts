@@ -30,8 +30,17 @@ import {
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './discovery-service.js';
 import { validateTargetIds } from '../registry/resource-copier.js';
 import { reloadConfig, validateConfig } from '../../shared/config/config-reloader.js';
+import type { EventBus } from '../../ports/event-bus.js';
 import path from 'path';
 import { randomBytes } from 'crypto';
+
+// PRD 026: EventBus port for project events
+let _eventBus: EventBus | null = null;
+
+/** PRD 026: Configure EventBus for project domain events. Called from composition root. */
+export function setProjectRoutesEventBus(bus: EventBus): void {
+  _eventBus = bus;
+}
 
 // PRD 024 MG-8: Resource copier types — injected as callbacks from composition root
 import type { CopyMethodologyRequest, CopyStrategyRequest, CopyResponse } from '../registry/resource-copier.js';
@@ -120,7 +129,28 @@ async function pushEventToLogWithPersistence(log: CircularEventLog, event: Proje
     // Don't swallow persistence errors - propagate them for HTTP 5xx response
     await globalEventPersistence.append(event);
   }
-  // Push to WebSocket subscribers
+
+  // PRD 026: Emit to Universal Event Bus
+  if (_eventBus) {
+    try {
+      _eventBus.emit({
+        version: 1,
+        domain: 'project',
+        type: `project.${event.type.toLowerCase()}`,
+        severity: 'info',
+        projectId: event.projectId,
+        payload: {
+          event_id: event.id,
+          event_type: event.type,
+          data: event.data,
+          metadata: event.metadata,
+        },
+        source: 'bridge/projects/routes',
+      });
+    } catch { /* non-fatal — bus emission must never block persistence */ }
+  }
+
+  // Legacy hook — retained during migration, removed in T6
   if (_onEventHook) {
     try { _onEventHook(event); } catch { /* non-fatal */ }
   }

@@ -33,4 +33,4 @@ export { loadExecutorConfig } from './strategy-routes.js';
 // Bridge-only exports (transport and I/O)
 export { ClaudeCodeProvider } from './claude-code-provider.js';
 export { saveRetro } from './retro-writer.js';
-export { registerStrategyRoutes, evictStaleExecutions } from './strategy-routes.js';
+export { registerStrategyRoutes, evictStaleExecutions, setStrategyRoutesEventBus } from './strategy-routes.js';
