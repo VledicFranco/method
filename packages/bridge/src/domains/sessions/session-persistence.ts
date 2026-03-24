@@ -61,6 +61,8 @@ export interface SessionPersistenceStore {
 // ── Implementation ──
 
 const FLUSH_DEBOUNCE_MS = 200;
+/** Reject session IDs containing path traversal sequences or path separators */
+const SAFE_SESSION_ID_RE = /^[a-zA-Z0-9_-]+$/;
 
 export function createSessionPersistenceStore(
   baseDir: string,
@@ -139,6 +141,7 @@ export function createSessionPersistenceStore(
 
   /** Save transcript to a separate file for large transcripts */
   function saveTranscript(sessionId: string, transcript: string): void {
+    if (!SAFE_SESSION_ID_RE.test(sessionId)) return; // Reject IDs with path separators
     try {
       ensureDir();
       const transcriptPath = join(sessionsDir, `${sessionId}.transcript.txt`);
@@ -150,6 +153,7 @@ export function createSessionPersistenceStore(
 
   /** Load transcript from separate file */
   function loadTranscript(sessionId: string): string | undefined {
+    if (!SAFE_SESSION_ID_RE.test(sessionId)) return undefined;
     try {
       const transcriptPath = join(sessionsDir, `${sessionId}.transcript.txt`);
       if (!fs.existsSync(transcriptPath)) return undefined;

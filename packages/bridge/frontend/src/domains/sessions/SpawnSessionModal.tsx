@@ -8,9 +8,14 @@ import { useState, useCallback, useEffect, useMemo, type FormEvent } from 'react
 import { Button } from '@/shared/components/Button';
 import { cn } from '@/shared/lib/cn';
 import { usePreferenceStore } from '@/shared/stores/preference-store';
-import { useProjects } from '@/domains/projects/useProjects';
 import { X, Terminal, FolderOpen, ChevronDown } from 'lucide-react';
 import type { SpawnRequest } from '@/domains/sessions/types';
+
+interface ProjectInfo {
+  id: string;
+  name: string;
+  path: string;
+}
 
 export interface SpawnSessionModalProps {
   open: boolean;
@@ -19,6 +24,8 @@ export interface SpawnSessionModalProps {
   isSpawning?: boolean;
   /** Pre-fill workdir (e.g. from project spawn action) */
   initialWorkdir?: string;
+  /** Discovered projects for workdir autocomplete */
+  projects?: ProjectInfo[];
 }
 
 export function SpawnSessionModal({
@@ -27,9 +34,9 @@ export function SpawnSessionModal({
   onSpawn,
   isSpawning = false,
   initialWorkdir,
+  projects = [],
 }: SpawnSessionModalProps) {
   const defaultWorkdir = usePreferenceStore((s) => s.defaultWorkdir);
-  const { projects } = useProjects();
 
   const [workdir, setWorkdir] = useState(initialWorkdir || defaultWorkdir || '');
   const [prompt, setPrompt] = useState('');
@@ -66,7 +73,7 @@ export function SpawnSessionModal({
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (!workdir.trim()) return;
+      if (!workdir.trim() || isSpawning) return;
 
       const req: SpawnRequest = {
         workdir: workdir.trim(),

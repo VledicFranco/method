@@ -248,7 +248,7 @@ setInterval(() => {
       purpose: s.purpose,
       mode: s.mode,
       status: s.status as any,
-      created_at: new Date(Date.now() - (Date.now() - s.lastActivityAt.getTime())).toISOString(),
+      created_at: s.lastActivityAt.toISOString(), // TODO: use actual createdAt when pool tracks it
       last_activity_at: s.lastActivityAt.toISOString(),
       prompt_count: s.promptCount,
       depth: s.chain.depth,
