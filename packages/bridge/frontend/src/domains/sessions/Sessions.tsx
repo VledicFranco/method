@@ -584,7 +584,7 @@ export default function Sessions() {
     >
       {/* Desktop split-pane: session list left, detail right */}
       {!isMobile && selectedSession ? (
-        <div className="hidden md:grid md:grid-cols-[1fr,1fr] md:gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {/* Left: session list (single-column when in split mode) */}
           <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
             <SessionList
