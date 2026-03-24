@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
+  "deprecated": "WS-1: Use @method/methodts stdlib via MethodologySource port. Core YAML loader and listMethodologies are superseded by StdlibSource. lookupTheory inlined into @method/mcp.",
   "exports": {
     ".": "./dist/index.js"
   },
