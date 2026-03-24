@@ -60,6 +60,40 @@ body {
   min-height: 100vh;
 }
 
+/* ── Scrollbar — thin, dark, Vidtecci-styled ── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--abyss-light) transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(138, 155, 176, 0.25) transparent;
+}
+
+/* Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--abyss-light);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 201, 167, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── Keyframe animations ── */
 
 @keyframes pulse-glow {
