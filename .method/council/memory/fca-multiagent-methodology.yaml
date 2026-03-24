@@ -1,0 +1,133 @@
+# Council Memory — FCA Multiagent Methodology
+# Protocol: CMEM-PROTO v0.1
+# Auto-saved after council session 2026-03-23
+
+topic:
+  id: TOPIC-FCA-MULTIAGENT
+  name: "FCA for Multiagent Systems — Methodology Design"
+  status: active
+  created: "2026-03-23"
+  last_session: "2026-03-23"
+  session_count: 1
+  summary: >
+    Should multiagent system design methodologies be standalone or upgrades to FCA canon?
+    Council resolved 9 decisions across 3 rounds (isolated mode). Central finding: FCA's 8-part
+    model holds formally for agents (no new primitives), but the shift from deterministic to
+    probabilistic interface compliance changes the composition algebra's character (set-inclusion
+    to measure-theoretic containment). This requires mandatory new instantiation machinery
+    (composition budgets, confidence declarations, degradation signaling). Delivery: layered
+    extension — standalone pattern catalog in operational language (Phase 1), FCA Agent Overlay
+    (Phase 2), canon integration (Phase 3). One standing dissent from Rhea on Interface qualifier.
+
+cast:
+  active:
+    - name: Kael
+      role: Contrarian (Formalist)
+      expertise: Type theory, formal architecture, FCA theory
+      conviction: "The 8 structural parts are already universal — agents don't need new primitives"
+    - name: Rhea
+      role: Contrarian (Systems Practitioner)
+      expertise: Production multiagent systems, distributed coordination, failure analysis
+      conviction: "Agents are fundamentally different — they demand new structural primitives"
+    - name: Solen
+      role: Contrarian (Methodology Architect)
+      expertise: Methodology design, adoption dynamics, compositional process engineering
+      conviction: "The packaging decision determines adoption or death"
+    - name: Venn
+      role: Leader / Mediator
+      expertise: Cross-domain synthesis, decision facilitation
+  retired: []
+
+decisions:
+  - id: D1
+    question: "Delivery mechanism — standalone vs canon extension"
+    resolution: "Path C — Layered Extension. Standalone pattern catalog in operational language; FCA as optional annotation; phased canon integration."
+    decisive_argument: "Solen: gating behind FCA literacy is fatal. Rhea: standalone without shared structure drifts."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+  - id: D2
+    question: "Coordination ceilings (10-agent, 5-7 span of control)"
+    resolution: "Architectural constraints, not operational guidelines."
+    decisive_argument: "Rhea: hard boundaries where reliability degrades non-linearly."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+  - id: D3
+    question: "Structural dissent classification"
+    resolution: "L3 Architecture pattern with verification side effects. M-DISSENT dropped as standalone."
+    decisive_argument: "Venn: dissent is generative, Verification is confirmatory."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+  - id: D4
+    question: "Fractal level assertion scope"
+    resolution: "Assert L2-L4 with evidence. L0-L1 and L5 hypothesized."
+    decisive_argument: "Insufficient production evidence below L2 and above L4."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+  - id: D5
+    question: "Does FCA need new structural primitives for agents?"
+    resolution: "No new primitives. Yes to mandatory new instantiation machinery."
+    decisive_argument: "Kael: probabilistic composition preserves substitutability/closure. Solen: algebra holds formally but quantitative character is load-bearing."
+    agreement: [Kael, Solen]
+    dissent:
+      - character: Rhea
+        position: "Interface qualifier (compliance profile) is structural, not annotation"
+        conviction: 88
+
+  - id: D6
+    question: "Temporal coordination"
+    resolution: "Extension of L3 Architecture. Current FCA guidance underspecified."
+    decisive_argument: "Parent Architecture framing is coherent. Rhea self-downgraded."
+    agreement: [Kael, Solen]
+    dissent:
+      - character: Rhea
+        position: "Underspecification, not breakage"
+        conviction: 55
+
+  - id: D7
+    question: "Graduated containment"
+    resolution: "Boundary + Observability + Architecture coordination. No new primitive."
+    decisive_argument: "Kael mapped to three existing parts. Already implemented in bridge."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+  - id: D8
+    question: "Governance classification"
+    resolution: "Architecture patterns at L3-L4."
+    decisive_argument: "Kael: microservice with routing selects among alternatives without new concept."
+    agreement: [Kael, Solen]
+    dissent:
+      - character: Rhea
+        position: "Governance may be a new concern category"
+        conviction: 72
+
+  - id: D9
+    question: "Shared vocabulary / interop"
+    resolution: "Mandatory Agent Methodology Interop Protocol: confidence declarations, composition arithmetic, degradation signaling."
+    decisive_argument: "Solen: drift is in interface assumptions, not vocabulary."
+    agreement: [Kael, Rhea, Solen]
+    dissent: []
+
+open_questions:
+  - question: "Verify F1-FTH 8.2 contains Dist(Mod(D)) generalization"
+    owner: "Theory review"
+  - question: "Design Agent Methodology Interop Protocol"
+    owner: "Phase 1 work"
+  - question: "Empirical validation for L4/L5 fractal levels"
+    owner: "Unassigned"
+  - question: "Cross-component relational postconditions"
+    owner: "Deferred"
+
+recommendations:
+  - "Produce Multiagent Pattern Catalog (Phase 1)"
+  - "Define Agent Methodology Interop Protocol"
+  - "Build Failure Mode Taxonomy mapped to FCA levels"
+  - "Produce Temporal Coordination Guidance for L3 Architecture"
+  - "Assert L2-L4 with evidence; hypothesize L0-L1 and L5"
+  - "Resolve non-deterministic Interface qualifier empirically"
+  - "Plan Phase 2: FCA Agent Overlay after catalog adoption"
+
+transcript: "tmp/council-debate-transcript.md"

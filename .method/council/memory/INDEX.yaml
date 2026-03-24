@@ -19,3 +19,10 @@ topics:
     status: active
     last_session: "2026-03-21"
     session_count: 1
+
+  - id: TOPIC-FCA-MULTIAGENT
+    name: "FCA for Multiagent Systems — Methodology Design"
+    file: fca-multiagent-methodology.yaml
+    status: active
+    last_session: "2026-03-23"
+    session_count: 1

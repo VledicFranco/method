@@ -9,6 +9,7 @@ contents:
   - 05-principles.md
   - 06-common-patterns.md
   - 07-applied-example.md
+  - advice/
 ---
 
 # Fractal Component Architecture (FCA)
@@ -34,6 +35,7 @@ The key insight: **the discipline that open-source library authors apply — cle
 | [05 — Principles](05-principles.md) | 10 concrete rules: interface discipline, ports, verification, co-location, observability, progressive disclosure |
 | [06 — Common Patterns](06-common-patterns.md) | Port patterns, verification patterns, observability patterns, configuration patterns, documentation patterns, technology picks by level |
 | [07 — Applied Example](07-applied-example.md) | Task management platform — the fractal demonstrated from L0 through L5 with concrete code |
+| [Advice](advice/) | Domain-specific instantiation guidance — where naive FCA application requires attention |
 
 ## When to Apply
 
