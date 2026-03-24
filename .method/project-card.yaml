@@ -4,7 +4,7 @@
 project_card:
   id: I2-METHOD
   project: pv-method
-  card_version: "1.4"
+  card_version: "1.5"
 
   governance:
     autonomy: M2-SEMIAUTO
@@ -50,17 +50,40 @@ project_card:
     architecture_path: "docs/arch/"
     prd_path: "docs/prds/"
     gaps_path: "docs/arch/gaps.md"
-    implementation_path: "docs/impl/"
+    fca_spec: "docs/fractal-component-architecture/"
+    design_methodology: >
+      Fractal Component Architecture (FCA) — PRD 023. One structural pattern
+      (the component) repeats at every scale. Bridge follows domain-co-located
+      structure with port-based dependency injection at the composition root.
 
   source_layout:
     monorepo: true
+    layer_stack: "L0 types → L1 core → L2 methodts → L3 mcp → L4 bridge (deps flow downward only)"
     packages:
+      - name: "@method/types"
+        path: "packages/types/"
+        layer: L0
+        purpose: "Shared TypeScript types — pure definitions, no behavior"
       - name: "@method/core"
         path: "packages/core/"
-        purpose: "YAML loader, session manager, theory lookup — pure logic, no transport"
+        layer: L1
+        purpose: "YAML loader, theory lookup — pure logic, zero transport deps"
+      - name: "@method/methodts"
+        path: "packages/methodts/"
+        layer: L2
+        purpose: "TypeScript methodology type system, stdlib catalog, strategy logic"
+      - name: "@method/testkit"
+        path: "packages/testkit/"
+        layer: L2
+        purpose: "Testing framework — assertions, builders, diagnostics, runners"
       - name: "@method/mcp"
         path: "packages/mcp/"
-        purpose: "MCP server — wires core functions to MCP tool handlers"
+        layer: L3
+        purpose: "MCP server — thin protocol adapter over core"
+      - name: "@method/bridge"
+        path: "packages/bridge/"
+        layer: L4
+        purpose: "HTTP server — PTY session pool, domain-co-located FCA architecture"
     registry: "registry/"
     theory: "theory/"
 
@@ -210,6 +233,20 @@ project_card:
       applies_to: [M1-IMPL, M2-DIMPL]
       affects_roles: [impl_sub_agent]
       evolution_source: "SESSION-036 DELTA-001 (retro-prd005-phase2, retro-2026-03-14-002)"
+
+    # --- FCA port discipline ---
+    - id: DR-15
+      rule: >
+        External dependencies (filesystem, YAML parsing, process execution) must be
+        accessed through port interfaces defined in packages/bridge/src/ports/. Domain
+        code must not import node:fs, js-yaml, or node:child_process directly — accept
+        port implementations via constructor injection. The composition root
+        (server-entry.ts) is the only place that instantiates concrete port providers.
+        Exception: test files may use Node builtins for fixture setup. Exception: native
+        fs.watch() in trigger watchers (watchers are fundamentally different from read/write).
+      applies_to: [M1-IMPL, M2-DIMPL, M3-PHRV]
+      affects_roles: [impl_sub_agent, reviewer]
+      evolution_source: "FCA compliance audit 2026-03-23 — PRD 024 port wiring"
 
   processes:
     description: >
