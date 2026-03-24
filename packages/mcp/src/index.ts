@@ -5,7 +5,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { lookupTheory } from "@method/core";
+import { lookupTheory } from "./theory.js";
 import { createValidationMiddleware } from "./validate-project-access.js";
 import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
