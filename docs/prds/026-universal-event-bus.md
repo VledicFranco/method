@@ -69,12 +69,13 @@ pty-watcher/ ──emit──→
 interface BridgeEvent {
   // Identity
   id: string;                    // UUID, globally unique
+  version: 1;                    // Schema version for future evolution
   timestamp: string;             // ISO 8601
   sequence: number;              // Monotonic, bus-assigned
 
   // Classification
   domain: EventDomain;           // 'session' | 'strategy' | 'trigger' | 'project' | 'methodology' | 'system'
-  type: string;                  // Domain-specific type (e.g., 'session.spawned', 'strategy.gate_failed')
+  type: string;                  // Domain-owned type string (e.g., 'session.spawned', 'strategy.gate_failed')
   severity: EventSeverity;       // 'info' | 'warning' | 'error' | 'critical'
 
   // Scoping
@@ -89,14 +90,28 @@ interface BridgeEvent {
   correlationId?: string;        // Links related events (e.g., all events from one strategy execution)
 }
 
-type EventDomain = 'session' | 'strategy' | 'trigger' | 'project' | 'methodology' | 'system';
+// EventDomain is extensible — new domains can be added without modifying this type.
+// The union is a type-level hint, not a runtime enum. Domains own their type strings.
+type EventDomain = 'session' | 'strategy' | 'trigger' | 'project' | 'methodology' | 'system' | (string & {});
 type EventSeverity = 'info' | 'warning' | 'error' | 'critical';
 ```
 
 ### Event Types by Domain
 
+These are the **target event types** for the unified bus. Not all exist in the current
+codebase — many are new emissions that domains will add during migration. Current
+emissions (e.g., channel message types `started`, `killed`, `stale`) map to the new
+domain-scoped names (e.g., `session.spawned`, `session.killed`, `session.stale`).
+
+Each domain owns its event type strings. Adding a new type requires only emitting it
+from the domain — no central registry or shared enum needs updating.
+
 ```typescript
-// Session events
+// Session events (maps from current channel message types)
+// Current: 'started' → New: 'session.spawned'
+// Current: 'killed' → New: 'session.killed'
+// Current: 'stale' → New: 'session.stale'
+// New emissions (not in current code): session.prompted, session.responded
 'session.spawned'          // New session created
 'session.prompted'         // Prompt sent to session
 'session.responded'        // Response received
@@ -130,11 +145,14 @@ type EventSeverity = 'info' | 'warning' | 'error' | 'critical';
 'methodology.step_validated'   // Step validation result
 'methodology.routed'           // Method routing decision
 
-// System events
+// System events (bus self-observability + bridge lifecycle)
 'system.bridge_started'    // Bridge process started
 'system.bridge_stopping'   // Graceful shutdown initiated
 'system.health_degraded'   // Health check detected issues
 'system.error'             // Unhandled error
+'system.bus_error'         // EventBus sink error (self-monitoring)
+'system.bus_stats'         // Periodic bus statistics (events/s, sink latency, buffer usage)
+'system.sink_overflow'     // Sink queue full, events dropped
 ```
 
 ### Port Interface
@@ -191,7 +209,9 @@ write-ahead batching (flush every 1s or 100 events, whichever comes first).
 **Performance budgets:** Max event payload 64KB (enforced at emit). Events passed by
 reference within-process; serialization occurs only at sink boundaries (WebSocket JSON,
 PersistenceSink JSONL). PTY watcher retains its existing rate limiting and dedup logic —
-the bus transports already-throttled observations.
+the bus transports already-throttled observations. WebSocket backpressure buffer
+increased from 64KB to 128KB per client to handle higher event volume from unified bus.
+Backpressure drops are logged as `system.sink_overflow` events.
 
 ```typescript
 // (remaining types continued below)
@@ -200,9 +220,11 @@ the bus transports already-throttled observations.
 ### Built-in Sinks
 
 #### WebSocketSink
-Replaces the current ad-hoc `wsHub.publish` calls in `server-entry.ts`. The sink receives all
-events and pushes them to WebSocket subscribers based on their topic subscriptions. Frontend
-subscribes to event domains instead of hardcoded topics.
+Replaces the current `wsHub.publish` calls in `server-entry.ts` (3 publish points across
+projects, strategies, and triggers). The sink receives all events and pushes them to
+WebSocket subscribers based on domain-based filtering (replacing hardcoded topic
+subscriptions). Note: the current `sessions` WebSocket topic is defined but never published
+to — the bus resolves this by routing all session domain events through WebSocketSink.
 
 #### PersistenceSink
 Replaces `pushEventToLogWithPersistence` and the project-specific JSONL persistence. Writes
@@ -256,6 +278,11 @@ as `session.observation` events to WebSocketSink.
 
 ### Frontend Integration
 
+The frontend follows FCA Pattern A (separate frontend package with shared types). The
+`event-store.ts` Zustand store mirrors the backend `BridgeEvent` type and subscribes
+via WebSocket. Domain-specific frontend components use the `useBridgeEvents` hook to
+filter events by domain — no cross-domain imports in the frontend.
+
 ```typescript
 // Frontend: shared/stores/event-store.ts (replaces ws-store.ts)
 
@@ -284,12 +311,18 @@ const sessionEvents = useBridgeEvents({ domain: 'session', projectId: selectedPr
 
 const eventBus = new InMemoryEventBus();
 
-// Register sinks
+// Register sinks (ONLY in composition root — no domain registers sinks)
 eventBus.registerSink(new WebSocketSink(wsHub));
 eventBus.registerSink(new PersistenceSink(join(ROOT_DIR, '.method', 'events.jsonl'), fsProvider));
-eventBus.registerSink(new ChannelSink(/* parent agent channels */));
+eventBus.registerSink(new ChannelSink());
 if (genesisConfig.enabled) {
-  eventBus.registerSink(new GenesisSink(pool, genesisSessionId));
+  // GenesisSink receives a narrow callback, NOT the full SessionPool (G-BOUNDARY)
+  eventBus.registerSink(new GenesisSink({
+    promptSession: (id, text) => pool.prompt(id, text, 10000),
+    sessionId: genesisSessionId,
+    batchWindowMs: 30_000,
+    filter: { severity: ['warning', 'error', 'critical'] },
+  }));
 }
 
 // Inject bus into domains
@@ -312,9 +345,19 @@ registerMethodologyRoutes(app, methodologyStore, { pool, appendMessage, eventBus
 
 ### Architecture Gate Impact
 
-- **G-PORT:** Domains emit via `eventBus.emit()`, not direct WebSocket or persistence calls
-- **G-BOUNDARY:** No cross-domain coupling — producers and consumers never import each other
-- **G-LAYER:** EventBus port defined at bridge level (L4). Sinks are L4 infrastructure. Clean.
+- **G-PORT:** Domains emit via `eventBus.emit()`, not direct WebSocket or persistence calls.
+  PersistenceSink writes via `FileSystemProvider` port (not direct `fs`). No new G-PORT exceptions.
+- **G-BOUNDARY:** No cross-domain coupling — producers and consumers never import each other.
+  GenesisSink uses a narrow callback port, not SessionPool import. No new G-BOUNDARY exceptions.
+  During Phase 2 dual-emit period, temporary exceptions may exist — these must be retired
+  before Phase 2 completion gate.
+- **G-LAYER:** EventBus port follows existing bridge port conventions (alongside `pty-provider.ts`,
+  `file-system.ts`, `yaml-loader.ts`). Sinks are L4 infrastructure wired at composition root.
+  No G-LAYER violations.
+
+**Expected temporary exceptions during migration:** 0 if sinks are wired correctly through
+composition root. If a domain temporarily imports a legacy hook AND the bus, that's a dual-emit
+transient — documented in Phase 2 and retired at the completion gate.
 
 ## Phases
 
@@ -327,8 +370,9 @@ registerMethodologyRoutes(app, methodologyStore, { pool, appendMessage, eventBus
 - Verify: frontend receives session events via new bus
 
 ### Phase 2: Full Domain Migration
-- Migrate remaining domains: strategies, triggers, projects, methodology, pty-watcher
+- Migrate remaining domains: strategies, triggers, projects, methodology (fix silent error swallowing), pty-watcher
 - Migrate all 7 event pathways identified in the Problem section (including `addOnMessageHook`)
+- Strategy domain enriches events beyond current minimal hook (current: 3 fields via `setOnExecutionChangeHook` → new: full BridgeEvent with node_id, gate_result, cost_usd, retro_path)
 - TriggerRouter's `ChannelEventTrigger` subscribes to bus events (replacing `addOnMessageHook`)
 - Remove all hook callbacks from server-entry.ts (`setOnEventHook`, `setOnExecutionChangeHook`, `onTriggerFired`, `pool.setObservationHook`, `addOnMessageHook`)
 - Update `bridge_read_events` and `bridge_all_events` MCP tools with adapter layer for legacy shapes
@@ -383,6 +427,23 @@ function toChannelMessage(event: BridgeEvent): ChannelMessage {
     sender: event.sessionId ?? event.source,
     type: event.type.split('.')[1] ?? event.type,  // 'session.spawned' → 'spawned'
     content: event.payload,
+  };
+}
+```
+
+For `bridge_all_events` (aggregated cross-session events), the legacy wrapper shape
+`{ bridge_session_id, session_metadata, message }` is reconstructed from BridgeEvent:
+
+```typescript
+function toAllEventsWrapper(event: BridgeEvent) {
+  return {
+    bridge_session_id: event.sessionId ?? event.domain,
+    session_metadata: {
+      commission_id: event.correlationId,
+      methodology: event.payload.methodology,
+      ...(event.domain === 'trigger' ? { trigger_id: event.payload.trigger_id } : {}),
+    },
+    message: toChannelMessage(event),
   };
 }
 ```
