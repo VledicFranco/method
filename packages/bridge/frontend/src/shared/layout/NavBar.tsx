@@ -43,8 +43,8 @@ export function NavBar({ items, onSearchClick, notificationCount = 0, className 
   const location = useLocation();
 
   function isActive(path: string): boolean {
-    if (path === '/app/') {
-      return location.pathname === '/app/' || location.pathname === '/app';
+    if (path === '/') {
+      return location.pathname === '/' || location.pathname === '/';
     }
     return location.pathname.startsWith(path);
   }
@@ -57,7 +57,7 @@ export function NavBar({ items, onSearchClick, notificationCount = 0, className 
       )}
     >
       {/* Logo */}
-      <Link to="/app/" className="flex items-center gap-2 mr-sp-8">
+      <Link to="/" className="flex items-center gap-2 mr-sp-8">
         <div className="h-7 w-7 rounded-lg bg-bio/20 flex items-center justify-center">
           <span className="text-bio font-display font-bold text-sm">M</span>
         </div>
@@ -126,7 +126,7 @@ export function NavBar({ items, onSearchClick, notificationCount = 0, className 
         </button>
 
         <Link
-          to="/app/settings"
+          to="/settings"
           className="flex h-8 w-8 items-center justify-center rounded-lg text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
           aria-label="Settings"
         >

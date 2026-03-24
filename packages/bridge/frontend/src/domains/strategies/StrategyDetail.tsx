@@ -1,5 +1,5 @@
 /**
- * PRD 019.3: Strategy detail page at /app/strategies/:id.
+ * PRD 019.3: Strategy detail page at /strategies/:id.
  *
  * Full-page strategy view with:
  * - Header: mini-DAG, strategy info, metrics, execute button
@@ -179,7 +179,7 @@ function HistoryTab({
                     leftIcon={<ExternalLink className="h-3 w-3" />}
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/app/strategies/${strategyId}/exec/${exec.execution_id}`);
+                      navigate(`/strategies/${strategyId}/exec/${exec.execution_id}`);
                     }}
                   >
                     DAG
@@ -286,7 +286,7 @@ export default function StrategyDetail() {
             size="sm"
             className="mt-sp-4"
             leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-            onClick={() => navigate('/app/strategies')}
+            onClick={() => navigate('/strategies')}
           >
             Back to Strategies
           </Button>
@@ -309,7 +309,7 @@ export default function StrategyDetail() {
             variant="secondary"
             size="sm"
             leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-            onClick={() => navigate('/app/strategies')}
+            onClick={() => navigate('/strategies')}
           >
             Back
           </Button>

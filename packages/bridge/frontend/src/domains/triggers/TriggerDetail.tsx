@@ -106,7 +106,7 @@ export function TriggerDetail({ triggerId, trigger: listTrigger, onClose }: Trig
           trigger={trigger}
           loading={toggleMutation.isPending}
           onToggle={handleToggle}
-          onViewStrategy={() => navigate(`/app/strategies/${encodeURIComponent(trigger.strategy_id)}`)}
+          onViewStrategy={() => navigate(`/strategies/${encodeURIComponent(trigger.strategy_id)}`)}
         />
       )}
 

@@ -210,7 +210,7 @@ export default function Strategies() {
 
   const handleViewDetail = useCallback(
     (id: string) => {
-      navigate(`/app/strategies/${encodeURIComponent(id)}`);
+      navigate(`/strategies/${encodeURIComponent(id)}`);
     },
     [navigate],
   );

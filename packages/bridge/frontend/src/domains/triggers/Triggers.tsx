@@ -143,12 +143,12 @@ export default function Triggers() {
 
   const handleSelectTrigger = useCallback((id: string) => {
     setSelectedTriggerId(id);
-    navigate(`/app/triggers/${encodeURIComponent(id)}`, { replace: true });
+    navigate(`/triggers/${encodeURIComponent(id)}`, { replace: true });
   }, [navigate]);
 
   const handleCloseTrigger = useCallback(() => {
     setSelectedTriggerId(null);
-    navigate('/app/triggers', { replace: true });
+    navigate('/triggers', { replace: true });
   }, [navigate]);
 
   const showToast = useCallback((message: string, variant: 'success' | 'warning') => {
@@ -280,7 +280,7 @@ export default function Triggers() {
         <TopologyView
           triggers={triggers}
           onSelectTrigger={handleSelectTrigger}
-          onNavigateStrategy={(id) => navigate(`/app/strategies/${encodeURIComponent(id)}`)}
+          onNavigateStrategy={(id) => navigate(`/strategies/${encodeURIComponent(id)}`)}
         />
       ) : (
         <>

@@ -1,16 +1,16 @@
 /** Route path constants */
 export const ROUTES = {
-  DASHBOARD: '/app/',
-  SESSIONS: '/app/sessions',
-  SESSION_DETAIL: '/app/sessions/:id',
-  STRATEGIES: '/app/strategies',
-  STRATEGY_DETAIL: '/app/strategies/:id',
-  TRIGGERS: '/app/triggers',
-  TRIGGER_DETAIL: '/app/triggers/:id',
-  GOVERNANCE: '/app/governance',
-  ANALYTICS: '/app/analytics',
-  REGISTRY: '/app/registry',
-  SETTINGS: '/app/settings',
+  DASHBOARD: '/',
+  SESSIONS: '/sessions',
+  SESSION_DETAIL: '/sessions/:id',
+  STRATEGIES: '/strategies',
+  STRATEGY_DETAIL: '/strategies/:id',
+  TRIGGERS: '/triggers',
+  TRIGGER_DETAIL: '/triggers/:id',
+  GOVERNANCE: '/governance',
+  ANALYTICS: '/analytics',
+  REGISTRY: '/registry',
+  SETTINGS: '/settings',
 } as const;
 
 /** Status → color token mapping */
@@ -40,11 +40,11 @@ export const EVENT_COLORS = {
 
 /** Navigation items */
 export const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/app/', icon: 'LayoutDashboard' },
-  { label: 'Sessions', path: '/app/sessions', icon: 'Terminal' },
-  { label: 'Strategies', path: '/app/strategies', icon: 'GitBranch' },
-  { label: 'Triggers', path: '/app/triggers', icon: 'Zap' },
-  { label: 'Governance', path: '/app/governance', icon: 'Shield' },
-  { label: 'Analytics', path: '/app/analytics', icon: 'BarChart3' },
-  { label: 'Registry', path: '/app/registry', icon: 'BookOpen' },
+  { label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
+  { label: 'Sessions', path: '/sessions', icon: 'Terminal' },
+  { label: 'Strategies', path: '/strategies', icon: 'GitBranch' },
+  { label: 'Triggers', path: '/triggers', icon: 'Zap' },
+  { label: 'Governance', path: '/governance', icon: 'Shield' },
+  { label: 'Analytics', path: '/analytics', icon: 'BarChart3' },
+  { label: 'Registry', path: '/registry', icon: 'BookOpen' },
 ] as const;

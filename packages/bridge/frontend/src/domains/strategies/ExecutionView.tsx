@@ -1,5 +1,5 @@
 /**
- * PRD 019.3 Phase 3c/3d: Live execution view at /app/strategies/:id/exec/:eid.
+ * PRD 019.3 Phase 3c/3d: Live execution view at /strategies/:id/exec/:eid.
  * Shows xyflow DAG with real-time status (2s polling), cost overlay, Gantt timeline.
  */
 
@@ -216,7 +216,7 @@ export default function ExecutionView() {
           <p className="text-error text-sm mb-sp-3">
             {(dagError as Error)?.message ?? (execError as Error)?.message ?? "Failed to load execution"}
           </p>
-          <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate("/app/strategies")}>
+          <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate("/strategies")}>
             Back to Strategies
           </Button>
         </Card>
@@ -240,7 +240,7 @@ export default function ExecutionView() {
       wide
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate("/app/strategies")}>Back</Button>
+          <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate("/strategies")}>Back</Button>
           {execution && <StatusBadge status={(execution.status === "started" ? "running" : execution.status) as Status} />}
         </div>
       }

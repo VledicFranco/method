@@ -28,7 +28,16 @@ export function registerFrontendRoutes(app: FastifyInstance): void {
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const appDir = join(__dirname, '..', 'app');
 
-  // ── Redirect /app to /app/ ──
+  // ── Redirect / and /app to /app/ for browsers ──
+
+  app.get('/', async (request, reply) => {
+    const accept = request.headers.accept ?? '';
+    if (accept.includes('text/html')) {
+      return reply.redirect('/app/');
+    }
+    // API clients (curl, fetch without accept) get the health check
+    return reply.redirect('/health');
+  });
 
   app.get('/app', async (_request, reply) => {
     return reply.redirect('/app/');

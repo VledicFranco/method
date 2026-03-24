@@ -88,23 +88,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 export function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/app">
         <Suspense fallback={<RouteSkeleton />}>
           <Routes>
-            <Route path="/app" element={<Dashboard />} />
-            <Route path="/app/" element={<Dashboard />} />
-            <Route path="/app/sessions" element={<Sessions />} />
-            <Route path="/app/strategies" element={<Strategies />} />
-            <Route path="/app/strategies/:id" element={<StrategyDetail />} />
-            <Route path="/app/strategies/:id/exec/:eid" element={<ExecutionView />} />
-            <Route path="/app/triggers" element={<Triggers />} />
-            <Route path="/app/triggers/:id" element={<Triggers />} />
-            <Route path="/app/governance" element={<Governance />} />
-            <Route path="/app/analytics" element={<Analytics />} />
-            <Route path="/app/registry" element={<Registry />} />
-            <Route path="/app/settings" element={<Settings />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/sessions" element={<Sessions />} />
+            <Route path="/strategies" element={<Strategies />} />
+            <Route path="/strategies/:id" element={<StrategyDetail />} />
+            <Route path="/strategies/:id/exec/:eid" element={<ExecutionView />} />
+            <Route path="/triggers" element={<Triggers />} />
+            <Route path="/triggers/:id" element={<Triggers />} />
+            <Route path="/governance" element={<Governance />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/registry" element={<Registry />} />
+            <Route path="/settings" element={<Settings />} />
             {/* Catch-all: redirect to dashboard */}
-            <Route path="/app/*" element={<Navigate to="/app/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

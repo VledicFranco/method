@@ -43,10 +43,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     },
   });
 
-  const { connected, events } = useWsStore((s) => ({
-    connected: s.connected,
-    events: s.events,
-  }));
+  const connected = useWsStore((s) => s.connected);
+  const events = useWsStore((s) => s.events);
 
   const filteredEvents = useMemo(
     () => (projectId ? events.filter((e) => e.projectId === projectId) : events),
