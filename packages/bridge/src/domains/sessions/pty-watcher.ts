@@ -10,6 +10,7 @@ import {
   createScopeViolationMatcher,
 } from './pattern-matchers.js';
 import { appendMessage, type SessionChannels } from './channels.js';
+import type { EventBus } from '../../ports/event-bus.js';
 
 /** PRD 012: Callback invoked for each observation (used by DiagnosticsTracker). */
 export type ObservationCallback = (match: PatternMatch, isIdle: boolean) => void;
@@ -111,6 +112,8 @@ export function createPtyWatcher(
   allowedPaths?: string[],
   /** PRD 014: Callback to push-notify parent on scope violations (F-N-1 fix). */
   onScopeViolation?: ScopeViolationCallback,
+  /** PRD 026 Phase 3: Event bus for emitting observations alongside channels. */
+  eventBus?: EventBus,
 ): PtyWatcher {
   const observations: ActivityObservation[] = [];
   const spawnedAt = new Date();
@@ -132,6 +135,27 @@ export function createPtyWatcher(
 
   // Line buffer for cross-chunk patterns
   let lineBuffer = '';
+
+  /** Emit observation to event bus (PRD 026 Phase 3). */
+  function emitToBus(
+    channelTarget: 'progress' | 'events',
+    messageType: string,
+    content: Record<string, unknown>,
+    severity: 'info' | 'warning' | 'error' | 'critical' = 'info',
+  ): void {
+    if (!eventBus) return;
+    try {
+      eventBus.emit({
+        version: 1,
+        domain: 'session',
+        type: `session.observation.${messageType}`,
+        severity,
+        sessionId,
+        payload: { channelTarget, ...content },
+        source: `bridge/sessions/pty-watcher`,
+      });
+    } catch { /* bus emission must never block pty-watcher */ }
+  }
 
   function shouldEmit(match: PatternMatch, now: number): boolean {
     // Rate limiting
@@ -195,6 +219,7 @@ export function createPtyWatcher(
         if (shouldEmit(match, now)) {
           const channel = match.channelTarget === 'progress' ? channels.progress : channels.events;
           appendMessage(channel, 'pty-watcher', match.messageType, match.content);
+          emitToBus(match.channelTarget, match.messageType, match.content);
           recordEmission(match, now);
 
           if (config.logMatches) {
@@ -223,6 +248,7 @@ export function createPtyWatcher(
 
         if (shouldEmit(match, now)) {
           appendMessage(channels.events, 'pty-watcher', match.messageType, match.content);
+          emitToBus('events', match.messageType, match.content, 'warning');
           recordEmission(match, now);
 
           // PRD 014 F-N-1 fix: Push-notify parent for scope violations
@@ -268,6 +294,10 @@ export function createPtyWatcher(
         const lastIdleEmit = lastEmissionTime.get('idle') ?? 0;
         if (now - lastIdleEmit >= config.rateLimitMs) {
           appendMessage(channels.progress, 'pty-watcher', 'idle', {
+            idle_after_seconds: idleAfterSeconds,
+            last_activity: lastActivity,
+          });
+          emitToBus('progress', 'idle', {
             idle_after_seconds: idleAfterSeconds,
             last_activity: lastActivity,
           });
