@@ -9,7 +9,7 @@ import {
 } from "../yaml-adapter.js";
 import { parsePredicate, parseReturns } from "../predicate-parser.js";
 import { evaluate } from "../../predicate/evaluate.js";
-import { TRUE } from "../../predicate/predicate.js";
+// TRUE predicate is used via evaluate() in assertions below
 import type { YamlDomainTheory } from "../yaml-types.js";
 
 // ── Registry path (relative to worktree root) ──

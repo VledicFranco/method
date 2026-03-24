@@ -712,8 +712,6 @@ test('F-S-1: parseCursor validates format before lookup', () => {
 
 test('F-S-1: parseCursor accepts valid cursor with underscores/hyphens', () => {
   // Create a valid 40+ char string with allowed chars
-  const validCursor = 'abc_def-123'.padEnd(40, 'a');
-
   // Store it first
   const stored = generateCursor(42, 'test-proj');
 
@@ -766,7 +764,7 @@ test('F-S-3: validateProjectIdFormat rejects non-string input', () => {
 // ── HTTP Route Handler Tests (Fastify inject) ────
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it } from 'node:test';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerProjectRoutes, type ProjectRoutesDeps } from './routes.js';
 import { DiscoveryService, type ProjectMetadata, type DiscoveryResult } from './discovery-service.js';
@@ -1155,7 +1153,6 @@ describe('POST /api/projects/:id/reload', () => {
       });
       // Config validates (generic object) and reload attempts write
       // May succeed or fail at file write, but should not be 403 or 400
-      const body = JSON.parse(res.body);
       // We accept 200 (success) or 400 (file write issue wrapped as reload fail)
       assert(res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 500,
         `Expected 200, 400, or 500 but got ${res.statusCode}`);
