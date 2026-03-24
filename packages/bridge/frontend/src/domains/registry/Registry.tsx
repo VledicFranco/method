@@ -193,7 +193,6 @@ export default function Registry() {
     <>
       <PageShell
         wide
-        title="Registry"
         actions={
           <div className="flex items-center gap-2">
             {/* View toggle */}

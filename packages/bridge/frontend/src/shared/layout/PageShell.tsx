@@ -37,9 +37,9 @@ export function PageShell({ title, wide = false, actions, children, className, f
           className,
         )}
       >
-        {title && (
+        {(title || actions) && (
           <div className="flex items-center justify-between mb-sp-6">
-            <h1 className="font-display text-xl text-txt tracking-tight">{title}</h1>
+            {title ? <h1 className="font-display text-xl text-txt tracking-tight">{title}</h1> : <div />}
             {actions && <div className="flex items-center gap-2">{actions}</div>}
           </div>
         )}

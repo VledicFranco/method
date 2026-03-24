@@ -257,7 +257,7 @@ export default function Triggers() {
   );
 
   return (
-    <PageShell title="Triggers" actions={toolbarActions}>
+    <PageShell  actions={toolbarActions}>
       {/* Maintenance Mode Banner */}
       {paused && (
         <AttentionBanner

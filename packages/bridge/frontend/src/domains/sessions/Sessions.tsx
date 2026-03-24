@@ -444,8 +444,7 @@ export default function Sessions() {
 
   return (
     <PageShell
-      title="Sessions"
-      actions={
+            actions={
         <div className="flex items-center gap-2">
           <Badge variant="default" label={`${activeSessions.length} active`} />
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />} onClick={refresh}>

@@ -219,8 +219,7 @@ export default function Strategies() {
 
   return (
     <PageShell
-      title="Strategies"
-      wide
+            wide
       actions={
         <Button
           variant="ghost"

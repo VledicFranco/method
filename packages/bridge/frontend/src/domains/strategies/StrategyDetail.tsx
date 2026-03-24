@@ -267,7 +267,7 @@ export default function StrategyDetail() {
 
   if (defsLoading) {
     return (
-      <PageShell title="Strategy Detail" wide>
+      <PageShell  wide>
         <div className="h-64 rounded-card bg-abyss-light/50 animate-pulse border border-bdr" />
       </PageShell>
     );
@@ -275,7 +275,7 @@ export default function StrategyDetail() {
 
   if (!definition) {
     return (
-      <PageShell title="Strategy Not Found" wide>
+      <PageShell  wide>
         <Card>
           <p className="text-txt-dim text-sm">
             Strategy <span className="font-mono text-bio">{id}</span> not found in
