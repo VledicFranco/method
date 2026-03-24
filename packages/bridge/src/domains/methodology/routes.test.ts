@@ -10,7 +10,7 @@
  * advance step channel emission, and compound condition checks.
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerMethodologyRoutes } from './routes.js';

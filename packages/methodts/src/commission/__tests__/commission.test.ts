@@ -7,14 +7,12 @@
  * PRD 021 Components 9 + 12.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { Prompt, constant } from "../../prompt/prompt.js";
 import {
   commission,
   batchCommission,
   type BridgeParams,
-  type CommissionMetadata,
-  type Commission,
 } from "../commission.js";
 import {
   templates,
