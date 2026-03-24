@@ -11,14 +11,10 @@
 
 import {
   topologicalOrder,
-  evaluateTransition,
 } from "@method/methodts";
 import type {
   Method,
   Step,
-  Methodology,
-  Arm,
-  DomainTheory,
 } from "@method/methodts";
 import type { MethodologySource } from "../../ports/methodology-source.js";
 
@@ -517,58 +513,6 @@ type MethodologyRouteResult = {
     completedAt: string;
     outputSummary: string | null;
   }>;
-  message: string;
-};
-
-type MethodologySelectResult = {
-  methodologySessionId: string;
-  selectedMethod: {
-    methodId: string;
-    name: string;
-    stepCount: number;
-    firstStep: { id: string; name: string };
-  };
-  message: string;
-};
-
-type MethodologyLoadMethodResult = {
-  methodologySessionId: string;
-  method: {
-    id: string;
-    name: string;
-    stepCount: number;
-    firstStep: { id: string; name: string };
-  };
-  methodologyProgress: {
-    methodsCompleted: number;
-    methodsRemaining: number | "unknown";
-    currentMethodIndex: number;
-  };
-  priorMethodOutputs: Array<{
-    methodId: string;
-    stepOutputs: Array<{ stepId: string; summary: string }>;
-  }>;
-  message: string;
-};
-
-type MethodologyTransitionResult = {
-  completedMethod: {
-    id: string;
-    name: string;
-    stepCount: number;
-    outputsRecorded: number;
-  };
-  methodologyProgress: {
-    methodsCompleted: number;
-    globalObjectiveStatus: GlobalObjectiveStatus;
-  };
-  nextMethod: {
-    id: string;
-    name: string;
-    stepCount: number;
-    description: string;
-    routingRationale: string;
-  } | null;
   message: string;
 };
 

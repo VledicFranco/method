@@ -63,6 +63,7 @@ function extractPhases(parsed: Record<string, unknown>, filePath: string): Step[
   });
 }
 
+/** @deprecated Use @method/methodts stdlib (getMethod) instead. */
 export function loadMethodology(registryPath: string, methodologyId: string, methodId: string, fs: CoreFileSystem = defaultFs): LoadedMethod {
   // Primary path: registry/{mid}/{methid}/{methid}.yaml
   let filePath = join(registryPath, methodologyId, methodId, `${methodId}.yaml`);
@@ -125,6 +126,7 @@ function findYamlFiles(dirPath: string, fs: CoreFileSystem): string[] {
   return results;
 }
 
+/** @deprecated Use @method/methodts stdlib (getStdlibCatalog) instead. */
 export function listMethodologies(registryPath: string, fs: CoreFileSystem = defaultFs): MethodologyEntry[] {
   const entries = fs.readdirSync(registryPath, { withFileTypes: true });
   const methodologyDirs = entries.filter((e: { name: string; isDirectory(): boolean }) => e.isDirectory());

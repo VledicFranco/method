@@ -108,6 +108,7 @@ function normalizeForSearch(text: string): string {
   return result.toLowerCase();
 }
 
+/** @deprecated Theory lookup has been inlined into consumers. */
 export function lookupTheory(theoryPath: string, term: string, fs: CoreFileSystem = defaultFs): TheoryResult[] {
   const files = fs.readdirSync(theoryPath, { withFileTypes: true })
     .filter((f: { name: string; isDirectory(): boolean }) => f.name.endsWith('.md'))
