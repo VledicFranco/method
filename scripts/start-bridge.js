@@ -75,7 +75,7 @@ if (oauthToken) {
   env.CLAUDE_OAUTH_TOKEN = oauthToken;
 }
 
-const child = spawn('node', ['packages/bridge/dist/index.js'], {
+const child = spawn('node', ['packages/bridge/dist/server-entry.js'], {
   env,
   stdio: 'inherit',
   cwd: process.cwd(),

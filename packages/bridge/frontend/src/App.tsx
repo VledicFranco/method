@@ -2,16 +2,16 @@ import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Lazy-loaded pages for code splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Sessions = lazy(() => import('./pages/Sessions'));
-const Strategies = lazy(() => import('./pages/Strategies'));
-const StrategyDetail = lazy(() => import('./pages/StrategyDetail'));
-const Triggers = lazy(() => import('./pages/Triggers'));
-const Governance = lazy(() => import('./pages/Governance'));
-const Analytics = lazy(() => import('./pages/Analytics'));
-const Registry = lazy(() => import('./pages/Registry'));
-const Settings = lazy(() => import('./pages/Settings'));
-const ExecutionView = lazy(() => import('./pages/ExecutionView'));
+const Dashboard = lazy(() => import('./shared/pages/Dashboard'));
+const Sessions = lazy(() => import('./domains/sessions/Sessions'));
+const Strategies = lazy(() => import('./domains/strategies/Strategies'));
+const StrategyDetail = lazy(() => import('./domains/strategies/StrategyDetail'));
+const Triggers = lazy(() => import('./domains/triggers/Triggers'));
+const Governance = lazy(() => import('./shared/pages/Governance'));
+const Analytics = lazy(() => import('./domains/tokens/Analytics'));
+const Registry = lazy(() => import('./domains/registry/Registry'));
+const Settings = lazy(() => import('./shared/pages/Settings'));
+const ExecutionView = lazy(() => import('./domains/strategies/ExecutionView'));
 
 // ── Route loading skeleton ──
 

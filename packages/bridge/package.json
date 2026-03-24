@@ -2,12 +2,12 @@
   "name": "@method/bridge",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/server-entry.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
-    "test": "node --import tsx --test src/__tests__/*.test.ts"
+    "start": "node dist/server-entry.js",
+    "dev": "tsx src/server-entry.ts",
+    "test": "node --import tsx --test \"src/domains/**/*.test.ts\" \"src/shared/**/*.test.ts\""
   },
   "dependencies": {
     "@fastify/websocket": "^11.2.0",

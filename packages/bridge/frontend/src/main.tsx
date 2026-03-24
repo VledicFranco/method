@@ -2,8 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
-import { wsManager } from './lib/ws-manager';
-import { useWsStore } from './stores/ws-store';
+import { wsManager } from './shared/websocket/ws-manager';
+import { useWsStore } from './shared/websocket/ws-store';
 import './styles/vidtecci.css';
 
 // Connect WebSocket and sync connection state to Zustand store
