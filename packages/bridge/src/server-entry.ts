@@ -39,6 +39,7 @@ import { loadStrategiesConfig } from './domains/strategies/config.js';
 import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
+import { StdlibSource } from './ports/stdlib-source.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -242,7 +243,8 @@ registerRegistryRoutes(app, { fs: fsProvider, yaml: yamlLoader });
 
 // ---------- Methodology API (PRD 021) ----------
 
-const methodologyStore = new MethodologySessionStore(resolve(ROOT_DIR, 'registry'));
+const methodologySource = new StdlibSource();
+const methodologyStore = new MethodologySessionStore(methodologySource);
 registerMethodologyRoutes(app, methodologyStore, {
   pool,
   appendMessage,
