@@ -1,190 +1,89 @@
 # pv-method
 
-Runtime that makes formal methodologies executable by LLM agents. Loads compiled methodology YAML specs from the registry, exposes them via MCP tools, and includes a bridge for spawning and managing Claude Code sub-agent sessions with structured visibility channels.
+Runtime that makes formal methodologies executable by LLM agents. Loads compiled methodology YAML specs from the registry, exposes them via MCP tools, and includes a bridge for spawning and managing Claude Code sub-agent sessions.
 
-## Quick Start
+## Essence
 
-```bash
-npm install
-npm run build
-npm test
-```
+- **Purpose:** The runtime that makes formal methodologies executable by LLM agents.
+- **Invariant:** Theory is the source of truth. When implementation and formal theory diverge, revise the implementation — never the theory.
+- **Optimize for:** Faithfulness > simplicity > registry integrity.
 
-## Project Structure
-
-```
-packages/
-  core/       Pure methodology logic — YAML loader, theory lookup (zero transport deps)
-  methodts/   TypeScript methodology type system and stdlib catalog (runtime source of truth)
-  testkit/    Testing framework — assertions, builders, diagnostics, runners
-  types/      Shared TypeScript types across packages
-  mcp/        MCP server — 39 tools (14 methodology + 10 bridge + 2 strategy + 6 trigger + 2 resource + 4 project + 1 genesis)
-  bridge/     HTTP server — PTY session pool, channels, dashboard, token tracking
-registry/     Compiled methodology YAML specs (production artifacts — do not modify casually)
-theory/       Formal theory files (F1-FTH, F4-PHI)
-docs/
-  arch/       Architecture specs (one concern per file)
-  prds/       Product requirement documents
-  guides/     Usage guides (25 guides)
-.method/      Methodology execution home
-  project-card.yaml   Essence, delivery rules, processes, governance
-  manifest.yaml       Installed methodologies and protocols
-  council/            Steering council (TEAM, AGENDA, LOG)
-  retros/             Retrospective artifacts (retro-YYYY-MM-DD-NNN.yaml)
-  delivery/           Phases, sessions, reviews, audits
-```
-
-## Key Commands
+## Commands
 
 ```bash
 npm run build          # TypeScript build (all packages)
-npm test               # Run all tests (core + bridge)
+npm test               # Run all tests (core + bridge domains)
 npm run bridge         # Start bridge server (builds first)
-npm run bridge:dev     # Start bridge in dev mode (tsx)
-npm run bridge:stop    # Stop bridge server
+npm run bridge:dev     # Dev mode (tsx, no build step)
+npm run bridge:stop    # Stop bridge + cleanup orphaned processes
 ```
 
-## Bridge (Agent Session Server)
+## Architecture — Fractal Component Architecture (FCA)
 
-HTTP server managing a pool of Claude Code PTY sessions. REST API + browser dashboard.
+This project follows FCA (see `docs/fractal-component-architecture/`). The core principle: **the same structural discipline repeats at every scale** — from a function to a package to the system.
 
-### Start / Stop
+### Layer Stack (dependency flows downward only)
 
-```bash
-npm run bridge         # Production (builds first)
-npm run bridge:dev     # Development (tsx, no build step)
-npm run bridge:stop    # Stop
+```
+L4  @method/bridge     Application — HTTP server, wires everything, owns the process
+L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over core
+L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
+L1  @method/core       Domain logic — YAML loader, theory lookup (zero transport deps)
+L0  @method/types      Pure type definitions, no behavior
+    @method/testkit    Testing framework (assertions, builders, runners)
 ```
 
-### Endpoints
+**Rules:** Higher layers may depend on lower. Never the reverse. Core has zero transport dependencies. MCP handlers are thin wrappers — parse input, call core, format output.
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /dashboard` | Browser dashboard — live sessions, progress timelines, event feeds |
-| `GET /health` | Health check — JSON with status, session count, uptime |
-| `POST /sessions` | Spawn a new agent session (supports parent/child chains, budgets) |
-| `POST /sessions/:id/prompt` | Send a prompt and wait for response |
-| `GET /sessions/:id/status` | Session status, metadata, chain info (includes `stale` flag) |
-| `GET /sessions` | List all sessions |
-| `DELETE /sessions/:id` | Kill a session |
-| `GET /sessions/:id/stream` | SSE stream of raw PTY output (for xterm.js rendering) |
-| `GET /sessions/:id/output.html` | HTML page with embedded xterm.js terminal emulator |
-| `POST /sessions/:id/channels/progress` | Agent reports structured progress |
-| `POST /sessions/:id/channels/events` | Agent reports lifecycle events (with push notifications) |
-| `GET /sessions/:id/channels/progress` | Parent reads child progress (since_sequence cursor) |
-| `GET /sessions/:id/channels/events` | Parent reads child events (since_sequence cursor) |
-| `GET /channels/events` | Aggregated events across all sessions |
-| `POST /sessions/:id/resize` | Resize PTY terminal dimensions (cols, rows) |
-| `GET /pool/stats` | Pool statistics — max, active, dead, total spawned, uptime |
-| `POST /shutdown` | Graceful shutdown (localhost only) |
+### Bridge — Domain-Co-Located Structure (PRD 023)
 
-### Configuration
+The bridge (`packages/bridge/`) is an L4 application organized as FCA domains:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3456` | HTTP listen port |
-| `CLAUDE_BIN` | `claude` | Path to Claude Code binary |
-| `MAX_SESSIONS` | `10` | Max concurrent PTY sessions |
-| `SETTLE_DELAY_MS` | `1000` | Response completion debounce |
-| `DEAD_SESSION_TTL_MS` | `300000` | Auto-cleanup TTL for dead sessions (5 min) |
-| `STALE_CHECK_INTERVAL_MS` | `60000` | Interval for stale session detection (1 min) |
-| `CLAUDE_OAUTH_TOKEN` | *(none)* | Enables subscription usage meters in dashboard |
-| `USAGE_POLL_INTERVAL_MS` | `600000` | Subscription usage poll interval (10 min) |
-| `CLAUDE_SESSIONS_DIR` | `~/.claude/projects` | Base dir for Claude Code session logs |
-| `SSE_HEARTBEAT_MS` | `15000` | SSE keepalive interval for xterm.js stream |
-| `MAX_TRANSCRIPT_SIZE_BYTES` | `5242880` | Transcript buffer cap (5 MB) |
-| `PTY_WATCHER_ENABLED` | `true` | Enable PTY activity auto-detection (PRD 010) |
-| `PTY_WATCHER_PATTERNS` | `all` | Which observation patterns to track |
-| `PTY_WATCHER_RATE_LIMIT_MS` | `5000` | Rate limit for observation emissions |
-| `PTY_WATCHER_DEDUP_WINDOW_MS` | `10000` | Dedup window for repeated observations |
-| `PTY_WATCHER_AUTO_RETRO` | `true` | Auto-generate retrospective on session exit |
-| `PTY_WATCHER_LOG_MATCHES` | `false` | Debug logging for pattern matches |
-| `BATCH_STAGGER_MS` | `3000` | Default stagger between batch spawns |
-| `ADAPTIVE_SETTLE_ENABLED` | `true` | Enable adaptive settle delay algorithm |
-| `ADAPTIVE_SETTLE_INITIAL_MS` | `300` | Starting adaptive settle delay |
-| `ADAPTIVE_SETTLE_MAX_MS` | `2000` | Maximum adaptive settle delay cap |
-| `ADAPTIVE_SETTLE_BACKOFF` | `1.5` | Backoff multiplier on false-positive cutoff |
-| `SCOPE_ENFORCEMENT_DEFAULT` | `enforce` | Default scope mode when `allowed_paths` provided (PRD 014) |
-| `TRIGGERS_ENABLED` | `true` | Master switch for the event trigger system (PRD 018) |
-| `TRIGGERS_STRATEGY_DIR` | `.method/strategies` | Directory to scan for Strategy YAML files with event triggers |
-| `TRIGGERS_SCAN_ON_STARTUP` | `true` | Auto-register triggers from strategy files on bridge start |
-| `TRIGGERS_DEFAULT_DEBOUNCE_MS` | `5000` | Default debounce window when not specified in trigger YAML |
-| `TRIGGERS_MAX_BATCH_SIZE` | `10` | Max events per debounce batch before forced fire |
-| `TRIGGERS_HISTORY_SIZE` | `200` | Max trigger fire events retained in memory |
-| `TRIGGERS_GIT_POLL_INTERVAL_MS` | `5000` | Fallback polling interval for git commit detection |
-| `TRIGGERS_FILE_WATCH_RECURSIVE` | `true` | Enable recursive file watching |
-| `TRIGGERS_WEBHOOK_MAX_PAYLOAD_BYTES` | `1048576` | Max webhook payload size (1 MB) |
-| `TRIGGERS_MAX_WATCHERS` | `50` | Max total active file/git watchers (prevents inotify exhaustion) |
-| `TRIGGERS_LOG_FIRES` | `true` | Log trigger fires to stdout |
-| `MIN_SPAWN_GAP_MS` | `2000` | Minimum gap between PTY process launches (spawn queue) |
-| `FRONTEND_ENABLED` | `true` | Serve Narrative Flow React SPA at `/app/*` |
-| `GENESIS_ENABLED` | `false` | Enable multi-project Genesis agent |
-| `GENESIS_POLLING_INTERVAL_MS` | `5000` | Genesis project polling interval |
-| `STRATEGY_ENABLED` | `true` | Enable strategy pipeline execution |
-| `STRATEGY_MAX_PARALLEL` | `3` | Max parallel strategy nodes |
-| `STRATEGY_DEFAULT_GATE_RETRIES` | `2` | Default retry count for gate failures |
-| `STRATEGY_DEFAULT_TIMEOUT_MS` | `600000` | Default node execution timeout (10 min) |
-| `STRATEGY_DEFAULT_BUDGET_USD` | `5` | Per-execution LLM cost budget cap |
-| `STRATEGY_RETRO_DIR` | `.method/retros` | Override retro output directory |
-| `STRATEGY_EXECUTION_TTL_MS` | `3600000` | TTL for completed executions in memory (1 hr) |
-| `STRATEGY_MAX_EXECUTIONS` | `50` | Max executions retained in memory |
+```
+src/
+  server-entry.ts          Composition root — wires ports, registers domains
+  ports/                   Cross-domain port interfaces (PTY, filesystem, YAML)
+  domains/
+    sessions/              PTY session lifecycle, channels, parsing, scope enforcement
+    methodology/           Methodology session persistence
+    registry/              Registry management, resource copying
+    projects/              Multi-project discovery, event persistence
+    strategies/            Strategy pipeline execution, gates, retros
+    tokens/                LLM usage tracking, subscription polling
+    triggers/              Event trigger system (file, git, webhook, schedule)
+    genesis/               Multi-project agent orchestration
+  shared/                  Cross-domain utilities (config reload, validation, websocket)
+```
 
-### Key Bridge Features
+Each domain is self-contained: core logic, tests, routes, config (Zod), and types co-located in one directory. Ports provide dependency injection at the composition root.
 
-**Split prompt delivery (EXP-OBS02):** Long initial prompts (> 500 chars) are automatically split into two messages — a short activation prompt first, then the full commission after the agent acknowledges. Prevents Claude Code from treating long instructions as passive context.
+### Key FCA Principles for Contributors
 
-**xterm.js terminal emulator:** Live PTY output streams as raw SSE data to browser-side xterm.js, which handles ANSI rendering (colors, cursor movement, box-drawing). Endpoints: `/sessions/:id/stream` (SSE) and `/sessions/:id/output.html` (HTML viewer).
+1. **Every domain owns its artifacts** — tests, config, types, routes live with the domain, not in central directories
+2. **Port pattern for external deps** — access external services through port interfaces, never direct imports
+3. **Boundaries are enforced by structure** — directory structure IS the architecture; import violations are bugs
+4. **Verify independently** — each domain's tests run in isolation without other domains
+5. **Interface discipline** — treat every domain's exports as a library API; breaking changes need migration
 
-**PTY activity auto-detection (PRD 010):** Per-session watcher detects structured patterns in PTY output (tool calls, git commits, test results, file operations, build results, errors, idle states). Observations auto-emit to channels with rate limiting and dedup. On session exit, auto-generates a retrospective YAML at `.method/retros/`. Configurable per-session via `pty_watcher` metadata key.
+### Other Key Directories
 
-**Persistent sessions (PRD 011):** Sessions spawned with `persistent=true` skip stale detection and auto-kill. For long-running background agents or infrastructure that shouldn't be auto-terminated.
+```
+registry/     Compiled methodology YAML specs — PRODUCTION ARTIFACTS, do not modify casually
+theory/       Formal theory files (F1-FTH, F4-PHI)
+docs/
+  arch/       Architecture specs (one concern per file)
+  prds/       Product requirement documents (001–023)
+  guides/     Usage guides (25 guides)
+  fractal-component-architecture/   FCA specification (7 parts)
+.method/      Methodology execution home
+  project-card.yaml   Essence, delivery rules, processes
+  manifest.yaml       Installed methodologies and protocols
+  council/            Steering council (TEAM, AGENDA, LOG)
+  retros/             Retrospective artifacts
+  strategies/         Event trigger strategy files
+```
 
-**Orphaned process cleanup:** `npm run bridge:stop` kills both the bridge process and any orphaned `claude.exe` processes. Graceful shutdown includes a 500ms PTY cleanup delay and a 5s force-exit timeout.
-
-**Connection retry:** MCP proxy tools using GET/HEAD retry once (after 1s) on connection errors. POST-based tools (spawn, prompt, progress, event) do not retry to prevent double-fire on mutating operations.
-
-### MCP Proxy Tools
-
-The MCP server exposes 10 bridge proxy tools, plus additional strategy, trigger, resource, project, and genesis tools (39 total). Configure with `BRIDGE_URL` env var (default `http://localhost:3456`).
-
-**Session management:**
-- `bridge_spawn` — spawn a session (auto-correlates methodology session ID; supports `persistent` flag)
-- `bridge_spawn_batch` — spawn multiple sessions with staggered initialization (prevents API rate limit contention)
-- `bridge_prompt` — send prompt, wait for response
-- `bridge_kill` — kill a session
-- `bridge_list` — list sessions with metadata (includes `stale` flag per session)
-
-**Visibility channels (PRD 008):**
-- `bridge_progress` — report progress (step transitions, status updates)
-- `bridge_event` — report lifecycle events (completed, error, escalation, stale)
-- `bridge_read_progress` — read child's progress (cursor-based)
-- `bridge_read_events` — read child's events (cursor-based)
-- `bridge_all_events` — aggregated events across all sessions
-
-Push notifications: when a child emits `completed`, `error`, `escalation`, `budget_warning`, `stale`, or `scope_violation` events, the bridge auto-prompts the parent agent.
-
-**Strategy tools:**
-- `strategy_execute` — execute a strategy pipeline from YAML path or inline YAML
-- `strategy_status` — check execution status and node progress
-
-**Trigger tools:**
-- `trigger_list` — list registered triggers with status
-- `trigger_enable` / `trigger_disable` — enable or disable a trigger
-- `trigger_pause_all` / `trigger_resume_all` — global trigger pause/resume
-- `trigger_reload` — reload triggers from strategy files
-
-**Resource tools:**
-- `resource_copy_methodology` — copy a methodology to target projects
-- `resource_copy_strategy` — copy a strategy to target projects
-
-**Project tools (PRD 020):**
-- `project_list` — list discovered projects
-- `project_get` — get project metadata
-- `project_get_manifest` — get project manifest
-- `project_read_events` — read project events
-- `genesis_report` — Genesis agent reporting tool
-
-## Delivery Rules (Summary)
+## Delivery Rules
 
 - **DR-01/02:** Registry files are production artifacts. Preserve compilation status and structural completeness.
 - **DR-03:** Core has zero transport dependencies. Bridge proxy tools go in `@method/mcp`.
@@ -194,56 +93,30 @@ Push notifications: when a child emits `completed`, `error`, `escalation`, `budg
 - **DR-12:** Architecture docs follow horizontal pattern — one file per concern in `docs/arch/`.
 - **DR-13:** Validate YAML after registry edits: `node -e "require('js-yaml').load(require('fs').readFileSync('file.yaml','utf8'))"`.
 
-See `.method/project-card.yaml` for the full set (DR-01 through DR-14).
-
-## Methodology & Governance
-
-This project uses the method system it builds. Instance: I2-METHOD, methodology: P2-SD v2.0.
-
-### Essence
-
-- **Purpose:** The runtime that makes formal methodologies executable by LLM agents.
-- **Invariant:** Theory is the source of truth. When implementation and formal theory diverge, revise the implementation — never the theory.
-- **Optimize for:** Faithfulness > simplicity > registry integrity.
-
-### Installed (`.method/manifest.yaml`)
-
-- **P2-SD v2.0** — software delivery methodology (7 methods)
-- **P1-EXEC v1.1** — execution methodology (M1-COUNCIL, M2-ORCH, M3-TMP, M4-ADVREV)
-- **RETRO-PROTO v1.0** — retrospective protocol (promoted)
-- **STEER-PROTO v0.1** — steering council protocol (draft)
-- **CMEM-PROTO v0.1** — council memory protocol (draft, extends M1-COUNCIL)
-
-### Steering Council
-
-Persistent governance body in `.method/council/`. Run `/steering-council` to start a session. The council:
-- Reviews priorities and steers direction
-- Guards the project's essence (purpose, invariant, optimize_for)
-- Enforces processes (PR-01/02/03)
-- Commissions agent work via `/commission`
-
-### Processes (enforced by steering council)
-
-- **PR-01:** Guide sync — update `docs/guides/` when `registry/` changes
-- **PR-02:** Stale agenda escalation — items open 3+ sessions get resolved or archived
-- **PR-03:** Retro placement — retrospectives go to `.method/retros/`, not `tmp/`
-
-### Retrospectives
-
-After every methodology session, produce a retrospective at `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. Include: `hardest_decision`, `observations` (>= 1), `card_feedback` (with essence feedback), `proposed_deltas` (optional).
-
-### Skills
-
-- `/steering-council` — project governance session
-- `/council-team [challenge]` — adversarial expert debate
-- `/commission [task]` — generate orchestrator prompt for a fresh agent
+Full set: `.method/project-card.yaml` (DR-01 through DR-14).
 
 ## Sub-Agent Guidelines
 
 If you are a sub-agent spawned for implementation work:
 
-- **Do NOT modify registry YAML files** unless the task explicitly requires registry changes. If a registry file has a parsing error, REPORT it — do not fix it.
+- **Do NOT modify registry YAML files** unless the task explicitly requires it. If a registry file has a parsing error, REPORT it — do not fix it.
 - **Do NOT modify** `.method/project-card.yaml`, schema files, or council artifacts.
 - **Do NOT commit to files outside your task scope.** One step, one deliverable per sub-agent.
 - **Scope decisions go to the orchestrator.** If the task requires decisions beyond your scope, report back.
 - When in doubt about a registry change, check the method's `compilation_record` to understand what gates it passed.
+
+## Governance
+
+This project uses the method system it builds. Instance: I2-METHOD, methodology: P2-SD v2.0.
+
+**Skills:**
+- `/steering-council` — project governance session
+- `/council-team [challenge]` — adversarial expert debate
+- `/commission [task]` — generate orchestrator prompt for a fresh agent
+
+**Processes (enforced by steering council):**
+- **PR-01:** Guide sync — update `docs/guides/` when `registry/` changes
+- **PR-02:** Stale agenda escalation — items open 3+ sessions get resolved or archived
+- **PR-03:** Retro placement — retrospectives go to `.method/retros/`, not `tmp/`
+
+**Retrospectives:** After every methodology session, produce a retro at `.method/retros/retro-YYYY-MM-DD-NNN.yaml`. Include: `hardest_decision`, `observations` (>= 1), `card_feedback`, `proposed_deltas` (optional).
