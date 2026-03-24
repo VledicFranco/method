@@ -4,7 +4,7 @@
  * Spawn pre-fills workdir from the project's path — no manual typing needed.
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { PageShell } from '@/shared/layout/PageShell';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
@@ -96,23 +96,18 @@ export default function ProjectsPage() {
   const { projects, loading, error, refetch } = useProjects();
   const { spawn, isSpawning } = useSessions();
   const navigate = useNavigate();
-  const [spawningProjectId, setSpawningProjectId] = useState<string | null>(null);
 
   const handleSpawn = useCallback(
     async (project: ProjectMetadata) => {
-      setSpawningProjectId(project.id);
       try {
         await spawn({
           workdir: project.path,
           purpose: `Session for ${project.name}`,
           mode: 'pty',
         });
-        // Navigate to sessions page to see the new session
         navigate('/sessions');
       } catch (err) {
         console.error('Spawn failed:', err);
-      } finally {
-        setSpawningProjectId(null);
       }
     },
     [spawn, navigate],
@@ -158,7 +153,7 @@ export default function ProjectsPage() {
               key={project.id}
               project={project}
               onSpawn={handleSpawn}
-              isSpawning={isSpawning && spawningProjectId === project.id}
+              isSpawning={isSpawning}
             />
           ))}
         </div>

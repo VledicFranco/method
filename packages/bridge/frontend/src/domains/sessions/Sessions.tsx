@@ -23,6 +23,7 @@ import { useSessionTokens } from "@/domains/tokens/useTokens";
 import { useIsMobile } from "@/shared/layout/useIsMobile";
 import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatTokens } from "@/shared/lib/formatters";
+import { useProjects } from "@/domains/projects/useProjects";
 import type { SessionSummary } from "@/domains/sessions/types";
 import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus, ArrowLeft } from "lucide-react";
 
@@ -32,7 +33,9 @@ function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; e
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const fitRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
 
+  // Main effect: create terminal + SSE stream (keyed on sessionId + enabled only)
   useEffect(() => {
     if (!enabled || !containerRef.current) return;
 
@@ -41,7 +44,6 @@ function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; e
     async function initTerminal() {
       const { Terminal } = await import("@xterm/xterm");
       const { FitAddon } = await import("@xterm/addon-fit");
-      // xterm CSS
       await import("@xterm/xterm/css/xterm.css");
 
       if (!mounted || !containerRef.current) return;
@@ -73,6 +75,7 @@ function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; e
       term.open(containerRef.current!);
       fit.fit();
       termRef.current = term;
+      fitRef.current = fit;
 
       // Connect to SSE stream
       const es = new EventSource(`/sessions/${sessionId}/stream`);
@@ -103,9 +106,18 @@ function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; e
       esRef.current = null;
       termRef.current?.dispose();
       termRef.current = null;
+      fitRef.current = null;
       cleanup?.then((fn) => fn?.());
     };
-  }, [sessionId, enabled, isMobile]);
+  }, [sessionId, enabled]);
+
+  // Separate effect: update font size on isMobile change without tearing down terminal
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.options.fontSize = isMobile ? 11 : 13;
+      fitRef.current?.fit();
+    }
+  }, [isMobile]);
 
   return (
     <div
@@ -377,6 +389,7 @@ export default function Sessions() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [spawnOpen, setSpawnOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { projects } = useProjects();
 
   const {
     sessions,
@@ -517,6 +530,7 @@ export default function Sessions() {
         onClose={() => setSpawnOpen(false)}
         onSpawn={spawn}
         isSpawning={isSpawning}
+        projects={projects}
       />
     </PageShell>
   );
