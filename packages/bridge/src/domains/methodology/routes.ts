@@ -23,13 +23,29 @@
 import type { FastifyInstance } from "fastify";
 import type { MethodologySessionStore } from "./store.js";
 import type { SessionPool } from "../sessions/pool.js";
-import { appendMessage } from "../sessions/channels.js";
+
+/** PRD 024 MG-6: Callback for emitting messages to channels — injected by composition root */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AppendMessageFn = (
+  channel: any,
+  sender: string,
+  type: string,
+  content: Record<string, unknown>,
+  session_id?: string,
+) => number;
+
+export interface MethodologyRoutesDeps {
+  pool: SessionPool;
+  /** PRD 024 MG-6: Injected callback replacing direct import of sessions/channels.appendMessage */
+  appendMessage: AppendMessageFn;
+}
 
 export function registerMethodologyRoutes(
   app: FastifyInstance,
   store: MethodologySessionStore,
-  pool: SessionPool,
+  deps: MethodologyRoutesDeps,
 ): void {
+  const { pool, appendMessage } = deps;
 
   // ── GET /api/methodology/list ──
 

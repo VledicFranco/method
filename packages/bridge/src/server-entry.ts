@@ -23,6 +23,7 @@ import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
 import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './domains/projects/routes.js';
+import { copyMethodology, copyStrategy } from './domains/registry/resource-copier.js';
 import websocket from '@fastify/websocket';
 import { WsHub } from './shared/websocket/hub.js';
 import { registerWsRoute } from './shared/websocket/route.js';
@@ -55,12 +56,16 @@ const ptyProvider = new NodePtyProvider();
 const fsProvider = new NodeFileSystemProvider();
 const yamlLoader = new JsYamlLoader();
 
+// PRD 024 MG-7: Shared LLM provider for print-mode sessions and strategy pipelines
+const llmProvider = new ClaudeCodeProvider(sessionsConfig.claudeBin);
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
   settleDelayMs: sessionsConfig.settleDelayMs,
   minSpawnGapMs: sessionsConfig.minSpawnGapMs,
   ptyProvider,
+  llmProvider,
 });
 
 const usagePoller = createUsagePoller({
@@ -193,8 +198,7 @@ registerSessionRoutes(app, {
 // ---------- Strategy Pipelines (PRD 017) ----------
 
 if (strategiesConfig.enabled) {
-  const strategyProvider = new ClaudeCodeProvider(sessionsConfig.claudeBin);
-  registerStrategyRoutes(app, strategyProvider);
+  registerStrategyRoutes(app, llmProvider);
 }
 
 // ---------- Registry API (PRD 019.2) ----------
@@ -204,7 +208,10 @@ registerRegistryRoutes(app);
 // ---------- Methodology API (PRD 021) ----------
 
 const methodologyStore = new MethodologySessionStore(resolve(ROOT_DIR, 'registry'));
-registerMethodologyRoutes(app, methodologyStore, pool);
+registerMethodologyRoutes(app, methodologyStore, {
+  pool,
+  appendMessage,
+});
 
 // ---------- Frontend SPA (PRD 019.1 — Narrative Flow) ----------
 
@@ -286,7 +293,10 @@ async function start() {
     const eventPersistence = new JsonLineEventPersistence(jsonlPath, yamlPath);
     await eventPersistence.recover();
 
-    await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR);
+    await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR, {
+      copyMethodology,
+      copyStrategy,
+    });
 
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);

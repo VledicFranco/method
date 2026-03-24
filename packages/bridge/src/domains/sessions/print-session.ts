@@ -1,13 +1,13 @@
 import PQueue from 'p-queue';
-import { ClaudeCodeProvider } from '../strategies/claude-code-provider.js';
-import type { LlmResponse } from '../strategies/llm-provider.js';
+import type { LlmProvider, LlmResponse } from '../../ports/llm-provider.js';
 import type { PtySession, SessionStatus } from './pty-session.js';
 import type { AdaptiveSettleDelay } from './adaptive-settle.js';
 
 export interface PrintSessionOptions {
   id: string;
   workdir: string;
-  claudeBin?: string;
+  /** LLM provider port — injected by composition root (PRD 024 MG-7) */
+  llmProvider: LlmProvider;
   initialPrompt?: string;
   /** Per-session cost cap in USD */
   maxBudgetUsd?: number;
@@ -52,7 +52,7 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
   const {
     id,
     workdir,
-    claudeBin,
+    llmProvider,
     initialPrompt,
     maxBudgetUsd,
     appendSystemPrompt,
@@ -61,7 +61,7 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
     spawnArgs,
   } = options;
 
-  const provider = new ClaudeCodeProvider(claudeBin);
+  const provider = llmProvider;
   const queue = new PQueue({ concurrency: 1 });
 
   let status: SessionStatus = 'ready'; // Print sessions start ready immediately

@@ -28,10 +28,15 @@ import {
   createTestEvent,
 } from './events/index.js';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './discovery-service.js';
-import { copyMethodology, copyStrategy, validateTargetIds } from '../registry/resource-copier.js';
+import { validateTargetIds } from '../registry/resource-copier.js';
 import { reloadConfig, validateConfig } from '../../shared/config/config-reloader.js';
 import path from 'path';
 import { randomBytes } from 'crypto';
+
+// PRD 024 MG-8: Resource copier types — injected as callbacks from composition root
+import type { CopyMethodologyRequest, CopyStrategyRequest, CopyResponse } from '../registry/resource-copier.js';
+export type CopyMethodologyFn = (req: CopyMethodologyRequest, rootDir?: string) => Promise<CopyResponse>;
+export type CopyStrategyFn = (req: CopyStrategyRequest, rootDir?: string) => Promise<CopyResponse>;
 
 // ── Event Cursor Management (Phase 1: In-Memory) ────
 
@@ -198,12 +203,19 @@ function validateProjectIdFormat(projectId: string): boolean {
 
 // ── Routes Registration ────
 
+/** PRD 024 MG-8: Dependencies for project routes, including injected resource copier callbacks */
+export interface ProjectRoutesDeps {
+  copyMethodology: CopyMethodologyFn;
+  copyStrategy: CopyStrategyFn;
+}
+
 export async function registerProjectRoutes(
   app: FastifyInstance,
   discoveryService: DiscoveryService,
   registry: InMemoryProjectRegistry,
   eventPersistence?: EventPersistence,
   rootDir: string = process.cwd(),
+  deps?: ProjectRoutesDeps,
 ): Promise<void> {
   const validator = new DefaultIsolationValidator();
 
@@ -661,7 +673,11 @@ export async function registerProjectRoutes(
           }
         }
 
-        const result = await copyMethodology({
+        const copyMethodologyFn = deps?.copyMethodology;
+        if (!copyMethodologyFn) {
+          return reply.status(500).send({ error: 'copyMethodology not configured' });
+        }
+        const result = await copyMethodologyFn({
           source_id,
           method_name,
           target_ids,
@@ -730,7 +746,11 @@ export async function registerProjectRoutes(
           }
         }
 
-        const result = await copyStrategy({
+        const copyStrategyFn = deps?.copyStrategy;
+        if (!copyStrategyFn) {
+          return reply.status(500).send({ error: 'copyStrategy not configured' });
+        }
+        const result = await copyStrategyFn({
           source_id,
           strategy_name,
           target_ids,

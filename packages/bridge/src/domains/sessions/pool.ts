@@ -11,6 +11,7 @@ import { AdaptiveSettleDelay, parseAdaptiveSettleConfig, isAdaptiveSettleEnabled
 import { SpawnQueue } from './spawn-queue.js';
 import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
 import type { PtyProvider } from '../../ports/pty-provider.js';
+import type { LlmProvider } from '../../ports/llm-provider.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -121,6 +122,8 @@ export interface PoolOptions {
   minSpawnGapMs?: number;
   /** PRD 023 D2: PTY provider for dependency injection. */
   ptyProvider?: PtyProvider;
+  /** PRD 024 MG-7: LLM provider for print-mode sessions (dependency injection). */
+  llmProvider?: LlmProvider;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -162,6 +165,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const claudeBin = options?.claudeBin;
   const settleDelayMs = options?.settleDelayMs;
   const ptyProvider = options?.ptyProvider;
+  const llmProvider = options?.llmProvider;
   const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
@@ -464,10 +468,13 @@ export function createPool(options?: PoolOptions): SessionPool {
           await new Promise(r => setTimeout(r, spawn_delay_ms));
         }
 
+        if (!llmProvider) {
+          throw new Error('Print-mode sessions require an llmProvider. Pass it via PoolOptions.');
+        }
         const printSession = createPrintSession({
           id: sessionId,
           workdir: effectiveWorkdir,
-          claudeBin,
+          llmProvider,
           initialPrompt: initialPrompt ?? undefined,  // No split delivery needed
           maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
           appendSystemPrompt: typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : undefined,
