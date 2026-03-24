@@ -12,7 +12,7 @@ import { createTranscriptReader } from './domains/sessions/transcript-reader.js'
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
-import { createSessionChannels, appendMessage } from './domains/sessions/channels.js';
+import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
 import { createSessionPersistenceStore, type SessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
@@ -375,7 +375,6 @@ const methodologySource = new StdlibSource();
 const methodologyStore = new MethodologySessionStore(methodologySource);
 registerMethodologyRoutes(app, methodologyStore, {
   pool,
-  appendMessage,
   eventBus,
 });
 

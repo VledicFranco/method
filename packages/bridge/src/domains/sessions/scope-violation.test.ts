@@ -105,6 +105,14 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
   it('emits scope_violation event when agent writes to out-of-scope file', () => {
     const channels = createSessionChannels();
     const outputCallbacks: ((data: string) => void)[] = [];
+    const busEvents: Array<Record<string, unknown>> = [];
+    const mockBus = {
+      emit(input: Record<string, unknown>) {
+        const evt = { ...input, id: `evt-${busEvents.length}`, timestamp: new Date().toISOString(), sequence: busEvents.length + 1 };
+        busEvents.push(evt);
+        return evt;
+      },
+    };
 
     const config = parseWatcherConfig({
       PTY_WATCHER_ENABLED: 'true',
@@ -120,6 +128,8 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
       config,
       undefined,
       ['packages/bridge/**'],  // allowed_paths
+      undefined,
+      mockBus as any,
     );
 
     // Simulate agent writing to an out-of-scope file
@@ -127,11 +137,10 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
       cb('Write file_path: "packages/core/src/index.ts"\n');
     }
 
-    // Check events channel for scope_violation
-    const events = readMessages(channels.events, 0);
-    const scopeViolations = events.messages.filter(m => m.type === 'scope_violation');
+    // Check bus events for scope_violation
+    const scopeViolations = busEvents.filter(e => (e.type as string).includes('scope_violation'));
     assert.ok(scopeViolations.length > 0, 'Should emit scope_violation event');
-    assert.equal(scopeViolations[0].content.path, 'packages/core/src/index.ts');
+    assert.equal((scopeViolations[0].payload as any).path, 'packages/core/src/index.ts');
 
     watcher.detach();
   });
@@ -139,6 +148,14 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
   it('does NOT emit scope_violation for in-scope Write (SC-8)', () => {
     const channels = createSessionChannels();
     const outputCallbacks: ((data: string) => void)[] = [];
+    const busEvents: Array<Record<string, unknown>> = [];
+    const mockBus = {
+      emit(input: Record<string, unknown>) {
+        const evt = { ...input, id: `evt-${busEvents.length}`, timestamp: new Date().toISOString(), sequence: busEvents.length + 1 };
+        busEvents.push(evt);
+        return evt;
+      },
+    };
 
     const config = parseWatcherConfig({
       PTY_WATCHER_ENABLED: 'true',
@@ -154,6 +171,8 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
       config,
       undefined,
       ['packages/bridge/**'],
+      undefined,
+      mockBus as any,
     );
 
     // Simulate agent writing to an in-scope file
@@ -161,9 +180,8 @@ describe('PtyWatcher scope_violation integration (PRD 014 SC-2)', () => {
       cb('Write file_path: "packages/bridge/src/pool.ts"\n');
     }
 
-    // Check events channel — should have no scope_violation
-    const events = readMessages(channels.events, 0);
-    const scopeViolations = events.messages.filter(m => m.type === 'scope_violation');
+    // Check bus events — should have no scope_violation
+    const scopeViolations = busEvents.filter(e => (e.type as string).includes('scope_violation'));
     assert.equal(scopeViolations.length, 0, 'Should NOT emit scope_violation for in-scope file');
 
     watcher.detach();

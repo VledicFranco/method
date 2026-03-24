@@ -279,15 +279,22 @@ describe('PtyWatcher diagnostics integration (PRD 012)', () => {
     watcher.detach();
   });
 
-  it('emits permission_prompt_detected to events channel', () => {
-    const watcher = createPtyWatcher('diag-4', channels, makeSubscribeFn(), defaultConfig());
+  it('emits permission_prompt_detected to event bus', () => {
+    const busEvents: Array<Record<string, unknown>> = [];
+    const mockBus = {
+      emit(input: Record<string, unknown>) {
+        const evt = { ...input, id: `evt-${busEvents.length}`, timestamp: new Date().toISOString(), sequence: busEvents.length + 1 };
+        busEvents.push(evt);
+        return evt;
+      },
+    };
+    const watcher = createPtyWatcher('diag-4', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus as any);
 
     emitData('Allow Read? (y/n)\n');
 
-    const events = readMessages(channels.events, 0);
-    const permEvent = events.messages.find(m => m.type === 'permission_prompt_detected');
+    const permEvent = busEvents.find(e => e.type === 'session.observation.permission_prompt_detected');
     assert.ok(permEvent);
-    assert.equal(permEvent.sender, 'pty-watcher');
+    assert.equal((permEvent.payload as any).channelTarget, 'events');
 
     watcher.detach();
   });

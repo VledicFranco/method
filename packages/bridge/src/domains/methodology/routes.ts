@@ -37,8 +37,8 @@ export type AppendMessageFn = (
 
 export interface MethodologyRoutesDeps {
   pool: SessionPool;
-  /** PRD 024 MG-6: Injected callback replacing direct import of sessions/channels.appendMessage */
-  appendMessage: AppendMessageFn;
+  /** @deprecated PRD 026 Phase 3: appendMessage removed — events go through EventBus only */
+  appendMessage?: AppendMessageFn;
   /** PRD 026: EventBus for methodology domain events */
   eventBus?: EventBus;
 }
@@ -48,7 +48,7 @@ export function registerMethodologyRoutes(
   store: MethodologySessionStore,
   deps: MethodologyRoutesDeps,
 ): void {
-  const { pool, appendMessage, eventBus } = deps;
+  const { eventBus } = deps;
 
   // ── GET /api/methodology/list ──
 
@@ -167,29 +167,7 @@ export function registerMethodologyRoutes(
         } catch { /* non-fatal — bus emission must never block step advance */ }
       }
 
-      // Fire-and-forget: emit step progress to channels (legacy — retained until Phase 3)
-      try {
-        const channels = pool.getChannels(sid);
-        if (result.previousStep) {
-          appendMessage(channels.progress, sid, 'step_completed', {
-            methodology: result.methodologyId,
-            method: result.methodId,
-            step: result.previousStep.id,
-            step_name: result.previousStep.name,
-          });
-        }
-        if (result.nextStep) {
-          appendMessage(channels.progress, sid, 'step_started', {
-            methodology: result.methodologyId,
-            method: result.methodId,
-            step: result.nextStep.id,
-            step_name: result.nextStep.name,
-          });
-        }
-      } catch (err) {
-        // Log channel errors — silent swallowing hides broken progress reporting (F-P-6)
-        console.warn(`[methodology] appendMessage failed for session ${sid}: ${(err as Error).message}`);
-      }
+      // PRD 026 Phase 3: appendMessage removed — events go through EventBus only
 
       return reply.status(200).send(result);
     } catch (e) {

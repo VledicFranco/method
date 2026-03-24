@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { spawnSession, type PtySession } from './pty-session.js';
 import { createPrintSession } from './print-session.js';
-import { createSessionChannels, appendMessage, type SessionChannels } from './channels.js';
+import { createSessionChannels, type SessionChannels } from './channels.js';
 import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
 import { generateAutoRetro } from './auto-retro.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
@@ -323,13 +323,20 @@ export function createPool(options?: PoolOptions): SessionPool {
         });
 
         if (result.written && result.path) {
-          // Emit retro event to session's events channel
-          const channels = sessionChannels.get(sessionId);
-          if (channels) {
-            appendMessage(channels.events, 'pty-watcher', 'retro_generated', {
-              path: result.path,
-              observations_count: watcher.observations.length,
-            });
+          // PRD 026 Phase 3: retro_generated emitted via eventBus (Phase 2)
+          // appendMessage removed — ChannelSink receives from bus
+          if (eventBus) {
+            try {
+              eventBus.emit({
+                version: 1,
+                domain: 'session',
+                type: 'session.retro_generated',
+                severity: 'info',
+                sessionId,
+                payload: { path: result.path, observations_count: watcher.observations.length },
+                source: 'bridge/sessions/pool',
+              });
+            } catch { /* non-fatal */ }
           }
         }
       }
@@ -577,17 +584,11 @@ export function createPool(options?: PoolOptions): SessionPool {
         }
       }
 
-      // PRD 008: Create channels and emit 'started' event
+      // PRD 008: Create channels (legacy — retained for getChannels() compatibility)
       const channels = createSessionChannels();
       sessionChannels.set(sessionId, channels);
-      appendMessage(channels.events, 'bridge', 'started', {
-        session_id: sessionId,
-        parent_session_id: parentSessionId ?? null,
-        depth: effectiveDepth,
-        mode: effectiveMode,
-      });
 
-      // PRD 026: Emit session.spawned to event bus (dual-emit during migration)
+      // PRD 026 Phase 3: session.spawned emitted via eventBus only (appendMessage removed)
       if (eventBus) {
         eventBus.emit({
           version: 1,
@@ -892,18 +893,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         // action === 'keep': leave worktree on disk
       }
 
-      // PRD 008: Auto-generate 'killed' event
-      const channels = sessionChannels.get(sessionId);
-      if (channels) {
-        appendMessage(channels.events, 'bridge', 'killed', {
-          session_id: sessionId,
-          killed_by: 'api',
-          worktree_action: worktreeAction ?? 'keep',
-          worktree_cleaned: worktreeCleaned,
-        });
-      }
-
-      // PRD 026: Emit session.killed to event bus (dual-emit during migration)
+      // PRD 026 Phase 3: session.killed emitted via eventBus only (appendMessage removed)
       if (eventBus) {
         eventBus.emit({
           version: 1,
@@ -1042,16 +1032,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           handleSessionDeath(sessionId, 'stale');
           session.kill();
 
-          const channels = sessionChannels.get(sessionId);
-          if (channels) {
-            appendMessage(channels.events, 'bridge', 'stale', {
-              session_id: sessionId,
-              inactive_ms: inactiveMs,
-              action: 'auto_killed',
-            });
-          }
-
-          // PRD 026: Emit session.stale (auto-killed) to event bus
+          // PRD 026 Phase 3: session.stale emitted via eventBus only (appendMessage removed)
           if (eventBus) {
             eventBus.emit({
               version: 1,
@@ -1077,17 +1058,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         if (inactiveMs >= config.stale_timeout_ms && !isStale) {
           sessionStaleFlags.set(sessionId, true);
 
-          const channels = sessionChannels.get(sessionId);
-          if (channels) {
-            appendMessage(channels.events, 'bridge', 'stale', {
-              session_id: sessionId,
-              inactive_ms: inactiveMs,
-              action: 'marked_stale',
-              kill_in_ms: config.kill_timeout_ms - inactiveMs,
-            });
-          }
-
-          // PRD 026: Emit session.stale (marked) to event bus
+          // PRD 026 Phase 3: session.stale emitted via eventBus only (appendMessage removed)
           if (eventBus) {
             eventBus.emit({
               version: 1,

@@ -16,7 +16,6 @@ export type {
 } from './pool.js';
 
 export {
-  appendMessage,
   readMessages,
   createSessionChannels,
 } from './channels.js';

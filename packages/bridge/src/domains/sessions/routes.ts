@@ -19,7 +19,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { SessionPool } from './pool.js';
-import { appendMessage, readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
+import { readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
 import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
 import type { EventBus } from '../../ports/event-bus.js';
 
@@ -395,24 +395,20 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       return reply.status(400).send({ error: 'Missing required field: type' });
     }
     try {
-      const channels = pool.getChannels(id);
-      const sequence = appendMessage(channels.progress, sender ?? id, type, content ?? {});
-
-      // PRD 026 Phase 3: Emit to bus for ChannelSink
+      // PRD 026 Phase 3: Emit to bus (ChannelSink captures for reads)
+      let sequence = 0;
       if (eventBus) {
-        try {
-          eventBus.emit({
-            version: 1,
-            domain: 'session',
-            type: `session.channel.${type}`,
-            severity: 'info',
-            sessionId: id,
-            payload: { channelTarget: 'progress', sender: sender ?? id, ...content },
-            source: 'bridge/sessions/channels',
-          });
-        } catch { /* bus emission non-fatal */ }
+        const evt = eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: `session.channel.${type}`,
+          severity: 'info',
+          sessionId: id,
+          payload: { channelTarget: 'progress', sender: sender ?? id, ...(content ?? {}) },
+          source: 'bridge/sessions/channels',
+        });
+        sequence = evt.sequence;
       }
-
       return reply.status(201).send({ sequence, acknowledged: true });
     } catch (e) {
       const message = (e as Error).message;
@@ -431,49 +427,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       return reply.status(400).send({ error: 'Missing required field: type' });
     }
     try {
-      const channels = pool.getChannels(id);
-      const sequence = appendMessage(channels.events, sender ?? id, type, content ?? {});
-
-      // PRD 026 Phase 3: Emit to bus for ChannelSink (push notifications handled by ChannelSink)
+      // PRD 026 Phase 3: Emit to bus (ChannelSink handles push notifications via severity)
       const PUSHABLE_EVENTS = new Set(['completed', 'error', 'escalation', 'budget_warning', 'stale', 'scope_violation']);
       const severity = PUSHABLE_EVENTS.has(type) ? 'warning' as const : 'info' as const;
+      let sequence = 0;
       if (eventBus) {
-        try {
-          eventBus.emit({
-            version: 1,
-            domain: 'session',
-            type: `session.channel.${type}`,
-            severity,
-            sessionId: id,
-            payload: { channelTarget: 'events', sender: sender ?? id, ...content },
-            source: 'bridge/sessions/channels',
-          });
-        } catch { /* bus emission non-fatal */ }
+        const evt = eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: `session.channel.${type}`,
+          severity,
+          sessionId: id,
+          payload: { channelTarget: 'events', sender: sender ?? id, ...(content ?? {}) },
+          source: 'bridge/sessions/channels',
+        });
+        sequence = evt.sequence;
       }
-
-      // Legacy push notification to parent (PRD 008, PRD 014: scope_violation)
-      // Retained alongside ChannelSink push until appendMessage removal (B4)
-      if (PUSHABLE_EVENTS.has(type)) {
-        try {
-          const status = pool.status(id);
-          const parentId = status.chain.parent_session_id;
-          if (parentId) {
-            const parentStatus = pool.status(parentId);
-            if (parentStatus.status !== 'dead') {
-              const notification = [
-                `BRIDGE NOTIFICATION — Child agent [${status.nickname}] event: ${type}`,
-                status.metadata?.commission_id
-                  ? `Commission: ${status.metadata.commission_id} — ${status.metadata.task_summary ?? 'no summary'}`
-                  : `Session: ${status.nickname} (${id.substring(0, 8)})`,
-                `Details: ${JSON.stringify(content ?? {})}`,
-                `Action required: ${type === 'completed' ? 'Collect results and proceed' : type === 'error' ? 'Decide: retry, escalate, or abort' : type === 'escalation' ? 'Child is blocked — provide input' : type === 'budget_warning' ? 'Increase budget or restructure' : type === 'scope_violation' ? 'Child is writing outside its allowed scope — intervene or adjust allowed_paths' : 'Investigate stale session'}`,
-              ].join('\n');
-              pool.prompt(parentId, notification).catch(() => { /* non-fatal */ });
-            }
-          }
-        } catch { /* parent lookup failure is non-fatal */ }
-      }
-
       return reply.status(201).send({ sequence, acknowledged: true });
     } catch (e) {
       const message = (e as Error).message;

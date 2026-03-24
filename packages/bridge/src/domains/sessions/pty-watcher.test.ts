@@ -276,6 +276,8 @@ describe('Pattern Matchers (PRD 010)', () => {
 describe('PtyWatcher (PRD 010)', () => {
   let channels: SessionChannels;
   let subscribers: Set<(data: string) => void>;
+  let busEvents: Array<Record<string, unknown>>;
+  let mockBus: any;
 
   function makeSubscribeFn(): (cb: (data: string) => void) => () => void {
     return (cb) => {
@@ -305,19 +307,25 @@ describe('PtyWatcher (PRD 010)', () => {
   beforeEach(() => {
     channels = createSessionChannels();
     subscribers = new Set();
+    busEvents = [];
+    mockBus = {
+      emit(input: Record<string, unknown>) {
+        const evt = { ...input, id: `evt-${busEvents.length}`, timestamp: new Date().toISOString(), sequence: busEvents.length + 1 };
+        busEvents.push(evt);
+        return evt;
+      },
+    };
   });
 
   it('subscribes to PTY output and detects tool calls', () => {
-    const watcher = createPtyWatcher('test-1', channels, makeSubscribeFn(), defaultConfig());
+    const watcher = createPtyWatcher('test-1', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus);
 
     emitData('Read file at /src/index.ts\n');
 
-    const progress = readMessages(channels.progress, 0);
-    assert.ok(progress.messages.length > 0);
-    const toolCall = progress.messages.find(m => m.type === 'tool_call');
-    assert.ok(toolCall);
-    assert.equal(toolCall.sender, 'pty-watcher');
-    assert.equal(toolCall.content.tool, 'Read');
+    const toolCall = busEvents.find(e => e.type === 'session.observation.tool_call');
+    assert.ok(toolCall, 'should emit tool_call to bus');
+    assert.equal((toolCall.payload as any).tool, 'Read');
+    assert.equal(toolCall.sessionId, 'test-1');
 
     watcher.detach();
   });
@@ -336,29 +344,27 @@ describe('PtyWatcher (PRD 010)', () => {
   });
 
   it('emits to correct channel (progress vs events)', () => {
-    const watcher = createPtyWatcher('test-3', channels, makeSubscribeFn(), defaultConfig());
+    const watcher = createPtyWatcher('test-3', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus);
 
     emitData('TypeError: Cannot read properties of undefined\n');
 
-    const events = readMessages(channels.events, 0);
-    const errorEvent = events.messages.find(m => m.type === 'error_detected');
-    assert.ok(errorEvent);
-    assert.equal(errorEvent.sender, 'pty-watcher');
+    const errorEvent = busEvents.find(e => e.type === 'session.observation.error_detected');
+    assert.ok(errorEvent, 'should emit error_detected to bus');
+    assert.equal((errorEvent.payload as any).channelTarget, 'events');
 
     watcher.detach();
   });
 
   it('detects idle transition', () => {
-    const watcher = createPtyWatcher('test-4', channels, makeSubscribeFn(), defaultConfig());
+    const watcher = createPtyWatcher('test-4', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus);
 
     // Simulate activity then idle
     emitData('Read file at /src/index.ts\n');
     emitData('❯\n');
 
-    const progress = readMessages(channels.progress, 0);
-    const idle = progress.messages.find(m => m.type === 'idle');
-    assert.ok(idle);
-    assert.equal(idle.sender, 'pty-watcher');
+    const idle = busEvents.find(e => e.type === 'session.observation.idle');
+    assert.ok(idle, 'should emit idle to bus');
+    assert.equal((idle.payload as any).channelTarget, 'progress');
 
     watcher.detach();
   });
@@ -378,15 +384,14 @@ describe('PtyWatcher (PRD 010)', () => {
   it('respects rate limiting', () => {
     const watcher = createPtyWatcher('test-6', channels, makeSubscribeFn(), defaultConfig({
       rateLimitMs: 60_000,  // 60s — effectively blocks all but first
-    }));
+    }), undefined, undefined, undefined, mockBus);
 
     emitData('Read file at /src/a.ts\n');
     emitData('Read file at /src/b.ts\n');
     emitData('Read file at /src/c.ts\n');
 
-    const progress = readMessages(channels.progress, 0);
     // Only first tool_call should get through the rate limiter
-    const toolCalls = progress.messages.filter(m => m.type === 'tool_call');
+    const toolCalls = busEvents.filter(e => e.type === 'session.observation.tool_call');
     assert.equal(toolCalls.length, 1);
 
     // But all observations should be recorded
@@ -413,14 +418,13 @@ describe('PtyWatcher (PRD 010)', () => {
   it('respects pattern filter', () => {
     const watcher = createPtyWatcher('test-8', channels, makeSubscribeFn(), defaultConfig({
       patterns: new Set(['git_commit']),  // only git commits
-    }));
+    }), undefined, undefined, undefined, mockBus);
 
     emitData('Read file at /src/index.ts\n');
     emitData('[main abc1234] feat: commit\n');
 
-    const progress = readMessages(channels.progress, 0);
-    const toolCalls = progress.messages.filter(m => m.type === 'tool_call');
-    const gitCommits = progress.messages.filter(m => m.type === 'git_commit');
+    const toolCalls = busEvents.filter(e => (e.type as string).includes('tool_call'));
+    const gitCommits = busEvents.filter(e => (e.type as string).includes('git_commit'));
     assert.equal(toolCalls.length, 0);
     assert.equal(gitCommits.length, 1);
 
@@ -428,29 +432,27 @@ describe('PtyWatcher (PRD 010)', () => {
   });
 
   it('strips ANSI codes before matching', () => {
-    const watcher = createPtyWatcher('test-9', channels, makeSubscribeFn(), defaultConfig());
+    const watcher = createPtyWatcher('test-9', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus);
 
     // Simulate ANSI-wrapped tool name
     emitData('\x1b[1mRead\x1b[0m file at /src/index.ts\n');
 
-    const progress = readMessages(channels.progress, 0);
-    const toolCall = progress.messages.find(m => m.type === 'tool_call');
+    const toolCall = busEvents.find(e => e.type === 'session.observation.tool_call');
     assert.ok(toolCall);
 
     watcher.detach();
   });
 
   it('handles cross-chunk patterns via line buffer', () => {
-    const watcher = createPtyWatcher('test-10', channels, makeSubscribeFn(), defaultConfig());
+    const watcher = createPtyWatcher('test-10', channels, makeSubscribeFn(), defaultConfig(), undefined, undefined, undefined, mockBus);
 
     // Git commit output split across chunks
     emitData('[main abc1234');
     emitData('] feat: split commit message\n');
 
-    const progress = readMessages(channels.progress, 0);
-    const gitCommit = progress.messages.find(m => m.type === 'git_commit');
+    const gitCommit = busEvents.find(e => e.type === 'session.observation.git_commit');
     assert.ok(gitCommit);
-    assert.equal(gitCommit.content.hash, 'abc1234');
+    assert.equal((gitCommit.payload as any).hash, 'abc1234');
 
     watcher.detach();
   });

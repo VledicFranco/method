@@ -9,7 +9,7 @@ import {
   PROMPT_CHAR_RE,
   createScopeViolationMatcher,
 } from './pattern-matchers.js';
-import { appendMessage, type SessionChannels } from './channels.js';
+import type { SessionChannels } from './channels.js';
 import type { EventBus } from '../../ports/event-bus.js';
 
 /** PRD 012: Callback invoked for each observation (used by DiagnosticsTracker). */
@@ -104,7 +104,8 @@ const CATEGORY_DEDUP_OVERRIDES: Partial<Record<ObservationCategory, number>> = {
 
 export function createPtyWatcher(
   sessionId: string,
-  channels: SessionChannels,
+  /** @deprecated Channels no longer used — events go through EventBus. Retained for call-site compat. */
+  _channels: SessionChannels,
   onOutputSubscribe: (cb: (data: string) => void) => () => void,
   config: WatcherConfig,
   onObservation?: ObservationCallback,
@@ -215,10 +216,8 @@ export function createPtyWatcher(
         lastActivityTimestamp = now;
         isWorking = true;
 
-        // Emit to channel (with rate limiting + dedup)
+        // Emit to event bus (with rate limiting + dedup)
         if (shouldEmit(match, now)) {
-          const channel = match.channelTarget === 'progress' ? channels.progress : channels.events;
-          appendMessage(channel, 'pty-watcher', match.messageType, match.content);
           emitToBus(match.channelTarget, match.messageType, match.content);
           recordEmission(match, now);
 
@@ -247,7 +246,6 @@ export function createPtyWatcher(
         isWorking = true;
 
         if (shouldEmit(match, now)) {
-          appendMessage(channels.events, 'pty-watcher', match.messageType, match.content);
           emitToBus('events', match.messageType, match.content, 'warning');
           recordEmission(match, now);
 
@@ -293,10 +291,6 @@ export function createPtyWatcher(
         // Rate-limit idle emissions
         const lastIdleEmit = lastEmissionTime.get('idle') ?? 0;
         if (now - lastIdleEmit >= config.rateLimitMs) {
-          appendMessage(channels.progress, 'pty-watcher', 'idle', {
-            idle_after_seconds: idleAfterSeconds,
-            last_activity: lastActivity,
-          });
           emitToBus('progress', 'idle', {
             idle_after_seconds: idleAfterSeconds,
             last_activity: lastActivity,

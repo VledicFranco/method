@@ -38,18 +38,35 @@ function createMockAppendMessage(): AppendMessageFn & { calls: Array<unknown[]> 
   return fn;
 }
 
+function createMockEventBus() {
+  const events: Array<Record<string, unknown>> = [];
+  return {
+    events,
+    emit(input: any) {
+      const evt = { ...input, id: `evt-${events.length + 1}`, timestamp: new Date().toISOString(), sequence: events.length + 1 };
+      events.push(evt);
+      return evt;
+    },
+    subscribe() { return { unsubscribe() {} }; },
+    query() { return []; },
+    registerSink() {},
+    importEvent() {},
+  };
+}
+
 async function createTestApp(opts?: {
   pool?: SessionPool;
   appendMessage?: AppendMessageFn;
   store?: MethodologySessionStore;
-}): Promise<{ app: FastifyInstance; store: MethodologySessionStore }> {
+  eventBus?: any;
+}): Promise<{ app: FastifyInstance; store: MethodologySessionStore; eventBus: ReturnType<typeof createMockEventBus> }> {
   const app = Fastify({ logger: false });
   const store = opts?.store ?? new MethodologySessionStore(new StdlibSource());
   const pool = opts?.pool ?? createMockPool();
-  const appendMessage = opts?.appendMessage ?? createMockAppendMessage();
-  registerMethodologyRoutes(app, store, { pool, appendMessage });
+  const eventBus = opts?.eventBus ?? createMockEventBus();
+  registerMethodologyRoutes(app, store, { pool, eventBus });
   await app.ready();
-  return { app, store };
+  return { app, store, eventBus };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -264,10 +281,9 @@ describe('POST /api/methodology/sessions/:sid/step/advance', () => {
     }
   });
 
-  it('emits channel messages for previousStep and nextStep', async () => {
-    const appendMessage = createMockAppendMessage();
+  it('emits bus events for previousStep and nextStep', async () => {
     const pool = createMockPool();
-    const { app, store } = await createTestApp({ pool, appendMessage });
+    const { app, store, eventBus } = await createTestApp({ pool });
     try {
       store.loadMethod('channel-sess', 'P0-META', 'M1-MDES');
 
@@ -277,22 +293,21 @@ describe('POST /api/methodology/sessions/:sid/step/advance', () => {
       });
       assert.equal(res.statusCode, 200);
 
-      // Should have called appendMessage for previousStep (step_completed) and nextStep (step_started)
       const body = JSON.parse(res.body);
       assert.ok(body.previousStep, 'should have previousStep');
 
-      // appendMessage should have been called at least once for step_completed
-      const completedCall = appendMessage.calls.find(
-        (call) => call[2] === 'step_completed',
+      // eventBus should have been called with step_completed
+      const completedEvent = eventBus.events.find(
+        (e) => e.type === 'methodology.step_completed',
       );
-      assert.ok(completedCall, 'appendMessage should be called with step_completed');
+      assert.ok(completedEvent, 'eventBus should emit methodology.step_completed');
 
       // If nextStep exists, should have step_started too
       if (body.nextStep) {
-        const startedCall = appendMessage.calls.find(
-          (call) => call[2] === 'step_started',
+        const startedEvent = eventBus.events.find(
+          (e) => e.type === 'methodology.step_started',
         );
-        assert.ok(startedCall, 'appendMessage should be called with step_started');
+        assert.ok(startedEvent, 'eventBus should emit methodology.step_started');
       }
     } finally {
       await app.close();
@@ -343,9 +358,8 @@ describe('POST /api/methodology/sessions/:sid/step/advance', () => {
   });
 
   it('advance without nextStep does not emit step_started', async () => {
-    const appendMessage = createMockAppendMessage();
     const pool = createMockPool();
-    const { app, store } = await createTestApp({ pool, appendMessage });
+    const { app, store, eventBus } = await createTestApp({ pool });
     try {
       store.loadMethod('last-advance-sess', 'P0-META', 'M1-MDES');
 
@@ -354,8 +368,8 @@ describe('POST /api/methodology/sessions/:sid/step/advance', () => {
       for (let i = 0; i < status.totalSteps - 2; i++) {
         store.advanceStep('last-advance-sess');
       }
-      // Clear calls from direct store.advanceStep calls
-      appendMessage.calls.length = 0;
+      // Clear events from direct store.advanceStep calls
+      eventBus.events.length = 0;
 
       // This advance reaches terminal — nextStep = null
       const res = await app.inject({
@@ -367,10 +381,10 @@ describe('POST /api/methodology/sessions/:sid/step/advance', () => {
       assert.equal(body.nextStep, null, 'nextStep should be null at terminal');
 
       // Should have step_completed but NOT step_started
-      const completedCall = appendMessage.calls.find((c) => c[2] === 'step_completed');
-      assert.ok(completedCall, 'should emit step_completed');
-      const startedCall = appendMessage.calls.find((c) => c[2] === 'step_started');
-      assert.equal(startedCall, undefined, 'should NOT emit step_started when nextStep is null');
+      const completedEvent = eventBus.events.find((e: any) => e.type === 'methodology.step_completed');
+      assert.ok(completedEvent, 'should emit step_completed');
+      const startedEvent = eventBus.events.find((e: any) => e.type === 'methodology.step_started');
+      assert.equal(startedEvent, undefined, 'should NOT emit step_started when nextStep is null');
     } finally {
       await app.close();
     }
