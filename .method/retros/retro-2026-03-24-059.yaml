@@ -1,0 +1,38 @@
+session_id: "com-20260324-1607-prd-026-phase-3-sinks-replay"
+methodology: "P2-SD"
+method: "com"
+date: "2026-03-24"
+hardest_decision: >
+  Whether to add appendFile to FileSystemProvider port (extending an existing
+  interface that many modules implement) vs using read+rewrite for JSONL append.
+  Chose appendFile — clean extension, necessary for O(1) append performance,
+  only 1 test mock needed updating.
+observations:
+  - >
+    The spec omitted pty-watcher from the "Remove appendMessage from all domains"
+    list despite it having 3 call sites. Phase A cross-reference caught this as
+    CRITICAL before any code was written. Spec inventory pays for itself.
+  - >
+    The bus API needed importEvent() for replay — BridgeEventInput deliberately
+    omits id/timestamp/sequence. This was a design gap in the original PRD 026
+    Phase 1 that Phase 3 exposed. Adding it to the port interface was clean.
+  - >
+    Severity-based push notifications (warning/error/critical) are cleaner than
+    the hard-coded PUSHABLE_EVENTS set. The old system required maintaining a
+    parallel list of event types; the new system uses the event's own severity field.
+  - >
+    All 4 B iterations completed without thrashing. The additive-then-removal
+    ordering (steps 1-4 additive, steps 5-7 removal) worked exactly as designed —
+    zero regressions during the removal phase because everything was already
+    dual-emitting.
+card_feedback:
+  essence: "Essence held — all changes serve the runtime's purpose. No theory conflicts."
+  delivery_rules: >
+    DR-15 (port discipline) was the most exercised rule — PersistenceSink's
+    FileSystemProvider usage was verified at every step. DR-14 (bridge module
+    testing) drove the comprehensive test coverage for both sinks.
+proposed_deltas:
+  - >
+    Spec should explicitly enumerate ALL appendMessage call sites when planning
+    removal, not just the ones in the most obvious files. The pty-watcher omission
+    could have caused a silent data loss if not caught in Phase A.
