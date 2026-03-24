@@ -168,7 +168,7 @@ CRITICAL GIT RULES:
    function implemented, test written). Push after every commit. If the
    session dies, nothing should be lost.
 
-3. Create a draft PR immediately after your FIRST commit and push.
+3. Create a PR (ready for review) immediately after your FIRST commit and push.
    - Title: short description (conventional commit format)
    - Body: paste the FULL commission prompt as the PR description.
      The reviewer will check your work against this spec.
