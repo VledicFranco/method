@@ -8,7 +8,20 @@
  * Pure logic only — filesystem operations (saveRetro) live in @method/bridge.
  */
 
-import yaml from 'js-yaml';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-2: Module-level yaml port
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure YamlLoader for retro-generator. Called from composition root. */
+export function setRetroGeneratorYaml(yaml: YamlLoader): void {
+  _yaml = yaml;
+}
+
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for retro-generator');
+  return _yaml;
+}
 import type { StrategyExecutionResult, NodeResult } from './strategy-executor.js';
 import type { StrategyDAG } from './strategy-parser.js';
 
@@ -278,9 +291,5 @@ export function computeCriticalPath(
  * Serialize a StrategyRetro to YAML string.
  */
 export function retroToYaml(retro: StrategyRetro): string {
-  return yaml.dump(retro, {
-    indent: 2,
-    lineWidth: 120,
-    noRefs: true,
-  });
+  return getYaml().dump(retro);
 }

@@ -19,9 +19,28 @@
  * - Mutex protection on all cursor file operations (F-R-001)
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import * as yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for cursor-manager. Called from composition root. */
+export function setCursorManagerPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for cursor-manager');
+  return _fs;
+}
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for cursor-manager');
+  return _yaml;
+}
 
 export interface CursorState {
   projectId: string;
@@ -55,8 +74,8 @@ export class CursorFileLock {
     this.lockPath = cursorFilePath;
     // Ensure directory exists for lock file
     const dir = dirname(cursorFilePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    if (_fs && !_fs.existsSync(dir)) {
+      _fs.mkdirSync(dir, { recursive: true });
     }
   }
 
@@ -189,15 +208,17 @@ export class CursorMaintenanceJob {
    */
   private async loadCursorsLocked(): Promise<GenesisCursors> {
     return this.fileLock.runExclusive(() => {
+      const fs = getFs();
+      const yaml = getYaml();
       try {
-        if (!existsSync(this.cursorFilePath)) {
+        if (!fs.existsSync(this.cursorFilePath)) {
           return {
             lastPolled: new Date().toISOString(),
             cursors: [],
           };
         }
 
-        const content = readFileSync(this.cursorFilePath, 'utf-8');
+        const content = fs.readFileSync(this.cursorFilePath, 'utf-8');
         const parsed = yaml.load(content) as any;
 
         if (parsed && typeof parsed === 'object' && 'cursors' in parsed) {
@@ -220,17 +241,19 @@ export class CursorMaintenanceJob {
    */
   private async saveCursorsLocked(cursors: GenesisCursors): Promise<void> {
     return this.fileLock.runExclusive(() => {
+      const fs = getFs();
+      const yaml = getYaml();
       try {
         const dir = dirname(this.cursorFilePath);
-        if (!existsSync(dir)) {
-          mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
         }
 
         const tmpFile = `${this.cursorFilePath}.tmp`;
-        const yamlContent = yaml.dump(cursors, { lineWidth: -1 });
+        const yamlContent = yaml.dump(cursors);
 
-        writeFileSync(tmpFile, yamlContent, 'utf-8');
-        renameSync(tmpFile, this.cursorFilePath);
+        fs.writeFileSync(tmpFile, yamlContent, { encoding: 'utf-8' });
+        fs.renameSync(tmpFile, this.cursorFilePath);
       } catch (err) {
         console.error(`[Cursor cleanup] Failed to save cursors: ${(err as Error).message}`);
       }

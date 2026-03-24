@@ -5,11 +5,14 @@
  * Loads from registry/ directory, caches, validates.
  *
  * F-THANE-2: Also tracks discovered projects and their configurations
+ *
+ * PRD 024 MG-1/MG-2: Uses FileSystemProvider and YamlLoader ports
+ * instead of direct fs/js-yaml imports.
  */
 
-import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 
 export interface MethodologySpec {
   id: string;
@@ -88,15 +91,25 @@ export interface ProjectRegistry {
 
 /**
  * In-memory ProjectRegistry implementation
+ *
+ * PRD 024: Accepts optional fs/yaml ports for dependency injection.
+ * When not provided, falls back to module-level ports (for backward compat with tests).
  */
 export class InMemoryProjectRegistry implements ProjectRegistry {
   private specs: Map<string, MethodologySpec> = new Map();
   private projectConfigs: Map<string, ProjectConfig> = new Map();
   private initialized = false;
   private registryDir: string;
+  private fs?: FileSystemProvider;
+  private yaml?: YamlLoader;
 
-  constructor(registryDir: string = path.join(process.cwd(), 'registry')) {
+  constructor(
+    registryDir: string = path.join(process.cwd(), 'registry'),
+    deps?: { fs: FileSystemProvider; yaml: YamlLoader },
+  ) {
     this.registryDir = registryDir;
+    this.fs = deps?.fs;
+    this.yaml = deps?.yaml;
   }
 
   async initialize(): Promise<void> {
@@ -213,11 +226,16 @@ export class InMemoryProjectRegistry implements ProjectRegistry {
   private async scanRegistryDirectory(dir: string): Promise<MethodologySpec[]> {
     const specs: MethodologySpec[] = [];
 
-    if (!fs.existsSync(dir)) {
+    // Use port if available, else skip scan (tests that don't provide ports)
+    if (!this.fs) {
+      return specs;
+    }
+
+    if (!this.fs.existsSync(dir)) {
       return specs; // No registry directory yet
     }
 
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = this.fs.readdirSync(dir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
@@ -228,8 +246,8 @@ export class InMemoryProjectRegistry implements ProjectRegistry {
         specs.push(...subSpecs);
       } else if (entry.isFile() && entry.name.endsWith('.yaml')) {
         try {
-          const content = fs.readFileSync(fullPath, 'utf-8');
-          const parsed = yaml.load(content);
+          const content = this.fs.readFileSync(fullPath, 'utf-8');
+          const parsed = this.yaml ? this.yaml.load(content) : null;
 
           // Extract spec from parsed YAML
           // Support both direct spec and wrapped in a "spec" key

@@ -2,8 +2,8 @@
 // Synthesizes a minimal retrospective from PTY watcher observations
 // when a session terminates. Writes to .method/retros/.
 
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { ActivityObservation } from './pty-watcher.js';
 
 export interface AutoRetroInput {
@@ -14,6 +14,8 @@ export interface AutoRetroInput {
   terminatedAt: Date;
   terminationReason: 'completed' | 'killed' | 'stale' | 'exited';
   projectRoot: string;   // original project root (pre-worktree)
+  /** PRD 024 MG-1: FileSystem port — injected by composition root */
+  fs?: FileSystemProvider;
 }
 
 export interface AutoRetroResult {
@@ -27,19 +29,24 @@ export interface AutoRetroResult {
  * Best-effort — failure is non-fatal.
  */
 export function generateAutoRetro(input: AutoRetroInput): AutoRetroResult {
+  const fs = input.fs;
   const retrosDir = join(input.projectRoot, '.method', 'retros');
 
   // Skip if .method/retros/ doesn't exist (project may not use method system)
-  if (!existsSync(retrosDir)) {
+  if (fs ? !fs.existsSync(retrosDir) : false) {
     return { written: false, path: null, reason: 'retros directory not found' };
+  }
+  // Fallback for when fs port is not provided (backward compat)
+  if (!fs) {
+    return { written: false, path: null, reason: 'FileSystemProvider not available' };
   }
 
   try {
-    const filename = nextRetroFilename(retrosDir);
+    const filename = nextRetroFilename(retrosDir, fs);
     const filepath = join(retrosDir, filename);
     const yaml = buildRetroYaml(input);
 
-    writeFileSync(filepath, yaml, 'utf-8');
+    fs.writeFileSync(filepath, yaml, { encoding: 'utf-8' });
     return { written: true, path: filepath };
   } catch (e) {
     return { written: false, path: null, reason: (e as Error).message };
@@ -49,7 +56,7 @@ export function generateAutoRetro(input: AutoRetroInput): AutoRetroResult {
 /**
  * Compute the next retro filename: retro-YYYY-MM-DD-NNN.yaml
  */
-function nextRetroFilename(retrosDir: string): string {
+function nextRetroFilename(retrosDir: string, fs: FileSystemProvider): string {
   const today = new Date();
   const y = today.getFullYear();
   const m = String(today.getMonth() + 1).padStart(2, '0');
@@ -59,7 +66,7 @@ function nextRetroFilename(retrosDir: string): string {
 
   let maxSeq = 0;
   try {
-    const files = readdirSync(retrosDir);
+    const files = fs.readdirSync(retrosDir);
     for (const f of files) {
       const match = pattern.exec(f);
       if (match) {

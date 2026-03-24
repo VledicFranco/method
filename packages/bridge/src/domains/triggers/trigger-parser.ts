@@ -6,8 +6,21 @@
  * Backward compatible — manual and mcp_tool triggers still work unchanged.
  */
 
-import yaml from 'js-yaml';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 import type { TriggerConfig, TriggerType } from './types.js';
+
+// PRD 024 MG-2: Module-level yaml port
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure YamlLoader for trigger-parser. Called from composition root. */
+export function setTriggerParserYaml(yaml: YamlLoader): void {
+  _yaml = yaml;
+}
+
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for trigger-parser');
+  return _yaml;
+}
 
 // Types that are event-driven (Phase 2)
 const EVENT_TRIGGER_TYPES: TriggerType[] = [
@@ -32,7 +45,7 @@ export interface ParsedStrategyTriggers {
  * Returns both the full trigger list and the event-only subset.
  */
 export function parseStrategyTriggers(yamlContent: string): ParsedStrategyTriggers {
-  const raw = yaml.load(yamlContent) as { strategy?: Record<string, unknown> };
+  const raw = getYaml().load(yamlContent) as { strategy?: Record<string, unknown> };
 
   if (!raw?.strategy) {
     throw new Error('Invalid strategy YAML: missing "strategy" root key');
@@ -81,7 +94,7 @@ export function parseStrategyTriggers(yamlContent: string): ParsedStrategyTrigge
  */
 export function hasEventTriggers(yamlContent: string): boolean {
   try {
-    const raw = yaml.load(yamlContent) as { strategy?: { triggers?: unknown[] } };
+    const raw = getYaml().load(yamlContent) as { strategy?: { triggers?: unknown[] } };
     const triggers = raw?.strategy?.triggers;
     if (!Array.isArray(triggers)) return false;
 

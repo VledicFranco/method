@@ -12,6 +12,7 @@ import { SpawnQueue } from './spawn-queue.js';
 import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
 import type { PtyProvider } from '../../ports/pty-provider.js';
 import type { LlmProvider } from '../../ports/llm-provider.js';
+import type { FileSystemProvider } from '../../ports/file-system.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -124,6 +125,8 @@ export interface PoolOptions {
   ptyProvider?: PtyProvider;
   /** PRD 024 MG-7: LLM provider for print-mode sessions (dependency injection). */
   llmProvider?: LlmProvider;
+  /** PRD 024 MG-1: FileSystem provider for auto-retro and other fs operations. */
+  fsProvider?: FileSystemProvider;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -166,6 +169,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const settleDelayMs = options?.settleDelayMs;
   const ptyProvider = options?.ptyProvider;
   const llmProvider = options?.llmProvider;
+  const fsProvider = options?.fsProvider;
   const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
@@ -309,6 +313,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           terminatedAt: new Date(),
           terminationReason: reason,
           projectRoot: originalWorkdir,
+          fs: fsProvider,
         });
 
         if (result.written && result.path) {

@@ -13,9 +13,29 @@
  * - Does not crash on errors
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level port references, set via setResourceCopierPorts()
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure port providers for resource copier. Called from composition root. */
+export function setResourceCopierPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured. Call setResourceCopierPorts() first.');
+  return _fs;
+}
+
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured. Call setResourceCopierPorts() first.');
+  return _yaml;
+}
 
 export interface CopyResult {
   project_id: string;
@@ -100,6 +120,7 @@ export function validateTargetIds(target_ids: any): { valid: boolean; error?: st
  * and validates that paths remain within the root directory structure.
  */
 function resolveProjectPath(projectId: string, rootDir: string = process.cwd()): string {
+  const fs = getFs();
   // Special case: root project
   if (projectId === 'root' || projectId === '.') {
     return rootDir;
@@ -169,6 +190,8 @@ function resolveProjectPath(projectId: string, rootDir: string = process.cwd()):
  * Returns null if file doesn't exist or is invalid
  */
 function loadManifest(projectPath: string): any | null {
+  const fs = getFs();
+  const yaml = getYaml();
   const manifestPath = path.join(projectPath, '.method', 'manifest.yaml');
 
   try {
@@ -192,6 +215,8 @@ function loadManifest(projectPath: string): any | null {
  * Returns true on success, false on error
  */
 function saveManifest(projectPath: string, manifest: any): boolean {
+  const fs = getFs();
+  const yaml = getYaml();
   try {
     const methodDir = path.join(projectPath, '.method');
     const manifestPath = path.join(methodDir, 'manifest.yaml');
@@ -218,19 +243,15 @@ function saveManifest(projectPath: string, manifest: any): boolean {
     }
 
     // Write lock file
-    fs.writeFileSync(lockPath, Date.now().toString(), 'utf-8');
+    fs.writeFileSync(lockPath, Date.now().toString(), { encoding: 'utf-8' });
 
     try {
       // Serialize manifest with proper YAML formatting
-      const content = yaml.dump(manifest, {
-        indent: 2,
-        lineWidth: 120,
-        noRefs: true,
-      });
+      const content = yaml.dump(manifest);
 
       // Atomic write: write to temp file first, then rename
       const tempPath = `${manifestPath}.tmp`;
-      fs.writeFileSync(tempPath, content, 'utf-8');
+      fs.writeFileSync(tempPath, content, { encoding: 'utf-8' });
       fs.renameSync(tempPath, manifestPath);
 
       return true;
@@ -338,7 +359,7 @@ export async function copyMethodology(req: CopyMethodologyRequest, rootDir: stri
       const targetPath = resolveProjectPath(targetId, rootDir);
 
       // Verify target exists by checking for .git directory
-      if (!fs.existsSync(path.join(targetPath, '.git'))) {
+      if (!getFs().existsSync(path.join(targetPath, '.git'))) {
         results.push({
           project_id: targetId,
           status: 'error',
@@ -481,7 +502,7 @@ export async function copyStrategy(req: CopyStrategyRequest, rootDir: string = p
       const targetPath = resolveProjectPath(targetId, rootDir);
 
       // Verify target exists by checking for .git directory
-      if (!fs.existsSync(path.join(targetPath, '.git'))) {
+      if (!getFs().existsSync(path.join(targetPath, '.git'))) {
         results.push({
           project_id: targetId,
           status: 'error',

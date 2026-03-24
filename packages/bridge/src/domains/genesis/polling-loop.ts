@@ -19,9 +19,28 @@
  * - Update cursor and persist to disk
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import * as yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for polling-loop. Called from composition root. */
+export function setPollingLoopPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for polling-loop');
+  return _fs;
+}
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for polling-loop');
+  return _yaml;
+}
 import type { SessionPool } from '../sessions/pool.js';
 import type { ProjectEvent } from '../projects/events/index.js';
 
@@ -67,8 +86,8 @@ class CursorFileLock {
     this.lockPath = cursorFilePath;
     // Ensure directory exists for lock file
     const dir = dirname(cursorFilePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    if (_fs && !_fs.existsSync(dir)) {
+      _fs.mkdirSync(dir, { recursive: true });
     }
   }
 
@@ -125,9 +144,11 @@ class CursorFileLock {
  * Load cursors from .method/genesis-cursors.yaml (synchronous, for startup)
  */
 export function loadCursors(filePath: string = DEFAULT_CURSOR_FILE): GenesisCursors {
+  const fs = getFs();
+  const yaml = getYaml();
   try {
-    if (existsSync(filePath)) {
-      const content = readFileSync(filePath, 'utf-8');
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
       const parsed = yaml.load(content) as any;
 
       if (parsed && typeof parsed === 'object' && 'cursors' in parsed) {
@@ -160,19 +181,21 @@ export async function loadCursorsLocked(
  * Save cursors to .method/genesis-cursors.yaml (synchronous)
  */
 export function saveCursors(cursors: GenesisCursors, filePath: string = DEFAULT_CURSOR_FILE): void {
+  const fs = getFs();
+  const yaml = getYaml();
   try {
     // Ensure .method directory exists
     const dir = dirname(filePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
 
     // Write YAML atomically (temp file + rename)
     const tmpFile = `${filePath}.tmp`;
-    const yamlContent = yaml.dump(cursors, { lineWidth: -1 });
+    const yamlContent = yaml.dump(cursors);
 
-    writeFileSync(tmpFile, yamlContent, 'utf-8');
-    renameSync(tmpFile, filePath);
+    fs.writeFileSync(tmpFile, yamlContent, { encoding: 'utf-8' });
+    fs.renameSync(tmpFile, filePath);
   } catch (err) {
     console.error(`Failed to save cursors to ${filePath}:`, (err as Error).message);
   }

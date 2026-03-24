@@ -13,10 +13,10 @@
  *   POST /api/registry/reload              — invalidate cache
  */
 
-import { readdir, readFile, stat, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import yaml from 'js-yaml';
 import type { FastifyInstance } from 'fastify';
+import type { FileSystemProvider, FileStat } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 
 // ── Stdlib imports ──
 
@@ -93,46 +93,56 @@ interface RegistryConfig {
   cacheTtlMs: number;
 }
 
-// ── Helpers ──
-
-async function pathExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
+/** PRD 024 MG-1/MG-2: Dependencies injected by composition root */
+export interface RegistryRoutesDeps {
+  fs: FileSystemProvider;
+  yaml: YamlLoader;
 }
 
-async function isDirectory(p: string): Promise<boolean> {
-  try {
-    const s = await stat(p);
-    return s.isDirectory();
-  } catch {
-    return false;
-  }
-}
+// ── Helpers (accept fs/yaml ports) ──
 
-async function isFile(p: string): Promise<boolean> {
-  try {
-    const s = await stat(p);
-    return s.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function safeYamlLoad(filePath: string): Promise<Record<string, unknown> | null> {
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const parsed = yaml.load(content);
-    if (parsed && typeof parsed === 'object') {
-      return parsed as Record<string, unknown>;
+function createHelpers(fs: FileSystemProvider, yamlPort: YamlLoader) {
+  async function pathExists(p: string): Promise<boolean> {
+    try {
+      await fs.access(p);
+      return true;
+    } catch {
+      return false;
     }
-    return null;
-  } catch {
-    return null;
   }
+
+  async function isDirectory(p: string): Promise<boolean> {
+    try {
+      const s = await fs.stat(p);
+      return s.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  async function isFile(p: string): Promise<boolean> {
+    try {
+      const s = await fs.stat(p);
+      return s.isFile();
+    } catch {
+      return false;
+    }
+  }
+
+  async function safeYamlLoad(filePath: string): Promise<Record<string, unknown> | null> {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const parsed = yamlPort.load(content);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, unknown>;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  return { pathExists, isDirectory, isFile, safeYamlLoad };
 }
 
 function safePath(base: string, ...segments: string[]): string | null {
@@ -318,25 +328,31 @@ function buildMethodDetail(methodologyId: string, methodId: string): Record<stri
 
 // ── Promotion Record Resolution (still YAML — protocols not in stdlib) ──
 
-async function resolvePromotionFile(config: RegistryConfig, methodologyId: string, protocolId: string): Promise<string | null> {
+async function resolvePromotionFile(
+  config: RegistryConfig,
+  methodologyId: string,
+  protocolId: string,
+  helpers: ReturnType<typeof createHelpers>,
+  fs: FileSystemProvider,
+): Promise<string | null> {
   const { registryDir } = config;
   const methodologyDir = safePath(registryDir, methodologyId);
   if (!methodologyDir) return null;
   if (protocolId.includes('..') || protocolId.includes('/') || protocolId.includes('\\')) return null;
-  if (!(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
+  if (!(await helpers.pathExists(methodologyDir)) || !(await helpers.isDirectory(methodologyDir))) return null;
 
-  const entries = await readdir(methodologyDir);
+  const entries = await fs.readdir(methodologyDir);
   const exactName = `${protocolId}-PROMOTION.yaml`;
   if (entries.includes(exactName)) {
     const exactPath = join(methodologyDir, exactName);
-    if (await isFile(exactPath)) return exactPath;
+    if (await helpers.isFile(exactPath)) return exactPath;
   }
 
   for (const entry of entries) {
     if (!entry.endsWith('-PROMOTION.yaml') && !entry.endsWith('-PROMOTION.yml')) continue;
     if (!entry.includes(protocolId)) continue;
     const entryPath = join(methodologyDir, entry);
-    if (await isFile(entryPath)) return entryPath;
+    if (await helpers.isFile(entryPath)) return entryPath;
   }
 
   return null;
@@ -344,14 +360,18 @@ async function resolvePromotionFile(config: RegistryConfig, methodologyId: strin
 
 // ── Manifest (still YAML — project config, not methodology data) ──
 
-async function loadManifest(config: RegistryConfig, tree: RegistryTree): Promise<ManifestResponse> {
+async function loadManifest(
+  config: RegistryConfig,
+  tree: RegistryTree,
+  helpers: ReturnType<typeof createHelpers>,
+): Promise<ManifestResponse> {
   const { manifestPath } = config;
 
-  if (!(await pathExists(manifestPath))) {
+  if (!(await helpers.pathExists(manifestPath))) {
     return { project: 'unknown', last_updated: '', installed: [] };
   }
 
-  const data = await safeYamlLoad(manifestPath);
+  const data = await helpers.safeYamlLoad(manifestPath);
   if (!data || !data.manifest) {
     return { project: 'unknown', last_updated: '', installed: [] };
   }
@@ -406,7 +426,11 @@ async function loadManifest(config: RegistryConfig, tree: RegistryTree): Promise
 
 // ── Route Registration ──
 
-export function registerRegistryRoutes(app: FastifyInstance): void {
+export function registerRegistryRoutes(app: FastifyInstance, deps?: RegistryRoutesDeps): void {
+  const fsPort = deps?.fs;
+  const yamlPort = deps?.yaml;
+  const helpers = fsPort && yamlPort ? createHelpers(fsPort, yamlPort) : null;
+
   const config: RegistryConfig = {
     registryDir: process.env.REGISTRY_DIR ?? join(process.cwd(), 'registry'),
     manifestPath: process.env.MANIFEST_PATH ?? join(process.cwd(), '.method', 'manifest.yaml'),
@@ -443,7 +467,7 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
       treeCacheExpiry = now + config.cacheTtlMs;
     }
 
-    const manifest = await loadManifest(config, tree);
+    const manifest = await loadManifest(config, tree, helpers!);
     return reply.status(200).send(manifest);
   });
 
@@ -467,14 +491,14 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
     }
 
     // Try YAML resolution
-    const filePath = await resolveMethodFile(config, methodology, method);
+    const filePath = await resolveMethodFile(config, methodology, method, helpers!, fsPort!);
     if (!filePath) {
       return reply.status(404).send({ error: `Method ${methodology}/${method} not found` });
     }
 
     try {
-      const content = await readFile(filePath, 'utf-8');
-      const parsed = yaml.load(content);
+      const content = await fsPort!.readFile(filePath, 'utf-8');
+      const parsed = yamlPort!.load(content);
       return reply.status(200).send(parsed);
     } catch (e) {
       return reply.status(422).send({
@@ -497,14 +521,14 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
       return reply.status(400).send({ error: 'Invalid path parameters' });
     }
 
-    const filePath = await resolvePromotionFile(config, methodology, protocolId);
+    const filePath = await resolvePromotionFile(config, methodology, protocolId, helpers!, fsPort!);
     if (!filePath) {
       return reply.status(404).send({ error: `Promotion record for ${methodology}/${protocolId} not found` });
     }
 
     try {
-      const content = await readFile(filePath, 'utf-8');
-      const parsed = yaml.load(content);
+      const content = await fsPort!.readFile(filePath, 'utf-8');
+      const parsed = yamlPort!.load(content);
       return reply.status(200).send(parsed);
     } catch (e) {
       return reply.status(422).send({
@@ -529,24 +553,30 @@ export function registerRegistryRoutes(app: FastifyInstance): void {
 
 // ── YAML fallback for method detail (protocols, non-stdlib methods) ──
 
-async function resolveMethodFile(config: RegistryConfig, methodologyId: string, methodId: string): Promise<string | null> {
+async function resolveMethodFile(
+  config: RegistryConfig,
+  methodologyId: string,
+  methodId: string,
+  helpers: ReturnType<typeof createHelpers>,
+  fs: FileSystemProvider,
+): Promise<string | null> {
   const { registryDir } = config;
   const methodDir = safePath(registryDir, methodologyId, methodId);
   if (!methodDir) return null;
 
   const methodDirPath = join(methodDir, `${methodId}.yaml`);
-  if (await pathExists(methodDirPath)) return methodDirPath;
+  if (await helpers.pathExists(methodDirPath)) return methodDirPath;
 
   const methodologyDir = safePath(registryDir, methodologyId);
-  if (!methodologyDir || !(await pathExists(methodologyDir)) || !(await isDirectory(methodologyDir))) return null;
+  if (!methodologyDir || !(await helpers.pathExists(methodologyDir)) || !(await helpers.isDirectory(methodologyDir))) return null;
 
-  const entries = await readdir(methodologyDir);
+  const entries = await fs.readdir(methodologyDir);
   for (const entry of entries) {
     const entryPath = join(methodologyDir, entry);
-    if (!(await isFile(entryPath))) continue;
+    if (!(await helpers.isFile(entryPath))) continue;
     if (!entry.endsWith('.yaml')) continue;
 
-    const data = await safeYamlLoad(entryPath);
+    const data = await helpers.safeYamlLoad(entryPath);
     if (!data) continue;
 
     const protocol = data.protocol as Record<string, unknown> | undefined;

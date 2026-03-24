@@ -6,10 +6,23 @@
  * I/O operations stay in @method/bridge.
  */
 
-import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
+import type { FileSystemProvider } from '../../ports/file-system.js';
 import { retroToYaml } from './retro-generator.js';
 import type { StrategyRetro } from './retro-generator.js';
+
+// PRD 024 MG-1: Module-level fs port, set via setRetroWriterFs()
+let _fs: FileSystemProvider | null = null;
+
+/** PRD 024: Configure FileSystemProvider for retro-writer. Called from composition root. */
+export function setRetroWriterFs(fs: FileSystemProvider): void {
+  _fs = fs;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured. Call setRetroWriterFs() first.');
+  return _fs;
+}
 
 /**
  * Save a retrospective to disk.
@@ -20,6 +33,7 @@ export async function saveRetro(
   retro: StrategyRetro,
   retroDir: string,
 ): Promise<string> {
+  const fs = getFs();
   // Ensure directory exists
   await fs.mkdir(retroDir, { recursive: true });
 

@@ -23,7 +23,7 @@ import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
 import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
 import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog, setOnEventHook } from './domains/projects/routes.js';
-import { copyMethodology, copyStrategy } from './domains/registry/resource-copier.js';
+import { copyMethodology, copyStrategy, setResourceCopierPorts } from './domains/registry/resource-copier.js';
 import websocket from '@fastify/websocket';
 import { WsHub } from './shared/websocket/hub.js';
 import { registerWsRoute } from './shared/websocket/route.js';
@@ -59,6 +59,39 @@ const yamlLoader = new JsYamlLoader();
 // PRD 024 MG-7: Shared LLM provider for print-mode sessions and strategy pipelines
 const llmProvider = new ClaudeCodeProvider(sessionsConfig.claudeBin);
 
+// PRD 024 MG-1/MG-2: Wire ports into all domain modules
+setResourceCopierPorts(fsProvider, yamlLoader);
+
+// Strategies domain
+import { setRetroWriterFs } from './domains/strategies/retro-writer.js';
+import { setStrategyRoutesPorts } from './domains/strategies/strategy-routes.js';
+import { setStrategyParserYaml } from './domains/strategies/strategy-parser.js';
+import { setRetroGeneratorYaml } from './domains/strategies/retro-generator.js';
+setRetroWriterFs(fsProvider);
+setStrategyRoutesPorts(fsProvider, yamlLoader);
+setStrategyParserYaml(yamlLoader);
+setRetroGeneratorYaml(yamlLoader);
+
+// Genesis domain
+import { setCursorManagerPorts } from './domains/genesis/cursor-manager.js';
+import { setPollingLoopPorts } from './domains/genesis/polling-loop.js';
+setCursorManagerPorts(fsProvider, yamlLoader);
+setPollingLoopPorts(fsProvider, yamlLoader);
+
+// Triggers domain
+import { setTriggerRouterPorts } from './domains/triggers/trigger-router.js';
+import { setStartupScanFs } from './domains/triggers/startup-scan.js';
+import { setTriggerParserYaml } from './domains/triggers/trigger-parser.js';
+setTriggerRouterPorts(fsProvider, yamlLoader);
+setStartupScanFs(fsProvider);
+setTriggerParserYaml(yamlLoader);
+
+// Projects domain
+import { setDiscoveryServicePorts } from './domains/projects/discovery-service.js';
+import { setDiscoveryRegistryPorts } from './domains/projects/discovery-registry-integration.js';
+setDiscoveryServicePorts(fsProvider, yamlLoader);
+setDiscoveryRegistryPorts(fsProvider, yamlLoader);
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
@@ -66,6 +99,7 @@ const pool = createPool({
   minSpawnGapMs: sessionsConfig.minSpawnGapMs,
   ptyProvider,
   llmProvider,
+  fsProvider,
 });
 
 const usagePoller = createUsagePoller({
@@ -134,7 +168,7 @@ registerTranscriptRoutes(app, pool, transcriptReader);
 
 // F-I-2: Initialize and register project discovery routes
 const discoveryService = new DiscoveryService();
-const projectRegistry = new InMemoryProjectRegistry();
+const projectRegistry = new InMemoryProjectRegistry(undefined, { fs: fsProvider, yaml: yamlLoader });
 
 // ---------- Genesis Routes (PRD 020 Phase 2A) ----------
 
@@ -148,6 +182,7 @@ const genesisRouteContext: any = {
     rootDir: ROOT_DIR,
     eventLog,
     cursorMap,
+    fs: fsProvider,
   },
 };
 
@@ -203,7 +238,7 @@ if (strategiesConfig.enabled) {
 
 // ---------- Registry API (PRD 019.2) ----------
 
-registerRegistryRoutes(app);
+registerRegistryRoutes(app, { fs: fsProvider, yaml: yamlLoader });
 
 // ---------- Methodology API (PRD 021) ----------
 

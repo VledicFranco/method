@@ -8,11 +8,30 @@
  * - Emits CONFIG_DISCOVERED events
  */
 
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 import type { ProjectRegistry, ProjectConfig } from '../registry/index.js';
 import { DiscoveryService, type ProjectMetadata, type DiscoveryResult } from './discovery-service.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for discovery-registry-integration. Called from composition root. */
+export function setDiscoveryRegistryPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for discovery-registry-integration');
+  return _fs;
+}
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for discovery-registry-integration');
+  return _yaml;
+}
 
 export interface DiscoveryWithRegistryResult extends DiscoveryResult {
   configs_loaded: number;
@@ -25,8 +44,8 @@ export interface DiscoveryWithRegistryResult extends DiscoveryResult {
 export function loadProjectConfig(projectPath: string, projectId: string): ProjectConfig | null {
   try {
     const configPath = join(projectPath, '.method', 'project-config.yaml');
-    const configContent = readFileSync(configPath, 'utf-8');
-    const configData = yaml.load(configContent);
+    const configContent = getFs().readFileSync(configPath, 'utf-8');
+    const configData = getYaml().load(configContent);
 
     // Validate required fields: id and name
     if (

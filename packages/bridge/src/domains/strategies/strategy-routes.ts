@@ -5,11 +5,21 @@
  * Keeps the bridge index.ts clean (DR-04: thin wrappers).
  */
 
-import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import yaml from 'js-yaml';
 import type { LlmProvider } from './llm-provider.js';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports, set via setStrategyRoutesPorts()
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for strategy routes. Called from composition root. */
+export function setStrategyRoutesPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
 import type { StrategyYaml } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
@@ -147,7 +157,7 @@ export function registerStrategyRoutes(
       yamlContent = strategy_yaml;
     } else if (strategy_path) {
       try {
-        yamlContent = await fs.readFile(strategy_path, 'utf-8');
+        yamlContent = await _fs!.readFile(strategy_path, 'utf-8');
       } catch (e) {
         return reply.status(400).send({
           error: `Failed to read strategy file: ${(e as Error).message}`,
@@ -370,7 +380,7 @@ export function registerStrategyRoutes(
 
     let files: string[];
     try {
-      const entries = await fs.readdir(strategyDir);
+      const entries = await _fs!.readdir(strategyDir);
       files = entries.filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
     } catch (e) {
       return reply.status(200).send({
@@ -384,8 +394,8 @@ export function registerStrategyRoutes(
     for (const file of files) {
       const filePath = join(strategyDir, file);
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
-        const raw = yaml.load(content) as StrategyYaml;
+        const content = await _fs!.readFile(filePath, 'utf-8');
+        const raw = _yaml!.load(content) as StrategyYaml;
         const s = raw?.strategy;
 
         if (!s || !s.id) {

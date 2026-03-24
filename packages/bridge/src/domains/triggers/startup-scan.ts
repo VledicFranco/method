@@ -9,8 +9,21 @@
  * starts successfully even if some strategies fail to register.
  */
 
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+
+// PRD 024 MG-1: Module-level fs port
+let _fs: FileSystemProvider | null = null;
+
+/** PRD 024: Configure FileSystemProvider for startup-scan. Called from composition root. */
+export function setStartupScanFs(fs: FileSystemProvider): void {
+  _fs = fs;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for startup-scan');
+  return _fs;
+}
 import { TriggerRouter } from './trigger-router.js';
 import { hasEventTriggers } from './trigger-parser.js';
 
@@ -48,8 +61,9 @@ export async function scanAndRegisterTriggers(
     errors: [],
   };
 
+  const fs = getFs();
   // Check if directory exists
-  if (!existsSync(resolvedDir)) {
+  if (!fs.existsSync(resolvedDir)) {
     log.warn(`Strategy directory not found: ${resolvedDir}`);
     return result;
   }
@@ -57,7 +71,7 @@ export async function scanAndRegisterTriggers(
   // Read directory contents
   let files: string[];
   try {
-    files = readdirSync(resolvedDir).filter(
+    files = fs.readdirSync(resolvedDir).filter(
       (f) => f.endsWith('.yaml') || f.endsWith('.yml'),
     );
   } catch (err) {
@@ -73,7 +87,7 @@ export async function scanAndRegisterTriggers(
 
     try {
       // Quick check: does this file have any event triggers?
-      const content = readFileSync(filePath, 'utf-8');
+      const content = fs.readFileSync(filePath, 'utf-8');
       if (!hasEventTriggers(content)) {
         result.skipped++;
         continue;

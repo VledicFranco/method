@@ -11,9 +11,28 @@
  * F-THANE-2: On discovery, loads manifest.yaml and validates project configs
  */
 
-import { existsSync, readdirSync, statSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for discovery-service. Called from composition root. */
+export function setDiscoveryServicePorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for discovery-service');
+  return _fs;
+}
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for discovery-service');
+  return _yaml;
+}
 
 export interface ProjectMetadata {
   id: string;
@@ -104,7 +123,7 @@ export class DiscoveryService {
 
     const resolvedRoot = resolve(rootDir);
 
-    if (!existsSync(resolvedRoot)) {
+    if (!getFs().existsSync(resolvedRoot)) {
       return {
         projects: [],
         discovery_incomplete: false,
@@ -137,7 +156,7 @@ export class DiscoveryService {
 
         let entries: Array<{ name: string; isDirectory: boolean }>;
         try {
-          entries = readdirSync(dir, { withFileTypes: true }).map((entry) => ({
+          entries = getFs().readdirSync(dir, { withFileTypes: true }).map((entry) => ({
             name: entry.name,
             isDirectory: entry.isDirectory(),
           }));
@@ -233,12 +252,12 @@ export class DiscoveryService {
 
       // Check for .method directory
       const methodDir = join(projectPath, '.method');
-      let methodExists = existsSync(methodDir);
+      let methodExists = getFs().existsSync(methodDir);
 
       // Auto-create .method if missing
       if (!methodExists) {
         try {
-          mkdirSync(methodDir, { recursive: true });
+          getFs().mkdirSync(methodDir, { recursive: true });
           methodExists = true;
         } catch (err) {
           // Log but don't fail discovery
@@ -252,10 +271,10 @@ export class DiscoveryService {
       let configError: string | undefined;
 
       const configPath = join(methodDir, 'project-config.yaml');
-      if (existsSync(configPath)) {
+      if (getFs().existsSync(configPath)) {
         try {
-          const configContent = readFileSync(configPath, 'utf-8');
-          const configData = yaml.load(configContent);
+          const configContent = getFs().readFileSync(configPath, 'utf-8');
+          const configData = getYaml().load(configContent);
 
           // Validate required fields: id and name
           if (
@@ -303,14 +322,14 @@ export class DiscoveryService {
     try {
       // Check for essential git directory structure
       // At minimum, a .git should be a directory and contain objects/
-      if (!statSync(gitDir).isDirectory()) {
+      if (!getFs().statSync(gitDir).isDirectory()) {
         return false;
       }
 
       const objectsDir = join(gitDir, 'objects');
       const refsDir = join(gitDir, 'refs');
 
-      return existsSync(objectsDir) && existsSync(refsDir);
+      return getFs().existsSync(objectsDir) && getFs().existsSync(refsDir);
     } catch (err) {
       // If we can't even stat the .git directory, it's corrupted
       throw err;

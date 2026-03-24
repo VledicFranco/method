@@ -6,7 +6,20 @@
  * expression syntax, unique IDs).
  */
 
-import yaml from 'js-yaml';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-2: Module-level yaml port
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure YamlLoader for strategy-parser. Called from composition root. */
+export function setStrategyParserYaml(yaml: YamlLoader): void {
+  _yaml = yaml;
+}
+
+function getYaml(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for strategy-parser');
+  return _yaml;
+}
 import type { GateConfig, GateType } from './gates.js';
 import { getDefaultRetries, getDefaultTimeout } from './gates.js';
 
@@ -121,7 +134,7 @@ export interface StrategyDAG {
  * Uses js-yaml for YAML parsing, then transforms into internal types.
  */
 export function parseStrategyYaml(yamlContent: string): StrategyDAG {
-  const raw = yaml.load(yamlContent) as StrategyYaml;
+  const raw = getYaml().load(yamlContent) as StrategyYaml;
   return parseStrategyObject(raw);
 }
 

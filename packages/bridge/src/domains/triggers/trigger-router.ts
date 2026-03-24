@@ -12,9 +12,28 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import yaml from 'js-yaml';
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
+
+// PRD 024 MG-1/MG-2: Module-level ports for trigger-router read/write
+let _fs: FileSystemProvider | null = null;
+let _yaml: YamlLoader | null = null;
+
+/** PRD 024: Configure ports for trigger-router. Called from composition root. */
+export function setTriggerRouterPorts(fs: FileSystemProvider, yaml: YamlLoader): void {
+  _fs = fs;
+  _yaml = yaml;
+}
+
+function getFs(): FileSystemProvider {
+  if (!_fs) throw new Error('FileSystemProvider not configured for trigger-router');
+  return _fs;
+}
+function getYamlPort(): YamlLoader {
+  if (!_yaml) throw new Error('YamlLoader not configured for trigger-router');
+  return _yaml;
+}
 import { DebounceEngine } from './debounce.js';
 import { FileWatchTrigger } from './file-watch-trigger.js';
 import { GitCommitTrigger } from './git-commit-trigger.js';
@@ -146,8 +165,8 @@ export class TriggerRouter {
    */
   async registerStrategy(strategyPath: string): Promise<TriggerRegistration[]> {
     // Read and parse strategy YAML
-    const yamlContent = readFileSync(strategyPath, 'utf-8');
-    const raw = yaml.load(yamlContent) as { strategy?: { id?: string; triggers?: unknown[] } };
+    const yamlContent = getFs().readFileSync(strategyPath, 'utf-8');
+    const raw = getYamlPort().load(yamlContent) as { strategy?: { id?: string; triggers?: unknown[] } };
 
     if (!raw?.strategy?.id) {
       throw new Error(`Invalid strategy YAML: missing strategy.id in ${strategyPath}`);
@@ -424,7 +443,7 @@ export class TriggerRouter {
       errors: [] as Array<{ file: string; error: string }>,
     };
 
-    if (!existsSync(resolvedDir)) {
+    if (!getFs().existsSync(resolvedDir)) {
       this.options.logger.warn(`Strategy directory not found for reload: ${resolvedDir}`);
       return result;
     }
@@ -432,7 +451,7 @@ export class TriggerRouter {
     // Read current files
     let files: string[];
     try {
-      files = readdirSync(resolvedDir).filter(
+      files = getFs().readdirSync(resolvedDir).filter(
         (f) => f.endsWith('.yaml') || f.endsWith('.yml'),
       );
     } catch (err) {
@@ -445,10 +464,10 @@ export class TriggerRouter {
     for (const file of files) {
       const filePath = join(resolvedDir, file);
       try {
-        const content = readFileSync(filePath, 'utf-8');
+        const content = getFs().readFileSync(filePath, 'utf-8');
         if (!hasEventTriggers(content)) continue;
 
-        const raw = yaml.load(content) as { strategy?: { id?: string } };
+        const raw = getYamlPort().load(content) as { strategy?: { id?: string } };
         if (!raw?.strategy?.id) continue;
 
         currentFiles.set(filePath, {
