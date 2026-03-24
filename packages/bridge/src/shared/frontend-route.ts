@@ -26,7 +26,7 @@ const MIME_TYPES: Record<string, string> = {
 
 export function registerFrontendRoutes(app: FastifyInstance): void {
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const appDir = join(__dirname, 'app');
+  const appDir = join(__dirname, '..', 'app');
 
   // ── Redirect /app to /app/ ──
 

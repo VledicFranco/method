@@ -231,12 +231,16 @@ export class WsHub {
     this.heartbeatTimer = setInterval(() => {
       for (const [id, client] of this.clients) {
         if (!client.alive) {
-          client.socket.terminate();
+          try { client.socket.terminate(); } catch { /* already closed */ }
           this.clients.delete(id);
           continue;
         }
         client.alive = false;
-        client.socket.ping();
+        try {
+          if (typeof client.socket.ping === 'function') {
+            client.socket.ping();
+          }
+        } catch { /* non-fatal — client may have disconnected */ }
       }
     }, this.heartbeatMs);
   }

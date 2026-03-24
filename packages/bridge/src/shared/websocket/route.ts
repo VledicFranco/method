@@ -10,7 +10,10 @@ import type { WsHub } from './hub.js';
  * Requires `@fastify/websocket` to be registered on the app first.
  */
 export function registerWsRoute(app: FastifyInstance, hub: WsHub): void {
-  app.get('/ws', { websocket: true }, (socket: WebSocket, _request) => {
+  app.get('/ws', { websocket: true }, (connection: any, _request: any) => {
+    // @fastify/websocket v11: handler receives WebSocket directly
+    // Defensive: handle both raw socket and connection wrapper
+    const socket: WebSocket = connection.socket ?? connection;
     const clientId = hub.addClient(socket);
 
     socket.on('message', (raw: Buffer) => {
