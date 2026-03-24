@@ -25,7 +25,7 @@ import type {
  * to a RegExp. Only supports '*' as wildcard.
  */
 function globToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(`^${escaped}$`);
 }
 
@@ -84,6 +84,7 @@ class EventRingBuffer {
   private readonly capacity: number;
 
   constructor(capacity: number) {
+    if (capacity < 1) throw new Error(`EventRingBuffer capacity must be >= 1, got ${capacity}`);
     this.capacity = capacity;
     this.buf = new Array(capacity);
   }
@@ -212,8 +213,13 @@ export class InMemoryEventBus implements EventBus {
   // ── Internal dispatch ───────────────────────────────────────
 
   private dispatch(event: BridgeEvent): void {
+    // Snapshot arrays to guard against mutation during dispatch
+    // (e.g., a handler calling unsubscribe or registerSink)
+    const sinks = [...this.sinks];
+    const subscribers = [...this.subscribers];
+
     // Dispatch to sinks (fire-and-forget)
-    for (const sink of this.sinks) {
+    for (const sink of sinks) {
       try {
         const result = sink.onEvent(event);
         // Handle async sinks — catch errors without blocking
@@ -232,7 +238,7 @@ export class InMemoryEventBus implements EventBus {
     }
 
     // Dispatch to subscribers (filter-matched, synchronous)
-    for (const sub of this.subscribers) {
+    for (const sub of subscribers) {
       if (matchesFilter(event, sub.filter)) {
         try {
           sub.handler(event);

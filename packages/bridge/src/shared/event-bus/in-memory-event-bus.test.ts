@@ -130,6 +130,55 @@ describe('InMemoryEventBus', () => {
       assert.equal(errors.length, 1, 'onError should have been called');
       assert.equal(errors[0].message, 'test error');
     });
+
+    it('calls onError when async sink rejects', async () => {
+      const errors: Error[] = [];
+      const sink: EventSink = {
+        name: 'async-error-sink',
+        onEvent() { return Promise.reject(new Error('async failure')); },
+        onError(err) { errors.push(err); },
+      };
+
+      bus.registerSink(sink);
+      bus.emit(makeEvent());
+
+      // Allow microtask queue to flush for async error handling
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      assert.equal(errors.length, 1, 'onError should have been called for async rejection');
+      assert.equal(errors[0].message, 'async failure');
+    });
+
+    it('async sink rejection does not block other sinks', async () => {
+      const goodSink = collectingSink('good-async');
+      const badSink: EventSink = {
+        name: 'bad-async',
+        onEvent() { return Promise.reject(new Error('boom')); },
+      };
+
+      bus.registerSink(badSink);
+      bus.registerSink(goodSink);
+
+      bus.emit(makeEvent());
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      assert.equal(goodSink.events.length, 1, 'good sink should still receive the event');
+    });
+
+    it('async sink that resolves works normally', async () => {
+      const received: BridgeEvent[] = [];
+      const asyncSink: EventSink = {
+        name: 'async-sink',
+        async onEvent(event) { received.push(event); },
+      };
+
+      bus.registerSink(asyncSink);
+      bus.emit(makeEvent());
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(received.length, 1);
+    });
   });
 
   describe('subscribe', () => {
@@ -198,6 +247,22 @@ describe('InMemoryEventBus', () => {
       bus.emit(makeEvent());
 
       assert.equal(received.length, 1);
+    });
+
+    it('unsubscribe during dispatch does not skip other subscribers', () => {
+      const received: string[] = [];
+      const sub1 = bus.subscribe({}, () => {
+        received.push('sub1');
+        sub1.unsubscribe(); // unsubscribe self during dispatch
+      });
+      bus.subscribe({}, () => received.push('sub2'));
+      bus.subscribe({}, () => received.push('sub3'));
+
+      bus.emit(makeEvent());
+
+      assert.ok(received.includes('sub1'), 'sub1 should have been called');
+      assert.ok(received.includes('sub2'), 'sub2 should have been called');
+      assert.ok(received.includes('sub3'), 'sub3 should have been called');
     });
   });
 
@@ -269,6 +334,14 @@ describe('InMemoryEventBus', () => {
       assert.equal(results.length, 2);
       assert.equal(results[0].type, 'event.4');
       assert.equal(results[1].type, 'event.5');
+    });
+
+    it('throws on zero capacity', () => {
+      assert.throws(() => new InMemoryEventBus({ capacity: 0 }), /capacity must be >= 1/);
+    });
+
+    it('throws on negative capacity', () => {
+      assert.throws(() => new InMemoryEventBus({ capacity: -5 }), /capacity must be >= 1/);
     });
   });
 });

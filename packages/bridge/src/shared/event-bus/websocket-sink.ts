@@ -36,23 +36,21 @@ export class WebSocketSink implements EventSink {
     if (!topic) return; // Domains without a topic mapping are silently skipped
 
     this.wsHub.publish(topic, event.payload, (filter) => {
-      // Match on projectId if the client subscribed with a project_id filter
-      if (filter.project_id && event.projectId) {
-        return filter.project_id === event.projectId;
+      // AND all applicable filter dimensions — every specified filter must match.
+      // If a filter key is present but the event lacks the corresponding field,
+      // the event does not match (explicit filter = explicit exclusion).
+      if (filter.project_id) {
+        if (filter.project_id !== event.projectId) return false;
       }
-      // Match on sessionId if the client subscribed with a session_id filter
-      if (filter.session_id && event.sessionId) {
-        return filter.session_id === event.sessionId;
+      if (filter.session_id) {
+        if (filter.session_id !== event.sessionId) return false;
       }
-      // Match on execution_id for strategy events
-      if (filter.execution_id && event.payload.execution_id) {
-        return filter.execution_id === event.payload.execution_id;
+      if (filter.execution_id) {
+        if (filter.execution_id !== String(event.payload.execution_id ?? '')) return false;
       }
-      // Match on trigger_id for trigger events
-      if (filter.trigger_id && event.payload.trigger_id) {
-        return filter.trigger_id === event.payload.trigger_id;
+      if (filter.trigger_id) {
+        if (filter.trigger_id !== String(event.payload.trigger_id ?? '')) return false;
       }
-      // No filter → send to all subscribers of this topic
       return true;
     });
   }
