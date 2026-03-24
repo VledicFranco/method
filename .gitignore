@@ -40,3 +40,4 @@ reliability-review-prd020.json
 # stale .claude working files (skills are fine)
 .claude/WAVE1_WORK.md
 .claude/wave1-commission.md
+.claude/scheduled_tasks.lock

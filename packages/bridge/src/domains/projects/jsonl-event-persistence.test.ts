@@ -50,8 +50,7 @@ describe('JsonLineEventPersistence', () => {
     await persistence.append(event1);
     await persistence.append(event2);
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Query by projectId
     const results = await persistence.query({ projectId: 'project-1' });
@@ -70,8 +69,7 @@ describe('JsonLineEventPersistence', () => {
     await persistence.append(event1);
     await persistence.append(event2);
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Create new instance and recover
     const persistence2 = new JsonLineEventPersistence(filePath);
@@ -98,8 +96,7 @@ describe('JsonLineEventPersistence', () => {
       await persistence.append(event);
     }
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Query for project-1
     const project1Events = await persistence.query({ projectId: 'project-1' });
@@ -125,8 +122,7 @@ describe('JsonLineEventPersistence', () => {
       await persistence.append(event);
     }
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     const createdEvents = await persistence.query({ type: ProjectEventType.CREATED });
     assert.equal(createdEvents.length, 2);
@@ -144,8 +140,7 @@ describe('JsonLineEventPersistence', () => {
       await persistence.append(event);
     }
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     const latest3 = await persistence.latest(3);
     assert.equal(latest3.length, 3);
@@ -172,8 +167,7 @@ describe('JsonLineEventPersistence', () => {
       await persistence.append(event);
     }
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await persistence.flush();
 
     // Check if rotation occurred (backup files should exist after rotation)
     const mainFileExists = existsSync(filePath);
@@ -201,8 +195,7 @@ describe('JsonLineEventPersistence', () => {
     // Append concurrently
     await Promise.all(events.map((e) => persistence.append(e)));
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Verify all appended
     const allEvents = await persistence.query({});
@@ -219,8 +212,7 @@ describe('JsonLineEventPersistence', () => {
     const event1 = createProjectEvent(ProjectEventType.CREATED, 'project-1', {});
     await persistence.append(event1);
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Query with date range
     const results = await persistence.query({ since: oneHourAgo, until: oneHourLater });
@@ -259,8 +251,7 @@ describe('JsonLineEventPersistence', () => {
     await persistence.append(event1);
     await persistence.append(event2);
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Read file and verify JSONL format
     const content = await fs.readFile(filePath, 'utf-8');
@@ -395,8 +386,7 @@ describe('JsonLineEventPersistence', () => {
       await persistence.append(event);
     }
 
-    // Wait for flush
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await persistence.flush();
 
     // Recover from disk
     const persistence2 = new JsonLineEventPersistence(filePath);

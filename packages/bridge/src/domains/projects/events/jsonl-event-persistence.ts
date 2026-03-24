@@ -38,7 +38,6 @@ export class JsonLineEventPersistence implements EventPersistence {
   private events: ProjectEvent[] = [];
   private writeBuffer: ProjectEvent[] = [];
   private flushTimeout: NodeJS.Timeout | null = null;
-  private lastFlushTime = 0;
   private yamlFallbackPath: string; // Path to legacy YAML file
 
   constructor(filePath: string, yamlFallbackPath?: string) {
@@ -197,6 +196,18 @@ export class JsonLineEventPersistence implements EventPersistence {
   }
 
   /**
+   * Force an immediate flush of the write buffer to disk.
+   * Cancels any pending debounced flush.
+   */
+  async flush(): Promise<void> {
+    if (this.flushTimeout) {
+      clearTimeout(this.flushTimeout);
+      this.flushTimeout = null;
+    }
+    await this.flushToDisk();
+  }
+
+  /**
    * Query events with optional filtering
    */
   async query(filter: EventFilter): Promise<ProjectEvent[]> {
@@ -266,7 +277,6 @@ export class JsonLineEventPersistence implements EventPersistence {
 
       // Clear buffer
       this.writeBuffer = [];
-      this.lastFlushTime = Date.now();
     });
   }
 
