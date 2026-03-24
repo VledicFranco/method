@@ -185,6 +185,84 @@ describe('InMemoryDatabase',  () => databaseContractSuite(() => createInMemoryDb
 describe('SQLiteDatabase',    () => databaseContractSuite(() => createSQLiteDb()));
 ```
 
+### Architecture Gate Testing
+
+#### Structural Fitness Functions (L2-L4)
+
+Tests that verify the architecture itself — not behavior, but structural invariants. These are automated guards that prevent FCA violations from being introduced. They run on every test suite execution with zero extra tooling.
+
+**When:** The codebase has structural rules (port discipline, boundary enforcement, layer ordering) that TypeScript's type system alone cannot enforce. Import violations are silent — they compile fine but degrade the architecture. Gate tests catch them the same way behavioral tests catch logic bugs.
+
+**Why this matters:** Code reviews catch violations reactively, after the code is written. Gate tests catch them proactively, before the code is merged. A single `architecture.test.ts` file replaces an entire class of review comments.
+
+**Pattern:** Scan source files, extract import statements, and assert structural rules:
+
+```typescript
+// architecture.test.ts — co-located at the component root
+import { readdirSync, readFileSync } from 'node:fs';
+
+// Collect all production .ts files (exclude *.test.ts)
+const domainFiles = collectTsFiles(DOMAINS_DIR).filter(f => !isTestFile(f));
+
+describe('G-PORT: Domain code uses ports, not direct imports', () => {
+  it('no direct fs or js-yaml in domain production code', () => {
+    const violations = [];
+    for (const file of domainFiles) {
+      for (const imp of extractImports(file)) {
+        if (/^(node:)?fs/.test(imp.specifier)) {
+          violations.push(`${file}:${imp.line} — direct fs import`);
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, []);
+  });
+});
+
+describe('G-BOUNDARY: No cross-domain runtime imports', () => {
+  it('domains only import from ports/ and shared/, not siblings', () => {
+    // Skip type-only imports (erased at compile time)
+    // Flag runtime imports between sibling domains
+  });
+});
+
+describe('G-LAYER: Package layer ordering respected', () => {
+  it('L1 core does not import L2+ packages', () => {
+    // Scan core/src/ for imports of @method/methodts, @method/mcp, @method/bridge
+  });
+});
+```
+
+**Three standard gates:**
+
+| Gate | FCA Principle | What it checks |
+|------|--------------|----------------|
+| G-PORT | P3 (Port pattern) | Domain production code has no direct imports of external I/O modules (fs, js-yaml, child_process). Must go through port interfaces. |
+| G-BOUNDARY | P7 (Boundaries) | Sibling domains do not import each other's internals at runtime. `import type` is allowed (erased at compile time). Imports from `ports/` and `shared/` are allowed (cross-cutting infrastructure). |
+| G-LAYER | P5 (Pure composition) | Lower-layer packages never import higher-layer packages. L0→L1→L2→L3→L4 dependency direction is enforced. |
+
+**Known exceptions:** Some violations are intentional (e.g., trigger watchers using native `fs.watch()`, scope hooks generating git pre-commit hooks). Document these as a `Set<string>` in the test file with a comment explaining why each exception exists. The exceptions list IS the architecture debt tracker — grep for it to find what still needs fixing.
+
+```typescript
+/** Files that may use direct fs — infrastructure-boundary code. */
+const FS_EXCEPTIONS = new Set([
+  'triggers/file-watch-trigger.ts',  // native fs.watch() — fundamentally different from read/write
+  'sessions/scope-hook.ts',          // generates git hooks — platform-coupled infrastructure
+]);
+```
+
+**Technology picks:**
+
+| Approach | When | Example |
+|----------|------|---------|
+| Grep-based test (zero deps) | Any TypeScript project | Scan files, extract imports, assert rules |
+| dependency-cruiser | Complex dependency rules | `.dependency-cruiser.cjs` with declarative rules |
+| ESLint `no-restricted-paths` | IDE-time enforcement | Flag violations as you type, not at test time |
+| Custom tsc plugin | Compile-time enforcement | Block compilation on structural violations |
+
+**Recommendation:** Start with the grep-based test. It runs in < 1 second, requires zero dependencies, and catches 95% of violations. Add dependency-cruiser or ESLint rules later if the exception list grows beyond ~10 entries or if you need more granular rules (e.g., "domain A may import domain B's types but not domain C's").
+
+**Placement:** Co-locate the gate test at the component level it guards. For a monorepo bridge package with domain-co-located structure, place it at `packages/bridge/src/shared/architecture.test.ts` so it runs with the standard test suite.
+
 ### Observability Patterns
 
 #### Metric Definitions (L1-L2)
