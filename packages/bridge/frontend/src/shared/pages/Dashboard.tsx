@@ -108,23 +108,27 @@ export default function Dashboard() {
     <>
       <PageShell title="Dashboard">
         <div className="space-y-sp-6">
-          {/* Bridge Health Cards */}
-          <BridgeHealthCards />
-
-          {/* Token Aggregate Cards */}
-          <TokenAggregateCards />
+          {/* Projects — primary action area */}
+          <ProjectListView
+            onProjectSelect={setSelectedProject}
+            onProjectSpawn={handleProjectSpawn}
+            isSpawning={isSpawning}
+            spawningProjectId={spawningProjectId}
+          />
 
           {/* Subscription Usage Meters */}
-          <SubscriptionMeters />
-
-          {/* Project List Section — with one-tap spawn */}
           <div className="pt-sp-4 border-t border-bdr">
-            <ProjectListView
-              onProjectSelect={setSelectedProject}
-              onProjectSpawn={handleProjectSpawn}
-              isSpawning={isSpawning}
-              spawningProjectId={spawningProjectId}
-            />
+            <SubscriptionMeters />
+          </div>
+
+          {/* Token Aggregate Cards */}
+          <div className="pt-sp-4 border-t border-bdr">
+            <TokenAggregateCards />
+          </div>
+
+          {/* Bridge Health Cards */}
+          <div className="pt-sp-4 border-t border-bdr">
+            <BridgeHealthCards />
           </div>
 
           {/* Event Stream Section */}
