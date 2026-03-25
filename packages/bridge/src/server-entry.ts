@@ -77,11 +77,7 @@ setStrategyRoutesPorts(fsProvider, yamlLoader);
 setStrategyParserYaml(yamlLoader);
 setRetroGeneratorYaml(yamlLoader);
 
-// Genesis domain
-import { setCursorManagerPorts } from './domains/genesis/cursor-manager.js';
-import { setPollingLoopPorts } from './domains/genesis/polling-loop.js';
-setCursorManagerPorts(fsProvider, yamlLoader);
-setPollingLoopPorts(fsProvider, yamlLoader);
+// Genesis domain — polling loop + cursor manager removed (PRD 026 Phase 5, GenesisSink replaces)
 
 // Triggers domain
 import { setTriggerRouterPorts } from './domains/triggers/trigger-router.js';

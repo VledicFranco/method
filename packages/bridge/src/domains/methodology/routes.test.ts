@@ -3,8 +3,8 @@
  *
  * Tests the Fastify route handlers registered by registerMethodologyRoutes().
  * Uses Fastify's inject() method for HTTP-level testing. The store is real
- * (backed by stdlib catalog), while the SessionPool and appendMessage deps
- * are mocked since they involve PTY infrastructure.
+ * (backed by stdlib catalog), while the SessionPool is mocked since it
+ * involves PTY infrastructure.
  *
  * Coverage targets: input validation branches, error discrimination (404/409/500),
  * advance step channel emission, and compound condition checks.
@@ -17,7 +17,6 @@ import { registerMethodologyRoutes } from './routes.js';
 import { MethodologySessionStore } from './store.js';
 import { StdlibSource } from '../../ports/stdlib-source.js';
 import type { SessionPool } from '../sessions/pool.js';
-import type { AppendMessageFn } from './routes.js';
 
 // ── Helpers ──
 
@@ -26,16 +25,6 @@ function createMockPool(overrides?: Partial<SessionPool>): SessionPool {
     getChannels: () => ({ progress: {}, control: {}, output: {} }) as any,
     ...overrides,
   } as unknown as SessionPool;
-}
-
-function createMockAppendMessage(): AppendMessageFn & { calls: Array<unknown[]> } {
-  const calls: Array<unknown[]> = [];
-  const fn = ((...args: unknown[]) => {
-    calls.push(args);
-    return calls.length;
-  }) as AppendMessageFn & { calls: Array<unknown[]> };
-  fn.calls = calls;
-  return fn;
 }
 
 function createMockEventBus() {
@@ -56,7 +45,6 @@ function createMockEventBus() {
 
 async function createTestApp(opts?: {
   pool?: SessionPool;
-  appendMessage?: AppendMessageFn;
   store?: MethodologySessionStore;
   eventBus?: any;
 }): Promise<{ app: FastifyInstance; store: MethodologySessionStore; eventBus: ReturnType<typeof createMockEventBus> }> {

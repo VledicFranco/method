@@ -25,20 +25,8 @@ import type { MethodologySessionStore } from "./store.js";
 import type { SessionPool } from "../sessions/pool.js";
 import type { EventBus } from "../../ports/event-bus.js";
 
-/** PRD 024 MG-6: Callback for emitting messages to channels — injected by composition root */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AppendMessageFn = (
-  channel: any,
-  sender: string,
-  type: string,
-  content: Record<string, unknown>,
-  session_id?: string,
-) => number;
-
 export interface MethodologyRoutesDeps {
   pool: SessionPool;
-  /** @deprecated PRD 026 Phase 3: appendMessage removed — events go through EventBus only */
-  appendMessage?: AppendMessageFn;
   /** PRD 026: EventBus for methodology domain events */
   eventBus?: EventBus;
 }
