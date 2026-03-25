@@ -408,6 +408,32 @@ type AgentEvent =
 9. Zero transport dependencies in the core package
 10. FCA gates pass (G-PORT, G-BOUNDARY, G-LAYER)
 
+## Proposed Refinement: Cognitive Module Architecture
+
+The flat `ReasoningPolicy` and `ContextPolicy` types above are a starting point. Research into
+cognitive architectures (ACT-R, SOAR, GWT, Nelson & Narens) suggests a deeper formalization:
+agents as **compositions of cognitive modules** operating at two levels.
+
+**Object-level modules** (the work): Reasoner, Actor, Observer, Memory — operating on a shared
+Workspace (GWT's global broadcast pattern).
+
+**Meta-cognitive modules** (monitoring + control): Monitor (conflict/error detection, ACC analog),
+Evaluator (outcome scoring, OFC analog), Planner (goal decomposition, aPFC analog), Reflector
+(offline learning, DMN analog).
+
+**Composition algebra**: Sequential (A >> B), Parallel (A | B), Competitive (A <|> B with
+selector), Hierarchical (meta ▷ object), Recursive (fix(A) for metacognitive towers).
+
+**Mathematical grounding**: Category theory for structure (functors = representations, natural
+transformations = analogy), process algebra for concurrency (typed channels between modules),
+sheaf theory for binding (global section = coherent behavior, cohomological obstructions =
+composition failures).
+
+This refinement is being developed as a separate formal theory:
+
+> **See:** `docs/rfcs/rfc-cognitive-composition.md` — formal theory of cognitive module
+> composition. Pacta Phase 2+ will implement the algebra once the theory stabilizes.
+
 ## Open Questions
 
 1. **Should persistent mode (PTY) be a Pacta provider or stay in the bridge?** PTY sessions
@@ -416,20 +442,21 @@ type AgentEvent =
 2. **How does Pacta relate to MCP?** MCP defines tool interfaces. Pacta provides a ToolProvider
    port. Should Pacta ship an MCP-backed ToolProvider implementation, or leave that to consumers?
 
-3. **Should reasoning strategies be prompt-level or middleware-level?** The think tool is a tool
-   definition. Planning instructions are system prompt additions. Reflexion is a retry loop.
-   These operate at different layers — should they share an interface?
-
-4. **How opinionated should pre-assembled agents be?** A `codeAgent` that works out of the box
+3. **How opinionated should pre-assembled agents be?** A `codeAgent` that works out of the box
    must make choices (model, tools, reasoning strategy). How customizable should it be while
    remaining "batteries included"?
 
-5. **Should Pacta define its own tool format or adopt MCP's?** MCP's tool schema (JSON-RPC +
+4. **Should Pacta define its own tool format or adopt MCP's?** MCP's tool schema (JSON-RPC +
    JSON Schema for inputs) is becoming a standard. Pacta could adopt it natively for
    interoperability.
 
+5. **How deep should the cognitive architecture go in the SDK?** The formal theory (RFC) may
+   reveal composition patterns that reshape the port interfaces. Phases 1-4 should proceed
+   with the current flat types; Phase 5+ can refactor toward the algebra once proven.
+
 ## Research References
 
+- `ov-research/knowledge/multi-agent/cognitive-architectures.md` — ACT-R, SOAR, GWT, CLARION, Common Model, metacognition, category theory
 - `ov-research/knowledge/multi-agent/agent-reasoning-techniques.md` — ReAct, Reflexion, think tool, LATS, planning-first
 - `ov-research/knowledge/multi-agent/agent-sdk-landscape.md` — 2026 SDK comparison
 - `ov-research/knowledge/llm-behavior/context-management.md` — stateless API, compaction, caching, context rot
