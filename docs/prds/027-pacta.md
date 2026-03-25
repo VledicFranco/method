@@ -4,7 +4,7 @@
 **Author:** PO + Lysica
 **Date:** 2026-03-25
 **Package:** `@method/pacta` (L3 — library)
-**Depends on:** `@method/types` (L0)
+**Depends on:** None (standalone L3 library)
 
 ## Problem
 
@@ -41,9 +41,8 @@ The pact is declared before invocation. The runtime enforces it. Violations are 
 ```
 L4  @method/bridge     Uses pacta to deploy agents (replaces direct PtySession/PrintSession)
 L3  @method/pacta      ← NEW — agent deployment contracts
-L2  @method/methodts   Domain extensions (unchanged)
-L1  @method/core       DEPRECATED (unchanged)
-L0  @method/types      Pure type definitions (unchanged)
+L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
+L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
 ```
 
 Pacta is a pure library — no HTTP server, no process management, no transport. It defines the contracts and provides the composition machinery. Concrete providers (Claude CLI, Anthropic API, OpenAI, Ollama) implement the provider port.
@@ -200,7 +199,7 @@ interface CostReport {
 - Define `AgentEvent`, `AgentResult`, `TokenUsage`, `CostReport`
 - Define `ProviderCapabilities`
 - Package scaffold: `@method/pacta` with FCA structure
-- Zero dependencies (except `@method/types` if shared types exist)
+- Zero dependencies — pure types and composition
 
 ### Phase 2: Budget Enforcement
 - Client-side budget tracker (wraps any provider)
