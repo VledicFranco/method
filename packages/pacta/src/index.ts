@@ -91,3 +91,10 @@ export type { CreateAgentOptions, Agent } from './engine/create-agent.js';
 export { budgetEnforcer, BudgetExhaustedError } from './middleware/budget-enforcer.js';
 export type { BudgetState } from './middleware/budget-enforcer.js';
 export { outputValidator } from './middleware/output-validator.js';
+
+// Reference agents
+export type { ReferenceAgent, ReferenceAgentConfig, ReferenceAgentPactOverrides } from './agents/reference-agent.js';
+export { createReferenceAgent } from './agents/reference-agent.js';
+export { codeAgent } from './agents/code-agent.js';
+export { researchAgent } from './agents/research-agent.js';
+export { reviewAgent } from './agents/review-agent.js';
