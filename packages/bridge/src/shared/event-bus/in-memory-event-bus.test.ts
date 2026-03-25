@@ -5,7 +5,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { InMemoryEventBus } from './in-memory-event-bus.js';
-import type { BridgeEvent, BridgeEventInput, EventSink } from '../../ports/event-bus.js';
+import type { BridgeEvent, BridgeEventInput, EventSink, EventConnector, ConnectorHealth } from '../../ports/event-bus.js';
 
 // ── Test helpers ────────────────────────────────────────────────
 
@@ -426,6 +426,88 @@ describe('InMemoryEventBus', () => {
 
     it('throws on negative capacity', () => {
       assert.throws(() => new InMemoryEventBus({ capacity: -5 }), /capacity must be >= 1/);
+    });
+  });
+
+  // ── Connector lifecycle (PRD 026 Phase 5) ────────────────────
+
+  describe('connector lifecycle', () => {
+    function makeConnector(name: string): EventConnector & { connectCalled: boolean; disconnectCalled: boolean } {
+      return {
+        name,
+        connectCalled: false,
+        disconnectCalled: false,
+        async connect() { this.connectCalled = true; },
+        async disconnect() { this.disconnectCalled = true; },
+        health(): ConnectorHealth { return { connected: this.connectCalled && !this.disconnectCalled, lastEventAt: null, errorCount: 0 }; },
+        onEvent() {},
+      };
+    }
+
+    it('connectAll() calls connect() on all registered connectors', async () => {
+      const c1 = makeConnector('c1');
+      const c2 = makeConnector('c2');
+      bus.registerSink(c1);
+      bus.registerSink(c2);
+
+      await bus.connectAll();
+
+      assert.ok(c1.connectCalled, 'c1.connect() should have been called');
+      assert.ok(c2.connectCalled, 'c2.connect() should have been called');
+    });
+
+    it('disconnectAll() calls disconnect() on all registered connectors', async () => {
+      const c1 = makeConnector('c1');
+      const c2 = makeConnector('c2');
+      bus.registerSink(c1);
+      bus.registerSink(c2);
+
+      await bus.disconnectAll();
+
+      assert.ok(c1.disconnectCalled, 'c1.disconnect() should have been called');
+      assert.ok(c2.disconnectCalled, 'c2.disconnect() should have been called');
+    });
+
+    it('connectorHealth() returns health from each connector', async () => {
+      const c1 = makeConnector('webhook:example.com');
+      bus.registerSink(c1);
+      await bus.connectAll();
+
+      const health = bus.connectorHealth();
+
+      assert.equal(health.length, 1);
+      assert.equal(health[0].name, 'webhook:example.com');
+      assert.ok(health[0].health.connected);
+    });
+
+    it('connectAll() does not call connect() on plain sinks', async () => {
+      const plain = collectingSink('plain');
+      const connector = makeConnector('connector');
+      bus.registerSink(plain);
+      bus.registerSink(connector);
+
+      await bus.connectAll();
+
+      assert.ok(connector.connectCalled, 'connector should be connected');
+      // plain sink has no connect() — no error thrown
+      assert.equal(plain.events.length, 0);
+    });
+
+    it('connectAll() continues if one connector throws', async () => {
+      const failing: EventConnector = {
+        name: 'failing',
+        async connect() { throw new Error('connect failed'); },
+        async disconnect() {},
+        health(): ConnectorHealth { return { connected: false, lastEventAt: null, errorCount: 0 }; },
+        onEvent() {},
+      };
+      const c2 = makeConnector('c2');
+      bus.registerSink(failing);
+      bus.registerSink(c2);
+
+      await bus.connectAll(); // should not throw
+
+      assert.ok(c2.connectCalled, 'c2 should still connect despite failing first connector');
     });
   });
 
