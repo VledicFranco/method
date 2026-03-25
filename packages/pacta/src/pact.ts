@@ -1,23 +1,25 @@
 /**
  * The Pact — a typed contract for agent deployment.
  *
- * A pact declares what the caller expects from the agent runtime:
- * how it executes, what it may consume, what shape its output takes,
- * and what capabilities it has access to.
+ * A pact is a plain data object describing constraints (declarative what).
+ * createAgent() binds port instances (runtime how) to a pact.
  *
  * The pact is declared before invocation. The runtime enforces it.
  */
 
-import type { ExecutionMode } from './modes/execution-mode.js';
+import type { ExecutionMode, StreamOptions } from './modes/execution-mode.js';
 import type { BudgetContract } from './budget/budget-contract.js';
 import type { OutputContract } from './output/output-contract.js';
 import type { ScopeContract } from './scope.js';
 
 // ── The Pact ──────────────────────────────────────────────────────
 
-export interface Pact<TOutput = string> {
+export interface Pact<TOutput = unknown> {
   /** How the agent executes — behavioral contract */
   mode: ExecutionMode;
+
+  /** Whether to stream events during execution (orthogonal to mode) */
+  streaming?: boolean | StreamOptions;
 
   /** What the agent may consume — resource limits */
   budget?: BudgetContract;
@@ -50,7 +52,7 @@ export interface AgentRequest {
 
 // ── Agent Result ──────────────────────────────────────────────────
 
-export interface AgentResult<TOutput = string> {
+export interface AgentResult<TOutput = unknown> {
   /** The agent's final output */
   output: TOutput;
 

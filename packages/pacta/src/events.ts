@@ -2,9 +2,7 @@
  * Agent Events — typed lifecycle signals emitted during execution.
  *
  * Every agent invocation emits events through a single vocabulary.
- * The event stream is the observability surface of the pact —
- * callers subscribe to know what the agent is doing without
- * understanding the provider's internal protocol.
+ * The event stream is the observability surface of the pact.
  */
 
 import type { TokenUsage, CostReport } from './pact.js';
@@ -12,9 +10,12 @@ import type { TokenUsage, CostReport } from './pact.js';
 export type AgentEvent =
   | AgentStarted
   | AgentText
+  | AgentThinking
   | AgentToolUse
   | AgentToolResult
   | AgentTurnComplete
+  | AgentContextCompacted
+  | AgentReflection
   | AgentBudgetWarning
   | AgentBudgetExhausted
   | AgentError
@@ -28,6 +29,11 @@ export interface AgentStarted {
 
 export interface AgentText {
   type: 'text';
+  content: string;
+}
+
+export interface AgentThinking {
+  type: 'thinking';
   content: string;
 }
 
@@ -50,6 +56,18 @@ export interface AgentTurnComplete {
   type: 'turn_complete';
   turnNumber: number;
   usage: TokenUsage;
+}
+
+export interface AgentContextCompacted {
+  type: 'context_compacted';
+  fromTokens: number;
+  toTokens: number;
+}
+
+export interface AgentReflection {
+  type: 'reflection';
+  trial: number;
+  critique: string;
 }
 
 export interface AgentBudgetWarning {
@@ -76,7 +94,7 @@ export interface AgentError {
 
 export interface AgentCompleted {
   type: 'completed';
-  result: string;
+  result: unknown;
   usage: TokenUsage;
   cost: CostReport;
   durationMs: number;
