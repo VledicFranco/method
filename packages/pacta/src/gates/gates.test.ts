@@ -76,6 +76,9 @@ describe('G-BOUNDARY: No cross-domain imports within pacta', () => {
     // Skip files that ARE in the forbidden domains (they can import their own types)
     const fileDomain = relPath.split(path.sep)[0];
     if (FORBIDDEN_DOMAINS.includes(fileDomain)) continue;
+    // Skip the barrel export — index.ts is the package's public API surface
+    // and legitimately re-exports from all modules
+    if (relPath === 'index.ts') continue;
 
     it(`${relPath} does not import from forbidden domains`, () => {
       const imports = extractImports(file);
