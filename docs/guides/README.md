@@ -31,6 +31,10 @@ Conceptual and operational guides for the method system — what methods and met
 | 23 | [Testkit Reference](23-testkit-reference.md) | testkit | Method designers | Full API reference for assertions, builders, harnesses, and providers |
 | 24 | [Testkit: Migration](24-testkit-migration.md) | testkit | Contributors | Migrating existing tests to the testkit framework |
 | 25 | [Testkit: Diagnostics](25-testkit-diagnostics.md) | testkit | Method designers | Compilation diagnostics, trace evaluation, and simulation |
+| 26 | [Pacta: Getting Started](26-pacta-getting-started.md) | pacta | Everyone | The Pact contract, providers, createAgent, your first agent |
+| 27 | [Pacta: Assembling Agents](27-pacta-assembling-agents.md) | pacta | Contributors, agent operators | Compose agents from typed parts — middleware, reasoning, context |
+| 28 | [Pacta: Implementing Providers](28-pacta-providers.md) | pacta | Contributors | AgentProvider interface, capabilities, streaming, building your own |
+| 29 | [Pacta: Testing with Playground](29-pacta-testing-with-playground.md) | pacta | Contributors, agent operators | RecordingProvider, VirtualToolProvider, scenarios, EvalReport |
 
 ## Guide Frontmatter Spec
 
@@ -75,6 +79,7 @@ touches:                           # Source paths this guide documents (for stal
 | `strategy` | Pipeline execution, triggers, context continuity | 16, 18 |
 | `multi-project` | Genesis, project discovery, resource sharing | 19, 20, 21 |
 | `testkit` | Test framework, assertions, diagnostics | 22, 23, 24, 25 |
+| `pacta` | Modular Agent SDK — pacts, providers, composition, testing | 26, 27, 28, 29 |
 
 ### Audience Values
 
@@ -98,6 +103,7 @@ Choose the path that matches your role, then follow guide numbers in order. Each
 - **Working with multi-project setups?** 1 → 2 → 10 → 19 → 20 → 21
 - **Building strategy pipelines?** 1 → 2 → 10 → 16 → 18
 - **Contributing to the bridge UI?** 10 → 14 → 17
+- **Building or testing agents with Pacta?** 26 → 27 → 28 → 29
 - **Just curious?** Guide 1 is self-contained — 5 minutes.
 
 ## Staleness Detection
