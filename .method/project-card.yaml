@@ -58,17 +58,8 @@ project_card:
 
   source_layout:
     monorepo: true
-    layer_stack: "L0 types → L1 core → L2 methodts → L3 mcp → L4 bridge (deps flow downward only)"
+    layer_stack: "L2 methodts → L3 mcp → L4 bridge (deps flow downward only)"
     packages:
-      - name: "@method/types"
-        path: "packages/types/"
-        layer: L0
-        purpose: "Shared TypeScript types — pure definitions, no behavior"
-      - name: "@method/core"
-        path: "packages/core/"
-        layer: L1
-        status: deprecated
-        purpose: "DEPRECATED — legacy YAML loader, replaced by MethodologySource port (StdlibSource)"
       - name: "@method/methodts"
         path: "packages/methodts/"
         layer: L2
@@ -80,7 +71,7 @@ project_card:
       - name: "@method/mcp"
         path: "packages/mcp/"
         layer: L3
-        purpose: "MCP server — thin protocol adapter over core"
+        purpose: "MCP server — thin protocol adapter over methodts"
       - name: "@method/bridge"
         path: "packages/bridge/"
         layer: L4
@@ -113,21 +104,21 @@ project_card:
     # --- Package boundary discipline ---
     - id: DR-03
       rule: >
-        Core package (@method/core) must have zero transport dependencies — no MCP
-        SDK, no HTTP, no socket imports. Core exports pure functions that the MCP
-        package wraps. This separation allows core logic to be used by other
+        Domain packages (@method/methodts) must have zero transport dependencies — no MCP
+        SDK, no HTTP, no socket imports. Domain packages export pure functions that the MCP
+        package wraps. This separation allows domain logic to be used by other
         transports in the future.
       applies_to: [M1-IMPL, M2-DIMPL]
       affects_roles: [impl_sub_agent]
 
     - id: DR-04
       rule: >
-        MCP package (@method/mcp) is a thin wrapper over core. MCP tool handlers
-        should be minimal: parse input, call core function, format output. Business
-        logic in MCP handlers is a violation — move it to core. Boundary: response
-        envelope construction from core return types is formatting (acceptable in
+        MCP package (@method/mcp) is a thin wrapper over methodts. MCP tool handlers
+        should be minimal: parse input, call domain function, format output. Business
+        logic in MCP handlers is a violation — move it to methodts. Boundary: response
+        envelope construction from domain return types is formatting (acceptable in
         MCP). Conditional logic, state mutation, or decisions that change behavior
-        based on input content are business logic (must be in core).
+        based on input content are business logic (must be in the domain package).
       applies_to: [M1-IMPL, M2-DIMPL]
       affects_roles: [impl_sub_agent]
       evolution_source: "retro-prd002-impl.yaml — D-12/D-13 gap, formatting/logic boundary ambiguous"

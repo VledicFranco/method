@@ -26,19 +26,16 @@ This project follows FCA (see `docs/fractal-component-architecture/`). The core 
 
 ```
 L4  @method/bridge     Application — HTTP server, wires everything, owns the process
-L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over core
+L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
 L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
-L1  @method/core       DEPRECATED — legacy YAML loader, replaced by MethodologySource port
-L0  @method/types      Pure type definitions, no behavior
     @method/testkit    Testing framework (assertions, builders, runners)
 ```
 
-> **Note:** Methodology operations now go through the `MethodologySource` port (defined in
+> **Note:** Methodology operations go through the `MethodologySource` port (defined in
 > `packages/bridge/src/ports/methodology-source.ts`), backed by `StdlibSource` which wraps
-> the `@method/methodts` stdlib catalog. The old `@method/core` YAML loader is deprecated
-> and should not be used for new work. See `docs/arch/methodology-source.md` for details.
+> the `@method/methodts` stdlib catalog. See `docs/arch/methodology-source.md` for details.
 
-**Rules:** Higher layers may depend on lower. Never the reverse. Core has zero transport dependencies. MCP handlers are thin wrappers — parse input, call core, format output.
+**Rules:** Higher layers may depend on lower. Never the reverse. MCP handlers are thin wrappers — parse input, call methodts, format output.
 
 ### Bridge — Domain-Co-Located Structure (PRD 023)
 
@@ -98,8 +95,8 @@ docs/
 ## Delivery Rules
 
 - **DR-01/02:** Registry files are production artifacts. Preserve compilation status and structural completeness.
-- **DR-03:** Core has zero transport dependencies. Bridge proxy tools go in `@method/mcp`.
-- **DR-04:** MCP handlers are thin wrappers — parse input, call core/fetch, format output.
+- **DR-03:** Domain packages have zero transport dependencies. Bridge proxy tools go in `@method/mcp`.
+- **DR-04:** MCP handlers are thin wrappers — parse input, call methodts, format output.
 - **DR-05:** Use js-yaml for all YAML parsing. Preserve structure faithfully.
 - **DR-09:** Tests use real YAML fixtures, not minimal mocks.
 - **DR-12:** Architecture docs follow horizontal pattern — one file per concern in `docs/arch/`.
