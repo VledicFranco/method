@@ -1,6 +1,6 @@
 # PRD 027: Pacta — Modular Agent SDK
 
-**Status:** Draft
+**Status:** Implemented (2026-03-25)
 **Author:** PO + Lysica
 **Date:** 2026-03-25
 **Package:** `@method/pacta` (L3 — library)
