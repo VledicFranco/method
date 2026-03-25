@@ -501,41 +501,6 @@ export async function registerProjectRoutes(
     },
   );
 
-  // GET /api/events — Global event polling (Phase 1: testing only, unfiltered)
-  // NOTE: F-SECUR-001 — This endpoint returns all events. Not for multi-project production.
-  app.get<{ Querystring: { since_cursor?: string } }>(
-    '/api/events',
-    async (
-      req: FastifyRequest<{ Querystring: { since_cursor?: string } }>,
-      reply: FastifyReply,
-    ) => {
-      try {
-        const { since_cursor } = req.query || {};
-
-        // Get all events from circular buffer
-        const allEvents = getEventsFromLog(eventLog, 0);
-
-        // Get events since cursor
-        const newEvents = getEventsSinceCursor(allEvents, since_cursor);
-
-        // Generate next cursor for next poll (use count to handle wrap-around)
-        const nextCursor = generateCursor(eventLog.count);
-        const hasMore = newEvents.length > 0;
-
-        return reply.status(200).send({
-          events: newEvents,
-          nextCursor,
-          hasMore,
-        });
-      } catch (err) {
-        return reply.status(500).send({
-          error: 'Event polling failed',
-          message: (err as Error).message,
-        });
-      }
-    },
-  );
-
   // GET /api/projects/:id/events — Project-scoped event polling (F-SECUR-004)
   // Returns only events for the specified project, with isolation check
   app.get<{ Params: { id: string }; Querystring: { since_cursor?: string } }>(

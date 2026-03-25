@@ -92,32 +92,32 @@ proposal:
     description: >
       The meta-retrospective identified 3 friction points and 2 proposed changes.
       These are incorporated into the promoted version of the protocol.
+    items:
+      - id: REF-01
+        finding: "Manual aggregation is the weakest link"
+        change: >
+          Add recommended aggregation cadence to the protocol: process retrospectives
+          into the evolution ledger at least once per week, or after every 5 retros,
+          whichever comes first. The processing step is a lightweight M3-TMP session.
+        section_affected: "enforcement.where_retrospectives_live.aggregation"
 
-    - id: REF-01
-      finding: "Manual aggregation is the weakest link"
-      change: >
-        Add recommended aggregation cadence to the protocol: process retrospectives
-        into the evolution ledger at least once per week, or after every 5 retros,
-        whichever comes first. The processing step is a lightweight M3-TMP session.
-      section_affected: "enforcement.where_retrospectives_live.aggregation"
+      - id: REF-02
+        finding: "Cross-project threshold (3 MEDIUM, 2+ projects) may be too slow"
+        change: >
+          Introduce a 6-month calibration period: lower abstract method threshold to
+          2 MEDIUM across 2+ projects during the first 6 months after promotion. After
+          6 months, evaluate whether the lower threshold produced premature evolutions.
+          If not, keep it. If yes, restore to 3.
+        section_affected: "accumulation.thresholds"
 
-    - id: REF-02
-      finding: "Cross-project threshold (3 MEDIUM, 2+ projects) may be too slow"
-      change: >
-        Introduce a 6-month calibration period: lower abstract method threshold to
-        2 MEDIUM across 2+ projects during the first 6 months after promotion. After
-        6 months, evaluate whether the lower threshold produced premature evolutions.
-        If not, keep it. If yes, restore to 3.
-      section_affected: "accumulation.thresholds"
-
-    - id: REF-03
-      finding: "Long-term retrospective quality decay unvalidated"
-      change: >
-        Add a quality monitoring check: if a project's last 5 retrospectives all have
-        severity = LOW and type = success (no gaps, no friction), flag for attention.
-        Either the method is perfect (unlikely) or the agent is producing rote
-        compliance. A human should review.
-      section_affected: "unforeseen_challenges.UC-1.mitigation"
+      - id: REF-03
+        finding: "Long-term retrospective quality decay unvalidated"
+        change: >
+          Add a quality monitoring check: if a project's last 5 retrospectives all have
+          severity = LOW and type = success (no gaps, no friction), flag for attention.
+          Either the method is perfect (unlikely) or the agent is producing rote
+          compliance. A human should review.
+        section_affected: "unforeseen_challenges.UC-1.mitigation"
 
   # ═══════════════════════════════════════════════════════
   # WHAT STAYS THE SAME
