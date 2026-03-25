@@ -42,7 +42,8 @@ import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
-import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink } from './shared/event-bus/index.js';
+import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink, WebhookConnector } from './shared/event-bus/index.js';
+import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -210,6 +211,26 @@ eventBus.registerSink(new WebSocketSink(wsHub));
 eventBus.registerSink(persistenceSink);
 eventBus.registerSink(channelSink);
 
+// PRD 026 Phase 5: Declarative webhook connector via env vars
+if (process.env.EVENT_CONNECTOR_WEBHOOK_URL) {
+  const filterDomains = process.env.EVENT_CONNECTOR_WEBHOOK_FILTER_DOMAIN?.split(',').map(s => s.trim()).filter(Boolean);
+  const filterSeverities = process.env.EVENT_CONNECTOR_WEBHOOK_FILTER_SEVERITY?.split(',').map(s => s.trim()).filter(Boolean) as EventSeverity[] | undefined;
+
+  const connectorFilter: EventFilter | undefined =
+    (filterDomains?.length || filterSeverities?.length)
+      ? {
+          ...(filterDomains?.length ? { domain: filterDomains } : {}),
+          ...(filterSeverities?.length ? { severity: filterSeverities } : {}),
+        }
+      : undefined;
+
+  const webhookConnector = new WebhookConnector({
+    url: process.env.EVENT_CONNECTOR_WEBHOOK_URL,
+    filter: connectorFilter,
+  });
+  eventBus.registerSink(webhookConnector);
+}
+
 // ---------- Live Output (PRD 007 Phase 2) ----------
 
 registerLiveOutputRoutes(app, pool);
@@ -264,6 +285,13 @@ app.get('/pool/stats', async (_request, reply) => {
     total_spawned: stats.totalSpawned,
     uptime_ms: Date.now() - stats.startedAt.getTime(),
   });
+});
+
+// ---------- Connectors Health (PRD 026 Phase 5) ----------
+
+app.get('/api/connectors', async (_request, reply) => {
+  const connectors = eventBus.connectorHealth();
+  return reply.status(200).send({ connectors });
 });
 
 // ---------- Token & Usage API ----------
@@ -438,6 +466,9 @@ async function start() {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
 
+    // PRD 026 Phase 5: Connect all registered connectors
+    await eventBus.connectAll();
+
     // Start usage polling after server is listening
     usagePoller.start();
 
@@ -538,6 +569,9 @@ function gracefulShutdown(signal: string) {
     if (genesisSink) {
       genesisSink.dispose();
     }
+
+    // PRD 026 Phase 5: Disconnect all connectors
+    eventBus.disconnectAll().catch(() => { /* non-fatal */ });
 
     // PRD 026 Phase 3: Flush PersistenceSink + save ChannelSink cursor
     persistenceSink.dispose().catch(() => { /* non-fatal */ });
