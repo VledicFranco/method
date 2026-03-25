@@ -1,0 +1,17 @@
+{
+  "name": "@method/pacta-provider-claude-cli",
+  "version": "0.1.0",
+  "description": "Claude CLI AgentProvider for Pacta — claude --print/--resume",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*"
+  }
+}

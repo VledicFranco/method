@@ -59,3 +59,24 @@ export type {
   Lifecycle,
   ProviderCapabilities,
 } from './ports/agent-provider.js';
+
+// Tool provider port
+export type { ToolProvider, ToolDefinition, ToolResult } from './ports/tool-provider.js';
+
+// Memory port
+export type { MemoryPort, MemoryEntry, AgentNote, NoteFilter } from './ports/memory-port.js';
+
+// Context policy
+export type { ContextPolicy } from './context/context-policy.js';
+
+// Reasoning policy
+export type { ReasoningPolicy, AgentExample } from './reasoning/reasoning-policy.js';
+
+// Composition engine
+export { createAgent, CapabilityError } from './engine/create-agent.js';
+export type { CreateAgentOptions, Agent } from './engine/create-agent.js';
+
+// Middleware
+export { budgetEnforcer, BudgetExhaustedError } from './middleware/budget-enforcer.js';
+export type { BudgetState } from './middleware/budget-enforcer.js';
+export { outputValidator } from './middleware/output-validator.js';

@@ -1,0 +1,17 @@
+{
+  "name": "@method/pacta-testkit",
+  "version": "0.1.0",
+  "description": "Pacta verification affordances — RecordingProvider, builders, assertions",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*"
+  }
+}
