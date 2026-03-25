@@ -35,7 +35,9 @@ export class WebSocketSink implements EventSink {
     const topic = DOMAIN_TOPIC_MAP[event.domain];
     if (!topic) return; // Domains without a topic mapping are silently skipped
 
-    this.wsHub.publish(topic, event.payload, (filter) => {
+    // PRD 026 Phase 4: Send full BridgeEvent (not just payload) so frontend
+    // event store receives the unified schema with domain, type, severity, etc.
+    this.wsHub.publish(topic, event, (filter) => {
       // AND all applicable filter dimensions — every specified filter must match.
       // If a filter key is present but the event lacks the corresponding field,
       // the event does not match (explicit filter = explicit exclusion).

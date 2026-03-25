@@ -14,17 +14,16 @@ import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
 import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
-import { createSessionPersistenceStore, type SessionPersistenceStore } from './domains/sessions/session-persistence.js';
+import { createSessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
 import { registerFrontendRoutes } from './shared/frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';
 import { MethodologySessionStore } from './domains/methodology/store.js';
 import { registerMethodologyRoutes } from './domains/methodology/routes.js';
 import { spawnGenesis } from './domains/genesis/spawner.js';
-import { GenesisPollingLoop } from './domains/genesis/polling-loop.js';
-import { CursorMaintenanceJob } from './domains/genesis/cursor-manager.js';
+// PRD 026 Phase 4: Polling loop + cursor maintenance replaced by GenesisSink
 import { registerGenesisRoutes } from './domains/genesis/routes.js';
-import { registerProjectRoutes, eventLog, cursorMap, getEventsFromLog } from './domains/projects/routes.js';
+import { registerProjectRoutes, eventLog, cursorMap } from './domains/projects/routes.js';
 import { setProjectRoutesEventBus } from './domains/projects/routes.js';
 import { copyMethodology, copyStrategy, setResourceCopierPorts } from './domains/registry/resource-copier.js';
 import websocket from '@fastify/websocket';
@@ -33,7 +32,7 @@ import { registerWsRoute } from './shared/websocket/route.js';
 import { setStrategyRoutesEventBus } from './domains/strategies/strategy-routes.js';
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
-import { JsonLineEventPersistence } from './domains/projects/events/index.js';
+// PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
 import { loadSessionsConfig } from './domains/sessions/config.js';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
@@ -43,7 +42,7 @@ import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
-import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink } from './shared/event-bus/index.js';
+import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink } from './shared/event-bus/index.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -176,8 +175,8 @@ const transcriptReader = createTranscriptReader({
   fs: fsProvider,
 });
 
-let genesisPollingLoop: GenesisPollingLoop | null = null;
-let cursorMaintenanceJob: CursorMaintenanceJob | null = null;
+// PRD 026 Phase 4: GenesisSink replaces polling loop (module-scoped for shutdown disposal)
+let genesisSink: import('./shared/event-bus/genesis-sink.js').GenesisSink | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -429,13 +428,9 @@ async function start() {
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
 
-    // Initialize event persistence with JSON Lines format and YAML fallback
-    const jsonlPath = join(ROOT_DIR, '.method', 'genesis-events.jsonl');
-    const yamlPath = join(ROOT_DIR, '.method', 'genesis-events.yaml');
-    const eventPersistence = new JsonLineEventPersistence(jsonlPath, yamlPath);
-    await eventPersistence.recover();
-
-    await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR, {
+    // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles event persistence.
+    // Pass undefined for eventPersistence; project routes still use in-memory eventLog.
+    await registerProjectRoutes(app, discoveryService, projectRegistry, undefined, ROOT_DIR, {
       copyMethodology,
       copyStrategy,
     });
@@ -487,7 +482,22 @@ async function start() {
       }
     }, sessionsConfig.staleCheckIntervalMs);
 
-    // PRD 020 Phase 2A: Spawn Genesis on startup if enabled
+    // PRD 026 Phase 4: system.bus_stats periodic emission (bus self-monitoring)
+    setInterval(() => {
+      try {
+        const stats = eventBus.getStats();
+        eventBus.emit({
+          version: 1,
+          domain: 'system',
+          type: 'system.bus_stats',
+          severity: 'info',
+          payload: { ...stats } as Record<string, unknown>,
+          source: 'bridge/event-bus',
+        });
+      } catch { /* stats emission failure is non-fatal */ }
+    }, 60_000); // Every 60 seconds
+
+    // PRD 020 Phase 2A + PRD 026 Phase 4: Spawn Genesis with bus-based event delivery
     if (genesisConfig.enabled) {
       try {
         const genesisResult = await spawnGenesis(pool, ROOT_DIR, 50000);
@@ -495,82 +505,17 @@ async function start() {
           `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
         );
 
-        // F-A-3: Instantiate and start Genesis polling loop
-        genesisPollingLoop = new GenesisPollingLoop({
-          intervalMs: genesisConfig.pollingIntervalMs,
-          cursorFilePath: '.method/genesis-cursors.yaml',
+        // PRD 026 Phase 4: GenesisSink replaces polling loop.
+        // Narrow callback — GenesisSink never imports SessionPool directly (G-BOUNDARY).
+        genesisSink = new GenesisSink({
+          promptSession: (id, text) => pool.prompt(id, text, 10000).then(() => {}),
+          sessionId: genesisResult.sessionId,
+          batchWindowMs: 30_000,
+          severityFilter: ['warning', 'error', 'critical'],
         });
+        eventBus.registerSink(genesisSink);
 
-        // Create eventFetcher callback that fetches from the event log
-        const eventFetcher = async (_projectId: string, cursor: string): Promise<any[]> => {
-          try {
-            // Parse cursor to get starting index
-            let startIndex = 0;
-            if (cursor) {
-              // Simple cursor parsing: try to extract index from cursor string
-              // In production, would use proper cursor format
-              const parsed = parseInt(cursor, 10);
-              if (!isNaN(parsed)) {
-                startIndex = parsed;
-              }
-            }
-
-            // Get all events from the log
-            const allEvents = getEventsFromLog(eventLog, startIndex);
-            return allEvents;
-          } catch (err) {
-            app.log.warn(`Event fetcher error: ${(err as Error).message}`);
-            return [];
-          }
-        };
-
-        // Create callback for new events
-        const onNewEvents = async (_projectId: string, events: any[]): Promise<void> => {
-          if (!genesisResult.sessionId || events.length === 0) return;
-
-          try {
-            // Generate a summary of the events for Genesis
-            const eventSummary = events.map(e => {
-              const type = typeof e.type === 'string' ? e.type : JSON.stringify(e.type);
-              const projectId = e.projectId || 'unknown';
-              return `${type} (${projectId})`;
-            }).join(', ');
-
-            // Dispatch prompt to Genesis
-            const prompt = `Observed ${events.length} new event(s): ${eventSummary}\n\nUse project_read_events() to fetch details and analyze the impact on project state.`;
-
-            // Fire async prompt but don't wait (Genesis session handles it)
-            pool.prompt(genesisResult.sessionId, prompt, 10000).catch(err => {
-              app.log.warn(`Failed to send prompt to Genesis: ${(err as Error).message}`);
-            });
-          } catch (err) {
-            app.log.warn(`Event callback error: ${(err as Error).message}`);
-          }
-        };
-
-        // Create projectProvider callback that returns discovered projects
-        const projectProvider = () => {
-          const cached = discoveryService.getCachedProjects();
-          return cached.length > 0 ? cached.map(p => p.id) : ['root'];
-        };
-
-        // Start the polling loop
-        genesisPollingLoop.start(
-          genesisResult.sessionId,
-          pool,
-          eventFetcher,
-          onNewEvents,
-          projectProvider,
-        );
-
-        app.log.info(`Genesis polling loop started (interval: ${genesisConfig.pollingIntervalMs}ms)`);
-
-        // F-T-2: Start cursor maintenance job
-        cursorMaintenanceJob = new CursorMaintenanceJob(
-          join(ROOT_DIR, '.method', 'genesis-cursors.yaml'),
-          genesisConfig.cursorCleanupIntervalMs,
-        );
-        cursorMaintenanceJob.start();
+        app.log.info('Genesis event sink registered (30s batch, severity: warning+error+critical)');
       } catch (err) {
         app.log.error(`Failed to spawn Genesis: ${(err as Error).message}`);
       }
@@ -589,14 +534,9 @@ function gracefulShutdown(signal: string) {
     // Stop usage polling
     usagePoller.stop();
 
-    // Stop Genesis polling loop if running
-    if (genesisPollingLoop) {
-      genesisPollingLoop.stop();
-    }
-
-    // Stop cursor maintenance job if running
-    if (cursorMaintenanceJob) {
-      cursorMaintenanceJob.stop();
+    // PRD 026 Phase 4: Dispose GenesisSink (stops batch timer)
+    if (genesisSink) {
+      genesisSink.dispose();
     }
 
     // PRD 026 Phase 3: Flush PersistenceSink + save ChannelSink cursor

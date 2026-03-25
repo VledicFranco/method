@@ -1,0 +1,26 @@
+session_id: "com-20260324-1751-prd-026-phase-4"
+task: "PRD 026 Phase 4: GenesisSink + Frontend Event Store + Phase 3 cleanup"
+phase: C
+iteration: 1
+nu_remaining: 0
+continuation_depth: 0
+tasks_completed:
+  - "B1: GenesisSink + system.bus_stats"
+  - "B2: Wire GenesisSink + replace legacy polling"
+  - "B3: Frontend event-store.ts + useBridgeEvents hook"
+  - "B4: Phase 3 cleanup — remove dead code"
+  - "Fix CRITICAL: WebSocketSink sends full BridgeEvent"
+  - "Fix HIGH: GenesisSink disposed on shutdown"
+  - "Fix MEDIUM: delete ws-store.ts + getStats() tests"
+tasks_remaining: []
+review_findings_pending: []
+gate_status:
+  compile: PASS
+  test: PASS
+  lint: PASS
+mandate_card_path: ".method/sessions/com-20260324-1751-prd-026-phase-4/mandate-card.md"
+branch: "feat/prd-026-phase-4"
+base_branch: "master"
+pr_number: 55
+last_commit: "bad7123"
+changeset_lines: 761

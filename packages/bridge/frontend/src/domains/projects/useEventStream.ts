@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useWebSocket } from '@/shared/websocket/useWebSocket';
-import { useWsStore } from '@/shared/websocket/ws-store';
+import { useEventStore, type BridgeEvent } from '@/shared/stores/event-store';
 import type { ProjectEvent } from '@/domains/projects/types';
 
 export interface UseEventStreamOptions {
@@ -21,35 +21,60 @@ export interface UseEventStreamResult {
 }
 
 /**
+ * Convert BridgeEvent → ProjectEvent for backward compatibility.
+ * useEventStream's public API still returns ProjectEvent[].
+ */
+function bridgeToProjectEvent(e: BridgeEvent): ProjectEvent {
+  return {
+    id: e.id,
+    projectId: e.projectId ?? '',
+    type: e.type,
+    timestamp: e.timestamp,
+    metadata: (e.payload.metadata as Record<string, unknown>) ?? {},
+    payload: e.payload,
+  };
+}
+
+/**
  * Subscribe to project events via WebSocket.
- * Events are pushed by the server and accumulated in the Zustand store.
- * Maintains the same interface as the previous polling implementation.
+ * Internally uses the unified event store (PRD 026 Phase 4).
+ * Public API unchanged — still returns ProjectEvent[].
  */
 export function useEventStream(options: UseEventStreamOptions = {}): UseEventStreamResult {
   const { projectId, enabled = true } = options;
 
-  const filter = useMemo(
+  const wsFilter = useMemo(
     () => (projectId ? { project_id: projectId } : undefined),
     [projectId],
   );
 
-  const appendEvents = useWsStore((s) => s.appendEvents);
-
-  useWebSocket<ProjectEvent>('events', {
-    filter,
-    enabled,
-    onMessage: (event) => {
-      appendEvents([event]);
-    },
+  // Stable ref for addEvent to avoid re-creating onMessage
+  const addEventRef = useRef(useEventStore.getState().addEvent);
+  useEffect(() => {
+    addEventRef.current = useEventStore.getState().addEvent;
   });
 
-  const connected = useWsStore((s) => s.connected);
-  const events = useWsStore((s) => s.events);
+  const onMessage = useCallback((event: BridgeEvent) => {
+    addEventRef.current(event);
+  }, []);
 
-  const filteredEvents = useMemo(
-    () => (projectId ? events.filter((e) => e.projectId === projectId) : events),
-    [events, projectId],
-  );
+  useWebSocket<BridgeEvent>('events', {
+    filter: wsFilter,
+    enabled,
+    onMessage,
+  });
+
+  const connected = useEventStore((s) => s.connected);
+  const events = useEventStore((s) => s.events);
+
+  // Filter to project domain events and convert to legacy shape
+  const filteredEvents = useMemo(() => {
+    let projectEvents = events.filter((e) => e.domain === 'project');
+    if (projectId) {
+      projectEvents = projectEvents.filter((e) => e.projectId === projectId);
+    }
+    return projectEvents.map(bridgeToProjectEvent);
+  }, [events, projectId]);
 
   return {
     events: filteredEvents,

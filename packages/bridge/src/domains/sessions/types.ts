@@ -19,7 +19,7 @@ export type {
 export type { PtySession, SessionStatus, SpawnOptions } from './pty-session.js';
 
 // Channel types
-export type { ChannelMessage, Channel, SessionChannels, OnMessageCallback } from './channels.js';
+export type { ChannelMessage, Channel, SessionChannels } from './channels.js';
 
 // Transcript reader types
 export type { TranscriptToolCall, TranscriptTurn, SessionSummary, TranscriptReader } from './transcript-reader.js';
