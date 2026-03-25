@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { wsManager } from './shared/websocket/ws-manager';
-import { useWsStore } from './shared/websocket/ws-store';
+import { useEventStore } from './shared/stores/event-store';
 import './styles/vidtecci.css';
 
-// Connect WebSocket and sync connection state to Zustand store
+// Connect WebSocket and sync connection state to unified event store (PRD 026 Phase 4)
 wsManager.onConnectionChange((connected) => {
-  useWsStore.getState().setConnected(connected);
+  useEventStore.getState().setConnected(connected);
 });
 wsManager.connect();
 
