@@ -84,10 +84,19 @@ const agent = createAgent({ pact, provider: myProvider, reasoning: myReasoner })
 ```
 L4  @method/bridge                    Uses pacta to deploy agents
 L3  @method/pacta                     ← Modular Agent SDK (core: types + engine)
+L3  @method/pacta-testkit             ← Verification affordances (FCA P4: builders, recording providers, assertions)
+L3  @method/pacta-playground          ← Integration verification (FCA P6: scenarios, virtual FS, comparative eval)
 L3  @method/pacta-provider-claude-cli ← Claude CLI provider (separate package)
 L3  @method/pacta-provider-anthropic  ← Anthropic API provider (separate package)
 L3  @method/mcp                       Protocol adapter
 L2  @method/methodts                  Domain extensions
+```
+
+Dependency graph:
+```
+pacta-playground ──→ pacta-testkit ──→ pacta
+pacta-provider-* ──→ pacta
+bridge ──→ pacta, pacta-provider-*
 ```
 
 > **Layer note:** Phase 1 produces L0-equivalent artifacts (pure types, zero behavior). The
@@ -366,30 +375,101 @@ type AgentEvent =
 
 ## Phases
 
-> Phases are logical groupings, not calendar commitments. Phases 2a and 2b are independent
+> Phases are logical groupings, not calendar commitments. Phases 3a and 3b are independent
 > and may proceed concurrently.
 
-### Phase 1: MVP — Types + Engine + Claude CLI Provider + Reference Agent
+### Phase 1: MVP — Types + Engine + Claude CLI Provider + Testkit
 
 **Exit criteria:** `createAgent({ provider: claudeCliProvider() }).invoke("hello")` returns
-a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER).
+a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER). Testkit ships alongside core.
 
+**`@method/pacta` (core):**
 - Pact, ExecutionMode, BudgetContract, OutputContract, ScopeContract, ContextPolicy, ReasoningPolicy
 - AgentProvider (base + Streamable/Resumable/Killable), ToolProvider, MemoryPort
 - AgentEvent, AgentResult, TokenUsage, CostReport
 - `createAgent()` — compose ports, validate capabilities, wire events
 - Middleware: budget enforcer, output validator (composable wrappers)
-- Claude CLI provider (in separate package `@method/pacta-provider-claude-cli`)
-- One reference agent (`simpleCodeAgent`) as integration test + Tier 1 on-ramp
 - Gate test scaffold: G-PORT (core has zero runtime deps), G-BOUNDARY, G-LAYER
-- `RecordingProvider` test double + `pactBuilder()` for consumer testing
-- Phase 1 output is L0 (pure types) + L3 (composition engine + provider). The package
+- Co-located unit tests (`*.test.ts`) per FCA P8
+- Phase 1 output is L0 (pure types) + L3 (composition engine). The package
   reaches full L3 at Phase 1 completion.
 
-### Phase 2a: Reasoning Strategies (Library) — parallelizable with 2b
+**`@method/pacta-testkit` (verification affordances — FCA P4):**
+- `RecordingProvider` — implements AgentProvider, records all interactions
+- `MockToolProvider` — returns scripted tool results
+- `pactBuilder()` — fluent builder with sensible defaults
+- `agentRequestBuilder()` — test request construction
+- Assertion helpers: `assertToolsCalled()`, `assertBudgetUnder()`, `assertOutputMatches()`
+- Recording captures: tool calls (name, input, output, timing), token usage per turn,
+  cost per turn, reasoning traces, final output + stop reason. Rich enough for future
+  `EvalReport` analysis.
+
+**`@method/pacta-provider-claude-cli` (first provider):**
+- Implement AgentProvider for Claude CLI (`--print`, `--resume`)
+- Map Claude's execution modes to Pacta's mode contracts
+- One reference agent (`simpleCodeAgent`) as integration test + Tier 1 on-ramp
+
+### Phase 2: Playground — Simulated Agent Evaluation Environment
+
+**Exit criteria:** A scenario runs an agent against a virtual filesystem, asserts on tool
+calls and output, and produces an eval report. Gate tests pass.
+
+**`@method/pacta-playground` (integration verification — FCA P6):**
+
+Tiered simulation fidelity:
+
+| Tier | Simulation | Fidelity | Cost |
+|------|-----------|----------|------|
+| **Stub** | All tools return canned responses | Low — tests agent logic | Free (no LLM) |
+| **Script** | Tools follow scripted rules (given input X → return Y) | Medium — tests agent response to specific results | Free |
+| **Virtual** | In-memory FS via `memfs`; Read/Write/Edit operate on virtual FS | High — tests actual file editing and verification | Cheap (no host side effects) |
+
+> **Fidelity boundary:** Tier 3 = virtual filesystem only. Shell commands beyond FS
+> operations are Tier 2 (scripted responses). No virtual git, no virtual npm. The
+> `FidelityLevel` type enforces this at compile time.
+
+Core deliverables:
+- `FidelityLevel` type — scenarios declare their tier; type system enforces boundaries
+- `VirtualToolProvider` — implements `ToolProvider` backed by `memfs` (Tier 3)
+- `ScriptedToolProvider` — rule-based tool responses (Tier 2)
+- Scenario runner: given filesystem state + tools + prompt → run agent → collect results
+- Comparative runner: same scenario against two agent configs, diff behavior
+- `EvalReport` schema (type definition — measurement logic deferred):
+  ```typescript
+  interface EvalReport {
+    scenario: string;
+    agent: string;
+    behavioral: { toolsCorrect: boolean; sequenceCorrect: boolean };
+    output: { schemaValid: boolean; qualityScore?: number };
+    resources: { tokens: number; cost: number; turns: number; durationMs: number };
+    reasoning: { planDetected: boolean; reflectionDetected: boolean; thinkToolUsed: boolean };
+    robustness?: { faultInjected: string; recovered: boolean };
+  }
+  ```
+- Scenario format: declarative, agent-agnostic data
+  ```typescript
+  scenario('code-review-agent')
+    .given(filesystem({ 'src/main.ts': buggyCode }))
+    .given(tools(['Read', 'Grep', 'Edit']))
+    .when(prompt('Review this file for bugs'))
+    .then(toolsCalled(['Read', 'Grep']))
+    .then(outputMatches(reviewSchema))
+    .then(tokensBelow(5000))
+  ```
+
+**External agents:** Scenarios are agent-agnostic data. The runner is Pacta-native.
+External agents (Claude Code sub-agents, OpenAI) participate via `AgentProvider` adapter.
+We don't build the adapter but don't prevent it.
+
+**Deferred to Playground Phase 2:**
+- `EvalReport` measurement logic (LLM quality judges, rubric scoring)
+- Interactive step-through mode (watch agent run step-by-step)
+- Fault injection (tool failures, ambiguous prompts, context pressure)
+
+### Phase 3a: Reasoning Strategies (Library) — parallelizable with 3b
 
 **Exit criteria:** Think tool + plan-between-actions demonstrated to change agent behavior
-on a test task. Gate tests pass.
+on a playground scenario. Gate tests pass.
 
 - Think tool implementation (zero-side-effect scratchpad)
 - Plan-between-actions system prompt injection
@@ -397,31 +477,28 @@ on a test task. Gate tests pass.
 - Few-shot example injection
 - Effort level mapping to provider-specific controls
 
-### Phase 2b: Context Management (Library) — parallelizable with 2a
+### Phase 3b: Context Management (Library) — parallelizable with 3a
 
-**Exit criteria:** Compaction manager triggers and preserves context on a long-running task.
-Gate tests pass.
+**Exit criteria:** Compaction manager triggers and preserves context on a long-running
+playground scenario. Gate tests pass.
 
 - Compaction manager (configurable threshold + custom instructions)
 - Note-taking manager (MemoryPort + retrieval)
 - Sub-agent delegator (fresh windows, summary extraction)
 - System prompt budget tracking
 
-### Phase 3: Second Provider — Anthropic API
+### Phase 4: Second Provider + Reference Agents
 
 **Exit criteria:** Same assembled agent runs with both Claude CLI and Anthropic API providers.
-Success criterion #2 validated.
+Reference agents work out of the box. Success criterion #2 validated.
 
-- Implement AgentProvider for direct Anthropic Messages API (separate `@method/pacta-provider-anthropic`)
+**`@method/pacta-provider-anthropic`:**
+- Implement AgentProvider for direct Anthropic Messages API
 - Messages API for oneshot/streaming + tool use
 - Prompt caching integration
 - Port interface validated with two real implementations
 
-### Phase 4: Polish + Reference Agents
-
-**Exit criteria:** Reference agents work out of the box with an API key. `.with()` override
-pattern enables partial customization.
-
+**Reference agents:**
 - Pre-assembled reference agents: `codeAgent`, `researchAgent`, `reviewAgent`
 - `.with(overrides)` pattern for Tier 1→2 customization bridge
 - Documentation: guides for implementing providers, writing reasoning strategies
@@ -457,6 +534,8 @@ surface before full implementation.
 8. All agent lifecycle events are typed and emitted through a single event vocabulary
 9. Zero transport dependencies in the core package
 10. FCA gates pass (G-PORT, G-BOUNDARY, G-LAYER)
+11. Testkit ships with Phase 1 — `RecordingProvider`, builders, assertions (FCA P4)
+12. Playground scenarios run agents against virtual filesystem with behavioral assertions
 
 > **Stretch goal:** A community-contributed non-Anthropic provider (e.g., Ollama, OpenAI)
 > validates the port interface without stub methods.
