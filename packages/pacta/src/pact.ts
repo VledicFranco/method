@@ -11,6 +11,8 @@ import type { ExecutionMode, StreamOptions } from './modes/execution-mode.js';
 import type { BudgetContract } from './budget/budget-contract.js';
 import type { OutputContract } from './output/output-contract.js';
 import type { ScopeContract } from './scope.js';
+import type { ContextPolicy } from './context/context-policy.js';
+import type { ReasoningPolicy } from './reasoning/reasoning-policy.js';
 
 // ── The Pact ──────────────────────────────────────────────────────
 
@@ -29,6 +31,12 @@ export interface Pact<TOutput = unknown> {
 
   /** What capabilities the agent has — tool/path/model constraints */
   scope?: ScopeContract;
+
+  /** How the agent manages its context window */
+  context?: ContextPolicy;
+
+  /** How the agent reasons between actions */
+  reasoning?: ReasoningPolicy;
 }
 
 // ── Agent Request ─────────────────────────────────────────────────
