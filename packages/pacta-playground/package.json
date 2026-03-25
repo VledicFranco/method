@@ -1,0 +1,18 @@
+{
+  "name": "@method/pacta-playground",
+  "version": "0.1.0",
+  "description": "Pacta playground — simulated agent evaluation environment",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*",
+    "@method/pacta-testkit": "*"
+  }
+}

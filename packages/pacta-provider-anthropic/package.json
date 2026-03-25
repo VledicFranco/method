@@ -1,0 +1,17 @@
+{
+  "name": "@method/pacta-provider-anthropic",
+  "version": "0.1.0",
+  "description": "Anthropic Messages API provider for Pacta",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*"
+  }
+}

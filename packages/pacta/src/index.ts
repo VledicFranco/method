@@ -66,11 +66,22 @@ export type { ToolProvider, ToolDefinition, ToolResult } from './ports/tool-prov
 // Memory port
 export type { MemoryPort, MemoryEntry, AgentNote, NoteFilter } from './ports/memory-port.js';
 
-// Context policy
+// Context policy + managers
 export type { ContextPolicy } from './context/context-policy.js';
+export type { ContextMiddleware } from './context/context-middleware.js';
+export { compactionManager } from './context/compaction-manager.js';
+export { noteTakingManager } from './context/note-taking-manager.js';
+export { subagentDelegator } from './context/subagent-delegator.js';
+export { systemPromptBudgetTracker } from './context/system-prompt-budget-tracker.js';
 
-// Reasoning policy
+// Reasoning policy + strategies
 export type { ReasoningPolicy, AgentExample } from './reasoning/reasoning-policy.js';
+export type { ReasonerMiddleware } from './reasoning/reasoner-middleware.js';
+export { reactReasoner, THINK_TOOL } from './reasoning/react-reasoner.js';
+export { reflexionReasoner } from './reasoning/reflexion-reasoner.js';
+export { fewShotInjector } from './reasoning/few-shot-injector.js';
+export { effortMapper, getEffortParams } from './reasoning/effort-mapper.js';
+export type { EffortParams } from './reasoning/effort-mapper.js';
 
 // Composition engine
 export { createAgent, CapabilityError } from './engine/create-agent.js';
