@@ -5,7 +5,10 @@
     "rootDir": "src"
   },
   "references": [
-    { "path": "../methodts" }
+    { "path": "../methodts" },
+    { "path": "../pacta" },
+    { "path": "../pacta-provider-claude-cli" },
+    { "path": "../pacta-testkit" }
   ],
   "include": ["src"]
 }
