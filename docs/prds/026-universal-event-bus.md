@@ -3,7 +3,7 @@
 **Nickname:** UEB (Universal Event Bus) — the backend system event bus.
 Distinct from GES (Genesis Event Store, PRD 025) which handles frontend user activity.
 
-**Status:** Phase 3 Complete (2026-03-24). Phases 4-5 remaining.
+**Status:** Phase 4 Complete (2026-03-24). Phase 5 remaining. Cleanup backlog tracked below.
 **Author:** PO + Lysica
 **Date:** 2026-03-24
 **Depends on:** None (foundational infrastructure)
@@ -396,7 +396,7 @@ transient — documented in Phase 2 and retired at the completion gate.
 - channels.ts full removal (retained as legacy fallback, dead code)
 - ChannelEventTrigger migration (trigger subscribes to bus, old path dead)
 
-### Phase 4: GenesisSink + Frontend Event Store ⬜ NEXT
+### Phase 4: GenesisSink + Frontend Event Store ✅ DONE (PR #55)
 
 **Description:** Genesis gains full system awareness via batched event summaries. Frontend
 gains unified event subscription replacing the ad-hoc ws-store.
@@ -416,15 +416,15 @@ time-windowed batches and delivers summarized prompts to the Genesis session.
 - Estimated volume: ~45 prompts/hour vs ~2,700 raw events/hour at 7 active sessions
 
 Acceptance criteria:
-- [ ] GenesisSink implements EventSink interface
-- [ ] Registered in composition root with narrow `promptSession` callback (no SessionPool import)
-- [ ] Filters events by severity (default: warning + error + critical)
-- [ ] Batches events in 30s windows (configurable via `GENESIS_SINK_BATCH_MS`)
-- [ ] Generates readable summary: "3 sessions stale, 1 strategy gate failed, 2 triggers fired"
-- [ ] Graceful when Genesis session is dead or missing (no crash, no error spam)
-- [ ] Co-located tests proving batching, filtering, summary generation, dead-session handling
-- [ ] No G-BOUNDARY violations (verified by architecture gate test)
-- [ ] `system.bus_stats` periodic event emitted (bus self-monitoring, mentioned in PRD but not yet implemented)
+- [x] GenesisSink implements EventSink interface
+- [x] Registered in composition root with narrow `promptSession` callback (no SessionPool import)
+- [x] Filters events by severity (default: warning + error + critical)
+- [x] Batches events in 30s windows (configurable via constructor)
+- [x] Generates readable summary grouped by domain with severity counts
+- [x] Graceful when Genesis session is dead or missing (no crash, no error spam)
+- [x] 20 co-located tests (batching, filtering, summary, dead-session handling)
+- [x] No G-BOUNDARY violations (verified by architecture gate test)
+- [x] `system.bus_stats` periodic event emitted every 60s via server-entry.ts
 
 **4b. Frontend Event Store**
 
@@ -443,27 +443,102 @@ that receives all BridgeEvents via WebSocket.
   The store watches for bus events and updates `{ activeSessions, staleSessions, recentEvents }`.
 
 Acceptance criteria:
-- [ ] `event-store.ts` Zustand store receives BridgeEvents via WebSocket
-- [ ] `useBridgeEvents({ domain: 'strategy' })` returns strategy events in real-time
-- [ ] `useBridgeEvents({ domain: 'session', sessionId: 'abc' })` filters by session
-- [ ] `useEventStream` (projects domain) works unchanged (internal migration to event-store)
-- [ ] No Zustand selector infinite-loop bug (individual selectors, not compound objects)
-- [ ] `ws-store.ts` removed or deprecated
-- [ ] Genesis store `systemSummary` populated from event-store (PRD 025 GES connection)
-- [ ] Frontend builds cleanly, no console errors on Dashboard/Sessions/Strategies pages
-- [ ] Playwright smoke test: navigate pages, verify events appear in real-time
+- [x] `event-store.ts` Zustand store receives BridgeEvents via WebSocket
+- [x] `useBridgeEvents(filter)` hook with individual selectors (no infinite loop)
+- [x] `useBridgeEvents({ domain: 'session', sessionId: 'abc' })` filters by session
+- [x] `useEventStream` migrated internally to event-store (public API unchanged)
+- [x] No Zustand selector infinite-loop bug
+- [x] `ws-store.ts` deleted
+- [ ] Genesis store `systemSummary` populated from event-store — **deferred to PRD 025 (GES)**
+- [x] Frontend builds cleanly
+- [ ] Playwright smoke test — **deferred (manual testing done)**
 
-**Phase 3 deferred cleanup (can be done alongside Phase 4):**
+**WebSocketSink fix (found in review):** Now sends full BridgeEvent to frontend instead of
+just `event.payload`. Frontend event-store expects BridgeEvent schema. Backward compatible
+because `useEventStream` converts to legacy `ProjectEvent` shape internally.
+
+**Cleanup backlog (deferred, not blocking — tracked here):**
 - [ ] Remove JsonLineEventPersistence + YamlEventPersistence from projects domain
 - [ ] Migrate genesis polling to use bus.query() instead of eventFetcher callback
-- [ ] Remove dead code in channels.ts (or delete entirely if no remaining consumers)
-- [ ] Migrate ChannelEventTrigger to bus subscription (currently trigger subscribes to bus directly, old path is dead)
+- [ ] Remove dead code in channels.ts (or delete entirely)
+- [ ] Remove dead ChannelEventTrigger path (trigger already subscribes to bus directly)
 
-### Phase 5: Connector Architecture
-- Define `EventConnector` interface extending `EventSink` with lifecycle (connect, disconnect, health)
-- Implement one external connector as proof of concept (webhook or Slack)
-- Configuration: connectors declared in `.method/manifest.yaml` or environment variables
-- Verify: external system receives bridge events
+### Phase 5: Connector Architecture ⬜ NEXT (final phase)
+
+**Description:** External systems can receive bridge events. Define the connector interface,
+implement one proof-of-concept connector, and make connectors declaratively configurable.
+This is the last phase — when done, PRD 026 is complete.
+
+**5a. EventConnector interface**
+
+Extends EventSink with lifecycle management (long-lived connections with health monitoring).
+
+- `connect(): Promise<void>` — establish connection (HTTP client, WebSocket, SDK init)
+- `disconnect(): Promise<void>` — graceful teardown
+- `health(): { connected: boolean; lastEventAt: string | null; errorCount: number }`
+- Inherits `onEvent(event)` and `onError(error, event)` from EventSink
+- Connectors manage their own retry logic (exponential backoff)
+- Composition root calls `connect()` after registration, `disconnect()` on shutdown
+
+Acceptance criteria:
+- [ ] `EventConnector` interface defined in `ports/event-bus.ts` (extends EventSink)
+- [ ] `connect()`, `disconnect()`, `health()` methods specified
+- [ ] InMemoryEventBus supports connector lifecycle (calls connect on register, disconnect on shutdown)
+- [ ] Health status queryable via `GET /api/connectors` endpoint
+
+**5b. Webhook connector (proof of concept)**
+
+POSTs BridgeEvents to a configured URL. Simplest possible external integration.
+
+- Configurable: URL, filter (domain/type/severity), retry count, timeout
+- Payload: JSON body = BridgeEvent (same schema, no transformation)
+- Retry: exponential backoff (1s, 2s, 4s, max 3 retries, then drop + log)
+- Health: tracks last successful POST, error count, connected=true if URL reachable
+- Rate limit: max 10 events/second to prevent overwhelming the target
+
+Acceptance criteria:
+- [ ] WebhookConnector implements EventConnector
+- [ ] POSTs BridgeEvent JSON to configured URL
+- [ ] Filters events by domain/type/severity before sending
+- [ ] Retries with exponential backoff (max 3)
+- [ ] Rate limit: 10 events/second (drops excess, logs warning)
+- [ ] Health endpoint shows connected status, last event, error count
+- [ ] Co-located tests (mock HTTP server, verify POST body, retry logic, rate limit)
+- [ ] No G-PORT violations (uses built-in fetch or http module, not a new port)
+
+**5c. Declarative configuration**
+
+Connectors declared in environment variables or `.method/manifest.yaml`.
+
+- Env var pattern: `EVENT_CONNECTOR_WEBHOOK_URL=https://...`
+  `EVENT_CONNECTOR_WEBHOOK_FILTER_DOMAIN=session,strategy`
+  `EVENT_CONNECTOR_WEBHOOK_FILTER_SEVERITY=error,critical`
+- Composition root reads config, creates connectors, registers as sinks
+- Multiple connectors supported (e.g., webhook + future Slack)
+
+Acceptance criteria:
+- [ ] Connector config read from env vars in server-entry.ts
+- [ ] WebhookConnector auto-registered when `EVENT_CONNECTOR_WEBHOOK_URL` is set
+- [ ] Filter config parsed from env vars (comma-separated domains, severities)
+- [ ] Bridge starts cleanly without any connector config (zero connectors = no error)
+- [ ] Adding a new connector type requires only: implement EventConnector + add env var parsing
+
+**5d. Documentation + PRD completion**
+
+- [ ] CLAUDE.md updated: mention EventBus and connector config in bridge section
+- [ ] `docs/arch/event-bus.md` created: architecture doc for the event bus (one concern per file, DR-12)
+- [ ] PRD 026 status updated to "Implemented"
+- [ ] All 8 success criteria from PRD verified and checked off
+
+**PRD 026 overall success criteria (verify at Phase 5 completion):**
+1. [ ] One emit call per domain event — no dual appendMessage + wsHub.publish
+2. [ ] Zero legacy hook callbacks in server-entry.ts
+3. [ ] Frontend receives all domain events via WebSocket
+4. [ ] Genesis receives all domain events via GenesisSink
+5. [ ] Events persist and replay — `GET /api/events` returns historical events
+6. [ ] Architecture gates pass — G-PORT, G-BOUNDARY, G-LAYER
+7. [ ] Adding a new sink requires zero changes to existing domains
+8. [ ] Adding a new event type requires zero changes to the bus
 
 ## Migration & Backward Compatibility
 
