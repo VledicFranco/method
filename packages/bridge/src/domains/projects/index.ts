@@ -13,7 +13,6 @@ export {
   pushEventToLog,
   createCircularEventLog,
   pushEventToLogWithPersistence,
-  setPersistence,
   setProjectRoutesEventBus,
 } from './routes.js';
 export type { CircularEventLog, CursorState } from './routes.js';

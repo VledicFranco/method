@@ -2,30 +2,31 @@
 
 ## Responsibility
 
-Genesis is a persistent root-level session that monitors project discovery events and reports observations to human operators. It runs continuously in the background, maintains a cursor for each project's event stream, and provides HTTP endpoints for prompt submission and status queries.
+Genesis is a persistent root-level session that monitors project discovery events and reports observations to human operators. It runs continuously in the background and receives event batches from the Universal Event Bus via GenesisSink.
 
 **Key constraints:**
 - Genesis has `project_id='root'` (bridge metadata). This distinguishes it from spawned agent sessions which target specific projects.
 - Genesis sessions are marked `persistent=true`, skipping stale detection and auto-kill.
-- Cursor state persists to `.method/genesis-cursors.yaml` across bridge restarts.
-- Genesis polling runs on a configurable interval (default 5 seconds) and is independent of HTTP traffic.
+- Genesis receives events via GenesisSink (PRD 026 Phase 4) — no polling loop or cursor persistence.
 
 ### Relationship to Bridge Lifecycle
 
-Genesis is spawned at bridge startup, before the HTTP server binds. If `GENESIS_ENABLED=true` (default), `spawnGenesis()` creates a new session with the OBSERVE+REPORT initialization prompt. The polling loop begins automatically after initialization completes.
+Genesis is spawned at bridge startup, after the HTTP server binds. If `GENESIS_ENABLED=true` (default), `spawnGenesis()` creates a new session with the OBSERVE+REPORT initialization prompt. A `GenesisSink` is registered on the event bus immediately after spawn — it batches events every 30 seconds and forwards warning/error/critical events to the Genesis session.
 
 ## File Structure
 
 ```
 packages/bridge/src/
-├── genesis/
-│   ├── spawner.ts            Genesis spawn logic, session metadata setup
-│   ├── polling-loop.ts        Cursor management, event fetching, polling orchestration
-│   ├── initialization.ts      OBSERVE+REPORT prompt template
-│   └── tools.ts               Project discovery + reporting tools (genesis_report, project_*)
-├── genesis-routes.ts          HTTP endpoints for Genesis interaction
-└── genesis-integration.ts     Bridge lifecycle integration (startup, shutdown, polling)
+└── domains/genesis/
+    ├── spawner.ts            Genesis spawn logic, session metadata setup
+    ├── initialization.ts      OBSERVE+REPORT prompt template
+    ├── routes.ts              HTTP endpoints for Genesis interaction
+    └── config.ts              Zod-validated config (GENESIS_ENABLED, GENESIS_BUDGET_TOKENS_PER_DAY)
 ```
+
+> **Note:** `polling-loop.ts` and `cursor-manager.ts` were deleted in PRD 026 Phase 5.
+> Event delivery now goes through `GenesisSink` (see `shared/event-bus/genesis-sink.ts`
+> and `docs/arch/event-bus.md`).
 
 ## Genesis Session Lifecycle
 
@@ -55,52 +56,30 @@ Returns `GenesisSpawnResult` with session ID, status, and budget info. The sessi
 Genesis loads with the OBSERVE+REPORT prompt (from `initialization.ts`). The prompt:
 - Explains Genesis's role as a root observer
 - Lists available tools: `project_list`, `project_get`, `project_read_events`, `genesis_report`
-- Instructs Genesis to poll for new events and report observations
+- Instructs Genesis to monitor events and report observations
 
 Once the PTY shows the `❯` prompt, initialization completes and Genesis enters `ready` state.
 
-### 3. Polling Loop
+### 3. Event Delivery (GenesisSink)
 
-**CursorState Structure:**
-```typescript
-interface CursorState {
-  projectId: string;
-  cursor: string;            // JSON { version, projectId, index, timestamp }
-  lastUpdate: string;        // ISO timestamp
-  eventCount: number;        // Events processed for this project
-}
+Rather than a polling loop, Genesis receives events via `GenesisSink` registered on the Universal Event Bus:
 
-interface GenesisCursors {
-  lastPolled: string;
-  cursors: CursorState[];    // Per-project cursor tracking
-}
+```
+eventBus.registerSink(new GenesisSink({
+  promptSession: (id, text) => pool.prompt(id, text, 10000),
+  sessionId: genesisResult.sessionId,
+  batchWindowMs: 30_000,        // Batch events every 30 seconds
+  severityFilter: ['warning', 'error', 'critical'],  // Only significant events
+}));
 ```
 
-**Polling Flow:**
+**GenesisSink flow:**
+1. Bus emits a `BridgeEvent` with severity `warning`, `error`, or `critical`
+2. GenesisSink batches events in the 30-second window
+3. On window flush, GenesisSink formats events as a structured summary and calls `pool.prompt(genesisSessionId, summary)`
+4. Genesis receives the prompt and responds with observations
 
-1. **Load cursors** — `loadCursors()` reads `.method/genesis-cursors.yaml` on startup
-2. **Clean stale** — `cleanupStaleCursors()` removes entries older than 7 days (CURSOR_TTL_MS)
-3. **Poll once per interval** — For each project:
-   - Get current cursor via `getCursorForProject(cursors, projectId)`
-   - Call `eventFetcher(projectId, cursor)` to fetch new events
-   - If events found: update cursor with `updateCursorForProject()`, save to disk
-   - Invoke `onNewEvents(projectId, events)` callback
-
-**Cursor Format (Phase 1):**
-```json
-{
-  "version": "1",
-  "projectId": "project-id",
-  "index": 42,               // Event count at this cursor
-  "timestamp": "2026-03-21T10:30:00Z"
-}
-```
-
-**Key invariants:**
-- Client cursors (from `/sessions/:id/channels/events` polling) expire after 24 hours of inactivity (handled elsewhere)
-- Genesis cursors (internal polling state) expire after 7 days
-- Cursor cleanup runs on startup and is inline during `getCursorForProject()` access
-- Cursor save is atomic: temp file write + atomic rename to prevent partial writes on crash
+See `docs/arch/event-bus.md` for the full event bus architecture.
 
 ## Data Flow
 
@@ -111,31 +90,23 @@ Bridge startup
                          ├─ mark persistent=true
                          └─ return sessionId
 
-  └─ GenesisPollingLoop.start() ─┐
-                                 ├─ load cursors from .method/genesis-cursors.yaml
-                                 ├─ clean stale entries (>7d)
-                                 └─ schedule polling interval (5s)
+  └─ eventBus.registerSink(new GenesisSink(...))
+       ├─ batches warning/error/critical events (30s window)
+       └─ forwards batches as prompts to Genesis session
 
-[Polling loop every 5s]
-  └─ pollOnce(pool, sessionId, eventFetcher) ─┐
-                                              ├─ for projectId='root':
-                                              │  ├─ cursor = getCursorForProject(projectId)
-                                              │  ├─ events = eventFetcher(projectId, cursor)
-                                              │  ├─ if events.length > 0:
-                                              │  │  ├─ newCursor = events[-1].id
-                                              │  │  ├─ updateCursorForProject(..., newCursor)
-                                              │  │  ├─ saveCursors() [atomic write]
-                                              │  │  └─ onNewEvents(projectId, events)
-                                              │  └─ catch errors silently
-                                              └─ sleep(intervalMs)
+[Bus event (severity ≥ warning)]
+  └─ GenesisSink.onEvent(event)
+       └─ accumulates in batch buffer
+
+[Every 30 seconds]
+  └─ GenesisSink flush
+       └─ pool.prompt(genesisSessionId, formattedBatch)
 
 [HTTP request arrives]
   └─ POST /genesis/prompt ──┐
                             ├─ generate prompt ID
-                            ├─ track in inFlightPrompts
                             ├─ call pool.prompt(genesisSessionId, prompt)
-                            ├─ extract response from PTY
-                            └─ untrack promptId, return response
+                            └─ return response
 ```
 
 ## HTTP Endpoints
@@ -150,7 +121,6 @@ Returns Genesis session status:
   projectId: string;        // always 'root'
   budgetTokensPerDay: number;
   lastActivityAt: Date;
-  cursorState: GenesisCursors;
 }
 
 // Response 503 (Genesis not running)
@@ -196,33 +166,18 @@ interface GenesisSpawnResult {
 }
 ```
 
-### GenesisPersistentState
-Stored for recovery across bridge restarts (future enhancement):
-```typescript
-interface GenesisPersistentState {
-  sessionId: string;
-  startedAt: Date;
-  budgetTokensPerDay: number;
-  lastActivityAt: Date;
-}
-```
-
 ## Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GENESIS_ENABLED` | `true` | Enable Genesis on bridge startup |
 | `GENESIS_BUDGET_TOKENS_PER_DAY` | `50000` | Daily token budget for Genesis |
-| `GENESIS_POLLING_INTERVAL_MS` | `5000` | Interval between event polls (5 seconds) |
-| `GENESIS_CURSOR_FILE` | `.method/genesis-cursors.yaml` | Cursor persistence file path |
-| `GENESIS_CURSOR_TTL_MS` | `604800000` | Cursor expiry (7 days in ms) |
 
 ## Error Handling
 
 ### Session-level Errors
 - PTY process exits → session status set to `dead`, pending prompts resolve with captured output
-- Polling error for a specific project → logged and skipped, polling continues for other projects
-- Cursor load/save failure → logged; polling proceeds with empty cursors (begins from scratch)
+- GenesisSink batch flush failure → logged and skipped, next batch proceeds normally
 
 ### HTTP-level Errors
 - Genesis not running → 503 with descriptive message
@@ -234,29 +189,24 @@ interface GenesisPersistentState {
 | Module | Purpose |
 |--------|---------|
 | `pool.ts` | Session spawning and management |
-| `genesis/tools.ts` | Project discovery + reporting tools |
 | `genesis/initialization.ts` | Prompt template |
-| `js-yaml` | Cursor YAML persistence |
-| `node:fs` | File I/O (cursors) |
+| `shared/event-bus/genesis-sink.ts` | Bus-based event delivery (PRD 026 Phase 4) |
 
 ## Key Design Decisions
 
-### Why Polling Instead of Push?
+### Why GenesisSink Instead of Polling?
 
-Polling is more resilient to bridge restarts and project additions. New projects discovered via `project_list` are automatically included in the next polling cycle without requiring explicit subscription. Push would require hook registration in each project and maintain explicit subscriptions — more complex.
-
-### Why 7-Day Genesis Cursor TTL, 24-Hour Client Cursor TTL?
-
-Genesis cursors track the internal state of event polling — they can stay stale longer because the polling loop is deterministic and idempotent (it always fetches events newer than the cursor). Client cursors (`/sessions/:id/channels/events`) represent human-initiated queries and become stale quickly if unused. The split reflects their different usage patterns.
+PRD 026 Phase 4 replaced the polling loop with a bus-based GenesisSink. The bus is the single source of truth for all domain events — polling was a parallel, duplicative event path. GenesisSink subscribes to the bus directly, eliminating cursor state, YAML persistence, and the polling interval entirely. The 30-second batch window prevents Genesis from being overwhelmed by high-frequency event bursts.
 
 ### Why Budget Enforcement at Spawn + Runtime?
 
-Budget is metadata attached at spawn time so it's immediately visible in `GET /genesis/status`. Runtime checks (implemented in @method/core MethodologySessionManager) prevent Genesis from exceeding daily limits even if clients misbehave.
+Budget is metadata attached at spawn time so it's immediately visible in `GET /genesis/status`. Runtime checks prevent Genesis from exceeding daily limits even if clients misbehave.
 
 ## Related Files
 
-- **`packages/bridge/src/genesis/spawner.ts`** — Session spawn, metadata setup
-- **`packages/bridge/src/genesis/polling-loop.ts`** — Cursor logic, polling orchestration
-- **`packages/bridge/src/genesis/initialization.ts`** — Prompt template
-- **`packages/bridge/src/genesis-routes.ts`** — HTTP routes
-- **`packages/core/src/sessions/genesis-session.ts`** — Core Genesis session state
+- **`packages/bridge/src/domains/genesis/spawner.ts`** — Session spawn, metadata setup
+- **`packages/bridge/src/domains/genesis/initialization.ts`** — Prompt template
+- **`packages/bridge/src/domains/genesis/routes.ts`** — HTTP routes
+- **`packages/bridge/src/shared/event-bus/genesis-sink.ts`** — GenesisSink implementation
+- **`packages/bridge/src/shared/event-bus/index.ts`** — Event bus exports
+- **`docs/arch/event-bus.md`** — Universal Event Bus architecture

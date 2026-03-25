@@ -10,6 +10,8 @@ import { randomUUID } from 'node:crypto';
 import type {
   EventBus,
   EventSink,
+  EventConnector,
+  ConnectorHealth,
   EventFilter,
   EventSubscription,
   BridgeEvent,
@@ -256,6 +258,50 @@ export class InMemoryEventBus implements EventBus {
 
   registerSink(sink: EventSink): void {
     this.sinks.push(sink);
+  }
+
+  // ── Connector lifecycle (PRD 026 Phase 5) ──────────────────
+
+  /** Check if a sink implements the EventConnector interface. */
+  private isConnector(sink: EventSink): sink is EventConnector {
+    return 'connect' in sink && 'disconnect' in sink && 'health' in sink;
+  }
+
+  /** Connect all registered connectors. Call after all sinks registered. */
+  async connectAll(): Promise<void> {
+    for (const sink of this.sinks) {
+      if (this.isConnector(sink)) {
+        try {
+          await sink.connect();
+        } catch (err) {
+          console.error(`[event-bus] Connector ${sink.name} failed to connect:`, (err as Error).message);
+        }
+      }
+    }
+  }
+
+  /** Disconnect all registered connectors. Call on shutdown. */
+  async disconnectAll(): Promise<void> {
+    for (const sink of this.sinks) {
+      if (this.isConnector(sink)) {
+        try {
+          await sink.disconnect();
+        } catch (err) {
+          console.error(`[event-bus] Connector ${sink.name} failed to disconnect:`, (err as Error).message);
+        }
+      }
+    }
+  }
+
+  /** Get health status of all registered connectors. */
+  connectorHealth(): Array<{ name: string; health: ConnectorHealth }> {
+    const results: Array<{ name: string; health: ConnectorHealth }> = [];
+    for (const sink of this.sinks) {
+      if (this.isConnector(sink)) {
+        results.push({ name: sink.name, health: sink.health() });
+      }
+    }
+    return results;
   }
 
   // ── Internal dispatch ───────────────────────────────────────

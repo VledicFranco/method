@@ -58,9 +58,16 @@ src/
     triggers/              Event trigger system (file, git, webhook, schedule)
     genesis/               Multi-project agent orchestration
   shared/                  Cross-domain utilities (config reload, validation, websocket)
+    event-bus/             Universal Event Bus — single event backbone (PRD 026)
 ```
 
 Each domain is self-contained: core logic, tests, routes, config (Zod), and types co-located in one directory. Ports provide dependency injection at the composition root.
+
+### Universal Event Bus (PRD 026)
+
+All bridge domains emit typed `BridgeEvent` objects to a single bus (`ports/event-bus.ts`). Consumers subscribe via `EventSink` interface — registered only in the composition root. Built-in sinks: WebSocketSink (frontend), PersistenceSink (JSONL), ChannelSink (parent agents), GenesisSink (30s batched summaries). External connectors use `EventConnector` (extends EventSink with lifecycle). See `docs/arch/event-bus.md` for details.
+
+**Connector config:** Set `EVENT_CONNECTOR_WEBHOOK_URL` env var to auto-register a webhook connector. Filter with `EVENT_CONNECTOR_WEBHOOK_FILTER_DOMAIN` and `EVENT_CONNECTOR_WEBHOOK_FILTER_SEVERITY` (comma-separated).
 
 ### Key FCA Principles for Contributors
 

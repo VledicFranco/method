@@ -11,4 +11,3 @@ export type { CircularEventLog, CursorState } from './routes.js';
 
 // Event types
 export type { ProjectEvent } from './events/project-event.js';
-export type { EventFilter, EventPersistence } from './events/event-persistence.js';

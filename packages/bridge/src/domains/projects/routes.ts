@@ -13,7 +13,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { ProjectEvent, EventPersistence } from './events/index.js';
+import type { ProjectEvent } from './events/index.js';
 import {
   DefaultIsolationValidator,
   getSessionContext,
@@ -25,7 +25,6 @@ import {
 import {
   ProjectEventType,
   createProjectEvent,
-  createTestEvent,
 } from './events/index.js';
 import { DiscoveryService, type DiscoveryResult, type ProjectMetadata } from './discovery-service.js';
 import { validateTargetIds } from '../registry/resource-copier.js';
@@ -108,27 +107,10 @@ function getEventsFromLog(log: CircularEventLog, fromIndex: number): ProjectEven
 
 const cursorMap = new Map<string, CursorState>();
 const eventLog = createCircularEventLog(EVENT_LOG_MAX_SIZE);
-let globalEventPersistence: EventPersistence | undefined; // Set during registration
-
-function setPersistence(persistence: EventPersistence | undefined): void {
-  globalEventPersistence = persistence;
-}
-
-// ── Event publish hook (wired by WsHub in index.ts) ─────────
-
-type OnEventCallback = (event: ProjectEvent) => void;
-let _onEventHook: OnEventCallback | null = null;
-
-function setOnEventHook(hook: OnEventCallback | null): void {
-  _onEventHook = hook;
-}
+// PRD 026 Phase 5: EventPersistence, setPersistence, setOnEventHook removed — PersistenceSink handles persistence
 
 async function pushEventToLogWithPersistence(log: CircularEventLog, event: ProjectEvent): Promise<void> {
   pushEventToLog(log, event);
-  if (globalEventPersistence) {
-    // Don't swallow persistence errors - propagate them for HTTP 5xx response
-    await globalEventPersistence.append(event);
-  }
 
   // PRD 026: Emit to Universal Event Bus
   if (_eventBus) {
@@ -150,10 +132,6 @@ async function pushEventToLogWithPersistence(log: CircularEventLog, event: Proje
     } catch { /* non-fatal — bus emission must never block persistence */ }
   }
 
-  // Legacy hook — retained during migration, removed in T6
-  if (_onEventHook) {
-    try { _onEventHook(event); } catch { /* non-fatal */ }
-  }
 }
 
 /**
@@ -243,14 +221,11 @@ export async function registerProjectRoutes(
   app: FastifyInstance,
   discoveryService: DiscoveryService,
   registry: InMemoryProjectRegistry,
-  eventPersistence?: EventPersistence,
+  _eventPersistence?: unknown, // PRD 026 Phase 5: parameter kept for call-site compat, unused
   rootDir: string = process.cwd(),
   deps?: ProjectRoutesDeps,
 ): Promise<void> {
   const validator = new DefaultIsolationValidator();
-
-  // Set global persistence for this registration
-  setPersistence(eventPersistence);
 
   // Initialize registry
   await registry.initialize();
@@ -803,5 +778,5 @@ export type { SessionContext } from '../../shared/validation/index.js';
 
 // Export for testing
 export { generateCursor, parseCursor, getEventsSinceCursor, validateCursorFormat, validateProjectIdFormat };
-export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence, setPersistence, setOnEventHook };
+export { eventLog, cursorMap, pushEventToLog, getEventsFromLog, createCircularEventLog, pushEventToLogWithPersistence };
 export type { CircularEventLog, CursorState };
