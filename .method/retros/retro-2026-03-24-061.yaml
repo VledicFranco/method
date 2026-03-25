@@ -1,0 +1,29 @@
+session_id: "com-20260324-1839-prd-026-phase-5"
+methodology: "P2-SD"
+method: "com"
+date: "2026-03-24"
+hardest_decision: >
+  Scope of dead code cleanup. The codebase had 17+ dead files across 4 domains
+  (genesis polling, project persistence, channel triggers, methodology hooks).
+  Each deletion required tracing all imports, barrel exports, test references,
+  and composition root wiring. Decided to be maximally thorough rather than
+  conservative — deleted everything that was truly dead, including test files
+  that only tested deleted infrastructure. The user explicitly requested no
+  dead code in the PR.
+observations:
+  - >
+    The cleanup backlog was larger than anticipated — 6,252 lines removed across
+    17 files. Most of the complexity was in chasing transitive references through
+    barrel exports (index.ts files) and test mocks that imported from deleted modules.
+  - >
+    WebhookConnector implementation was straightforward once EventConnector
+    interface was defined. The rate limiting and retry patterns are simple but
+    sufficient for a proof-of-concept connector.
+  - >
+    PRD 026 is the largest infrastructure PRD in the project (5 phases, 5 PRs,
+    ~2000 lines of new code + 6000 lines of dead code removed). The phased
+    approach worked well — each phase was independently verifiable and mergeable.
+card_feedback:
+  essence: "Essence was load-bearing for the cleanup decision — 'simplicity' optimize_for justified aggressive dead code removal over conservative retention."
+  delivery_rules: "DR-12 (horizontal docs) guided the event-bus.md architecture doc. DR-14 drove WebhookConnector tests."
+proposed_deltas: []
