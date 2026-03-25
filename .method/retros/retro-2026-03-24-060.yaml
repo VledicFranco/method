@@ -1,0 +1,30 @@
+session_id: "com-20260324-1751-prd-026-phase-4"
+methodology: "P2-SD"
+method: "com"
+date: "2026-03-24"
+hardest_decision: >
+  Whether to send full BridgeEvent vs just payload over WebSocket. The review
+  caught that WebSocketSink was sending event.payload (legacy pattern from
+  Phase 1 when frontend only consumed project payloads). Changing to full
+  BridgeEvent is backward-compatible but changes the wire format for all
+  existing frontend consumers. Decided to send full event since BridgeEvent
+  is a superset — existing consumers that access payload fields still work.
+observations:
+  - >
+    The CRITICAL review finding (WebSocket payload mismatch) would have been
+    silent at runtime — no crash, just zero events matching any filter. This
+    is the kind of bug that only surfaces in integration testing. The review
+    tier caught it before any manual testing was needed.
+  - >
+    Replacing the genesis polling loop with a sink was cleaner than expected.
+    The polling loop had 80+ lines of cursor management, file locking, and
+    batch parallelization. GenesisSink achieves the same with a 30s timer
+    and a summarize function. The bus handles all the complexity.
+  - >
+    Frontend type duplication (BridgeEvent defined in both backend port and
+    frontend store) is an accepted tradeoff. A shared types package would be
+    premature — the type is small and stable (version: 1, no planned changes).
+card_feedback:
+  essence: "Essence helped anchor the GenesisSink design — narrow callback pattern over direct SessionPool import follows the 'simplicity' optimize_for."
+  delivery_rules: "DR-15 (port discipline) was directly relevant for GenesisSink boundary check. DR-14 (bridge testing) drove the getStats() test addition from review."
+proposed_deltas: []
