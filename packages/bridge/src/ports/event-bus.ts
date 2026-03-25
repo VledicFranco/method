@@ -96,6 +96,33 @@ export interface EventSink {
   onError?: (error: Error, event: BridgeEvent) => void;
 }
 
+// ── Connector interface (PRD 026 Phase 5) ───────────────────────
+
+/**
+ * Health status for a connector.
+ */
+export interface ConnectorHealth {
+  connected: boolean;
+  lastEventAt: string | null;
+  errorCount: number;
+}
+
+/**
+ * An EventConnector extends EventSink with lifecycle management for
+ * long-lived external connections (webhooks, Slack, external APIs).
+ *
+ * Connectors manage their own retry/backoff. The composition root
+ * calls connect() after registration and disconnect() on shutdown.
+ */
+export interface EventConnector extends EventSink {
+  /** Establish connection to the external system. */
+  connect(): Promise<void>;
+  /** Graceful teardown. */
+  disconnect(): Promise<void>;
+  /** Current health status. */
+  health(): ConnectorHealth;
+}
+
 // ── Port interface ──────────────────────────────────────────────
 
 /**
