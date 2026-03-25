@@ -428,4 +428,59 @@ describe('InMemoryEventBus', () => {
       assert.throws(() => new InMemoryEventBus({ capacity: -5 }), /capacity must be >= 1/);
     });
   });
+
+  // ── getStats (PRD 026 Phase 4) ────────────────────────────────
+
+  describe('getStats', () => {
+    it('returns zero counters initially', () => {
+      const stats = bus.getStats();
+      assert.equal(stats.totalEmitted, 0);
+      assert.equal(stats.totalImported, 0);
+      assert.equal(stats.bufferSize, 0);
+      assert.equal(stats.bufferCapacity, 10_000);
+      assert.equal(stats.sinkCount, 0);
+      assert.equal(stats.subscriberCount, 0);
+    });
+
+    it('increments totalEmitted on emit', () => {
+      bus.emit(makeEvent());
+      bus.emit(makeEvent());
+      const stats = bus.getStats();
+      assert.equal(stats.totalEmitted, 2);
+      assert.equal(stats.bufferSize, 2);
+    });
+
+    it('increments totalImported on importEvent', () => {
+      const event: BridgeEvent = {
+        id: 'imported-1',
+        version: 1,
+        timestamp: new Date().toISOString(),
+        sequence: 50,
+        domain: 'session',
+        type: 'session.spawned',
+        severity: 'info',
+        payload: {},
+        source: 'test',
+      };
+      bus.importEvent(event);
+      const stats = bus.getStats();
+      assert.equal(stats.totalImported, 1);
+      assert.equal(stats.totalEmitted, 0);
+      assert.equal(stats.bufferSize, 1);
+    });
+
+    it('tracks sinks and subscribers', () => {
+      const sink = collectingSink();
+      bus.registerSink(sink);
+      const sub = bus.subscribe({}, () => {});
+
+      let stats = bus.getStats();
+      assert.equal(stats.sinkCount, 1);
+      assert.equal(stats.subscriberCount, 1);
+
+      sub.unsubscribe();
+      stats = bus.getStats();
+      assert.equal(stats.subscriberCount, 0);
+    });
+  });
 });

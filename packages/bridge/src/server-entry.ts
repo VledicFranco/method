@@ -175,7 +175,8 @@ const transcriptReader = createTranscriptReader({
   fs: fsProvider,
 });
 
-// PRD 026 Phase 4: Polling loop + cursor maintenance removed — GenesisSink handles event delivery
+// PRD 026 Phase 4: GenesisSink replaces polling loop (module-scoped for shutdown disposal)
+let genesisSink: import('./shared/event-bus/genesis-sink.js').GenesisSink | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -506,7 +507,7 @@ async function start() {
 
         // PRD 026 Phase 4: GenesisSink replaces polling loop.
         // Narrow callback — GenesisSink never imports SessionPool directly (G-BOUNDARY).
-        const genesisSink = new GenesisSink({
+        genesisSink = new GenesisSink({
           promptSession: (id, text) => pool.prompt(id, text, 10000).then(() => {}),
           sessionId: genesisResult.sessionId,
           batchWindowMs: 30_000,
@@ -533,8 +534,10 @@ function gracefulShutdown(signal: string) {
     // Stop usage polling
     usagePoller.stop();
 
-    // PRD 026 Phase 4: GenesisSink cleanup handled by PersistenceSink dispose below
-    // (no separate polling loop or cursor maintenance to stop)
+    // PRD 026 Phase 4: Dispose GenesisSink (stops batch timer)
+    if (genesisSink) {
+      genesisSink.dispose();
+    }
 
     // PRD 026 Phase 3: Flush PersistenceSink + save ChannelSink cursor
     persistenceSink.dispose().catch(() => { /* non-fatal */ });
