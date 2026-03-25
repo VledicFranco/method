@@ -10,8 +10,7 @@ export { GitCommitTrigger } from './git-commit-trigger.js';
 export { ScheduleTrigger, parseCron, cronMatches, nextCronFire } from './schedule-trigger.js';
 export { PtyWatcherTrigger } from './pty-watcher-trigger.js';
 export type { PtyObservation } from './pty-watcher-trigger.js';
-export { ChannelEventTrigger } from './channel-event-trigger.js';
-export type { ChannelMessageEvent } from './channel-event-trigger.js';
+// ChannelEventTrigger removed — PRD 026 Phase 5 (trigger subscribes to bus directly)
 export { WebhookTrigger } from './webhook-trigger.js';
 export type { WebhookRequestLogEntry } from './webhook-trigger.js';
 export { evaluateSandboxedExpression } from './sandbox-eval.js';

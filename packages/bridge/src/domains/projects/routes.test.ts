@@ -769,7 +769,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { registerProjectRoutes, type ProjectRoutesDeps } from './routes.js';
 import { DiscoveryService, type ProjectMetadata, type DiscoveryResult } from './discovery-service.js';
 import { InMemoryProjectRegistry } from '../registry/index.js';
-import type { EventPersistence, EventFilter } from './events/index.js';
+// EventPersistence + EventFilter removed — PRD 026 Phase 5
 
 // ── Shared mock factories ────
 
@@ -803,25 +803,7 @@ function createMockDiscoveryService(result: DiscoveryResult): DiscoveryService {
   return svc;
 }
 
-function createMockEventPersistence(options?: {
-  appendThrows?: boolean;
-}): EventPersistence {
-  const events: any[] = [];
-  return {
-    async append(event) {
-      if (options?.appendThrows) {
-        throw new Error('Persistence write failed');
-      }
-      events.push(event);
-    },
-    async query(_filter: EventFilter) {
-      return events;
-    },
-    async latest(count: number) {
-      return events.slice(-count);
-    },
-  };
-}
+// createMockEventPersistence removed — PRD 026 Phase 5 (PersistenceSink replaces)
 
 function createMockDeps(overrides?: Partial<ProjectRoutesDeps>): ProjectRoutesDeps {
   return {
@@ -834,7 +816,7 @@ function createMockDeps(overrides?: Partial<ProjectRoutesDeps>): ProjectRoutesDe
 async function createTestApp(options?: {
   projects?: ProjectMetadata[];
   discoveryResult?: DiscoveryResult;
-  persistence?: EventPersistence;
+  persistence?: unknown;
   deps?: ProjectRoutesDeps;
   rootDir?: string;
 }): Promise<FastifyInstance> {
@@ -1250,23 +1232,8 @@ describe('POST /api/events/test', () => {
     }
   });
 
-  it('returns 500 when persistence fails', async () => {
-    const persistence = createMockEventPersistence({ appendThrows: true });
-    const app = await createTestApp({ persistence });
-
-    try {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/api/events/test',
-        payload: { projectId: 'test-proj', type: 'CREATED' },
-      });
-      assert.strictEqual(res.statusCode, 500);
-      const body = JSON.parse(res.body);
-      assert.strictEqual(body.error, 'Event persistence failed');
-    } finally {
-      await app.close();
-    }
-  });
+  // 'returns 500 when persistence fails' test removed — PRD 026 Phase 5
+  // EventPersistence replaced by PersistenceSink (bus-based)
 });
 
 // ── POST /api/resources/copy-methodology ────

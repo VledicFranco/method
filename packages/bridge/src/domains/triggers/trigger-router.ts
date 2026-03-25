@@ -40,7 +40,7 @@ import { FileWatchTrigger } from './file-watch-trigger.js';
 import { GitCommitTrigger } from './git-commit-trigger.js';
 import { ScheduleTrigger } from './schedule-trigger.js';
 import { PtyWatcherTrigger, type PtyObservation } from './pty-watcher-trigger.js';
-import { ChannelEventTrigger, type ChannelMessageEvent } from './channel-event-trigger.js';
+// ChannelEventTrigger removed — PRD 026 Phase 5 (bus-based trigger subscription)
 import { WebhookTrigger } from './webhook-trigger.js';
 import { hasEventTriggers } from './trigger-parser.js';
 import type {
@@ -55,7 +55,6 @@ import type {
   GitCommitTriggerConfig,
   ScheduleTriggerConfig,
   PtyWatcherTriggerConfig,
-  ChannelEventTriggerConfig,
   WebhookTriggerConfig,
   DebounceConfig,
 } from './types.js';
@@ -182,25 +181,7 @@ export class TriggerRouter {
         ),
       );
 
-      // Subscribe to all domain events → route to ChannelEventTrigger instances
-      // Map BridgeEvent → ChannelMessageEvent shape for backward compat
-      this.busSubscriptions.push(
-        this.eventBus.subscribe(
-          {}, // all events
-          (event: BridgeEvent) => {
-            // Skip trigger domain events to avoid feedback loops
-            if (event.domain === 'trigger') return;
-            const message: ChannelMessageEvent = {
-              channel_name: event.domain,
-              sender: event.source,
-              type: event.type,
-              content: event.payload,
-              session_id: event.sessionId,
-            };
-            this.onChannelMessage(message);
-          },
-        ),
-      );
+      // PRD 026 Phase 5: ChannelEventTrigger bus subscription removed (dead code path)
     }
   }
 
@@ -431,26 +412,6 @@ export class TriggerRouter {
       if (watcher && watcher.active && watcher instanceof PtyWatcherTrigger) {
         try {
           watcher.handleObservation(observation);
-        } catch {
-          // Non-fatal — individual watcher errors shouldn't affect others
-        }
-      }
-    }
-  }
-
-  /**
-   * PRD 018 Phase 2a-2: Forward a channel message to all registered
-   * channel_event triggers. Called by the channels.ts onMessage hook.
-   */
-  onChannelMessage(message: ChannelMessageEvent): void {
-    if (this.paused) return;
-
-    for (const reg of this.registrations.values()) {
-      if (!reg.enabled || reg.trigger_config.type !== 'channel_event') continue;
-      const watcher = reg.watcher;
-      if (watcher && watcher.active && watcher instanceof ChannelEventTrigger) {
-        try {
-          watcher.handleChannelMessage(message);
         } catch {
           // Non-fatal — individual watcher errors shouldn't affect others
         }
@@ -742,8 +703,7 @@ export class TriggerRouter {
       case 'pty_watcher':
         return new PtyWatcherTrigger(config as PtyWatcherTriggerConfig);
 
-      case 'channel_event':
-        return new ChannelEventTrigger(config as ChannelEventTriggerConfig);
+      // case 'channel_event' removed — PRD 026 Phase 5
 
       case 'webhook':
         return new WebhookTrigger(config as WebhookTriggerConfig);

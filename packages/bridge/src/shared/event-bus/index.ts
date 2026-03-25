@@ -5,4 +5,5 @@ export { WebSocketSink } from './websocket-sink.js';
 export { PersistenceSink, type PersistenceSinkOptions } from './persistence-sink.js';
 export { ChannelSink, type ChannelSinkOptions, getChannelTarget } from './channel-sink.js';
 export { GenesisSink, type GenesisSinkOptions, type GenesisPromptCallback } from './genesis-sink.js';
+export { WebhookConnector, type WebhookConnectorOptions } from './webhook-connector.js';
 export { toChannelMessage, toAllEventsWrapper } from './adapters.js';
