@@ -1,0 +1,14 @@
+{
+  "name": "@method/pacta",
+  "version": "0.1.0",
+  "description": "Agent deployment contracts — typed pacts for execution mode, budget, output, and scope",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  }
+}
