@@ -105,53 +105,20 @@ export function createSessionChannels(): SessionChannels {
   };
 }
 
-// ── PRD 018 Phase 2a-2: onMessage hooks (multi-listener) ─────
-
-/**
- * Callback invoked on every appendMessage call.
- * Used by the TriggerRouter and WsHub to subscribe to channel events.
- */
-export type OnMessageCallback = (info: {
-  channel_name: string;
-  sender: string;
-  type: string;
-  content: Record<string, unknown>;
-  session_id?: string;
-}) => void;
-
-const _onMessageHooks = new Set<OnMessageCallback>();
-
-/**
- * Add an onMessage hook. Multiple hooks can be active simultaneously.
- * Returns a removal function for convenience.
- */
-export function addOnMessageHook(hook: OnMessageCallback): () => void {
-  _onMessageHooks.add(hook);
-  return () => { _onMessageHooks.delete(hook); };
-}
-
-/**
- * Remove a previously added onMessage hook.
- */
-export function removeOnMessageHook(hook: OnMessageCallback): void {
-  _onMessageHooks.delete(hook);
-}
-
-/** @deprecated Use addOnMessageHook instead. Sets a single hook (clears others). */
-export function setOnMessageHook(hook: OnMessageCallback | null): void {
-  _onMessageHooks.clear();
-  if (hook) _onMessageHooks.add(hook);
-}
-
 /**
  * Append a message to a channel. Returns the sequence number.
+ *
+ * NOTE: PRD 026 Phase 3 removed all domain callers — events flow through
+ * the EventBus + ChannelSink now. This function is retained for test
+ * infrastructure only (channels.test.ts, worktree-stale.test.ts).
+ *
+ * PRD 026 Phase 4: onMessage hook infrastructure removed (was dead code).
  */
 export function appendMessage(
   channel: Channel,
   sender: string,
   type: string,
   content: Record<string, unknown>,
-  session_id?: string,
 ): number {
   const ring = rings.get(channel)!;
   const last = ring.last();
@@ -165,23 +132,7 @@ export function appendMessage(
     content,
   };
 
-  // O(1) push — ring buffer handles eviction internally
   ring.push(message);
-
-  // PRD 018: Invoke onMessage hooks (trigger system, WsHub, etc.)
-  for (const hook of _onMessageHooks) {
-    try {
-      hook({
-        channel_name: channel.name,
-        sender,
-        type,
-        content,
-        session_id,
-      });
-    } catch {
-      // Hook errors are non-fatal — never break channel append
-    }
-  }
 
   return sequence;
 }

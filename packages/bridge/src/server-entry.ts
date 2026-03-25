@@ -14,7 +14,7 @@ import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
 import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
-import { createSessionPersistenceStore, type SessionPersistenceStore } from './domains/sessions/session-persistence.js';
+import { createSessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
 import { registerFrontendRoutes } from './shared/frontend-route.js';
 import { registerRegistryRoutes } from './domains/registry/routes.js';
@@ -32,7 +32,7 @@ import { registerWsRoute } from './shared/websocket/route.js';
 import { setStrategyRoutesEventBus } from './domains/strategies/strategy-routes.js';
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
-import { JsonLineEventPersistence } from './domains/projects/events/index.js';
+// PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
 import { loadSessionsConfig } from './domains/sessions/config.js';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
@@ -427,13 +427,9 @@ async function start() {
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
 
-    // Initialize event persistence with JSON Lines format and YAML fallback
-    const jsonlPath = join(ROOT_DIR, '.method', 'genesis-events.jsonl');
-    const yamlPath = join(ROOT_DIR, '.method', 'genesis-events.yaml');
-    const eventPersistence = new JsonLineEventPersistence(jsonlPath, yamlPath);
-    await eventPersistence.recover();
-
-    await registerProjectRoutes(app, discoveryService, projectRegistry, eventPersistence, ROOT_DIR, {
+    // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles event persistence.
+    // Pass undefined for eventPersistence; project routes still use in-memory eventLog.
+    await registerProjectRoutes(app, discoveryService, projectRegistry, undefined, ROOT_DIR, {
       copyMethodology,
       copyStrategy,
     });
