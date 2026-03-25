@@ -135,15 +135,34 @@ export interface InMemoryEventBusOptions {
   capacity?: number;
 }
 
+export interface BusStats {
+  /** Total events emitted via emit(). */
+  totalEmitted: number;
+  /** Total events imported via importEvent(). */
+  totalImported: number;
+  /** Current ring buffer occupancy. */
+  bufferSize: number;
+  /** Ring buffer capacity. */
+  bufferCapacity: number;
+  /** Number of registered sinks. */
+  sinkCount: number;
+  /** Number of active subscribers. */
+  subscriberCount: number;
+}
+
 export class InMemoryEventBus implements EventBus {
   private readonly buffer: EventRingBuffer;
+  private readonly capacity: number;
   private readonly sinks: EventSink[] = [];
   private readonly subscribers: Subscriber[] = [];
   private sequence = 0;
   private nextSubscriberId = 1;
+  private _totalEmitted = 0;
+  private _totalImported = 0;
 
   constructor(options?: InMemoryEventBusOptions) {
-    this.buffer = new EventRingBuffer(options?.capacity ?? DEFAULT_CAPACITY);
+    this.capacity = options?.capacity ?? DEFAULT_CAPACITY;
+    this.buffer = new EventRingBuffer(this.capacity);
   }
 
   emit(input: BridgeEventInput): BridgeEvent {
@@ -180,6 +199,8 @@ export class InMemoryEventBus implements EventBus {
       sequence: ++this.sequence,
     };
 
+    this._totalEmitted++;
+
     // Store in ring buffer
     this.buffer.push(event);
 
@@ -206,11 +227,25 @@ export class InMemoryEventBus implements EventBus {
     return this.buffer.query(filter, options);
   }
 
+  /** Get current bus statistics for monitoring/system.bus_stats emission. */
+  getStats(): BusStats {
+    return {
+      totalEmitted: this._totalEmitted,
+      totalImported: this._totalImported,
+      bufferSize: this.buffer.length,
+      bufferCapacity: this.capacity,
+      sinkCount: this.sinks.length,
+      subscriberCount: this.subscribers.length,
+    };
+  }
+
   importEvent(event: BridgeEvent): void {
     // Update sequence to prevent collisions with future emits
     if (event.sequence > this.sequence) {
       this.sequence = event.sequence;
     }
+
+    this._totalImported++;
 
     // Store in ring buffer
     this.buffer.push(event);
