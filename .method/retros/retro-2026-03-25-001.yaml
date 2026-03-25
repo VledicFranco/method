@@ -1,0 +1,30 @@
+session_id: "com-20260325-prd-027-c9-bridge-integration"
+methodology: P2-SD
+method: com
+date: "2026-03-25"
+hardest_decision: >
+  Deciding the right abstraction level for the spike — how much of the bridge
+  session lifecycle to model in Pacta vs. keeping it as a thin adapter. Chose
+  thin adapter (buildPactFromSessionParams maps params to Pact, nothing more)
+  because the spike's job is to validate the surface, not to commit to a design.
+observations:
+  - >
+    The Pacta Pact maps cleanly to bridge session parameters for oneshot/print
+    sessions. Persistent PTY sessions need a BridgePtyProvider (Phase 2) — the
+    existing claudeCliProvider only covers oneshot and resumable modes.
+  - >
+    Strategy pipeline steps are a natural fit for per-step Pact contracts. The
+    default-merging pattern (pipeline defaults + step overrides) mirrors how
+    strategy YAML already works with node configs.
+  - >
+    Session chains (parent/child hierarchies, budget propagation across agents)
+    are fundamentally a bridge orchestration concern that sits above Pacta. Pacta
+    is single-agent; the bridge orchestrates many. This boundary is clean.
+card_feedback:
+  essence: >
+    Essence was helpful — "faithfulness > simplicity > registry integrity" guided
+    the decision to keep the spike additive rather than refactoring existing code.
+  delivery_rules: >
+    DR-03 (zero transport deps) doesn't apply to bridge (L4), but the spirit of
+    keeping layers clean was useful. No new delivery rules needed for Pacta integration.
+proposed_deltas: []
