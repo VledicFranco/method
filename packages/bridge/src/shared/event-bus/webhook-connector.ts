@@ -2,12 +2,21 @@
  * WebhookConnector — PRD 026 Phase 5.
  *
  * POSTs BridgeEvents to a configured URL. Implements EventConnector with:
- * - Configurable event filter (domain/type/severity)
- * - Exponential backoff retry (1s, 2s, 4s — max 3 attempts)
+ * - Configurable event filter (domain/type/severity, supports glob patterns in type)
+ * - Exponential backoff retry (1s, 2s, 4s — max 3 attempts; 4xx errors not retried)
  * - Rate limiting (max 10 events/second, excess dropped with warning)
  * - Health tracking (connected status, last event, error count)
  *
  * Uses built-in fetch (no new port needed — HTTP is the connector's concern).
+ *
+ * Notes:
+ * - health.connected is advisory metadata; onEvent() always attempts delivery
+ *   regardless of connect() state. connect() uses HEAD for reachability — HEAD
+ *   is used intentionally to avoid spurious POST events on the target endpoint.
+ * - The sliding-window rate limiter may allow a brief burst at window boundaries
+ *   (up to 2× the limit); this is an accepted approximation for a POC.
+ * - onError() is called by the bus dispatcher on synchronous throws only;
+ *   async retry exhaustion is counted in _errorCount directly.
  */
 
 import type {
@@ -22,17 +31,17 @@ import type {
 // ── Configuration ───────────────────────────────────────────────
 
 export interface WebhookConnectorOptions {
-  /** Target URL to POST events to. */
+  /** Target URL to POST events to (must be a valid absolute URL, e.g. https://example.com/events). */
   url: string;
-  /** Event filter — only matching events are sent. */
+  /** Event filter — only matching events are sent. Supports glob patterns in type field (e.g. 'strategy.gate_*'). */
   filter?: EventFilter;
-  /** Max retry attempts per event (default: 3). */
+  /** Max retry attempts per event (default: 3). 4xx responses are not retried. */
   maxRetries?: number;
   /** Base delay for exponential backoff in ms (default: 1000). */
   retryBaseMs?: number;
   /** Request timeout in ms (default: 5000). */
   timeoutMs?: number;
-  /** Max events per second (default: 10). Excess dropped. */
+  /** Max events per second (default: 10). Excess dropped with a warning. */
   maxEventsPerSecond?: number;
 }
 
@@ -43,6 +52,15 @@ const DEFAULT_MAX_EVENTS_PER_SECOND = 10;
 
 // ── Filter matching ─────────────────────────────────────────────
 
+/**
+ * Convert a simple glob pattern (e.g., 'session.*', 'strategy.gate_*')
+ * to a RegExp. Only supports '*' as wildcard (mirrors InMemoryEventBus).
+ */
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`);
+}
+
 function matchesFilter(event: BridgeEvent, filter: EventFilter): boolean {
   if (filter.domain !== undefined) {
     const domains = Array.isArray(filter.domain) ? filter.domain : [filter.domain];
@@ -50,7 +68,11 @@ function matchesFilter(event: BridgeEvent, filter: EventFilter): boolean {
   }
   if (filter.type !== undefined) {
     const types = Array.isArray(filter.type) ? filter.type : [filter.type];
-    if (!types.includes(event.type)) return false;
+    const matched = types.some(pattern => {
+      if (pattern.includes('*')) return globToRegex(pattern).test(event.type);
+      return pattern === event.type;
+    });
+    if (!matched) return false;
   }
   if (filter.severity !== undefined) {
     const severities = Array.isArray(filter.severity) ? filter.severity : [filter.severity];
@@ -82,8 +104,13 @@ export class WebhookConnector implements EventConnector {
   private _windowCount = 0;
 
   constructor(options: WebhookConnectorOptions) {
+    try {
+      const parsed = new URL(options.url);
+      this.name = `webhook:${parsed.hostname}`;
+    } catch {
+      throw new Error(`WebhookConnector: invalid URL '${options.url}' — must be a valid absolute URL`);
+    }
     this.url = options.url;
-    this.name = `webhook:${new URL(options.url).hostname}`;
     this.filter = options.filter;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
@@ -94,7 +121,9 @@ export class WebhookConnector implements EventConnector {
   // ── EventConnector lifecycle ─────────────────────────────────
 
   async connect(): Promise<void> {
-    // Verify the URL is reachable with a HEAD request
+    // Verify the URL is reachable with a HEAD request.
+    // HEAD is used intentionally to avoid creating spurious POST events on the target.
+    // connect() marks health.connected, but onEvent() will attempt delivery regardless.
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -116,6 +145,7 @@ export class WebhookConnector implements EventConnector {
   }
 
   health(): ConnectorHealth {
+    // connected is advisory — onEvent() posts regardless of this value
     return {
       connected: this._connected,
       lastEventAt: this._lastEventAt,
@@ -137,13 +167,12 @@ export class WebhookConnector implements EventConnector {
     }
     this._windowCount++;
     if (this._windowCount > this.maxEventsPerSecond) {
-      return; // Drop excess — rate limited
+      console.warn(`[webhook-connector] ${this.name}: rate limit exceeded, dropping event ${event.type}`);
+      return;
     }
 
     // Fire-and-forget POST (don't block the bus)
-    this.postWithRetry(event).catch(() => {
-      // Error already counted in postWithRetry
-    });
+    this.postWithRetry(event);
   }
 
   onError(error: Error, event: BridgeEvent): void {
@@ -153,7 +182,7 @@ export class WebhookConnector implements EventConnector {
 
   // ── Internal ─────────────────────────────────────────────────
 
-  /** POST with exponential backoff retry. */
+  /** POST with exponential backoff retry. 4xx responses are not retried. */
   private async postWithRetry(event: BridgeEvent): Promise<void> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -175,7 +204,12 @@ export class WebhookConnector implements EventConnector {
           return; // Success
         }
 
-        // Non-2xx response — retry
+        // 4xx client errors (except 429 Too Many Requests) — do not retry
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          break;
+        }
+
+        // 5xx / 429 — retry with backoff
         if (attempt < this.maxRetries) {
           await this.backoff(attempt);
         }
@@ -187,7 +221,7 @@ export class WebhookConnector implements EventConnector {
       }
     }
 
-    // All retries exhausted
+    // All retries exhausted (or 4xx break)
     this._errorCount++;
     this._connected = false;
   }
