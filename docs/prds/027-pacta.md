@@ -1,67 +1,98 @@
-# PRD 027: Pacta — Agent Deployment Contracts
+# PRD 027: Pacta — Modular Agent SDK
 
 **Status:** Draft
 **Author:** PO + Lysica
 **Date:** 2026-03-25
 **Package:** `@method/pacta` (L3 — library)
 **Depends on:** None (standalone L3 library)
+**Organization:** Vidtecci — vida, ciencia y tecnología
 
 ## Problem
 
-Every agent framework treats execution mode as an implementation detail. Claude's `--print` mode promises "one cycle, structured JSON return." PTY mode promises "persistent session, prompt-response loop." OpenAI's chat completions promise "one response per request." These are fundamentally different behavioral contracts — but no library formalizes them.
+Building an agent today means choosing a framework and accepting its assumptions. Claude Agent SDK locks you to Claude. OpenAI Agents SDK abstracts the chat API but not execution semantics. LangGraph gives you graph-based state machines. PydanticAI gives you output schemas. CrewAI gives you role-based teams. None gives you all of it. None lets you swap parts.
 
-The result:
-- **Provider lock-in.** Claude Agent SDK is Claude-only. OpenAI Agents SDK abstracts the chat API but not execution semantics. Switching providers means rewriting orchestration logic.
-- **Implicit contracts.** What does an agent invocation *promise*? Will it return? Will it stream? Can it be resumed? What events will it emit? These are discovered empirically, not declared.
-- **No resource contracts.** Only Claude Agent SDK has budget caps. Everyone else leaves token tracking, cost limits, and timeout enforcement to the application layer.
-- **Ad-hoc event vocabularies.** Each framework invents its own event types. No shared contract for "this agent will emit these events with these guarantees."
+The deeper problem: these frameworks are **monoliths disguised as libraries**. You can't use OpenAI's guardrails with Claude's budget tracking. You can't use PydanticAI's output validation with LangGraph's checkpointing. You can't use Anthropic's think tool pattern with OpenAI's handoff model. Each framework bundles its own reasoning strategy, context management, tool integration, and provider coupling into a single opinionated package.
 
-The bridge already has two agent backends (`PtySession` for persistent PTY, `PrintSession` for headless `--print`) behind a shared `PtySession` interface. But the interface is shaped by PTY semantics — `resize()`, `pid`, `transcript` as a string buffer. It conflates the execution contract with the transport mechanism.
+What's missing is a **modular agent SDK** — a framework where every part of the agent is a composable, replaceable component:
+
+- The **LLM provider** is a port (swap Claude for OpenAI for Ollama)
+- The **reasoning strategy** is a policy (ReAct, Reflexion, think tool, planning-first)
+- The **context management** is a policy (compaction, note-taking, sub-agent delegation)
+- The **budget enforcement** is a contract (tokens, cost, duration, turns)
+- The **output validation** is a contract (schema + retry)
+- The **tool integration** is a port (MCP, function tools, built-in)
+- The **memory** is a port (in-context, external store, vector DB)
 
 ## Objective
 
-Create `@method/pacta` — an L3 library that formalizes agent deployment as **pacts**: typed contracts specifying execution mode, resource limits, event emissions, and output shape. The library abstracts the agent provider behind these pacts, so orchestration code depends on behavioral guarantees, not provider implementation.
+Create `@method/pacta` — a modular Agent SDK where agents are assembled from typed, composable parts. Like building a robot: Pacta provides the frame (pact contracts), a library of functional parts (reasoning strategies, context policies, budget enforcers, output validators, provider adapters), and the modularity to define your own parts.
+
+Three usage tiers:
+
+1. **Use a pre-assembled agent** — import a ready-made configuration, provide your API key, run
+2. **Assemble your own agent** — pick parts from the library, compose them into a custom agent
+3. **Build custom parts** — implement the port interfaces to create new providers, reasoning strategies, or policies
 
 ## Core Thesis
 
-An agent invocation is not a function call. It is a **pact** between the caller and the agent runtime:
+An agent is not a monolith. It is an **assembly of parts under a pact**:
 
-1. **Execution Mode** — how the agent runs (one-shot, resumable, persistent, streaming)
-2. **Resource Budget** — what the agent may consume (tokens, cost, time, turns)
-3. **Event Contract** — what signals the agent will emit and when
-4. **Output Contract** — the shape/schema of the result
-5. **Scope Contract** — what capabilities the agent has (tools, paths, models)
+```
+┌─────────────────────────────────────────────────────┐
+│                     THE PACT                         │
+│  Execution Mode · Budget · Output · Scope            │
+│  Context Policy · Reasoning Policy                   │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │
+│  │ Provider │  │ Reasoner │  │ Context Manager  │   │
+│  │  (port)  │  │  (port)  │  │     (port)       │   │
+│  └──────────┘  └──────────┘  └──────────────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │
+│  │  Tools   │  │  Memory  │  │ Output Validator │   │
+│  │  (port)  │  │  (port)  │  │     (port)       │   │
+│  └──────────┘  └──────────┘  └──────────────────┘   │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │           Budget Enforcer (wrapper)           │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+```
 
-The pact is declared before invocation. The runtime enforces it. Violations are observable events, not silent failures.
+The pact declares the contracts. The parts fulfill them. The SDK enforces the contracts at runtime.
 
 ## Architecture
 
 ### Layer Position
 
 ```
-L4  @method/bridge     Uses pacta to deploy agents (replaces direct PtySession/PrintSession)
-L3  @method/pacta      ← NEW — agent deployment contracts
+L4  @method/bridge     Uses pacta to deploy agents
+L3  @method/pacta      ← Modular Agent SDK
 L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
 L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
 ```
 
-Pacta is a pure library — no HTTP server, no process management, no transport. It defines the contracts and provides the composition machinery. Concrete providers (Claude CLI, Anthropic API, OpenAI, Ollama) implement the provider port.
-
-### The Pact
+### The Pact (Extended)
 
 ```typescript
 interface Pact<TOutput = string> {
-  // ── Execution Mode ──
+  /** How the agent executes — behavioral contract */
   mode: ExecutionMode;
 
-  // ── Resource Budget ──
+  /** What the agent may consume — resource limits */
   budget?: BudgetContract;
 
-  // ── Output Contract ──
+  /** The shape of the result — structural validation */
   output?: OutputContract<TOutput>;
 
-  // ── Scope Contract ──
+  /** What capabilities the agent has — tool/path/model constraints */
   scope?: ScopeContract;
+
+  /** How the agent manages its context window */
+  context?: ContextPolicy;
+
+  /** How the agent reasons between actions */
+  reasoning?: ReasoningPolicy;
 }
 ```
 
@@ -69,28 +100,85 @@ interface Pact<TOutput = string> {
 
 ```typescript
 type ExecutionMode =
-  | { type: 'oneshot' }                          // Invoke, get result, done
-  | { type: 'resumable'; sessionId?: string }    // Invoke, get result, can resume later
-  | { type: 'persistent'; keepAlive?: boolean }  // Spawn, prompt/response loop, explicit kill
-  | { type: 'streaming'; format?: 'events' | 'text' }  // Invoke, get event stream
+  | { type: 'oneshot' }
+  | { type: 'resumable'; sessionId?: string }
+  | { type: 'persistent'; keepAlive?: boolean; idleTimeoutMs?: number }
+  | { type: 'streaming'; format?: 'events' | 'text' }
 ```
 
-Each mode is a behavioral contract:
-- **oneshot** — caller gets exactly one response. No state survives.
-- **resumable** — caller gets one response per invocation, but can resume with prior context. The provider handles session persistence.
-- **persistent** — caller spawns a long-lived agent. Multiple prompt/response cycles. Caller must explicitly kill.
-- **streaming** — caller gets a stream of typed events during execution. The stream terminates when the agent completes.
+### Context Policy
 
-### Resource Budget
+Formalizes the three canonical strategies for long-horizon tasks (from Anthropic's
+context engineering research):
+
+```typescript
+interface ContextPolicy {
+  /** Maximum context window usage before compaction triggers (0-1, default: 0.835) */
+  compactionThreshold?: number;
+
+  /** Custom instructions for compaction summary (what to preserve) */
+  compactionInstructions?: string;
+
+  /** Strategy for managing context growth */
+  strategy?: 'compact' | 'notes' | 'subagent' | 'none';
+
+  /** For 'notes' strategy: persistent memory store port */
+  noteStore?: NoteStore;
+
+  /** For 'subagent' strategy: max summary tokens returned from sub-agents */
+  subagentSummaryTokens?: number;
+
+  /** System prompt budget — max tokens allocated to static context */
+  systemPromptBudget?: number;
+}
+```
+
+### Reasoning Policy
+
+Declarative reasoning strategies assembled from provider-agnostic techniques:
+
+```typescript
+interface ReasoningPolicy {
+  /** Include a zero-side-effect think tool for mid-stream reasoning (+54% policy adherence) */
+  thinkTool?: boolean;
+
+  /** Require explicit planning before each tool call (+4% SWE-bench) */
+  planBetweenActions?: boolean;
+
+  /** On failure, reflect and retry with verbal self-critique (Reflexion pattern) */
+  reflectOnFailure?: boolean;
+  maxReflectionTrials?: number;
+
+  /** Few-shot examples injected into system prompt (3-5 recommended) */
+  examples?: AgentExample[];
+
+  /** Reasoning effort level — maps to provider-specific thinking controls */
+  effort?: 'low' | 'medium' | 'high';
+
+  /** Custom reasoning instructions prepended to system prompt */
+  instructions?: string;
+}
+
+interface AgentExample {
+  /** User prompt */
+  input: string;
+  /** Expected reasoning trace (with <thinking> tags) */
+  thinking?: string;
+  /** Expected output */
+  output: string;
+}
+```
+
+### Budget Contract
 
 ```typescript
 interface BudgetContract {
-  maxTokens?: number;           // Total token limit (input + output)
-  maxOutputTokens?: number;     // Output token limit per invocation
-  maxCostUsd?: number;          // Dollar cap
-  maxDurationMs?: number;       // Wall-clock timeout
-  maxTurns?: number;            // Agentic loop iteration cap
-  onExhaustion?: 'stop' | 'warn' | 'error';  // What happens when budget runs out
+  maxTokens?: number;
+  maxOutputTokens?: number;
+  maxCostUsd?: number;
+  maxDurationMs?: number;
+  maxTurns?: number;
+  onExhaustion?: 'stop' | 'warn' | 'error';
 }
 ```
 
@@ -98,9 +186,15 @@ interface BudgetContract {
 
 ```typescript
 interface OutputContract<T> {
-  schema?: ZodSchema<T>;        // Structural validation (à la PydanticAI)
-  retryOnValidationFailure?: boolean;  // Re-prompt if output doesn't match
+  schema?: SchemaDefinition<T>;
+  retryOnValidationFailure?: boolean;
   maxRetries?: number;
+  retryPrompt?: string;
+}
+
+interface SchemaDefinition<T> {
+  parse(raw: string): SchemaResult<T>;
+  description?: string;
 }
 ```
 
@@ -108,148 +202,236 @@ interface OutputContract<T> {
 
 ```typescript
 interface ScopeContract {
-  allowedTools?: string[];       // Tool whitelist
-  deniedTools?: string[];        // Tool blacklist
-  allowedPaths?: string[];       // Filesystem scope
-  model?: string;                // Model constraint
-  permissionMode?: 'ask' | 'auto' | 'deny';  // How tool permissions are handled
+  allowedTools?: string[];
+  deniedTools?: string[];
+  allowedPaths?: string[];
+  model?: string;
+  permissionMode?: 'ask' | 'auto' | 'deny';
 }
 ```
 
-### Agent Provider Port
+### Port Interfaces (The Modular Parts)
+
+#### Agent Provider (LLM Abstraction)
 
 ```typescript
 interface AgentProvider {
-  /** What this provider supports */
+  readonly name: string;
   capabilities(): ProviderCapabilities;
-
-  /** Execute an agent under a pact */
-  invoke(pact: Pact, request: AgentRequest): Promise<AgentResult>;
-
-  /** Execute with streaming events */
+  invoke<T>(pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>>;
   stream(pact: Pact, request: AgentRequest): AsyncIterable<AgentEvent>;
-
-  /** Resume a prior session (only if provider supports resumable/persistent modes) */
-  resume(sessionId: string, request: AgentRequest): Promise<AgentResult>;
-
-  /** Kill a persistent session */
+  resume<T>(sessionId: string, pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>>;
   kill(sessionId: string): Promise<void>;
-}
-
-interface ProviderCapabilities {
-  modes: ExecutionMode['type'][];           // Which modes are supported
-  streaming: boolean;                        // Can stream events
-  resumable: boolean;                        // Can resume sessions
-  budgetEnforcement: 'native' | 'client';   // Who enforces budgets
-  outputValidation: 'native' | 'client';    // Who validates output schemas
-  tools: 'builtin' | 'mcp' | 'function' | 'none';  // Tool integration model
 }
 ```
 
-### Agent Events
+#### Tool Provider
+
+```typescript
+interface ToolProvider {
+  /** List available tools */
+  list(): ToolDefinition[];
+  /** Execute a tool */
+  execute(name: string, input: unknown): Promise<ToolResult>;
+}
+```
+
+#### Memory Provider
+
+```typescript
+interface MemoryProvider {
+  /** Store a memory entry */
+  store(key: string, value: string, metadata?: Record<string, unknown>): Promise<void>;
+  /** Retrieve by key */
+  retrieve(key: string): Promise<string | null>;
+  /** Search by semantic similarity or keyword */
+  search(query: string, limit?: number): Promise<MemoryEntry[]>;
+}
+```
+
+#### Note Store (for context policy)
+
+```typescript
+interface NoteStore {
+  /** Write a structured note */
+  write(note: AgentNote): Promise<void>;
+  /** Read notes relevant to current task */
+  read(filter?: NoteFilter): Promise<AgentNote[]>;
+}
+```
+
+### Pre-Assembled Agents (Batteries Included)
+
+```typescript
+// Tier 1: Use a pre-assembled agent
+import { codeAgent, researchAgent, reviewAgent } from '@method/pacta/agents';
+
+const result = await codeAgent.invoke({
+  prompt: 'Add error handling to the payment service',
+  workdir: '/path/to/project',
+});
+
+// Tier 2: Assemble your own
+import { createAgent } from '@method/pacta';
+import { claudeCliProvider } from '@method/pacta/providers/claude-cli';
+import { reactReasoner } from '@method/pacta/reasoning/react';
+import { compactionManager } from '@method/pacta/context/compaction';
+import { zodValidator } from '@method/pacta/output/zod';
+
+const myAgent = createAgent({
+  provider: claudeCliProvider({ model: 'claude-sonnet-4-6' }),
+  reasoning: reactReasoner({ thinkTool: true, planBetweenActions: true }),
+  context: compactionManager({ threshold: 0.8 }),
+  output: zodValidator(MyOutputSchema),
+  pact: {
+    mode: { type: 'resumable' },
+    budget: { maxCostUsd: 1.00, maxTurns: 20 },
+    scope: { allowedTools: ['Read', 'Grep', 'Glob', 'Edit'] },
+  },
+});
+
+// Tier 3: Build custom parts
+import type { AgentProvider } from '@method/pacta';
+
+class OllamaProvider implements AgentProvider {
+  readonly name = 'ollama';
+  capabilities() { return { modes: ['oneshot'], streaming: true, ... }; }
+  async invoke(pact, request) { /* ... */ }
+  // ...
+}
+```
+
+## Agent Events
 
 ```typescript
 type AgentEvent =
   | { type: 'started'; sessionId: string; timestamp: string }
   | { type: 'text'; content: string }
-  | { type: 'tool_use'; tool: string; input: unknown }
-  | { type: 'tool_result'; tool: string; output: unknown }
+  | { type: 'thinking'; content: string }
+  | { type: 'tool_use'; tool: string; input: unknown; toolUseId: string }
+  | { type: 'tool_result'; tool: string; output: unknown; toolUseId: string }
   | { type: 'turn_complete'; turnNumber: number; usage: TokenUsage }
-  | { type: 'budget_warning'; consumed: Partial<BudgetContract>; remaining: Partial<BudgetContract> }
-  | { type: 'budget_exhausted'; consumed: Partial<BudgetContract> }
+  | { type: 'context_compacted'; fromTokens: number; toTokens: number }
+  | { type: 'reflection'; trial: number; critique: string }
+  | { type: 'budget_warning'; resource: string; consumed: number; limit: number }
+  | { type: 'budget_exhausted'; resource: string; consumed: number; limit: number }
   | { type: 'error'; message: string; recoverable: boolean }
   | { type: 'completed'; result: string; usage: TokenUsage; cost: CostReport }
 ```
 
-### Token Usage & Cost
-
-```typescript
-interface TokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  totalTokens: number;
-}
-
-interface CostReport {
-  totalUsd: number;
-  perModel: Record<string, { tokens: TokenUsage; costUsd: number }>;
-  budgetConsumedPercent?: number;
-}
-```
-
 ## Comparison to Existing Solutions
 
-| Dimension | Pacta | Claude Agent SDK | OpenAI Agents SDK | LangGraph | PydanticAI |
-|-----------|-------|-----------------|-------------------|-----------|------------|
-| **Execution modes** | First-class typed contracts | Implicit (streaming generator) | Implicit (Runner) | Graph states | run/stream |
+| Dimension | Pacta SDK | Claude Agent SDK | OpenAI Agents SDK | LangGraph | PydanticAI |
+|-----------|-----------|-----------------|-------------------|-----------|------------|
+| **Philosophy** | Modular parts, composable | Opinionated, batteries-included | Lightweight, handoff-based | Graph-based state machines | Contract-first outputs |
 | **Provider** | Port interface, any provider | Claude only | Agnostic via LiteLLM | Agnostic via LangChain | Agnostic native |
-| **Budget contracts** | Declared + enforced | max_budget_usd only | None | None | None |
-| **Output contracts** | Zod schemas + retry | None | Guardrails | State schema | Pydantic models |
-| **Event contracts** | Typed, guaranteed vocabulary | Typed messages | Streaming events | State transitions | Streaming |
-| **Scope contracts** | Tools, paths, permissions | allowed_tools | Guardrails | N/A | N/A |
-| **Formal pact** | Yes — declared before invocation | No | No | No | Partial (output only) |
+| **Reasoning** | Pluggable policies (ReAct, Reflexion, think, plan) | Implicit (model decides) | Implicit | Graph nodes | Implicit |
+| **Context** | Pluggable policies (compact, notes, subagent) | Built-in compaction | Sessions | Checkpoints | None |
+| **Budget** | Declared contracts + enforcement | max_budget_usd | None | None | None |
+| **Output** | Pluggable validators (Zod, custom) | None | Guardrails | State schema | Pydantic models |
+| **Memory** | Port interface (in-context, store, vector) | Session persistence | Session stores | Thread state | None |
+| **Tools** | Port interface (MCP, function, built-in) | Built-in + MCP | Functions + MCP | Graph nodes | DI functions |
+| **Modularity** | Everything is a replaceable part | Monolithic | Semi-modular | Modular (graph nodes) | Semi-modular |
+| **Pre-assembled** | Yes (code, research, review agents) | Yes (Claude Code) | No | No | No |
 
 ## Phases
 
-### Phase 1: Core Types + Port Interface
-- Define `Pact`, `ExecutionMode`, `BudgetContract`, `OutputContract`, `ScopeContract`
-- Define `AgentProvider` port interface
-- Define `AgentEvent`, `AgentResult`, `TokenUsage`, `CostReport`
-- Define `ProviderCapabilities`
-- Package scaffold: `@method/pacta` with FCA structure
+### Phase 1: Core Types + Port Interfaces
+- Pact, ExecutionMode, BudgetContract, OutputContract, ScopeContract
+- ContextPolicy, ReasoningPolicy (new)
+- AgentProvider, ToolProvider, MemoryProvider, NoteStore ports
+- AgentEvent, AgentResult, TokenUsage, CostReport
+- Package scaffold with FCA structure
 - Zero dependencies — pure types and composition
 
-### Phase 2: Budget Enforcement
-- Client-side budget tracker (wraps any provider)
-- Token counting, cost accumulation, duration tracking
-- Budget exhaustion policy (stop/warn/error)
-- Budget events emitted to caller
+### Phase 2: Agent Composition Engine
+- `createAgent()` — compose ports into a running agent
+- Pact validation — verify provider capabilities match requested pact
+- Event stream wiring — connect provider events to caller
+- Middleware pattern — budget enforcer, output validator as composable wrappers
 
-### Phase 3: Output Validation
-- Zod-based output validation layer
-- Retry-on-failure with re-prompting
-- Validation events emitted to caller
+### Phase 3: Reasoning Strategies (Library)
+- Think tool implementation (zero-side-effect scratchpad)
+- Plan-between-actions system prompt injection
+- Reflexion loop (multi-trial with verbal self-critique)
+- Few-shot example injection
+- Effort level mapping to provider-specific controls
 
-### Phase 4: Claude Code Provider
-- Implement `AgentProvider` for Claude CLI (`--print`, `--resume`, PTY)
+### Phase 4: Context Management (Library)
+- Compaction manager (configurable threshold + custom instructions)
+- Note-taking manager (external store + retrieval)
+- Sub-agent delegator (fresh windows, summary extraction)
+- System prompt budget tracking
+
+### Phase 5: Claude Code Provider
+- Implement AgentProvider for Claude CLI (--print, --resume, PTY)
 - Map Claude's execution modes to Pacta's mode contracts
-- Extract from bridge's existing `PrintSession` + `LlmProvider`
+- Extract from bridge's existing PrintSession + LlmProvider
 
-### Phase 5: Anthropic API Provider
-- Implement `AgentProvider` for direct Anthropic API
-- Messages API for oneshot/streaming
-- Tool use mapping
+### Phase 6: Anthropic API Provider
+- Implement AgentProvider for direct Anthropic Messages API
+- Messages API for oneshot/streaming + tool use
+- Prompt caching integration
 
-### Phase 6: Bridge Integration
-- Replace bridge's direct `PrintSession`/`PtySession` with Pacta-backed invocations
-- Strategy pipelines use Pacta pacts instead of raw LlmProvider
+### Phase 7: Pre-Assembled Agents
+- `codeAgent` — code editing with scope constraints, think tool, planning
+- `researchAgent` — web research with compaction, note-taking
+- `reviewAgent` — code review with output schema, Reflexion on findings
+
+### Phase 8: Bridge Integration
+- Replace bridge's direct PrintSession/PtySession with Pacta agents
+- Strategy pipelines use Pacta pacts
 - Session pool delegates to Pacta for spawn decisions
 
 ## Non-Goals
 
-- **Prompt engineering.** Pacta deploys agents, it doesn't design their prompts.
-- **Multi-agent orchestration.** Pacta handles single-agent pacts. Orchestration patterns (pipelines, teams, hierarchies) belong to the consumer (bridge, strategy domain).
-- **Agent-to-agent protocol.** MCP and A2A handle inter-agent communication. Pacta handles deployment.
-- **Durable execution.** Temporal-style replay and checkpointing are infrastructure concerns, not library concerns. Pacta's resumable mode uses provider-native session persistence.
+- **Multi-agent orchestration.** Pacta handles single-agent assembly. Orchestration patterns
+  (pipelines, teams, hierarchies) belong to the consumer. Pacta agents are the building
+  blocks that orchestrators compose.
+- **Agent-to-agent protocol.** MCP and A2A handle inter-agent communication. Pacta handles
+  what happens inside a single agent.
+- **Durable execution.** Temporal-style replay and checkpointing are infrastructure concerns.
+  Pacta's resumable mode uses provider-native session persistence.
+- **Training / fine-tuning.** Pacta uses prompting-based techniques (~80% of fine-tuning
+  quality at zero training cost). Model training is out of scope.
 
 ## Success Criteria
 
-1. An agent can be deployed under a typed pact that declares mode, budget, output shape, and scope
-2. The same orchestration code works with at least two different providers (Claude CLI + Anthropic API)
-3. Budget enforcement stops/warns before exceeding declared limits
-4. Output validation retries on schema mismatch
-5. All agent lifecycle events are typed and emitted through a single event vocabulary
-6. Zero transport dependencies in the core package (pure types + composition)
-7. FCA gates pass (G-PORT, G-BOUNDARY, G-LAYER)
+1. An agent can be assembled from independent, typed parts (provider, reasoner, context manager, validator)
+2. The same assembled agent works with at least two different providers (Claude CLI + Anthropic API)
+3. Reasoning policies measurably improve agent behavior (think tool, planning, reflection)
+4. Context policies prevent context rot on long-running tasks
+5. Budget enforcement stops/warns before exceeding declared limits
+6. Output validation retries on schema mismatch with verbal feedback
+7. Pre-assembled agents work out of the box with just an API key
+8. All agent lifecycle events are typed and emitted through a single event vocabulary
+9. Zero transport dependencies in the core package
+10. FCA gates pass (G-PORT, G-BOUNDARY, G-LAYER)
 
 ## Open Questions
 
-1. **Should persistent mode sessions be first-class in Pacta, or should that stay in the bridge?** Persistent PTY sessions have OS-level concerns (node-pty, resize, shell detection) that may not belong in a pure library.
+1. **Should persistent mode (PTY) be a Pacta provider or stay in the bridge?** PTY sessions
+   have OS-level concerns (node-pty, resize, shell detection) that may not belong in a pure library.
 
-2. **Zod as the only schema validator?** PydanticAI uses Pydantic (Python-native). Should Pacta support pluggable validators, or is Zod the right bet for TypeScript?
+2. **How does Pacta relate to MCP?** MCP defines tool interfaces. Pacta provides a ToolProvider
+   port. Should Pacta ship an MCP-backed ToolProvider implementation, or leave that to consumers?
 
-3. **How does Pacta relate to MCP?** MCP defines tool interfaces. Pacta defines deployment contracts. They're complementary — a Pacta scope contract can reference MCP server capabilities. But should Pacta have first-class MCP awareness?
+3. **Should reasoning strategies be prompt-level or middleware-level?** The think tool is a tool
+   definition. Planning instructions are system prompt additions. Reflexion is a retry loop.
+   These operate at different layers — should they share an interface?
 
-4. **Event contract as part of the pact vs. emergent?** Should the pact declare "this agent will emit progress events every N turns" or should events just flow based on what happens?
+4. **How opinionated should pre-assembled agents be?** A `codeAgent` that works out of the box
+   must make choices (model, tools, reasoning strategy). How customizable should it be while
+   remaining "batteries included"?
+
+5. **Should Pacta define its own tool format or adopt MCP's?** MCP's tool schema (JSON-RPC +
+   JSON Schema for inputs) is becoming a standard. Pacta could adopt it natively for
+   interoperability.
+
+## Research References
+
+- `ov-research/knowledge/multi-agent/agent-reasoning-techniques.md` — ReAct, Reflexion, think tool, LATS, planning-first
+- `ov-research/knowledge/multi-agent/agent-sdk-landscape.md` — 2026 SDK comparison
+- `ov-research/knowledge/llm-behavior/context-management.md` — stateless API, compaction, caching, context rot
+- `ov-research/knowledge/multi-agent/coding-agent-architecture.md` — OpenDev architecture patterns
+- `ov-research/knowledge/multi-agent/agent-failure-modes.md` — eight failure classes and mitigations
