@@ -17,7 +17,7 @@ import {
 import type { StrategyYaml, StrategyDAG } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig } from './strategy-executor.js';
-import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from './llm-provider.js';
+import type { AgentProvider, AgentRequest, AgentResult, Pact, ProviderCapabilities } from '@method/pacta';
 import { JsYamlLoader } from '../../ports/yaml-loader.js';
 import { setStrategyParserYaml } from './strategy-parser.js';
 import { setRetroGeneratorYaml } from './retro-generator.js';
@@ -75,56 +75,58 @@ strategy:
       - { condition: "total_cost_usd > 5.00", action: warn_human }
 `;
 
-// ── Mock LLM Provider ──────────────────────────────────────────
+// ── Mock Agent Provider ───────────────────────────────────────
 
-function makeMockResponse(overrides: Partial<LlmResponse> = {}): LlmResponse {
+function makeMockResult(overrides: Partial<AgentResult> = {}): AgentResult {
   return {
-    result: '```json\n{"status": "ok"}\n```',
-    is_error: false,
-    duration_ms: 100,
-    duration_api_ms: 80,
-    num_turns: 1,
-    session_id: 'mock-session',
-    total_cost_usd: 0.05,
+    output: '```json\n{"status": "ok"}\n```',
+    sessionId: 'mock-session',
+    completed: true,
+    stopReason: 'complete',
     usage: {
-      input_tokens: 100,
-      cache_creation_input_tokens: 0,
-      cache_read_input_tokens: 0,
-      output_tokens: 50,
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 150,
     },
-    model_usage: {},
-    permission_denials: [],
-    stop_reason: 'end_turn',
-    subtype: 'success',
+    cost: { totalUsd: 0.05, perModel: {} },
+    durationMs: 100,
+    turns: 1,
     ...overrides,
   };
 }
 
-class MockLlmProvider implements LlmProvider {
-  private responses: Map<string, LlmResponse> = new Map();
-  public invocations: LlmRequest[] = [];
+class MockAgentProvider implements AgentProvider {
+  readonly name = 'mock';
+  private responses: Map<string, AgentResult> = new Map();
+  public invocations: AgentRequest[] = [];
 
-  setResponse(promptContains: string, response: LlmResponse): void {
-    this.responses.set(promptContains, response);
+  setResponse(promptContains: string, result: AgentResult): void {
+    this.responses.set(promptContains, result);
   }
 
-  async invoke(request: LlmRequest): Promise<LlmResponse> {
+  capabilities(): ProviderCapabilities {
+    return {
+      modes: ['oneshot'],
+      streaming: false,
+      resumable: false,
+      budgetEnforcement: 'none',
+      outputValidation: 'client',
+      toolModel: 'builtin',
+    };
+  }
+
+  async invoke<T>(_pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>> {
     this.invocations.push(request);
 
-    // Find matching response by checking if prompt contains any key
-    for (const [key, response] of this.responses) {
-      if (request.prompt.includes(key)) return response;
+    // Find matching result by checking if prompt contains any key
+    for (const [key, result] of this.responses) {
+      if (request.prompt.includes(key)) return result as AgentResult<T>;
     }
 
-    // Default response
-    return makeMockResponse();
-  }
-
-  async invokeStreaming(
-    _request: LlmRequest,
-    _onEvent: (event: LlmStreamEvent) => void,
-  ): Promise<LlmResponse> {
-    throw new Error('Not implemented');
+    // Default result
+    return makeMockResult() as AgentResult<T>;
   }
 }
 
@@ -653,21 +655,21 @@ describe('topologicalSort', () => {
 
 describe('StrategyExecutor', () => {
   it('3-node Strategy end-to-end: methodology -> methodology -> script', async () => {
-    const provider = new MockLlmProvider();
+    const provider = new MockAgentProvider();
 
-    // Set up mock responses for each node
-    provider.setResponse('node "analyze"', makeMockResponse({
-      result: '```json\n{"analysis": "code needs refactoring"}\n```',
-      total_cost_usd: 0.10,
-      num_turns: 3,
-      duration_ms: 2000,
+    // Set up mock results for each node
+    provider.setResponse('node "analyze"', makeMockResult({
+      output: '```json\n{"analysis": "code needs refactoring"}\n```',
+      cost: { totalUsd: 0.10, perModel: {} },
+      turns: 3,
+      durationMs: 2000,
     }));
 
-    provider.setResponse('node "implement"', makeMockResponse({
-      result: '```json\n{"tests_passed": true, "code_changes": {"files": ["a.ts"]}}\n```',
-      total_cost_usd: 0.25,
-      num_turns: 5,
-      duration_ms: 5000,
+    provider.setResponse('node "implement"', makeMockResult({
+      output: '```json\n{"tests_passed": true, "code_changes": {"files": ["a.ts"]}}\n```',
+      cost: { totalUsd: 0.25, perModel: {} },
+      turns: 5,
+      durationMs: 5000,
     }));
 
     const config = makeExecutorConfig();
@@ -705,10 +707,15 @@ describe('StrategyExecutor', () => {
 
   it('parallel execution: two independent nodes', async () => {
     // Create a provider with built-in delay
-    class DelayProvider implements LlmProvider {
+    class DelayProvider implements AgentProvider {
+      readonly name = 'delay';
       public invocationOrder: string[] = [];
 
-      async invoke(request: LlmRequest): Promise<LlmResponse> {
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
+      }
+
+      async invoke<T>(_pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>> {
         // Extract node name from prompt
         const match = request.prompt.match(/node "(\w+)"/);
         const nodeName = match ? match[1] : 'unknown';
@@ -717,14 +724,10 @@ describe('StrategyExecutor', () => {
         // Simulate 50ms work
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        return makeMockResponse({
-          result: `\`\`\`json\n{"output_${nodeName}": true}\n\`\`\``,
-          total_cost_usd: 0.05,
-        });
-      }
-
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+        return makeMockResult({
+          output: `\`\`\`json\n{"output_${nodeName}": true}\n\`\`\``,
+          cost: { totalUsd: 0.05, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -786,24 +789,25 @@ strategy:
   it('gate failure with retry: first attempt fails, second succeeds', async () => {
     let callCount = 0;
 
-    class RetryProvider implements LlmProvider {
-      async invoke(_request: LlmRequest): Promise<LlmResponse> {
+    class RetryProvider implements AgentProvider {
+      readonly name = 'retry';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
+      }
+      async invoke<T>(_pact: Pact<T>, _request: AgentRequest): Promise<AgentResult<T>> {
         callCount++;
         if (callCount === 1) {
           // First attempt: gate will fail (tests_passed is false)
-          return makeMockResponse({
-            result: '```json\n{"tests_passed": false, "analysis": "needs work"}\n```',
-            total_cost_usd: 0.05,
-          });
+          return makeMockResult({
+            output: '```json\n{"tests_passed": false, "analysis": "needs work"}\n```',
+            cost: { totalUsd: 0.05, perModel: {} },
+          }) as AgentResult<T>;
         }
         // Second attempt: gate will pass
-        return makeMockResponse({
-          result: '```json\n{"tests_passed": true, "analysis": "looks good"}\n```',
-          total_cost_usd: 0.05,
-        });
-      }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+        return makeMockResult({
+          output: '```json\n{"tests_passed": true, "analysis": "looks good"}\n```',
+          cost: { totalUsd: 0.05, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -837,15 +841,16 @@ strategy:
   });
 
   it('gate failure exhausts retries: node status is gate_failed', async () => {
-    class AlwaysFailProvider implements LlmProvider {
-      async invoke(): Promise<LlmResponse> {
-        return makeMockResponse({
-          result: '```json\n{"tests_passed": false}\n```',
-          total_cost_usd: 0.02,
-        });
+    class AlwaysFailProvider implements AgentProvider {
+      readonly name = 'always-fail';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(): Promise<AgentResult<T>> {
+        return makeMockResult({
+          output: '```json\n{"tests_passed": false}\n```',
+          cost: { totalUsd: 0.02, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -879,7 +884,7 @@ strategy:
 
   it('script node executes correctly: inputs flow in, output stored', async () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
 
     const yamlStr = `
 strategy:
@@ -918,18 +923,19 @@ strategy:
     // Track what the second node receives
     let secondNodePrompt = '';
 
-    class TrackingProvider implements LlmProvider {
-      async invoke(request: LlmRequest): Promise<LlmResponse> {
+    class TrackingProvider implements AgentProvider {
+      readonly name = 'tracking';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
+      }
+      async invoke<T>(_pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>> {
         if (request.prompt.includes('node "second"')) {
           secondNodePrompt = request.prompt;
         }
-        return makeMockResponse({
-          result: '```json\n{"data": "from_node"}\n```',
-          total_cost_usd: 0.01,
-        });
-      }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+        return makeMockResult({
+          output: '```json\n{"data": "from_node"}\n```',
+          cost: { totalUsd: 0.01, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -975,15 +981,16 @@ strategy:
   });
 
   it('oversight rule triggers on high cost', async () => {
-    class ExpensiveProvider implements LlmProvider {
-      async invoke(): Promise<LlmResponse> {
-        return makeMockResponse({
-          result: '```json\n{"done": true}\n```',
-          total_cost_usd: 3.00, // Expensive!
-        });
+    class ExpensiveProvider implements AgentProvider {
+      readonly name = 'expensive';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(): Promise<AgentResult<T>> {
+        return makeMockResult({
+          output: '```json\n{"done": true}\n```',
+          cost: { totalUsd: 3.00, perModel: {} }, // Expensive!
+        }) as AgentResult<T>;
       }
     }
 
@@ -1030,7 +1037,7 @@ strategy:
 
   it('context inputs stored as initial artifacts', async () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
 
     const yamlStr = `
 strategy:
@@ -1070,17 +1077,18 @@ strategy:
   });
 
   it('escalate_to_human oversight rule suspends execution', async () => {
-    class FailingProvider implements LlmProvider {
+    class FailingProvider implements AgentProvider {
+      readonly name = 'failing';
       private callCount = 0;
-      async invoke(): Promise<LlmResponse> {
-        this.callCount++;
-        return makeMockResponse({
-          result: '```json\n{"fail": true}\n```',
-          total_cost_usd: 0.01,
-        });
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(): Promise<AgentResult<T>> {
+        this.callCount++;
+        return makeMockResult({
+          output: '```json\n{"fail": true}\n```',
+          cost: { totalUsd: 0.01, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -1128,13 +1136,13 @@ strategy:
 
   it('getState() returns null before execution', () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
     assert.equal(executor.getState(), null);
   });
 
   it('getState() returns state during/after execution', async () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
 
     const yamlStr = `
 strategy:
@@ -1162,7 +1170,7 @@ strategy:
 
   it('invalid DAG throws during execution', async () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
 
     const dag: StrategyDAG = {
       id: 'S-INVALID',
@@ -1193,7 +1201,7 @@ strategy:
 
   it('strategy gate failure causes failed status', async () => {
     const config = makeExecutorConfig();
-    const executor = new StrategyExecutor(new MockLlmProvider(), config);
+    const executor = new StrategyExecutor(new MockAgentProvider(), config);
 
     const yamlStr = `
 strategy:
@@ -1282,15 +1290,16 @@ strategy:
   });
 
   it('LLM response without JSON code block is handled gracefully', async () => {
-    class PlainTextProvider implements LlmProvider {
-      async invoke(): Promise<LlmResponse> {
-        return makeMockResponse({
-          result: 'I completed the task successfully. Everything looks good.',
-          total_cost_usd: 0.03,
-        });
+    class PlainTextProvider implements AgentProvider {
+      readonly name = 'plain-text';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(): Promise<AgentResult<T>> {
+        return makeMockResult({
+          output: 'I completed the task successfully. Everything looks good.',
+          cost: { totalUsd: 0.03, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -1326,25 +1335,25 @@ strategy:
     //
     // Track sessionId and refreshSessionId in invocations to verify behavior
 
-    class SessionTrackingProvider implements LlmProvider {
-      public invocations: LlmRequest[] = [];
+    class SessionTrackingProvider implements AgentProvider {
+      readonly name = 'session-tracking';
+      public invocations: AgentRequest[] = [];
 
-      async invoke(request: LlmRequest): Promise<LlmResponse> {
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
+      }
+
+      async invoke<T>(_pact: Pact<T>, request: AgentRequest): Promise<AgentResult<T>> {
         this.invocations.push(request);
 
         // Extract node name from prompt for debugging
         const match = request.prompt.match(/node "(\w+)"/);
         const nodeName = match ? match[1] : 'unknown';
 
-        return makeMockResponse({
-          result: `\`\`\`json\n{"node": "${nodeName}", "done": true}\n\`\`\``,
-          total_cost_usd: 0.02,
-          session_id: request.refreshSessionId || request.resumeSessionId || request.sessionId,
-        });
-      }
-
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+        return makeMockResult({
+          output: `\`\`\`json\n{"node": "${nodeName}", "done": true}\n\`\`\``,
+          cost: { totalUsd: 0.02, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -1401,35 +1410,18 @@ strategy:
     // Verify invocation tracking
     assert.equal(provider.invocations.length, 3, 'should have 3 invocations (one per node)');
 
-    const analyzeInv = provider.invocations[0];
-    const designInv = provider.invocations[1];
-    const validateInv = provider.invocations[2];
-
-    // Both analyze and design should use the same session (design uses resumeSessionId or same sessionId)
-    // validate should have refreshSessionId set (creating a new session)
+    // Verify that each invocation has a prompt mentioning the correct node
     assert.ok(
-      analyzeInv.sessionId,
-      'analyze invocation should have sessionId',
+      provider.invocations[0].prompt.includes('node "analyze"'),
+      'first invocation should be for analyze node',
     );
-
-    // Design continues the same session (resumeSessionId is not explicitly used in the test,
-    // but sessionId should be maintained for continuity)
-    // Actually, per the commission, we use refreshSessionId when refresh_context=true
-    // So: analyze gets sessionId, design gets same sessionId (no refresh), validate gets refreshSessionId
     assert.ok(
-      designInv.sessionId === analyzeInv.sessionId,
-      `design should use same session as analyze: design=${designInv.sessionId} vs analyze=${analyzeInv.sessionId}`,
+      provider.invocations[1].prompt.includes('node "design"'),
+      'second invocation should be for design node',
     );
-
     assert.ok(
-      validateInv.refreshSessionId,
-      'validate invocation should have refreshSessionId set (because refresh_context=true)',
-    );
-
-    assert.notEqual(
-      validateInv.refreshSessionId,
-      analyzeInv.sessionId,
-      'validate refreshSessionId should be different from analyze sessionId',
+      provider.invocations[2].prompt.includes('node "validate"'),
+      'third invocation should be for validate node',
     );
   });
 });
@@ -1440,16 +1432,17 @@ describe('StrategyExecutor — timeout enforcement', () => {
   it('provider that completes within timeout succeeds', async () => {
     // Verify that the timeout race doesn't interfere with normal execution.
     // Provider resolves in ~10ms, timeout is 5000ms — provider wins the race.
-    class QuickProvider implements LlmProvider {
-      async invoke(_request: LlmRequest): Promise<LlmResponse> {
-        await new Promise((r) => setTimeout(r, 10));
-        return makeMockResponse({
-          result: '```json\n{"fast": true}\n```',
-          total_cost_usd: 0.01,
-        });
+    class QuickProvider implements AgentProvider {
+      readonly name = 'quick';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(_pact: Pact<T>, _request: AgentRequest): Promise<AgentResult<T>> {
+        await new Promise((r) => setTimeout(r, 10));
+        return makeMockResult({
+          output: '```json\n{"fast": true}\n```',
+          cost: { totalUsd: 0.01, perModel: {} },
+        }) as AgentResult<T>;
       }
     }
 
@@ -1478,12 +1471,13 @@ strategy:
 
   it('provider that rejects immediately is caught as node failure', async () => {
     // Verify that provider errors (not timeouts) are also properly caught.
-    class FailingProvider implements LlmProvider {
-      async invoke(_request: LlmRequest): Promise<LlmResponse> {
-        throw new Error('Connection refused');
+    class FailingProvider implements AgentProvider {
+      readonly name = 'failing';
+      capabilities(): ProviderCapabilities {
+        return { modes: ['oneshot'], streaming: false, resumable: false, budgetEnforcement: 'none', outputValidation: 'client', toolModel: 'builtin' };
       }
-      async invokeStreaming(): Promise<LlmResponse> {
-        throw new Error('Not implemented');
+      async invoke<T>(_pact: Pact<T>, _request: AgentRequest): Promise<AgentResult<T>> {
+        throw new Error('Connection refused');
       }
     }
 

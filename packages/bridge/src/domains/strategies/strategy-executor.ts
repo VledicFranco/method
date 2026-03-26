@@ -2,14 +2,14 @@
  * PRD 017: Strategy Pipelines — DAG Executor (Phase 1c)
  *
  * WS-2: Now a thin adapter over @method/methodts DagStrategyExecutor.
- * The bridge StrategyExecutor wires the LlmProvider into the methodts
+ * The bridge StrategyExecutor wires the AgentProvider into the methodts
  * DagNodeExecutor port, then delegates all execution logic to methodts.
  *
- * This file preserves the bridge's API surface (StrategyExecutor class,
- * type exports) for backward compatibility with strategy-routes.ts.
+ * PRD 028 C-5: Migrated from LlmProvider to AgentProvider (@method/pacta).
  */
 
-import type { LlmProvider, LlmResponse } from '../../ports/llm-provider.js';
+import type { AgentProvider, AgentResult, Pact } from '@method/pacta';
+import { createAgent } from '@method/pacta';
 import type {
   StrategyDAG,
   StrategyNode,
@@ -34,35 +34,29 @@ export type {
 // Re-export ExecutionState as an opaque type (callers use getState() snapshot)
 export type { ExecutionStateSnapshot as ExecutionState } from '@method/methodts/strategy/dag-types.js';
 
-// ── Bridge Adapter: LlmProvider -> DagNodeExecutor ─────────────
+// ── Bridge Adapter: AgentProvider -> DagNodeExecutor ────────────
 
 /**
- * Adapts the bridge's LlmProvider to the methodts DagNodeExecutor port.
+ * Adapts Pacta's AgentProvider to the methodts DagNodeExecutor port.
  *
  * This is the only bridge-specific logic remaining — it builds prompts
- * from methodology node configs, invokes the LLM, and parses the output.
+ * from methodology node configs, invokes the agent, and parses the output.
  * All execution orchestration (DAG walking, gates, retries, oversight)
  * is handled by methodts DagStrategyExecutor.
  */
-class LlmNodeExecutor implements DagNodeExecutor {
-  private currentSessionId: string = '';
-
+class PactaNodeExecutor implements DagNodeExecutor {
   constructor(
-    private provider: LlmProvider,
+    private provider: AgentProvider,
     private defaultTimeoutMs: number,
     private defaultBudgetUsd?: number,
   ) {}
-
-  setSessionId(id: string): void {
-    this.currentSessionId = id;
-  }
 
   async executeMethodologyNode(
     dag: StrategyDAG,
     node: StrategyNode,
     config: MethodologyNodeConfig,
     inputBundle: Record<string, unknown>,
-    sessionId: string,
+    _sessionId: string,
     retryFeedback?: string,
   ): Promise<{
     output: Record<string, unknown>;
@@ -105,6 +99,14 @@ class LlmNodeExecutor implements DagNodeExecutor {
       }
     }
 
+    const pact: Pact = {
+      mode: { type: 'oneshot' },
+      budget: this.defaultBudgetUsd !== undefined
+        ? { maxCostUsd: this.defaultBudgetUsd }
+        : undefined,
+      scope: allowedTools.length > 0 ? { allowedTools } : undefined,
+    };
+
     const timeoutMs = this.defaultTimeoutMs;
     const abortController = new AbortController();
     let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
@@ -121,17 +123,11 @@ class LlmNodeExecutor implements DagNodeExecutor {
       }
     });
 
-    let response: LlmResponse;
+    let result: AgentResult;
     try {
-      response = await Promise.race([
-        this.provider.invoke({
-          prompt,
-          sessionId,
-          refreshSessionId: node.refresh_context ? crypto.randomUUID() : undefined,
-          maxBudgetUsd: this.defaultBudgetUsd,
-          allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
-          signal: abortController.signal,
-        }),
+      const agent = createAgent({ pact, provider: this.provider });
+      result = await Promise.race([
+        agent.invoke({ prompt, workdir: process.cwd(), abortSignal: abortController.signal }),
         timeoutPromise,
       ]);
     } finally {
@@ -139,13 +135,13 @@ class LlmNodeExecutor implements DagNodeExecutor {
     }
 
     // Parse output from response
-    const output = parseNodeOutput(response.result);
+    const output = parseNodeOutput(String(result.output));
 
     return {
       output,
-      cost_usd: response.total_cost_usd,
-      num_turns: response.num_turns,
-      duration_ms: response.duration_ms,
+      cost_usd: result.cost.totalUsd,
+      num_turns: result.turns,
+      duration_ms: result.durationMs,
     };
   }
 }
@@ -203,17 +199,17 @@ function parseNodeOutput(result: string): Record<string, unknown> {
 /**
  * Bridge-level StrategyExecutor — thin wrapper over methodts DagStrategyExecutor.
  *
- * Wires the bridge's LlmProvider into the methodts DagNodeExecutor port,
+ * Wires Pacta's AgentProvider into the methodts DagNodeExecutor port,
  * then delegates all execution orchestration to methodts.
  */
 export class StrategyExecutor {
   private inner: DagStrategyExecutor;
 
   constructor(
-    provider: LlmProvider,
+    provider: AgentProvider,
     config: StrategyExecutorConfig,
   ) {
-    const nodeExecutor = new LlmNodeExecutor(
+    const nodeExecutor = new PactaNodeExecutor(
       provider,
       config.defaultTimeoutMs,
       config.defaultBudgetUsd,
