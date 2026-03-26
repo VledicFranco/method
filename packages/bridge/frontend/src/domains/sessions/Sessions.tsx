@@ -1,14 +1,13 @@
 /**
  * WS-3: Sessions page with mobile-first chat interface.
  *
- * Mobile (< 768px): session detail is full-screen with terminal + sticky input at bottom.
+ * Mobile (< 768px): session detail is full-screen with transcript + sticky input at bottom.
  * Desktop (>= 768px): horizontal split-pane — session list left, detail panel right.
  *
- * Terminal uses xterm.js for PTY sessions, plain text for print-mode sessions.
- * Prompt bar is always visible at the bottom of the session detail view.
+ * All sessions run in print mode. Output is rendered as plain text transcript.
  */
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { PageShell } from "@/shared/layout/PageShell";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
@@ -26,109 +25,6 @@ import { formatDuration, formatTokens } from "@/shared/lib/formatters";
 import { useProjects } from "@/domains/projects/useProjects";
 import type { SessionSummary } from "@/domains/sessions/types";
 import { Terminal as TerminalIcon, Eye, Trash2, RefreshCw, Users, Plus, ArrowLeft, X } from "lucide-react";
-
-// ---- xterm.js Terminal ----
-
-function TerminalViewer({ sessionId, enabled, isMobile }: { sessionId: string; enabled: boolean; isMobile?: boolean }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const fitRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
-
-  // Main effect: create terminal + SSE stream (keyed on sessionId + enabled only)
-  useEffect(() => {
-    if (!enabled || !containerRef.current) return;
-
-    let mounted = true;
-
-    async function initTerminal() {
-      const { Terminal } = await import("@xterm/xterm");
-      const { FitAddon } = await import("@xterm/addon-fit");
-      await import("@xterm/xterm/css/xterm.css");
-
-      if (!mounted || !containerRef.current) return;
-
-      const term = new Terminal({
-        theme: {
-          background: "#080e14",
-          foreground: "#c8cdd2",
-          cursor: "#00c9a7",
-          selectionBackground: "rgba(0, 201, 167, 0.2)",
-          black: "#080e14",
-          red: "#e05a5a",
-          green: "#00c9a7",
-          yellow: "#e8a45a",
-          blue: "#5a9ae0",
-          magenta: "#7b5fb5",
-          cyan: "#00e5cc",
-          white: "#c8cdd2",
-        },
-        fontFamily: "JetBrains Mono, monospace",
-        fontSize: isMobile ? 11 : 13,
-        cursorBlink: false,
-        disableStdin: true,
-        scrollback: 5000,
-      });
-
-      const fit = new FitAddon();
-      term.loadAddon(fit);
-      term.open(containerRef.current!);
-      fit.fit();
-      termRef.current = term;
-      fitRef.current = fit;
-
-      // Connect to SSE stream
-      const es = new EventSource(`/sessions/${sessionId}/stream`);
-      esRef.current = es;
-
-      es.onmessage = (event) => {
-        if (mounted && term) {
-          term.write(event.data);
-        }
-      };
-
-      // Handle window resize
-      const resizeObserver = new ResizeObserver(() => {
-        if (mounted) fit.fit();
-      });
-      resizeObserver.observe(containerRef.current!);
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
-
-    const cleanup = initTerminal();
-
-    return () => {
-      mounted = false;
-      esRef.current?.close();
-      esRef.current = null;
-      termRef.current?.dispose();
-      termRef.current = null;
-      fitRef.current = null;
-      cleanup?.then((fn) => fn?.());
-    };
-  }, [sessionId, enabled]);
-
-  // Separate effect: update font size on isMobile change without tearing down terminal
-  useEffect(() => {
-    if (termRef.current) {
-      termRef.current.options.fontSize = isMobile ? 11 : 13;
-      fitRef.current?.fit();
-    }
-  }, [isMobile]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "w-full rounded-lg overflow-hidden border border-bdr",
-        isMobile ? "h-full" : "h-[400px]",
-      )}
-    />
-  );
-}
 
 // ---- Session Card ----
 
@@ -290,17 +186,15 @@ function MobileSessionDetail({
         </div>
       </div>
 
-      {/* Terminal area — fills remaining space above prompt bar */}
-      <div className="flex-1 overflow-hidden p-sp-3">
-        <TerminalViewer
-          sessionId={session.session_id}
-          enabled={session.status !== "dead"}
-          isMobile={true}
-        />
+      {/* Transcript area — fills remaining space above prompt bar */}
+      <div className="flex-1 overflow-y-auto p-sp-3">
+        <pre className="w-full rounded-lg border border-bdr bg-void p-3 font-mono text-xs text-txt whitespace-pre-wrap break-words h-full min-h-[200px]">
+          {/* Print-mode output rendered by transcript view */}
+        </pre>
       </div>
 
       {/* Sticky prompt bar at bottom — always visible, above keyboard on mobile */}
-      {session.status !== "dead" && session.mode === "pty" && (
+      {session.status !== "dead" && (
         <div className="shrink-0 border-t border-bdr p-sp-3 bg-abyss">
           <PromptBar sessionId={session.session_id} />
         </div>
@@ -366,17 +260,16 @@ function SessionDetailContent({ session }: { session: SessionSummary }) {
         </div>
       )}
 
-      {/* Live terminal */}
+      {/* Transcript output */}
       <div>
-        <p className="text-[0.65rem] text-txt-muted uppercase mb-2">Terminal Output</p>
-        <TerminalViewer
-          sessionId={session.session_id}
-          enabled={session.status !== "dead"}
-        />
+        <p className="text-[0.65rem] text-txt-muted uppercase mb-2">Transcript Output</p>
+        <pre className="w-full rounded-lg border border-bdr bg-void p-3 font-mono text-xs text-txt whitespace-pre-wrap break-words min-h-[200px] max-h-[400px] overflow-y-auto">
+          {/* Print-mode output */}
+        </pre>
       </div>
 
       {/* Prompt bar for live sessions */}
-      {session.status !== "dead" && session.mode === "pty" && (
+      {session.status !== "dead" && (
         <PromptBar sessionId={session.session_id} />
       )}
     </div>
