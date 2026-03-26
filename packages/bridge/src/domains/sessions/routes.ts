@@ -66,6 +66,11 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       return reply.status(400).send({ error: 'Missing required field: workdir' });
     }
 
+    // PRD 028: Warn callers that PTY mode is deprecated
+    if (mode === 'pty') {
+      request.log.warn('[DEPRECATED] mode=pty is deprecated and will be removed. Session will run in print mode.');
+    }
+
     try {
       const result = await pool.create({
         workdir,
@@ -276,26 +281,12 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
 
   // ── POST /sessions/:id/resize ──
 
+  // PRD 028: PTY resize is no longer supported — return 410 Gone
   app.post<{
     Params: { id: string };
     Body: { cols: number; rows: number };
-  }>('/sessions/:id/resize', async (request, reply) => {
-    const { id } = request.params;
-    const { cols, rows } = request.body ?? {};
-
-    if (!cols || !rows || typeof cols !== 'number' || typeof rows !== 'number') {
-      return reply.status(400).send({ error: 'Missing required fields: cols (number), rows (number)' });
-    }
-
-    try {
-      const session = pool.getSession(id);
-      session.resize(cols, rows);
-      return reply.status(200).send({ resized: true, cols, rows });
-    } catch (e) {
-      const message = (e as Error).message;
-      if (message.includes('not found')) return reply.status(404).send({ error: message });
-      return reply.status(500).send({ error: message });
-    }
+  }>('/sessions/:id/resize', async (_request, reply) => {
+    return reply.status(410).send({ error: 'PTY mode removed. Resize is not supported in print mode.' });
   });
 
   // ── GET /sessions/:id/status ──

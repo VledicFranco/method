@@ -471,7 +471,11 @@ export function createPool(options?: PoolOptions): SessionPool {
       };
 
       // PRD 012 Phase 4: Determine session mode
-      const effectiveMode: SessionMode = mode ?? (process.env.PRINT_SESSION_DEFAULT === 'true' ? 'print' : 'pty');
+      // PRD 028: PTY mode is deprecated — always use print mode
+      if (mode === 'pty') {
+        console.warn('[DEPRECATED] PTY mode requested but is deprecated and will be removed. Upgrading to print mode.');
+      }
+      const effectiveMode: SessionMode = 'print' as SessionMode;
 
       let session: PtySession;
 
