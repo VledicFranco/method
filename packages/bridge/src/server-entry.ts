@@ -10,7 +10,6 @@ import { registerLiveOutputRoutes } from './domains/sessions/live-output-route.j
 import { registerTranscriptRoutes } from './domains/sessions/transcript-route.js';
 import { createTranscriptReader } from './domains/sessions/transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
-import { ClaudeCodeProvider } from './domains/strategies/claude-code-provider.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
 import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
@@ -38,7 +37,6 @@ import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
 import { loadStrategiesConfig } from './domains/strategies/config.js';
-import { NodePtyProvider } from './ports/pty-provider.js';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
@@ -57,12 +55,8 @@ const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 
 // PRD 023 D2: Instantiate port providers for dependency injection
-const ptyProvider = new NodePtyProvider();
 const fsProvider = new NodeFileSystemProvider();
 const yamlLoader = new JsYamlLoader();
-
-// PRD 024 MG-7: Shared LLM provider for print-mode sessions and strategy pipelines
-const llmProvider = new ClaudeCodeProvider(sessionsConfig.claudeBin);
 
 // PRD 024 MG-1/MG-2: Wire ports into all domain modules
 setResourceCopierPorts(fsProvider, yamlLoader);
@@ -148,8 +142,6 @@ const pool = createPool({
   claudeBin: sessionsConfig.claudeBin,
   settleDelayMs: sessionsConfig.settleDelayMs,
   minSpawnGapMs: sessionsConfig.minSpawnGapMs,
-  ptyProvider,
-  llmProvider,
   fsProvider,
   eventBus,
 });
@@ -385,7 +377,7 @@ registerPersistenceRoutes(app, {
 // ---------- Strategy Pipelines (PRD 017) ----------
 
 if (strategiesConfig.enabled) {
-  registerStrategyRoutes(app, llmProvider);
+  registerStrategyRoutes(app);
 }
 
 // ---------- Registry API (PRD 019.2) ----------
