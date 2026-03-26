@@ -1,24 +1,127 @@
 import PQueue from 'p-queue';
-import type { LlmProvider, LlmResponse } from '../../ports/llm-provider.js';
+import type { Pact, AgentRequest, AgentResult, AgentProvider, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
+import { createAgent } from '@method/pacta';
+import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import type { PtySession, SessionStatus } from './pty-session.js';
 import type { AdaptiveSettleDelay } from './adaptive-settle.js';
+
+// ── PactaSessionParams (absorbed from pacta-session.ts spike) ────
+
+/** Bridge-level session configuration that maps to Pacta concepts. */
+export interface PactaSessionParams {
+  /** Session nickname (used as metadata) */
+  nickname: string;
+
+  /** Working directory for the agent */
+  workdir: string;
+
+  /** The prompt / commission text */
+  prompt: string;
+
+  /** System prompt to prepend */
+  systemPrompt?: string;
+
+  /** Maximum cost in USD (maps to budget.maxCostUsd) */
+  maxCostUsd?: number;
+
+  /** Maximum duration in ms (maps to budget.maxDurationMs) */
+  maxDurationMs?: number;
+
+  /** Maximum turns / tool cycles (maps to budget.maxTurns) */
+  maxTurns?: number;
+
+  /** Allowed tools whitelist (maps to scope.allowedTools) */
+  allowedTools?: string[];
+
+  /** Allowed filesystem paths (maps to scope.allowedPaths) */
+  allowedPaths?: string[];
+
+  /** Model to use (maps to scope.model) */
+  model?: string;
+
+  /** Reasoning effort level */
+  reasoningEffort?: 'low' | 'medium' | 'high';
+
+  /** Session mode — oneshot or resumable */
+  mode?: 'oneshot' | 'resumable';
+
+  /** Session ID for resumable sessions */
+  resumeSessionId?: string;
+}
+
+/** Build a Pacta Pact from bridge session parameters. */
+export function buildPactFromSessionParams(params: PactaSessionParams): Pact {
+  const budget: BudgetContract | undefined =
+    (params.maxCostUsd !== undefined ||
+     params.maxDurationMs !== undefined ||
+     params.maxTurns !== undefined)
+      ? {
+          maxCostUsd: params.maxCostUsd,
+          maxDurationMs: params.maxDurationMs,
+          maxTurns: params.maxTurns,
+        }
+      : undefined;
+
+  const scope: ScopeContract | undefined =
+    (params.allowedTools !== undefined ||
+     params.allowedPaths !== undefined ||
+     params.model !== undefined)
+      ? {
+          allowedTools: params.allowedTools,
+          allowedPaths: params.allowedPaths,
+          model: params.model,
+        }
+      : undefined;
+
+  const reasoning: ReasoningPolicy | undefined =
+    params.reasoningEffort !== undefined
+      ? { effort: params.reasoningEffort }
+      : undefined;
+
+  return {
+    mode: { type: params.mode ?? 'oneshot' },
+    budget,
+    scope,
+    reasoning,
+  };
+}
+
+/** Build an AgentRequest from bridge session parameters. */
+export function buildRequestFromSessionParams(
+  params: PactaSessionParams,
+): AgentRequest {
+  return {
+    prompt: params.prompt,
+    workdir: params.workdir,
+    systemPrompt: params.systemPrompt,
+    resumeSessionId: params.resumeSessionId,
+    metadata: { nickname: params.nickname },
+  };
+}
+
+// ── PrintSession ─────────────────────────────────────────────────
 
 export interface PrintSessionOptions {
   id: string;
   workdir: string;
-  /** LLM provider port — injected by composition root (PRD 024 MG-7) */
-  llmProvider: LlmProvider;
   initialPrompt?: string;
   /** Per-session cost cap in USD */
   maxBudgetUsd?: number;
   /** System prompt to append (bridge context injection) */
   appendSystemPrompt?: string;
-  /** Permission mode (default: bypassPermissions) */
+  /** Permission mode (unused in Pacta layer — kept for pool.ts compatibility) */
   permissionMode?: string;
   /** Model override */
   model?: string;
   /** Additional CLI flags */
   spawnArgs?: string[];
+  /**
+   * @deprecated Ignored — claudeCliProvider is used internally.
+   * Will be removed in a future cleanup pass (C-4/pool.ts).
+   */
+  llmProvider?: unknown;
+  /** Override provider for testing */
+  providerOverride?: AgentProvider;
 }
 
 /** Rich metadata from the last print-mode invocation */
@@ -41,27 +144,76 @@ export interface PrintMetadata {
   cumulative_cost_usd: number;
 }
 
+function reverseMapStopReason(stopReason: AgentResult['stopReason']): string {
+  switch (stopReason) {
+    case 'complete': return 'end_turn';
+    case 'budget_exhausted': return 'max_turns';
+    case 'timeout': return 'timeout';
+    case 'killed': return 'killed';
+    case 'error': return 'error';
+    default: return String(stopReason);
+  }
+}
+
+function agentResultToMetadata(result: AgentResult, cumulativeCostUsd: number): PrintMetadata {
+  const modelUsage: PrintMetadata['model_usage'] = {};
+  for (const [model, data] of Object.entries(result.cost.perModel)) {
+    modelUsage[model] = {
+      inputTokens: data.tokens.inputTokens,
+      outputTokens: data.tokens.outputTokens,
+      costUSD: data.costUsd,
+    };
+  }
+  return {
+    total_cost_usd: result.cost.totalUsd,
+    num_turns: result.turns,
+    duration_ms: result.durationMs,
+    duration_api_ms: result.durationMs, // AgentResult has no duration_api_ms; use total as approximation
+    usage: {
+      input_tokens: result.usage.inputTokens,
+      cache_creation_input_tokens: result.usage.cacheWriteTokens,
+      cache_read_input_tokens: result.usage.cacheReadTokens,
+      output_tokens: result.usage.outputTokens,
+    },
+    permission_denials: [],
+    stop_reason: reverseMapStopReason(result.stopReason),
+    subtype: result.completed ? 'success' : 'error',
+    model_usage: modelUsage,
+    cumulative_cost_usd: cumulativeCostUsd,
+  };
+}
+
 /**
- * PRD 012 Phase 4: Print-Mode Session
+ * PRD 012 Phase 4 / PRD 028: Print-Mode Session
  *
- * Implements the PtySession interface using `claude --print --resume`.
- * Each sendPrompt() call spawns a new process — no persistent PTY.
+ * Implements the PtySession interface using createAgent() + claudeCliProvider.
+ * Each sendPrompt() call invokes the agent — no persistent PTY.
  * Responses are structured JSON — no regex parsing, no settle delay.
+ *
+ * Session continuity: claudeCliProvider tracks --session-id vs --resume
+ * automatically via its invokedSessions map, keyed by session ID.
  */
 export function createPrintSession(options: PrintSessionOptions): PtySession & { readonly printMetadata: PrintMetadata | null } {
   const {
     id,
     workdir,
-    llmProvider,
     initialPrompt,
     maxBudgetUsd,
     appendSystemPrompt,
-    permissionMode,
     model,
-    spawnArgs,
+    providerOverride,
   } = options;
 
-  const provider = llmProvider;
+  // Provider is created once; its invokedSessions map handles --session-id vs --resume
+  const provider: AgentProvider = providerOverride ?? claudeCliProvider({ model });
+
+  // sessionId in pact.mode is used by claudeCliProvider to track --session-id vs --resume
+  const pact: Pact = {
+    mode: { type: 'resumable', sessionId: id },
+    budget: maxBudgetUsd !== undefined ? { maxCostUsd: maxBudgetUsd } : undefined,
+    scope: model !== undefined ? { model } : undefined,
+  };
+
   const queue = new PQueue({ concurrency: 1 });
 
   let status: SessionStatus = 'ready'; // Print sessions start ready immediately
@@ -75,9 +227,6 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
   const outputSubscribers = new Set<(data: string) => void>();
   const exitCallbacks: Array<(exitCode: number) => void> = [];
 
-  // Whether the first prompt has been sent (for --session-id vs --resume)
-  let firstPromptSent = false;
-
   /** Defeats TypeScript's control-flow narrowing for async mutations (kill() during await). */
   const getStatus = (): SessionStatus => status;
 
@@ -85,12 +234,6 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
     for (const sub of outputSubscribers) {
       try { sub(data); } catch { /* subscriber errors are non-fatal */ }
     }
-  }
-
-  function buildSessionFlags(): string[] {
-    const flags: string[] = [];
-    if (spawnArgs) flags.push(...spawnArgs);
-    return flags;
   }
 
   const session: PtySession & { readonly printMetadata: PrintMetadata | null } = {
@@ -134,45 +277,26 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
         promptCount++;
         lastActivityAt = new Date();
 
-        // Notify subscribers that we're starting
         notifyOutput(`\n[print-mode] Sending prompt #${promptCount}...\n`);
 
         try {
-          const response: LlmResponse = await provider.invoke({
+          const request: AgentRequest = {
             prompt,
-            sessionId: id,
-            resumeSessionId: firstPromptSent ? id : undefined,
-            maxBudgetUsd,
-            appendSystemPrompt,
-            permissionMode: permissionMode ?? 'bypassPermissions',
-            outputFormat: 'json',
-            model,
             workdir,
-            additionalFlags: buildSessionFlags(),
-          });
-
-          firstPromptSent = true;
-
-          // Update metadata
-          cumulativeCostUsd += response.total_cost_usd;
-          lastMetadata = {
-            total_cost_usd: response.total_cost_usd,
-            num_turns: response.num_turns,
-            duration_ms: response.duration_ms,
-            duration_api_ms: response.duration_api_ms,
-            usage: response.usage,
-            permission_denials: response.permission_denials,
-            stop_reason: response.stop_reason,
-            subtype: response.subtype,
-            model_usage: response.model_usage,
-            cumulative_cost_usd: cumulativeCostUsd,
+            systemPrompt: appendSystemPrompt,
           };
 
+          const agent = createAgent({ pact, provider });
+          const result: AgentResult = await agent.invoke(request);
+
+          // Update metadata
+          cumulativeCostUsd += result.cost.totalUsd;
+          lastMetadata = agentResultToMetadata(result, cumulativeCostUsd);
+
           // Accumulate transcript
-          const output = response.result;
+          const output = String(result.output);
           transcript += `\n--- Prompt #${promptCount} ---\n${prompt}\n--- Response ---\n${output}\n`;
 
-          // Notify output subscribers
           notifyOutput(output);
 
           lastActivityAt = new Date();

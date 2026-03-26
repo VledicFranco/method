@@ -2,29 +2,18 @@ import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
-import type { LlmProvider, LlmRequest, LlmResponse, LlmStreamEvent } from '../../ports/llm-provider.js';
 
-// ── PrintSession Unit Tests (PRD 012 Phase 4) ───────────────────
+// ── PrintSession Unit Tests (PRD 012 Phase 4 / PRD 028) ──────────
 //
 // Node 22 does not support mock.module() for ESM (it's experimental
 // and undefined in this version). We cannot mock child_process.spawn
-// that ClaudeCodeProvider uses internally.
+// that claudeCliProvider uses internally.
 //
 // Strategy:
 // - Tests that exercise sendPrompt() use mock.module() if available,
 //   otherwise they are skipped with a descriptive message.
 // - Tests for the synchronous public interface (status, kill, resize,
 //   adaptiveSettle, onOutput, onExit, printMetadata) run without mocking.
-
-/** No-op LLM provider for tests that don't call sendPrompt() */
-const noopLlmProvider: LlmProvider = {
-  async invoke(_req: LlmRequest): Promise<LlmResponse> {
-    throw new Error('noopLlmProvider.invoke() should not be called in this test');
-  },
-  async invokeStreaming(_req: LlmRequest, _onEvent: (event: LlmStreamEvent) => void): Promise<LlmResponse> {
-    throw new Error('noopLlmProvider.invokeStreaming() should not be called in this test');
-  },
-};
 
 // ── Mock infrastructure ──────────────────────────────────────────
 
@@ -46,7 +35,7 @@ const MOCK_JSON_RESULT = {
     cache_read_input_tokens: 10000,
     output_tokens: 500,
   },
-  modelUsage: {
+  model_usage: {
     'claude-sonnet-4-6': {
       inputTokens: 3000,
       outputTokens: 500,
@@ -86,7 +75,6 @@ const canMockModules = typeof mock.module === 'function';
 
 let mockSpawn: ReturnType<typeof mock.fn> | undefined;
 let createPrintSession: typeof import('./print-session.js').createPrintSession | undefined;
-let ClaudeCodeProviderClass: (typeof import('../strategies/claude-code-provider.js'))['ClaudeCodeProvider'] | undefined;
 
 if (canMockModules) {
   mockSpawn = mock.fn(() => createMockProcess(MOCK_JSON_RESULT));
@@ -99,22 +87,15 @@ if (canMockModules) {
 
   const mod = await import('./print-session.js');
   createPrintSession = mod.createPrintSession;
-  const providerMod = await import('../strategies/claude-code-provider.js');
-  ClaudeCodeProviderClass = providerMod.ClaudeCodeProvider;
 }
 
 // Separate import path for non-mocked tests (public interface only)
-// This import uses the real child_process, but we only call methods
-// that don't trigger spawn (status, kill, resize, etc.)
 const realMod = canMockModules ? null : await import('./print-session.js');
 const rawCreateSession = createPrintSession ?? realMod!.createPrintSession;
 
-/** Helper: create a session with the appropriate LlmProvider injected */
+/** Helper: create a session */
 function createSession(opts: { id: string; workdir: string; [k: string]: unknown }) {
-  // For mocked tests, use real ClaudeCodeProvider (with mocked child_process).
-  // For non-mocked tests, use noopLlmProvider (sendPrompt tests are skipped anyway).
-  const provider = ClaudeCodeProviderClass ? new ClaudeCodeProviderClass() : noopLlmProvider;
-  return rawCreateSession({ ...opts, llmProvider: provider } as any);
+  return rawCreateSession({ ...opts } as any);
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -243,7 +224,7 @@ describe('PrintSession', () => {
   });
 
   // ── sendPrompt() tests (require mock.module) ──────────────────
-  // These tests exercise the full provider.invoke() path.
+  // These tests exercise the full claudeCliProvider.invoke() path.
   // They are conditionally run based on mock.module availability.
 
   const describeSendPrompt = canMockModules ? describe : describe.skip;
@@ -338,7 +319,8 @@ describe('PrintSession', () => {
       assert.equal(meta.total_cost_usd, 0.035);
       assert.equal(meta.num_turns, 2);
       assert.equal(meta.duration_ms, 5432);
-      assert.equal(meta.duration_api_ms, 4200);
+      // duration_api_ms is approximated as duration_ms (AgentResult has no separate api duration)
+      assert.equal(meta.duration_api_ms, 5432);
       assert.equal(meta.usage.input_tokens, 3000);
       assert.equal(meta.usage.output_tokens, 500);
       assert.equal(meta.usage.cache_creation_input_tokens, 1500);
@@ -409,6 +391,7 @@ describe('PrintSession', () => {
       assert.ok(!firstArgs.includes('--resume'), 'first prompt should not use --resume');
 
       await session.sendPrompt('second');
+      // Find the second spawn call (first call is index 0, second is index 1)
       const secondCall = mockSpawn!.mock.calls[1];
       const secondArgs = secondCall.arguments[1] as string[];
       assert.ok(secondArgs.includes('--resume'), 'second prompt should use --resume');
