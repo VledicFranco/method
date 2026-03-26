@@ -27,6 +27,8 @@ This project follows FCA (see `docs/fractal-component-architecture/`). The core 
 ```
 L4  @method/bridge     Application — HTTP server, wires everything, owns the process
 L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
+    @method/pacta      Modular agent SDK — pacts, providers, middleware, composition engine
+    @method/pacta-*    Provider packages (claude-cli, anthropic), testkit, playground
 L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
     @method/testkit    Testing framework (assertions, builders, runners)
 ```
@@ -81,8 +83,8 @@ registry/     Compiled methodology YAML specs — PRODUCTION ARTIFACTS, do not m
 theory/       Formal theory files (F1-FTH, F4-PHI)
 docs/
   arch/       Architecture specs (one concern per file)
-  prds/       Product requirement documents (001–023)
-  guides/     Usage guides (25 guides)
+  prds/       Product requirement documents (001–027)
+  guides/     Usage guides (29 guides)
   fractal-component-architecture/   FCA specification (7 parts)
 .method/      Methodology execution home
   project-card.yaml   Essence, delivery rules, processes
