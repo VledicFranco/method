@@ -7,7 +7,7 @@
 
 import { spawn as nodeSpawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 
-// ── Types ────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────
 
 export interface CliArgs {
   /** The prompt to send */
@@ -33,6 +33,18 @@ export interface CliArgs {
 
   /** Max turns limit */
   maxTurns?: number;
+
+  /** Output format — default 'json' for structured parsing */
+  outputFormat?: 'json' | 'text';
+
+  /** Session ID for first invocation (--session-id). Mutually exclusive with resumeSessionId. */
+  sessionId?: string;
+
+  /** If true, treat as fresh --session-id call (no --resume even if resumeSessionId set) */
+  clearHistory?: boolean;
+
+  /** Abort signal — kills child process on abort */
+  abortSignal?: AbortSignal;
 }
 
 export interface CliResult {
@@ -65,8 +77,22 @@ export function buildCliArgs(args: CliArgs): string[] {
     result.push('--print');
   }
 
-  if (args.resumeSessionId) {
+  // Session tracking: --session-id for fresh start, --resume for continuation
+  if (args.clearHistory && args.sessionId) {
+    // Fresh start with a specific session ID (ignore resumeSessionId)
+    result.push('--session-id', args.sessionId);
+  } else if (args.sessionId && !args.resumeSessionId) {
+    // First invocation — use --session-id
+    result.push('--session-id', args.sessionId);
+  } else if (args.resumeSessionId && !args.clearHistory) {
+    // Resume an existing session
     result.push('--resume', args.resumeSessionId);
+  }
+
+  // Output format (default to json)
+  const fmt = args.outputFormat ?? 'json';
+  if (fmt === 'json') {
+    result.push('--output-format', 'json');
   }
 
   if (args.model) {
@@ -138,12 +164,40 @@ export async function executeCli(
       reject(new CliTimeoutError(timeoutMs));
     }, timeoutMs);
 
+    // Wire abort signal: kill the child process and reject with AbortError
+    let aborted = false;
+    if (args.abortSignal) {
+      const signal = args.abortSignal;
+      if (signal.aborted) {
+        // Already aborted before we even started
+        clearTimeout(timer);
+        child.kill('SIGTERM');
+        const err = new CliAbortError();
+        reject(err);
+        aborted = true;
+      } else {
+        const onAbort = () => {
+          aborted = true;
+          clearTimeout(timer);
+          child.kill('SIGTERM');
+          reject(new CliAbortError());
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+        // Clean up the listener when the process closes
+        child.on('close', () => {
+          signal.removeEventListener('abort', onAbort);
+        });
+      }
+    }
+
     child.on('error', (err) => {
+      if (aborted) return;
       clearTimeout(timer);
       reject(new CliSpawnError(binary, err));
     });
 
     child.on('close', (code) => {
+      if (aborted) return;
       clearTimeout(timer);
       resolve({
         exitCode: code ?? 1,
@@ -180,5 +234,12 @@ export class CliExecutionError extends Error {
   ) {
     super(`Claude CLI exited with code ${exitCode}: ${stderr.slice(0, 200)}`);
     this.name = 'CliExecutionError';
+  }
+}
+
+export class CliAbortError extends Error {
+  constructor() {
+    super('Claude CLI invocation was aborted');
+    this.name = 'CliAbortError';
   }
 }
