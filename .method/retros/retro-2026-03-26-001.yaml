@@ -1,0 +1,49 @@
+session_id: realize-20260326-prd-028
+prd: "028 — Pacta Print-Mode Convergence + PTY Deprecation"
+date: "2026-03-26"
+methodology: P2-SD v2.0 (realization orchestration via /realize skill)
+status: realized
+
+hardest_decision: >
+  Deciding whether C-5's scope violation (strategy-routes.ts needed updating when
+  StrategyExecutor constructor changed from LlmProvider to AgentProvider) was a
+  commission failure or a scope design flaw. Resolution: the C-5 sub-agent used
+  `_provider?: unknown` (deprecated no-op) to keep strategy-routes.ts compiling
+  without touching the forbidden path; the orchestrator then removed it entirely
+  in post-wave-3 cleanup. This was the right call — it preserved FCA isolation
+  without requiring a re-commission.
+
+observations:
+  - The FCA partition held perfectly across 6 commissions and 4 waves. Zero merge
+    conflicts on domain code. The only "integration work" was the 6 shared surface
+    changes the orchestrator handled between waves.
+  - All 6 commissions completed on first attempt with zero fix cycles. The /com
+    agent quality was high enough that the orchestrator never had to diagnose or
+    re-commission.
+  - Gate 6 illustrates a common pattern: C-2 added a 410 as an intermediate step
+    ("deprecated but callable"), C-4 deleted the endpoint entirely. The acceptance
+    gate was written at PRD-time for the intermediate state, not the final one. The
+    final state (404) is strictly better. Plan acceptance gates should be written
+    for end-state, not intermediate states.
+  - The `PtyWatcherTrigger` dead code (triggers domain subscribes to PTY events
+    that will never fire) was discovered in the integration review. It was outside
+    PRD 028 scope. Deferred correctly — not worth blocking realization for a dead
+    subscriber that compiles and doesn't fail tests.
+  - LSP diagnostics from sub-agent worktrees caused false-positive error noise during
+    the session. The working pattern is: always verify with actual build/test, ignore
+    LSP for worktree paths.
+
+card_feedback:
+  - The /realize skill's FCA partition step (Phase 0.3) and commission card format
+    (with allowed_paths / forbidden_paths) were essential for keeping sub-agents in
+    scope. Worth preserving this structure in future /realize sessions.
+  - The post-wave-3 orchestrator block (shared surface cleanup) was heavier than
+    pre-wave-1. 6 file changes across ports, server-entry, and package.json. This
+    is a natural consequence of deleting two ports — the cleanup is inherently
+    cross-cutting. The FCA framework handles this correctly by assigning it to the
+    orchestrator.
+
+proposed_deltas:
+  - Add a deferred cleanup item to a future PRD for PtyWatcherTrigger dead code.
+  - Consider updating sessions/README.md to remove references to deleted files
+    (pty-session.ts, pty-watcher.ts, etc.) — documentation debt from PRD 028.
