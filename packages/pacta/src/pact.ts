@@ -56,6 +56,14 @@ export interface AgentRequest {
 
   /** Arbitrary metadata passed through to the provider */
   metadata?: Record<string, unknown>;
+
+  /** Cancel an in-flight invocation. Provider must propagate to the child process. */
+  abortSignal?: AbortSignal;
+
+  /** Reset conversation context while keeping the session ID slot.
+   *  CLI provider: spawns --session-id (fresh), no --resume.
+   *  Anthropic provider: omits prior messages from context. */
+  clearHistory?: boolean;
 }
 
 // ── Agent Result ──────────────────────────────────────────────────
