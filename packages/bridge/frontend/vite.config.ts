@@ -21,7 +21,6 @@ export default defineConfig({
           'vendor-query': ['@tanstack/react-query'],
           'vendor-charts': ['recharts'],
           'vendor-xyflow': ['@xyflow/react', 'dagre'],
-          'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit'],
         },
       },
     },
