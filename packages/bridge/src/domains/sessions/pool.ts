@@ -1,17 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { spawnSession, type PtySession } from './pty-session.js';
-import { createPrintSession } from './print-session.js';
+import { createPrintSession, type PtySession } from './print-session.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
-import { createPtyWatcher, parseWatcherConfig, stripAnsiCodes, type PtyWatcher, type ObservationCallback } from './pty-watcher.js';
-import { generateAutoRetro } from './auto-retro.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
-import { AdaptiveSettleDelay, parseAdaptiveSettleConfig, isAdaptiveSettleEnabled } from './adaptive-settle.js';
-import { SpawnQueue } from './spawn-queue.js';
-import { installScopeHook, type ScopeConstraint } from './scope-hook.js';
-import type { PtyProvider } from '../../ports/pty-provider.js';
-import type { LlmProvider } from '../../ports/llm-provider.js';
+import { installScopeHook } from './scope-hook.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { EventBus } from '../../ports/event-bus.js';
 
@@ -32,7 +25,7 @@ export interface SessionChainInfo {
 
 // ── PRD 006: Worktree isolation types ────────────────────────
 
-export type SessionMode = 'pty' | 'print';
+export type SessionMode = 'print';
 
 export type IsolationMode = 'worktree' | 'shared';
 export type WorktreeAction = 'merge' | 'keep' | 'discard';
@@ -67,7 +60,7 @@ export interface SessionStatusInfo {
   worktree: WorktreeInfo;
   stale: boolean;
   waiting_for: string | null;
-  /** PRD 012 Phase 4: Session mode — 'pty' for interactive PTY, 'print' for headless --print. */
+  /** PRD 028: Session mode — always 'print' after PTY removal. */
   mode: SessionMode;
   /** PRD 012: Per-session diagnostic metrics. */
   diagnostics: SessionDiagnostics | null;
@@ -124,10 +117,10 @@ export interface PoolOptions {
   claudeBin?: string;
   settleDelayMs?: number;
   minSpawnGapMs?: number;
-  /** PRD 023 D2: PTY provider for dependency injection. */
-  ptyProvider?: PtyProvider;
-  /** PRD 024 MG-7: LLM provider for print-mode sessions (dependency injection). */
-  llmProvider?: LlmProvider;
+  /** @deprecated PTY provider — no longer used after PTY removal (PRD 028 C-4). */
+  ptyProvider?: unknown;
+  /** @deprecated LLM provider — print-session creates its own provider internally (PRD 028 C-4). */
+  llmProvider?: unknown;
   /** PRD 024 MG-1: FileSystem provider for auto-retro and other fs operations. */
   fsProvider?: FileSystemProvider;
   /** PRD 026: Event bus for unified event emission. */
@@ -169,25 +162,10 @@ const METHOD_SHORT_NAMES: Record<string, string> = {
  * PRD 006: Sessions now track parent-child chains with budget enforcement.
  */
 
-// PRD 028: PTY mode is deprecated. This function always returns 'print' but preserves
-// the SessionMode return type so downstream PTY branches (removed in C-4) don't trigger
-// TypeScript dead-code narrowing errors before they are deleted.
-function resolveSessionMode(requested: SessionMode | undefined): SessionMode {
-  if (requested === 'pty') {
-    console.warn('[DEPRECATED] PTY mode requested but is deprecated and will be removed. Upgrading to print mode.');
-  }
-  return 'print';
-}
-
 export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
-  const claudeBin = options?.claudeBin;
-  const settleDelayMs = options?.settleDelayMs;
-  const ptyProvider = options?.ptyProvider;
-  const llmProvider = options?.llmProvider;
   const fsProvider = options?.fsProvider;
   const eventBus = options?.eventBus;
-  const spawnQueue = new SpawnQueue({ minGapMs: options?.minSpawnGapMs });
 
   const sessions = new Map<string, PtySession>();
   const sessionMetadata = new Map<string, Record<string, unknown>>();
@@ -201,9 +179,8 @@ export function createPool(options?: PoolOptions): SessionPool {
   const sessionPurposes = new Map<string, string>();     // sessionId → purpose
   const activeNicknames = new Set<string>();              // uniqueness guard
 
-  // PRD 010: PTY watcher per session
-  const sessionWatchers = new Map<string, PtyWatcher>();
-  const sessionOriginalWorkdirs = new Map<string, string>(); // pre-worktree workdir for retro placement
+  // PRD 010: Original workdir per session (pre-worktree) for retro placement
+  const sessionOriginalWorkdirs = new Map<string, string>();
 
   // PRD 012: Per-session diagnostics trackers
   const sessionDiagnostics = new Map<string, DiagnosticsTracker>();
@@ -211,14 +188,8 @@ export function createPool(options?: PoolOptions): SessionPool {
   // PRD 012 Phase 4: Session mode tracking
   const sessionModes = new Map<string, SessionMode>();
 
-  // OBS-19: Waiting-for-sub-agent detection
+  // OBS-19: Waiting-for-sub-agent state (set externally; PTY auto-detection removed in PRD 028 C-4)
   const sessionWaitingFor = new Map<string, string>();        // sessionId → what it's waiting for
-  const lastAgentToolCallAt = new Map<string, number>();      // sessionId → timestamp of last Agent tool_call
-  const AGENT_TOOL_RE = /\bAgent\b/;
-  const WAITING_WINDOW_MS = 5000;
-
-  // PRD 018: Pool-level observation hook for forwarding to TriggerRouter
-  let observationHook: ((observation: { category: string; detail: Record<string, unknown>; session_id: string }) => void) | null = null;
 
   // Pool-level counters
   let totalSpawned = 0;
@@ -307,51 +278,13 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   /**
-   * PRD 010: Handle session death — detach watcher and generate auto-retro.
-   * Called from onExit callback and from kill().
+   * PRD 010: Handle session death — previously detached PTY watcher and generated auto-retro.
+   * PTY watcher removed in PRD 028 C-4. Function retained for call-site symmetry.
    */
-  function handleSessionDeath(sessionId: string, reason: 'killed' | 'exited' | 'stale'): void {
-    const watcher = sessionWatchers.get(sessionId);
-    if (!watcher) return;
-
-    watcher.detach();
-    sessionWatchers.delete(sessionId);
-
-    if (watcher.config.autoRetro) {
-      const nickname = sessionNicknames.get(sessionId) ?? sessionId.substring(0, 8);
-      const originalWorkdir = sessionOriginalWorkdirs.get(sessionId) ?? '';
-
-      if (originalWorkdir) {
-        const result = generateAutoRetro({
-          sessionId,
-          nickname,
-          observations: watcher.observations,
-          spawnedAt: watcher.spawnedAt,
-          terminatedAt: new Date(),
-          terminationReason: reason,
-          projectRoot: originalWorkdir,
-          fs: fsProvider,
-        });
-
-        if (result.written && result.path) {
-          // PRD 026 Phase 3: retro_generated emitted via eventBus (Phase 2)
-          // appendMessage removed — ChannelSink receives from bus
-          if (eventBus) {
-            try {
-              eventBus.emit({
-                version: 1,
-                domain: 'session',
-                type: 'session.retro_generated',
-                severity: 'info',
-                sessionId,
-                payload: { path: result.path, observations_count: watcher.observations.length },
-                source: 'bridge/sessions/pool',
-              });
-            } catch { /* non-fatal */ }
-          }
-        }
-      }
-    }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleSessionDeath(_sessionId: string, _reason: 'killed' | 'exited' | 'stale'): void {
+    // PTY watcher removed in PRD 028 C-4. Auto-retro via watcher observations no longer applies.
+    // Future: print-mode retro generation can be added here if needed.
   }
 
   return {
@@ -481,87 +414,24 @@ export function createPool(options?: PoolOptions): SessionPool {
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
 
-      // PRD 012 Phase 4: Determine session mode
-      // PRD 028: PTY mode is deprecated — always resolves to print
-      const effectiveMode: SessionMode = resolveSessionMode(mode);
+      // PRD 028: Always print mode — PTY removed in C-4
+      const effectiveMode: SessionMode = 'print';
 
-      let session: PtySession;
-
-      if (effectiveMode === 'print') {
-        // PRD 012 Phase 4: Print-mode session — no PTY, no settle delay
-        // Skip split prompt delivery (print mode handles prompts directly)
-        // Skip SpawnQueue (no PTY to rate-limit)
-        // Skip adaptive settle (not needed)
-
-        // PRD 012: Staggered spawn — delay before spawning process
-        if (spawn_delay_ms && spawn_delay_ms > 0) {
-          await new Promise(r => setTimeout(r, spawn_delay_ms));
-        }
-
-        if (!llmProvider) {
-          throw new Error('Print-mode sessions require an llmProvider. Pass it via PoolOptions.');
-        }
-        const printSession = createPrintSession({
-          id: sessionId,
-          workdir: effectiveWorkdir,
-          llmProvider,
-          initialPrompt: initialPrompt ?? undefined,  // No split delivery needed
-          maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
-          appendSystemPrompt: typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : undefined,
-          permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
-          model: typeof metadata?.model === 'string' ? metadata.model : undefined,
-          spawnArgs,
-        });
-        session = printSession;
-      } else {
-        // Existing PTY-mode logic
-        // EXP-OBS02: Split prompt delivery for long initial prompts
-        // Short prompts (<500 chars) work reliably as initial prompts.
-        // Long prompts cause agents to start then stall (OBS-02).
-        // Fix: send short activation as initial, queue full commission as follow-up.
-        const SPLIT_THRESHOLD = 500;
-        const sessionIdPrefix = `Your bridge_session_id is ${sessionId}. Use this in bridge_progress and bridge_event calls.`;
-
-        let activationPrompt: string | undefined;
-        let followUpPrompt: string | undefined;
-
-        if (initialPrompt) {
-          if (initialPrompt.length > SPLIT_THRESHOLD) {
-            // Split: short init to activate, full commission as follow-up
-            activationPrompt = `${sessionIdPrefix}\n\nYou will receive your full task instructions in the next message. Acknowledge with "ready".`;
-            followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
-          } else {
-            // Short enough to send as-is
-            activationPrompt = `${sessionIdPrefix}\n\n${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions.`;
-          }
-        }
-
-        // PRD 012: Staggered spawn — delay before spawning PTY process
-        if (spawn_delay_ms && spawn_delay_ms > 0) {
-          await new Promise(r => setTimeout(r, spawn_delay_ms));
-        }
-
-        // PRD 012 Phase 2: Create adaptive settle delay if enabled
-        const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
-        const adaptiveSettle = adaptiveEnabled
-          ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
-          : undefined;
-
-        // SpawnQueue enforces MIN_SPAWN_GAP_MS between consecutive spawns
-        if (!ptyProvider) {
-          throw new Error('PtyProvider is required for PTY-mode sessions');
-        }
-        session = await spawnQueue.enqueue(() => Promise.resolve(spawnSession({
-          id: sessionId,
-          workdir: effectiveWorkdir,
-          claudeBin,
-          settleDelayMs,
-          initialPrompt: activationPrompt,
-          spawnArgs,
-          adaptiveSettle,
-          ptyProvider,
-        })));
+      // PRD 012: Staggered spawn — delay before spawning process
+      if (spawn_delay_ms && spawn_delay_ms > 0) {
+        await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
+
+      const session: PtySession = createPrintSession({
+        id: sessionId,
+        workdir: effectiveWorkdir,
+        initialPrompt: initialPrompt ?? undefined,
+        maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
+        appendSystemPrompt: typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : undefined,
+        permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
+        model: typeof metadata?.model === 'string' ? metadata.model : undefined,
+        spawnArgs,
+      });
 
       sessions.set(sessionId, session);
       sessionModes.set(sessionId, effectiveMode);
@@ -623,165 +493,7 @@ export function createPool(options?: PoolOptions): SessionPool {
       // PRD 010: Track original workdir (pre-worktree) for auto-retro placement
       sessionOriginalWorkdirs.set(sessionId, workdir);
 
-      // PRD 012: Create diagnostics tracker (PTY mode only)
-      if (effectiveMode === 'pty') {
-        // PRD 012 Phase 2: Pass adaptive settle for dynamic metrics
-        const adaptiveEnabled = isAdaptiveSettleEnabled(process.env);
-        const adaptiveSettle = adaptiveEnabled
-          ? new AdaptiveSettleDelay(parseAdaptiveSettleConfig(process.env))
-          : undefined;
-        const effectiveSettleDelay = settleDelayMs ?? 1000;
-        const diagnosticsTracker = new DiagnosticsTracker(effectiveSettleDelay, adaptiveSettle);
-        sessionDiagnostics.set(sessionId, diagnosticsTracker);
-
-        // PRD 012: Track first PTY output for time_to_first_output_ms
-        let firstOutputRecorded = false;
-        session.onOutput((_data: string) => {
-          if (!firstOutputRecorded) {
-            firstOutputRecorded = true;
-            diagnosticsTracker.recordFirstOutput();
-          }
-        });
-      }
-
-      // PRD 010: Create and attach PTY watcher (PTY mode only)
-      if (effectiveMode === 'pty') {
-        const watcherConfig = parseWatcherConfig(process.env, metadata);
-        if (watcherConfig.enabled) {
-          // PRD 012: Observation callback — feeds diagnostics tracker
-          // PRD 012 Phase 2: Also resets adaptive settle on tool markers
-          const diagnosticsTracker = sessionDiagnostics.get(sessionId);
-          const diagnosticsCallback: ObservationCallback = (match, isIdle) => {
-            if (!diagnosticsTracker) return;
-            if (isIdle) {
-              diagnosticsTracker.recordIdleTransition();
-            } else if (match.category === 'tool_call') {
-              diagnosticsTracker.recordToolCall();
-              // PRD 012 Phase 2: Reset adaptive settle on tool-output marker
-              if (session.adaptiveSettle) {
-                session.adaptiveSettle.resetOnToolMarker();
-              }
-            } else if (match.category === 'permission_prompt') {
-              diagnosticsTracker.recordPermissionPrompt();
-            } else {
-              // Any non-idle, non-tool activity still ends idle period
-              diagnosticsTracker.recordActivity();
-            }
-
-            // PRD 026: Emit observation to Universal Event Bus
-            if (eventBus && !isIdle) {
-              try {
-                eventBus.emit({
-                  version: 1,
-                  domain: 'session',
-                  type: 'session.observation',
-                  severity: 'info',
-                  sessionId,
-                  payload: {
-                    category: match.category,
-                    detail: match.content ?? {},
-                  },
-                  source: 'bridge/sessions/pool',
-                });
-              } catch { /* bus emission must never block PTY processing */ }
-            }
-
-            // PRD 018 Phase 2a-2: Forward observation to trigger system (legacy — removed in T6)
-            if (observationHook && !isIdle) {
-              try {
-                observationHook({
-                  category: match.category,
-                  detail: match.content ?? {},
-                  session_id: sessionId,
-                });
-              } catch { /* hook errors are non-fatal */ }
-            }
-          };
-
-          // PRD 014: Pass allowed_paths to watcher for scope violation detection
-          const sessionAllowedPaths = metadata?.allowed_paths as string[] | undefined;
-
-          // PRD 014 F-N-1: Push-notify parent on scope violations from PTY watcher
-          const scopeViolationPush = (sessionAllowedPaths && sessionAllowedPaths.length > 0 && parentSessionId)
-            ? (content: unknown) => {
-                try {
-                  const parentSession = sessions.get(parentSessionId!);
-                  if (parentSession && parentSession.status !== 'dead') {
-                    const notification = [
-                      `BRIDGE NOTIFICATION — Child agent [${assignedNickname}] event: scope_violation`,
-                      `Session: ${assignedNickname} (${sessionId.substring(0, 8)})`,
-                      `Details: ${JSON.stringify(content ?? {})}`,
-                      `Action required: Child is writing outside its allowed scope — intervene or adjust allowed_paths`,
-                    ].join('\n');
-                    parentSession.sendPrompt(notification).catch(() => { /* non-fatal */ });
-                  }
-                } catch { /* non-fatal */ }
-              }
-            : undefined;
-
-          const watcher = createPtyWatcher(
-            sessionId,
-            channels,
-            (cb) => session.onOutput(cb),
-            watcherConfig,
-            diagnosticsCallback,
-            sessionAllowedPaths,
-            scopeViolationPush,
-            eventBus,
-          );
-          sessionWatchers.set(sessionId, watcher);
-
-          // On session exit: detach watcher and generate auto-retro
-          session.onExit((_exitCode) => {
-            handleSessionDeath(sessionId, 'exited');
-          });
-        }
-      }
-
-      // OBS-19: Detect 'waiting for sub-agent' status (PTY mode only)
-      // When Agent tool_call is seen in PTY output and ❯ appears within 5s,
-      // mark the session as 'waiting' instead of 'ready'. Revert when the
-      // session starts working again (next prompt received).
-      if (effectiveMode === 'pty') {
-        session.onOutput((data) => {
-          const cleaned = stripAnsiCodes(data);
-
-          // Detect Agent tool call in output
-          if (AGENT_TOOL_RE.test(cleaned)) {
-            lastAgentToolCallAt.set(sessionId, Date.now());
-          }
-
-          // If in waiting state and session starts working, revert to ready
-          if (sessionWaitingFor.has(sessionId) && session.status === 'working') {
-            sessionWaitingFor.delete(sessionId);
-            lastAgentToolCallAt.delete(sessionId);
-          }
-
-          // Detect ready transition (prompt char) — enter waiting if Agent call was recent
-          if (cleaned.includes('❯')) {
-            const callAt = lastAgentToolCallAt.get(sessionId);
-            if (callAt && Date.now() - callAt < WAITING_WINDOW_MS) {
-              sessionWaitingFor.set(sessionId, 'sub-agent');
-              lastAgentToolCallAt.delete(sessionId);
-            }
-          }
-        });
-      }
-
       totalSpawned++;
-
-      // EXP-OBS02: Queue follow-up prompt for split delivery (PTY mode only)
-      // The activation prompt is sent by pty-session on first ready.
-      // The follow-up is queued via sendPrompt — p-queue ensures ordering.
-      if (effectiveMode === 'pty' && initialPrompt && initialPrompt.length > 500) {
-        const followUpPrompt = `${initialPrompt}\n\nIMPORTANT: Begin executing immediately. Do not wait for further instructions. Your first action should be to read the files listed above, then proceed autonomously through all steps.`;
-        // Small delay to let the activation prompt be sent first
-        setTimeout(() => {
-          session.sendPrompt(followUpPrompt).catch(() => {
-            // Follow-up delivery failure is non-fatal — agent can be prompted manually
-          });
-        }, 3000);
-      }
 
       return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo, mode: effectiveMode };
     },
@@ -850,7 +562,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         },
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: waitingFor,
-        mode: sessionModes.get(sessionId) ?? 'pty',
+        mode: sessionModes.get(sessionId) ?? 'print',
         diagnostics,
       };
     },
@@ -952,7 +664,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           },
           stale: sessionStaleFlags.get(sessionId) ?? false,
           waiting_for: waitingFor,
-          mode: sessionModes.get(sessionId) ?? 'pty',
+          mode: sessionModes.get(sessionId) ?? 'print',
           diagnostics,
         };
       });
@@ -1007,10 +719,8 @@ export function createPool(options?: PoolOptions): SessionPool {
             sessionStaleFlags.delete(sessionId);
             sessionNicknames.delete(sessionId);
             sessionPurposes.delete(sessionId);
-            sessionWatchers.delete(sessionId);
             sessionOriginalWorkdirs.delete(sessionId);
             sessionWaitingFor.delete(sessionId);
-            lastAgentToolCallAt.delete(sessionId);
             sessionDiagnostics.delete(sessionId);
             removed++;
           }
@@ -1105,8 +815,8 @@ export function createPool(options?: PoolOptions): SessionPool {
       return pids;
     },
 
-    setObservationHook(hook) {
-      observationHook = hook;
+    setObservationHook(_hook) {
+      // PTY watcher removed in PRD 028 C-4. Observation hook is now a no-op.
     },
   };
 }

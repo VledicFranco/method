@@ -11,7 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { registerGenesisRoutes, type GenesisRouteContext } from './routes.js';
 import type { SessionPool, SessionStatusInfo } from '../sessions/pool.js';
-import type { PtySession } from '../sessions/pty-session.js';
+import type { PtySession } from '../sessions/print-session.js';
 import type { GenesisToolsContext } from './tools.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
@@ -71,7 +71,7 @@ function createMockSessionPool(
           },
           stale: false,
           waiting_for: null,
-          mode: 'pty' as const,
+          mode: 'print' as const,
           diagnostics: null,
         } as SessionStatusInfo;
       }
@@ -99,7 +99,7 @@ function createMockSessionPool(
         },
         stale: false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       } as SessionStatusInfo;
     },
@@ -634,7 +634,7 @@ describe('Genesis HTTP Routes', () => {
         worktree: { isolation: 'shared' as const, worktree_path: null, worktree_branch: null, metals_available: false },
         stale: false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       }),
       prompt: async () => ({ output: 'test', timedOut: false }),

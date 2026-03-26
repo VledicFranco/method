@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPool, type SessionPool, type SessionChainInfo, type WorktreeInfo, type IsolationMode } from './pool.js';
-import type { PtySession, SessionStatus } from './pty-session.js';
+import type { PtySession, SessionStatus } from './print-session.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
 
 /**
@@ -133,7 +133,7 @@ function createTestPool(maxSessions = 5) {
 
       totalSpawned++;
 
-      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE, mode: 'pty' as const };
+      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE, mode: 'print' as const };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -160,7 +160,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       };
     },
@@ -187,7 +187,7 @@ function createTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       }));
     },

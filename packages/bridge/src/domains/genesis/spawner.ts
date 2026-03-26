@@ -61,7 +61,7 @@ export async function spawnGenesis(
         budget_tokens_per_day: budgetTokensPerDay,
       },
       persistent: true, // Skip stale detection
-      mode: 'pty',
+      // PRD 028: mode 'pty' removed — print is the only mode
     });
 
     return {

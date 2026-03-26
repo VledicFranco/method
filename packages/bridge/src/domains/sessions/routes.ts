@@ -5,7 +5,6 @@
  *   POST   /sessions              — Spawn a new agent session
  *   POST   /sessions/batch        — Spawn multiple sessions with stagger (PRD 012)
  *   POST   /sessions/:id/prompt   — Send prompt, wait for response
- *   POST   /sessions/:id/resize   — Resize PTY terminal dimensions
  *   GET    /sessions/:id/status   — Session status + queue depth
  *   DELETE /sessions/:id          — Kill a session
  *   GET    /sessions              — List all sessions
@@ -66,9 +65,9 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       return reply.status(400).send({ error: 'Missing required field: workdir' });
     }
 
-    // PRD 028: Warn callers that PTY mode is deprecated
+    // PRD 028: PTY mode removed — mode field is ignored, always print
     if (mode === 'pty') {
-      request.log.warn('[DEPRECATED] mode=pty is deprecated and will be removed. Session will run in print mode.');
+      request.log.warn('[PRD028] mode=pty is no longer supported. Session runs in print mode.');
     }
 
     try {
@@ -85,7 +84,7 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         nickname,
         purpose,
         spawn_delay_ms,
-        mode,
+        // PRD 028: mode field ignored — always print
         allowed_paths,
         scope_mode,
       });
@@ -178,7 +177,7 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
           session_id: '',
           nickname: '',
           status: 'error',
-          mode: 'pty',
+          mode: 'print',
           depth: 0,
           parent_session_id: null,
           budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
@@ -203,7 +202,7 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
           timeout_ms: cfg.timeout_ms,
           nickname: cfg.nickname,
           purpose: cfg.purpose,
-          mode: cfg.mode,
+          // PRD 028: mode field ignored — always print
           allowed_paths: cfg.allowed_paths,
           scope_mode: cfg.scope_mode,
         });
@@ -230,7 +229,7 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
           session_id: '',
           nickname: '',
           status: 'error',
-          mode: 'pty',
+          mode: 'print',
           depth: 0,
           parent_session_id: null,
           budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
@@ -277,16 +276,6 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       if (message.includes('dead')) return reply.status(400).send({ error: message });
       return reply.status(500).send({ error: message });
     }
-  });
-
-  // ── POST /sessions/:id/resize ──
-
-  // PRD 028: PTY resize is no longer supported — return 410 Gone
-  app.post<{
-    Params: { id: string };
-    Body: { cols: number; rows: number };
-  }>('/sessions/:id/resize', async (_request, reply) => {
-    return reply.status(410).send({ error: 'PTY mode removed. Resize is not supported in print mode.' });
   });
 
   // ── GET /sessions/:id/status ──
