@@ -168,6 +168,17 @@ const METHOD_SHORT_NAMES: Record<string, string> = {
  *
  * PRD 006: Sessions now track parent-child chains with budget enforcement.
  */
+
+// PRD 028: PTY mode is deprecated. This function always returns 'print' but preserves
+// the SessionMode return type so downstream PTY branches (removed in C-4) don't trigger
+// TypeScript dead-code narrowing errors before they are deleted.
+function resolveSessionMode(requested: SessionMode | undefined): SessionMode {
+  if (requested === 'pty') {
+    console.warn('[DEPRECATED] PTY mode requested but is deprecated and will be removed. Upgrading to print mode.');
+  }
+  return 'print';
+}
+
 export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const claudeBin = options?.claudeBin;
@@ -471,7 +482,8 @@ export function createPool(options?: PoolOptions): SessionPool {
       };
 
       // PRD 012 Phase 4: Determine session mode
-      const effectiveMode: SessionMode = mode ?? (process.env.PRINT_SESSION_DEFAULT === 'true' ? 'print' : 'pty');
+      // PRD 028: PTY mode is deprecated — always resolves to print
+      const effectiveMode: SessionMode = resolveSessionMode(mode);
 
       let session: PtySession;
 
