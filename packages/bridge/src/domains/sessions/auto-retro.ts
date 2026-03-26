@@ -4,7 +4,13 @@
 
 import { join } from 'node:path';
 import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { ActivityObservation } from './pty-watcher.js';
+
+/** Observation record produced by the PTY watcher (PRD 010). Retained for auto-retro after PTY removal. */
+export interface ActivityObservation {
+  timestamp: string;
+  category: string;
+  detail: Record<string, unknown>;
+}
 
 export interface AutoRetroInput {
   sessionId: string;

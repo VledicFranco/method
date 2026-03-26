@@ -1,7 +1,7 @@
 // ── PRD 012 Phase 1: Diagnostic Instrumentation ─────────────────
 // Per-session timing metrics and stall detection.
 
-import { type AdaptiveSettleDelay } from './adaptive-settle.js';
+import type { AdaptiveSettleDelay } from './print-session.js';
 
 export interface SessionDiagnostics {
   /** Time from spawn to first PTY output (ms). */

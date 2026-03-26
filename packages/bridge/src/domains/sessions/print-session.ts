@@ -2,8 +2,42 @@ import PQueue from 'p-queue';
 import type { Pact, AgentRequest, AgentResult, AgentProvider, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
 import { createAgent } from '@method/pacta';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-import type { PtySession, SessionStatus } from './pty-session.js';
-import type { AdaptiveSettleDelay } from './adaptive-settle.js';
+
+// ── Session contract types (moved here from pty-session.ts — PRD 028 C-4) ──
+
+export type SessionStatus = 'initializing' | 'ready' | 'working' | 'dead';
+
+/** Minimal adaptive-settle interface — retained as structural type after PTY removal. */
+export interface AdaptiveSettleDelay {
+  readonly delayMs: number;
+  readonly falsePositiveCount: number;
+}
+
+export interface PtySession {
+  readonly id: string;
+  /** OS process ID of the outer PTY shell (null for print-mode sessions). */
+  readonly pid: number | null;
+  status: SessionStatus;
+  /** Number of prompts queued (including the one currently in-flight). */
+  queueDepth: number;
+  /** Total number of prompts sent through this session. */
+  promptCount: number;
+  /** Timestamp of the last prompt send or response receipt. */
+  lastActivityAt: Date;
+  /** Full session transcript. */
+  readonly transcript: string;
+  /** Subscribe to live session output. Returns unsubscribe function. */
+  onOutput(cb: (data: string) => void): () => void;
+  /** Subscribe to session process exit. */
+  onExit(cb: (exitCode: number) => void): void;
+  sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  resize(cols: number, rows: number): void;
+  kill(): void;
+  /** Send CTRL-C interrupt signal. Returns true if interrupt was written. */
+  interrupt(): boolean;
+  /** Adaptive settle delay instance (null if disabled or print-mode). */
+  readonly adaptiveSettle: AdaptiveSettleDelay | null;
+}
 
 // ── PactaSessionParams (absorbed from pacta-session.ts spike) ────
 

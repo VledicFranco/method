@@ -8,7 +8,7 @@ import {
   type IsolationMode,
   type StaleConfig,
 } from './pool.js';
-import type { PtySession, SessionStatus } from './pty-session.js';
+import type { PtySession, SessionStatus } from './print-session.js';
 import {
   createSessionChannels,
   appendMessage,
@@ -149,7 +149,7 @@ function createStaleTestPool(maxSessions = 5) {
       }
 
       totalSpawned++;
-      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE, mode: 'pty' as const };
+      return { sessionId, nickname: `test-${nextId - 1}`, status: session.status, chain: chainInfo, worktree: DEFAULT_WORKTREE, mode: 'print' as const };
     },
 
     async prompt(sessionId, prompt, timeoutMs, settleDelayMs) {
@@ -178,7 +178,7 @@ function createStaleTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       };
     },
@@ -209,7 +209,7 @@ function createStaleTestPool(maxSessions = 5) {
         worktree: DEFAULT_WORKTREE,
         stale: sessionStaleFlags.get(sessionId) ?? false,
         waiting_for: null,
-        mode: 'pty' as const,
+        mode: 'print' as const,
         diagnostics: null,
       }));
     },

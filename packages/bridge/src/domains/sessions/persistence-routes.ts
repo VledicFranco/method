@@ -88,12 +88,13 @@ export function registerPersistenceRoutes(app: FastifyInstance, deps: Persistenc
       }
 
       // Resume with the SAME session ID so Claude Code's --resume restores conversation context
+      // PRD 028: mode field ignored — always print after PTY removal
+      void mode; // accepted for API compat, not used
       const result = await pool.create({
         workdir: persisted.workdir,
         initialPrompt: initial_prompt,
         nickname: `${persisted.nickname}-resumed`,
         purpose: persisted.purpose ?? undefined,
-        mode: mode ?? persisted.mode,
         session_id: id,  // reuse original ID for Claude Code --resume
         metadata: {
           resumed_from: id,

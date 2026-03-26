@@ -4,8 +4,7 @@ import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import type { ActivityObservation } from './pty-watcher.js';
-import type { ObservationCategory } from './pattern-matchers.js';
+import type { ActivityObservation } from './auto-retro.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -26,7 +25,7 @@ function makeInput(projectRoot: string, overrides?: Partial<AutoRetroInput>): Au
   };
 }
 
-function obs(category: ObservationCategory, detail: Record<string, unknown>): ActivityObservation {
+function obs(category: string, detail: Record<string, unknown>): ActivityObservation {
   return { timestamp: new Date().toISOString(), category, detail };
 }
 
