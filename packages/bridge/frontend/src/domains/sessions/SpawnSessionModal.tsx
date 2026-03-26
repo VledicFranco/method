@@ -42,7 +42,6 @@ export function SpawnSessionModal({
   const [prompt, setPrompt] = useState('');
   const [nickname, setNickname] = useState('');
   const [purpose, setPurpose] = useState('');
-  const [mode, setMode] = useState<'pty' | 'print'>('pty');
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   // Auto-fill workdir when only one project exists
@@ -77,7 +76,7 @@ export function SpawnSessionModal({
 
       const req: SpawnRequest = {
         workdir: workdir.trim(),
-        mode,
+        mode: 'print',
       };
       if (prompt.trim()) req.initial_prompt = prompt.trim();
       if (nickname.trim()) req.nickname = nickname.trim();
@@ -90,7 +89,7 @@ export function SpawnSessionModal({
       setPurpose('');
       onClose();
     },
-    [workdir, prompt, nickname, purpose, mode, onSpawn, onClose],
+    [workdir, prompt, nickname, purpose, onSpawn, onClose],
   );
 
   const handleSelectProject = useCallback(
@@ -191,29 +190,16 @@ export function SpawnSessionModal({
               )}
             </div>
 
-            {/* Nickname + Mode row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-txt-dim font-medium mb-1.5">Nickname</label>
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="optional"
-                  className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-txt-dim font-medium mb-1.5">Mode</label>
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as 'pty' | 'print')}
-                  className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
-                >
-                  <option value="pty">PTY (terminal)</option>
-                  <option value="print">Print (--print)</option>
-                </select>
-              </div>
+            {/* Nickname */}
+            <div>
+              <label className="block text-xs text-txt-dim font-medium mb-1.5">Nickname</label>
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="optional"
+                className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+              />
             </div>
 
             {/* Purpose */}
