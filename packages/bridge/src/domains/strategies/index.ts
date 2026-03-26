@@ -1,9 +1,6 @@
 // Strategy module barrel exports (PRD 017)
 // Pure logic lives locally (formerly in @method/core); bridge-only items (transport, I/O) are also here.
 
-// LLM Provider
-export type { LlmRequest, LlmUsage, LlmResponse, LlmStreamEvent, LlmProvider } from './llm-provider.js';
-
 // Artifact Store
 export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './artifact-store.js';
 export { InMemoryArtifactStore, createArtifactStore } from './artifact-store.js';
@@ -31,6 +28,5 @@ export { generateRetro, computeCriticalPath, retroToYaml } from './retro-generat
 export { loadExecutorConfig } from './strategy-routes.js';
 
 // Bridge-only exports (transport and I/O)
-export { ClaudeCodeProvider } from './claude-code-provider.js';
 export { saveRetro } from './retro-writer.js';
 export { registerStrategyRoutes, evictStaleExecutions, setStrategyRoutesEventBus } from './strategy-routes.js';

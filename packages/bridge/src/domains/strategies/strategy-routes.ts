@@ -7,7 +7,7 @@
 
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { LlmProvider } from '../../ports/llm-provider.js';
+import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 import type { EventBus } from '../../ports/event-bus.js';
@@ -166,7 +166,7 @@ function isTerminal(status: ExecutionEntry['status']): boolean {
 
 export function registerStrategyRoutes(
   app: FastifyInstance,
-  provider: LlmProvider,
+  _provider?: unknown, // deprecated — ignored, StrategyExecutor creates its own provider
   config?: Partial<StrategyExecutorConfig>,
 ): void {
   const executorConfig: StrategyExecutorConfig = {
@@ -224,8 +224,8 @@ export function registerStrategyRoutes(
       });
     }
 
-    // Create executor
-    const executor = new StrategyExecutor(provider, executorConfig);
+    // Create executor with claudeCliProvider (LlmProvider param is deprecated and ignored)
+    const executor = new StrategyExecutor(claudeCliProvider(), executorConfig);
     const executionId = `exec-${dag.id}-${Date.now()}`;
     const startedAt = new Date().toISOString();
 

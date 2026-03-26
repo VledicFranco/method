@@ -1,8 +1,5 @@
 /** Strategies domain — collected type re-exports. */
 
-// LLM Provider types
-export type { LlmRequest, LlmUsage, LlmResponse, LlmStreamEvent, LlmProvider } from './llm-provider.js';
-
 // Artifact Store types
 export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './artifact-store.js';
 
