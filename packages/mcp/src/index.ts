@@ -689,6 +689,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "strategy_execution_status",
+      description: "Get the full execution state of a strategy pipeline — node results, cost, oversight events, and status. Use this for detailed inspection of a running or completed execution.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          execution_id: {
+            type: "string",
+            description: "Execution ID returned by strategy_execute",
+          },
+        },
+        required: ["execution_id"],
+      },
+    },
+    {
+      name: "strategy_resume",
+      description: "Resume a suspended strategy execution, optionally with modified context inputs. Only works on executions with status 'suspended' (e.g., after an escalate_to_human oversight rule fired).",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          execution_id: {
+            type: "string",
+            description: "Execution ID of a suspended strategy execution",
+          },
+          modified_inputs: {
+            type: "object",
+            description: "Optional modified context inputs to use when resuming",
+          },
+        },
+        required: ["execution_id"],
+      },
+    },
+    {
+      name: "strategy_abort",
+      description: "Abort a running or suspended strategy execution. Sets status to failed with the provided reason.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          execution_id: {
+            type: "string",
+            description: "Execution ID of the strategy execution to abort",
+          },
+          reason: {
+            type: "string",
+            description: "Reason for aborting the execution",
+          },
+        },
+        required: ["execution_id"],
+      },
+    },
+    {
       name: "trigger_list",
       description: "List all registered event triggers with status and stats. Optionally filter by strategy ID.",
       inputSchema: {
@@ -931,6 +981,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "strategy_update":
       case "strategy_delete":
       case "strategy_reload":
+      case "strategy_execution_status":
+      case "strategy_resume":
+      case "strategy_abort":
       case "trigger_list":
       case "trigger_enable":
       case "trigger_disable":
