@@ -33,3 +33,10 @@ topics:
     status: active
     last_session: "2026-03-27"
     session_count: 1
+
+  - id: TOPIC-PACTA-PRINT-MODE
+    name: "Pacta Print-Mode Convergence — claude --print / --resume Bridge Migration"
+    file: pacta-print-mode.yaml
+    status: active
+    last_session: "2026-03-26"
+    session_count: 1
