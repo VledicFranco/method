@@ -6,6 +6,7 @@
  */
 
 import type { TokenUsage, CostReport } from './pact.js';
+import type { CognitiveEvent } from './cognitive/algebra/events.js';
 
 export type AgentEvent =
   | AgentStarted
@@ -19,7 +20,8 @@ export type AgentEvent =
   | AgentBudgetWarning
   | AgentBudgetExhausted
   | AgentError
-  | AgentCompleted;
+  | AgentCompleted
+  | CognitiveEvent;
 
 export interface AgentStarted {
   type: 'started';
