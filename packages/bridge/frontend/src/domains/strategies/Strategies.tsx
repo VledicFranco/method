@@ -1,106 +1,490 @@
 /**
- * PRD 019.3: Strategies page — definition browser + execution history.
+ * Pipelines — unified view combining Strategies + Triggers into a single
+ * table-based page (Proposal B).
  *
- * Section 1: Strategy definition cards (2-column grid)
- * Section 2: Execution history timeline (grouped by time period)
- *
- * Cards are ordered: running > recently completed > never executed.
- * Clicking a card opens the detail slide-over panel.
+ * Data sources:
+ *   - useStrategyDefinitions()  — strategy definitions with inline trigger defs
+ *   - useStrategyExecutions()   — execution history
+ *   - useExecuteStrategy()      — mutation to run a strategy
+ *   - useTriggerList()          — live trigger registrations with stats
+ *   - usePauseTriggers / useResumeTriggers / useReloadTriggers — bulk actions
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PageShell } from '@/shared/layout/PageShell';
-import { SlideOverPanel } from '@/shared/layout/SlideOverPanel';
-import { Tabs } from '@/shared/components/Tabs';
-import { Button } from '@/shared/components/Button';
-import { StatusBadge, type Status } from '@/shared/data/StatusBadge';
-import { TimelineEvent, type TimelineEventData } from '@/shared/data/TimelineEvent';
-import { Badge } from '@/shared/components/Badge';
-import { StrategyCard } from '@/domains/strategies/StrategyCard';
-import { StrategyDefinitionPanel } from '@/domains/strategies/StrategyDefinitionPanel';
-import { ExecuteDialog } from '@/domains/strategies/ExecuteDialog';
-import { cn } from '@/shared/lib/cn';
+import { useState, useMemo, useCallback, type CSSProperties } from 'react';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
-import { formatCost, formatRelativeTime } from '@/shared/lib/formatters';
-import type { StrategyDefinition, StrategyExecution } from '@/domains/strategies/types';
-import { Play, RefreshCw } from 'lucide-react';
+import {
+  useTriggerList,
+  usePauseTriggers,
+  useResumeTriggers,
+  useReloadTriggers,
+} from '@/domains/triggers/useTriggers';
+import { formatCost, formatDuration, formatRelativeTime } from '@/shared/lib/formatters';
+import type { StrategyDefinition } from '@/domains/strategies/types';
+import type { TriggerListItem } from '@/domains/triggers/types';
 
-// ── Sort helpers ──
+// ── Color palette ────────────────────────────────────────────────
 
-function sortDefinitions(defs: StrategyDefinition[]): StrategyDefinition[] {
-  return [...defs].sort((a, b) => {
-    const aRunning = a.last_execution?.status === 'running' || a.last_execution?.status === 'started';
-    const bRunning = b.last_execution?.status === 'running' || b.last_execution?.status === 'started';
-    if (aRunning && !bRunning) return -1;
-    if (!aRunning && bRunning) return 1;
+const C = {
+  void: '#0a0e14',
+  abyss: '#111923',
+  abyssLight: '#1a2433',
+  bio: '#00e5a0',
+  solar: '#f5a623',
+  text: '#e0e8f0',
+  textMuted: '#6b7d8e',
+  border: 'rgba(255,255,255,0.08)',
+  error: '#ff4757',
+  cyan: '#00c8ff',
+  nebular: '#a78bfa',
+} as const;
 
-    const aTime = a.last_execution?.started_at ? new Date(a.last_execution.started_at).getTime() : 0;
-    const bTime = b.last_execution?.started_at ? new Date(b.last_execution.started_at).getTime() : 0;
-    if (aTime !== bTime) return bTime - aTime;
+// ── Trigger-type pill config ─────────────────────────────────────
 
-    return a.id.localeCompare(b.id);
-  });
+const PILL_STYLES: Record<string, { bg: string; fg: string; label: string }> = {
+  manual: { bg: 'rgba(107,125,142,0.2)', fg: C.textMuted, label: 'manual' },
+  file_watch: { bg: 'rgba(245,166,35,0.15)', fg: C.solar, label: 'file_watch' },
+  git_commit: { bg: 'rgba(167,139,250,0.15)', fg: C.nebular, label: 'git_commit' },
+  schedule: { bg: 'rgba(0,229,160,0.15)', fg: C.bio, label: 'schedule' },
+  webhook: { bg: 'rgba(0,200,255,0.15)', fg: C.cyan, label: 'webhook' },
+  pty_watcher: { bg: 'rgba(255,71,87,0.15)', fg: C.error, label: 'pty_watcher' },
+  channel_event: { bg: 'rgba(167,139,250,0.15)', fg: C.nebular, label: 'channel_event' },
+};
+
+// ── Filter tabs ──────────────────────────────────────────────────
+
+type FilterKey = 'all' | 'active' | 'file_watch' | 'manual';
+
+const FILTER_TABS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'Active' },
+  { key: 'file_watch', label: 'File Watch' },
+  { key: 'manual', label: 'Manual' },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+/** Collect unique trigger types from definition-level triggers */
+function defTriggerTypes(def: StrategyDefinition): string[] {
+  return def.triggers.map((t) => t.type);
 }
 
-// ── Time grouping for execution timeline ──
-
-function getTimeGroup(timestamp: string): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86_400_000);
-  const eventDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (eventDay.getTime() === today.getTime()) return 'Today';
-  if (eventDay.getTime() === yesterday.getTime()) return 'Yesterday';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+/** Check whether a strategy has any active registered triggers */
+function hasActiveTriggers(
+  def: StrategyDefinition,
+  triggerMap: Map<string, TriggerListItem[]>,
+): boolean {
+  const regs = triggerMap.get(def.id);
+  return !!regs && regs.some((t) => t.enabled);
 }
 
-function groupExecutionsByTime(
-  executions: StrategyExecution[],
-): Array<{ label: string; executions: StrategyExecution[] }> {
-  const groups = new Map<string, StrategyExecution[]>();
-
-  for (const exec of executions) {
-    const label = getTimeGroup(exec.started_at);
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label)!.push(exec);
+/** Build a map: strategyId -> TriggerListItem[] */
+function buildTriggerMap(triggers: TriggerListItem[]): Map<string, TriggerListItem[]> {
+  const m = new Map<string, TriggerListItem[]>();
+  for (const t of triggers) {
+    if (!m.has(t.strategy_id)) m.set(t.strategy_id, []);
+    m.get(t.strategy_id)!.push(t);
   }
-
-  return Array.from(groups.entries()).map(([label, execs]) => ({ label, executions: execs }));
+  return m;
 }
 
-// ── Execution timeline event mapper ──
+// ── Inline style factories ───────────────────────────────────────
 
-function executionToTimelineEvent(exec: StrategyExecution): TimelineEventData {
-  const dotColor =
-    exec.status === 'completed'
-      ? 'bg-cyan'
-      : exec.status === 'failed'
-        ? 'bg-error'
-        : exec.status === 'running' || exec.status === 'started'
-          ? 'bg-bio'
-          : 'bg-txt-muted';
+const s = {
+  page: {
+    minHeight: '100vh',
+    background: C.void,
+    color: C.text,
+    fontFamily:
+      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    padding: '24px 28px',
+  } as CSSProperties,
 
-  const contextParts: string[] = [];
-  if (exec.cost_usd > 0) contextParts.push(formatCost(exec.cost_usd));
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap' as const,
+    gap: 12,
+    marginBottom: 20,
+  } as CSSProperties,
 
-  return {
-    id: exec.execution_id,
-    type: 'strategy_execution',
-    title: `${exec.strategy_id} — ${exec.strategy_name}`,
-    context: contextParts.join(' | ') || undefined,
-    timestamp: exec.started_at,
-    dotColor,
-  };
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  } as CSSProperties,
+
+  title: {
+    fontSize: 20,
+    fontWeight: 700,
+    margin: 0,
+    letterSpacing: '-0.02em',
+  } as CSSProperties,
+
+  countBadge: {
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '2px 8px',
+    borderRadius: 9999,
+    background: 'rgba(0,229,160,0.12)',
+    color: C.bio,
+  } as CSSProperties,
+
+  btnGroup: {
+    display: 'flex',
+    gap: 8,
+  } as CSSProperties,
+
+  btn: (variant: 'default' | 'primary' | 'danger' = 'default'): CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 14px',
+    fontSize: 12,
+    fontWeight: 500,
+    borderRadius: 6,
+    border: variant === 'default' ? `1px solid ${C.border}` : 'none',
+    background:
+      variant === 'primary'
+        ? C.bio
+        : variant === 'danger'
+          ? C.error
+          : 'transparent',
+    color:
+      variant === 'primary'
+        ? C.void
+        : variant === 'danger'
+          ? '#fff'
+          : C.text,
+    cursor: 'pointer',
+    transition: 'opacity 0.15s',
+  }),
+
+  filterBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 16,
+    borderBottom: `1px solid ${C.border}`,
+    paddingBottom: 8,
+  } as CSSProperties,
+
+  filterTab: (active: boolean): CSSProperties => ({
+    padding: '5px 14px',
+    fontSize: 12,
+    fontWeight: active ? 600 : 400,
+    borderRadius: 4,
+    border: 'none',
+    background: active ? 'rgba(0,229,160,0.1)' : 'transparent',
+    color: active ? C.bio : C.textMuted,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  }),
+
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    fontSize: 13,
+  } as CSSProperties,
+
+  th: {
+    textAlign: 'left' as const,
+    padding: '8px 12px',
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    color: C.textMuted,
+    borderBottom: `1px solid ${C.border}`,
+  } as CSSProperties,
+
+  td: {
+    padding: '10px 12px',
+    borderBottom: `1px solid ${C.border}`,
+    verticalAlign: 'top' as const,
+  } as CSSProperties,
+
+  tr: (expanded: boolean): CSSProperties => ({
+    cursor: 'pointer',
+    background: expanded ? C.abyssLight : 'transparent',
+    transition: 'background 0.15s',
+  }),
+
+  nameCell: {
+    fontWeight: 600,
+    fontSize: 13,
+    lineHeight: 1.3,
+  } as CSSProperties,
+
+  idLabel: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 10,
+    color: C.textMuted,
+    marginTop: 2,
+    wordBreak: 'break-all' as const,
+  } as CSSProperties,
+
+  pill: (type: string): CSSProperties => {
+    const cfg = PILL_STYLES[type] ?? PILL_STYLES.manual;
+    return {
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: 9999,
+      fontSize: 10,
+      fontWeight: 500,
+      fontFamily: "'JetBrains Mono', monospace",
+      background: cfg.bg,
+      color: cfg.fg,
+      marginRight: 4,
+      marginBottom: 2,
+    };
+  },
+
+  statusDot: (active: boolean): CSSProperties => ({
+    display: 'inline-block',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: active ? C.bio : C.textMuted,
+    boxShadow: active ? `0 0 6px ${C.bio}` : 'none',
+    animation: active ? 'pulse-dot 2s ease-in-out infinite' : 'none',
+  }),
+
+  actionBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    border: `1px solid ${C.border}`,
+    background: 'transparent',
+    color: C.text,
+    cursor: 'pointer',
+    fontSize: 14,
+    transition: 'all 0.15s',
+    marginRight: 4,
+  } as CSSProperties,
+
+  expandedRow: {
+    background: C.abyss,
+    borderBottom: `1px solid ${C.border}`,
+  } as CSSProperties,
+
+  expandedInner: {
+    padding: '16px 12px',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 16,
+  } as CSSProperties,
+
+  expandedSection: {
+    marginBottom: 8,
+  } as CSSProperties,
+
+  expandedLabel: {
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    color: C.textMuted,
+    marginBottom: 6,
+  } as CSSProperties,
+
+  dagContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap' as const,
+  } as CSSProperties,
+
+  dagDot: (type: 'methodology' | 'script'): CSSProperties => ({
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    background: type === 'methodology' ? C.bio : C.solar,
+    flexShrink: 0,
+  }),
+
+  dagLine: {
+    width: 16,
+    height: 2,
+    background: C.border,
+    flexShrink: 0,
+  } as CSSProperties,
+
+  dagNodeLabel: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 10,
+    color: C.textMuted,
+  } as CSSProperties,
+
+  triggerDetailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '4px 0',
+    fontSize: 11,
+    borderBottom: `1px solid ${C.border}`,
+  } as CSSProperties,
+
+  triggerDetailLabel: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: C.textMuted,
+    fontSize: 10,
+  } as CSSProperties,
+
+  triggerDetailValue: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: C.text,
+    fontSize: 10,
+  } as CSSProperties,
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    marginTop: 32,
+    marginBottom: 12,
+    color: C.text,
+  } as CSSProperties,
+
+  timelineContainer: {
+    position: 'relative' as const,
+    paddingLeft: 24,
+    borderLeft: `2px solid ${C.border}`,
+    marginLeft: 6,
+  } as CSSProperties,
+
+  timelineItem: {
+    position: 'relative' as const,
+    paddingBottom: 16,
+  } as CSSProperties,
+
+  timelineDot: (status: string): CSSProperties => ({
+    position: 'absolute' as const,
+    left: -29,
+    top: 4,
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    background:
+      status === 'completed'
+        ? C.bio
+        : status === 'running' || status === 'started'
+          ? C.solar
+          : status === 'failed'
+            ? C.error
+            : C.textMuted,
+    border: `2px solid ${C.void}`,
+  }),
+
+  timelineContent: {
+    fontSize: 12,
+    lineHeight: 1.5,
+  } as CSSProperties,
+
+  timelineName: {
+    fontWeight: 600,
+    color: C.text,
+  } as CSSProperties,
+
+  timelineMeta: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 10,
+    color: C.textMuted,
+    marginTop: 2,
+  } as CSSProperties,
+
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 160,
+    borderRadius: 8,
+    border: `1px solid ${C.border}`,
+    background: C.abyss,
+    color: C.textMuted,
+    fontSize: 13,
+  } as CSSProperties,
+
+  toast: (variant: 'success' | 'error'): CSSProperties => ({
+    position: 'fixed' as const,
+    bottom: 24,
+    right: 24,
+    zIndex: 50,
+    maxWidth: 360,
+    padding: '10px 16px',
+    borderRadius: 8,
+    border: `1px solid ${variant === 'error' ? 'rgba(255,71,87,0.3)' : 'rgba(0,229,160,0.3)'}`,
+    background: variant === 'error' ? 'rgba(255,71,87,0.08)' : C.abyss,
+    color: variant === 'error' ? C.error : C.text,
+    fontSize: 13,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+    animation: 'slide-in 0.3s ease-out',
+  }),
+
+  // Responsive helper: hidden on mobile
+  hideMobile: {
+    // Applied via media query in the style tag
+  } as CSSProperties,
+
+  gateChip: {
+    display: 'inline-block',
+    padding: '2px 6px',
+    borderRadius: 4,
+    fontSize: 10,
+    fontFamily: "'JetBrains Mono', monospace",
+    background: 'rgba(0,200,255,0.1)',
+    color: C.cyan,
+    marginRight: 4,
+    marginBottom: 2,
+  } as CSSProperties,
+
+  nodeBreakdown: {
+    display: 'flex',
+    gap: 12,
+    fontSize: 11,
+  } as CSSProperties,
+
+  nodeBreakdownItem: (color: string): CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    color,
+  }),
+};
+
+// ── Keyframe injection ───────────────────────────────────────────
+
+const STYLE_TAG_ID = 'pipelines-keyframes';
+
+function ensureKeyframes() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(STYLE_TAG_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_TAG_ID;
+  style.textContent = `
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes slide-in {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @media (max-width: 767px) {
+      .pipelines-hide-mobile { display: none !important; }
+      .pipelines-expanded-grid { grid-template-columns: 1fr !important; }
+    }
+  `;
+  document.head.appendChild(style);
 }
 
-// ── Toast notification ──
+// ── Toast state ──────────────────────────────────────────────────
 
 interface ToastState {
   message: string;
@@ -108,356 +492,550 @@ interface ToastState {
   visible: boolean;
 }
 
-// ── Detail panel tabs ──
-
-const DETAIL_TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'yaml', label: 'YAML' },
-  { id: 'history', label: 'History' },
-];
-
-// ── Main page ──
+// ── Main component ───────────────────────────────────────────────
 
 export default function Strategies() {
-  const navigate = useNavigate();
+  ensureKeyframes();
+
+  // Data hooks
   const { data: defData, isLoading: defsLoading, refetch: refetchDefs } = useStrategyDefinitions();
   const { data: executions, isLoading: execsLoading } = useStrategyExecutions();
   const executeMutation = useExecuteStrategy();
+  const { data: triggerData } = useTriggerList();
+  const pauseMutation = usePauseTriggers();
+  const resumeMutation = useResumeTriggers();
+  const reloadMutation = useReloadTriggers();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState('overview');
-  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  // Local state
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterKey>('all');
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const definitions = useMemo(
-    () => sortDefinitions(defData?.definitions ?? []),
-    [defData],
-  );
+  // Derived data
+  const definitions = useMemo(() => defData?.definitions ?? [], [defData]);
+  const triggers = useMemo(() => triggerData?.triggers ?? [], [triggerData]);
+  const paused = triggerData?.paused ?? false;
+  const triggerMap = useMemo(() => buildTriggerMap(triggers), [triggers]);
 
-  const selectedDef = useMemo(
-    () => definitions.find((d) => d.id === selectedId) ?? null,
-    [definitions, selectedId],
-  );
-
-  // Filter executions for selected strategy
-  const selectedExecutions = useMemo(
-    () =>
-      (executions ?? [])
-        .filter((e) => selectedId && e.strategy_id === selectedId)
-        .sort(
-          (a, b) =>
-            new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
-        ),
-    [executions, selectedId],
-  );
-
-  // All executions for timeline (newest first)
   const allExecutions = useMemo(
     () =>
-      (executions ?? []).sort(
-        (a, b) =>
-          new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+      [...(executions ?? [])].sort(
+        (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
       ),
     [executions],
   );
 
-  // Group executions by time period for the timeline
-  const timelineGroups = useMemo(
-    () => groupExecutionsByTime(allExecutions),
-    [allExecutions],
-  );
+  const recentRuns = useMemo(() => allExecutions.slice(0, 10), [allExecutions]);
 
+  // Filtered definitions
+  const filtered = useMemo(() => {
+    if (filter === 'all') return definitions;
+    if (filter === 'active') return definitions.filter((d) => hasActiveTriggers(d, triggerMap));
+    // Filter by trigger type
+    return definitions.filter((d) => {
+      const types = defTriggerTypes(d);
+      if (types.some((t) => t === filter)) return true;
+      // Also check registered triggers
+      const regs = triggerMap.get(d.id) ?? [];
+      return regs.some((r) => r.type === filter);
+    });
+  }, [definitions, filter, triggerMap]);
+
+  const loading = defsLoading || execsLoading;
+
+  // Handlers
   const showToast = useCallback((message: string, variant: 'success' | 'error') => {
     setToast({ message, variant, visible: true });
     setTimeout(() => setToast(null), 5000);
   }, []);
 
-  const handleCardClick = useCallback(
-    (id: string) => {
-      setSelectedId((prev) => (prev === id ? null : id));
-      setDetailTab('overview');
-    },
-    [],
-  );
+  const handleRowClick = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
 
   const handleExecute = useCallback(
-    (inputs: Record<string, unknown>) => {
-      if (!selectedDef) return;
+    (def: StrategyDefinition) => {
       executeMutation.mutate(
         {
-          strategy_path: `.method/strategies/${selectedDef.file_path}`,
-          context_inputs: inputs,
+          strategy_path: `.method/strategies/${def.file_path}`,
+          context_inputs: {},
         },
         {
           onSuccess: (data) => {
-            setExecuteDialogOpen(false);
-            showToast(
-              `Strategy "${selectedDef.name}" started (${data.execution_id})`,
-              'success',
-            );
+            showToast(`Pipeline "${def.name}" started (${data.execution_id})`, 'success');
           },
           onError: (error) => {
-            showToast(
-              `Failed to execute: ${(error as Error).message}`,
-              'error',
-            );
+            showToast(`Failed to execute: ${(error as Error).message}`, 'error');
           },
         },
       );
     },
-    [selectedDef, executeMutation, showToast],
+    [executeMutation, showToast],
   );
 
-  const handleViewDetail = useCallback(
-    (id: string) => {
-      navigate(`/strategies/${encodeURIComponent(id)}`);
-    },
-    [navigate],
-  );
+  const handleReload = useCallback(async () => {
+    try {
+      await reloadMutation.mutateAsync();
+      refetchDefs();
+      showToast('Triggers reloaded', 'success');
+    } catch (e) {
+      showToast(`Reload failed: ${(e as Error).message}`, 'error');
+    }
+  }, [reloadMutation, refetchDefs, showToast]);
 
-  const loading = defsLoading || execsLoading;
+  const handlePauseAll = useCallback(async () => {
+    try {
+      if (paused) {
+        await resumeMutation.mutateAsync();
+        showToast('All triggers resumed', 'success');
+      } else {
+        await pauseMutation.mutateAsync();
+        showToast('All triggers paused', 'success');
+      }
+    } catch (e) {
+      showToast(`Action failed: ${(e as Error).message}`, 'error');
+    }
+  }, [paused, pauseMutation, resumeMutation, showToast]);
+
+  // ── Render ─────────────────────────────────────────────────────
 
   return (
-    <PageShell
-      wide
-      breadcrumbs={[{ label: 'Strategies' }]}
-      actions={
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          onClick={() => refetchDefs()}
-        >
-          Refresh
-        </Button>
-      }
-    >
-      {/* Section 1: Strategy Definition Cards */}
-      <section className="mb-sp-8">
-        <h2 className="font-display text-sm font-semibold text-txt-dim uppercase tracking-wider mb-sp-4">
-          Definitions
-          {definitions.length > 0 && (
-            <span className="ml-2 text-txt-muted font-normal">({definitions.length})</span>
-          )}
-        </h2>
+    <div style={s.page}>
+      {/* Header */}
+      <div style={s.header}>
+        <div style={s.titleRow}>
+          <h1 style={s.title}>Pipelines</h1>
+          <span style={s.countBadge}>{definitions.length}</span>
+        </div>
+        <div style={s.btnGroup}>
+          <button
+            style={s.btn()}
+            onClick={handleReload}
+            disabled={reloadMutation.isPending}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.7'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+          >
+            {reloadMutation.isPending ? '...' : 'Reload'}
+          </button>
+          <button
+            style={s.btn()}
+            onClick={handlePauseAll}
+            disabled={pauseMutation.isPending || resumeMutation.isPending}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.7'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+          >
+            {paused ? 'Resume All' : 'Pause All'}
+          </button>
+        </div>
+      </div>
 
-        {loading && definitions.length === 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-sp-4">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-40 rounded-card bg-abyss-light/50 animate-pulse border border-bdr"
-              />
-            ))}
-          </div>
-        ) : definitions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 rounded-card border border-bdr bg-abyss">
-            <p className="text-txt-dim text-sm">
-              No strategy definitions found in .method/strategies/
-            </p>
-            <p className="text-txt-muted text-xs mt-1">
-              Add strategy YAML files and refresh.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-sp-4">
-            {definitions.map((def, index) => (
-              <div
-                key={def.id}
-                style={{ animationDelay: `${index * 100}ms` }}
-                className="animate-slide-in-left"
-              >
-                <StrategyCard
-                  definition={def}
-                  selected={selectedId === def.id}
-                  onClick={() => handleCardClick(def.id)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Filter tabs */}
+      <div style={s.filterBar}>
+        {FILTER_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            style={s.filterTab(filter === tab.key)}
+            onClick={() => setFilter(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Section 2: Execution History Timeline */}
-      <section>
-        <h2 className="font-display text-sm font-semibold text-txt-dim uppercase tracking-wider mb-sp-4">
-          Execution History
-          {allExecutions.length > 0 && (
-            <span className="ml-2 text-txt-muted font-normal">({allExecutions.length})</span>
-          )}
-        </h2>
+      {/* Loading state */}
+      {loading && definitions.length === 0 && (
+        <div style={s.emptyState}>
+          <span>Loading pipelines...</span>
+        </div>
+      )}
 
-        {allExecutions.length === 0 ? (
-          <div className="flex items-center justify-center h-24 rounded-card border border-bdr bg-abyss">
-            <p className="text-txt-dim text-sm">No executions yet</p>
-          </div>
-        ) : (
-          <div className="relative">
-            {timelineGroups.map((group) => (
-              <div key={group.label} className="mb-sp-5">
-                {/* Time period header */}
-                <div className="sticky top-14 z-10 py-1 bg-void/95 backdrop-blur-sm">
-                  <span className="text-xs text-txt-muted uppercase font-display tracking-wider">
-                    {group.label}
-                  </span>
-                </div>
+      {/* Empty state */}
+      {!loading && definitions.length === 0 && (
+        <div style={s.emptyState}>
+          <span>No strategy definitions found in .method/strategies/</span>
+          <span style={{ fontSize: 11, marginTop: 4, color: C.textMuted }}>
+            Add strategy YAML files and reload.
+          </span>
+        </div>
+      )}
 
-                <div className="mt-sp-2">
-                  {group.executions.map((exec, index) => (
-                    <div
-                      key={exec.execution_id}
-                      style={{ animationDelay: `${index * 100}ms` }}
+      {/* Pipeline table */}
+      {filtered.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={s.th}>Name</th>
+                <th style={s.th} className="pipelines-hide-mobile">Nodes</th>
+                <th style={s.th}>Trigger</th>
+                <th style={s.th} className="pipelines-hide-mobile">Status</th>
+                <th style={s.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((def) => {
+                const isExpanded = expandedId === def.id;
+                const regs = triggerMap.get(def.id) ?? [];
+                const active = hasActiveTriggers(def, triggerMap);
+                const triggerTypes = defTriggerTypes(def);
+                // Merge registered trigger types that might not be in the definition
+                const regTypes = regs.map((r) => r.type as string);
+                const allTypes = Array.from(new Set([...triggerTypes, ...regTypes]));
+                if (allTypes.length === 0) allTypes.push('manual');
+
+                return (
+                  <TableRow
+                    key={def.id}
+                    def={def}
+                    isExpanded={isExpanded}
+                    active={active}
+                    allTypes={allTypes}
+                    regs={regs}
+                    onRowClick={handleRowClick}
+                    onExecute={handleExecute}
+                    executing={executeMutation.isPending}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* No results after filter */}
+      {!loading && definitions.length > 0 && filtered.length === 0 && (
+        <div style={s.emptyState}>
+          <span>No pipelines match the "{filter}" filter</span>
+        </div>
+      )}
+
+      {/* Recent Runs Timeline */}
+      {recentRuns.length > 0 && (
+        <div>
+          <h2 style={s.sectionTitle}>Recent Runs</h2>
+          <div style={s.timelineContainer}>
+            {recentRuns.map((exec) => (
+              <div key={exec.execution_id} style={s.timelineItem}>
+                <div style={s.timelineDot(exec.status)} />
+                <div style={s.timelineContent}>
+                  <div style={s.timelineName}>
+                    {exec.strategy_name}
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 10,
+                        fontWeight: 400,
+                        color:
+                          exec.status === 'completed'
+                            ? C.bio
+                            : exec.status === 'failed'
+                              ? C.error
+                              : exec.status === 'running' || exec.status === 'started'
+                                ? C.solar
+                                : C.textMuted,
+                      }}
                     >
-                      <TimelineEvent
-                        event={executionToTimelineEvent(exec)}
-                        onClick={() => {
-                          setSelectedId(exec.strategy_id);
-                          setDetailTab('history');
-                        }}
-                      />
-                    </div>
-                  ))}
+                      {exec.status}
+                    </span>
+                  </div>
+                  <div style={s.timelineMeta}>
+                    {exec.strategy_id}
+                    {exec.cost_usd > 0 && <> &middot; {formatCost(exec.cost_usd)}</>}
+                    {' '}&middot; {formatRelativeTime(exec.started_at)}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </div>
+      )}
 
-      {/* Detail Slide-Over Panel */}
-      <SlideOverPanel
-        open={selectedDef !== null}
-        onClose={() => setSelectedId(null)}
-        title={selectedDef?.name}
-        subtitle="STRATEGY DEFINITION"
+      {/* Toast notification */}
+      {toast?.visible && (
+        <div style={s.toast(toast.variant)}>
+          {toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Table row sub-component ──────────────────────────────────────
+
+interface TableRowProps {
+  def: StrategyDefinition;
+  isExpanded: boolean;
+  active: boolean;
+  allTypes: string[];
+  regs: TriggerListItem[];
+  onRowClick: (id: string) => void;
+  onExecute: (def: StrategyDefinition) => void;
+  executing: boolean;
+}
+
+function TableRow({
+  def,
+  isExpanded,
+  active,
+  allTypes,
+  regs,
+  onRowClick,
+  onExecute,
+  executing,
+}: TableRowProps) {
+  const methodologyCount = def.nodes.filter((n) => n.type === 'methodology').length;
+  const scriptCount = def.nodes.filter((n) => n.type === 'script').length;
+
+  return (
+    <>
+      {/* Main row */}
+      <tr
+        style={s.tr(isExpanded)}
+        onClick={() => onRowClick(def.id)}
+        onMouseEnter={(e) => {
+          if (!isExpanded) e.currentTarget.style.background = C.abyssLight;
+        }}
+        onMouseLeave={(e) => {
+          if (!isExpanded) e.currentTarget.style.background = 'transparent';
+        }}
       >
-        {selectedDef && (
-          <>
-            {/* Strategy ID + version below header */}
-            <div className="flex items-center gap-2 mb-sp-3 -mt-sp-1">
-              <span className="font-mono text-xs text-bio">{selectedDef.id}</span>
-              <Badge variant="default" label={`v${selectedDef.version}`} />
-              {selectedDef.last_execution && (
-                <StatusBadge status={selectedDef.last_execution.status as Status} />
-              )}
-            </div>
+        {/* NAME */}
+        <td style={s.td}>
+          <div style={s.nameCell}>{def.name}</div>
+          <div style={s.idLabel}>{def.id}</div>
+        </td>
 
-            <Tabs
-              tabs={DETAIL_TABS.map((t) => ({
-                ...t,
-                count: t.id === 'history' ? selectedExecutions.length : undefined,
-              }))}
-              activeTab={detailTab}
-              onTabChange={setDetailTab}
-              className="mb-sp-4 -mx-sp-5 px-sp-5"
-            />
+        {/* NODES (hidden on mobile) */}
+        <td style={s.td} className="pipelines-hide-mobile">
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>
+            {def.nodes.length}
+          </span>
+        </td>
 
-            {/* Overview tab */}
-            {detailTab === 'overview' && (
-              <StrategyDefinitionPanel definition={selectedDef} />
-            )}
+        {/* TRIGGER */}
+        <td style={s.td}>
+          {allTypes.map((type) => (
+            <span key={type} style={s.pill(type)}>
+              {type}
+            </span>
+          ))}
+        </td>
 
-            {/* YAML tab */}
-            {detailTab === 'yaml' && (
-              <div className="rounded-lg border border-bdr bg-void p-sp-4 overflow-auto max-h-[60vh]">
-                <pre className="text-[0.7rem] text-txt-dim font-mono whitespace-pre-wrap leading-relaxed">
-                  {selectedDef.raw_yaml}
-                </pre>
-              </div>
-            )}
+        {/* STATUS (hidden on mobile) */}
+        <td style={s.td} className="pipelines-hide-mobile">
+          <span style={s.statusDot(active)} />
+        </td>
 
-            {/* History tab */}
-            {detailTab === 'history' && (
+        {/* ACTIONS */}
+        <td style={s.td}>
+          <button
+            style={s.actionBtn}
+            title="Run pipeline"
+            disabled={executing}
+            onClick={(e) => {
+              e.stopPropagation();
+              onExecute(def);
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,229,160,0.1)';
+              (e.currentTarget as HTMLButtonElement).style.color = C.bio;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+              (e.currentTarget as HTMLButtonElement).style.color = C.text;
+            }}
+          >
+            &#x25B6;
+          </button>
+          <button
+            style={s.actionBtn}
+            title="Settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Toggle expand as settings action
+              onRowClick(def.id);
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            }}
+          >
+            &#x2699;
+          </button>
+        </td>
+      </tr>
+
+      {/* Expanded detail row */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={5} style={s.expandedRow}>
+            <div style={s.expandedInner} className="pipelines-expanded-grid">
+              {/* Left column: DAG + Node breakdown */}
               <div>
-                {selectedExecutions.length === 0 ? (
-                  <p className="text-xs text-txt-muted py-sp-4">
-                    No executions found for this strategy.
-                  </p>
-                ) : (
-                  <div className="space-y-sp-3">
-                    {selectedExecutions.map((exec) => (
-                      <div
-                        key={exec.execution_id}
-                        className="rounded-lg border border-bdr bg-void/50 p-sp-3 transition-colors duration-200 hover:border-bdr-hover hover:bg-abyss-light"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span
-                            className="font-mono text-[0.7rem] text-txt truncate max-w-[200px]"
-                            title={exec.execution_id}
-                          >
-                            {exec.execution_id}
-                          </span>
-                          <StatusBadge status={exec.status as Status} />
-                        </div>
-                        <div className="flex items-center gap-3 text-[0.7rem] text-txt-muted font-mono">
-                          <span>{formatRelativeTime(exec.started_at)}</span>
-                          {exec.cost_usd > 0 && (
-                            <span>{formatCost(exec.cost_usd)}</span>
-                          )}
-                        </div>
-                        {exec.retro_path && (
-                          <p className="text-[0.65rem] text-bio mt-1 font-mono truncate">
-                            retro: {exec.retro_path}
-                          </p>
-                        )}
-                      </div>
+                {/* DAG visualization */}
+                <div style={s.expandedSection}>
+                  <div style={s.expandedLabel}>DAG</div>
+                  <div style={s.dagContainer}>
+                    {def.nodes.map((node, idx) => (
+                      <span key={node.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {idx > 0 && <span style={s.dagLine} />}
+                        <span style={s.dagDot(node.type)} title={node.id} />
+                        <span style={s.dagNodeLabel}>{node.id}</span>
+                      </span>
                     ))}
+                    {def.nodes.length === 0 && (
+                      <span style={{ fontSize: 11, color: C.textMuted }}>No nodes</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Node breakdown */}
+                <div style={s.expandedSection}>
+                  <div style={s.expandedLabel}>Node Breakdown</div>
+                  <div style={s.nodeBreakdown}>
+                    <span style={s.nodeBreakdownItem(C.bio)}>
+                      <span style={{ ...s.dagDot('methodology'), width: 8, height: 8 }} />
+                      {methodologyCount} methodology
+                    </span>
+                    <span style={s.nodeBreakdownItem(C.solar)}>
+                      <span style={{ ...s.dagDot('script'), width: 8, height: 8 }} />
+                      {scriptCount} script
+                    </span>
+                  </div>
+                </div>
+
+                {/* Gates */}
+                {def.strategy_gates.length > 0 && (
+                  <div style={s.expandedSection}>
+                    <div style={s.expandedLabel}>Gates</div>
+                    <div>
+                      {def.strategy_gates.map((gate) => (
+                        <span key={gate.id} style={s.gateChip}>
+                          {gate.id}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Actions footer */}
-            <div className="flex gap-2 mt-sp-6 pt-sp-4 border-t border-bdr">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleViewDetail(selectedDef.id)}
-              >
-                View Full Detail
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                leftIcon={<Play className="h-3.5 w-3.5" />}
-                onClick={() => setExecuteDialogOpen(true)}
-              >
-                Execute Now
-              </Button>
+              {/* Right column: Trigger details */}
+              <div>
+                <div style={s.expandedLabel}>Trigger Details</div>
+                {regs.length > 0 ? (
+                  regs.map((reg) => (
+                    <TriggerDetailBlock key={reg.trigger_id} trigger={reg} />
+                  ))
+                ) : def.triggers.length > 0 ? (
+                  def.triggers.map((t, i) => (
+                    <div key={i} style={{ marginBottom: 8 }}>
+                      <span style={s.pill(t.type)}>{t.type}</span>
+                      {t.config && Object.keys(t.config).length > 0 && (
+                        <div style={{ marginTop: 4 }}>
+                          {Object.entries(t.config).map(([k, v]) => (
+                            <div key={k} style={s.triggerDetailRow}>
+                              <span style={s.triggerDetailLabel}>{k}</span>
+                              <span style={s.triggerDetailValue}>
+                                {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>
+                    Manual trigger only
+                  </div>
+                )}
+              </div>
             </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
-            {/* Execute dialog */}
-            <ExecuteDialog
-              key={selectedDef.id}
-              definition={selectedDef}
-              open={executeDialogOpen}
-              onClose={() => setExecuteDialogOpen(false)}
-              onExecute={handleExecute}
-              loading={executeMutation.isPending}
-            />
-          </>
-        )}
-      </SlideOverPanel>
+// ── Trigger detail block for registered triggers ─────────────────
 
-      {/* Toast Notification */}
-      {toast?.visible && (
-        <div
-          className={cn(
-            'fixed bottom-6 right-6 z-50 max-w-sm rounded-card border px-sp-4 py-sp-3 shadow-xl',
-            'animate-slide-in-left',
-            toast.variant === 'error'
-              ? 'bg-error-dim border-error/30'
-              : 'bg-abyss border-bio/30',
-          )}
-        >
-          <p className={cn(
-            'text-sm',
-            toast.variant === 'error' ? 'text-error' : 'text-txt',
-          )}>
-            {toast.message}
-          </p>
+function TriggerDetailBlock({ trigger }: { trigger: TriggerListItem }) {
+  const cfg = trigger.trigger_config;
+  const stats = trigger.stats;
+
+  return (
+    <div style={{ marginBottom: 12, padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={s.pill(trigger.type)}>{trigger.type}</span>
+        <span style={{
+          fontSize: 10,
+          fontFamily: "'JetBrains Mono', monospace",
+          color: trigger.enabled ? C.bio : C.textMuted,
+        }}>
+          {trigger.enabled ? 'active' : 'disabled'}
+        </span>
+      </div>
+
+      {/* File watch paths */}
+      {(cfg.paths ?? cfg.path_pattern) && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>paths</span>
+          <span style={s.triggerDetailValue}>
+            {cfg.paths ? cfg.paths.join(', ') : cfg.path_pattern}
+          </span>
         </div>
       )}
-    </PageShell>
+
+      {/* Debounce */}
+      {cfg.debounce_ms && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>debounce</span>
+          <span style={s.triggerDetailValue}>
+            {formatDuration(cfg.debounce_ms)}
+          </span>
+        </div>
+      )}
+
+      {/* Schedule */}
+      {cfg.cron && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>cron</span>
+          <span style={s.triggerDetailValue}>{cfg.cron}</span>
+        </div>
+      )}
+
+      {/* Git branch */}
+      {cfg.branch_pattern && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>branch</span>
+          <span style={s.triggerDetailValue}>{cfg.branch_pattern}</span>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div style={s.triggerDetailRow}>
+        <span style={s.triggerDetailLabel}>fires</span>
+        <span style={s.triggerDetailValue}>{stats.total_fires}</span>
+      </div>
+
+      {stats.last_fired_at && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>last fired</span>
+          <span style={s.triggerDetailValue}>
+            {formatRelativeTime(stats.last_fired_at)}
+          </span>
+        </div>
+      )}
+
+      {stats.debounced_events > 0 && (
+        <div style={s.triggerDetailRow}>
+          <span style={s.triggerDetailLabel}>debounced</span>
+          <span style={s.triggerDetailValue}>{stats.debounced_events} events</span>
+        </div>
+      )}
+    </div>
   );
 }
