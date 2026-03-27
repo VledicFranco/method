@@ -64,9 +64,46 @@ export interface SpawnResponse {
   metals_available: boolean;
 }
 
+export interface PromptMetadata {
+  cost_usd: number;
+  num_turns: number;
+  duration_ms: number;
+  stop_reason: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+}
+
+export type ChatTurn =
+  | {
+      kind: 'historical';
+      prompt: string;
+      output: string;
+      timestamp: string;
+    }
+  | {
+      kind: 'live';
+      prompt: string;
+      output: string;
+      metadata: PromptMetadata;
+      timestamp: string;
+    }
+  | {
+      kind: 'pending';
+      prompt: string;
+    };
+
+export interface PromptResult {
+  output: string;
+  timed_out: boolean;
+  metadata: PromptMetadata | null;
+}
+
 export interface PromptResponse {
   output: string;
   timed_out: boolean;
+  metadata: PromptMetadata | null;
 }
 
 export interface HealthResponse {
