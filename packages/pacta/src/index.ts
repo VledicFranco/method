@@ -98,3 +98,6 @@ export { createReferenceAgent } from './agents/reference-agent.js';
 export { codeAgent } from './agents/code-agent.js';
 export { researchAgent } from './agents/research-agent.js';
 export { reviewAgent } from './agents/review-agent.js';
+
+// Cognitive composition (Phase 2 — PRD 030)
+export * from './cognitive/index.js';
