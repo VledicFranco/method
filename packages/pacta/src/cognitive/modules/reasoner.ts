@@ -32,6 +32,16 @@ export interface ReasonerInput {
   snapshot: ReadonlyWorkspaceSnapshot;
 }
 
+/** A structured action instruction for the Actor to execute. */
+export interface ActionInstruction {
+  /** Tool name to invoke. */
+  tool: string;
+  /** Tool-specific input (JSON-serializable). */
+  input: unknown;
+  /** Why this action was chosen. */
+  rationale: string;
+}
+
 /** Output of the reasoner: the reasoning trace. */
 export interface ReasonerOutput {
   /** The reasoning trace text. */
@@ -40,6 +50,8 @@ export interface ReasonerOutput {
   confidence: number;
   /** Whether contradictory signals were detected. */
   conflictDetected: boolean;
+  /** Structured action instruction, if the LLM produced one. */
+  action?: ActionInstruction;
 }
 
 /** Reasoner internal state. */
@@ -82,6 +94,29 @@ const EFFORT_PREFIXES: Record<ReasonerControl['effort'], string> = {
   high: 'Thoroughly and comprehensively: ',
 };
 
+const ACTION_INSTRUCTION = `
+
+After your reasoning, output exactly ONE action block specifying what tool to call next.
+Use this exact format:
+
+<action>
+{"tool": "ToolName", "input": {"param": "value"}, "rationale": "why this action"}
+</action>
+
+Available tool input schemas:
+- Read: {"file_path": "path/to/file"}
+- Write: {"file_path": "path/to/file", "content": "file content"}
+- Edit: {"file_path": "path/to/file", "old_string": "text to find", "new_string": "replacement"}
+- Glob: {"pattern": "**/*.ts"}
+- Grep: {"pattern": "searchRegex", "path": "directory"}
+- Bash: {"command": "shell command"}
+
+If the task is complete and no further action is needed, output:
+<action>
+{"tool": "done", "input": {}, "rationale": "task complete"}
+</action>
+`;
+
 // ── Confidence Extraction ────────────────────────────────────────
 
 /** Keywords that increase confidence. */
@@ -105,6 +140,33 @@ function extractConfidence(text: string): number {
   }
 
   return Math.min(1, Math.max(0, score));
+}
+
+// ── Action Block Parsing ────────────────────────────────────────
+
+const ACTION_BLOCK_REGEX = /<action>\s*([\s\S]*?)\s*<\/action>/;
+
+/**
+ * Parse a structured action instruction from the LLM response.
+ * Returns undefined if no valid action block is found.
+ */
+function parseActionBlock(text: string): ActionInstruction | undefined {
+  const match = ACTION_BLOCK_REGEX.exec(text);
+  if (!match) return undefined;
+
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (typeof parsed.tool === 'string' && parsed.input !== undefined) {
+      return {
+        tool: parsed.tool,
+        input: parsed.input,
+        rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
+      };
+    }
+  } catch {
+    // JSON parse failed — malformed action block, ignore
+  }
+  return undefined;
 }
 
 /** Conflict keywords that suggest contradictory reasoning. */
@@ -158,10 +220,10 @@ export function createReasoner(
       control: ReasonerControl,
     ): Promise<StepResult<ReasonerOutput, ReasonerState, ReasonerMonitoring>> {
       try {
-        // Build strategy-specific system prompt
+        // Build strategy-specific system prompt with action instruction
         const strategyPrompt = STRATEGY_PROMPTS[control.strategy];
         const effortPrefix = EFFORT_PREFIXES[control.effort];
-        const systemPrompt = `${effortPrefix}${strategyPrompt}`;
+        const systemPrompt = `${effortPrefix}${strategyPrompt}${ACTION_INSTRUCTION}`;
 
         // Invoke provider adapter with workspace snapshot
         const adapterConfig: AdapterConfig = {
@@ -176,14 +238,28 @@ export function createReasoner(
         const confidence = extractConfidence(trace);
         const conflictDetected = detectConflict(trace);
 
+        // Parse structured action instruction from LLM response
+        const action = parseActionBlock(trace);
+
         // Write reasoning trace to workspace
-        const entry: WorkspaceEntry = {
+        const traceEntry: WorkspaceEntry = {
           source: id,
           content: trace,
           salience: confidence,
           timestamp: Date.now(),
         };
-        writePort.write(entry);
+        writePort.write(traceEntry);
+
+        // If action instruction was parsed, write it as a separate structured entry
+        if (action) {
+          const actionEntry: WorkspaceEntry = {
+            source: id,
+            content: { type: 'action_instruction', ...action },
+            salience: 1.0,  // high salience — the Actor needs this
+            timestamp: Date.now(),
+          };
+          writePort.write(actionEntry);
+        }
 
         // Update state
         const newState: ReasonerState = {
@@ -202,7 +278,7 @@ export function createReasoner(
         };
 
         return {
-          output: { trace, confidence, conflictDetected },
+          output: { trace, confidence, conflictDetected, action },
           state: newState,
           monitoring,
         };

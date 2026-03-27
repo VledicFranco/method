@@ -65,26 +65,54 @@ export interface ActorConfig {
   id?: string;
 }
 
-// ── Tool Selection ───────────────────────────────────────────────
+// ── Action Instruction Detection ────────────────────────────────
+
+/** Shape of a structured action instruction written by the Reasoner. */
+interface ActionInstructionEntry {
+  type: 'action_instruction';
+  tool: string;
+  input: unknown;
+  rationale: string;
+}
+
+function isActionInstruction(content: unknown): content is ActionInstructionEntry {
+  return (
+    typeof content === 'object' &&
+    content !== null &&
+    (content as Record<string, unknown>).type === 'action_instruction' &&
+    typeof (content as Record<string, unknown>).tool === 'string'
+  );
+}
 
 /**
- * Select a tool from available tools based on workspace contents.
- * Heuristic: keyword matching between workspace content and tool descriptions/names.
- * Falls back to the first available tool if no keyword match is found.
+ * Find the most recent action instruction from the Reasoner in the workspace.
+ * Returns the instruction if found, undefined otherwise.
  */
-function selectTool(
+function findActionInstruction(
+  snapshot: ReadonlyWorkspaceSnapshot,
+): ActionInstructionEntry | undefined {
+  const sorted = [...snapshot].sort((a, b) => b.timestamp - a.timestamp);
+  for (const entry of sorted) {
+    if (isActionInstruction(entry.content)) {
+      return entry.content;
+    }
+  }
+  return undefined;
+}
+
+// ── Fallback Tool Selection (backward compat) ───────────────────
+
+function selectToolFallback(
   tools: ToolDefinition[],
   snapshot: ReadonlyWorkspaceSnapshot,
 ): ToolDefinition | null {
   if (tools.length === 0) return null;
 
-  // Extract workspace text for keyword matching
   const workspaceText = snapshot
-    .map((e) => typeof e.content === 'string' ? e.content : JSON.stringify(e.content))
+    .map((e: WorkspaceEntry) => typeof e.content === 'string' ? e.content : JSON.stringify(e.content))
     .join(' ')
     .toLowerCase();
 
-  // Score each tool by keyword overlap
   let bestTool: ToolDefinition = tools[0];
   let bestScore = 0;
 
@@ -92,16 +120,12 @@ function selectTool(
     let score = 0;
     const nameWords = tool.name.toLowerCase().split(/[_\-\s]+/);
     for (const word of nameWords) {
-      if (word.length > 2 && workspaceText.includes(word)) {
-        score += 1;
-      }
+      if (word.length > 2 && workspaceText.includes(word)) score += 1;
     }
     if (tool.description) {
       const descWords = tool.description.toLowerCase().split(/\s+/);
       for (const word of descWords) {
-        if (word.length > 3 && workspaceText.includes(word)) {
-          score += 0.5;
-        }
+        if (word.length > 3 && workspaceText.includes(word)) score += 0.5;
       }
     }
     if (score > bestScore) {
@@ -113,24 +137,13 @@ function selectTool(
   return bestTool;
 }
 
-/**
- * Build tool input from workspace snapshot.
- * Simple heuristic: pass the most salient workspace entry content as input.
- */
-function buildToolInput(snapshot: ReadonlyWorkspaceSnapshot): unknown {
+function buildFallbackInput(snapshot: ReadonlyWorkspaceSnapshot): unknown {
   if (snapshot.length === 0) return {};
-
-  // Find the entry with highest salience
   let best = snapshot[0];
   for (const entry of snapshot) {
-    if (entry.salience > best.salience) {
-      best = entry;
-    }
+    if (entry.salience > best.salience) best = entry;
   }
-
-  return typeof best.content === 'string'
-    ? { input: best.content }
-    : best.content;
+  return typeof best.content === 'string' ? { input: best.content } : best.content;
 }
 
 // ── Factory ──────────────────────────────────────────────────────
@@ -192,28 +205,84 @@ export function createActor(
           );
         }
 
-        // Select a tool
-        const selectedTool = selectTool(availableTools, input.snapshot);
-        if (!selectedTool) {
-          const monitoring: ActorMonitoring = {
-            type: 'actor',
-            source: id,
-            timestamp: Date.now(),
-            actionTaken: 'none',
-            success: false,
-            unexpectedResult: true,
-          };
+        // Try to find a structured action instruction from the Reasoner
+        const actionInstruction = findActionInstruction(input.snapshot);
 
-          return {
-            output: { actionName: 'none', result: null, escalated: false },
-            state,
-            monitoring,
-          };
+        let toolName: string;
+        let toolInput: unknown;
+
+        if (actionInstruction) {
+          // Structured path: Reasoner told us exactly what to do
+          if (actionInstruction.tool === 'done') {
+            // Task complete signal
+            const monitoring: ActorMonitoring = {
+              type: 'actor',
+              source: id,
+              timestamp: Date.now(),
+              actionTaken: 'done',
+              success: true,
+              unexpectedResult: false,
+            };
+            return {
+              output: { actionName: 'done', result: null, escalated: false },
+              state,
+              monitoring,
+            };
+          }
+
+          // Validate the requested tool exists and is allowed
+          const matchedTool = availableTools.find(
+            (t: ToolDefinition) => t.name.toLowerCase() === actionInstruction.tool.toLowerCase(),
+          );
+
+          if (matchedTool) {
+            toolName = matchedTool.name;
+            toolInput = actionInstruction.input;
+          } else {
+            // Requested tool not available — fall back to keyword matching
+            const fallback = selectToolFallback(availableTools, input.snapshot);
+            if (!fallback) {
+              const monitoring: ActorMonitoring = {
+                type: 'actor',
+                source: id,
+                timestamp: Date.now(),
+                actionTaken: 'none',
+                success: false,
+                unexpectedResult: true,
+              };
+              return {
+                output: { actionName: 'none', result: null, escalated: false },
+                state,
+                monitoring,
+              };
+            }
+            toolName = fallback.name;
+            toolInput = buildFallbackInput(input.snapshot);
+          }
+        } else {
+          // Fallback path: no action instruction, use keyword matching
+          const fallback = selectToolFallback(availableTools, input.snapshot);
+          if (!fallback) {
+            const monitoring: ActorMonitoring = {
+              type: 'actor',
+              source: id,
+              timestamp: Date.now(),
+              actionTaken: 'none',
+              success: false,
+              unexpectedResult: true,
+            };
+            return {
+              output: { actionName: 'none', result: null, escalated: false },
+              state,
+              monitoring,
+            };
+          }
+          toolName = fallback.name;
+          toolInput = buildFallbackInput(input.snapshot);
         }
 
-        // Execute the selected tool
-        const toolInput = buildToolInput(input.snapshot);
-        const result = await tools.execute(selectedTool.name, toolInput);
+        // Execute the tool
+        const result = await tools.execute(toolName, toolInput);
 
         // Determine success and unexpected result
         const success = !result.isError;
@@ -235,7 +304,7 @@ export function createActor(
 
         const newState: ActorState = {
           actionCount: newActionCount,
-          lastActionName: selectedTool.name,
+          lastActionName: toolName,
           successRate: newSuccessRate,
         };
 
@@ -243,13 +312,13 @@ export function createActor(
           type: 'actor',
           source: id,
           timestamp: Date.now(),
-          actionTaken: selectedTool.name,
+          actionTaken: toolName,
           success,
           unexpectedResult,
         };
 
         return {
-          output: { actionName: selectedTool.name, result, escalated: false },
+          output: { actionName: toolName, result, escalated: false },
           state: newState,
           monitoring,
         };
