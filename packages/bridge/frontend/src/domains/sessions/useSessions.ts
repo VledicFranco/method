@@ -3,9 +3,10 @@
  * Extracted from Sessions.tsx for cross-page reuse.
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/lib/api';
+import { useBridgeEvents } from '@/shared/websocket/useBridgeEvents';
 import type { SessionSummary, SpawnRequest, SpawnResponse } from '@/domains/sessions/types';
 
 export interface UseSessionsResult {
@@ -23,6 +24,17 @@ export interface UseSessionsResult {
 export function useSessions(opts?: { refetchInterval?: number }): UseSessionsResult {
   const queryClient = useQueryClient();
   const interval = opts?.refetchInterval ?? 5000;
+
+  // ── BridgeEvent invalidation (PRD 026) ────────────────────────────────────
+  // Subscribe to session-domain events and invalidate the sessions query on
+  // any new event. The refetchInterval below serves as a fallback.
+  const sessionEvents = useBridgeEvents({ domain: 'session' });
+
+  useEffect(() => {
+    if (sessionEvents.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    }
+  }, [sessionEvents.length, queryClient]);
 
   const { data: sessions = [], isLoading, error } = useQuery({
     queryKey: ['sessions'],
