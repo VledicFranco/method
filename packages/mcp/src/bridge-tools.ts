@@ -23,6 +23,9 @@ import {
   strategyCreateInput,
   strategyUpdateInput,
   strategyDeleteInput,
+  strategyExecutionStatusInput,
+  strategyResumeInput,
+  strategyAbortInput,
   triggerListInput,
   triggerIdInput,
   resourceCopyMethodologyInput,
@@ -470,6 +473,55 @@ const strategy_reload = createBridgeHandler({
   },
 });
 
+const strategy_execution_status = createBridgeHandler({
+  schema: strategyExecutionStatusInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/strategies/${encodeURIComponent(parsed.execution_id)}/status`);
+    const data = await res.json();
+    return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const strategy_resume = createBridgeHandler({
+  schema: strategyResumeInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const body: Record<string, unknown> = {};
+    if (parsed.modified_inputs) body.modified_inputs = parsed.modified_inputs;
+
+    const res = await bridgeFetch(`${bridgeUrl}/strategies/${encodeURIComponent(parsed.execution_id)}/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    return ok(JSON.stringify({
+      ...data,
+      message: `Strategy execution ${parsed.execution_id} resumed.`,
+    }, null, 2));
+  },
+});
+
+const strategy_abort = createBridgeHandler({
+  schema: strategyAbortInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const body: Record<string, unknown> = {};
+    if (parsed.reason) body.reason = parsed.reason;
+
+    const res = await bridgeFetch(`${bridgeUrl}/strategies/${encodeURIComponent(parsed.execution_id)}/abort`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    return ok(JSON.stringify({
+      ...data,
+      message: `Strategy execution ${parsed.execution_id} aborted.`,
+    }, null, 2));
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Trigger tools (also bridge proxies)
 // ---------------------------------------------------------------------------
@@ -875,6 +927,9 @@ export const bridgeHandlers: Record<
   strategy_update,
   strategy_delete,
   strategy_reload,
+  strategy_execution_status,
+  strategy_resume,
+  strategy_abort,
   trigger_list,
   trigger_enable,
   trigger_disable,

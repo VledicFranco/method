@@ -30,7 +30,7 @@ import { copyMethodology, copyStrategy, setResourceCopierPorts } from './domains
 import websocket from '@fastify/websocket';
 import { WsHub } from './shared/websocket/hub.js';
 import { registerWsRoute } from './shared/websocket/route.js';
-import { setStrategyRoutesEventBus } from './domains/strategies/strategy-routes.js';
+import { setStrategyRoutesEventBus, setStrategyRoutesPool } from './domains/strategies/strategy-routes.js';
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
@@ -147,6 +147,9 @@ const pool = createPool({
   fsProvider,
   eventBus,
 });
+
+// Adaptive oversight: wire pool into strategy routes for auto-spawn on escalation
+setStrategyRoutesPool(pool);
 
 // WS-3: Session persistence store for print-mode sessions
 const sessionPersistence = createSessionPersistenceStore(ROOT_DIR, fsProvider);

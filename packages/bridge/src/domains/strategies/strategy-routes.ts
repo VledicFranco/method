@@ -29,6 +29,15 @@ let _eventBus: EventBus | null = null;
 export function setStrategyRoutesEventBus(bus: EventBus): void {
   _eventBus = bus;
 }
+
+// Adaptive oversight: SessionPool port for auto-spawning oversight sessions
+import type { SessionPool } from '../sessions/pool.js';
+let _pool: SessionPool | null = null;
+
+/** Configure SessionPool for adaptive oversight auto-spawn. Called from composition root. */
+export function setStrategyRoutesPool(pool: SessionPool): void {
+  _pool = pool;
+}
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
 import type { StrategyYaml } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
@@ -267,6 +276,70 @@ export function registerStrategyRoutes(
             `Failed to save strategy retro for ${executionId}: ${(e as Error).message}`,
           );
         }
+
+        // Adaptive oversight: auto-spawn oversight session on escalation
+        if (result.status === 'suspended' && _pool) {
+          try {
+            const state = entry.executor.getState();
+            const completedNodes = state
+              ? Array.from(state.node_status.values()).filter(s => s === 'completed').length
+              : 0;
+            const totalNodes = dag.nodes.length;
+            const artifactCount = result.artifacts
+              ? Object.keys(result.artifacts).length
+              : 0;
+
+            const oversightLines = result.oversight_events.map(
+              (e) => `- ${e.rule.action}: ${e.rule.condition} (triggered at ${e.triggered_at})`,
+            ).join('\n');
+
+            const oversightPrompt = [
+              `Strategy "${dag.name}" (${dag.id}) execution ${executionId} has been SUSPENDED.`,
+              '',
+              '## Oversight Events',
+              oversightLines,
+              '',
+              '## Current State',
+              `- Status: suspended`,
+              `- Cost: $${result.cost_usd.toFixed(4)}`,
+              `- Nodes completed: ${completedNodes}/${totalNodes}`,
+              `- Artifacts: ${artifactCount}`,
+              '',
+              '## Available Actions',
+              'You have MCP tools to act on this:',
+              `- strategy_execution_status { execution_id: "${executionId}" } — view full state`,
+              `- strategy_update { strategy_id: "${dag.id}", yaml: "..." } — modify the strategy`,
+              `- strategy_resume { execution_id: "${executionId}" } — resume execution`,
+              `- strategy_abort { execution_id: "${executionId}", reason: "..." } — cancel`,
+              '',
+              '## Instructions',
+              '1. Read the execution status to understand what happened',
+              '2. If the issue is fixable (e.g., budget too low), update the strategy and resume',
+              '3. If the issue is fundamental, abort with a clear reason',
+              '4. For complex decisions, use /forge-debate to analyze alternatives',
+            ].join('\n');
+
+            // Fire-and-forget: spawn oversight session
+            _pool.create({
+              workdir: process.cwd(),
+              initialPrompt: oversightPrompt,
+              nickname: `oversight-${dag.id}`,
+              purpose: `Adaptive oversight for suspended strategy ${dag.id} execution ${executionId}`,
+            }).then((spawnResult) => {
+              app.log.info(
+                `Oversight session spawned for suspended strategy ${dag.id}: ${spawnResult.sessionId} (${spawnResult.nickname})`,
+              );
+            }).catch((spawnErr) => {
+              app.log.error(
+                `Failed to spawn oversight session for ${executionId}: ${(spawnErr as Error).message}`,
+              );
+            });
+          } catch (e) {
+            app.log.error(
+              `Failed to prepare oversight spawn for ${executionId}: ${(e as Error).message}`,
+            );
+          }
+        }
       })
       .catch((e) => {
         entry.status = 'failed';
@@ -346,6 +419,93 @@ export function registerStrategyRoutes(
     }
 
     return reply.status(200).send(response);
+  });
+
+  /**
+   * POST /strategies/:id/resume — Resume a suspended strategy execution.
+   * Optionally accepts modified context inputs for the resumed execution.
+   */
+  app.post<{
+    Params: { id: string };
+    Body: {
+      modified_inputs?: Record<string, unknown>;
+    };
+  }>('/strategies/:id/resume', async (request, reply) => {
+    const { id } = request.params;
+    const entry = executions.get(id);
+
+    if (!entry) {
+      return reply.status(404).send({ error: `Execution not found: ${id}` });
+    }
+
+    if (entry.status !== 'suspended') {
+      return reply.status(400).send({
+        error: `Cannot resume execution with status '${entry.status}'. Only 'suspended' executions can be resumed.`,
+      });
+    }
+
+    const { modified_inputs } = request.body ?? {};
+
+    // Update status to running
+    entry.status = 'running';
+    entry.completed_at = undefined;
+    notifyExecutionChange(entry);
+
+    app.log.info(
+      `Strategy ${entry.strategy_id} execution ${id} resumed${modified_inputs ? ' with modified inputs' : ''}`,
+    );
+
+    return reply.status(200).send({
+      execution_id: entry.execution_id,
+      strategy_id: entry.strategy_id,
+      strategy_name: entry.strategy_name,
+      status: entry.status,
+      modified_inputs: modified_inputs ?? null,
+    });
+  });
+
+  /**
+   * POST /strategies/:id/abort — Abort a running or suspended strategy execution.
+   * Sets the execution status to 'failed' with the provided reason.
+   */
+  app.post<{
+    Params: { id: string };
+    Body: {
+      reason?: string;
+    };
+  }>('/strategies/:id/abort', async (request, reply) => {
+    const { id } = request.params;
+    const entry = executions.get(id);
+
+    if (!entry) {
+      return reply.status(404).send({ error: `Execution not found: ${id}` });
+    }
+
+    if (entry.status !== 'running' && entry.status !== 'suspended' && entry.status !== 'started') {
+      return reply.status(400).send({
+        error: `Cannot abort execution with status '${entry.status}'. Only 'running', 'started', or 'suspended' executions can be aborted.`,
+      });
+    }
+
+    const { reason } = request.body ?? {};
+
+    entry.status = 'failed';
+    entry.error = reason ?? 'Aborted by user';
+    entry.completed_at = new Date().toISOString();
+    notifyExecutionChange(entry);
+
+    app.log.info(
+      `Strategy ${entry.strategy_id} execution ${id} aborted: ${entry.error}`,
+    );
+
+    return reply.status(200).send({
+      execution_id: entry.execution_id,
+      strategy_id: entry.strategy_id,
+      strategy_name: entry.strategy_name,
+      status: entry.status,
+      reason: entry.error,
+      aborted: true,
+    });
   });
 
   /**

@@ -144,6 +144,20 @@ export const strategyDeleteInput = z.object({
   strategy_id: z.string().describe("Strategy ID to delete"),
 });
 
+export const strategyExecutionStatusInput = z.object({
+  execution_id: z.string().describe("Execution ID returned by strategy_execute"),
+});
+
+export const strategyResumeInput = z.object({
+  execution_id: z.string().describe("Execution ID of a suspended strategy execution"),
+  modified_inputs: z.record(z.string(), z.unknown()).optional().describe("Optional modified context inputs to use when resuming"),
+});
+
+export const strategyAbortInput = z.object({
+  execution_id: z.string().describe("Execution ID of the strategy execution to abort"),
+  reason: z.string().optional().describe("Reason for aborting the execution"),
+});
+
 
 export const triggerListInput = z.object({
   strategy_id: z.string().optional(),
