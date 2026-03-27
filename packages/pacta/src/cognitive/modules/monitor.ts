@@ -62,6 +62,8 @@ export interface MonitorState {
   cycleCount: number;
   /** Cycles where actor only read, no writes. */
   consecutiveReadOnlyCycles: number;
+  /** Recent action inputs for stagnation disambiguation (exploration vs repetition). */
+  recentActionInputs: string[];
 }
 
 /**
@@ -103,6 +105,7 @@ export function createMonitor(
       let hasLowConfidence = false;
       let hasUnexpectedResult = false;
       let actorWasReadOnly: boolean | null = null; // null = no actor signal this cycle
+      let currentActionInput: string | null = null;
 
       // Accumulate running averages from new signals
       let newConfidenceSum = state.confidenceAverage * state.confidenceObservations;
@@ -140,33 +143,49 @@ export function createMonitor(
               detail: `Unexpected result from action: ${signal.actionTaken}`,
             });
           }
-          // stagnation tracking (for both actor and reasoner-actor)
           actorWasReadOnly = READ_ONLY_ACTIONS.has((signal as any).actionTaken);
+          // Capture the action input fingerprint for exploration vs stagnation detection
+          const inputStr = JSON.stringify((signal as any).declaredPlanAction ?? (signal as any).actionTaken ?? '');
+          currentActionInput = inputStr;
         }
       }
 
-      // Only update stagnation counter if we saw an actor signal
+      // Update recent action inputs window (last 6)
+      const newRecentInputs = [...state.recentActionInputs];
+      if (currentActionInput !== null) {
+        newRecentInputs.push(currentActionInput);
+        if (newRecentInputs.length > 6) newRecentInputs.shift();
+      }
+
+      // Smart stagnation: distinguish exploration (different targets) from repetition
+      // Reading 3 different files = exploration. Reading the same file 3 times = stagnation.
+      const isExploring = actorWasReadOnly && newRecentInputs.length >= 2
+        ? new Set(newRecentInputs.slice(-3)).size >= 2  // at least 2 distinct recent inputs
+        : false;
+
+      // Only count as stagnation if read-only AND not exploring
       const newConsecutiveReadOnly = actorWasReadOnly === null
-        ? state.consecutiveReadOnlyCycles  // no actor signal, preserve counter
-        : actorWasReadOnly
+        ? state.consecutiveReadOnlyCycles
+        : actorWasReadOnly && !isExploring
           ? state.consecutiveReadOnlyCycles + 1
-          : 0;  // reset on write
+          : actorWasReadOnly && isExploring
+            ? Math.max(0, state.consecutiveReadOnlyCycles - 1)  // exploring reduces pressure
+            : 0;  // write resets
 
       // Stagnation: too many cycles without a write
       if (newConsecutiveReadOnly >= stagnationThreshold) {
         anomalies.push({
           moduleId: id,
           type: 'low-confidence',
-          detail: `Stagnation: ${newConsecutiveReadOnly} consecutive read-only cycles (threshold: ${stagnationThreshold})`,
+          detail: `Stagnation: ${newConsecutiveReadOnly} consecutive stagnant cycles (threshold: ${stagnationThreshold})`,
         });
       }
 
-      // Enforcement schedule (Mira's): constrain@2, force@3
+      // Enforcement schedule: constrain@2, force@3
       const restrictedActions: string[] = [];
       let forceReplan = false;
 
       if (newConsecutiveReadOnly >= 2) {
-        // Find the stagnating action type from actor signal
         let stagnatingAction: string | null = null;
         for (const [, signal] of input) {
           if (isActorMonitoring(signal) || isReasonerActorMonitoring(signal)) {
@@ -202,6 +221,7 @@ export function createMonitor(
         conflictCount: newConflictCount,
         cycleCount: state.cycleCount + 1,
         consecutiveReadOnlyCycles: newConsecutiveReadOnly,
+        recentActionInputs: newRecentInputs,
       };
 
       const monitoring: MonitorMonitoring = {
@@ -226,6 +246,7 @@ export function createMonitor(
         conflictCount: 0,
         cycleCount: 0,
         consecutiveReadOnlyCycles: 0,
+        recentActionInputs: [],
       };
     },
 
