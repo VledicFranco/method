@@ -1,6 +1,6 @@
 ---
 title: "PRD 030: Pacta Cognitive Composition"
-status: draft
+status: implemented
 date: "2026-03-27"
 tier: heavyweight
 depends_on: [27, 28]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit, pacta-playground]
 
 # PRD 030: Pacta Cognitive Composition
 
-**Status:** Draft
+**Status:** Implemented (2026-03-27)
 **Author:** PO + Lysica
 **Date:** 2026-03-27
 **Package:** `@method/pacta` (L3 — library)
