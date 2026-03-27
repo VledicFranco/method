@@ -20,6 +20,9 @@ import {
   bridgeAllEventsInput,
   strategyExecuteInput,
   strategyStatusInput,
+  strategyCreateInput,
+  strategyUpdateInput,
+  strategyDeleteInput,
   triggerListInput,
   triggerIdInput,
   resourceCopyMethodologyInput,
@@ -400,6 +403,70 @@ const strategy_status = createBridgeHandler({
     const res = await bridgeFetch(`${bridgeUrl}/strategies/${encodeURIComponent(parsed.execution_id)}/status`);
     const data = await res.json();
     return ok(JSON.stringify(data, null, 2));
+  },
+});
+
+const strategy_create = createBridgeHandler({
+  schema: strategyCreateInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/strategies/definitions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: parsed.id, yaml: parsed.yaml }),
+    });
+    const data = await res.json() as { id: string; file_path: string; created: boolean };
+    return ok(JSON.stringify({
+      id: data.id,
+      file_path: data.file_path,
+      message: `Strategy '${data.id}' created successfully.`,
+    }, null, 2));
+  },
+});
+
+const strategy_update = createBridgeHandler({
+  schema: strategyUpdateInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/strategies/definitions/${encodeURIComponent(parsed.strategy_id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yaml: parsed.yaml }),
+    });
+    const data = await res.json() as { id: string; file_path: string; updated: boolean };
+    return ok(JSON.stringify({
+      id: data.id,
+      file_path: data.file_path,
+      message: `Strategy '${data.id}' updated successfully.`,
+    }, null, 2));
+  },
+});
+
+const strategy_delete = createBridgeHandler({
+  schema: strategyDeleteInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/strategies/definitions/${encodeURIComponent(parsed.strategy_id)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json() as { id: string; deleted: boolean };
+    return ok(JSON.stringify({
+      id: data.id,
+      deleted: data.deleted,
+      message: `Strategy '${data.id}' deleted successfully.`,
+    }, null, 2));
+  },
+});
+
+const strategy_reload = createBridgeHandler({
+  schema: z.object({}),
+  handler: async (_parsed, bridgeFetch, bridgeUrl) => {
+    const res = await bridgeFetch(`${bridgeUrl}/api/strategies/reload`, {
+      method: 'POST',
+    });
+    const data = await res.json() as { reloaded: boolean; definition_count: number };
+    return ok(JSON.stringify({
+      reloaded: data.reloaded,
+      definition_count: data.definition_count,
+      message: `Strategies reloaded. ${data.definition_count} definitions found.`,
+    }, null, 2));
   },
 });
 
@@ -804,6 +871,10 @@ export const bridgeHandlers: Record<
   bridge_all_events,
   strategy_execute,
   strategy_status,
+  strategy_create,
+  strategy_update,
+  strategy_delete,
+  strategy_reload,
   trigger_list,
   trigger_enable,
   trigger_disable,

@@ -406,6 +406,165 @@ export function registerStrategyRoutes(
   });
 
   /**
+   * POST /api/strategies/definitions — Create a new strategy definition.
+   * Body: { id: string, yaml: string } OR { id: string, strategy: object }
+   * Writes to {strategyDir}/{id}.yaml, triggers reload.
+   */
+  app.post<{
+    Body: {
+      id?: string;
+      yaml?: string;
+      strategy?: Record<string, unknown>;
+    };
+  }>('/api/strategies/definitions', async (request, reply) => {
+    const strategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+    const { id, yaml: yamlContent, strategy: strategyObj } = request.body ?? {};
+
+    if (!id) {
+      return reply.status(400).send({ error: 'Missing required field: id' });
+    }
+
+    // Validate ID: alphanumeric + hyphens only, normalize to lowercase kebab-case
+    const normalizedId = id.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!normalizedId) {
+      return reply.status(400).send({ error: 'Invalid strategy ID: must contain alphanumeric characters or hyphens' });
+    }
+
+    const filePath = join(strategyDir, `${normalizedId}.yaml`);
+    const fs = _fs ?? new NodeFileSystemProvider();
+
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      return reply.status(409).send({ error: `Strategy '${normalizedId}' already exists` });
+    }
+
+    // Resolve YAML content
+    let content: string;
+    if (yamlContent) {
+      content = yamlContent;
+    } else if (strategyObj) {
+      const yaml = _yaml ?? new JsYamlLoader();
+      content = yaml.dump(strategyObj);
+    } else {
+      return reply.status(400).send({ error: 'Missing required field: yaml or strategy' });
+    }
+
+    // Ensure directory exists
+    try {
+      fs.mkdirSync(strategyDir, { recursive: true });
+    } catch { /* directory may already exist */ }
+
+    // Write file
+    try {
+      fs.writeFileSync(filePath, content);
+    } catch (e) {
+      return reply.status(500).send({ error: `Failed to write strategy file: ${(e as Error).message}` });
+    }
+
+    return reply.status(201).send({
+      id: normalizedId,
+      file_path: `${normalizedId}.yaml`,
+      created: true,
+    });
+  });
+
+  /**
+   * PUT /api/strategies/definitions/:id — Update an existing strategy definition.
+   * Body: { yaml: string }
+   * Overwrites {strategyDir}/{id}.yaml, triggers reload.
+   */
+  app.put<{
+    Params: { id: string };
+    Body: { yaml?: string };
+  }>('/api/strategies/definitions/:id', async (request, reply) => {
+    const strategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+    const { id } = request.params;
+    const { yaml: yamlContent } = request.body ?? {};
+
+    if (!yamlContent) {
+      return reply.status(400).send({ error: 'Missing required field: yaml' });
+    }
+
+    // Normalize ID
+    const normalizedId = id.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const filePath = join(strategyDir, `${normalizedId}.yaml`);
+    const fs = _fs ?? new NodeFileSystemProvider();
+
+    if (!fs.existsSync(filePath)) {
+      return reply.status(404).send({ error: `Strategy '${normalizedId}' not found` });
+    }
+
+    try {
+      fs.writeFileSync(filePath, yamlContent);
+    } catch (e) {
+      return reply.status(500).send({ error: `Failed to write strategy file: ${(e as Error).message}` });
+    }
+
+    return reply.status(200).send({
+      id: normalizedId,
+      file_path: `${normalizedId}.yaml`,
+      updated: true,
+    });
+  });
+
+  /**
+   * DELETE /api/strategies/definitions/:id — Delete a strategy definition.
+   * Removes {strategyDir}/{id}.yaml, triggers reload.
+   */
+  app.delete<{
+    Params: { id: string };
+  }>('/api/strategies/definitions/:id', async (request, reply) => {
+    const strategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+    const { id } = request.params;
+
+    // Normalize ID
+    const normalizedId = id.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const filePath = join(strategyDir, `${normalizedId}.yaml`);
+    const fs = _fs ?? new NodeFileSystemProvider();
+
+    if (!fs.existsSync(filePath)) {
+      return reply.status(404).send({ error: `Strategy '${normalizedId}' not found` });
+    }
+
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      return reply.status(500).send({ error: `Failed to delete strategy file: ${(e as Error).message}` });
+    }
+
+    return reply.status(200).send({
+      id: normalizedId,
+      deleted: true,
+    });
+  });
+
+  /**
+   * POST /api/strategies/reload — Force reload all strategy definitions.
+   * Re-reads all YAML files from the strategy directory.
+   */
+  app.post('/api/strategies/reload', async (_request, reply) => {
+    const strategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+    const fs = _fs ?? new NodeFileSystemProvider();
+
+    let files: string[];
+    try {
+      const entries = await fs.readdir(strategyDir);
+      files = entries.filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
+    } catch (e) {
+      return reply.status(200).send({
+        reloaded: true,
+        definition_count: 0,
+        error: `Failed to read strategy directory: ${(e as Error).message}`,
+      });
+    }
+
+    return reply.status(200).send({
+      reloaded: true,
+      definition_count: files.length,
+    });
+  });
+
+  /**
    * GET /api/strategies/definitions — List all strategy definitions parsed from
    * .method/strategies/ YAML files (PRD 019.3 Component 1).
    *

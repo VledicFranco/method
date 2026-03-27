@@ -130,6 +130,21 @@ export const strategyStatusInput = z.object({
   execution_id: z.string(),
 });
 
+export const strategyCreateInput = z.object({
+  id: z.string().describe("Strategy ID (alphanumeric + hyphens, normalized to lowercase kebab-case)"),
+  yaml: z.string().describe("Full strategy YAML content"),
+});
+
+export const strategyUpdateInput = z.object({
+  strategy_id: z.string().describe("Strategy ID to update"),
+  yaml: z.string().describe("Full replacement YAML content"),
+});
+
+export const strategyDeleteInput = z.object({
+  strategy_id: z.string().describe("Strategy ID to delete"),
+});
+
+
 export const triggerListInput = z.object({
   strategy_id: z.string().optional(),
 });
