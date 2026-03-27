@@ -56,6 +56,20 @@ import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monito
 import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
 import { TASK_01 } from './task-01-circular-dep.js';
+import { TASK_02 } from './task-02-test-first-bug.js';
+import { TASK_03 } from './task-03-config-migration.js';
+import { TASK_04 } from './task-04-api-versioning.js';
+import { TASK_05 } from './task-05-dead-code-removal.js';
+
+interface TaskDefinition {
+  name: string;
+  baseDescription: string;
+  description: string;
+  initialFiles: Record<string, string>;
+  validate(files: ReadonlyMap<string, string>): { success: boolean; reason: string };
+}
+
+const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05];
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -75,7 +89,7 @@ interface RunResult {
 
 // ── Condition A: Flat Agent ─────────────────────────────────────
 
-async function runFlat(task: typeof TASK_01, runNumber: number): Promise<RunResult> {
+async function runFlat(task: TaskDefinition, runNumber: number): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
@@ -208,7 +222,7 @@ async function readSessionToolCalls(
 // No tool restrictions: we want to see Claude's natural tool-use behavior.
 // Token counts and session ID come from the stdout JSON; tool calls from the JSONL.
 
-async function runCliAgent(task: typeof TASK_01, runNumber: number): Promise<RunResult> {
+async function runCliAgent(task: TaskDefinition, runNumber: number): Promise<RunResult> {
   const startTime = Date.now();
 
   // Use baseDescription — no cognitive-specific "done" signal
@@ -313,7 +327,7 @@ async function runCliAgent(task: typeof TASK_01, runNumber: number): Promise<Run
 //   4. Workspace (salience eviction, capacity=8) — managed context buffer
 //   5. Reflector (conditional) — fires on forceReplan only (not yet wired)
 
-async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<RunResult> {
+async function runCognitive(task: TaskDefinition, runNumber: number): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
@@ -530,9 +544,27 @@ async function main() {
     numRuns = parseInt(next ?? '1', 10) || 1;
   }
 
-  console.log('\n=== EXP-023: A/A/B — Flat vs CLI Sub-agent vs Cognitive ===');
+  // Task selection: --task 1 (default), --task 2, --task all
+  const taskArg = args.find(a => a.startsWith('--task=') || a === '--task');
+  let taskSelection: string = '1';
+  if (taskArg) {
+    const next = taskArg.includes('=') ? taskArg.split('=')[1] : args[args.indexOf('--task') + 1];
+    taskSelection = next ?? '1';
+  }
+
+  const selectedTasks = taskSelection === 'all'
+    ? TASKS
+    : [TASKS[parseInt(taskSelection, 10) - 1]].filter(Boolean);
+
+  if (selectedTasks.length === 0) {
+    console.error(`ERROR: Unknown task "${taskSelection}". Use --task 1..5 or --task all`);
+    process.exit(1);
+  }
+
+  console.log('\n=== EXP-023: Cognitive vs Flat — Strategy Shift Recovery ===');
   console.log(`    Conditions: ${[runAll || runFlat_ ? 'A(flat)' : '', runAll || runCli ? 'B(cli-agent)' : '', runAll || runCog ? 'C(cognitive)' : ''].filter(Boolean).join(', ')}`);
-  console.log(`    Runs per condition: ${numRuns}\n`);
+  console.log(`    Tasks: ${selectedTasks.map(t => t.name).join(', ')}`);
+  console.log(`    Runs per condition per task: ${numRuns}\n`);
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('ERROR: ANTHROPIC_API_KEY not set. Configure .env');
@@ -541,30 +573,34 @@ async function main() {
 
   const results: RunResult[] = [];
 
-  if (runAll || runFlat_) {
-    console.log('Condition A: Flat (anthropicProvider + VirtualToolProvider)');
-    for (let i = 1; i <= numRuns; i++) {
-      const r = await runFlat(TASK_01, i);
-      printResult(r);
-      results.push(r);
-    }
-  }
+  for (const task of selectedTasks) {
+    console.log(`\n━━━ Task: ${task.name} ━━━\n`);
 
-  if (runAll || runCli) {
-    console.log('\nCondition B: CLI Sub-agent (claude --print in real tmp/ dir)');
-    for (let i = 1; i <= numRuns; i++) {
-      const r = await runCliAgent(TASK_01, i);
-      printResult(r);
-      results.push(r);
+    if (runAll || runFlat_) {
+      console.log('Condition A: Flat (anthropicProvider + VirtualToolProvider)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runFlat(task, i);
+        printResult(r);
+        results.push(r);
+      }
     }
-  }
 
-  if (runAll || runCog) {
-    console.log('\nCondition C: Cognitive (8-module cycle + VirtualToolProvider)');
-    for (let i = 1; i <= numRuns; i++) {
-      const r = await runCognitive(TASK_01, i);
-      printResult(r);
-      results.push(r);
+    if (runAll || runCli) {
+      console.log('\nCondition B: CLI Sub-agent (claude --print in real tmp/ dir)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runCliAgent(task, i);
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runAll || runCog) {
+      console.log('\nCondition C: Cognitive (5-module merged cycle)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runCognitive(task, i);
+        printResult(r);
+        results.push(r);
+      }
     }
   }
 
