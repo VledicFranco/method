@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useEventStream } from '@/domains/projects/useEventStream';
+import { useEventStore } from '@/shared/stores/event-store';
 import type { ProjectEvent } from '@/domains/projects/types';
 
 export interface EventStreamPanelProps {
@@ -150,11 +150,22 @@ export function EventStreamPanel({
   initialProjectId,
   autoScroll = true,
 }: EventStreamPanelProps) {
-  const { events, loading } = useEventStream({
-    projectId: initialProjectId,
-    pollIntervalMs: 3000,
-    enabled: true,
-  });
+  // Read ALL events from the unified event store (not just project-domain)
+  const storeEvents = useEventStore((s) => s.events);
+  const connected = useEventStore((s) => s.connected);
+  const loading = !connected;
+
+  // Convert BridgeEvents to ProjectEvents for the timeline
+  const events: ProjectEvent[] = useMemo(() =>
+    storeEvents.map((e) => ({
+      id: e.id,
+      projectId: e.projectId ?? '',
+      type: e.type,
+      timestamp: e.timestamp,
+      metadata: {},
+      payload: e.payload ?? {},
+    })),
+  [storeEvents]);
 
   const [domainFilter, setDomainFilter] = useState<DomainFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
