@@ -225,19 +225,25 @@ test('ProjectMetadata: Has all required fields', () => {
   // but we document the expected structure here
   const exampleMetadata = {
     id: 'test-project',
+    name: 'test-project',
+    description: '',
     path: '/home/user/test-project',
     status: 'healthy' as const,
     git_valid: true,
     method_dir_exists: true,
     discovered_at: new Date().toISOString(),
+    last_scanned: new Date().toISOString(),
   };
 
   assert.strictEqual(typeof exampleMetadata.id, 'string');
+  assert.strictEqual(typeof exampleMetadata.name, 'string');
+  assert.strictEqual(typeof exampleMetadata.description, 'string');
   assert.strictEqual(typeof exampleMetadata.path, 'string');
   assert(['healthy', 'git_corrupted', 'missing_config', 'permission_denied'].includes(exampleMetadata.status));
   assert.strictEqual(typeof exampleMetadata.git_valid, 'boolean');
   assert.strictEqual(typeof exampleMetadata.method_dir_exists, 'boolean');
   assert.strictEqual(typeof exampleMetadata.discovered_at, 'string');
+  assert.strictEqual(typeof exampleMetadata.last_scanned, 'string');
 });
 
 // ── HTTP Status Code Tests ────
@@ -776,11 +782,14 @@ import { InMemoryProjectRegistry } from '../registry/index.js';
 function createMockProject(overrides: Partial<ProjectMetadata> = {}): ProjectMetadata {
   return {
     id: 'test-project',
+    name: 'test-project',
+    description: '',
     path: '/tmp/test-project',
     status: 'healthy',
     git_valid: true,
     method_dir_exists: true,
     discovered_at: new Date().toISOString(),
+    last_scanned: new Date().toISOString(),
     ...overrides,
   };
 }

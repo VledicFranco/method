@@ -28,8 +28,9 @@ function ProjectSpawnCard({
   const getStatusColor = (status: string): 'bio' | 'solar' | 'error' => {
     switch (status) {
       case 'healthy': return 'bio';
-      case 'degraded': return 'solar';
-      case 'error': return 'error';
+      case 'git_corrupted': return 'error';
+      case 'missing_config': return 'solar';
+      case 'permission_denied': return 'error';
       default: return 'solar';
     }
   };

@@ -184,7 +184,21 @@ const styles = {
     color: 'var(--text-muted)',
     paddingLeft: '14px',
   },
+  projectLabel: {
+    fontSize: '10px',
+    color: 'var(--text-muted)',
+    paddingLeft: '14px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    marginBottom: '1px',
+  },
 };
+
+/** Extract the last directory segment from a workdir path (handles / and \\). */
+function projectNameFromWorkdir(workdir: string): string {
+  return workdir.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || '';
+}
 
 // ── Component ───────────────────────────────────────────────────
 
@@ -294,6 +308,11 @@ export function SessionSidebar({
                 </div>
                 {session.purpose && (
                   <div style={styles.purpose}>{session.purpose}</div>
+                )}
+                {session.workdir && (
+                  <div style={styles.projectLabel}>
+                    {'\uD83D\uDCC1'} {projectNameFromWorkdir(session.workdir)}
+                  </div>
                 )}
                 <div style={styles.stats}>
                   {session.prompt_count}p · ${cost.toFixed(3)}

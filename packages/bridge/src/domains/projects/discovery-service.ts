@@ -36,6 +36,8 @@ function getYaml(): YamlLoader {
 
 export interface ProjectMetadata {
   id: string;
+  name: string;
+  description: string;
   path: string;
   status: 'healthy' | 'git_corrupted' | 'missing_config' | 'permission_denied';
   git_valid: boolean;
@@ -45,6 +47,7 @@ export interface ProjectMetadata {
   config_error?: string;
   error_detail?: string;
   discovered_at: string;
+  last_scanned: string;
 }
 
 export interface DiscoveryCheckpoint {
@@ -297,8 +300,46 @@ export class DiscoveryService {
         }
       }
 
+      // D3: Try to read a description from package.json or project-card.yaml
+      let description = '';
+      const packageJsonPath = join(projectPath, 'package.json');
+      const projectCardPath = join(methodDir, 'project-card.yaml');
+      if (getFs().existsSync(packageJsonPath)) {
+        try {
+          const pkgContent = getFs().readFileSync(packageJsonPath, 'utf-8');
+          const pkgData = JSON.parse(pkgContent);
+          if (pkgData && typeof pkgData.description === 'string') {
+            description = pkgData.description;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+      if (!description && getFs().existsSync(projectCardPath)) {
+        try {
+          const cardContent = getFs().readFileSync(projectCardPath, 'utf-8');
+          const cardData = getYaml().load(cardContent) as Record<string, unknown> | null;
+          if (
+            cardData &&
+            typeof cardData === 'object' &&
+            cardData.essence &&
+            typeof cardData.essence === 'object' &&
+            'purpose' in (cardData.essence as Record<string, unknown>) &&
+            typeof (cardData.essence as Record<string, unknown>).purpose === 'string'
+          ) {
+            description = (cardData.essence as Record<string, unknown>).purpose as string;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+
+      const now = new Date().toISOString();
+
       return {
         id: projectName,
+        name: projectName,
+        description,
         path: projectPath,
         status: gitIsValid ? 'healthy' : 'git_corrupted',
         git_valid: gitIsValid,
@@ -307,7 +348,8 @@ export class DiscoveryService {
         config_valid: configValid,
         config_error: configError,
         error_detail: errorDetail,
-        discovered_at: new Date().toISOString(),
+        discovered_at: now,
+        last_scanned: now,
       };
     } catch (err) {
       return undefined;

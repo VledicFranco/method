@@ -131,8 +131,13 @@ export function StatusBar({ session, totalCost }: StatusBarProps) {
       : 0
   );
 
+  const projectName = session.workdir
+    ? session.workdir.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || ''
+    : '';
+
   const collapsedSummary = [
     session.nickname,
+    ...(projectName ? [projectName] : []),
     shortId,
     `${session.prompt_count} prompts`,
     `$${cost.toFixed(3)}`,
