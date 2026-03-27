@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTranscriptReader, deriveProjectDirName } from './transcript-reader.js';
-import type { TranscriptTurn } from './transcript-reader.js';
+import { createTranscriptReader, deriveProjectDirName, collapseToolRounds } from './transcript-reader.js';
+import type { TranscriptTurn, CollapsedTurn } from './transcript-reader.js';
 import { mkdirSync, rmSync, writeFileSync, readFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
@@ -659,5 +659,274 @@ describe('TranscriptReader — listSessions (PRD 013)', () => {
 
     assert.equal(sessions.length, 1);
     assert.ok(sessions[0].file.endsWith('.jsonl'));
+  });
+});
+
+describe('collapseToolRounds — tool summaries', () => {
+  // ── Collapsed turns include tool summaries ──────────────────────
+
+  it('includes tool summaries for collapsed tool rounds', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Read index.ts', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: 'I will read that file.',
+        toolCalls: [{ name: 'Read', input: '{"file_path":"/src/index.ts"}' }],
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: export const foo = 1;]',
+        timestamp: '2026-03-15T10:00:02.000Z',
+      },
+      {
+        role: 'assistant',
+        content: 'The file exports foo.',
+        timestamp: '2026-03-15T10:00:03.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2); // user prompt + final assistant
+    assert.equal(collapsed[0].role, 'user');
+    assert.equal(collapsed[0].content, 'Read index.ts');
+    assert.equal(collapsed[1].role, 'assistant');
+    assert.equal(collapsed[1].content, 'The file exports foo.');
+
+    // Tool summaries are present on the assistant turn
+    assert.ok(collapsed[1].toolSummaries);
+    assert.equal(collapsed[1].toolSummaries!.length, 1);
+    assert.equal(collapsed[1].toolSummaries![0].name, 'Read');
+    assert.equal(collapsed[1].toolSummaries![0].status, 'completed');
+  });
+
+  // ── Tool summary name and input extraction ──────────────────────
+
+  it('extracts tool name and input correctly', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Edit the file', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: '[2 tool call(s)]',
+        toolCalls: [
+          { name: 'Edit', input: '{"file_path":"/src/a.ts","old_string":"x","new_string":"y"}' },
+          { name: 'Bash', input: '{"command":"npm test"}' },
+        ],
+        timestamp: '2026-03-15T10:01:00.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: File edited]\n[tool result: Tests passed]',
+        timestamp: '2026-03-15T10:01:05.000Z',
+      },
+      {
+        role: 'assistant',
+        content: 'Done editing and tests pass.',
+        timestamp: '2026-03-15T10:01:10.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2);
+    const assistantTurn = collapsed[1];
+    assert.ok(assistantTurn.toolSummaries);
+    assert.equal(assistantTurn.toolSummaries!.length, 2);
+
+    assert.equal(assistantTurn.toolSummaries![0].name, 'Edit');
+    assert.ok(assistantTurn.toolSummaries![0].input.includes('file_path'));
+
+    assert.equal(assistantTurn.toolSummaries![1].name, 'Bash');
+    assert.ok(assistantTurn.toolSummaries![1].input.includes('npm test'));
+  });
+
+  // ── Turns without tool calls have no toolSummaries ──────────────
+
+  it('does not include toolSummaries when no tool calls are present', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'What is 2+2?', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: 'The answer is 4.',
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2);
+    assert.equal(collapsed[1].role, 'assistant');
+    assert.equal(collapsed[1].toolSummaries, undefined);
+  });
+
+  // ── Duration is computed from timestamp deltas ──────────────────
+
+  it('computes durationMs from tool_use to tool_result timestamps', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Run build', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: 'Running build.',
+        toolCalls: [{ name: 'Bash', input: '{"command":"npm run build"}' }],
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: Build completed]',
+        timestamp: '2026-03-15T10:00:04.000Z', // 3 seconds later
+      },
+      {
+        role: 'assistant',
+        content: 'Build done.',
+        timestamp: '2026-03-15T10:00:05.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2);
+    assert.ok(collapsed[1].toolSummaries);
+    assert.equal(collapsed[1].toolSummaries![0].durationMs, 3000);
+  });
+
+  // ── Error status from tool_result content ───────────────────────
+
+  it('marks tool summary as error when result contains error indicators', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Run tests', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: 'Running tests.',
+        toolCalls: [{ name: 'Bash', input: '{"command":"npm test"}' }],
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: Error: test suite failed with 3 failures]',
+        timestamp: '2026-03-15T10:00:05.000Z',
+      },
+      {
+        role: 'assistant',
+        content: 'Tests failed, fixing now.',
+        timestamp: '2026-03-15T10:00:06.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2);
+    assert.ok(collapsed[1].toolSummaries);
+    assert.equal(collapsed[1].toolSummaries![0].status, 'error');
+  });
+
+  // ── Multiple tool rounds in one cycle are all collected ─────────
+
+  it('collects tool summaries from multiple rounds in one cycle', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Read and edit', timestamp: '2026-03-15T10:00:00.000Z' },
+      // Round 1: Read
+      {
+        role: 'assistant',
+        content: 'Reading first.',
+        toolCalls: [{ name: 'Read', input: '{"file_path":"/src/a.ts"}' }],
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: file contents]',
+        timestamp: '2026-03-15T10:00:02.000Z',
+      },
+      // Round 2: Edit
+      {
+        role: 'assistant',
+        content: '[1 tool call(s)]',
+        toolCalls: [{ name: 'Edit', input: '{"file_path":"/src/a.ts"}' }],
+        timestamp: '2026-03-15T10:00:03.000Z',
+      },
+      {
+        role: 'user',
+        content: '[tool result: File edited]',
+        timestamp: '2026-03-15T10:00:04.000Z',
+      },
+      // Final response
+      {
+        role: 'assistant',
+        content: 'All done.',
+        timestamp: '2026-03-15T10:00:05.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 2);
+    assert.ok(collapsed[1].toolSummaries);
+    assert.equal(collapsed[1].toolSummaries!.length, 2);
+    assert.equal(collapsed[1].toolSummaries![0].name, 'Read');
+    assert.equal(collapsed[1].toolSummaries![1].name, 'Edit');
+
+    // Each should have duration computed
+    assert.equal(collapsed[1].toolSummaries![0].durationMs, 1000); // 1s
+    assert.equal(collapsed[1].toolSummaries![1].durationMs, 1000); // 1s
+  });
+
+  // ── User prompt turns never get toolSummaries ───────────────────
+
+  it('user prompt turns never have toolSummaries', () => {
+    const turns: TranscriptTurn[] = [
+      { role: 'user', content: 'Hello', timestamp: '2026-03-15T10:00:00.000Z' },
+      {
+        role: 'assistant',
+        content: 'Hi there.',
+        timestamp: '2026-03-15T10:00:01.000Z',
+      },
+      { role: 'user', content: 'Thanks', timestamp: '2026-03-15T10:00:02.000Z' },
+      {
+        role: 'assistant',
+        content: 'Welcome.',
+        timestamp: '2026-03-15T10:00:03.000Z',
+      },
+    ];
+
+    const collapsed = collapseToolRounds(turns);
+
+    assert.equal(collapsed.length, 4);
+    for (const turn of collapsed) {
+      if (turn.role === 'user') {
+        assert.equal(turn.toolSummaries, undefined);
+      }
+    }
+  });
+
+  // ── Fixture integration test with collapseToolRounds ────────────
+
+  it('collapses the fixture transcript with correct tool summaries', () => {
+    const reader = createTranscriptReader({ sessionsDir: '/nonexistent', fs });
+    const rawTurns = reader.getTranscript(FIXTURE_PATH);
+    const collapsed = collapseToolRounds(rawTurns);
+
+    // The fixture has 3 real user prompts:
+    // 1. "Read the file at packages/core/src/index.ts..." → tool round (Read) → final response
+    // 2. "Now edit the file to add a new export..." → tool round (Edit, Bash) → final response
+    // 3. (orphaned tool-only assistant before "Session complete." which is type "result")
+    //
+    // Real user prompts: turns[0], turns[4], (no 3rd real prompt since the Grep is orphaned)
+    // So we expect: prompt1, response1, prompt2, response2
+
+    // Verify collapsed structure
+    assert.ok(collapsed.length >= 4);
+
+    // First cycle: user prompt + response with Read tool summary
+    assert.equal(collapsed[0].role, 'user');
+    assert.equal(collapsed[1].role, 'assistant');
+    assert.ok(collapsed[1].toolSummaries);
+    assert.ok(collapsed[1].toolSummaries!.some(s => s.name === 'Read'));
+
+    // Second cycle: user prompt + response with Edit+Bash tool summaries
+    assert.equal(collapsed[2].role, 'user');
+    assert.equal(collapsed[3].role, 'assistant');
+    assert.ok(collapsed[3].toolSummaries);
+    assert.ok(collapsed[3].toolSummaries!.some(s => s.name === 'Edit'));
+    assert.ok(collapsed[3].toolSummaries!.some(s => s.name === 'Bash'));
   });
 });
