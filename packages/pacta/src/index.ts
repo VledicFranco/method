@@ -63,8 +63,21 @@ export type {
 // Tool provider port
 export type { ToolProvider, ToolDefinition, ToolResult } from './ports/tool-provider.js';
 
-// Memory port
-export type { MemoryPort, MemoryEntry, AgentNote, NoteFilter } from './ports/memory-port.js';
+// Memory port (v2 — PRD 031)
+export type {
+  MemoryPort,
+  MemoryPortV2,
+  MemoryEntry,
+  AgentNote,
+  NoteFilter,
+  EpistemicType,
+  FactCard,
+  SearchOptions,
+} from './ports/memory-port.js';
+export { InMemoryMemory } from './ports/memory-impl.js';
+
+// Embedding port (PRD 031)
+export type { EmbeddingPort } from './ports/embedding-port.js';
 
 // Context policy + managers
 export type { ContextPolicy } from './context/context-policy.js';
