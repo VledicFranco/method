@@ -129,6 +129,42 @@ After bridge restart, `claudeCliProvider.invokedSessions` is empty. When a sessi
 
 ## Architecture & FCA Compliance
 
+### Layer Stack
+
+```
+L4  Bridge application
+    ├── src/
+    │   ├── startup-recovery.ts              NEW — composition root recovery orchestration
+    │   ├── server-entry.ts                  MOD — lifecycle events, crash handler, remove 30s setInterval
+    │   ├── ports/
+    │   │   └── native-session-discovery.ts  NEW — port interface for Claude PID file reading
+    │   ├── shared/event-bus/
+    │   │   ├── session-checkpoint-sink.ts   NEW — EventSink, event-driven persistence
+    │   │   └── agent-event-adapter.ts       NEW — AgentEvent→BridgeEvent mapping
+    │   └── domains/sessions/
+    │       ├── pool.ts                      MOD — restoreSession() API
+    │       └── print-session.ts             MOD — agent hoisting, onEvent, resumeSessionId
+    └── frontend/src/domains/sessions/
+        ├── Sessions.tsx                     MOD — URL params, recovery banners
+        ├── useSessions.ts                   MOD — stale-mode hold
+        ├── SessionSidebar.tsx               MOD — health indicator
+        └── App.tsx                          MOD — /sessions/:id? route
+
+L3  Pacta SDK (@method/pacta)
+    ├── src/
+    │   ├── pact.ts                          MOD — RecoveryIntent type, recovery field on Pact
+    │   ├── agent.ts                         MOD — AgentState, Agent.state, Agent.dispose()
+    │   └── engine/create-agent.ts           MOD — state accumulation wrapper
+
+    Pacta CLI Provider (@method/pacta-provider-claude-cli)
+    └── src/claude-cli-provider.ts           UNCHANGED — existing resumeSessionId path suffices
+
+L2  MethodTS (@method/methodts)              UNCHANGED
+L0  Types (@method/types)                    UNCHANGED
+```
+
+Dependencies flow downward only (L4→L3→L2→L0). No upward dependencies introduced.
+
 ### Domain Decomposition
 
 | Domain | Impact | Changes |
@@ -176,6 +212,29 @@ After bridge restart, `claudeCliProvider.invokedSessions` is empty. When a sessi
 - Graceful shutdown hardening -- checkpoint infrastructure is the prerequisite
 
 **Blocked by:** Nothing -- all dependencies are already implemented.
+
+### Shared Surface Protocol (for `/realize` orchestration)
+
+When this PRD is realized via `/realize`, the orchestrator must manage these shared surfaces between commission waves:
+
+| Timing | Surface | Change | Why |
+|--------|---------|--------|-----|
+| Pre-Phase-1 | `packages/pacta/src/pact.ts` | Add `RecoveryIntent` type + `recovery` field on `Pact` | Phase 1 commissions consume this type in print-session.ts and startup-recovery.ts |
+| Pre-Phase-1 | `packages/pacta/src/agent.ts` | Add `AgentState` interface + `readonly state` + optional `dispose()` on `Agent` | Phase 1 bridge commissions read `agent.state` |
+| Pre-Phase-1 | `packages/pacta/src/engine/create-agent.ts` | Add state accumulation wrapper | Must exist before print-session.ts hoists `createAgent` |
+| Pre-Phase-1 | `packages/bridge/src/ports/event-bus.ts` | Add `'agent'` to `EventDomain` union type | Required by agent-event-adapter.ts before it can emit events |
+| Between Phase 1 and Phase 2 | `packages/bridge/src/ports/native-session-discovery.ts` | Export port interface | Frontend stale-mode (P2.2) depends on backend recovery being wired |
+| Between Phase 1 and Phase 2 | Bridge lifecycle events must be emitting | `system.bridge_ready` must exist | Frontend P2.2-P2.4 consume this event |
+
+**Frozen surfaces (contracts that must not change during implementation):**
+
+| Surface | Contract | Consumers |
+|---------|----------|-----------|
+| `AgentState` field names | `turnsExecuted`, `totalUsd`, `totalTokens`, `invocationCount` | bridge pool, bridge diagnostics, future dashboards |
+| `RecoveryIntent` enum values | `'resume' \| 'restart' \| 'abandon'` | startup-recovery.ts, future SessionStore |
+| `NativeSessionDiscovery.listLiveSessions()` return shape | `Promise<NativeSessionInfo[]>` | startup-recovery.ts |
+| `system.bridge_ready` event payload | `{ uptimeMs, sessionsActive }` | frontend useSessions stale-mode, GenesisSink |
+| AgentEvent→BridgeEvent mapping | `agent.` prefix, `domain: 'agent'`, severity mapping | all event bus consumers |
 
 ---
 
