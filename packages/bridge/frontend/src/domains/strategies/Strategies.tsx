@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, type CSSProperties } from 'react';
+import { PageShell } from '@/shared/layout/PageShell';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
@@ -600,6 +601,7 @@ export default function Strategies() {
   // ── Render ─────────────────────────────────────────────────────
 
   return (
+    <PageShell breadcrumbs={[{ label: 'Pipelines' }]}>
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
@@ -757,6 +759,7 @@ export default function Strategies() {
         </div>
       )}
     </div>
+    </PageShell>
   );
 }
 
