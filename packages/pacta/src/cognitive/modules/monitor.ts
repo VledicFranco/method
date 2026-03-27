@@ -74,7 +74,6 @@ const READ_ONLY_ACTIONS = new Set(['Read', 'Glob', 'Grep', 'none', 'error', 'esc
 
 // ── Factory ────────────────────────────────────────────────────────
 
-const MONITOR_ID = moduleId('monitor');
 
 /**
  * Create a Monitor cognitive module.
