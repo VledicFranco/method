@@ -73,3 +73,47 @@ export type {
 } from './provider-adapter.js';
 
 export { createProviderAdapter } from './provider-adapter.js';
+
+// ── Composition operators ───────────────────────────────────────
+
+export {
+  sequential,
+  parallel,
+  competitive,
+  hierarchical,
+} from './composition.js';
+
+export type {
+  ComposedMonitoring,
+  ComposedControl,
+  HierarchicalState,
+  ParallelSideResult,
+  ParallelMerge,
+  ParallelErrorMerge,
+  CompetitiveSelectorState,
+  CompetitiveSelector,
+} from './composition.js';
+
+// ── Tower ───────────────────────────────────────────────────────
+
+export { tower, validateTowerDepth, MAX_TOWER_DEPTH } from './tower.js';
+
+// ── Workspace engine ────────────────────────────────────────────
+
+export {
+  createWorkspace,
+  defaultSalienceFunction,
+  recencyScore,
+  sourcePriority,
+  goalOverlap,
+} from './workspace.js';
+
+export type {
+  WorkspaceManager,
+  EvictionInfo,
+  WriteLogEntry,
+} from './workspace.js';
+
+// ── Trace sinks ─────────────────────────────────────────────────
+
+export { InMemoryTraceSink, ConsoleTraceSink } from './trace-sinks.js';
