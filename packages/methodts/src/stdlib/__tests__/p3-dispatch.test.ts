@@ -263,9 +263,9 @@ describe("M1_INTERACTIVE", () => {
     expect(M1_INTERACTIVE.name).toBe("Human-in-the-Loop Dispatch Method");
   });
 
-  it("has 5 steps with a loop DAG", () => {
+  it("has 5 steps in a linear DAG (4 edges)", () => {
     expect(M1_INTERACTIVE.dag.steps).toHaveLength(5);
-    expect(M1_INTERACTIVE.dag.edges).toHaveLength(5);
+    expect(M1_INTERACTIVE.dag.edges).toHaveLength(4);
   });
 
   it("has 2 roles (rho_executor, rho_PO)", () => {
@@ -288,11 +288,11 @@ describe("M1_INTERACTIVE", () => {
     expect(M1_INTERACTIVE.objective).toBeDefined();
   });
 
-  it("has a loop edge (sigma_I5 -> sigma_I3)", () => {
-    const loopEdge = M1_INTERACTIVE.dag.edges.find(
+  it("does not have back edges (DAG is acyclic)", () => {
+    const backEdge = M1_INTERACTIVE.dag.edges.find(
       (e) => e.from === "sigma_I5" && e.to === "sigma_I3",
     );
-    expect(loopEdge).toBeDefined();
+    expect(backEdge).toBeUndefined();
   });
 });
 
@@ -302,9 +302,9 @@ describe("M2_SEMIAUTO", () => {
     expect(M2_SEMIAUTO.name).toBe("Selective Escalation Dispatch Method");
   });
 
-  it("has 6 steps with a loop DAG", () => {
+  it("has 6 steps in a linear DAG (5 edges)", () => {
     expect(M2_SEMIAUTO.dag.steps).toHaveLength(6);
-    expect(M2_SEMIAUTO.dag.edges).toHaveLength(6);
+    expect(M2_SEMIAUTO.dag.edges).toHaveLength(5);
   });
 
   it("has 2 roles (rho_executor, rho_PO)", () => {
@@ -325,11 +325,11 @@ describe("M2_SEMIAUTO", () => {
     expect(measureIds).toContain("mu_escalation_rate");
   });
 
-  it("has a loop edge (sigma_S6 -> sigma_S3)", () => {
-    const loopEdge = M2_SEMIAUTO.dag.edges.find(
+  it("does not have back edges (DAG is acyclic)", () => {
+    const backEdge = M2_SEMIAUTO.dag.edges.find(
       (e) => e.from === "sigma_S6" && e.to === "sigma_S3",
     );
-    expect(loopEdge).toBeDefined();
+    expect(backEdge).toBeUndefined();
   });
 });
 
@@ -339,9 +339,9 @@ describe("M3_FULLAUTO", () => {
     expect(M3_FULLAUTO.name).toBe("Unattended Dispatch Method");
   });
 
-  it("has 6 steps with a loop DAG", () => {
+  it("has 6 steps in a linear DAG (5 edges)", () => {
     expect(M3_FULLAUTO.dag.steps).toHaveLength(6);
-    expect(M3_FULLAUTO.dag.edges).toHaveLength(6);
+    expect(M3_FULLAUTO.dag.edges).toHaveLength(5);
   });
 
   it("has 2 roles (rho_executor, rho_observer)", () => {
@@ -362,11 +362,11 @@ describe("M3_FULLAUTO", () => {
     expect(measureIds).toContain("mu_retry_usage");
   });
 
-  it("has a loop edge (sigma_F6 -> sigma_F3)", () => {
-    const loopEdge = M3_FULLAUTO.dag.edges.find(
+  it("does not have back edges (DAG is acyclic)", () => {
+    const backEdge = M3_FULLAUTO.dag.edges.find(
       (e) => e.from === "sigma_F6" && e.to === "sigma_F3",
     );
-    expect(loopEdge).toBeDefined();
+    expect(backEdge).toBeUndefined();
   });
 
   it("has an objective predicate", () => {

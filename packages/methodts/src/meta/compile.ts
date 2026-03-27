@@ -85,11 +85,17 @@ export function compileMethod<S>(method: Method<S>, testStates: S[]): Compilatio
   });
 
   // G4: DAG acyclicity + composability
-  const topoOrder = topologicalOrder(method.dag);
-  const acyclic = topoOrder.length === method.dag.steps.length;
+  let acyclic = true;
+  let acyclicDetail = "";
+  try {
+    topologicalOrder(method.dag);
+  } catch (e) {
+    acyclic = false;
+    acyclicDetail = e instanceof Error ? e.message : String(e);
+  }
   let composable = true;
   let composabilityDetail = "All edges composable";
-  if (testStates.length > 0) {
+  if (acyclic && testStates.length > 0) {
     for (const edge of method.dag.edges) {
       const stepA = method.dag.steps.find((s) => s.id === edge.from);
       const stepB = method.dag.steps.find((s) => s.id === edge.to);
@@ -106,7 +112,7 @@ export function compileMethod<S>(method: Method<S>, testStates: S[]): Compilatio
   gates.push({
     gate: "G4-dag",
     status: acyclic && composable ? "pass" : "fail",
-    details: !acyclic ? "DAG has cycle" : composabilityDetail,
+    details: !acyclic ? `DAG has cycle: ${acyclicDetail}` : composabilityDetail,
   });
 
   // G5: Guidance — agent steps need prompts (structural review)

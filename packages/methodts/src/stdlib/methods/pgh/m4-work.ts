@@ -162,6 +162,10 @@ const steps: Step<WorkState>[] = [
 
 // ── DAG ──
 
+// StepDAG is acyclic by definition (F1-FTH §4). The back edge sigma_7 → sigma_3
+// ("Fix Loop" returning to "Implement") was removed. The fix-and-retry semantics
+// are encoded in the step's precondition (iterationCount < 3) and the methodology
+// re-invokes the method for subsequent iterations if needed.
 const dag: StepDAG<WorkState> = {
   steps,
   edges: [
@@ -173,7 +177,6 @@ const dag: StepDAG<WorkState> = {
     { from: "sigma_5", to: "sigma_6" },
     { from: "sigma_6", to: "sigma_7" },
     { from: "sigma_6", to: "sigma_8" },
-    { from: "sigma_7", to: "sigma_3" },
     { from: "sigma_7", to: "sigma_8" },
   ],
   initial: "sigma_0",

@@ -193,41 +193,33 @@ describe("mapProcessError", () => {
 
 // ── generateSessionId ───────────────────────────────────────────────────────
 
+// generateSessionId returns crypto.randomUUID() — claude --session-id requires
+// a valid UUID. Arguments are accepted for call-site compatibility but ignored.
 describe("generateSessionId", () => {
-  it("includes prefix, methodId, and stepId when all provided", () => {
+  it("returns a valid UUID (8-4-4-4-12 hex format)", () => {
     const id = generateSessionId("methodts", "M3-DEPLOY", "S2-VALIDATE");
-    expect(id).toMatch(/^methodts_M3-DEPLOY_S2-VALIDATE_[a-z0-9]+$/);
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
   });
 
-  it("includes only prefix and timestamp when no optional parts", () => {
+  it("returns a valid UUID when called with no arguments", () => {
+    const id = generateSessionId();
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+
+  it("returns a valid UUID when prefix only is provided", () => {
     const id = generateSessionId("methodts");
-    const parts = id.split("_");
-    expect(parts[0]).toBe("methodts");
-    expect(parts).toHaveLength(2);
-  });
-
-  it("includes prefix and methodId when stepId omitted", () => {
-    const id = generateSessionId("methodts", "M1-PLAN");
-    const parts = id.split("_");
-    expect(parts[0]).toBe("methodts");
-    expect(parts[1]).toBe("M1-PLAN");
-    expect(parts).toHaveLength(3);
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
   });
 
   it("generates unique IDs on successive calls", () => {
     const id1 = generateSessionId("test");
     const id2 = generateSessionId("test");
-    // They could be the same if called in same ms, but the timestamp part
-    // should at minimum be present
-    expect(id1.startsWith("test_")).toBe(true);
-    expect(id2.startsWith("test_")).toBe(true);
+    expect(id1).not.toBe(id2);
   });
 
-  it("timestamp part is base-36 encoded", () => {
+  it("UUID is lowercase hex", () => {
     const id = generateSessionId("pfx");
-    const timestampPart = id.split("_").pop()!;
-    // Base-36 uses [0-9a-z]
-    expect(timestampPart).toMatch(/^[0-9a-z]+$/);
+    expect(id).toMatch(/^[0-9a-f-]+$/);
   });
 });
 

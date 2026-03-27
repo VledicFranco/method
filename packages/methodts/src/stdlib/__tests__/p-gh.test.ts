@@ -312,9 +312,9 @@ describe("M2_REVIEW_GH", () => {
     expect(M2_REVIEW_GH.name).toBe("PR Review with Self-Fix Method");
   });
 
-  it("has 6 steps in a DAG with conditional fix loop", () => {
+  it("has 6 steps in a DAG with conditional fix branch (6 edges, no back edges)", () => {
     expect(M2_REVIEW_GH.dag.steps).toHaveLength(6);
-    expect(M2_REVIEW_GH.dag.edges).toHaveLength(7);
+    expect(M2_REVIEW_GH.dag.edges).toHaveLength(6);
   });
 
   it("has 2 roles (reviewer, fixer)", () => {
@@ -364,9 +364,9 @@ describe("M4_WORK", () => {
     expect(M4_WORK.name).toBe("Issue Work Execution Method");
   });
 
-  it("has 9 steps in a DAG with two conditional loops", () => {
+  it("has 9 steps in a DAG with conditional branches (9 edges, no back edges)", () => {
     expect(M4_WORK.dag.steps).toHaveLength(9);
-    expect(M4_WORK.dag.edges).toHaveLength(10);
+    expect(M4_WORK.dag.edges).toHaveLength(9);
   });
 
   it("has 3 roles (planner, implementor, reporter)", () => {

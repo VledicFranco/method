@@ -200,6 +200,19 @@ export function runMethodology<S>(
 
       // Update state from method result
       state = methodResult.finalState;
+
+      // Re-validate domain axioms after method execution.
+      // A method may modify state fields; the methodology domain invariants
+      // must still hold before the next δ_Φ evaluation.
+      const postAxiomCheck = validateAxioms(methodology.domain, state.value);
+      if (!postAxiomCheck.valid) {
+        return {
+          status: "failed" as const,
+          finalState: state,
+          trace: { snapshots, initial: initialState, current: state },
+          accumulator: acc,
+        };
+      }
     }
   });
 }

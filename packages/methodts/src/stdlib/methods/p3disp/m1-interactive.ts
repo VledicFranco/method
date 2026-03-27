@@ -123,6 +123,9 @@ const steps: Step<InteractiveState>[] = [
 
 // ── DAG ──
 
+// StepDAG is acyclic by definition (F1-FTH §4). The loop (sigma_I5 → sigma_I3)
+// was removed: iteration across multiple target-methodology steps is handled at
+// the methodology level (P3-DISPATCH re-invokes M1-INTERACTIVE per step).
 const dag: StepDAG<InteractiveState> = {
   steps,
   edges: [
@@ -130,7 +133,6 @@ const dag: StepDAG<InteractiveState> = {
     { from: "sigma_I2", to: "sigma_I3" },
     { from: "sigma_I3", to: "sigma_I4" },
     { from: "sigma_I4", to: "sigma_I5" },
-    { from: "sigma_I5", to: "sigma_I3" },
   ],
   initial: "sigma_I1",
   terminal: "sigma_I5",

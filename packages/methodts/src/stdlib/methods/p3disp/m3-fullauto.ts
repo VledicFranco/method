@@ -135,6 +135,9 @@ const steps: Step<FullautoState>[] = [
 
 // ── DAG ──
 
+// StepDAG is acyclic by definition (F1-FTH §4). The loop (sigma_F6 → sigma_F3)
+// was removed: iteration across multiple target-methodology steps is handled at
+// the methodology level (P3-DISPATCH re-invokes M3-FULLAUTO per step).
 const dag: StepDAG<FullautoState> = {
   steps,
   edges: [
@@ -143,7 +146,6 @@ const dag: StepDAG<FullautoState> = {
     { from: "sigma_F3", to: "sigma_F4" },
     { from: "sigma_F4", to: "sigma_F5" },
     { from: "sigma_F5", to: "sigma_F6" },
-    { from: "sigma_F6", to: "sigma_F3" },
   ],
   initial: "sigma_F1",
   terminal: "sigma_F6",

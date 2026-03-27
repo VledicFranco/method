@@ -125,6 +125,10 @@ const steps: Step<PRReviewState>[] = [
 
 // ── DAG ──
 
+// StepDAG is acyclic by definition (F1-FTH §4). The back edge sigma_4 → sigma_1
+// ("Self-Review" looping back to "Read + Check") was removed. The fix-and-re-review
+// loop is encoded in the step precondition (fixAttempts < maxFixAttempts) and the
+// methodology level handles subsequent iterations if needed.
 const dag: StepDAG<PRReviewState> = {
   steps,
   edges: [
@@ -133,7 +137,6 @@ const dag: StepDAG<PRReviewState> = {
     { from: "sigma_2", to: "sigma_3" },
     { from: "sigma_2", to: "sigma_5" },
     { from: "sigma_3", to: "sigma_4" },
-    { from: "sigma_4", to: "sigma_1" },
     { from: "sigma_4", to: "sigma_5" },
   ],
   initial: "sigma_0",
