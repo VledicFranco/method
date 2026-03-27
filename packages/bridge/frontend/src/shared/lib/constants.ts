@@ -44,8 +44,7 @@ export const EVENT_COLORS = {
 export const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
   { label: 'Sessions', path: '/sessions', icon: 'Terminal' },
-  { label: 'Strategies', path: '/strategies', icon: 'GitBranch' },
-  { label: 'Triggers', path: '/triggers', icon: 'Zap' },
+  { label: 'Pipelines', path: '/strategies', icon: 'GitBranch' },
   { label: 'Governance', path: '/governance', icon: 'Shield' },
   { label: 'Analytics', path: '/analytics', icon: 'BarChart3' },
   { label: 'Registry', path: '/registry', icon: 'BookOpen' },
