@@ -9,6 +9,13 @@ export type TranscriptToolCall = {
   duration?: number;
 };
 
+export interface CollapsedToolSummary {
+  name: string;       // tool name (Read, Edit, Bash, Write, etc.)
+  input: string;      // summarized input (file path or command, truncated)
+  durationMs?: number; // computed from timestamp deltas if available
+  status: 'completed' | 'error';
+}
+
 export type TranscriptTurn = {
   role: 'user' | 'assistant';
   content: string;
@@ -19,6 +26,10 @@ export type TranscriptTurn = {
     cacheRead: number;
   };
   timestamp: string;
+};
+
+export type CollapsedTurn = TranscriptTurn & {
+  toolSummaries?: CollapsedToolSummary[];
 };
 
 export type SessionSummary = {
@@ -175,10 +186,11 @@ export function createTranscriptReader(config: {
  *
  * A "real user prompt" is a user turn whose content does NOT start with "[tool result:".
  * Between two real prompts, the last assistant turn with non-tool-call text is the response.
- * Intermediate tool-use / tool-result turns are dropped.
+ * Intermediate tool-use / tool-result turns are dropped, but tool call information is
+ * preserved as `toolSummaries` on the final assistant turn.
  */
-export function collapseToolRounds(turns: TranscriptTurn[]): TranscriptTurn[] {
-  const collapsed: TranscriptTurn[] = [];
+export function collapseToolRounds(turns: TranscriptTurn[]): CollapsedTurn[] {
+  const collapsed: CollapsedTurn[] = [];
   const realPromptIndices: number[] = [];
 
   // Identify real user prompts (not tool_result messages)
@@ -197,17 +209,58 @@ export function collapseToolRounds(turns: TranscriptTurn[]): TranscriptTurn[] {
     // Emit the user prompt
     collapsed.push(turns[promptIdx]);
 
+    // Collect tool summaries from all assistant turns in this cycle
+    const toolSummaries: CollapsedToolSummary[] = [];
+
     // Find the last assistant turn with real text (not just tool calls) in this cycle
     let lastAssistantWithText: TranscriptTurn | null = null;
     for (let j = promptIdx + 1; j < nextPromptIdx; j++) {
       const t = turns[j];
+      if (t.role === 'assistant' && t.toolCalls && t.toolCalls.length > 0) {
+        // Find the corresponding tool_result user turn (next user turn after this assistant)
+        let resultTurn: TranscriptTurn | undefined;
+        for (let r = j + 1; r < nextPromptIdx; r++) {
+          if (turns[r].role === 'user') {
+            resultTurn = turns[r];
+            break;
+          }
+        }
+
+        // Compute duration from assistant tool_use timestamp to tool_result timestamp
+        const toolUseTimestamp = new Date(t.timestamp).getTime();
+        const resultTimestamp = resultTurn
+          ? new Date(resultTurn.timestamp).getTime()
+          : NaN;
+        const durationMs = (!isNaN(toolUseTimestamp) && !isNaN(resultTimestamp) && resultTimestamp > toolUseTimestamp)
+          ? resultTimestamp - toolUseTimestamp
+          : undefined;
+
+        // Determine status from tool_result content: if it contains error indicators, mark as error
+        const resultContent = resultTurn?.content ?? '';
+        const hasError = resultContent.toLowerCase().includes('error')
+          || resultContent.toLowerCase().includes('failed')
+          || resultContent.toLowerCase().includes('exception');
+
+        for (const tc of t.toolCalls) {
+          toolSummaries.push({
+            name: tc.name,
+            input: tc.input,
+            durationMs,
+            status: hasError ? 'error' : 'completed',
+          });
+        }
+      }
       if (t.role === 'assistant' && !t.content.startsWith('[') && t.content !== '[empty]') {
         lastAssistantWithText = t;
       }
     }
 
     if (lastAssistantWithText) {
-      collapsed.push(lastAssistantWithText);
+      const collapsedTurn: CollapsedTurn = { ...lastAssistantWithText };
+      if (toolSummaries.length > 0) {
+        collapsedTurn.toolSummaries = toolSummaries;
+      }
+      collapsed.push(collapsedTurn);
     }
   }
 

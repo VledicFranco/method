@@ -25,7 +25,7 @@ export type { ActivityObservation } from './auto-retro.js';
 export type { ChannelMessage, Channel, SessionChannels } from './channels.js';
 
 // Transcript reader types
-export type { TranscriptToolCall, TranscriptTurn, SessionSummary, TranscriptReader } from './transcript-reader.js';
+export type { TranscriptToolCall, TranscriptTurn, CollapsedToolSummary, CollapsedTurn, SessionSummary, TranscriptReader } from './transcript-reader.js';
 
 // Route types
 export type { SessionRouteDeps } from './routes.js';

@@ -75,12 +75,20 @@ export interface PromptMetadata {
   cache_write_tokens: number;
 }
 
+export interface CollapsedToolSummary {
+  name: string;       // tool name (Read, Edit, Bash, Write, etc.)
+  input: string;      // summarized input (file path or command, truncated)
+  durationMs?: number; // computed from timestamp deltas if available
+  status: 'completed' | 'error';
+}
+
 export type ChatTurn =
   | {
       kind: 'historical';
       prompt: string;
       output: string;
       timestamp: string;
+      toolSummaries?: CollapsedToolSummary[];
     }
   | {
       kind: 'live';
@@ -88,6 +96,7 @@ export type ChatTurn =
       output: string;
       metadata: PromptMetadata;
       timestamp: string;
+      toolSummaries?: CollapsedToolSummary[];
     }
   | {
       kind: 'pending';
