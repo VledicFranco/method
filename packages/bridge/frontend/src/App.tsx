@@ -93,7 +93,7 @@ export function App() {
         <Suspense fallback={<RouteSkeleton />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/sessions" element={<Sessions />} />
+            <Route path="/sessions/:id?" element={<Sessions />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/strategies" element={<Strategies />} />
             <Route path="/strategies/:id" element={<StrategyDetail />} />

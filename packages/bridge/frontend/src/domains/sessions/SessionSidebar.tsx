@@ -1,9 +1,13 @@
 /**
  * SessionSidebar — 228px fixed left panel for session navigation.
  * Shows session list, spawn/refresh controls, and footer nav links.
+ *
+ * PRD 029 C-4: Connection health dot + stale-mode opacity.
  */
 
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { wsManager } from '@/shared/websocket/ws-manager';
 import type { SessionSummary } from './types';
 
 export interface SessionSidebarProps {
@@ -12,7 +16,47 @@ export interface SessionSidebarProps {
   onSelect: (id: string) => void;
   onSpawn: () => void;
   onRefresh: () => void;
+  /** When true, session data may be outdated (WebSocket disconnected). */
+  stale?: boolean;
 }
+
+// ── Connection health states ────────────────────────────────────
+
+type HealthState = 'connected' | 'reconnecting' | 'disconnected';
+
+function useConnectionHealth(): HealthState {
+  const [connected, setConnected] = useState(wsManager.connected);
+
+  useEffect(() => {
+    return wsManager.onConnectionChange(setConnected);
+  }, []);
+
+  // The wsManager reconnects automatically with exponential backoff,
+  // so any disconnected state is effectively "reconnecting" until
+  // the manager is destroyed. We track a simple connected/not model;
+  // "disconnected" would only apply if the manager is permanently down,
+  // but since it always retries, we use "reconnecting" for not-connected.
+  if (connected) return 'connected';
+  return 'reconnecting';
+}
+
+function healthDotColor(state: HealthState): string {
+  switch (state) {
+    case 'connected': return 'var(--bio)';
+    case 'reconnecting': return 'var(--solar)';
+    case 'disconnected': return 'var(--error)';
+  }
+}
+
+function healthDotTitle(state: HealthState): string {
+  switch (state) {
+    case 'connected': return 'Connected';
+    case 'reconnecting': return 'Reconnecting...';
+    case 'disconnected': return 'Disconnected';
+  }
+}
+
+// ── Styles ──────────────────────────────────────────────────────
 
 const styles = {
   sidebar: {
@@ -38,6 +82,11 @@ const styles = {
     padding: '10px 12px 8px',
     borderBottom: '1px solid var(--border)',
     flexShrink: 0,
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   headerText: {
     fontFamily: 'var(--font-mono)',
@@ -154,22 +203,30 @@ const styles = {
   },
 };
 
+// ── Component ───────────────────────────────────────────────────
+
 export function SessionSidebar({
   sessions,
   activeId,
   onSelect,
   onSpawn,
   onRefresh,
+  stale = false,
 }: SessionSidebarProps) {
   const hasRunning = sessions.some((s) => s.status === 'running');
+  const health = useConnectionHealth();
 
   return (
     <>
-      {/* Keyframe for status dot pulse — injected inline */}
+      {/* Keyframe for status dot pulse + health dot pulse — injected inline */}
       <style>{`
         @keyframes sidebar-pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.4; }
+        }
+        @keyframes health-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
         }
       `}</style>
 
@@ -185,7 +242,22 @@ export function SessionSidebar({
 
         {/* Header */}
         <div style={styles.header}>
-          <span style={styles.headerText}>Sessions</span>
+          <div style={styles.headerLeft}>
+            <span style={styles.headerText}>Sessions</span>
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: healthDotColor(health),
+                display: 'inline-block',
+                flexShrink: 0,
+                animation: health !== 'connected' ? 'health-pulse 1.5s ease-in-out infinite' : 'none',
+              }}
+              title={healthDotTitle(health)}
+              aria-label={healthDotTitle(health)}
+            />
+          </div>
           <div style={styles.headerActions}>
             <button
               style={styles.iconBtn}
@@ -207,7 +279,13 @@ export function SessionSidebar({
         </button>
 
         {/* Session list */}
-        <div style={styles.sessionList}>
+        <div
+          style={{
+            ...styles.sessionList,
+            opacity: stale ? 0.5 : 1,
+            transition: 'opacity 0.3s ease',
+          }}
+        >
           {sessions.map((session) => {
             const isActive = session.session_id === activeId;
             const isRunning = session.status === 'running' || session.status === 'idle';
