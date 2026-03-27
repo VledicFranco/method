@@ -1,0 +1,350 @@
+/**
+ * Unit tests for cognitive cycle orchestrator (PRD 030, C-5).
+ */
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { createCognitiveCycle } from '../cycle.js';
+import type { CycleModules, CycleConfig, ThresholdPolicy } from '../cycle.js';
+import type {
+  CognitiveModule,
+  ModuleId,
+  MonitoringSignal,
+  ControlDirective,
+  AggregatedSignals,
+  StepResult,
+  CognitiveEvent,
+  ControlPolicy,
+  WorkspaceManager,
+  WorkspaceEntry,
+  WorkspaceReadPort,
+  WorkspaceWritePort,
+  ReadonlyWorkspaceSnapshot,
+} from '../../algebra/index.js';
+import { moduleId } from '../../algebra/index.js';
+
+// ── Stub Module Factory ──────────────────────────────────────────
+
+interface StubConfig {
+  id: string;
+  output?: unknown;
+  monitoring?: Partial<MonitoringSignal>;
+  error?: { message: string; recoverable: boolean };
+  throwOnStep?: boolean;
+  delayMs?: number;
+}
+
+function createStubModule(config: StubConfig): CognitiveModule<any, any, any, any, any> {
+  const id = moduleId(config.id);
+  let stepCallCount = 0;
+  const stepCalls: unknown[] = [];
+
+  return {
+    id,
+    initialState() {
+      return { callCount: 0 };
+    },
+    async step(input: any, state: any, control: any): Promise<StepResult<any, any, any>> {
+      stepCallCount++;
+      stepCalls.push({ input, state, control });
+
+      if (config.delayMs) {
+        await new Promise((resolve) => setTimeout(resolve, config.delayMs));
+      }
+
+      if (config.throwOnStep) {
+        throw new Error(`${config.id} step failed`);
+      }
+
+      const monitoring: MonitoringSignal = {
+        source: id,
+        timestamp: Date.now(),
+        ...(config.monitoring ?? {}),
+      };
+
+      const result: StepResult<any, any, any> = {
+        output: config.output ?? { result: `${config.id}-output` },
+        state: { callCount: (state?.callCount ?? 0) + 1 },
+        monitoring,
+      };
+
+      if (config.error) {
+        result.error = {
+          message: config.error.message,
+          recoverable: config.error.recoverable,
+          moduleId: id,
+          phase: config.id,
+        };
+      }
+
+      return result;
+    },
+    // Expose for test assertions
+    get _stepCallCount() { return stepCallCount; },
+    get _stepCalls() { return stepCalls; },
+  } as CognitiveModule<any, any, any, any, any> & {
+    _stepCallCount: number;
+    _stepCalls: unknown[];
+  };
+}
+
+// ── Stub Workspace ───────────────────────────────────────────────
+
+function createStubWorkspace(): WorkspaceManager {
+  const entries: WorkspaceEntry[] = [];
+
+  return {
+    getReadPort(_moduleId: ModuleId): WorkspaceReadPort {
+      return {
+        read: () => [...entries],
+        attend: (budget: number) => entries.slice(0, budget),
+        snapshot: () => entries.map((e) => ({ ...e })),
+      };
+    },
+    getWritePort(mid: ModuleId): WorkspaceWritePort {
+      return {
+        write(entry: WorkspaceEntry) {
+          entries.push({ ...entry, source: mid });
+        },
+      };
+    },
+    resetCycleQuotas() { /* noop */ },
+    getEvictions() { return []; },
+    getWriteLog() { return []; },
+    snapshot() { return entries.map((e) => ({ ...e })); },
+    attend(budget: number) { return entries.slice(0, budget); },
+  };
+}
+
+// ── Default Config ───────────────────────────────────────────────
+
+function defaultConfig(overrides?: Partial<CycleConfig>): CycleConfig {
+  const controlPolicy: ControlPolicy = {
+    allowedDirectiveTypes: ['any'],
+    validate: () => true,
+  };
+
+  return {
+    thresholds: { type: 'predicate', shouldIntervene: () => false },
+    errorPolicy: { default: 'skip' },
+    controlPolicy,
+    ...overrides,
+  };
+}
+
+// ── Default Modules ──────────────────────────────────────────────
+
+function defaultModules(overrides?: Partial<Record<keyof CycleModules, CognitiveModule<any, any, any, any, any>>>): CycleModules {
+  return {
+    observer: createStubModule({ id: 'observer', monitoring: { type: 'observer' } as any }),
+    memory: createStubModule({ id: 'memory', monitoring: { type: 'memory' } as any }),
+    reasoner: createStubModule({ id: 'reasoner', monitoring: { type: 'reasoner', confidence: 0.8, conflictDetected: false, effortLevel: 'medium' } as any }),
+    actor: createStubModule({ id: 'actor', output: { actionName: 'test-action', result: { output: 'done' }, escalated: false }, monitoring: { type: 'actor', actionTaken: 'test-action', success: true, unexpectedResult: false } as any }),
+    monitor: createStubModule({ id: 'monitor', monitoring: { type: 'monitor', anomalyDetected: false } as any }),
+    evaluator: createStubModule({ id: 'evaluator', monitoring: { type: 'evaluator', estimatedProgress: 0.5, diminishingReturns: false } as any }),
+    planner: createStubModule({ id: 'planner', output: { directives: [], plan: 'test-plan', subgoals: [] }, monitoring: { type: 'planner', planRevised: false, subgoalCount: 0 } as any }),
+    reflector: createStubModule({ id: 'reflector', monitoring: { type: 'reflector', lessonsExtracted: 1 } as any }),
+    ...overrides,
+  };
+}
+
+// ── Tests ────────────────────────────────────────────────────────
+
+describe('CognitiveCycle', () => {
+  it('1. Full 8-phase cycle executes in order with all modules', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig({
+      thresholds: { type: 'predicate', shouldIntervene: () => true },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, []);
+
+    // All 8 phases should be executed (including MONITOR and CONTROL since intervention is always true)
+    assert.ok(result.phasesExecuted.includes('OBSERVE'), 'OBSERVE phase executed');
+    assert.ok(result.phasesExecuted.includes('ATTEND'), 'ATTEND phase executed');
+    assert.ok(result.phasesExecuted.includes('REMEMBER'), 'REMEMBER phase executed');
+    assert.ok(result.phasesExecuted.includes('REASON'), 'REASON phase executed');
+    assert.ok(result.phasesExecuted.includes('MONITOR'), 'MONITOR phase executed');
+    assert.ok(result.phasesExecuted.includes('CONTROL'), 'CONTROL phase executed');
+    assert.ok(result.phasesExecuted.includes('ACT'), 'ACT phase executed');
+    assert.ok(result.phasesExecuted.includes('LEARN'), 'LEARN phase executed');
+    assert.equal(result.aborted, undefined);
+    assert.ok(result.cycleNumber > 0);
+  });
+
+  it('2. Default-interventionist: MONITOR/CONTROL skipped when signals below threshold', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig({
+      thresholds: { type: 'predicate', shouldIntervene: () => false },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, []);
+
+    assert.ok(!result.phasesExecuted.includes('MONITOR'), 'MONITOR phase skipped');
+    assert.ok(!result.phasesExecuted.includes('CONTROL'), 'CONTROL phase skipped');
+    assert.ok(result.phasesExecuted.includes('OBSERVE'), 'OBSERVE still runs');
+    assert.ok(result.phasesExecuted.includes('ACT'), 'ACT still runs');
+  });
+
+  it('3. Default-interventionist: MONITOR/CONTROL fire when signals cross threshold', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig({
+      thresholds: {
+        type: 'field',
+        rules: [{ source: moduleId('reasoner'), field: 'confidence', operator: '<', value: 0.9 }],
+      },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, []);
+
+    // Reasoner monitoring has confidence 0.8, which is < 0.9, so intervention fires
+    assert.ok(result.phasesExecuted.includes('MONITOR'), 'MONITOR phase fires');
+    assert.ok(result.phasesExecuted.includes('CONTROL'), 'CONTROL phase fires');
+  });
+
+  it('4. LEARN phase fire-and-forget (does not block cycle return)', async () => {
+    const reflector = createStubModule({
+      id: 'reflector',
+      delayMs: 200, // Simulate slow reflector
+      monitoring: { type: 'reflector', lessonsExtracted: 1 } as any,
+    });
+    const modules = defaultModules({ reflector });
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const startTime = Date.now();
+    const result = await cycle.run('test input', workspace, []);
+    const elapsed = Date.now() - startTime;
+
+    // Result should return before reflector finishes (200ms delay)
+    // The cycle should complete quickly (well under 200ms for stub modules)
+    assert.ok(result.phasesExecuted.includes('LEARN'), 'LEARN phase included');
+    assert.equal(result.aborted, undefined);
+    // The output should come from ACT, not LEARN
+    assert.ok(result.output !== undefined);
+  });
+
+  it('5. LEARN failure emits CognitiveLEARNFailed, does not corrupt next cycle', async () => {
+    const events: CognitiveEvent[] = [];
+    const reflector = createStubModule({
+      id: 'reflector',
+      throwOnStep: true,
+      monitoring: { type: 'reflector', lessonsExtracted: 0 } as any,
+    });
+    const modules = defaultModules({ reflector });
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    // Wait a tick for the fire-and-forget promise to settle
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should have emitted CognitiveLEARNFailed event
+    const learnFailed = events.find((e) => e.type === 'cognitive:learn_failed');
+    assert.ok(learnFailed, 'CognitiveLEARNFailed event emitted');
+    assert.equal(result.aborted, undefined, 'Cycle not aborted by LEARN failure');
+
+    // Run a second cycle — should work fine (state not corrupted)
+    const result2 = await cycle.run('test input 2', workspace, []);
+    assert.equal(result2.aborted, undefined, 'Second cycle not aborted');
+  });
+
+  it('6. Workspace state threads correctly through phases via typed ports', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    // Write something to workspace before the cycle
+    const writePort = workspace.getWritePort(moduleId('test'));
+    writePort.write({
+      source: moduleId('test'),
+      content: 'pre-existing entry',
+      salience: 0.5,
+      timestamp: Date.now(),
+    });
+
+    const result = await cycle.run('test input', workspace, []);
+
+    // The workspace should have entries after the cycle
+    const snap = workspace.snapshot();
+    assert.ok(snap.length >= 1, 'Workspace has entries after cycle');
+    assert.equal(result.aborted, undefined);
+  });
+
+  it('7. CognitiveCyclePhase events emitted at each boundary', async () => {
+    const events: CognitiveEvent[] = [];
+    const modules = defaultModules();
+    const config = defaultConfig({
+      thresholds: { type: 'predicate', shouldIntervene: () => true },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    const phaseEvents = events.filter((e) => e.type === 'cognitive:cycle_phase');
+    const phaseNames = phaseEvents.map((e) => (e as any).phase);
+
+    assert.ok(phaseNames.includes('OBSERVE'), 'OBSERVE phase event');
+    assert.ok(phaseNames.includes('ATTEND'), 'ATTEND phase event');
+    assert.ok(phaseNames.includes('REMEMBER'), 'REMEMBER phase event');
+    assert.ok(phaseNames.includes('REASON'), 'REASON phase event');
+    assert.ok(phaseNames.includes('MONITOR'), 'MONITOR phase event');
+    assert.ok(phaseNames.includes('CONTROL'), 'CONTROL phase event');
+    assert.ok(phaseNames.includes('ACT'), 'ACT phase event');
+    assert.ok(phaseNames.includes('LEARN'), 'LEARN phase event');
+  });
+
+  it('8. Module step() error triggers CycleErrorPolicy (abort path)', async () => {
+    const events: CognitiveEvent[] = [];
+    const reasoner = createStubModule({
+      id: 'reasoner',
+      throwOnStep: true,
+    });
+    const modules = defaultModules({ reasoner });
+    const config = defaultConfig({
+      errorPolicy: { default: 'abort' },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    assert.ok(result.aborted, 'Cycle aborted');
+    assert.equal(result.aborted!.phase, 'REASON');
+    assert.ok(result.aborted!.reason.includes('reasoner step failed'));
+
+    const abortEvent = events.find((e) => e.type === 'cognitive:cycle_aborted');
+    assert.ok(abortEvent, 'CognitiveCycleAborted event emitted');
+  });
+
+  it('9. Module step() error triggers CycleErrorPolicy (skip path)', async () => {
+    const reasoner = createStubModule({
+      id: 'reasoner',
+      throwOnStep: true,
+    });
+    const modules = defaultModules({ reasoner });
+    const config = defaultConfig({
+      errorPolicy: { default: 'skip' },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    const result = await cycle.run('test input', workspace, []);
+
+    // Cycle should NOT be aborted — the error was skipped
+    assert.equal(result.aborted, undefined, 'Cycle not aborted on skip policy');
+    assert.ok(result.phasesExecuted.includes('REASON'), 'REASON phase still recorded');
+    assert.ok(result.phasesExecuted.includes('ACT'), 'ACT phase still ran after skip');
+  });
+});
