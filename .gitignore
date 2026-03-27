@@ -1,6 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.env
+.env.local
 
 # stale docs — experiments, impl scratch, research
 docs/exp/
