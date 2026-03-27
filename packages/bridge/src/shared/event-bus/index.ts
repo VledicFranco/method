@@ -6,4 +6,6 @@ export { PersistenceSink, type PersistenceSinkOptions } from './persistence-sink
 export { ChannelSink, type ChannelSinkOptions, getChannelTarget } from './channel-sink.js';
 export { GenesisSink, type GenesisSinkOptions, type GenesisPromptCallback } from './genesis-sink.js';
 export { WebhookConnector, type WebhookConnectorOptions } from './webhook-connector.js';
+export { SessionCheckpointSink, type SessionCheckpointSinkOptions, type PersistedSessionInput } from './session-checkpoint-sink.js';
+export { createAgentEventAdapter } from './agent-event-adapter.js';
 export { toChannelMessage, toAllEventsWrapper } from './adapters.js';
