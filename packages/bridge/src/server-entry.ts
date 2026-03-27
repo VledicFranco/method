@@ -6,7 +6,6 @@ import { createPool } from './domains/sessions/pool.js';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
 import { createTokenTracker } from './domains/tokens/tracker.js';
 import { registerTokenRoutes } from './domains/tokens/routes.js';
-import { registerLiveOutputRoutes } from './domains/sessions/live-output-route.js';
 import { registerTranscriptRoutes } from './domains/sessions/transcript-route.js';
 import { createTranscriptReader } from './domains/sessions/transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
@@ -218,10 +217,6 @@ if (process.env.EVENT_CONNECTOR_WEBHOOK_URL) {
   });
   eventBus.registerSink(webhookConnector);
 }
-
-// ---------- Live Output (PRD 007 Phase 2) ----------
-
-registerLiveOutputRoutes(app, pool);
 
 // ---------- Transcript Browser (PRD 007 Phase 3) ----------
 

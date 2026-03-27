@@ -24,7 +24,6 @@ export type { ChannelMessage, SessionChannels } from './channels.js';
 export { registerSessionRoutes } from './routes.js';
 export type { SessionRouteDeps } from './routes.js';
 
-export { registerLiveOutputRoutes } from './live-output-route.js';
 export { registerTranscriptRoutes } from './transcript-route.js';
 export { createTranscriptReader } from './transcript-reader.js';
 

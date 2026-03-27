@@ -140,7 +140,11 @@ function createTestPool(maxSessions = 5) {
       const session = sessions.get(sessionId);
       if (!session) throw new Error(`Session not found: ${sessionId}`);
       if (session.status === 'dead') throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
-      return session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+      const result = await session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+      // Read printMetadata in-place (same tick — no race); fake sessions return null
+      const printSession = session as unknown as { printMetadata?: import('./print-session.js').PrintMetadata | null };
+      const metadata = printSession.printMetadata ?? null;
+      return { output: result.output, timedOut: result.timedOut, metadata };
     },
 
     status(sessionId) {
@@ -317,6 +321,42 @@ describe('SessionPool', () => {
       await assert.rejects(
         () => pool.create({ workdir: '/tmp/d' }),
         /pool full/,
+      );
+    });
+  });
+
+  describe('prompt()', () => {
+    it('returns output and timedOut from sendPrompt', async () => {
+      const result = await pool.create({ workdir: '/tmp/test' });
+      const promptResult = await pool.prompt(result.sessionId, 'hello');
+
+      assert.equal(promptResult.output, 'mock response');
+      assert.equal(promptResult.timedOut, false);
+    });
+
+    it('returns metadata key in result (null for fake sessions without printMetadata)', async () => {
+      const result = await pool.create({ workdir: '/tmp/test' });
+      const promptResult = await pool.prompt(result.sessionId, 'hello');
+
+      // metadata key must be present — value is null for sessions that don't expose printMetadata
+      assert.ok(Object.prototype.hasOwnProperty.call(promptResult, 'metadata'), 'metadata key must be present');
+      assert.equal(promptResult.metadata, null);
+    });
+
+    it('throws for unknown session', async () => {
+      await assert.rejects(
+        () => pool.prompt('nonexistent-id', 'hello'),
+        /not found/,
+      );
+    });
+
+    it('throws for dead session', async () => {
+      const result = await pool.create({ workdir: '/tmp/test' });
+      pool.kill(result.sessionId);
+
+      await assert.rejects(
+        () => pool.prompt(result.sessionId, 'hello'),
+        /dead/,
       );
     });
   });

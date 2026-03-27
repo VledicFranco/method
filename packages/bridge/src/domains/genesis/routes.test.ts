@@ -112,6 +112,7 @@ function createMockSessionPool(
       return {
         output: `Genesis processed: ${prompt}`,
         timedOut: false,
+        metadata: null,
       };
     },
 
@@ -637,7 +638,7 @@ describe('Genesis HTTP Routes', () => {
         mode: 'print' as const,
         diagnostics: null,
       }),
-      prompt: async () => ({ output: 'test', timedOut: false }),
+      prompt: async () => ({ output: 'test', timedOut: false, metadata: null }),
       create: async () => { throw new Error('Not implemented'); },
       kill: () => { throw new Error('Not implemented'); },
       list: () => [],

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { createPrintSession, type PtySession } from './print-session.js';
+import { createPrintSession, type PtySession, type PrintMetadata } from './print-session.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
@@ -97,7 +97,7 @@ export interface SessionPool {
     /** Optional session ID — if provided, reuses this ID instead of generating a new UUID. Used for resuming sessions with Claude Code's --resume flag. */
     session_id?: string;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
-  prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean };
   list(): SessionStatusInfo[];
@@ -498,7 +498,7 @@ export function createPool(options?: PoolOptions): SessionPool {
       return { sessionId, nickname: assignedNickname, status: session.status, chain: chainInfo, worktree: worktreeInfo, mode: effectiveMode };
     },
 
-    async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
+    async prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }> {
       const session = sessions.get(sessionId);
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
@@ -515,7 +515,11 @@ export function createPool(options?: PoolOptions): SessionPool {
         tracker.recordPromptCompletion();
       }
 
-      return result;
+      // Read printMetadata in-place after sendPrompt resolves (same tick — no race)
+      const printSession = session as unknown as { printMetadata?: PrintMetadata | null };
+      const metadata = printSession.printMetadata ?? null;
+
+      return { output: result.output, timedOut: result.timedOut, metadata };
     },
 
     status(sessionId: string): SessionStatusInfo {

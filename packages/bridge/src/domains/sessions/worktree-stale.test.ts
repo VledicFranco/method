@@ -158,7 +158,8 @@ function createStaleTestPool(maxSessions = 5) {
       if (session.status === 'dead') throw new Error(`Session ${sessionId} is dead`);
       // Reset stale flag on activity
       sessionStaleFlags.set(sessionId, false);
-      return session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+      const result = await session.sendPrompt(prompt, timeoutMs, settleDelayMs);
+      return { output: result.output, timedOut: result.timedOut, metadata: null };
     },
 
     status(sessionId) {
