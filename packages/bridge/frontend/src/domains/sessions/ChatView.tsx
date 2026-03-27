@@ -299,7 +299,48 @@ function MarkdownOutput({ content }: { content: string }) {
     <div className="chat-markdown">
       <ReactMarkdown
         components={{
-          code: CodeBlock as any,
+          code(props: any) {
+            const { children, className, node, ...rest } = props;
+            const match = /language-(\w+)/.exec(className || '');
+            const codeStr = String(children).replace(/\n$/, '');
+            const isBlock = !!match || codeStr.includes('\n');
+
+            if (isBlock) {
+              const lang = match ? match[1] : 'text';
+              return (
+                <div style={codeBlockContainerStyle}>
+                  <div style={codeHeaderStyle}>
+                    <span>{lang}</span>
+                    <CopyButton text={codeStr} />
+                  </div>
+                  <SyntaxHighlighter
+                    style={oneDark}
+                    language={lang}
+                    PreTag="div"
+                    customStyle={{
+                      margin: 0,
+                      padding: '12px',
+                      background: 'transparent',
+                      fontSize: '12px',
+                      lineHeight: 1.5,
+                    }}
+                    codeTagProps={{ style: { fontFamily: 'var(--font-mono)' } }}
+                  >
+                    {codeStr}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            }
+
+            return (
+              <code style={inlineCodeStyle} className={className} {...rest}>
+                {children}
+              </code>
+            );
+          },
+          pre(props: any) {
+            return <>{props.children}</>;
+          },
         }}
       >
         {content}
