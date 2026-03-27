@@ -461,10 +461,15 @@ export function registerStrategyRoutes(
       return reply.status(500).send({ error: `Failed to write strategy file: ${(e as Error).message}` });
     }
 
+    // Hot-reload triggers so new webhook routes get registered
+    try {
+      await fetch(`http://localhost:${process.env.PORT ?? 3456}/triggers/reload`, { method: 'POST' });
+    } catch { /* non-fatal — triggers reload on next manual reload */ }
+
     return reply.status(201).send({
       id: normalizedId,
       file_path: `${normalizedId}.yaml`,
-      created: true,
+      message: `Strategy '${normalizedId}' created successfully.`,
     });
   });
 
@@ -500,10 +505,15 @@ export function registerStrategyRoutes(
       return reply.status(500).send({ error: `Failed to write strategy file: ${(e as Error).message}` });
     }
 
+    // Hot-reload triggers so webhook routes get updated
+    try {
+      await fetch(`http://localhost:${process.env.PORT ?? 3456}/triggers/reload`, { method: 'POST' });
+    } catch { /* non-fatal */ }
+
     return reply.status(200).send({
       id: normalizedId,
       file_path: `${normalizedId}.yaml`,
-      updated: true,
+      message: `Strategy '${normalizedId}' updated successfully.`,
     });
   });
 
@@ -532,9 +542,15 @@ export function registerStrategyRoutes(
       return reply.status(500).send({ error: `Failed to delete strategy file: ${(e as Error).message}` });
     }
 
+    // Hot-reload triggers so deleted webhook routes return 404
+    try {
+      await fetch(`http://localhost:${process.env.PORT ?? 3456}/triggers/reload`, { method: 'POST' });
+    } catch { /* non-fatal */ }
+
     return reply.status(200).send({
       id: normalizedId,
       deleted: true,
+      message: `Strategy '${normalizedId}' deleted successfully.`,
     });
   });
 
@@ -557,6 +573,11 @@ export function registerStrategyRoutes(
         error: `Failed to read strategy directory: ${(e as Error).message}`,
       });
     }
+
+    // Also hot-reload trigger registrations + webhook routes
+    try {
+      await fetch(`http://localhost:${process.env.PORT ?? 3456}/triggers/reload`, { method: 'POST' });
+    } catch { /* non-fatal */ }
 
     return reply.status(200).send({
       reloaded: true,
