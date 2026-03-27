@@ -417,10 +417,17 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
 
         switch (config.monitor.onStagnation) {
           case 'constrain':
-            // Current behavior: restrict actions + force replan
-            raControl.restrictedActions = monResult.output.restrictedActions;
-            raControl.forceReplan = monResult.output.forceReplan;
-            if (monResult.output.forceReplan) raControl.strategy = 'think';
+            if (config.monitor.name === 'hybrid' && interventionsUsed >= 3) {
+              // Hybrid escalation: after 3 constrain attempts, switch to reframe
+              raControl.restrictedActions = [];
+              raControl.forceReplan = true;
+              raControl.strategy = 'think';
+            } else {
+              // Standard constrain: restrict actions + force replan
+              raControl.restrictedActions = monResult.output.restrictedActions;
+              raControl.forceReplan = monResult.output.forceReplan;
+              if (monResult.output.forceReplan) raControl.strategy = 'think';
+            }
             break;
 
           case 'reframe':

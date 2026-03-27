@@ -155,6 +155,14 @@ export const MONITOR_STRATEGIES: Record<string, MonitorStrategy> = {
     interventionBudget: 3,
     trackUtility: true,
   },
+
+  'hybrid': {
+    name: 'hybrid',
+    stagnationThreshold: 2,
+    onStagnation: 'constrain',  // start with constrain-force
+    interventionBudget: 5,      // after 3 constrain interventions, switch to reframe
+    trackUtility: true,
+  },
 };
 
 // ── Prompt Strategy ─────────────────────────────────────────────
@@ -306,6 +314,13 @@ export const CONFIGS: Record<string, CognitiveConfig> = {
     name: 'v2-thane',
     workspace: WORKSPACE_STRATEGIES['chunked-4'],
     monitor: MONITOR_STRATEGIES['full'],
+    prompt: PROMPT_STRATEGIES['anchored'],
+  },
+
+  'v3-hybrid': {
+    name: 'v3-hybrid',
+    workspace: WORKSPACE_STRATEGIES['summary'],
+    monitor: MONITOR_STRATEGIES['hybrid'],
     prompt: PROMPT_STRATEGIES['anchored'],
   },
 };
