@@ -187,4 +187,14 @@ Orchestrator applies before Wave 1:
 ## Status Tracker
 
 Total: 6 commissions, 4 waves (0-3)
-Completed: 0 / 6
+Completed:
+  - Wave 0 (shared surfaces) ✅ — MemoryPort v2, EmbeddingPort, InMemoryMemory
+  - C-2 (Memory Module v2) ✅ — retrieval gate, fact extraction, compaction
+  - C-5 (JSONL persistence) ✅ — FactCardStore with load/save/exportMarkdown
+  - C-6 (Experiment harness) ✅ — --memory flag, prevAction tracking, stats logging
+In progress:
+  - A/B testing memory module on Task 02 (investigating potential interference)
+Pending:
+  - C-1 (port tests — deferred, impl verified via compilation + integration test)
+  - C-3 (Epistemic typing + confidence — deferred to after A/B validation)
+  - C-4 (Hybrid retrieval — needs Voyage API key setup)
