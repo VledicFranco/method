@@ -288,11 +288,22 @@ export function createActor(
         const success = !result.isError;
         const unexpectedResult = !!result.isError || result.output === null || result.output === undefined || result.output === '';
 
+        // Format tool result clearly so the reasoner can distinguish it from reasoning traces
+        const outputText = typeof result.output === 'string'
+          ? result.output.slice(0, 3000)  // cap very long outputs
+          : JSON.stringify(result.output);
+        const toolResultContent = [
+          `=== Tool Result: ${toolName} ===`,
+          `Input: ${JSON.stringify(toolInput)}`,
+          `Status: ${success ? 'SUCCESS' : 'ERROR'}`,
+          `Output:\n${outputText}`,
+        ].join('\n');
+
         // Write action result to workspace
         const entry: WorkspaceEntry = {
           source: id,
-          content: result.output ?? '',
-          salience: success ? 0.7 : 0.3,
+          content: toolResultContent,
+          salience: success ? 0.8 : 0.4,
           timestamp: Date.now(),
         };
         writePort.write(entry);

@@ -29,6 +29,8 @@ import { moduleId } from '../algebra/index.js';
 export interface MonitorConfig {
   /** Confidence threshold below which an anomaly is flagged. Default: 0.3. */
   confidenceThreshold?: number;
+  /** Consecutive read-only cycles before flagging stagnation. Default: 3. */
+  stagnationThreshold?: number;
   /** Module ID override. Default: 'monitor'. */
   id?: string;
 }
@@ -56,6 +58,8 @@ export interface MonitorState {
   conflictCount: number;
   /** Cycle counter. */
   cycleCount: number;
+  /** Cycles where actor only read, no writes. */
+  consecutiveReadOnlyCycles: number;
 }
 
 /**
@@ -63,6 +67,10 @@ export interface MonitorState {
  * Uses a discriminant that can never be constructed at runtime.
  */
 export type NoControl = ControlDirective & { readonly __noControl: never };
+
+// ── Constants ───────────────────────────────────────────────────────
+
+const READ_ONLY_ACTIONS = new Set(['Read', 'Glob', 'Grep', 'none', 'error', 'escalate']);
 
 // ── Factory ────────────────────────────────────────────────────────
 
@@ -79,6 +87,7 @@ export function createMonitor(
   config?: MonitorConfig,
 ): CognitiveModule<AggregatedSignals, MonitorReport, MonitorState, MonitorMonitoring, NoControl> {
   const threshold = config?.confidenceThreshold ?? 0.3;
+  const stagnationThreshold = config?.stagnationThreshold ?? 3;
   const id = moduleId(config?.id ?? 'monitor');
 
   return {
@@ -92,6 +101,7 @@ export function createMonitor(
       const anomalies: Anomaly[] = [];
       let hasLowConfidence = false;
       let hasUnexpectedResult = false;
+      let actorWasReadOnly: boolean | null = null; // null = no actor signal this cycle
 
       // Accumulate running averages from new signals
       let newConfidenceSum = state.confidenceAverage * state.confidenceObservations;
@@ -118,7 +128,7 @@ export function createMonitor(
           }
         }
 
-        // Check actor signals for unexpected results
+        // Check actor signals for unexpected results and stagnation
         if (isActorMonitoring(signal)) {
           if (signal.unexpectedResult) {
             hasUnexpectedResult = true;
@@ -128,7 +138,24 @@ export function createMonitor(
               detail: `Unexpected result from action: ${signal.actionTaken}`,
             });
           }
+          actorWasReadOnly = READ_ONLY_ACTIONS.has(signal.actionTaken);
         }
+      }
+
+      // Only update stagnation counter if we saw an actor signal
+      const newConsecutiveReadOnly = actorWasReadOnly === null
+        ? state.consecutiveReadOnlyCycles  // no actor signal, preserve counter
+        : actorWasReadOnly
+          ? state.consecutiveReadOnlyCycles + 1
+          : 0;  // reset on write
+
+      // Stagnation: too many cycles without a write
+      if (newConsecutiveReadOnly >= stagnationThreshold) {
+        anomalies.push({
+          moduleId: id,
+          type: 'low-confidence',
+          detail: `Stagnation: ${newConsecutiveReadOnly} consecutive read-only cycles (threshold: ${stagnationThreshold})`,
+        });
       }
 
       // Compound anomaly: both low confidence AND unexpected result
@@ -150,6 +177,7 @@ export function createMonitor(
         confidenceObservations: newConfidenceCount,
         conflictCount: newConflictCount,
         cycleCount: state.cycleCount + 1,
+        consecutiveReadOnlyCycles: newConsecutiveReadOnly,
       };
 
       const monitoring: MonitorMonitoring = {
@@ -173,6 +201,7 @@ export function createMonitor(
         confidenceObservations: 0,
         conflictCount: 0,
         cycleCount: 0,
+        consecutiveReadOnlyCycles: 0,
       };
     },
 
@@ -182,7 +211,8 @@ export function createMonitor(
         state.conflictCount >= 0 &&
         state.cycleCount >= 0 &&
         state.confidenceAverage >= 0 &&
-        state.confidenceAverage <= 1
+        state.confidenceAverage <= 1 &&
+        state.consecutiveReadOnlyCycles >= 0
       );
     },
   };

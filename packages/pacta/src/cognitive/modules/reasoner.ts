@@ -40,6 +40,8 @@ export interface ActionInstruction {
   input: unknown;
   /** Why this action was chosen. */
   rationale: string;
+  /** Self-reported confidence (0-1). */
+  confidence?: number;
 }
 
 /** Output of the reasoner: the reasoning trace. */
@@ -62,6 +64,8 @@ export interface ReasonerState {
   lastConfidence: number;
   /** Accumulated chain-of-thought across steps. */
   chainOfThought: string[];
+  /** Cumulative real token count. */
+  totalTokensUsed: number;
 }
 
 /** Control directive for the reasoner. */
@@ -100,8 +104,10 @@ After your reasoning, output exactly ONE action block specifying what tool to ca
 Use this exact format:
 
 <action>
-{"tool": "ToolName", "input": {"param": "value"}, "rationale": "why this action"}
+{"tool": "ToolName", "input": {"param": "value"}, "rationale": "why this action", "confidence": 0.8}
 </action>
+
+"confidence": a number 0.0 (very uncertain) to 1.0 (certain this is the right action)
 
 Available tool input schemas:
 - Read: {"file_path": "path/to/file"}
@@ -113,7 +119,7 @@ Available tool input schemas:
 
 If the task is complete and no further action is needed, output:
 <action>
-{"tool": "done", "input": {}, "rationale": "task complete"}
+{"tool": "done", "input": {}, "rationale": "task complete", "confidence": 1.0}
 </action>
 `;
 
@@ -157,11 +163,15 @@ function parseActionBlock(text: string): ActionInstruction | undefined {
   try {
     const parsed = JSON.parse(match[1]);
     if (typeof parsed.tool === 'string' && parsed.input !== undefined) {
-      return {
+      const instruction: ActionInstruction = {
         tool: parsed.tool,
         input: parsed.input,
         rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
       };
+      if (typeof parsed.confidence === 'number' && parsed.confidence >= 0 && parsed.confidence <= 1) {
+        instruction.confidence = parsed.confidence;
+      }
+      return instruction;
     }
   } catch {
     // JSON parse failed — malformed action block, ignore
@@ -211,6 +221,7 @@ export function createReasoner(
         invocationCount: 0,
         lastConfidence: 0,
         chainOfThought: [],
+        totalTokensUsed: 0,
       };
     },
 
@@ -233,13 +244,18 @@ export function createReasoner(
 
         const result = await adapter.invoke(input.snapshot, adapterConfig);
         const trace = result.output;
+        const realTokens = result.usage.totalTokens;
 
         // Extract confidence and conflict signals
-        const confidence = extractConfidence(trace);
         const conflictDetected = detectConflict(trace);
 
         // Parse structured action instruction from LLM response
         const action = parseActionBlock(trace);
+
+        // Use self-reported confidence from action block if present, else extract heuristically
+        const confidence = (action?.confidence !== undefined)
+          ? action.confidence
+          : extractConfidence(trace);
 
         // Write reasoning trace to workspace
         const traceEntry: WorkspaceEntry = {
@@ -266,6 +282,7 @@ export function createReasoner(
           invocationCount: state.invocationCount + 1,
           lastConfidence: confidence,
           chainOfThought: [...state.chainOfThought, trace],
+          totalTokensUsed: state.totalTokensUsed + realTokens,
         };
 
         const monitoring: ReasonerMonitoring = {
@@ -275,6 +292,7 @@ export function createReasoner(
           confidence,
           conflictDetected,
           effortLevel: control.effort,
+          tokensThisStep: realTokens,
         };
 
         return {
@@ -297,6 +315,7 @@ export function createReasoner(
           confidence: 0,
           conflictDetected: false,
           effortLevel: control.effort,
+          tokensThisStep: 0,
         };
 
         return {

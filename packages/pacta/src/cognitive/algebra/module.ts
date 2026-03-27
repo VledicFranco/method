@@ -33,6 +33,7 @@ export interface ReasonerMonitoring extends MonitoringSignal {
   confidence: number;
   conflictDetected: boolean;
   effortLevel: string;
+  tokensThisStep?: number;  // actual tokens consumed by this LLM invocation (undefined in test stubs)
 }
 
 /** Actor monitoring: action outcome tracking. */

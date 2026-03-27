@@ -47,6 +47,7 @@ import {
   createWorkspace,
   createProviderAdapter,
 } from '../../packages/pacta/src/cognitive/algebra/index.js';
+import type { AggregatedSignals, ActorMonitoring } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
 import { createReasoner, type ReasonerControl } from '../../packages/pacta/src/cognitive/modules/reasoner.js';
 import { createActor, type ActorControl } from '../../packages/pacta/src/cognitive/modules/actor.js';
@@ -108,7 +109,7 @@ async function runFlat(task: typeof TASK_01, runNumber: number): Promise<RunResu
         budget: { maxTurns: 15, maxOutputTokens: 4096 },
       },
       {
-        prompt: task.description,
+        prompt: task.baseDescription,
         systemPrompt: 'You are a coding assistant. Use the available tools (Read, Write, Edit, Glob, Grep) to complete the task. Work step by step.',
       },
     );
@@ -224,8 +225,8 @@ async function readSessionToolCalls(
 async function runCliAgent(task: typeof TASK_01, runNumber: number): Promise<RunResult> {
   const startTime = Date.now();
 
-  // Strip the cognitive-specific "done" signal instruction
-  const prompt = task.description.replace(/\n\nWhen you are done.*?action\./s, '').trim();
+  // Use baseDescription — no cognitive-specific "done" signal
+  const prompt = task.baseDescription;
 
   // Create a real tmp directory and write initial files.
   // Use process.cwd() (the repo root) rather than import.meta.dirname which may fall back
@@ -240,10 +241,15 @@ async function runCliAgent(task: typeof TASK_01, runNumber: number): Promise<Run
   }
 
   try {
-    // No allowedTools restriction — let Claude use its full tool set (Bash, Read, Agent, etc).
-    // This runs in the full Claude Code context (with CLAUDE.md, MCP servers, skills available),
-    // which is intentional: it shows how Claude Code natively approaches coding tasks.
-    const provider = claudeCliProvider({ timeoutMs: 300_000 });
+    // Disallow AskUserQuestion and Agent to keep the CLI condition comparable.
+    const childProcess = await import('node:child_process');
+    const provider = claudeCliProvider({
+      timeoutMs: 300_000,
+      executorOptions: {
+        spawnFn: (binary: string, args: string[], options: Parameters<typeof childProcess.spawn>[2]) =>
+          childProcess.spawn(binary, ['--disallowedTools', 'AskUserQuestion,Agent', ...args], options),
+      },
+    });
 
     const result = await provider.invoke(
       { mode: { type: 'oneshot' } },
@@ -363,6 +369,7 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
   let reasonerState = reasoner.initialState();
   let actorState = actor.initialState();
   let monitorState = monitor.initialState();
+  let prevActorMonitoring: ActorMonitoring | null = null;
 
   try {
     for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
@@ -378,27 +385,27 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
       const reasonResult = await reasoner.step({ snapshot }, reasonerState, reasonerControl);
       reasonerState = reasonResult.state;
       providerCalls++;
-      totalTokens += 500; // approximate — real usage tracked by adapter
+      totalTokens += reasonResult.monitoring.tokensThisStep ?? 0;
 
-      const confidence = reasonResult.monitoring.confidence;
-
-      // 3. MONITOR (default-interventionist) — check if confidence is low
-      if (confidence < 0.3 || (cycle > 0 && reasonResult.monitoring.conflictDetected)) {
-        const signals = new Map();
-        signals.set(moduleId('reasoner'), reasonResult.monitoring);
-        const monResult = await monitor.step(signals, monitorState, { target: moduleId('monitor'), timestamp: Date.now() } as any);
-        monitorState = monResult.state;
-        if (monResult.monitoring.anomalyDetected) {
-          monitorInterventions++;
-          // Strategy shift: switch to 'think' for deeper deliberation
-          reasonerControl.strategy = 'think';
-        }
+      // 3. MONITOR — always run with reasoner signal + previous cycle's actor signal
+      const monitorSignals: AggregatedSignals = new Map();
+      monitorSignals.set(moduleId('reasoner'), reasonResult.monitoring);
+      if (prevActorMonitoring) {
+        monitorSignals.set(moduleId('actor'), prevActorMonitoring);
+      }
+      const monResult = await monitor.step(monitorSignals, monitorState, { target: moduleId('monitor'), timestamp: Date.now() } as any);
+      monitorState = monResult.state;
+      if (monResult.monitoring.anomalyDetected) {
+        monitorInterventions++;
+        // Strategy shift: switch to 'think' for deeper deliberation
+        reasonerControl.strategy = 'think';
       }
 
       // 4. ACT — execute the action instruction from Reasoner
       const actorSnapshot: ReadonlyWorkspaceSnapshot = workspace.getReadPort(moduleId('actor')).read();
       const actResult = await actor.step({ snapshot: actorSnapshot }, actorState, actorControl);
       actorState = actResult.state;
+      prevActorMonitoring = actResult.monitoring;
 
       if (actResult.output.result) {
         allToolCalls.push({
@@ -407,6 +414,10 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
           success: actResult.monitoring.success,
         });
       }
+
+      // Per-cycle trace logging
+      const monitorTag = monResult.monitoring.anomalyDetected ? ' ⚠ monitor' : '';
+      console.log(`    [cycle ${cycle + 1}] ${actResult.output.actionName}  conf=${reasonResult.monitoring.confidence.toFixed(2)}  tok=${reasonResult.monitoring.tokensThisStep ?? 0}${monitorTag}`);
 
       // Check for completion
       if (actResult.output.actionName === 'done') {
