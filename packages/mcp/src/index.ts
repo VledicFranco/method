@@ -631,6 +631,64 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "strategy_create",
+      description: "Create a new strategy definition YAML file. Writes to .method/strategies/{id}.yaml. The strategy becomes available for execution and trigger registration after creation.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          id: {
+            type: "string",
+            description: "Strategy ID (alphanumeric + hyphens, normalized to lowercase kebab-case for filename)",
+          },
+          yaml: {
+            type: "string",
+            description: "Full strategy YAML content",
+          },
+        },
+        required: ["id", "yaml"],
+      },
+    },
+    {
+      name: "strategy_update",
+      description: "Update an existing strategy definition by replacing its YAML content. The strategy must already exist.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          strategy_id: {
+            type: "string",
+            description: "Strategy ID to update",
+          },
+          yaml: {
+            type: "string",
+            description: "Full replacement YAML content",
+          },
+        },
+        required: ["strategy_id", "yaml"],
+      },
+    },
+    {
+      name: "strategy_delete",
+      description: "Delete a strategy definition YAML file. Removes the file from .method/strategies/.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          strategy_id: {
+            type: "string",
+            description: "Strategy ID to delete",
+          },
+        },
+        required: ["strategy_id"],
+      },
+    },
+    {
+      name: "strategy_reload",
+      description: "Force reload all strategy definitions from .method/strategies/. Re-reads all YAML files and returns the new definition count.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
+    {
       name: "trigger_list",
       description: "List all registered event triggers with status and stats. Optionally filter by strategy ID.",
       inputSchema: {
@@ -869,6 +927,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "bridge_all_events":
       case "strategy_execute":
       case "strategy_status":
+      case "strategy_create":
+      case "strategy_update":
+      case "strategy_delete":
+      case "strategy_reload":
       case "trigger_list":
       case "trigger_enable":
       case "trigger_disable":
