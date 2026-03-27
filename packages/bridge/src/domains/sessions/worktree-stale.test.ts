@@ -307,6 +307,10 @@ function createStaleTestPool(maxSessions = 5) {
     setObservationHook() {
       // no-op in test pool
     },
+
+    restoreSession() {
+      // no-op in test pool
+    },
   };
 
   return pool;

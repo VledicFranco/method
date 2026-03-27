@@ -3,6 +3,7 @@
 export { createPool } from './pool.js';
 export type {
   SessionPool,
+  SessionSnapshot,
   SessionBudget,
   SessionChainInfo,
   SessionMode,

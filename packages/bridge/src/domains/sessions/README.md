@@ -66,6 +66,14 @@ Session list updates are signal-driven via BridgeEvents (`session.prompt.complet
 
 All session state flows through `SessionPool`. No route handler, event sink, or external consumer mutates session state directly. The pool enforces spawn limits, stale detection, budget constraints, and kill semantics.
 
+### I-8: Restored sessions are inert
+
+`pool.restoreSession()` hydrates internal Maps from a `SessionSnapshot` without spawning a process. The restored session is a minimal stub that lazy-upgrades to a real print session on first `sendPrompt()` (with `recovered: true` to trigger `--resume`). Restored sessions do not increment `totalSpawned`.
+
+### I-9: Agent hoisted to session scope
+
+`createAgent()` is called exactly once per `createPrintSession()` closure — at session scope, not inside `sendPrompt()`. This ensures `agent.state` accumulates cost, turns, and tokens across all invocations. The architecture gate `I-9` in `architecture.test.ts` enforces this structurally.
+
 ## Modules
 
 | Module | Purpose |

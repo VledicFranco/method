@@ -101,4 +101,6 @@ export class MockSessionPool implements SessionPool {
   }
 
   setObservationHook(): void {}
+
+  restoreSession(): void {}
 }

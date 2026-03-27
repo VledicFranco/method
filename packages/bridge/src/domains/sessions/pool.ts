@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { createPrintSession, type PtySession, type PrintMetadata } from './print-session.js';
+import { createPrintSession, type PtySession, type PrintMetadata, type SessionStatus } from './print-session.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
@@ -74,6 +74,21 @@ export interface PoolStats {
   deadSessions: number;
 }
 
+/** PRD 029: Snapshot of a session's state for recovery / restoration. */
+export interface SessionSnapshot {
+  session_id: string;
+  nickname: string;
+  purpose?: string;
+  workdir: string;
+  mode: SessionMode;
+  status: string;
+  depth: number;
+  parent_session_id?: string | null;
+  isolation: IsolationMode;
+  metadata?: Record<string, unknown>;
+  prompt_count: number;
+}
+
 export interface SessionPool {
   create(options: {
     workdir: string;
@@ -110,6 +125,8 @@ export interface SessionPool {
   childPids(): number[];
   /** PRD 018: Set a pool-level observation hook for forwarding PTY observations to the trigger system. */
   setObservationHook(hook: ((observation: { category: string; detail: Record<string, unknown>; session_id: string }) => void) | null): void;
+  /** PRD 029: Restore a session from a persisted snapshot without spawning a process. */
+  restoreSession(snapshot: SessionSnapshot): void;
 }
 
 export interface PoolOptions {
@@ -821,6 +838,106 @@ export function createPool(options?: PoolOptions): SessionPool {
 
     setObservationHook(_hook) {
       // PTY watcher removed in PRD 028 C-4. Observation hook is now a no-op.
+    },
+
+    restoreSession(snapshot: SessionSnapshot): void {
+      const sid = snapshot.session_id;
+
+      // Duplicate restore — silently skip if session already exists
+      if (sessions.has(sid)) {
+        return;
+      }
+
+      // Build a minimal PtySession stub that is compatible with pool operations.
+      // The stub does not spawn a process — it is a placeholder for recovered state.
+      // Sending a prompt creates a real print session under the hood (recovered mode).
+      let status: SessionStatus = (snapshot.status === 'dead' ? 'dead' : 'ready') as SessionStatus;
+      let promptCount = snapshot.prompt_count;
+      let lastActivityAt = new Date();
+      let transcript = '';
+      const outputSubscribers = new Set<(data: string) => void>();
+      const exitCallbacks: Array<(exitCode: number) => void> = [];
+      let lastMetadata: PrintMetadata | null = null;
+
+      const stubSession: PtySession & { readonly printMetadata: PrintMetadata | null } = {
+        id: sid,
+        get pid() { return null; },
+        get status() { return status; },
+        set status(s: SessionStatus) { status = s; },
+        get queueDepth() { return 0; },
+        get promptCount() { return promptCount; },
+        set promptCount(n: number) { promptCount = n; },
+        get lastActivityAt() { return lastActivityAt; },
+        set lastActivityAt(d: Date) { lastActivityAt = d; },
+        get transcript() { return transcript; },
+        onOutput(cb: (data: string) => void): () => void {
+          outputSubscribers.add(cb);
+          return () => { outputSubscribers.delete(cb); };
+        },
+        onExit(cb: (exitCode: number) => void): void {
+          exitCallbacks.push(cb);
+        },
+        sendPrompt(prompt: string, _timeoutMs?: number, _settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }> {
+          if (status === 'dead') {
+            return Promise.reject(new Error(`Session ${sid} is dead — cannot send prompt`));
+          }
+
+          // Lazy upgrade: replace stub with real print session on first prompt
+          const real = createPrintSession({
+            id: sid,
+            workdir: snapshot.workdir,
+            recovered: true,
+            model: typeof snapshot.metadata?.model === 'string' ? snapshot.metadata.model : undefined,
+          });
+          // Migrate subscribers
+          for (const sub of outputSubscribers) { real.onOutput(sub); }
+          for (const cb of exitCallbacks) { real.onExit(cb); }
+          // Replace in pool map
+          sessions.set(sid, real);
+
+          return real.sendPrompt(prompt, _timeoutMs, _settleDelayMs);
+        },
+        resize(_cols: number, _rows: number): void { /* no-op */ },
+        kill(): void {
+          status = 'dead';
+          outputSubscribers.clear();
+          for (const cb of exitCallbacks) {
+            try { cb(0); } catch { /* non-fatal */ }
+          }
+        },
+        interrupt(): boolean { return false; },
+        get adaptiveSettle() { return null; },
+        get printMetadata() { return lastMetadata; },
+      };
+
+      // Hydrate all internal Maps
+      sessions.set(sid, stubSession);
+      sessionWorkdirs.set(sid, snapshot.workdir);
+      sessionModes.set(sid, snapshot.mode);
+      sessionNicknames.set(sid, snapshot.nickname);
+      activeNicknames.add(snapshot.nickname);
+      if (snapshot.purpose) {
+        sessionPurposes.set(sid, snapshot.purpose);
+      }
+      if (snapshot.metadata) {
+        sessionMetadata.set(sid, snapshot.metadata);
+      }
+      sessionChains.set(sid, {
+        parent_session_id: snapshot.parent_session_id ?? null,
+        depth: snapshot.depth,
+        children: [],
+        budget: { max_depth: DEFAULT_MAX_DEPTH, max_agents: DEFAULT_MAX_AGENTS, agents_spawned: 0 },
+      });
+      sessionWorktrees.set(sid, {
+        isolation: snapshot.isolation,
+        worktree_path: null,
+        worktree_branch: null,
+        metals_available: snapshot.isolation !== 'worktree',
+      });
+      sessionStaleFlags.set(sid, false);
+      sessionChannels.set(sid, createSessionChannels());
+
+      // Note: totalSpawned is NOT incremented — restored sessions don't count as newly spawned.
     },
   };
 }
