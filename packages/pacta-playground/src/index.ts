@@ -28,3 +28,19 @@ export type { ScenarioGiven, ScenarioWhen, ScenarioAgentConfig } from './scenari
 
 // Comparative runner
 export { compareAgents } from './comparative-runner.js';
+
+// Cognitive scenario DSL
+export {
+  CognitiveScenarioBuilder,
+  cognitiveScenario,
+  RecordingModule,
+  cyclePhaseOrder,
+  monitorIntervened,
+  workspaceSize,
+  moduleStepCount,
+} from './cognitive-scenario.js';
+export type {
+  CognitiveAssertion,
+  CognitiveAssertionResult,
+  CognitiveScenarioResult,
+} from './cognitive-scenario.js';
