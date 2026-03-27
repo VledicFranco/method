@@ -1,217 +1,468 @@
 import { useProjects } from '@/domains/projects/useProjects';
-import { Card } from '@/shared/components/Card';
-import { Badge } from '@/shared/components/Badge';
-import { Button } from '@/shared/components/Button';
-import { Loader2, RefreshCw, AlertCircle, Play } from 'lucide-react';
-import { cn } from '@/shared/lib/cn';
+import { RefreshCw } from 'lucide-react';
 import type { ProjectMetadata } from '@/domains/projects/types';
-import { memo } from 'react';
+import { memo, useState, useMemo } from 'react';
+
+// -- Vidtecci color palette (inline, no external deps) --
+const colors = {
+  void: '#0a0e14',
+  abyss: '#111923',
+  bio: '#00e5a0',
+  solar: '#f5a623',
+  text: '#e0e8f0',
+  textMuted: '#6b7d8e',
+  border: 'rgba(255,255,255,0.08)',
+  error: '#ff4757',
+} as const;
+
+type StatusFilter = 'all' | 'healthy' | 'issues' | 'with_sessions';
+
+const PAGE_SIZE = 50;
 
 export interface ProjectListViewProps {
   onProjectSelect?: (project: ProjectMetadata) => void;
-  /** Callback for one-tap spawn from a project */
-  onProjectSpawn?: (project: ProjectMetadata) => void;
-  /** Whether a spawn is currently in progress */
-  isSpawning?: boolean;
-  /** ID of the project currently being spawned */
-  spawningProjectId?: string | null;
 }
 
-// F-P-3: Memoize with custom comparator
 function ProjectListViewComponent({
   onProjectSelect,
-  onProjectSpawn,
-  isSpawning = false,
-  spawningProjectId = null,
 }: ProjectListViewProps) {
   const { projects, loading, error, refetch } = useProjects();
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<StatusFilter>('all');
+  const [showAll, setShowAll] = useState(false);
 
-  const getStatusColor = (status: string): 'bio' | 'solar' | 'error' | 'nebular' | 'cyan' => {
+  // -- Derived stats --
+  const stats = useMemo(() => {
+    const healthy = projects.filter(p => p.status === 'healthy').length;
+    const issues = projects.filter(p =>
+      p.status === 'git_corrupted' || p.status === 'missing_config' || p.status === 'permission_denied'
+    ).length;
+    return { total: projects.length, healthy, issues };
+  }, [projects]);
+
+  // -- Filtered + searched list --
+  const filteredProjects = useMemo(() => {
+    let result = projects;
+
+    // Status filter
+    if (activeFilter === 'healthy') {
+      result = result.filter(p => p.status === 'healthy');
+    } else if (activeFilter === 'issues') {
+      result = result.filter(p =>
+        p.status === 'git_corrupted' || p.status === 'missing_config' || p.status === 'permission_denied'
+      );
+    }
+    // 'with_sessions' would require session data; show all for now
+    // 'all' — no filter
+
+    // Search
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        p.path.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [projects, activeFilter, search]);
+
+  const visibleProjects = showAll ? filteredProjects : filteredProjects.slice(0, PAGE_SIZE);
+  const hasMore = filteredProjects.length > PAGE_SIZE && !showAll;
+
+  // -- Status badge helper --
+  const statusBadge = (status: string) => {
+    let bg: string;
+    let fg: string;
     switch (status) {
       case 'healthy':
-        return 'bio';
+        bg = 'rgba(0,229,160,0.12)';
+        fg = colors.bio;
+        break;
       case 'git_corrupted':
-        return 'error';
+        bg = 'rgba(255,71,87,0.12)';
+        fg = colors.error;
+        break;
       case 'missing_config':
-        return 'solar';
+        bg = 'rgba(245,166,35,0.12)';
+        fg = colors.solar;
+        break;
       case 'permission_denied':
-        return 'error';
+        bg = 'rgba(255,71,87,0.12)';
+        fg = colors.error;
+        break;
       default:
-        return 'nebular';
+        bg = 'rgba(107,125,142,0.12)';
+        fg = colors.textMuted;
     }
+    const label = status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return (
+      <span style={{
+        display: 'inline-block',
+        padding: '2px 10px',
+        borderRadius: '9999px',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+        fontWeight: 500,
+        background: bg,
+        color: fg,
+        border: `1px solid ${fg}33`,
+        lineHeight: '1.5',
+      }}>
+        {label}
+      </span>
+    );
   };
 
-  const getStatusLabel = (status: string): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  // -- Filter chip helper --
+  const chip = (label: string, value: StatusFilter) => {
+    const isActive = activeFilter === value;
+    return (
+      <button
+        key={value}
+        onClick={() => setActiveFilter(value)}
+        style={{
+          padding: '4px 14px',
+          borderRadius: '9999px',
+          fontSize: '13px',
+          fontFamily: 'monospace',
+          fontWeight: 500,
+          cursor: 'pointer',
+          border: `1px solid ${isActive ? colors.bio : colors.border}`,
+          background: isActive ? 'rgba(0,229,160,0.08)' : 'transparent',
+          color: isActive ? colors.bio : colors.textMuted,
+          transition: 'all 0.15s ease',
+        }}
+      >
+        {label}
+      </button>
+    );
   };
 
-  const formatDate = (dateString: string): string => {
-    try {
-      return new Date(dateString).toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'N/A';
-    }
-  };
+  // -- Stat card helper --
+  const statCard = (label: string, value: number | string, valueColor: string, icon: string) => (
+    <div style={{
+      flex: '1 1 0',
+      minWidth: '140px',
+      background: colors.abyss,
+      border: `1px solid ${colors.border}`,
+      borderRadius: '8px',
+      padding: '16px 20px',
+    }}>
+      <div style={{
+        fontSize: '12px',
+        fontFamily: 'monospace',
+        color: colors.textMuted,
+        marginBottom: '6px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+      }}>
+        <span style={{ marginRight: '6px' }}>{icon}</span>
+        {label}
+      </div>
+      <div style={{
+        fontSize: '28px',
+        fontFamily: 'monospace',
+        fontWeight: 700,
+        color: valueColor,
+        lineHeight: 1.1,
+      }}>
+        {value}
+      </div>
+    </div>
+  );
 
+  // -- Error state --
   if (error) {
     return (
-      <div className="space-y-sp-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-txt">Projects</h2>
-          <Button
-            size="sm"
-            variant="secondary"
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.text, margin: 0 }}>Projects</h2>
+          <button
             onClick={() => refetch()}
-            leftIcon={<RefreshCw className="h-4 w-4" />}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '6px 14px', borderRadius: '6px', fontSize: '13px',
+              fontFamily: 'monospace', cursor: 'pointer',
+              border: `1px solid ${colors.border}`, background: colors.abyss, color: colors.textMuted,
+            }}
           >
-            Retry
-          </Button>
+            <RefreshCw size={14} /> Retry
+          </button>
         </div>
-        <Card variant="default" padding="md" accent="error" role="alert" aria-live="polite" aria-atomic="true">
-          <div className="flex gap-sp-3 items-start">
-            <AlertCircle className="h-5 w-5 text-error shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-txt">Failed to load projects</p>
-              <p className="text-sm text-txt-dim mt-1">{error}</p>
-            </div>
-          </div>
-        </Card>
+        <div style={{
+          background: colors.abyss, border: `1px solid rgba(255,71,87,0.3)`,
+          borderRadius: '8px', padding: '16px 20px',
+        }}>
+          <p style={{ fontWeight: 500, color: colors.text, margin: '0 0 4px' }}>Failed to load projects</p>
+          <p style={{ fontSize: '14px', color: colors.textMuted, margin: 0 }}>{error}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-sp-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-txt">Projects</h2>
-          <p className="text-sm text-txt-dim mt-1">
-            {loading ? 'Discovering...' : `${projects.length} project${projects.length !== 1 ? 's' : ''} found`}
-          </p>
+    <div>
+      {/* -- Stat cards row -- */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+      }}>
+        {statCard('Projects', loading ? '...' : stats.total, colors.bio, '\u25A0')}
+        {statCard('Healthy', loading ? '...' : stats.healthy, colors.bio, '\u2713')}
+        {statCard('Issues', loading ? '...' : stats.issues, stats.issues > 0 ? colors.error : colors.textMuted, '\u26A0')}
+        <div style={{
+          flex: '1 1 0',
+          minWidth: '140px',
+          background: colors.abyss,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '8px',
+          padding: '16px 20px',
+        }}>
+          <div style={{
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: colors.textMuted,
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            <span style={{ marginRight: '6px' }}>{'\u25B6'}</span>
+            Active Sessions
+          </div>
+          <a
+            href="/sessions"
+            style={{
+              fontSize: '28px',
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              color: colors.textMuted,
+              lineHeight: 1.1,
+              textDecoration: 'none',
+              display: 'block',
+            }}
+          >
+            0
+          </a>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => refetch()}
-          loading={loading}
-          leftIcon={<RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />}
-        >
-          {loading ? 'Scanning' : 'Scan'}
-        </Button>
       </div>
 
-      {projects.length === 0 ? (
-        <Card variant="default" padding="md" className="text-center py-sp-8">
-          <p className="text-txt-dim">No projects discovered yet.</p>
-          <p className="text-xs text-txt-muted mt-2">Check that your projects contain .method directories.</p>
-        </Card>
-      ) : (
-        <div className="overflow-x-auto rounded-card border border-bdr bg-abyss">
-          <table className="w-full text-sm" role="table">
-            <thead>
-              <tr className="border-b border-bdr" role="row">
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Name</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden md:table-cell" role="columnheader">Description</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim" role="columnheader">Status</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden lg:table-cell" role="columnheader">Methodologies</th>
-                <th className="px-sp-4 py-sp-3 text-left font-medium text-txt-dim hidden md:table-cell" role="columnheader">Last Scanned</th>
-                {onProjectSpawn && (
-                  <th className="px-sp-4 py-sp-3 text-right font-medium text-txt-dim" role="columnheader">Action</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project, index) => (
-                <tr
-                  key={project.id}
-                  className={cn(
-                    'border-b border-bdr transition-colors hover:bg-abyss-light cursor-pointer',
-                    index === projects.length - 1 && 'border-b-0',
-                  )}
-                  onClick={() => onProjectSelect?.(project)}
-                  role="row"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      onProjectSelect?.(project);
-                    }
-                  }}
-                >
-                  <td className="px-sp-4 py-sp-3 font-medium text-txt" role="cell">{project.name}</td>
-                  <td className="px-sp-4 py-sp-3 text-txt-dim max-w-xs truncate hidden md:table-cell" role="cell">
-                    {project.description || '\u2014'}
-                  </td>
-                  <td className="px-sp-4 py-sp-3" role="cell">
-                    <Badge
-                      variant="outlined"
-                      color={getStatusColor(project.status)}
-                      className="w-fit"
-                    >
-                      {getStatusLabel(project.status)}
-                    </Badge>
-                  </td>
-                  <td className="px-sp-4 py-sp-3 hidden lg:table-cell" role="cell">
-                    {project.installed_methodologies && project.installed_methodologies.length > 0 ? (
-                      <div className="flex gap-1 flex-wrap max-w-xs">
-                        {project.installed_methodologies.slice(0, 3).map((method) => (
-                          <Badge key={method} variant="outlined" color="cyan" className="text-xs">
-                            {method}
-                          </Badge>
-                        ))}
-                        {project.installed_methodologies.length > 3 && (
-                          <Badge variant="outlined" color="nebular" className="text-xs">
-                            +{project.installed_methodologies.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-txt-muted">None</span>
-                    )}
-                  </td>
-                  <td className="px-sp-4 py-sp-3 text-xs text-txt-muted whitespace-nowrap hidden md:table-cell" role="cell">
-                    {formatDate(project.last_scanned)}
-                  </td>
-                  {onProjectSpawn && (
-                    <td className="px-sp-4 py-sp-3 text-right" role="cell">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        leftIcon={
-                          isSpawning && spawningProjectId === project.id
-                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <Play className="h-3 w-3" />
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onProjectSpawn(project);
-                        }}
-                        disabled={isSpawning && spawningProjectId === project.id}
-                      >
-                        Spawn
-                      </Button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* -- Header row: title + scan button -- */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.text, margin: 0 }}>Projects</h2>
+          <p style={{ fontSize: '13px', color: colors.textMuted, margin: '4px 0 0' }}>
+            {loading ? 'Discovering...' : `${projects.length} project${projects.length !== 1 ? 's' : ''} discovered`}
+          </p>
         </div>
+        <button
+          onClick={() => refetch()}
+          disabled={loading}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 14px', borderRadius: '6px', fontSize: '13px',
+            fontFamily: 'monospace', cursor: loading ? 'wait' : 'pointer',
+            border: `1px solid ${colors.border}`, background: colors.abyss, color: colors.textMuted,
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : undefined} />
+          {loading ? 'Scanning' : 'Scan'}
+        </button>
+      </div>
+
+      {/* -- Search bar + filter chips row -- */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'center',
+        marginBottom: '16px',
+        flexWrap: 'wrap',
+      }}>
+        <div style={{ flex: '1 1 300px', position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 14px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              border: `1px solid ${colors.border}`,
+              background: colors.abyss,
+              color: colors.text,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = `${colors.bio}66`; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {chip('All', 'all')}
+          {chip('Healthy', 'healthy')}
+          {chip('Issues', 'issues')}
+          {chip('With Sessions', 'with_sessions')}
+        </div>
+        <span style={{
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          color: colors.textMuted,
+          whiteSpace: 'nowrap',
+        }}>
+          {filteredProjects.length} result{filteredProjects.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* -- Project table -- */}
+      {filteredProjects.length === 0 ? (
+        <div style={{
+          background: colors.abyss, border: `1px solid ${colors.border}`,
+          borderRadius: '8px', padding: '40px 20px', textAlign: 'center',
+        }}>
+          <p style={{ color: colors.textMuted, margin: '0 0 4px' }}>
+            {projects.length === 0 ? 'No projects discovered yet.' : 'No projects match your filters.'}
+          </p>
+          {projects.length === 0 && (
+            <p style={{ fontSize: '12px', color: colors.textMuted, margin: 0 }}>
+              Check that your projects contain .method directories.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div style={{
+            overflowX: 'auto',
+            borderRadius: '8px',
+            border: `1px solid ${colors.border}`,
+            background: colors.abyss,
+          }}>
+            <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }} role="table">
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${colors.border}` }} role="row">
+                  <th style={{
+                    padding: '10px 16px', textAlign: 'left', fontWeight: 500,
+                    color: colors.textMuted, fontSize: '12px', fontFamily: 'monospace',
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                  }} role="columnheader">Name</th>
+                  <th style={{
+                    padding: '10px 16px', textAlign: 'left', fontWeight: 500,
+                    color: colors.textMuted, fontSize: '12px', fontFamily: 'monospace',
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                  }} role="columnheader">Description</th>
+                  <th style={{
+                    padding: '10px 16px', textAlign: 'left', fontWeight: 500,
+                    color: colors.textMuted, fontSize: '12px', fontFamily: 'monospace',
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                  }} role="columnheader">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleProjects.map((project, index) => {
+                  const rowBg = index % 2 === 0 ? colors.void : colors.abyss;
+                  return (
+                    <tr
+                      key={project.id}
+                      onClick={() => onProjectSelect?.(project)}
+                      role="row"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          onProjectSelect?.(project);
+                        }
+                      }}
+                      style={{
+                        background: rowBg,
+                        cursor: 'pointer',
+                        borderBottom: index === visibleProjects.length - 1 ? 'none' : `1px solid ${colors.border}`,
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,229,160,0.04)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = rowBg; }}
+                    >
+                      <td style={{ padding: '10px 16px', verticalAlign: 'top' }} role="cell">
+                        <div style={{ fontWeight: 600, color: colors.text, fontSize: '14px' }}>
+                          {project.name}
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          color: colors.textMuted,
+                          marginTop: '2px',
+                          opacity: 0.7,
+                          maxWidth: '300px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {project.path}
+                        </div>
+                      </td>
+                      <td style={{
+                        padding: '10px 16px',
+                        color: colors.textMuted,
+                        maxWidth: '320px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        verticalAlign: 'top',
+                      }} role="cell">
+                        {project.description || '\u2014'}
+                      </td>
+                      <td style={{ padding: '10px 16px', verticalAlign: 'top' }} role="cell">
+                        {statusBadge(project.status)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* -- Pagination / show all -- */}
+          {hasMore && (
+            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+              <button
+                onClick={() => setShowAll(true)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  border: `1px solid ${colors.border}`,
+                  background: colors.abyss,
+                  color: colors.textMuted,
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${colors.bio}66`; e.currentTarget.style.color = colors.bio; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
+              >
+                Show all {filteredProjects.length} projects
+              </button>
+            </div>
+          )}
+        </>
       )}
+
+      {/* Keyframe animation for spinner */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
 
 // F-P-3: Export memoized component
 export const ProjectListView = memo(ProjectListViewComponent, (prevProps, nextProps) => {
-  return (
-    prevProps.onProjectSelect === nextProps.onProjectSelect &&
-    prevProps.onProjectSpawn === nextProps.onProjectSpawn &&
-    prevProps.isSpawning === nextProps.isSpawning &&
-    prevProps.spawningProjectId === nextProps.spawningProjectId
-  );
+  return prevProps.onProjectSelect === nextProps.onProjectSelect;
 });
