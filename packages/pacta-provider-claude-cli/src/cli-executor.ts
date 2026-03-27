@@ -153,6 +153,10 @@ export async function executeCli(
       shell: false,
     });
 
+    // Close stdin immediately — the CLI doesn't receive stdin data from us,
+    // and leaving the pipe open causes it to stall waiting for input in non-TTY envs.
+    child.stdin?.end();
+
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
 
