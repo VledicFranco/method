@@ -519,6 +519,11 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
         });
       }
 
+      // Log errors if the step failed
+      if (raResult.error) {
+        console.log(`    ❌ Error: ${raResult.error.message}`);
+      }
+
       // Accumulate folded context summary
       const actionSummary = `[c${cycle+1}] ${raResult.output.actionName}: ${raResult.output.plan?.slice(0, 80) || raResult.output.reasoning?.slice(0, 80) || ''}`;
       foldedContext.push(actionSummary);
