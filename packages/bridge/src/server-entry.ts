@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
+import { SessionCheckpointSink } from './shared/event-bus/session-checkpoint-sink.js';
 import Fastify from 'fastify';
 import { createPool } from './domains/sessions/pool.js';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
@@ -201,6 +202,14 @@ eventBus.registerSink(new WebSocketSink(wsHub));
 // PRD 026 Phase 3: Register PersistenceSink + ChannelSink
 eventBus.registerSink(persistenceSink);
 eventBus.registerSink(channelSink);
+
+// PRD 029: Register SessionCheckpointSink — event-driven session persistence
+// (SessionCheckpointSink imported at top of file)
+const checkpointSink = new SessionCheckpointSink({
+  save: (input) => sessionPersistence.save(input as any),
+  poolList: () => pool.list(),
+});
+eventBus.registerSink(checkpointSink);
 
 // PRD 026 Phase 5: Declarative webhook connector via env vars
 if (process.env.EVENT_CONNECTOR_WEBHOOK_URL) {

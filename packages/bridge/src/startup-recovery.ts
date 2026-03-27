@@ -129,8 +129,33 @@ export async function runStartupRecovery(deps: RecoveryDeps): Promise<RecoveryRe
       // Persisted + alive = recovering
       recoverable.push({ persisted: ps, native });
     } else {
-      // Persisted + dead = tombstoned
-      report.tombstoned++;
+      // Persisted + no live PID = restore as dead (available for resume)
+      // Print-mode sessions never have persistent PIDs — they exit after each prompt.
+      // Restoring as dead makes them visible in the UI session list with their
+      // transcript accessible and resumable via --resume.
+      if (ps.status !== 'dead') {
+        try {
+          deps.restoreSession({
+            sessionId: ps.session_id,
+            workdir: ps.workdir,
+            nickname: ps.nickname,
+            purpose: ps.purpose ?? null,
+            mode: (ps.mode as 'print' | 'pty') ?? 'print',
+            pid: 0, // no live process
+            depth: ps.depth ?? 0,
+            parentSessionId: ps.parent_session_id ?? null,
+            isolation: (ps.isolation as 'shared' | 'worktree') ?? 'shared',
+            metadata: ps.metadata ?? {},
+            promptCount: ps.prompt_count ?? 0,
+          });
+          report.tombstoned++;
+        } catch (err) {
+          console.error(`[startup-recovery] Failed to restore dead session ${ps.session_id}: ${(err as Error).message}`);
+          report.failed++;
+        }
+      } else {
+        report.tombstoned++;
+      }
     }
   }
 
