@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/server-entry.js",
     "dev": "tsx src/server-entry.ts",
-    "test": "node --import tsx --test \"src/domains/**/*.test.ts\" \"src/shared/**/*.test.ts\" \"src/ports/**/*.test.ts\""
+    "test": "node --import tsx --test \"src/*.test.ts\" \"src/domains/**/*.test.ts\" \"src/shared/**/*.test.ts\" \"src/ports/**/*.test.ts\""
   },
   "dependencies": {
     "@fastify/websocket": "^11.2.0",

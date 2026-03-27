@@ -1,6 +1,8 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
+import { runStartupRecovery } from './startup-recovery.js';
+import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
 import Fastify from 'fastify';
 import { createPool } from './domains/sessions/pool.js';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
@@ -340,27 +342,7 @@ registerSessionRoutes(app, {
 
 // ---------- Session Persistence (WS-3) ----------
 
-// Persist session state periodically by scanning pool
-setInterval(() => {
-  const sessions = pool.list();
-  for (const s of sessions) {
-    sessionPersistence.save({
-      session_id: s.sessionId,
-      workdir: s.workdir,
-      nickname: s.nickname,
-      purpose: s.purpose,
-      mode: s.mode,
-      status: s.status as any,
-      created_at: s.lastActivityAt.toISOString(), // TODO: use actual createdAt when pool tracks it
-      last_activity_at: s.lastActivityAt.toISOString(),
-      prompt_count: s.promptCount,
-      depth: s.chain.depth,
-      parent_session_id: s.chain.parent_session_id,
-      isolation: s.worktree.isolation,
-      metadata: s.metadata,
-    }).catch(() => { /* non-fatal */ });
-  }
-}, 30_000); // Every 30 seconds
+// PRD 029 C-3: 30-second persistence interval removed — checkpoint sink (C-2) replaces it.
 
 registerPersistenceRoutes(app, {
   persistence: sessionPersistence,
@@ -423,6 +405,16 @@ if (triggersConfig.enabled) {
 
 async function start() {
   try {
+    // PRD 029 C-3: Emit bridge_starting lifecycle event
+    eventBus.emit({
+      version: 1,
+      domain: 'system',
+      type: 'system.bridge_starting',
+      severity: 'info',
+      payload: { version: '0.3.0', port: PORT },
+      source: 'bridge/server-entry',
+    });
+
     // PRD 026 Phase 3: Initialize sinks + replay events from disk
     await persistenceSink.init();
     const cursors = await persistenceSink.loadCursors();
@@ -451,6 +443,45 @@ async function start() {
 
     // PRD 026 Phase 5: Connect all registered connectors
     await eventBus.connectAll();
+
+    // PRD 029 C-3: Startup recovery — reconcile persisted sessions with live native sessions
+    const nativeDiscovery = createNodeNativeSessionDiscovery();
+    const recoveryReport = await runStartupRecovery({
+      persistence: sessionPersistence,
+      discovery: nativeDiscovery,
+      restoreSession: (snapshot) => {
+        // pool.restoreSession will exist after C-1 merges — conditional check
+        if (typeof (pool as any).restoreSession === 'function') {
+          (pool as any).restoreSession(snapshot);
+        } else {
+          app.log.warn(
+            `[startup-recovery] pool.restoreSession not available — skipping restore of ${snapshot.sessionId}`,
+          );
+        }
+      },
+      eventBus,
+    });
+
+    if (recoveryReport.recovered > 0 || recoveryReport.tombstoned > 0) {
+      app.log.info(
+        `Startup recovery: ${recoveryReport.recovered} recovered, ${recoveryReport.tombstoned} tombstoned, ${recoveryReport.failed} failed (${recoveryReport.durationMs}ms)`,
+      );
+    }
+
+    // PRD 029 C-3: Emit bridge_ready after recovery + listen
+    const sessionsActive = pool.poolStats().activeSessions;
+    eventBus.emit({
+      version: 1,
+      domain: 'system',
+      type: 'system.bridge_ready',
+      severity: 'info',
+      payload: {
+        uptimeMs: Date.now() - BRIDGE_STARTED_AT.getTime(),
+        sessionsActive,
+        recoveredSessions: recoveryReport.recovered,
+      },
+      source: 'bridge/server-entry',
+    });
 
     // Start usage polling after server is listening
     usagePoller.start();
@@ -543,6 +574,19 @@ async function start() {
 function gracefulShutdown(signal: string) {
   app.log.info(`Received ${signal} — shutting down gracefully`);
 
+  // PRD 029 C-3: Emit bridge_stopping lifecycle event
+  const activeSessions = pool.poolStats().activeSessions;
+  try {
+    eventBus.emit({
+      version: 1,
+      domain: 'system',
+      type: 'system.bridge_stopping',
+      severity: 'info',
+      payload: { signal, activeSessions },
+      source: 'bridge/server-entry',
+    });
+  } catch { /* non-fatal — bus may already be disposed */ }
+
   // Stop accepting new connections
   app.close().then(() => {
     // Stop usage polling
@@ -602,5 +646,32 @@ function gracefulShutdown(signal: string) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// PRD 029 C-3: Crash handler — synchronous write to events JSONL, then exit.
+// Does NOT use the async EventBus — process may be in an unstable state.
+process.on('uncaughtException', (err) => {
+  try {
+    const crashEvent = {
+      id: `crash-${Date.now()}`,
+      version: 1,
+      timestamp: new Date().toISOString(),
+      sequence: -1,
+      domain: 'system',
+      type: 'system.bridge_crash',
+      severity: 'critical',
+      payload: {
+        error: err.message,
+        stack: err.stack,
+        uptimeMs: Date.now() - BRIDGE_STARTED_AT.getTime(),
+      },
+      source: 'bridge/crash-handler',
+    };
+    const logPath = process.env.EVENT_LOG_PATH ?? join(ROOT_DIR, '.method', 'events.jsonl');
+    appendFileSync(logPath, JSON.stringify(crashEvent) + '\n', { encoding: 'utf-8' });
+  } catch {
+    // Crash handler itself failed — nothing more we can do
+  }
+  process.exit(1);
+});
 
 start();
