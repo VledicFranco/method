@@ -26,3 +26,10 @@ topics:
     status: active
     last_session: "2026-03-23"
     session_count: 1
+
+  - id: TOPIC-BRIDGE-RESILIENCE
+    name: "Bridge Resilience — Crash Recovery, Observability, Session UX"
+    file: bridge-resilience.yaml
+    status: active
+    last_session: "2026-03-27"
+    session_count: 1

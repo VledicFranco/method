@@ -47,7 +47,12 @@ const styles = {
     color: 'var(--text-muted)',
     textTransform: 'uppercase' as const,
   },
-  refreshBtn: {
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+  },
+  iconBtn: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
@@ -57,6 +62,9 @@ const styles = {
     padding: '2px 4px',
     borderRadius: '4px',
     transition: 'color 0.15s ease',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
   },
   spawnBtn: {
     display: 'block',
@@ -178,14 +186,19 @@ export function SessionSidebar({
         {/* Header */}
         <div style={styles.header}>
           <span style={styles.headerText}>Sessions</span>
-          <button
-            style={styles.refreshBtn}
-            onClick={onRefresh}
-            aria-label="Refresh sessions"
-            title="Refresh"
-          >
-            ⟳
-          </button>
+          <div style={styles.headerActions}>
+            <button
+              style={styles.iconBtn}
+              onClick={onRefresh}
+              aria-label="Refresh sessions"
+              title="Refresh"
+            >
+              ⟳
+            </button>
+            <Link to="/" style={styles.iconBtn} title="Dashboard" aria-label="Go to dashboard">
+              ⌂
+            </Link>
+          </div>
         </div>
 
         {/* Spawn button */}

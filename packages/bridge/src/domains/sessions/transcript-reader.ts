@@ -97,7 +97,17 @@ export function createTranscriptReader(config: {
       try {
         const content = fs.readFileSync(sessionFile, 'utf-8');
         const lines = content.split('\n').filter(l => l.trim().length > 0);
-        const turns: TranscriptTurn[] = [];
+
+        // Phase 1: Parse all JSONL events into raw turns with metadata
+        const raw: Array<{
+          role: 'user' | 'assistant';
+          text: string;
+          toolCalls: TranscriptToolCall[];
+          isToolResult: boolean;   // user turn that is only tool_result blocks
+          hasText: boolean;        // assistant turn that has real text content
+          tokens?: { input: number; output: number; cacheRead: number };
+          timestamp: string;
+        }> = [];
 
         for (const line of lines) {
           try {
@@ -108,9 +118,10 @@ export function createTranscriptReader(config: {
             const role = msg.role as string | undefined;
             if (role !== 'user' && role !== 'assistant') continue;
 
-            // Extract text content
             let textContent = '';
             const toolCalls: TranscriptToolCall[] = [];
+            let hasToolResult = false;
+            let hasToolUse = false;
 
             const msgContent = msg.content;
             if (typeof msgContent === 'string') {
@@ -121,28 +132,17 @@ export function createTranscriptReader(config: {
                 if (b.type === 'text' && typeof b.text === 'string') {
                   textContent += (textContent ? '\n' : '') + b.text;
                 } else if (b.type === 'tool_use') {
+                  hasToolUse = true;
                   toolCalls.push({
                     name: String(b.name ?? 'unknown'),
                     input: summarizeInput(b.input),
                   });
                 } else if (b.type === 'tool_result') {
-                  // Tool results appear in user messages
-                  const resultContent = b.content;
-                  if (typeof resultContent === 'string') {
-                    textContent += (textContent ? '\n' : '') + `[tool result: ${resultContent.substring(0, 200)}]`;
-                  } else if (Array.isArray(resultContent)) {
-                    for (const rc of resultContent) {
-                      const r = rc as Record<string, unknown>;
-                      if (r.type === 'text' && typeof r.text === 'string') {
-                        textContent += (textContent ? '\n' : '') + `[tool result: ${r.text.substring(0, 200)}]`;
-                      }
-                    }
-                  }
+                  hasToolResult = true;
                 }
               }
             }
 
-            // Extract token usage
             const usage = (event.usage ?? msg.usage) as Record<string, unknown> | undefined;
             const tokens = usage ? {
               input: asNumber(usage.input_tokens),
@@ -150,10 +150,12 @@ export function createTranscriptReader(config: {
               cacheRead: asNumber(usage.cache_read_input_tokens),
             } : undefined;
 
-            turns.push({
+            raw.push({
               role: role as 'user' | 'assistant',
-              content: textContent || (toolCalls.length > 0 ? `[${toolCalls.length} tool call(s)]` : '[empty]'),
-              toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+              text: textContent,
+              toolCalls,
+              isToolResult: role === 'user' && hasToolResult && !textContent,
+              hasText: role === 'assistant' ? textContent.length > 0 : !hasToolUse,
               tokens,
               timestamp: typeof event.timestamp === 'string'
                 ? event.timestamp
@@ -164,12 +166,79 @@ export function createTranscriptReader(config: {
           }
         }
 
-        return turns;
+        // Phase 2: Collapse tool-use rounds into (prompt, final_response) pairs.
+        // A "real user prompt" is a user turn that is NOT a tool_result message.
+        // Between two real prompts, the last assistant turn with text is the response.
+        const collapsed: TranscriptTurn[] = [];
+        let currentPromptIdx = -1;
+
+        for (let i = 0; i < raw.length; i++) {
+          const turn = raw[i];
+
+          if (turn.role === 'user' && !turn.isToolResult) {
+            // Flush previous prompt cycle
+            if (currentPromptIdx >= 0) {
+              flushCycle(raw, currentPromptIdx, i, collapsed);
+            }
+            currentPromptIdx = i;
+          }
+        }
+
+        // Flush final cycle
+        if (currentPromptIdx >= 0) {
+          flushCycle(raw, currentPromptIdx, raw.length, collapsed);
+        }
+
+        return collapsed;
       } catch {
         return [];
       }
     },
   };
+}
+
+/**
+ * Flush a prompt cycle [promptIdx, nextPromptIdx) into collapsed turns.
+ * Emits the real user prompt + the last assistant turn that has text content.
+ */
+function flushCycle(
+  raw: Array<{
+    role: 'user' | 'assistant';
+    text: string;
+    toolCalls: TranscriptToolCall[];
+    isToolResult: boolean;
+    hasText: boolean;
+    tokens?: { input: number; output: number; cacheRead: number };
+    timestamp: string;
+  }>,
+  promptIdx: number,
+  nextPromptIdx: number,
+  out: TranscriptTurn[],
+): void {
+  const prompt = raw[promptIdx];
+  out.push({
+    role: 'user',
+    content: prompt.text || '[empty]',
+    timestamp: prompt.timestamp,
+  });
+
+  // Find the last assistant turn with real text in this cycle
+  let lastAssistant: typeof raw[number] | null = null;
+  for (let j = promptIdx + 1; j < nextPromptIdx; j++) {
+    if (raw[j].role === 'assistant' && raw[j].hasText) {
+      lastAssistant = raw[j];
+    }
+  }
+
+  if (lastAssistant) {
+    out.push({
+      role: 'assistant',
+      content: lastAssistant.text,
+      toolCalls: lastAssistant.toolCalls.length > 0 ? lastAssistant.toolCalls : undefined,
+      tokens: lastAssistant.tokens,
+      timestamp: lastAssistant.timestamp,
+    });
+  }
 }
 
 function summarizeInput(input: unknown): string {

@@ -1,0 +1,66 @@
+id: TOPIC-BRIDGE-RESILIENCE
+name: "Bridge Resilience — Crash Recovery, Observability, Session UX"
+status: active
+created: "2026-03-27"
+last_session: "2026-03-27"
+session_count: 1
+
+cast:
+  - name: Kael
+    role: Infrastructure & Resilience Lead
+    type: ISTJ
+  - name: Solene
+    role: Frontend State & UX Architect
+    type: ISFP
+  - name: Rune
+    role: FCA Purist / Architecture
+    type: INTJ
+  - name: Vex
+    role: Pacta SDK & Agent Runtime
+    type: ENTP
+  - name: Mira
+    role: Observability & Operations
+    type: INFJ
+  - name: Lysander
+    role: Mediator / Synthesizer
+    type: ENFJ
+
+standing_decisions:
+  - id: SD-1
+    question: "Recovery at L3 (Pacta) or L4 (Bridge)?"
+    decision: "Hybrid. RecoveryIntent enum + AgentState inspectability at L3. Recovery orchestration at L4."
+    rationale: "L3 exposes vocabulary, L4 implements machinery. SessionStore at L3 deferred."
+    session: 1
+
+  - id: SD-2
+    question: "Event-sourcing or checkpoint-on-transition?"
+    decision: "Checkpoint-on-transition via EventSink. Not event-sourcing."
+    rationale: "Schema instability makes event-sourcing premature. Checkpoints give recovery data without replay infra."
+    session: 1
+
+  - id: SD-3
+    question: "Startup recovery approach?"
+    decision: "Three-phase: discover (NativeSessionDiscovery port) → reconcile (cross-ref persistence + PIDs) → hydrate (pool.restoreSession)"
+    rationale: "Only sessions with live backing process get restored. Dead sessions tombstoned."
+    session: 1
+
+  - id: SD-4
+    question: "AgentEvent to BridgeEvent integration?"
+    decision: "Sink adapter at composition root. No type merging across L3/L4."
+    rationale: "FCA layer boundary. L3 events stay L3-typed."
+    session: 1
+
+open_questions:
+  - id: OQ-1
+    question: "Claude CLI PID file format stability — undocumented, may change"
+    status: needs_investigation
+  - id: OQ-2
+    question: "SessionStore port at L3 — when does a second production L4 consumer trigger this?"
+    status: deferred
+  - id: OQ-3
+    question: "handleSessionDeath regression — error events swallowed after PTY removal"
+    status: acknowledged_not_assigned
+
+key_artifacts:
+  - "tmp/council-debate-transcript.md"
+  - "Agent output files in AppData/Local/Temp/claude/ (session 0025a02d)"

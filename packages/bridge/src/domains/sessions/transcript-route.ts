@@ -26,17 +26,21 @@ export function registerTranscriptRoutes(
       return reply.status(200).send({ turns: [], session_id: id });
     }
 
-    // Find the session file whose modification time is closest to the bridge session
-    const spawnTime = statusInfo.lastActivityAt.getTime();
-    let bestMatch = sessions[0];
-    let bestDelta = Infinity;
+    // Match by session ID filename (bridge session ID === Claude CLI session ID)
+    const exactMatch = sessions.find(s => s.file.endsWith(`${id}.jsonl`));
 
-    for (const s of sessions) {
-      const mtime = new Date(s.modifiedAt).getTime();
-      const delta = Math.abs(mtime - spawnTime);
-      if (delta < bestDelta) {
-        bestDelta = delta;
-        bestMatch = s;
+    // Fallback to time-proximity heuristic for sessions created before this fix
+    let bestMatch = exactMatch ?? sessions[0];
+    if (!exactMatch) {
+      const spawnTime = statusInfo.lastActivityAt.getTime();
+      let bestDelta = Infinity;
+      for (const s of sessions) {
+        const mtime = new Date(s.modifiedAt).getTime();
+        const delta = Math.abs(mtime - spawnTime);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          bestMatch = s;
+        }
       }
     }
 

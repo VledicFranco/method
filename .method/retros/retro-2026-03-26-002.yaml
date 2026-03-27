@@ -1,0 +1,53 @@
+session_id: realize-20260326-issue-76-session-ux
+date: "2026-03-26"
+methodology: realize
+issue: "VledicFranco/method#76"
+title: "Session UX Redesign — full-viewport chat interface"
+
+hardest_decision: >
+  Whether to accept C-1's scope deviation (touching server-entry.ts and genesis/routes.test.ts,
+  both outside the sessions domain). The orchestrator-owned shared surface was modified by the
+  sub-agent. The change was correct and necessary — removing the dead registerLiveOutputRoutes
+  registration immediately after C-1 deleted the file. Forcing a separate orchestrator step
+  would have been process overhead with no quality benefit. Accepted as pragmatic deviation,
+  skipped the redundant post-wave step.
+
+observations:
+  - >
+    Sub-agent commission misrouting: the first C-3 agent produced a commission prompt instead
+    of code because the launch message said "Execute /com with this task". The phrase triggered
+    the agent's orchestrator/commission-generation behavior rather than direct implementation.
+    Fix: explicitly frame sub-agent prompts as "You are an implementation agent. Write code
+    directly." — not as a slash command invocation.
+  - >
+    FCA backend/frontend split enables true Wave 1 parallelism: C-1 (backend sessions),
+    C-2 (frontend data), and C-3 (frontend UI) had completely disjoint file sets across
+    separate package trees. Zero merge conflicts or coordination needed between them.
+  - >
+    The pending→live turn model (optimistic UI) naturally emerged from the ChatTurn discriminated
+    union design. The union made it structurally impossible to display a live turn without
+    metadata, forcing explicit null-coalescing only at the boundary where metadata arrives.
+  - >
+    Frontend test infra gap surfaced again: vitest + @testing-library/react not installed.
+    C-3 handled it by excluding test files from tsconfig. This is the second PRD where this
+    gap has appeared — PRD 028 and now PRD issue #76. Should be resolved as a standalone initiative.
+
+card_feedback:
+  - >
+    Commission cards were well-scoped — all 4 commissions landed within 3-8 tasks as estimated.
+    C-4 was the smallest (207 lines total for Sessions.tsx) because C-1/C-2/C-3 did all the
+    heavy lifting. Pure composition roots are fast to implement when the components are ready.
+  - >
+    The forbidden_paths enforcement worked: no commission touched paths outside its scope
+    (except C-1's server-entry.ts which was a correct, beneficial deviation).
+
+proposed_deltas:
+  - area: commission_launch
+    delta: >
+      Change commission launch prompt phrasing from "Execute /com with this task: ..." to
+      "Implement the following directly as a code-writing agent. Do NOT generate a commission
+      prompt or orchestrator plan — write the code." This prevents sub-agent misrouting.
+  - area: frontend_infra
+    delta: >
+      Add vitest setup as a tracked initiative. Two PRDs have now hit this gap. Blocking
+      frontend component tests from executing is a quality risk.
