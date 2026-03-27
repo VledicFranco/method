@@ -96,10 +96,11 @@ export function App() {
             <Route path="/sessions/:id?" element={<Sessions />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/strategies" element={<Strategies />} />
+            <Route path="/pipelines" element={<Navigate to="/strategies" replace />} />
             <Route path="/strategies/:id" element={<StrategyDetail />} />
             <Route path="/strategies/:id/exec/:eid" element={<ExecutionView />} />
-            <Route path="/triggers" element={<Triggers />} />
-            <Route path="/triggers/:id" element={<Triggers />} />
+            <Route path="/triggers" element={<Navigate to="/strategies" replace />} />
+            <Route path="/triggers/:id" element={<Navigate to="/strategies" replace />} />
             <Route path="/governance" element={<Governance />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/registry" element={<Registry />} />
