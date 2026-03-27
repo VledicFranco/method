@@ -1,9 +1,11 @@
 /**
  * Anthropic Messages API Provider — AgentProvider + Streamable implementation.
  *
- * Uses raw fetch() to call the Anthropic Messages API. No SDK dependency.
- * Supports oneshot invocations with tool use loops and SSE streaming.
+ * Uses the official @anthropic-ai/sdk for API calls. Supports oneshot invocations
+ * with tool use loops and SSE streaming.
  */
+
+import Anthropic from '@anthropic-ai/sdk';
 
 import type {
   AgentProvider,
@@ -14,24 +16,14 @@ import type {
   AgentResult,
   AgentEvent,
   TokenUsage,
-  CostReport,
   ToolProvider,
   ToolDefinition,
 } from '@method/pacta';
 
-import type {
-  AnthropicMessagesRequest,
-  AnthropicMessagesResponse,
-  AnthropicMessage,
-  AnthropicContentBlock,
-  AnthropicToolUseBlock,
-  AnthropicToolDefinition,
-  AnthropicToolResultBlock,
-  AnthropicStreamEvent,
-} from './types.js';
+import { calculateCost } from './pricing.js';
 
-import { mapUsage, calculateCost } from './pricing.js';
-import { streamSseEvents } from './sse-parser.js';
+// Re-export SDK types that consumers may need
+export type { Anthropic };
 
 // ── Options ──────────────────────────────────────────────────────
 
@@ -39,7 +31,7 @@ export interface AnthropicProviderOptions {
   /** API key (defaults to ANTHROPIC_API_KEY env var) */
   apiKey?: string;
 
-  /** Model to use (defaults to 'claude-sonnet-4-6') */
+  /** Model to use (defaults to 'claude-sonnet-4-20250514') */
   model?: string;
 
   /** Base URL for the API (defaults to 'https://api.anthropic.com') */
@@ -48,14 +40,14 @@ export interface AnthropicProviderOptions {
   /** Max output tokens per request (defaults to 8192) */
   maxOutputTokens?: number;
 
-  /** Override fetch for testing */
-  fetchFn?: typeof globalThis.fetch;
-
   /** Tool provider for agentic tool use */
   toolProvider?: ToolProvider;
 
   /** Max agentic turns for tool use loops (defaults to 25) */
   maxTurns?: number;
+
+  /** Provide a pre-configured Anthropic client (overrides apiKey/baseUrl) */
+  client?: Anthropic;
 }
 
 // ── Provider Type ────────────────────────────────────────────────
@@ -73,6 +65,20 @@ const CAPABILITIES: ProviderCapabilities = {
   toolModel: 'function',
 };
 
+// ── Model Aliases ────────────────────────────────────────────────
+
+/** Map short aliases to real API model IDs */
+const MODEL_ALIASES: Record<string, string> = {
+  'claude-opus-4-6': 'claude-opus-4-20250514',
+  'claude-sonnet-4-6': 'claude-sonnet-4-20250514',
+  'claude-sonnet-4-5': 'claude-sonnet-4-5-20241022',
+  'claude-haiku-4-5': 'claude-haiku-4-5-20241022',
+};
+
+function resolveModelId(alias: string): string {
+  return MODEL_ALIASES[alias] ?? alias;
+}
+
 // ── Factory ──────────────────────────────────────────────────────
 
 /**
@@ -85,32 +91,28 @@ export function anthropicProvider(
   options: AnthropicProviderOptions = {},
 ): AnthropicProvider {
   const {
-    apiKey = process.env.ANTHROPIC_API_KEY,
-    model: defaultModel = 'claude-sonnet-4-6',
-    baseUrl = 'https://api.anthropic.com',
+    apiKey,
+    model: defaultModel = 'claude-sonnet-4-20250514',
+    baseUrl,
     maxOutputTokens = 8192,
-    fetchFn = globalThis.fetch,
     toolProvider,
     maxTurns = 25,
   } = options;
 
-  function getApiKey(): string {
-    if (!apiKey) {
-      throw new Error(
-        'Anthropic API key not provided. Set ANTHROPIC_API_KEY env var or pass apiKey option.',
-      );
-    }
-    return apiKey;
-  }
+  // Create or use provided Anthropic client
+  const client = options.client ?? new Anthropic({
+    apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY,
+    baseURL: baseUrl,
+  });
 
   function resolveModel(pact: Pact): string {
-    return pact.scope?.model ?? defaultModel;
+    const model = pact.scope?.model ?? defaultModel;
+    return resolveModelId(model);
   }
 
-  function buildTools(pact: Pact): AnthropicToolDefinition[] | undefined {
+  function buildTools(pact: Pact): Anthropic.Messages.Tool[] | undefined {
     const tools = toolProvider?.list() ?? [];
 
-    // Filter by pact scope if set
     let filtered = tools;
     if (pact.scope?.allowedTools) {
       const allowed = new Set(pact.scope.allowedTools);
@@ -126,76 +128,6 @@ export function anthropicProvider(
     return filtered.map(mapToolDefinition);
   }
 
-  function buildRequest(
-    pact: Pact,
-    request: AgentRequest,
-    messages: AnthropicMessage[],
-    stream: boolean,
-  ): AnthropicMessagesRequest {
-    const model = resolveModel(pact);
-    const resolvedMaxTokens = pact.budget?.maxOutputTokens ?? maxOutputTokens;
-    const tools = buildTools(pact);
-
-    const body: AnthropicMessagesRequest = {
-      model,
-      max_tokens: resolvedMaxTokens,
-      messages,
-      stream,
-    };
-
-    if (request.systemPrompt) {
-      body.system = request.systemPrompt;
-    }
-
-    if (tools) {
-      body.tools = tools;
-    }
-
-    return body;
-  }
-
-  async function callApi(
-    body: AnthropicMessagesRequest,
-  ): Promise<AnthropicMessagesResponse> {
-    const response = await fetchFn(`${baseUrl}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': getApiKey(),
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new AnthropicApiError(response.status, errorText);
-    }
-
-    return (await response.json()) as AnthropicMessagesResponse;
-  }
-
-  async function callApiStreaming(
-    body: AnthropicMessagesRequest,
-  ): Promise<Response> {
-    const response = await fetchFn(`${baseUrl}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': getApiKey(),
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new AnthropicApiError(response.status, errorText);
-    }
-
-    return response;
-  }
-
   // ── Tool Use Loop ──────────────────────────────────────────────
 
   async function invokeWithToolLoop<T>(
@@ -206,7 +138,7 @@ export function anthropicProvider(
     const model = resolveModel(pact);
     const sessionId = crypto.randomUUID();
 
-    const messages: AnthropicMessage[] = [
+    const messages: Anthropic.Messages.MessageParam[] = [
       { role: 'user', content: request.prompt },
     ];
 
@@ -217,8 +149,23 @@ export function anthropicProvider(
     while (turns < maxLoopTurns) {
       turns++;
 
-      const body = buildRequest(pact, request, messages, false);
-      const response = await callApi(body);
+      const resolvedMaxTokens = pact.budget?.maxOutputTokens ?? maxOutputTokens;
+      const tools = buildTools(pact);
+
+      const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
+        model,
+        max_tokens: resolvedMaxTokens,
+        messages,
+      };
+
+      if (request.systemPrompt) {
+        params.system = request.systemPrompt;
+      }
+      if (tools) {
+        params.tools = tools;
+      }
+
+      const response = await client.messages.create(params);
 
       // Accumulate usage
       const turnUsage = mapUsage(response.usage);
@@ -226,7 +173,7 @@ export function anthropicProvider(
 
       // Check for tool_use blocks
       const toolUseBlocks = response.content.filter(
-        (b): b is AnthropicToolUseBlock => b.type === 'tool_use',
+        (b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use',
       );
 
       if (toolUseBlocks.length === 0 || response.stop_reason !== 'tool_use') {
@@ -255,7 +202,7 @@ export function anthropicProvider(
       messages.push({ role: 'assistant', content: response.content });
 
       // Execute all tool calls and build result blocks
-      const toolResults: AnthropicToolResultBlock[] = [];
+      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
       for (const toolUse of toolUseBlocks) {
         const result = await toolProvider.execute(toolUse.name, toolUse.input);
         toolResults.push({
@@ -302,7 +249,7 @@ export function anthropicProvider(
       timestamp: new Date().toISOString(),
     };
 
-    const messages: AnthropicMessage[] = [
+    const messages: Anthropic.Messages.MessageParam[] = [
       { role: 'user', content: request.prompt },
     ];
 
@@ -313,78 +260,77 @@ export function anthropicProvider(
     while (turns < maxLoopTurns) {
       turns++;
 
-      const body = buildRequest(pact, request, messages, true);
-      const response = await callApiStreaming(body);
+      const resolvedMaxTokens = pact.budget?.maxOutputTokens ?? maxOutputTokens;
+      const tools = buildTools(pact);
 
-      if (!response.body) {
-        throw new Error('Streaming response has no body');
+      const params: Anthropic.Messages.MessageCreateParamsStreaming = {
+        model,
+        max_tokens: resolvedMaxTokens,
+        messages,
+        stream: true,
+      };
+
+      if (request.systemPrompt) {
+        params.system = request.systemPrompt;
+      }
+      if (tools) {
+        params.tools = tools;
       }
 
-      // Collect content blocks from streaming
-      const contentBlocks: AnthropicContentBlock[] = [];
-      let currentBlockIndex = -1;
-      let currentText = '';
-      let currentToolUse: AnthropicToolUseBlock | null = null;
+      const stream = client.messages.stream(params);
+
+      // Collect content from streaming
+      const contentBlocks: Anthropic.Messages.ContentBlock[] = [];
+      let currentToolUse: Anthropic.Messages.ToolUseBlock | null = null;
       let currentToolJson = '';
-      let turnUsage: TokenUsage = emptyUsage();
-      let stopReason: string = 'end_turn';
+      let currentText = '';
 
-      for await (const event of streamSseEvents(response.body)) {
-        yield* mapStreamEvent(event, sessionId);
+      for await (const event of stream) {
+        // Emit text deltas
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          yield { type: 'text', content: event.delta.text };
+          currentText += event.delta.text;
+        }
+        if (event.type === 'content_block_delta' && event.delta.type === 'input_json_delta') {
+          currentToolJson += event.delta.partial_json;
+        }
 
-        // Track state for content reconstruction
-        switch (event.type) {
-          case 'message_start':
-            turnUsage = mapUsage(event.message.usage);
-            break;
-
-          case 'content_block_start':
-            currentBlockIndex = event.index;
-            if (event.content_block.type === 'text') {
-              currentText = event.content_block.text;
-            } else if (event.content_block.type === 'tool_use') {
-              currentToolUse = { ...event.content_block, input: {} };
-              currentToolJson = '';
-            }
-            break;
-
-          case 'content_block_delta':
-            if (event.delta.type === 'text_delta') {
-              currentText += event.delta.text;
-            } else if (event.delta.type === 'input_json_delta') {
-              currentToolJson += event.delta.partial_json;
-            }
-            break;
-
-          case 'content_block_stop':
-            if (currentToolUse) {
-              try {
-                currentToolUse.input = currentToolJson ? JSON.parse(currentToolJson) : {};
-              } catch {
-                currentToolUse.input = {};
-              }
-              contentBlocks.push(currentToolUse);
-              currentToolUse = null;
-              currentToolJson = '';
-            } else {
-              contentBlocks.push({ type: 'text', text: currentText });
-              currentText = '';
-            }
-            currentBlockIndex = -1;
-            break;
-
-          case 'message_delta':
-            stopReason = event.delta.stop_reason;
-            turnUsage = {
-              ...turnUsage,
-              outputTokens: event.usage.output_tokens,
-              totalTokens: turnUsage.inputTokens + event.usage.output_tokens +
-                turnUsage.cacheReadTokens + turnUsage.cacheWriteTokens,
+        // Track tool use blocks
+        if (event.type === 'content_block_start') {
+          if (event.content_block.type === 'tool_use') {
+            currentToolUse = { ...event.content_block, input: {} };
+            currentToolJson = '';
+            yield {
+              type: 'tool_use',
+              tool: event.content_block.name,
+              input: {},
+              toolUseId: event.content_block.id,
             };
-            break;
+          } else if (event.content_block.type === 'text') {
+            currentText = event.content_block.text;
+          }
+        }
+
+        if (event.type === 'content_block_stop') {
+          if (currentToolUse) {
+            try {
+              currentToolUse.input = currentToolJson ? JSON.parse(currentToolJson) : {};
+            } catch {
+              currentToolUse.input = {};
+            }
+            contentBlocks.push(currentToolUse);
+            currentToolUse = null;
+            currentToolJson = '';
+          } else {
+            contentBlocks.push({ type: 'text', text: currentText, citations: null } as Anthropic.Messages.TextBlock);
+            currentText = '';
+          }
         }
       }
 
+      // Get final message for usage
+      const finalMessage = await stream.finalMessage();
+      const turnUsage = mapUsage(finalMessage.usage);
       totalUsage = accumulateUsage(totalUsage, turnUsage);
 
       yield {
@@ -395,11 +341,10 @@ export function anthropicProvider(
 
       // Check for tool use
       const toolUseBlocks = contentBlocks.filter(
-        (b): b is AnthropicToolUseBlock => b.type === 'tool_use',
+        (b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use',
       );
 
-      if (toolUseBlocks.length === 0 || stopReason !== 'tool_use') {
-        // Done — emit completed
+      if (toolUseBlocks.length === 0 || finalMessage.stop_reason !== 'tool_use') {
         const cost = calculateCost(model, totalUsage);
         const output = extractTextOutput(contentBlocks);
 
@@ -419,9 +364,9 @@ export function anthropicProvider(
         throw new Error('Model requested tool use but no ToolProvider is configured.');
       }
 
-      messages.push({ role: 'assistant', content: contentBlocks });
+      messages.push({ role: 'assistant', content: contentBlocks as Anthropic.Messages.ContentBlockParam[] });
 
-      const toolResults: AnthropicToolResultBlock[] = [];
+      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
       for (const toolUse of toolUseBlocks) {
         const toolStart = Date.now();
         const result = await toolProvider.execute(toolUse.name, toolUse.input);
@@ -477,52 +422,35 @@ export function anthropicProvider(
   };
 }
 
-// ── Stream Event Mapping ─────────────────────────────────────────
-
-function* mapStreamEvent(
-  event: AnthropicStreamEvent,
-  _sessionId: string,
-): Iterable<AgentEvent> {
-  switch (event.type) {
-    case 'content_block_start':
-      if (event.content_block.type === 'tool_use') {
-        yield {
-          type: 'tool_use',
-          tool: event.content_block.name,
-          input: event.content_block.input ?? {},
-          toolUseId: event.content_block.id,
-        };
-      }
-      break;
-
-    case 'content_block_delta':
-      if (event.delta.type === 'text_delta') {
-        yield {
-          type: 'text',
-          content: event.delta.text,
-        };
-      }
-      break;
-
-    // Other events don't map to AgentEvents directly
-  }
-}
-
 // ── Helpers ──────────────────────────────────────────────────────
 
-function mapToolDefinition(tool: ToolDefinition): AnthropicToolDefinition {
+function mapToolDefinition(tool: ToolDefinition): Anthropic.Messages.Tool {
   return {
     name: tool.name,
     description: tool.description,
-    input_schema: tool.inputSchema ?? { type: 'object', properties: {} },
+    input_schema: (tool.inputSchema ?? { type: 'object', properties: {} }) as Anthropic.Messages.Tool.InputSchema,
   };
 }
 
-function extractTextOutput(content: AnthropicContentBlock[]): string {
+function extractTextOutput(content: Anthropic.Messages.ContentBlock[]): string {
   return content
-    .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
     .map((b) => b.text)
     .join('');
+}
+
+function mapUsage(usage: Anthropic.Messages.Usage): TokenUsage {
+  const input = usage.input_tokens ?? 0;
+  const output = usage.output_tokens ?? 0;
+  const cacheRead = (usage as unknown as Record<string, number>).cache_read_input_tokens ?? 0;
+  const cacheWrite = (usage as unknown as Record<string, number>).cache_creation_input_tokens ?? 0;
+  return {
+    inputTokens: input,
+    outputTokens: output,
+    cacheReadTokens: cacheRead,
+    cacheWriteTokens: cacheWrite,
+    totalTokens: input + output + cacheRead + cacheWrite,
+  };
 }
 
 function emptyUsage(): TokenUsage {

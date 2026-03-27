@@ -12,6 +12,7 @@
     "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@method/pacta": "*"
   }
 }
