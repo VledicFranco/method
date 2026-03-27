@@ -115,8 +115,8 @@ Add semantic search capability beyond exact keyword matching.
 
 **Deliverables:**
 
-- `EmbeddingPort`: `embed(text: string): Promise<number[]>`, `embedBatch(texts: string[]): Promise<number[][]>`
-- Anthropic/Voyage embedding adapter (or local embedding for testing)
+- `EmbeddingPort`: `embed(text: string): Promise<number[]>`, `embedBatch(texts: string[]): Promise<number[][]>`, `dimensions: number`
+- Voyage AI adapter: `voyage-4-nano` (free, 256-dim) for dev/testing, `voyage-4` ($0.06/MTok, 1,024-dim) for production. Shared embedding space allows mixing models without re-indexing. Mock adapter for unit tests (deterministic vectors).
 - Cosine similarity search over FactCard embeddings
 - Hybrid scoring: combine keyword match (BM25-like) with vector similarity using RRF fusion (k=60, same as Cortex)
 - Tag-based pre-filtering before vector search (same pattern as Cortex's TagRouter)
@@ -177,4 +177,5 @@ Enable the memory to persist across task runs and transfer learning between task
 
 - PRD 030 (cognitive composition) — must be implemented (it is)
 - EXP-023 experiment infrastructure — must exist (it does)
-- `@anthropic-ai/sdk` — for embedding API calls (already installed)
+- `@anthropic-ai/sdk` — for LLM calls (already installed)
+- Voyage AI API — for embeddings (`voyage-4-nano` free tier for dev, `voyage-4` for production). Cost: ~$0.00012 per task run. T1 Cortex already uses Voyage (PR #154 migration).
