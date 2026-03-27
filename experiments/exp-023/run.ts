@@ -47,15 +47,12 @@ import {
   createWorkspace,
   createProviderAdapter,
 } from '../../packages/pacta/src/cognitive/algebra/index.js';
-import type { AggregatedSignals, ActorMonitoring } from '../../packages/pacta/src/cognitive/algebra/index.js';
+import type { AggregatedSignals, MonitoringSignal } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
-import { createReasoner, type ReasonerControl } from '../../packages/pacta/src/cognitive/modules/reasoner.js';
-import { createActor, type ActorControl } from '../../packages/pacta/src/cognitive/modules/actor.js';
+import { createReasonerActor, type ReasonerActorControl } from '../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
 import { createObserver } from '../../packages/pacta/src/cognitive/modules/observer.js';
-import { createMemoryModule } from '../../packages/pacta/src/cognitive/modules/memory-module.js';
 import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monitor.js';
 
-import type { MemoryPort, MemoryEntry } from '../../packages/pacta/src/ports/memory-port.js';
 import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
 import { TASK_01 } from './task-01-circular-dep.js';
@@ -74,17 +71,6 @@ interface RunResult {
   toolCalls: Array<{ tool: string; input: unknown; success: boolean }>;
   monitorInterventions?: number;
   strategyShifts?: number;
-}
-
-// ── Simple In-Memory MemoryPort ─────────────────────────────────
-
-function createSimpleMemory(): MemoryPort {
-  const store = new Map<string, string>();
-  return {
-    async store(key: string, value: string) { store.set(key, value); },
-    async retrieve(key: string) { return store.get(key) ?? null; },
-    async search(_query: string, _limit?: number) { return [] as MemoryEntry[]; },
-  };
 }
 
 // ── Condition A: Flat Agent ─────────────────────────────────────
@@ -318,13 +304,20 @@ async function runCliAgent(task: typeof TASK_01, runNumber: number): Promise<Run
   }
 }
 
-// ── Condition C: Cognitive Agent ─────────────────────────────────
+// ── Condition C: Cognitive Agent (5-module merged architecture) ──
+//
+// Council-recommended redesign:
+//   1. Observer (rule-based) — writes task/tool context to workspace
+//   2. Monitor (rule-based, hard enforcement) — behavioral observables, action restrictions
+//   3. Reasoner-Actor (single LLM call) — <plan>/<reasoning>/<action> + tool execution
+//   4. Workspace (salience eviction, capacity=8) — managed context buffer
+//   5. Reflector (conditional) — fires on forceReplan only (not yet wired)
 
 async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
-  // Provider for Reasoner/Planner (single-turn, no tools)
+  // Provider for merged Reasoner-Actor (single-turn, no tool provider — tools handled internally)
   const llmProvider = anthropicProvider({
     model: 'claude-sonnet-4-20250514',
     maxOutputTokens: 2048,
@@ -334,24 +327,25 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
     pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
   });
 
-  // Workspace
+  // Workspace (capacity=8, tuned from council recommendation)
   const salienceContext: SalienceContext = {
     now: Date.now(),
     goals: ['break circular dependency', 'preserve functionality'],
     sourcePriorities: new Map([
-      [moduleId('reasoner'), 0.9],
-      [moduleId('actor'), 0.7],
+      [moduleId('reasoner-actor'), 0.9],
       [moduleId('observer'), 0.6],
     ]),
   };
   const workspace = createWorkspace({ capacity: 8 }, salienceContext);
-  const memory = createSimpleMemory();
-  // Create modules with workspace ports
+
+  // 5-module setup
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));
-  const memoryModule = createMemoryModule(memory, workspace.getWritePort(moduleId('memory')));
-  const reasoner = createReasoner(adapter, workspace.getWritePort(moduleId('reasoner')));
-  const actor = createActor(vfs, workspace.getWritePort(moduleId('actor')));
-  const monitor = createMonitor({ confidenceThreshold: 0.3 });
+  const reasonerActor = createReasonerActor(
+    adapter,
+    vfs,
+    workspace.getWritePort(moduleId('reasoner-actor')),
+  );
+  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
 
   // Cycle state
   let totalTokens = 0;
@@ -359,68 +353,82 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
   let monitorInterventions = 0;
   const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
 
-  const MAX_CYCLES = 12;
-  const reasonerControl: ReasonerControl = { target: moduleId('reasoner'), timestamp: Date.now(), strategy: 'plan', effort: 'medium' };
-  const actorControl: ActorControl = { target: moduleId('actor'), timestamp: Date.now() };
+  const MAX_CYCLES = 15;
+  const raControl: ReasonerActorControl = {
+    target: moduleId('reasoner-actor'),
+    timestamp: Date.now(),
+    strategy: 'plan',
+    effort: 'medium',
+  };
 
   // Module states (persisted across cycles)
   let observerState = observer.initialState();
-  memoryModule.initialState(); // initialise but module runs passively
-  let reasonerState = reasoner.initialState();
-  let actorState = actor.initialState();
+  let raState = reasonerActor.initialState();
   let monitorState = monitor.initialState();
-  let prevActorMonitoring: ActorMonitoring | null = null;
+  let prevRAMonitoring: MonitoringSignal | null = null;
 
   try {
     for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
-      // 1. OBSERVE — feed task description (first cycle) or cycle continuation
-      const observerInput = cycle === 0
-        ? { content: task.description }
-        : { content: `Cycle ${cycle + 1}: continue working on the task.` };
-      const obsResult = await observer.step(observerInput, observerState, { target: moduleId('observer'), timestamp: Date.now() } as any);
-      observerState = obsResult.state;
-
-      // 2. REASON — get workspace snapshot, ask LLM what to do
-      const snapshot: ReadonlyWorkspaceSnapshot = workspace.getReadPort(moduleId('reasoner')).read();
-      const reasonResult = await reasoner.step({ snapshot }, reasonerState, reasonerControl);
-      reasonerState = reasonResult.state;
-      providerCalls++;
-      totalTokens += reasonResult.monitoring.tokensThisStep ?? 0;
-
-      // 3. MONITOR — always run with reasoner signal + previous cycle's actor signal
-      const monitorSignals: AggregatedSignals = new Map();
-      monitorSignals.set(moduleId('reasoner'), reasonResult.monitoring);
-      if (prevActorMonitoring) {
-        monitorSignals.set(moduleId('actor'), prevActorMonitoring);
+      // 1. OBSERVE — feed task description (first cycle only)
+      if (cycle === 0) {
+        const obsResult = await observer.step(
+          { content: task.description },
+          observerState,
+          { target: moduleId('observer'), timestamp: Date.now() } as any,
+        );
+        observerState = obsResult.state;
       }
-      const monResult = await monitor.step(monitorSignals, monitorState, { target: moduleId('monitor'), timestamp: Date.now() } as any);
+
+      // 2. MONITOR — always run with previous cycle's reasoner-actor signal
+      const monitorSignals: AggregatedSignals = new Map();
+      if (prevRAMonitoring) {
+        monitorSignals.set(moduleId('reasoner-actor'), prevRAMonitoring);
+      }
+      const monResult = await monitor.step(
+        monitorSignals, monitorState,
+        { target: moduleId('monitor'), timestamp: Date.now() } as any,
+      );
       monitorState = monResult.state;
+
+      // Apply monitor enforcement to control directive
       if (monResult.monitoring.anomalyDetected) {
         monitorInterventions++;
-        // Strategy shift: switch to 'think' for deeper deliberation
-        reasonerControl.strategy = 'think';
+      }
+      raControl.restrictedActions = monResult.output.restrictedActions;
+      raControl.forceReplan = monResult.output.forceReplan;
+      if (monResult.output.forceReplan) {
+        raControl.strategy = 'think';  // escalate reasoning depth
       }
 
-      // 4. ACT — execute the action instruction from Reasoner
-      const actorSnapshot: ReadonlyWorkspaceSnapshot = workspace.getReadPort(moduleId('actor')).read();
-      const actResult = await actor.step({ snapshot: actorSnapshot }, actorState, actorControl);
-      actorState = actResult.state;
-      prevActorMonitoring = actResult.monitoring;
+      // 3. REASON+ACT — single LLM call, then tool execution
+      const snapshot: ReadonlyWorkspaceSnapshot = workspace.getReadPort(moduleId('reasoner-actor')).read();
+      const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
+      raState = raResult.state;
+      prevRAMonitoring = raResult.monitoring;
+      providerCalls++;
+      totalTokens += (raResult.monitoring as any).tokensThisStep ?? 0;
 
-      if (actResult.output.result) {
+      // Track tool calls
+      if (raResult.output.toolResult) {
         allToolCalls.push({
-          tool: actResult.output.actionName,
-          input: actResult.output.result,
-          success: actResult.monitoring.success,
+          tool: raResult.output.actionName,
+          input: raResult.output.toolResult,
+          success: (raResult.monitoring as any).success ?? true,
         });
       }
 
       // Per-cycle trace logging
-      const monitorTag = monResult.monitoring.anomalyDetected ? ' ⚠ monitor' : '';
-      console.log(`    [cycle ${cycle + 1}] ${actResult.output.actionName}  conf=${reasonResult.monitoring.confidence.toFixed(2)}  tok=${reasonResult.monitoring.tokensThisStep ?? 0}${monitorTag}`);
+      const conf = (raResult.monitoring as any).confidence ?? 0;
+      const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
+      const restricted = (monResult.output.restrictedActions?.length ?? 0) > 0
+        ? ` 🚫${monResult.output.restrictedActions.join(',')}`
+        : '';
+      const replan = monResult.output.forceReplan ? ' ⚡replan' : '';
+      const monitorTag = monResult.monitoring.anomalyDetected ? ' ⚠' : '';
+      console.log(`    [cycle ${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${monitorTag}${restricted}${replan}`);
 
       // Check for completion
-      if (actResult.output.actionName === 'done') {
+      if (raResult.output.actionName === 'done') {
         break;
       }
     }

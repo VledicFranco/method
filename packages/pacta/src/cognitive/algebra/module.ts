@@ -44,6 +44,17 @@ export interface ActorMonitoring extends MonitoringSignal {
   unexpectedResult: boolean;
 }
 
+/** Reasoner-Actor (merged) monitoring: combined reasoning + action outcome. */
+export interface ReasonerActorMonitoring extends MonitoringSignal {
+  type: 'reasoner-actor';
+  actionTaken: string;
+  success: boolean;
+  unexpectedResult: boolean;
+  tokensThisStep: number;
+  confidence: number;
+  declaredPlanAction: string;
+}
+
 /** Observer monitoring: input processing status. */
 export interface ObserverMonitoring extends MonitoringSignal {
   type: 'observer';
@@ -89,6 +100,7 @@ export interface ReflectorMonitoring extends MonitoringSignal {
 export type ModuleMonitoringSignal =
   | ReasonerMonitoring
   | ActorMonitoring
+  | ReasonerActorMonitoring
   | ObserverMonitoring
   | MemoryMonitoring
   | MonitorMonitoring

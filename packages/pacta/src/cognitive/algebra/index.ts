@@ -12,6 +12,7 @@ export type {
   MonitoringSignal,
   ReasonerMonitoring,
   ActorMonitoring,
+  ReasonerActorMonitoring,
   ObserverMonitoring,
   MemoryMonitoring,
   MonitorMonitoring,

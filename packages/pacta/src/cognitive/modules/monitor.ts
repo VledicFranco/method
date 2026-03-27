@@ -46,6 +46,8 @@ export interface Anomaly {
 export interface MonitorReport {
   anomalies: Anomaly[];
   escalation: string | undefined;
+  restrictedActions: string[];   // action types to block next cycle
+  forceReplan: boolean;          // force strategy transition
 }
 
 /** Abstracted model of object-level behavior. No direct access to module state. */
@@ -128,8 +130,9 @@ export function createMonitor(
         }
 
         // Check actor signals for unexpected results and stagnation
-        if (isActorMonitoring(signal)) {
-          if (signal.unexpectedResult) {
+        if (isActorMonitoring(signal) || isReasonerActorMonitoring(signal)) {
+          // unexpectedResult check (only for ActorMonitoring)
+          if (isActorMonitoring(signal) && signal.unexpectedResult) {
             hasUnexpectedResult = true;
             anomalies.push({
               moduleId: sourceId,
@@ -137,7 +140,8 @@ export function createMonitor(
               detail: `Unexpected result from action: ${signal.actionTaken}`,
             });
           }
-          actorWasReadOnly = READ_ONLY_ACTIONS.has(signal.actionTaken);
+          // stagnation tracking (for both actor and reasoner-actor)
+          actorWasReadOnly = READ_ONLY_ACTIONS.has((signal as any).actionTaken);
         }
       }
 
@@ -155,6 +159,27 @@ export function createMonitor(
           type: 'low-confidence',
           detail: `Stagnation: ${newConsecutiveReadOnly} consecutive read-only cycles (threshold: ${stagnationThreshold})`,
         });
+      }
+
+      // Enforcement schedule (Mira's): constrain@2, force@3
+      const restrictedActions: string[] = [];
+      let forceReplan = false;
+
+      if (newConsecutiveReadOnly >= 2) {
+        // Find the stagnating action type from actor signal
+        let stagnatingAction: string | null = null;
+        for (const [, signal] of input) {
+          if (isActorMonitoring(signal) || isReasonerActorMonitoring(signal)) {
+            stagnatingAction = (signal as any).actionTaken;
+          }
+        }
+        if (stagnatingAction) {
+          restrictedActions.push(stagnatingAction);
+        }
+      }
+
+      if (newConsecutiveReadOnly >= 3) {
+        forceReplan = true;
       }
 
       // Compound anomaly: both low confidence AND unexpected result
@@ -188,7 +213,7 @@ export function createMonitor(
       };
 
       return {
-        output: { anomalies, escalation },
+        output: { anomalies, escalation, restrictedActions, forceReplan },
         state: newState,
         monitoring,
       };
@@ -225,4 +250,8 @@ function isReasonerMonitoring(signal: MonitoringSignal): signal is ReasonerMonit
 
 function isActorMonitoring(signal: MonitoringSignal): signal is ActorMonitoring {
   return 'type' in signal && (signal as ActorMonitoring).type === 'actor';
+}
+
+function isReasonerActorMonitoring(signal: MonitoringSignal): boolean {
+  return 'type' in signal && (signal as any).type === 'reasoner-actor';
 }
