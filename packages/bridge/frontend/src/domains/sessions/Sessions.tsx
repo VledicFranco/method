@@ -6,7 +6,7 @@
  * Recovery banner shown when WebSocket reconnects after disconnection.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SessionSidebar } from './SessionSidebar';
 import { ChatView } from './ChatView';
@@ -69,6 +69,79 @@ function RecoveryBanner({ visible, sessionCount, onDismiss }: RecoveryBannerStat
   );
 }
 
+// ── Mobile detection ────────────────────────────────────────────────────────
+
+function useIsMobile(breakpoint = 768): boolean {
+  const query = useMemo(() => `(max-width: ${breakpoint}px)`, [breakpoint]);
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false,
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mql.addEventListener('change', handler);
+    setMatches(mql.matches);
+    return () => mql.removeEventListener('change', handler);
+  }, [query]);
+
+  return matches;
+}
+
+// ── Mobile top bar ──────────────────────────────────────────────────────────
+
+function MobileTopBar({
+  sessionName,
+  onToggleSidebar,
+}: {
+  sessionName: string | null;
+  onToggleSidebar: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '8px 12px',
+        background: 'var(--abyss)',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+      }}
+    >
+      <button
+        onClick={onToggleSidebar}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-muted)',
+          fontSize: '20px',
+          cursor: 'pointer',
+          padding: '2px 6px',
+          lineHeight: 1,
+        }}
+        aria-label="Toggle session list"
+      >
+        ≡
+      </button>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '13px',
+          color: sessionName ? 'var(--text)' : 'var(--text-muted)',
+          fontWeight: 500,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          flex: 1,
+        }}
+      >
+        {sessionName ?? 'Sessions'}
+      </span>
+    </div>
+  );
+}
+
 // ── ErrorBoundary ────────────────────────────────────────────────────────────
 
 class ErrorBoundary extends React.Component<
@@ -112,9 +185,11 @@ export default function Sessions() {
   const { projects } = useProjects();
   const { id: activeSessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [liveTurns, setLiveTurns] = useState<ChatTurn[]>([]);
   const [isWorking, setIsWorking] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Recovery banner state ───────────────────────────────────────
   const [recoveryBanner, setRecoveryBanner] = useState<RecoveryBannerState>({
@@ -171,6 +246,7 @@ export default function Sessions() {
     navigate('/sessions/' + id);
     setLiveTurns([]);
     setIsWorking(false);
+    setSidebarOpen(false);
   }, [navigate]);
 
   const handleSend = useCallback(
@@ -240,6 +316,111 @@ export default function Sessions() {
     [spawn, navigate],
   );
 
+  // ── Main content (shared between mobile and desktop) ────────
+  const mainContent = (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <RecoveryBanner
+        visible={recoveryBanner.visible}
+        sessionCount={recoveryBanner.sessionCount}
+        onDismiss={dismissBanner}
+      />
+      <ErrorBoundary>
+        {activeSession ? (
+          <ChatView
+            session={activeSession}
+            turns={allTurns}
+            isWorking={isWorking}
+          />
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '13px',
+            }}
+          >
+            {isMobile ? 'Tap ≡ to select a session.' : 'Select a session or spawn a new one.'}
+          </div>
+        )}
+      </ErrorBoundary>
+      <PromptInput
+        sessionId={activeSessionId ?? ''}
+        disabled={!activeSession || activeSession.status === 'dead' || isWorking}
+        onSend={handleSend}
+      />
+      {activeSession && <StatusBar session={activeSession} totalCost={totalCost} />}
+    </div>
+  );
+
+  // ── Mobile layout ─────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: 'var(--void)' }}>
+        <MobileTopBar
+          sessionName={activeSession?.nickname ?? null}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
+
+        {/* Sidebar overlay */}
+        {sidebarOpen && (
+          <>
+            <div
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 40,
+              }}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: '280px',
+                zIndex: 50,
+                boxShadow: '4px 0 24px rgba(0, 0, 0, 0.4)',
+              }}
+            >
+              <SessionSidebar
+                sessions={sessions}
+                activeId={activeSessionId ?? null}
+                onSelect={handleSelect}
+                onSpawn={() => { setSpawnOpen(true); setSidebarOpen(false); }}
+                onRefresh={refresh}
+                stale={stale}
+              />
+            </div>
+          </>
+        )}
+
+        {mainContent}
+
+        <SpawnSessionModal
+          open={spawnOpen}
+          onClose={() => setSpawnOpen(false)}
+          onSpawn={handleSpawn}
+          isSpawning={isSpawning}
+          projects={projects}
+        />
+      </div>
+    );
+  }
+
+  // ── Desktop layout ────────────────────────────────────────────
   return (
     <div
       style={{
@@ -257,49 +438,7 @@ export default function Sessions() {
         onRefresh={refresh}
         stale={stale}
       />
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        <RecoveryBanner
-          visible={recoveryBanner.visible}
-          sessionCount={recoveryBanner.sessionCount}
-          onDismiss={dismissBanner}
-        />
-        <ErrorBoundary>
-          {activeSession ? (
-            <ChatView
-              session={activeSession}
-              turns={allTurns}
-              isWorking={isWorking}
-            />
-          ) : (
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-muted)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '13px',
-              }}
-            >
-              Select a session or spawn a new one.
-            </div>
-          )}
-        </ErrorBoundary>
-        <PromptInput
-          sessionId={activeSessionId ?? ''}
-          disabled={!activeSession || activeSession.status === 'dead' || isWorking}
-          onSend={handleSend}
-        />
-        {activeSession && <StatusBar session={activeSession} totalCost={totalCost} />}
-      </div>
+      {mainContent}
       <SpawnSessionModal
         open={spawnOpen}
         onClose={() => setSpawnOpen(false)}

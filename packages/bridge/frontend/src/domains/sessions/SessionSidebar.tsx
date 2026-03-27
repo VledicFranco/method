@@ -1,6 +1,6 @@
 /**
  * SessionSidebar — 228px fixed left panel for session navigation.
- * Shows session list, spawn/refresh controls, and footer nav links.
+ * Shows session list, spawn/refresh controls, and connection health dot.
  *
  * PRD 029 C-4: Connection health dot + stale-mode opacity.
  */
@@ -184,23 +184,6 @@ const styles = {
     color: 'var(--text-muted)',
     paddingLeft: '14px',
   },
-  footer: {
-    borderTop: '1px solid var(--border)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    padding: '8px 12px',
-    flexShrink: 0,
-  },
-  footerLink: {
-    color: 'var(--text-muted)',
-    textDecoration: 'none',
-    fontSize: '18px',
-    lineHeight: 1,
-    padding: '4px 6px',
-    borderRadius: '4px',
-    transition: 'color 0.15s ease',
-  },
 };
 
 // ── Component ───────────────────────────────────────────────────
@@ -320,18 +303,6 @@ export function SessionSidebar({
           })}
         </div>
 
-        {/* Footer nav */}
-        <nav style={styles.footer} aria-label="Navigation">
-          <Link to="/sessions" style={styles.footerLink} title="Sessions">
-            ≡
-          </Link>
-          <Link to="/settings" style={styles.footerLink} title="Settings">
-            ⚙
-          </Link>
-          <Link to="/governance" style={styles.footerLink} title="Governance">
-            ?
-          </Link>
-        </nav>
       </aside>
     </>
   );
