@@ -216,6 +216,49 @@ function isDomainDir(name: string): boolean {
   }
 }
 
+// ── I-9: Agent hoisting — createAgent called exactly once in print-session ──
+
+describe('I-9: createAgent is hoisted to session scope in print-session.ts', () => {
+  it('print-session.ts contains exactly 1 createAgent( call site', () => {
+    const printSessionPath = join(DOMAINS_DIR, 'sessions', 'print-session.ts');
+    const content = readFileSync(printSessionPath, 'utf-8');
+
+    // Count non-import, non-comment occurrences of createAgent(
+    const lines = content.split('\n');
+    const callSites: Array<{ line: number; text: string }> = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Skip import lines and comments
+      if (trimmed.startsWith('import ') || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+
+      if (line.includes('createAgent(')) {
+        callSites.push({ line: i + 1, text: trimmed });
+      }
+    }
+
+    assert.equal(callSites.length, 1, [
+      `I-9 violation: createAgent( must be called exactly once in print-session.ts (at session scope).`,
+      `Found ${callSites.length} call site(s):`,
+      ...callSites.map(cs => `  Line ${cs.line}: ${cs.text}`),
+    ].join('\n'));
+
+    // Verify the call is NOT inside sendPrompt (should be at closure scope)
+    const callLine = callSites[0].line;
+    // Find the sendPrompt function definition (async sendPrompt or sendPrompt =)
+    const sendPromptStart = lines.findIndex(l =>
+      /\basync\s+sendPrompt\b|sendPrompt\s*[:=]\s*(async\s+)?\(/.test(l)
+    );
+    // createAgent should appear before the sendPrompt function definition
+    assert.ok(sendPromptStart === -1 || callLine < sendPromptStart + 1, [
+      `I-9 violation: createAgent( appears at line ${callLine} but sendPrompt defined at line ${sendPromptStart + 1}.`,
+      'createAgent must be hoisted to session scope, not called inside sendPrompt.',
+    ].join('\n'));
+  });
+});
+
 // ── G-LAYER: Lower-layer packages do not import higher layers ────
 
 describe('G-LAYER: Package layer ordering is respected', () => {

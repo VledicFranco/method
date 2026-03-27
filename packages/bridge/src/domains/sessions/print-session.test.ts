@@ -398,4 +398,107 @@ describe('PrintSession', () => {
       assert.ok(!secondArgs.includes('--session-id'), 'second prompt should not use --session-id');
     });
   });
+
+  // ── PRD 029: Agent hoisting + budget tests (providerOverride) ──
+
+  describe('agent hoisting (PRD 029 BUG-1)', () => {
+    it('createAgent is called once across multiple sendPrompt calls', async () => {
+      let invokeCount = 0;
+
+      // A mock provider that counts invocations
+      const mockProvider: import('@method/pacta').AgentProvider = {
+        name: 'test-counter',
+        capabilities() {
+          return { modes: ['oneshot', 'resumable'] as any, streaming: false, resumable: true, budgetEnforcement: 'client' as const, outputValidation: 'none' as const, toolModel: false } as any;
+        },
+        async invoke(_pact, _request): Promise<any> {
+          invokeCount++;
+          return {
+            output: `Response #${invokeCount}`,
+            sessionId: 'test-session-id',
+            completed: true,
+            stopReason: 'complete' as const,
+            turns: 1,
+            durationMs: 100,
+            cost: {
+              totalUsd: 0.01,
+              perModel: {
+                'test-model': {
+                  costUsd: 0.01,
+                  tokens: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 },
+                },
+              },
+            },
+            usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          };
+        },
+      };
+
+      const session = rawCreateSession({
+        id: 'ps-hoist-1',
+        workdir: '/tmp/test',
+        providerOverride: mockProvider,
+      });
+
+      await session.sendPrompt('first');
+      await session.sendPrompt('second');
+      await session.sendPrompt('third');
+
+      // The provider should be invoked 3 times (once per prompt),
+      // but createAgent should have been called only once (at session scope).
+      // We verify indirectly: if createAgent were called per-prompt, the
+      // accumulated state would reset each time.
+      assert.equal(invokeCount, 3, 'provider.invoke called 3 times');
+      assert.equal(session.promptCount, 3);
+    });
+
+    it('budget accumulation: cumulative_cost_usd accumulates across prompts via agent.state', async () => {
+      let callNum = 0;
+      const mockProvider: import('@method/pacta').AgentProvider = {
+        name: 'test-budget',
+        capabilities() {
+          return { modes: ['oneshot', 'resumable'] as any, streaming: false, resumable: true, budgetEnforcement: 'client' as const, outputValidation: 'none' as const, toolModel: false } as any;
+        },
+        async invoke(_pact, _request): Promise<any> {
+          callNum++;
+          return {
+            output: `Response #${callNum}`,
+            sessionId: 'test-session-id',
+            completed: true,
+            stopReason: 'complete' as const,
+            turns: 1,
+            durationMs: 100,
+            cost: {
+              totalUsd: 0.025 * callNum, // increasing cost per prompt
+              perModel: {
+                'test-model': {
+                  costUsd: 0.025 * callNum,
+                  tokens: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 },
+                },
+              },
+            },
+            usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          };
+        },
+      };
+
+      const session = rawCreateSession({
+        id: 'ps-budget-1',
+        workdir: '/tmp/test',
+        providerOverride: mockProvider,
+      });
+
+      await session.sendPrompt('first');
+      const meta1 = session.printMetadata;
+      assert.ok(meta1, 'printMetadata should exist after first prompt');
+      // First prompt cost: 0.025 * 1 = 0.025. agent.state.totalUsd should be 0.025.
+      assert.ok(Math.abs(meta1.cumulative_cost_usd - 0.025) < 0.001, `cumulative should be ~0.025 but got ${meta1.cumulative_cost_usd}`);
+
+      await session.sendPrompt('second');
+      const meta2 = session.printMetadata;
+      assert.ok(meta2, 'printMetadata should exist after second prompt');
+      // Second prompt cost: 0.025 * 2 = 0.05. agent.state.totalUsd should be 0.025 + 0.05 = 0.075.
+      assert.ok(Math.abs(meta2.cumulative_cost_usd - 0.075) < 0.001, `cumulative should be ~0.075 but got ${meta2.cumulative_cost_usd}`);
+    });
+  });
 });

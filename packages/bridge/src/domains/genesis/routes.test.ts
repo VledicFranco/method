@@ -148,6 +148,7 @@ function createMockSessionPool(
     checkStale: () => ({ stale: [], killed: [] }),
     childPids: () => [],
     setObservationHook: () => {},
+    restoreSession: () => {},
   };
 }
 
@@ -652,6 +653,7 @@ describe('Genesis HTTP Routes', () => {
       checkStale: () => ({ stale: [], killed: [] }),
       childPids: () => [],
       setObservationHook: () => {},
+    restoreSession: () => {},
     } as SessionPool;
 
     await registerGenesisRoutes(app, {

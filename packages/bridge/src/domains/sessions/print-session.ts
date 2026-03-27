@@ -1,5 +1,5 @@
 import PQueue from 'p-queue';
-import type { Pact, AgentRequest, AgentResult, AgentProvider, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
+import type { Pact, AgentRequest, AgentResult, AgentProvider, AgentEvent, Agent, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
 import { createAgent } from '@method/pacta';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 
@@ -156,6 +156,10 @@ export interface PrintSessionOptions {
   llmProvider?: unknown;
   /** Override provider for testing */
   providerOverride?: AgentProvider;
+  /** PRD 029: Recovered session — first prompt uses --resume instead of --session-id. */
+  recovered?: boolean;
+  /** PRD 029: Event callback forwarded to createAgent for lifecycle observation. */
+  onEvent?: (event: AgentEvent) => void;
 }
 
 /** Rich metadata from the last print-mode invocation */
@@ -220,7 +224,7 @@ function agentResultToMetadata(result: AgentResult, cumulativeCostUsd: number): 
 /**
  * PRD 012 Phase 4 / PRD 028: Print-Mode Session
  *
- * Implements the PtySession interface using createAgent() + claudeCliProvider.
+ * Implements the PtySession interface using the Pacta composition engine + claudeCliProvider.
  * Each sendPrompt() call invokes the agent — no persistent PTY.
  * Responses are structured JSON — no regex parsing, no settle delay.
  *
@@ -236,6 +240,8 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
     appendSystemPrompt,
     model,
     providerOverride,
+    recovered,
+    onEvent,
   } = options;
 
   // Provider is created once; its invokedSessions map handles --session-id vs --resume
@@ -248,13 +254,17 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
     scope: model !== undefined ? { model } : undefined,
   };
 
+  // PRD 029 BUG-1 fix: Agent is created once at session scope — not per-prompt.
+  // This preserves accumulated state (cost, turns, tokens) across invocations.
+  const agent: Agent = createAgent({ pact, provider, onEvent });
+
   const queue = new PQueue({ concurrency: 1 });
 
   let status: SessionStatus = 'ready'; // Print sessions start ready immediately
   let promptCount = 0;
   let lastActivityAt = new Date();
-  let cumulativeCostUsd = 0;
   let lastMetadata: PrintMetadata | null = null;
+  let isFirstPrompt = true;
 
   // Transcript accumulator (stores text results)
   let transcript = '';
@@ -320,12 +330,17 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
             systemPrompt: appendSystemPrompt,
           };
 
-          const agent = createAgent({ pact, provider });
+          // PRD 029 BUG-2 fix: For recovered sessions, set resumeSessionId on the
+          // first prompt so claudeCliProvider uses --resume instead of --session-id.
+          if (recovered && isFirstPrompt) {
+            request.resumeSessionId = id;
+          }
+          isFirstPrompt = false;
+
           const result: AgentResult = await agent.invoke(request);
 
-          // Update metadata
-          cumulativeCostUsd += result.cost.totalUsd;
-          lastMetadata = agentResultToMetadata(result, cumulativeCostUsd);
+          // Update metadata — use agent.state.totalUsd for cumulative cost (BUG-1 fix)
+          lastMetadata = agentResultToMetadata(result, agent.state.totalUsd);
 
           // Accumulate transcript
           const output = String(result.output);
