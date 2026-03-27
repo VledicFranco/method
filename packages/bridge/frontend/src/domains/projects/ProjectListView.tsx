@@ -30,9 +30,11 @@ function ProjectListViewComponent({
     switch (status) {
       case 'healthy':
         return 'bio';
-      case 'degraded':
+      case 'git_corrupted':
+        return 'error';
+      case 'missing_config':
         return 'solar';
-      case 'error':
+      case 'permission_denied':
         return 'error';
       default:
         return 'nebular';

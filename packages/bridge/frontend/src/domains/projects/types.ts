@@ -5,7 +5,7 @@ export interface ProjectMetadata {
   name: string;
   description?: string;
   path: string;
-  status: 'healthy' | 'degraded' | 'error';
+  status: 'healthy' | 'git_corrupted' | 'missing_config' | 'permission_denied';
   git_valid: boolean;
   method_dir_exists: boolean;
   installed_methodologies: string[];

@@ -13,27 +13,36 @@ import type { ProjectMetadata } from './discovery-service.js';
 const mockProjects: ProjectMetadata[] = [
   {
     id: 'proj-001',
+    name: 'pv-method',
+    description: '',
     path: '/home/user/pv-method',
     status: 'healthy',
     git_valid: true,
     method_dir_exists: true,
     discovered_at: new Date().toISOString(),
+    last_scanned: new Date().toISOString(),
   },
   {
     id: 'proj-002',
+    name: 'oss-constellation',
+    description: '',
     path: '/home/user/oss-constellation',
     status: 'healthy',
     git_valid: true,
     method_dir_exists: true,
     discovered_at: new Date(Date.now() - 3600000).toISOString(),
+    last_scanned: new Date(Date.now() - 3600000).toISOString(),
   },
   {
     id: 'proj-003',
+    name: 'degraded-project',
+    description: '',
     path: '/home/user/degraded-project',
     status: 'git_corrupted',
     git_valid: false,
     method_dir_exists: false,
     discovered_at: new Date(Date.now() - 86400000).toISOString(),
+    last_scanned: new Date(Date.now() - 86400000).toISOString(),
   },
 ];
 
