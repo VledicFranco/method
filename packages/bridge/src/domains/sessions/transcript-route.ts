@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import type { SessionPool } from './pool.js';
 import type { TranscriptReader } from './transcript-reader.js';
+import { collapseToolRounds } from './transcript-reader.js';
 
 export function registerTranscriptRoutes(
   app: FastifyInstance,
@@ -44,7 +45,8 @@ export function registerTranscriptRoutes(
       }
     }
 
-    const turns = transcriptReader.getTranscript(bestMatch.file);
+    const rawTurns = transcriptReader.getTranscript(bestMatch.file);
+    const turns = collapseToolRounds(rawTurns);
 
     return reply.status(200).send({
       session_id: id,

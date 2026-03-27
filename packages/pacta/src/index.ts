@@ -9,7 +9,7 @@
 // createAgent() binds ports to a pact.
 
 // Core pact types
-export type { Pact, AgentRequest, AgentResult, TokenUsage, CostReport } from './pact.js';
+export type { Pact, AgentRequest, AgentResult, TokenUsage, CostReport, RecoveryIntent } from './pact.js';
 
 // Execution modes (streaming is orthogonal — see Pact.streaming)
 export type {
@@ -85,7 +85,7 @@ export type { EffortParams } from './reasoning/effort-mapper.js';
 
 // Composition engine
 export { createAgent, CapabilityError } from './engine/create-agent.js';
-export type { CreateAgentOptions, Agent } from './engine/create-agent.js';
+export type { CreateAgentOptions, Agent, AgentState } from './engine/create-agent.js';
 
 // Middleware
 export { budgetEnforcer, BudgetExhaustedError } from './middleware/budget-enforcer.js';

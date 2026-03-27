@@ -17,12 +17,26 @@ import type { ReasoningPolicy } from '../reasoning/reasoning-policy.js';
 import { budgetEnforcer } from '../middleware/budget-enforcer.js';
 import { outputValidator } from '../middleware/output-validator.js';
 
+// ── Agent State ──────────────────────────────────────────────────
+
+/** Cumulative state accumulated across invocations. Read-only, updated after each completed invoke(). */
+export interface AgentState {
+  turnsExecuted: number;
+  totalUsd: number;
+  totalTokens: number;
+  invocationCount: number;
+}
+
 // ── Agent Interface ──────────────────────────────────────────────
 
 export interface Agent<TOutput = unknown> {
   invoke(request: AgentRequest): Promise<AgentResult<TOutput>>;
   readonly pact: Pact<TOutput>;
   readonly provider: AgentProvider;
+  /** Cumulative state across invocations. Reflects the last completed invocation. */
+  readonly state: AgentState;
+  /** Optional cleanup — release resources, abort in-flight work. */
+  dispose?(): void;
 }
 
 // ── Configuration ────────────────────────────────────────────────
@@ -98,11 +112,35 @@ export function createAgent<TOutput = unknown>(
 
   const pipeline = buildPipeline(options);
 
+  // State accumulation — always runs, regardless of middleware configuration.
+  const agentState: AgentState = {
+    turnsExecuted: 0,
+    totalUsd: 0,
+    totalTokens: 0,
+    invocationCount: 0,
+  };
+
   return {
     pact: options.pact,
     provider: options.provider,
-    invoke(request: AgentRequest): Promise<AgentResult<TOutput>> {
-      return pipeline(options.pact, request);
+    get state(): AgentState {
+      return { ...agentState };
+    },
+    async invoke(request: AgentRequest): Promise<AgentResult<TOutput>> {
+      const result = await pipeline(options.pact, request);
+
+      // Accumulate state from result
+      agentState.invocationCount++;
+      agentState.turnsExecuted += result.turns ?? 0;
+      if (result.cost) {
+        agentState.totalUsd += result.cost.totalUsd ?? 0;
+      }
+      if (result.usage) {
+        agentState.totalTokens +=
+          (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0);
+      }
+
+      return result;
     },
   };
 }

@@ -151,6 +151,7 @@ export function createReferenceAgent<TOutput = unknown>(
   return {
     pact: inner.pact,
     provider: inner.provider,
+    get state() { return inner.state; },
     invoke: inner.invoke.bind(inner),
 
     with(overrides: Partial<ReferenceAgentConfig>): ReferenceAgent<TOutput> {

@@ -14,6 +14,11 @@ import type { ScopeContract } from './scope.js';
 import type { ContextPolicy } from './context/context-policy.js';
 import type { ReasoningPolicy } from './reasoning/reasoning-policy.js';
 
+// ── Recovery Intent ───────────────────────────────────────────────
+
+/** Declarative recovery preference — what the orchestrator should do on crash/restart. */
+export type RecoveryIntent = 'resume' | 'restart' | 'abandon';
+
 // ── The Pact ──────────────────────────────────────────────────────
 
 export interface Pact<TOutput = unknown> {
@@ -37,6 +42,10 @@ export interface Pact<TOutput = unknown> {
 
   /** How the agent reasons between actions */
   reasoning?: ReasoningPolicy;
+
+  /** What the orchestrator should do if the host process crashes/restarts.
+   *  This is a deployment hint — not enforced by the SDK. */
+  recovery?: RecoveryIntent;
 }
 
 // ── Agent Request ─────────────────────────────────────────────────

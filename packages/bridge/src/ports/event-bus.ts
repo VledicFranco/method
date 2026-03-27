@@ -24,6 +24,7 @@ export type EventDomain =
   | 'project'
   | 'methodology'
   | 'system'
+  | 'agent'
   | (string & {});
 
 export type EventSeverity = 'info' | 'warning' | 'error' | 'critical';
