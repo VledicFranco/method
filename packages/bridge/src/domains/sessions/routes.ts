@@ -269,7 +269,40 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     try {
       const result = await pool.prompt(id, prompt, timeout_ms, settle_delay_ms);
       tokenTracker.refreshUsage(id);
-      return reply.status(200).send({ output: result.output, timed_out: result.timedOut });
+
+      // Map PrintMetadata → response shape
+      const metadata = result.metadata ? {
+        cost_usd: result.metadata.total_cost_usd,
+        num_turns: result.metadata.num_turns,
+        duration_ms: result.metadata.duration_ms,
+        stop_reason: result.metadata.stop_reason,
+        input_tokens: result.metadata.usage.input_tokens,
+        output_tokens: result.metadata.usage.output_tokens,
+        cache_read_tokens: result.metadata.usage.cache_read_input_tokens,
+        cache_write_tokens: result.metadata.usage.cache_creation_input_tokens,
+      } : null;
+
+      // Emit BridgeEvent if eventBus is available
+      if (eventBus) {
+        eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: 'session.prompt.completed',
+          severity: 'info',
+          sessionId: id,
+          payload: {
+            output_length: result.output.length,
+            timed_out: result.timedOut,
+            cost_usd: metadata?.cost_usd ?? 0,
+            num_turns: metadata?.num_turns ?? 0,
+            duration_ms: metadata?.duration_ms ?? 0,
+            stop_reason: metadata?.stop_reason ?? null,
+          },
+          source: 'bridge/sessions/routes',
+        });
+      }
+
+      return reply.status(200).send({ output: result.output, timed_out: result.timedOut, metadata });
     } catch (e) {
       const message = (e as Error).message;
       if (message.includes('not found')) return reply.status(404).send({ error: message });
