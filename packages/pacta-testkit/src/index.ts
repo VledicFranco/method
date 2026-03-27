@@ -1,5 +1,5 @@
 // @method/pacta-testkit — verification affordances for Pacta agents
-// RecordingProvider, builders, assertions
+// RecordingProvider, builders, assertions, cognitive helpers
 
 // Recording provider
 export { RecordingProvider } from './recording-provider.js';
@@ -20,3 +20,25 @@ export {
   assertOutputMatches,
 } from './assertions.js';
 export type { BudgetLimits } from './assertions.js';
+
+// Cognitive — RecordingModule
+export { RecordingModule } from './recording-module.js';
+export type { RecordedStepInvocation } from './recording-module.js';
+
+// Cognitive — Builders
+export {
+  CognitiveModuleBuilder,
+  cognitiveModuleBuilder,
+  WorkspaceBuilder,
+  workspaceBuilder,
+  CycleConfigBuilder,
+  cycleConfigBuilder,
+} from './cognitive-builders.js';
+
+// Cognitive — Assertions
+export {
+  assertModuleStepCalled,
+  assertMonitoringSignalEmitted,
+  assertWorkspaceContains,
+  assertCyclePhaseOrder,
+} from './cognitive-assertions.js';
