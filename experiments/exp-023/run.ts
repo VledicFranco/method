@@ -344,7 +344,7 @@ async function runCognitive(task: typeof TASK_01, runNumber: number): Promise<Ru
       [moduleId('observer'), 0.6],
     ]),
   };
-  const workspace = createWorkspace({ capacity: 15 }, salienceContext);
+  const workspace = createWorkspace({ capacity: 8 }, salienceContext);
   const memory = createSimpleMemory();
   // Create modules with workspace ports
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));

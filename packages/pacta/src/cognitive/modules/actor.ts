@@ -303,7 +303,7 @@ export function createActor(
         const entry: WorkspaceEntry = {
           source: id,
           content: toolResultContent,
-          salience: success ? 0.8 : 0.4,
+          salience: success ? 0.5 : 0.3,
           timestamp: Date.now(),
         };
         writePort.write(entry);
