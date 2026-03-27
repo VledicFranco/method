@@ -130,14 +130,16 @@ export function mapProcessError(exitCode: number, stderr: string, config: Claude
 
 /**
  * Generate a session ID for a methodology step execution.
+ *
+ * claude --session-id requires a valid UUID. We use randomUUID() from the
+ * Node crypto module to satisfy that constraint.
  */
-export function generateSessionId(prefix: string, methodId?: string, stepId?: string): string {
-  const parts = [prefix];
-  if (methodId) parts.push(methodId);
-  if (stepId) parts.push(stepId);
-  parts.push(Date.now().toString(36));
-  return parts.join("_");
+export function generateSessionId(_prefix?: string, _methodId?: string, _stepId?: string): string {
+  return crypto.randomUUID();
 }
+
+// node:crypto is available in Node 14.17+ without an import.
+declare const crypto: { randomUUID(): string };
 
 /**
  * Create a ClaudeHeadless AgentProvider.

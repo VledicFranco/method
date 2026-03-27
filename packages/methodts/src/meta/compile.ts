@@ -1,9 +1,11 @@
 /**
- * Method compilation — G1-G6 gate validation.
+ * Method compilation — G1-G7 gate validation.
  *
- * compileMethod runs a method through all six compilation gates
- * and produces a CompilationReport. This is the typed form of the
- * compilation process from the method registry system.
+ * compileMethod runs a method through all six structural gates (G1-G6)
+ * and produces a CompilationReport synchronously.
+ *
+ * compileMethodAsync extends compilation with G7 — runs test suites
+ * declared on the method via CommandService and appends the result.
  *
  * Gates:
  *   G1 — Domain signature + axiom validation
@@ -12,11 +14,15 @@
  *   G4 — DAG acyclicity + edge composability
  *   G5 — Guidance review (agent steps have prompts)
  *   G6 — Serializability (method structure survives JSON round-trip)
+ *   G7 — Test suites pass (async; requires CommandService)
  *
- * Pure functions — no Effect dependency.
+ * G1-G6: pure functions — no Effect dependency.
+ * G7: async — requires CommandService injection.
  */
 
+import { Effect } from "effect";
 import type { Method } from "../method/method.js";
+import type { CommandService } from "../extractor/services/command.js";
 import { validateSignature, validateAxioms } from "../domain/domain-theory.js";
 import { topologicalOrder, checkComposability } from "../method/dag.js";
 
@@ -145,6 +151,112 @@ export function compileMethod<S>(method: Method<S>, testStates: S[]): Compilatio
  */
 export function assertCompiled<S>(method: Method<S>, testStates: S[]): CompilationReport {
   const report = compileMethod(method, testStates);
+  if (report.overall === "failed") {
+    const failures = report.gates
+      .filter((g) => g.status === "fail")
+      .map((g) => `${g.gate}: ${g.details}`);
+    throw new Error(`Compilation failed for ${method.id}:\n${failures.join("\n")}`);
+  }
+  return report;
+}
+
+// ── G7: Test suite gate ──────────────────────────────────────────────────────
+
+async function runG7<S>(
+  method: Method<S>,
+  cmdService: CommandService | undefined,
+): Promise<CompilationGateResult> {
+  const suites = method.testSuites;
+
+  if (!suites || suites.length === 0) {
+    return { gate: "G7-tests", status: "pass", details: "No test suites declared" };
+  }
+
+  if (!cmdService) {
+    return {
+      gate: "G7-tests",
+      status: "needs_review",
+      details: `${suites.length} test suite(s) declared but no CommandService provided`,
+    };
+  }
+
+  const results: { suiteId: string; passed: boolean; output: string }[] = [];
+
+  for (const suite of suites) {
+    const result = await Effect.runPromise(
+      cmdService
+        .exec(suite.command, suite.args ? [...suite.args] : undefined)
+        .pipe(
+          Effect.map((r) => ({
+            suiteId: suite.id,
+            passed: r.exitCode === 0,
+            output: r.stdout,
+          })),
+          Effect.catchAll((err) =>
+            Effect.succeed({ suiteId: suite.id, passed: false, output: err.message }),
+          ),
+        ),
+    );
+    results.push(result);
+  }
+
+  const failed = results.filter((r) => !r.passed);
+
+  if (failed.length === 0) {
+    return {
+      gate: "G7-tests",
+      status: "pass",
+      details: `All ${suites.length} test suite(s) passed`,
+    };
+  }
+
+  const failDetails = failed
+    .map((r) => `${r.suiteId}: ${r.output.slice(0, 200)}`)
+    .join("; ");
+
+  return {
+    gate: "G7-tests",
+    status: "fail",
+    details: `${failed.length}/${suites.length} test suite(s) failed — ${failDetails}`,
+  };
+}
+
+/**
+ * Run a method through G1-G6 (structural) + G7 (test suites).
+ *
+ * G7 runs test suites declared on the method via the provided CommandService.
+ * If no CommandService is supplied and testSuites are present, G7 = needs_review.
+ *
+ * @param method     The method to compile
+ * @param testStates Representative states for G1/G4 checks
+ * @param cmdService Optional shell executor for G7 (inject CommandService instance)
+ */
+export async function compileMethodAsync<S>(
+  method: Method<S>,
+  testStates: S[],
+  cmdService?: CommandService,
+): Promise<CompilationReport> {
+  const base = compileMethod(method, testStates);
+  const g7 = await runG7(method, cmdService);
+
+  const gates = [...base.gates, g7];
+  const hasFailure = gates.some((g) => g.status === "fail");
+  const hasReview = gates.some((g) => g.status === "needs_review");
+  const overall = hasFailure ? "failed" : hasReview ? "needs_review" : "compiled";
+
+  return { overall, gates, methodId: method.id };
+}
+
+/**
+ * Assert async compilation passes. Throws if any gate fails.
+ * Returns the report on success (may still be "needs_review").
+ */
+export async function assertCompiledAsync<S>(
+  method: Method<S>,
+  testStates: S[],
+  cmdService?: CommandService,
+): Promise<CompilationReport> {
+  const report = await compileMethodAsync(method, testStates, cmdService);
   if (report.overall === "failed") {
     const failures = report.gates
       .filter((g) => g.status === "fail")

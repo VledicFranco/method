@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compileMethod, assertCompiled } from "../compile.js";
+import { compileMethod, assertCompiled, compileMethodAsync, assertCompiledAsync } from "../compile.js";
+import type { CommandService } from "../../extractor/services/command.js";
 import type { Method } from "../../method/method.js";
 import type { Step } from "../../method/step.js";
 import type { DomainTheory } from "../../domain/domain-theory.js";
@@ -273,5 +274,176 @@ describe("assertCompiled", () => {
 
     const report = assertCompiled(method, [{ score: 1, reviewed: false }]);
     expect(report.overall).toBe("needs_review");
+  });
+});
+
+// ── G7: compileMethodAsync + assertCompiledAsync ─────────────────────────────
+
+/** Build a CommandService that maps command+args to canned responses. */
+function makeCmdService(
+  responses: Record<string, { stdout: string; exitCode: number }>,
+): CommandService {
+  return {
+    exec: (command, args) => {
+      const key = args ? `${command} ${args.join(" ")}` : command;
+      const resp = responses[key] ?? responses[command];
+      if (resp) return Effect.succeed(resp);
+      return Effect.fail({
+        _tag: "CommandError" as const,
+        command,
+        message: `No mock for: ${key}`,
+      });
+    },
+  };
+}
+
+describe("compileMethodAsync / G7-tests", () => {
+  it("G7 = pass when no testSuites declared", async () => {
+    const method = makeMethod(); // no testSuites field
+    const report = await compileMethodAsync(method, [{ score: 1, reviewed: false }]);
+
+    expect(report.gates).toHaveLength(7);
+    const g7 = report.gates.find((g) => g.gate === "G7-tests")!;
+    expect(g7.status).toBe("pass");
+    expect(g7.details).toMatch(/No test suites/);
+    expect(report.overall).toBe("compiled");
+  });
+
+  it("G7 = needs_review when testSuites declared but no cmdService provided", async () => {
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [{ id: "unit", name: "Unit tests", command: "npm test" }],
+    };
+    const report = await compileMethodAsync(method, [{ score: 1, reviewed: false }]);
+
+    const g7 = report.gates.find((g) => g.gate === "G7-tests")!;
+    expect(g7.status).toBe("needs_review");
+    expect(g7.details).toMatch(/no CommandService/);
+    expect(report.overall).toBe("needs_review");
+  });
+
+  it("G7 = pass when all suites exit 0", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "All tests passed", exitCode: 0 },
+      "npm run lint": { stdout: "Lint OK", exitCode: 0 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [
+        { id: "unit", name: "Unit tests", command: "npm test" },
+        { id: "lint", name: "Lint", command: "npm run lint" },
+      ],
+    };
+    const report = await compileMethodAsync(
+      method,
+      [{ score: 1, reviewed: false }],
+      cmdService,
+    );
+
+    const g7 = report.gates.find((g) => g.gate === "G7-tests")!;
+    expect(g7.status).toBe("pass");
+    expect(g7.details).toMatch(/All 2 test suite/);
+    expect(report.overall).toBe("compiled");
+  });
+
+  it("G7 = fail when one suite exits non-zero", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "2 tests failed\nExpected: 1\nReceived: 2", exitCode: 1 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [{ id: "unit", name: "Unit tests", command: "npm test" }],
+    };
+    const report = await compileMethodAsync(
+      method,
+      [{ score: 1, reviewed: false }],
+      cmdService,
+    );
+
+    const g7 = report.gates.find((g) => g.gate === "G7-tests")!;
+    expect(g7.status).toBe("fail");
+    expect(g7.details).toMatch(/1\/1 test suite/);
+    expect(g7.details).toContain("unit:");
+    expect(report.overall).toBe("failed");
+  });
+
+  it("G7 = fail reports all failing suites", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "unit failed", exitCode: 1 },
+      "npm run typecheck": { stdout: "type errors", exitCode: 2 },
+      "npm run lint": { stdout: "lint OK", exitCode: 0 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [
+        { id: "unit", name: "Unit tests", command: "npm test" },
+        { id: "types", name: "Type check", command: "npm run typecheck" },
+        { id: "lint", name: "Lint", command: "npm run lint" },
+      ],
+    };
+    const report = await compileMethodAsync(
+      method,
+      [{ score: 1, reviewed: false }],
+      cmdService,
+    );
+
+    const g7 = report.gates.find((g) => g.gate === "G7-tests")!;
+    expect(g7.status).toBe("fail");
+    expect(g7.details).toMatch(/2\/3 test suite/);
+    expect(g7.details).toContain("unit:");
+    expect(g7.details).toContain("types:");
+  });
+
+  it("G7 counts toward overall: G1-G6 compiled + G7 fail = failed", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "fail", exitCode: 1 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [{ id: "unit", name: "Unit tests", command: "npm test" }],
+    };
+    const report = await compileMethodAsync(
+      method,
+      [{ score: 1, reviewed: false }],
+      cmdService,
+    );
+
+    // G1-G6 all pass, G7 fails
+    const g1to6 = report.gates.filter((g) => g.gate !== "G7-tests");
+    expect(g1to6.every((g) => g.status === "pass")).toBe(true);
+    expect(report.overall).toBe("failed");
+  });
+});
+
+describe("assertCompiledAsync", () => {
+  it("throws when G7 fails", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "fail", exitCode: 1 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [{ id: "unit", name: "Unit tests", command: "npm test" }],
+    };
+
+    await expect(
+      assertCompiledAsync(method, [{ score: 1, reviewed: false }], cmdService),
+    ).rejects.toThrow(/Compilation failed for M-test/);
+  });
+
+  it("does not throw when G7 passes", async () => {
+    const cmdService = makeCmdService({
+      "npm test": { stdout: "All passed", exitCode: 0 },
+    });
+    const method: Method<TestState> = {
+      ...makeMethod(),
+      testSuites: [{ id: "unit", name: "Unit tests", command: "npm test" }],
+    };
+
+    const report = await assertCompiledAsync(
+      method,
+      [{ score: 1, reviewed: false }],
+      cmdService,
+    );
+    expect(report.overall).toBe("compiled");
   });
 });

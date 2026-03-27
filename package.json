@@ -11,7 +11,10 @@
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:stop": "node scripts/kill-port.js",
-    "bridge:cleanup": "node scripts/cleanup-claude.js"
+    "bridge:cleanup": "node scripts/cleanup-claude.js",
+    "run-method": "npx tsx scripts/run-method.ts",
+    "test:real-claude": "npx tsx scripts/test-real-claude.ts",
+    "test:forge-surface": "npx tsx scripts/test-forge-surface.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

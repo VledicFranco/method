@@ -1,0 +1,27 @@
+{
+  "featureClusters": [
+    { "name": "authentication", "requirements": ["login", "logout", "token refresh"] },
+    { "name": "data-access", "requirements": ["CRUD operations", "pagination", "filtering"] }
+  ],
+  "architectureContext": ["REST API", "PostgreSQL", "JWT auth"],
+  "sections": [
+    {
+      "id": "S1",
+      "name": "Authentication",
+      "scopeBoundary": "User authentication flows only — login, logout, token lifecycle",
+      "acceptanceCriteria": ["POST /auth/login returns JWT", "POST /auth/logout invalidates token"]
+    },
+    {
+      "id": "S2",
+      "name": "Data Access Layer",
+      "scopeBoundary": "CRUD endpoints and query interface — no auth logic",
+      "acceptanceCriteria": ["All resources support CRUD", "Pagination supported on list endpoints"]
+    }
+  ],
+  "coverageVerified": true,
+  "dependencies": [
+    { "from": "S2", "to": "S1", "reason": "Data access endpoints require authenticated requests" }
+  ],
+  "deliveryOrder": ["S1", "S2"],
+  "sectionMapComplete": true
+}
