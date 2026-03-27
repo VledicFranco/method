@@ -288,7 +288,7 @@ export function SessionSidebar({
         >
           {sessions.map((session) => {
             const isActive = session.session_id === activeId;
-            const isRunning = session.status === 'running' || session.status === 'idle';
+            const isRunning = session.status === 'running' || session.status === 'idle' || session.status === 'ready' || session.status === 'working';
             const cost = typeof session.metadata?.cost_usd === 'number'
               ? (session.metadata.cost_usd as number)
               : 0;

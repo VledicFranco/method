@@ -30,22 +30,14 @@ export function registerTranscriptRoutes(
     // Match by session ID filename (bridge session ID === Claude CLI session ID)
     const exactMatch = sessions.find(s => s.file.endsWith(`${id}.jsonl`));
 
-    // Fallback to time-proximity heuristic for sessions created before this fix
-    let bestMatch = exactMatch ?? sessions[0];
+    // No fallback — if the session's JSONL doesn't exist yet, return empty.
+    // The time-proximity heuristic was removed because it matched wrong sessions
+    // (e.g., the parent Claude Code conversation instead of the spawned session).
     if (!exactMatch) {
-      const spawnTime = statusInfo.lastActivityAt.getTime();
-      let bestDelta = Infinity;
-      for (const s of sessions) {
-        const mtime = new Date(s.modifiedAt).getTime();
-        const delta = Math.abs(mtime - spawnTime);
-        if (delta < bestDelta) {
-          bestDelta = delta;
-          bestMatch = s;
-        }
-      }
+      return reply.status(200).send({ turns: [], session_id: id });
     }
 
-    const rawTurns = transcriptReader.getTranscript(bestMatch.file);
+    const rawTurns = transcriptReader.getTranscript(exactMatch.file);
     const turns = collapseToolRounds(rawTurns);
 
     return reply.status(200).send({
