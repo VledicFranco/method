@@ -189,9 +189,11 @@ const app = Fastify({ logger: true });
 
 // ---------- WebSocket (real-time push) ----------
 
-app.register(websocket);
 const wsHub = new WsHub();
-registerWsRoute(app, wsHub);
+app.register(async function wsPlugin(fastify) {
+  await fastify.register(websocket);
+  registerWsRoute(fastify, wsHub);
+});
 
 // PRD 026: Register WebSocketSink — session domain events flow through the bus to WsHub
 eventBus.registerSink(new WebSocketSink(wsHub));
