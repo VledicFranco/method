@@ -55,6 +55,8 @@ import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monito
 
 import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
+import { CONFIGS, describeConfig, type CognitiveConfig } from './strategies.js';
+
 import { TASK_01 } from './task-01-circular-dep.js';
 import { TASK_02 } from './task-02-test-first-bug.js';
 import { TASK_03 } from './task-03-config-migration.js';
@@ -327,7 +329,7 @@ async function runCliAgent(task: TaskDefinition, runNumber: number): Promise<Run
 //   4. Workspace (salience eviction, capacity=8) — managed context buffer
 //   5. Reflector (conditional) — fires on forceReplan only (not yet wired)
 
-async function runCognitive(task: TaskDefinition, runNumber: number): Promise<RunResult> {
+async function runCognitive(task: TaskDefinition, runNumber: number, config: CognitiveConfig): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
@@ -350,7 +352,9 @@ async function runCognitive(task: TaskDefinition, runNumber: number): Promise<Ru
       [moduleId('observer'), 0.6],
     ]),
   };
-  const workspace = createWorkspace({ capacity: 8 }, salienceContext);
+  const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
+
+  const foldedContext: string[] = [];  // Accumulated summaries of past actions
 
   // 5-module setup
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));
@@ -404,14 +408,98 @@ async function runCognitive(task: TaskDefinition, runNumber: number): Promise<Ru
       );
       monitorState = monResult.state;
 
-      // Apply monitor enforcement to control directive
-      if (monResult.monitoring.anomalyDetected) {
+      // Apply monitor enforcement based on strategy
+      const interventionsUsed = monitorInterventions;
+      const budgetRemaining = config.monitor.interventionBudget - interventionsUsed;
+
+      if (monResult.monitoring.anomalyDetected && budgetRemaining > 0) {
         monitorInterventions++;
+
+        switch (config.monitor.onStagnation) {
+          case 'constrain':
+            // Current behavior: restrict actions + force replan
+            raControl.restrictedActions = monResult.output.restrictedActions;
+            raControl.forceReplan = monResult.output.forceReplan;
+            if (monResult.output.forceReplan) raControl.strategy = 'think';
+            break;
+
+          case 'reframe':
+            // Inject reframe prompt instead of restricting actions
+            raControl.restrictedActions = [];  // Don't restrict
+            raControl.forceReplan = true;      // But do force replan
+            raControl.strategy = 'think';
+            // The forceReplan flag already adds "MUST try different strategy" to prompt
+            break;
+
+          case 'expand':
+            // Suggest expansion: search for things not yet examined
+            raControl.restrictedActions = [];
+            raControl.forceReplan = true;
+            raControl.strategy = 'plan';  // Plan strategy encourages broader thinking
+            break;
+
+          case 'nudge-reframe-reset':
+            // 3-tier: nudge first, then reframe, then reset
+            if (interventionsUsed <= 1) {
+              // Nudge: don't restrict, just note it
+              raControl.restrictedActions = [];
+              raControl.forceReplan = false;
+            } else if (interventionsUsed <= 2) {
+              // Reframe
+              raControl.restrictedActions = [];
+              raControl.forceReplan = true;
+              raControl.strategy = 'think';
+            } else {
+              // Reset: clear workspace context, re-inject task
+              raControl.restrictedActions = [];
+              raControl.forceReplan = true;
+              raControl.strategy = 'plan';
+              // Clear non-essential workspace entries would go here in a full impl
+            }
+            break;
+        }
+      } else if (monResult.monitoring.anomalyDetected && budgetRemaining <= 0) {
+        // Budget exhausted — monitor goes silent
+        raControl.restrictedActions = [];
+        raControl.forceReplan = false;
       }
-      raControl.restrictedActions = monResult.output.restrictedActions;
-      raControl.forceReplan = monResult.output.forceReplan;
-      if (monResult.output.forceReplan) {
-        raControl.strategy = 'think';  // escalate reasoning depth
+
+      // Build strategy-specific prompt additions
+      const promptAdditions: string[] = [];
+
+      if (config.prompt.taskAnchor) {
+        promptAdditions.push(`## CURRENT TASK\n${task.description}\nDo not work on anything else.\n`);
+      }
+
+      if (config.prompt.showCycleBudget) {
+        promptAdditions.push(`[Cycle ${cycle + 1}/${MAX_CYCLES}]`);
+      }
+
+      if (foldedContext.length > 0) {
+        promptAdditions.push(`## Completed Actions\n${foldedContext.join('\n')}\n`);
+      }
+
+      if (config.prompt.completionChecklist) {
+        promptAdditions.push(`When the task is complete, call the "done" action. Do not continue working after the task is solved.`);
+      }
+
+      if (config.prompt.preDeleteChecklist) {
+        promptAdditions.push(`BEFORE removing or deleting any code: (1) search for the identifier as a literal string in ALL files, (2) search for dynamic references (require(), import(), string interpolation, bracket notation), (3) check config files. Only delete if no references found.`);
+      }
+
+      if (config.prompt.problemStateRequired) {
+        promptAdditions.push(`Start your <plan> with: PROBLEM_STATE: [one sentence — what am I solving right now?]`);
+      }
+
+      // Inject prompt strategy context into workspace
+      if (promptAdditions.length > 0) {
+        const strategyContext = promptAdditions.join('\n\n');
+        workspace.getWritePort(moduleId('observer')).write({
+          source: moduleId('observer'),
+          content: strategyContext,
+          salience: 0.95,  // High salience — always visible
+          timestamp: Date.now(),
+        });
       }
 
       // 3. REASON+ACT — single LLM call, then tool execution
@@ -431,15 +519,21 @@ async function runCognitive(task: TaskDefinition, runNumber: number): Promise<Ru
         });
       }
 
+      // Accumulate folded context summary
+      const actionSummary = `[c${cycle+1}] ${raResult.output.actionName}: ${raResult.output.plan?.slice(0, 80) || raResult.output.reasoning?.slice(0, 80) || ''}`;
+      foldedContext.push(actionSummary);
+      // Keep last 15 summaries max
+      if (foldedContext.length > 15) foldedContext.shift();
+
       // Per-cycle trace logging
       const conf = (raResult.monitoring as any).confidence ?? 0;
       const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
-      const restricted = (monResult.output.restrictedActions?.length ?? 0) > 0
-        ? ` 🚫${monResult.output.restrictedActions.join(',')}`
+      const stagnationTag = monResult.monitoring.anomalyDetected
+        ? budgetRemaining > 0
+          ? ` ⚠ ${config.monitor.onStagnation}`
+          : ' ⚠ (budget exhausted)'
         : '';
-      const replan = monResult.output.forceReplan ? ' ⚡replan' : '';
-      const monitorTag = monResult.monitoring.anomalyDetected ? ' ⚠' : '';
-      console.log(`    [cycle ${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${monitorTag}${restricted}${replan}`);
+      console.log(`    [cycle ${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${stagnationTag}`);
 
       // Check for completion
       if (raResult.output.actionName === 'done') {
@@ -544,6 +638,14 @@ async function main() {
     numRuns = parseInt(next ?? '1', 10) || 1;
   }
 
+  // Config selection: --config=baseline (default), --config=v2-minimal, etc.
+  const configArg = args.find(a => a.startsWith('--config='))?.split('=')[1] ?? 'baseline';
+  const cognitiveConfig = CONFIGS[configArg];
+  if (!cognitiveConfig) {
+    console.error(`Unknown config: ${configArg}. Available: ${Object.keys(CONFIGS).join(', ')}`);
+    process.exit(1);
+  }
+
   // Task selection: --task 1 (default), --task 2, --task all
   const taskArg = args.find(a => a.startsWith('--task=') || a === '--task');
   let taskSelection: string = '1';
@@ -563,6 +665,7 @@ async function main() {
 
   console.log('\n=== EXP-023: Cognitive vs Flat — Strategy Shift Recovery ===');
   console.log(`    Conditions: ${[runAll || runFlat_ ? 'A(flat)' : '', runAll || runCli ? 'B(cli-agent)' : '', runAll || runCog ? 'C(cognitive)' : ''].filter(Boolean).join(', ')}`);
+  console.log(`    Config: ${describeConfig(cognitiveConfig)}`);
   console.log(`    Tasks: ${selectedTasks.map(t => t.name).join(', ')}`);
   console.log(`    Runs per condition per task: ${numRuns}\n`);
 
@@ -597,7 +700,7 @@ async function main() {
     if (runAll || runCog) {
       console.log('\nCondition C: Cognitive (5-module merged cycle)');
       for (let i = 1; i <= numRuns; i++) {
-        const r = await runCognitive(task, i);
+        const r = await runCognitive(task, i, cognitiveConfig);
         printResult(r);
         results.push(r);
       }
