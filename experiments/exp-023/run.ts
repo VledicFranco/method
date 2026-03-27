@@ -52,6 +52,8 @@ import type { AggregatedSignals, MonitoringSignal } from '../../packages/pacta/s
 import { createReasonerActor, type ReasonerActorControl } from '../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
 import { createObserver } from '../../packages/pacta/src/cognitive/modules/observer.js';
 import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monitor.js';
+import { createMemoryModuleV2, handleEviction, type MemoryV2Control } from '../../packages/pacta/src/cognitive/modules/memory-module-v2.js';
+import { InMemoryMemory } from '../../packages/pacta/src/ports/memory-impl.js';
 
 import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
@@ -329,7 +331,7 @@ async function runCliAgent(task: TaskDefinition, runNumber: number): Promise<Run
 //   4. Workspace (salience eviction, capacity=8) — managed context buffer
 //   5. Reflector (conditional) — fires on forceReplan only (not yet wired)
 
-async function runCognitive(task: TaskDefinition, runNumber: number, config: CognitiveConfig): Promise<RunResult> {
+async function runCognitive(task: TaskDefinition, runNumber: number, config: CognitiveConfig, useMemory: boolean = false): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
@@ -365,11 +367,26 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
   );
   const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
 
+  // Memory module (PRD 031)
+  const memoryPort = new InMemoryMemory();
+  const memoryModule = useMemory
+    ? createMemoryModuleV2(memoryPort, workspace.getWritePort(moduleId('memory')))
+    : null;
+  let memoryState = memoryModule?.initialState() ?? null;
+  const memoryControl: MemoryV2Control = {
+    target: moduleId('memory'),
+    timestamp: Date.now(),
+    retrievalEnabled: true,
+    extractionEnabled: true,
+    maxRetrievals: 3,
+  };
+
   // Cycle state
   let totalTokens = 0;
   let providerCalls = 0;
   let monitorInterventions = 0;
   const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
+  let prevAction: { name: string; success: boolean; target?: string } | undefined;
 
   const MAX_CYCLES = 15;
   const raControl: ReasonerActorControl = {
@@ -509,6 +526,17 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
         });
       }
 
+      // MEMORY RETRIEVAL GATE (if enabled)
+      if (memoryModule && memoryState) {
+        const memSnapshot = workspace.getReadPort(moduleId('memory')).read();
+        const memResult = await memoryModule.step(
+          { snapshot: memSnapshot, lastAction: prevAction },
+          memoryState,
+          memoryControl,
+        );
+        memoryState = memResult.state;
+      }
+
       // 3. REASON+ACT — single LLM call, then tool execution
       const snapshot: ReadonlyWorkspaceSnapshot = workspace.getReadPort(moduleId('reasoner-actor')).read();
       const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
@@ -525,6 +553,13 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
           success: (raResult.monitoring as any).success ?? true,
         });
       }
+
+      // Track last action for memory extraction
+      prevAction = {
+        name: raResult.output.actionName,
+        success: (raResult.monitoring as any).success ?? true,
+        target: raResult.output.plan?.slice(0, 50),
+      };
 
       // Log errors if the step failed
       if (raResult.error) {
@@ -551,6 +586,11 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
       if (raResult.output.actionName === 'done') {
         break;
       }
+    }
+
+    if (memoryModule && memoryState) {
+      const cardCount = (await memoryPort.allCards()).length;
+      console.log(`    memory: ${cardCount} fact cards stored, ${memoryState.retrievalCount} retrievals`);
     }
 
     const validation = task.validate(vfs.files);
@@ -642,6 +682,7 @@ async function main() {
   const runCli = args.includes('--cli');
   const runCog = args.includes('--cognitive');
   const runAll = !runFlat_ && !runCli && !runCog;
+  const useMemory = args.includes('--memory');
 
   const runsArg = args.find(a => a.startsWith('--runs=') || a === '--runs');
   let numRuns = 1;
@@ -678,6 +719,7 @@ async function main() {
   console.log('\n=== EXP-023: Cognitive vs Flat — Strategy Shift Recovery ===');
   console.log(`    Conditions: ${[runAll || runFlat_ ? 'A(flat)' : '', runAll || runCli ? 'B(cli-agent)' : '', runAll || runCog ? 'C(cognitive)' : ''].filter(Boolean).join(', ')}`);
   console.log(`    Config: ${describeConfig(cognitiveConfig)}`);
+  console.log('    Memory: ' + (useMemory ? 'enabled' : 'disabled'));
   console.log(`    Tasks: ${selectedTasks.map(t => t.name).join(', ')}`);
   console.log(`    Runs per condition per task: ${numRuns}\n`);
 
@@ -712,7 +754,7 @@ async function main() {
     if (runAll || runCog) {
       console.log('\nCondition C: Cognitive (5-module merged cycle)');
       for (let i = 1; i <= numRuns; i++) {
-        const r = await runCognitive(task, i, cognitiveConfig);
+        const r = await runCognitive(task, i, cognitiveConfig, useMemory);
         printResult(r);
         results.push(r);
       }
