@@ -1,0 +1,7 @@
+{
+  "total_entries": 600,
+  "parse_success_rate": 1.0,
+  "semantic_accuracy_rate": 1.0,
+  "revision_number": 1,
+  "grammar_file": "grammars/monitor-v2.peggy"
+}
