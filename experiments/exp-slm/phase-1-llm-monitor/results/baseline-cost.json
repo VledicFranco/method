@@ -1,0 +1,208 @@
+{
+  "timestamp": "2026-03-28T10:28:51.935Z",
+  "pricingModel": "claude-3-haiku (simulated)",
+  "inputCostPerToken": 2.5e-7,
+  "outputCostPerToken": 0.00000125,
+  "systemPromptTokens": 474,
+  "measurements": [
+    {
+      "name": "fixture-normal-high-confidence",
+      "inputTokens": 580,
+      "outputTokens": 20,
+      "totalTokens": 600,
+      "estimatedCostUsd": 0.00017,
+      "latencyMs": 0.21,
+      "promptCharacterCount": 2318,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 106
+    },
+    {
+      "name": "fixture-normal-medium-confidence",
+      "inputTokens": 580,
+      "outputTokens": 20,
+      "totalTokens": 600,
+      "estimatedCostUsd": 0.00017,
+      "latencyMs": 0.1,
+      "promptCharacterCount": 2319,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 106
+    },
+    {
+      "name": "fixture-low-confidence-reasoner",
+      "inputTokens": 544,
+      "outputTokens": 20,
+      "totalTokens": 564,
+      "estimatedCostUsd": 0.000161,
+      "latencyMs": 0.03,
+      "promptCharacterCount": 2175,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 70
+    },
+    {
+      "name": "fixture-unexpected-actor-result",
+      "inputTokens": 541,
+      "outputTokens": 20,
+      "totalTokens": 561,
+      "estimatedCostUsd": 0.00016025,
+      "latencyMs": 0.02,
+      "promptCharacterCount": 2163,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 67
+    },
+    {
+      "name": "fixture-compound-anomaly",
+      "inputTokens": 579,
+      "outputTokens": 20,
+      "totalTokens": 599,
+      "estimatedCostUsd": 0.00016975,
+      "latencyMs": 0.04,
+      "promptCharacterCount": 2315,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 105
+    },
+    {
+      "name": "fixture-full-cycle-normal",
+      "inputTokens": 681,
+      "outputTokens": 20,
+      "totalTokens": 701,
+      "estimatedCostUsd": 0.00019525,
+      "latencyMs": 0.02,
+      "promptCharacterCount": 2723,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 207
+    },
+    {
+      "name": "fixture-read-only-stagnation",
+      "inputTokens": 579,
+      "outputTokens": 20,
+      "totalTokens": 599,
+      "estimatedCostUsd": 0.00016975,
+      "latencyMs": 0.02,
+      "promptCharacterCount": 2315,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 105
+    },
+    {
+      "name": "fixture-empty-signals",
+      "inputTokens": 516,
+      "outputTokens": 20,
+      "totalTokens": 536,
+      "estimatedCostUsd": 0.000154,
+      "latencyMs": 0.01,
+      "promptCharacterCount": 2064,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 42
+    },
+    {
+      "name": "fixture-conflict-detected",
+      "inputTokens": 579,
+      "outputTokens": 20,
+      "totalTokens": 599,
+      "estimatedCostUsd": 0.00016975,
+      "latencyMs": 0.08,
+      "promptCharacterCount": 2316,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 105
+    },
+    {
+      "name": "fixture-borderline-confidence",
+      "inputTokens": 580,
+      "outputTokens": 20,
+      "totalTokens": 600,
+      "estimatedCostUsd": 0.00017,
+      "latencyMs": 0.04,
+      "promptCharacterCount": 2318,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 106
+    },
+    {
+      "name": "empty",
+      "inputTokens": 516,
+      "outputTokens": 20,
+      "totalTokens": 536,
+      "estimatedCostUsd": 0.000154,
+      "latencyMs": 0.01,
+      "promptCharacterCount": 2064,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 42
+    },
+    {
+      "name": "single-reasoner-normal",
+      "inputTokens": 545,
+      "outputTokens": 20,
+      "totalTokens": 565,
+      "estimatedCostUsd": 0.00016125000000000002,
+      "latencyMs": 0.01,
+      "promptCharacterCount": 2177,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 71
+    },
+    {
+      "name": "reasoner-actor-normal",
+      "inputTokens": 580,
+      "outputTokens": 20,
+      "totalTokens": 600,
+      "estimatedCostUsd": 0.00017,
+      "latencyMs": 0,
+      "promptCharacterCount": 2318,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 106
+    },
+    {
+      "name": "full-cycle-5-modules",
+      "inputTokens": 681,
+      "outputTokens": 20,
+      "totalTokens": 701,
+      "estimatedCostUsd": 0.00019525,
+      "latencyMs": 0.01,
+      "promptCharacterCount": 2721,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 207
+    },
+    {
+      "name": "low-confidence",
+      "inputTokens": 544,
+      "outputTokens": 20,
+      "totalTokens": 564,
+      "estimatedCostUsd": 0.000161,
+      "latencyMs": 0,
+      "promptCharacterCount": 2175,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 70
+    },
+    {
+      "name": "compound-anomaly",
+      "inputTokens": 579,
+      "outputTokens": 20,
+      "totalTokens": 599,
+      "estimatedCostUsd": 0.00016975,
+      "latencyMs": 0,
+      "promptCharacterCount": 2315,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 105
+    },
+    {
+      "name": "large-8-modules",
+      "inputTokens": 820,
+      "outputTokens": 20,
+      "totalTokens": 840,
+      "estimatedCostUsd": 0.00023,
+      "latencyMs": 0.01,
+      "promptCharacterCount": 3279,
+      "systemPromptTokens": 474,
+      "userPromptTokens": 346
+    }
+  ],
+  "summary": {
+    "totalMeasurements": 17,
+    "avgInputTokens": 590,
+    "avgOutputTokens": 20,
+    "avgTotalTokens": 610,
+    "avgCostPerCallUsd": 0.000172,
+    "avgLatencyMs": 0.04,
+    "minTotalTokens": 536,
+    "maxTotalTokens": 840,
+    "estimatedCostPer100Calls": 0.017241,
+    "estimatedCostPer1000Calls": 0.172412
+  }
+}

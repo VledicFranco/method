@@ -1,0 +1,130 @@
+[
+  {
+    "name": "normal-high-confidence",
+    "description": "Matching report for normal-high-confidence signals",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "normal-medium-confidence",
+    "description": "Matching report for normal-medium-confidence signals",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "low-confidence-reasoner",
+    "description": "Matching report for low-confidence-reasoner signals",
+    "report": {
+      "anomalies": [
+        {
+          "moduleId": "reasoner",
+          "type": "low-confidence",
+          "detail": "Confidence 0.15 below threshold 0.3"
+        }
+      ],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "unexpected-actor-result",
+    "description": "Matching report for unexpected-actor-result signals",
+    "report": {
+      "anomalies": [
+        {
+          "moduleId": "actor",
+          "type": "unexpected-result",
+          "detail": "Actor reported unexpected result from action: Bash"
+        }
+      ],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "compound-anomaly",
+    "description": "Matching report for compound-anomaly signals",
+    "report": {
+      "anomalies": [
+        {
+          "moduleId": "reasoner",
+          "type": "low-confidence",
+          "detail": "Confidence 0.1 below threshold 0.3"
+        },
+        {
+          "moduleId": "actor",
+          "type": "unexpected-result",
+          "detail": "Unexpected result from action: Read"
+        },
+        {
+          "moduleId": "llm-monitor",
+          "type": "compound",
+          "detail": "Compound anomaly: low confidence combined with unexpected result"
+        }
+      ],
+      "escalation": "Compound anomaly: low confidence combined with unexpected result",
+      "restrictedActions": ["Read"],
+      "forceReplan": true
+    }
+  },
+  {
+    "name": "full-cycle-normal",
+    "description": "Matching report for full-cycle-normal signals",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "read-only-stagnation",
+    "description": "Matching report for read-only-stagnation signals — single cycle, no stagnation yet",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "empty-signals",
+    "description": "Matching report for empty-signals — no anomalies possible",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "conflict-detected",
+    "description": "Matching report for conflict-detected signals — confidence acceptable, no anomaly",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  },
+  {
+    "name": "borderline-confidence",
+    "description": "Matching report for borderline-confidence signals — at threshold, no anomaly",
+    "report": {
+      "anomalies": [],
+      "escalation": null,
+      "restrictedActions": [],
+      "forceReplan": false
+    }
+  }
+]

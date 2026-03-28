@@ -1,0 +1,210 @@
+[
+  {
+    "name": "normal-high-confidence",
+    "description": "Normal cycle — reasoner confident, actor successful",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.9,
+        "conflictDetected": false,
+        "effortLevel": "medium"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Edit",
+        "success": true,
+        "unexpectedResult": false
+      }
+    }
+  },
+  {
+    "name": "normal-medium-confidence",
+    "description": "Normal cycle — reasoner moderately confident",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.65,
+        "conflictDetected": false,
+        "effortLevel": "medium"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Bash",
+        "success": true,
+        "unexpectedResult": false
+      }
+    }
+  },
+  {
+    "name": "low-confidence-reasoner",
+    "description": "Reasoner has low confidence — should flag anomaly",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.15,
+        "conflictDetected": false,
+        "effortLevel": "high"
+      }
+    }
+  },
+  {
+    "name": "unexpected-actor-result",
+    "description": "Actor reports unexpected result — should flag anomaly",
+    "signals": {
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Bash",
+        "success": false,
+        "unexpectedResult": true
+      }
+    }
+  },
+  {
+    "name": "compound-anomaly",
+    "description": "Both low confidence and unexpected result — compound anomaly",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.1,
+        "conflictDetected": true,
+        "effortLevel": "high"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Read",
+        "success": false,
+        "unexpectedResult": true
+      }
+    }
+  },
+  {
+    "name": "full-cycle-normal",
+    "description": "Full 5-module cycle — all modules reporting, no anomalies",
+    "signals": {
+      "observer": {
+        "type": "observer",
+        "source": "observer",
+        "timestamp": 1711612800000,
+        "inputProcessed": true,
+        "noveltyScore": 0.6
+      },
+      "memory": {
+        "type": "memory",
+        "source": "memory",
+        "timestamp": 1711612800050,
+        "retrievalCount": 3,
+        "relevanceScore": 0.8
+      },
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800100,
+        "confidence": 0.82,
+        "conflictDetected": false,
+        "effortLevel": "medium"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800200,
+        "actionTaken": "Write",
+        "success": true,
+        "unexpectedResult": false
+      },
+      "evaluator": {
+        "type": "evaluator",
+        "source": "evaluator",
+        "timestamp": 1711612800250,
+        "estimatedProgress": 0.45,
+        "diminishingReturns": false
+      }
+    }
+  },
+  {
+    "name": "read-only-stagnation",
+    "description": "Actor only reading — potential stagnation signal",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.4,
+        "conflictDetected": false,
+        "effortLevel": "low"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Read",
+        "success": true,
+        "unexpectedResult": false
+      }
+    }
+  },
+  {
+    "name": "empty-signals",
+    "description": "No modules reported signals — empty input",
+    "signals": {}
+  },
+  {
+    "name": "conflict-detected",
+    "description": "Reasoner has conflict but acceptable confidence",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.55,
+        "conflictDetected": true,
+        "effortLevel": "high"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Edit",
+        "success": true,
+        "unexpectedResult": false
+      }
+    }
+  },
+  {
+    "name": "borderline-confidence",
+    "description": "Confidence right at the threshold boundary (0.3)",
+    "signals": {
+      "reasoner": {
+        "type": "reasoner",
+        "source": "reasoner",
+        "timestamp": 1711612800000,
+        "confidence": 0.3,
+        "conflictDetected": false,
+        "effortLevel": "medium"
+      },
+      "actor": {
+        "type": "actor",
+        "source": "actor",
+        "timestamp": 1711612800100,
+        "actionTaken": "Glob",
+        "success": true,
+        "unexpectedResult": false
+      }
+    }
+  }
+]
