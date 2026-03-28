@@ -266,9 +266,14 @@ export default function Sessions() {
     setSidebarOpen(false);
   }, [navigate]);
 
+  const isWorkingRef = useRef(false);
+
   const handleSend = useCallback(
     async (prompt: string): Promise<PromptResult> => {
       if (!activeSessionId) throw new Error('No active session');
+      // Prevent double-submission (guard against race between click and disabled state)
+      if (isWorkingRef.current) return { output: '', timed_out: false, metadata: null };
+      isWorkingRef.current = true;
 
       // Add streaming turn immediately (shows dots + accumulating text)
       setLiveTurns((prev) => [...prev, { kind: 'streaming', prompt, output: '' }]);
@@ -314,6 +319,7 @@ export default function Sessions() {
         throw e;
       } finally {
         setIsWorking(false);
+        isWorkingRef.current = false;
       }
     },
     [activeSessionId, sendStream],

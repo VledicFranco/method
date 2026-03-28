@@ -685,13 +685,16 @@ export function ChatView({ session, turns, isWorking, isLoadingTranscript }: Cha
   const streamingLen = isStreamingTurn ? lastTurn.output.length : 0;
 
   useEffect(() => {
-    // During streaming, throttle scroll to every 500ms to avoid performance overhead
+    // During streaming with existing content, throttle scroll to every 500ms
     if (isStreamingTurn && streamingLen > 0) {
       const now = Date.now();
       if (now - lastScrollRef.current < 500) return;
       lastScrollRef.current = now;
     }
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Use rAF to ensure DOM is painted before scrolling
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
   }, [turns.length, isWorking, streamingLen, isStreamingTurn]);
 
   return (
