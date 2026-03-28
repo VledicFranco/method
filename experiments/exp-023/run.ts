@@ -561,11 +561,14 @@ async function runCognitive(
         });
       }
 
-      // Track last action for memory extraction
+      // Track last action for memory extraction — target should be the file/resource acted on
+      const actionTarget = raResult.output.actionName === 'Write' || raResult.output.actionName === 'Edit'
+        ? (raResult.output.reasoning?.match(/(?:src\/|tests\/|config\/)[\w\-/.]+\.(?:ts|js|yaml|json)/)?.[0] ?? raResult.output.actionName)
+        : raResult.output.actionName;
       prevAction = {
         name: raResult.output.actionName,
         success: (raResult.monitoring as any).success ?? true,
-        target: raResult.output.plan?.slice(0, 50),
+        target: actionTarget,
       };
 
       // Log errors if the step failed

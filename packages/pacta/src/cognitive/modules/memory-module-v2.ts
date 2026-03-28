@@ -278,15 +278,23 @@ export function createMemoryModuleV2(
             (actionName === 'Write' || actionName === 'Edit') &&
             success
           ) {
-            // Derive content from the most recent workspace entry (tool result)
-            const lastEntry = input.snapshot.length > 0
-              ? input.snapshot[input.snapshot.length - 1]
-              : null;
-            const resultContent = lastEntry
-              ? (typeof lastEntry.content === 'string'
-                  ? lastEntry.content.slice(0, 200)
-                  : JSON.stringify(lastEntry.content).slice(0, 200))
-              : 'no result captured';
+            // Derive content from the tool result workspace entry (look for "=== Tool Result" marker)
+            let resultContent = '';
+            for (let i = input.snapshot.length - 1; i >= 0; i--) {
+              const entryContent = typeof input.snapshot[i].content === 'string'
+                ? input.snapshot[i].content
+                : JSON.stringify(input.snapshot[i].content);
+              if (entryContent.startsWith('=== Tool Result:')) {
+                // Extract just the status line + first 150 chars of output
+                const lines = entryContent.split('\n');
+                const statusLine = lines.find(l => l.startsWith('Status:')) ?? '';
+                const outputStart = entryContent.indexOf('Output:\n');
+                const output = outputStart >= 0 ? entryContent.slice(outputStart + 8, outputStart + 158) : '';
+                resultContent = `${statusLine} ${output}`.trim();
+                break;
+              }
+            }
+            if (!resultContent) resultContent = `${actionName} completed on ${target ?? 'unknown file'}`;
 
             const observationContent = `[${actionName}] ${target ?? 'unknown'}: ${resultContent}`;
 
