@@ -17,7 +17,7 @@ domains_affected: [pacta, pacta-testkit, pacta-playground]
 **Date:** 2026-03-27
 **Package:** `@method/pacta` (L3 — library)
 **Depends on:** PRD 027 (Pacta SDK), PRD 028 (Pacta Print-Mode Convergence)
-**RFC:** `docs/rfcs/rfc-cognitive-composition.md`
+**RFC:** `docs/rfcs/001-cognitive-composition.md`
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 
 ## Problem Statement
@@ -30,7 +30,7 @@ We believe cognitive science composition patterns (ACT-R, SOAR, GWT, Nelson & Na
 
 ## Objective
 
-Implement the Calculus of Cognitive Composition (RFC `docs/rfcs/rfc-cognitive-composition.md`) as a new `cognitive/` domain within `@method/pacta`, organized into three FCA sub-domains: `algebra/` (type system + operators), `modules/` (8 implementations), `engine/` (cycle + composition). Deliver:
+Implement the Calculus of Cognitive Composition (RFC `docs/rfcs/001-cognitive-composition.md`) as a new `cognitive/` domain within `@method/pacta`, organized into three FCA sub-domains: `algebra/` (type system + operators), `modules/` (8 implementations), `engine/` (cycle + composition). Deliver:
 
 1. A typed cognitive module abstraction `M = (I, O, S, mu, kappa)` with `step: (I, S, kappa) -> (O, S', mu)`
 2. Four composition operators: sequential (`>>`), parallel (`|`), competitive (`<|>`), hierarchical (`>`), plus bounded recursive tower
@@ -621,7 +621,7 @@ Files:
 - `docs/arch/pacta.md` — modified — add cognitive composition section
 - `docs/guides/cognitive-composition.md` — new — usage guide
 - `CLAUDE.md` — modified — add cognitive domain to package table
-- `docs/rfcs/rfc-cognitive-composition.md` — modified — add implementation status
+- `docs/rfcs/001-cognitive-composition.md` — modified — add implementation status
 
 Tests:
 - `packages/pacta-testkit/src/recording-module.test.ts` — new — 3 scenarios
@@ -887,7 +887,7 @@ None. PRD 027-028 are complete.
 | `docs/arch/cognitive-composition.md` | Create | Dedicated arch doc: sub-domain structure, module contracts, cycle semantics, workspace access model |
 | `docs/guides/cognitive-composition.md` | Create | Usage guide: creating cognitive agents, configuring workspace, tuning thresholds |
 | `CLAUDE.md` | Update | Add cognitive domain to package table, note sub-domain structure |
-| `docs/rfcs/rfc-cognitive-composition.md` | Update | Add implementation status linking to PRD 030 |
+| `docs/rfcs/001-cognitive-composition.md` | Update | Add implementation status linking to PRD 030 |
 
 ## Open Questions
 

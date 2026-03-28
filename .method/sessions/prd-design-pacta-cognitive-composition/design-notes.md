@@ -13,7 +13,7 @@
 
 ### Layer 2: WHAT
 
-- Q6 (Solution): Implement the Calculus of Cognitive Composition as defined in docs/rfcs/rfc-cognitive-composition.md:
+- Q6 (Solution): Implement the Calculus of Cognitive Composition as defined in docs/rfcs/001-cognitive-composition.md:
   1. Cognitive module type M = (I, O, S, μ, κ) with step: (I, S, κ) → (O, S', μ)
   2. Four composition operators: sequential (>>), parallel (|), competitive (<|>), hierarchical (▷)
   3. Bounded recursive tower: tower(M, n)

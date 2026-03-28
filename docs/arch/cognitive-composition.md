@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-The `cognitive/` domain within `@method/pacta` implements the Calculus of Cognitive Composition (RFC `docs/rfcs/rfc-cognitive-composition.md`). It provides a typed module abstraction, composition operators, a port-mediated workspace, and an 8-phase cognitive cycle orchestrator. This is a **parallel execution model** alongside the existing flat middleware pipeline — not a replacement.
+The `cognitive/` domain within `@method/pacta` implements the Calculus of Cognitive Composition (RFC `docs/rfcs/001-cognitive-composition.md`). It provides a typed module abstraction, composition operators, a port-mediated workspace, and an 8-phase cognitive cycle orchestrator. This is a **parallel execution model** alongside the existing flat middleware pipeline — not a replacement.
 
 **Position in the layer stack:** L3 (library), co-located with `@method/pacta`.
 
@@ -141,7 +141,7 @@ Every module step produces a `TraceRecord` (module ID, phase, timestamp, input h
 
 ## References
 
-- RFC: Calculus of Cognitive Composition (`docs/rfcs/rfc-cognitive-composition.md`)
+- RFC: Calculus of Cognitive Composition (`docs/rfcs/001-cognitive-composition.md`)
 - PRD 030: Pacta Cognitive Composition (`docs/prds/030-pacta-cognitive-composition.md`)
 - PRD 027: Pacta SDK (`docs/prds/027-pacta.md`)
 - FCA specification (`docs/fractal-component-architecture/`)

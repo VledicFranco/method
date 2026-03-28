@@ -548,7 +548,7 @@ agents as **compositions of cognitive modules** operating at two levels.
 
 This refinement is being developed as a separate formal theory:
 
-> **See:** `docs/rfcs/rfc-cognitive-composition.md` — calculus of cognitive module
+> **See:** `docs/rfcs/001-cognitive-composition.md` — calculus of cognitive module
 > composition. The cognitive composition RFC is exploratory research. No Pacta phase depends
 > on it. If the calculus proves useful, it enters through a future PRD, not scope creep
 > on this one.

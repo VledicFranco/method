@@ -6,7 +6,7 @@
  * (sequential, parallel, competitive, hierarchical) defined elsewhere.
  *
  * Grounded in: ACT-R buffer-mediated parallelism, Nelson & Narens monitor/control,
- * GWT competitive workspace access. See docs/rfcs/rfc-cognitive-composition.md.
+ * GWT competitive workspace access. See docs/rfcs/001-cognitive-composition.md.
  */
 
 // ── Branded Types ────────────────────────────────────────────────
