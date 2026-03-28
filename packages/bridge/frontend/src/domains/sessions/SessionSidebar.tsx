@@ -293,7 +293,7 @@ export function SessionSidebar({
           50% { opacity: 0.5; transform: scale(0.85); }
         }
         .session-item:hover .session-kill-btn {
-          opacity: 0.6;
+          opacity: 0.6 !important;
         }
         .session-kill-btn:hover {
           opacity: 1 !important;
