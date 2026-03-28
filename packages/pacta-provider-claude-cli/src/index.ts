@@ -9,6 +9,6 @@ export type { ClaudeCliProviderOptions, ClaudeCliProvider } from './claude-cli-p
 export { simpleCodeAgent } from './simple-code-agent.js';
 
 // CLI executor (for advanced usage / custom providers)
-export { executeCli, buildCliArgs } from './cli-executor.js';
-export type { CliArgs, CliResult, SpawnFn, ExecutorOptions } from './cli-executor.js';
+export { executeCli, executeCliStream, buildCliArgs } from './cli-executor.js';
+export type { CliArgs, CliResult, SpawnFn, ExecutorOptions, CliStreamEvent, CliStreamCallback } from './cli-executor.js';
 export { CliTimeoutError, CliSpawnError, CliExecutionError } from './cli-executor.js';

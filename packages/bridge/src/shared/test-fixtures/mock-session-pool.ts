@@ -56,6 +56,14 @@ export class MockSessionPool implements SessionPool {
     return { output: '', timedOut: false };
   }
 
+  async promptStream(
+    _sessionId: string,
+    _prompt: string,
+    onEvent: (event: any) => void,
+  ): Promise<void> {
+    onEvent({ type: 'done', output: '', metadata: null, timed_out: false });
+  }
+
   status(sessionId: string): SessionStatusInfo {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);

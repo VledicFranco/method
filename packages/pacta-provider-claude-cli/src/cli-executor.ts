@@ -212,6 +212,165 @@ export async function executeCli(
   });
 }
 
+// ── Streaming Executor ──────────────────────────────────────────
+
+/**
+ * Events emitted during a streaming CLI execution.
+ * The `claude --output-format stream-json` format emits NDJSON lines:
+ *   {"type":"assistant","message":{"content":[{"type":"text","text":"..."}],...}}
+ *   {"type":"result","result":"...","session_id":"...",...}
+ */
+export interface CliStreamEvent {
+  type: 'text' | 'result' | 'error';
+  /** Incremental text chunk (for type='text') */
+  text?: string;
+  /** Full result (for type='result') — raw parsed JSON from the CLI */
+  data?: Record<string, unknown>;
+}
+
+export type CliStreamCallback = (event: CliStreamEvent) => void;
+
+/**
+ * Execute the Claude CLI in streaming mode (--output-format stream-json).
+ * Calls `onEvent` with incremental text chunks and a final result event.
+ * Returns the CliResult when the process exits.
+ */
+export async function executeCliStream(
+  args: CliArgs,
+  onEvent: CliStreamCallback,
+  options: ExecutorOptions = {},
+): Promise<CliResult> {
+  const {
+    spawnFn = nodeSpawn,
+    binary = 'claude',
+    timeoutMs = 300_000,
+  } = options;
+
+  // Force stream-json output format (requires --verbose)
+  const cliArgs = buildCliArgs({ ...args, outputFormat: 'json' });
+  // Replace --output-format json with --output-format stream-json
+  const fmtIdx = cliArgs.indexOf('--output-format');
+  if (fmtIdx !== -1 && cliArgs[fmtIdx + 1] === 'json') {
+    cliArgs[fmtIdx + 1] = 'stream-json';
+  }
+  // stream-json requires --verbose
+  if (!cliArgs.includes('--verbose')) {
+    cliArgs.push('--verbose');
+  }
+
+  return new Promise<CliResult>((resolve, reject) => {
+    const child = spawnFn(binary, cliArgs, {
+      cwd: args.cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: false,
+    });
+
+    child.stdin?.end();
+
+    const stderrChunks: Buffer[] = [];
+    const stdoutChunks: Buffer[] = [];
+    let lineBuffer = '';
+
+    child.stderr?.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdoutChunks.push(chunk);
+      lineBuffer += chunk.toString('utf-8');
+
+      // Process complete NDJSON lines
+      const lines = lineBuffer.split('\n');
+      // Keep the last (potentially incomplete) line in the buffer
+      lineBuffer = lines.pop()!;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        try {
+          const obj = JSON.parse(trimmed);
+
+          if (obj.type === 'assistant' && obj.message?.content) {
+            // Extract text from content blocks
+            for (const block of obj.message.content) {
+              if (block.type === 'text' && typeof block.text === 'string') {
+                onEvent({ type: 'text', text: block.text });
+              }
+            }
+          } else if (obj.type === 'result') {
+            onEvent({ type: 'result', data: obj });
+          }
+          // Ignore other event types (tool_use, tool_result, etc.)
+        } catch {
+          // Not valid JSON line — ignore
+        }
+      }
+    });
+
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new CliTimeoutError(timeoutMs));
+    }, timeoutMs);
+
+    // Wire abort signal
+    let aborted = false;
+    if (args.abortSignal) {
+      const signal = args.abortSignal;
+      if (signal.aborted) {
+        clearTimeout(timer);
+        child.kill('SIGTERM');
+        reject(new CliAbortError());
+        aborted = true;
+      } else {
+        const onAbort = () => {
+          aborted = true;
+          clearTimeout(timer);
+          child.kill('SIGTERM');
+          reject(new CliAbortError());
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+        child.on('close', () => {
+          signal.removeEventListener('abort', onAbort);
+        });
+      }
+    }
+
+    child.on('error', (err) => {
+      if (aborted) return;
+      clearTimeout(timer);
+      reject(new CliSpawnError(binary, err));
+    });
+
+    child.on('close', (code) => {
+      if (aborted) return;
+      clearTimeout(timer);
+
+      // Process any remaining data in the line buffer
+      if (lineBuffer.trim()) {
+        try {
+          const obj = JSON.parse(lineBuffer.trim());
+          if (obj.type === 'result') {
+            onEvent({ type: 'result', data: obj });
+          } else if (obj.type === 'assistant' && obj.message?.content) {
+            for (const block of obj.message.content) {
+              if (block.type === 'text' && typeof block.text === 'string') {
+                onEvent({ type: 'text', text: block.text });
+              }
+            }
+          }
+        } catch {
+          // Ignore malformed trailing data
+        }
+      }
+
+      resolve({
+        exitCode: code ?? 1,
+        stdout: Buffer.concat(stdoutChunks).toString('utf-8'),
+        stderr: Buffer.concat(stderrChunks).toString('utf-8'),
+      });
+    });
+  });
+}
+
 // ── Errors ───────────────────────────────────────────────────────
 
 export class CliTimeoutError extends Error {

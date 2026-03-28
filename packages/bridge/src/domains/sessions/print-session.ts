@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import type { Pact, AgentRequest, AgentResult, AgentProvider, AgentEvent, Agent, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
 import { createAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { claudeCliProvider, executeCliStream, type CliArgs } from '@method/pacta-provider-claude-cli';
 
 // ── Session contract types (moved here from pty-session.ts — PRD 028 C-4) ──
 
@@ -12,6 +12,9 @@ export interface AdaptiveSettleDelay {
   readonly delayMs: number;
   readonly falsePositiveCount: number;
 }
+
+/** Callback for streaming text chunks during prompt execution. */
+export type StreamChunkCallback = (chunk: string) => void;
 
 export interface PtySession {
   readonly id: string;
@@ -31,6 +34,12 @@ export interface PtySession {
   /** Subscribe to session process exit. */
   onExit(cb: (exitCode: number) => void): void;
   sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  /**
+   * Send a prompt with streaming text output via callback.
+   * Emits incremental text chunks as the model generates them.
+   * Falls back to sendPrompt if streaming is not supported.
+   */
+  sendPromptStream?(prompt: string, onChunk: StreamChunkCallback, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }>;
   resize(cols: number, rows: number): void;
   kill(): void;
   /** Send CTRL-C interrupt signal. Returns true if interrupt was written. */
@@ -364,6 +373,121 @@ export function createPrintSession(options: PrintSessionOptions): PtySession & {
           notifyOutput(`\n[print-mode] Error: ${errorMsg}\n`);
 
           // Return error as output rather than throwing — matches PtySession behavior
+          return { output: `Error: ${errorMsg}`, timedOut: false };
+        }
+      }) as Promise<{ output: string; timedOut: boolean }>;
+    },
+
+    sendPromptStream(prompt: string, onChunk: StreamChunkCallback, timeoutMs?: number): Promise<{ output: string; timedOut: boolean }> {
+      if (status === 'dead') {
+        return Promise.reject(new Error(`Session ${id} is dead — cannot send prompt`));
+      }
+
+      return queue.add(async () => {
+        if (status === 'dead') {
+          throw new Error(`Session ${id} is dead — cannot send prompt`);
+        }
+
+        status = 'working';
+        promptCount++;
+        lastActivityAt = new Date();
+
+        try {
+          // Build CLI args matching what claudeCliProvider would build
+          const cliArgs: CliArgs = {
+            prompt,
+            print: true,
+            cwd: workdir,
+            model: model,
+            systemPrompt: appendSystemPrompt,
+          };
+
+          // Session tracking: first prompt uses --session-id, subsequent use --resume
+          if (recovered && isFirstPrompt) {
+            cliArgs.resumeSessionId = id;
+          } else if (isFirstPrompt) {
+            cliArgs.sessionId = id;
+          } else {
+            cliArgs.resumeSessionId = id;
+          }
+          isFirstPrompt = false;
+
+          // Execute with streaming — emits text chunks via onChunk
+          let fullText = '';
+          // Use a container object to avoid TS control-flow narrowing issues
+          const streamState: { resultData: Record<string, unknown> | null } = { resultData: null };
+
+          const cliResult = await executeCliStream(
+            cliArgs,
+            (event) => {
+              if (event.type === 'text' && event.text) {
+                fullText += event.text;
+                onChunk(event.text);
+              } else if (event.type === 'result' && event.data) {
+                streamState.resultData = event.data;
+              }
+            },
+            { timeoutMs: timeoutMs ?? 300_000 },
+          );
+
+          const resultData = streamState.resultData;
+
+          // Build output from stream result or fallback to collected text
+          const output = resultData?.result
+            ? String(resultData.result)
+            : fullText || cliResult.stdout.trim();
+
+          // Build metadata from the result event if available
+          if (resultData) {
+            const rd = resultData as Record<string, any>;
+            const modelUsage: PrintMetadata['model_usage'] = {};
+            if (rd.model_usage) {
+              for (const [mdl, mu] of Object.entries(rd.model_usage as Record<string, any>)) {
+                modelUsage[mdl] = {
+                  inputTokens: mu.input_tokens ?? 0,
+                  outputTokens: mu.output_tokens ?? 0,
+                  costUSD: 0,
+                };
+              }
+            }
+            const cumulativeCost = (lastMetadata?.cumulative_cost_usd ?? 0) + (rd.total_cost_usd ?? 0);
+            lastMetadata = {
+              total_cost_usd: rd.total_cost_usd ?? 0,
+              num_turns: rd.num_turns ?? 1,
+              duration_ms: rd.duration_ms ?? 0,
+              duration_api_ms: rd.duration_api_ms ?? 0,
+              usage: {
+                input_tokens: rd.usage?.input_tokens ?? 0,
+                cache_creation_input_tokens: rd.usage?.cache_creation_input_tokens ?? 0,
+                cache_read_input_tokens: rd.usage?.cache_read_input_tokens ?? 0,
+                output_tokens: rd.usage?.output_tokens ?? 0,
+              },
+              permission_denials: [],
+              stop_reason: rd.stop_reason ?? 'end_turn',
+              subtype: 'success',
+              model_usage: modelUsage,
+              cumulative_cost_usd: cumulativeCost,
+            };
+          }
+
+          // Accumulate transcript
+          transcript += `\n--- Prompt #${promptCount} ---\n${prompt}\n--- Response ---\n${output}\n`;
+          notifyOutput(output);
+
+          lastActivityAt = new Date();
+          if (getStatus() !== 'dead') {
+            status = 'ready';
+          }
+
+          return { output, timedOut: false };
+        } catch (err) {
+          lastActivityAt = new Date();
+          if (getStatus() !== 'dead') {
+            status = 'ready';
+          }
+
+          const errorMsg = (err as Error).message;
+          notifyOutput(`\n[print-mode] Error: ${errorMsg}\n`);
           return { output: `Error: ${errorMsg}`, timedOut: false };
         }
       }) as Promise<{ output: string; timedOut: boolean }>;

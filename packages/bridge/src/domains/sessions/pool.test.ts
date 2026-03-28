@@ -147,6 +147,14 @@ function createTestPool(maxSessions = 5) {
       return { output: result.output, timedOut: result.timedOut, metadata };
     },
 
+    async promptStream(sessionId: string, prompt: string, onEvent: (event: any) => void, timeoutMs?: number) {
+      const result = await pool.prompt(sessionId, prompt, timeoutMs);
+      if (result.output) {
+        onEvent({ type: 'text', content: result.output });
+      }
+      onEvent({ type: 'done', output: result.output, metadata: result.metadata, timed_out: result.timedOut });
+    },
+
     status(sessionId) {
       const session = sessions.get(sessionId);
       if (!session) throw new Error(`Session not found: ${sessionId}`);

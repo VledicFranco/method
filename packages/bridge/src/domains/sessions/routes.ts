@@ -337,6 +337,101 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     }
   });
 
+  // ── POST /sessions/:id/prompt/stream — SSE streaming prompt ──
+
+  app.post<{
+    Params: { id: string };
+    Body: { prompt: string; timeout_ms?: number };
+  }>('/sessions/:id/prompt/stream', async (request, reply) => {
+    const { id } = request.params;
+    const { prompt, timeout_ms } = request.body ?? {};
+
+    if (!prompt || typeof prompt !== 'string') {
+      return reply.status(400).send({ error: 'Missing required field: prompt' });
+    }
+
+    // Validate session exists before setting up SSE
+    try {
+      pool.status(id);
+    } catch (e) {
+      const message = (e as Error).message;
+      if (message.includes('not found')) return reply.status(404).send({ error: message });
+      if (message.includes('dead')) return reply.status(400).send({ error: message });
+      return reply.status(500).send({ error: message });
+    }
+
+    console.log(`[stream] SSE setup for session ${id}`);
+
+    // Hijack the response so Fastify doesn't interfere with raw SSE writes
+    await reply.hijack();
+
+    // Set SSE headers via raw response
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    // Keep-alive heartbeat to prevent proxy/client timeouts
+    const heartbeat = setInterval(() => {
+      try {
+        reply.raw.write(':heartbeat\n\n');
+      } catch {
+        // Connection may be closed
+        clearInterval(heartbeat);
+      }
+    }, 15_000);
+
+    // Handle client disconnect
+    let clientDisconnected = false;
+    request.raw.on('close', () => {
+      clientDisconnected = true;
+      clearInterval(heartbeat);
+    });
+
+    function sendSSE(data: unknown): void {
+      if (clientDisconnected) return;
+      try {
+        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        // Write failure — client disconnected
+        clientDisconnected = true;
+      }
+    }
+
+    try {
+      await pool.promptStream(
+        id,
+        prompt,
+        (event) => {
+          sendSSE(event);
+        },
+        timeout_ms ?? 300_000,
+      );
+    } catch (e) {
+      sendSSE({ type: 'error', error: (e as Error).message });
+    } finally {
+      clearInterval(heartbeat);
+      // Emit bus event for completion tracking
+      if (eventBus) {
+        eventBus.emit({
+          version: 1,
+          domain: 'session',
+          type: 'session.prompt.completed',
+          severity: 'info',
+          sessionId: id,
+          payload: { streaming: true },
+          source: 'bridge/sessions/routes',
+        });
+      }
+      // End the SSE stream
+      if (!clientDisconnected) {
+        try { reply.raw.end(); } catch { /* non-fatal */ }
+      }
+    }
+  });
+
   // ── GET /sessions/:id/status ──
 
   app.get<{ Params: { id: string } }>('/sessions/:id/status', async (request, reply) => {

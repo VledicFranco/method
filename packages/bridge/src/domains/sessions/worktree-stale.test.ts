@@ -162,6 +162,11 @@ function createStaleTestPool(maxSessions = 5) {
       return { output: result.output, timedOut: result.timedOut, metadata: null };
     },
 
+    async promptStream(sessionId: string, prompt: string, onEvent: (event: any) => void, timeoutMs?: number) {
+      const result = await pool.prompt(sessionId, prompt, timeoutMs);
+      onEvent({ type: 'done', output: result.output, metadata: null, timed_out: result.timedOut });
+    },
+
     status(sessionId) {
       const session = sessions.get(sessionId);
       if (!session) throw new Error(`Session not found: ${sessionId}`);

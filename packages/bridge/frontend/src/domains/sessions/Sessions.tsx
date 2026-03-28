@@ -15,10 +15,10 @@ import { StatusBar } from './StatusBar';
 import { SpawnSessionModal } from './SpawnSessionModal';
 import { useSessions } from './useSessions';
 import { useTranscript } from './useTranscript';
-import { api } from '@/shared/lib/api';
 import { useProjects } from '@/domains/projects/useProjects';
 import { wsManager } from '@/shared/websocket/ws-manager';
-import type { ChatTurn, PromptResult, PromptResponse, SpawnRequest } from './types';
+import { usePromptStream } from './usePromptStream';
+import type { ChatTurn, PromptResult, SpawnRequest } from './types';
 
 // ── Recovery Banner ─────────────────────────────────────────────────────────
 
@@ -236,10 +236,27 @@ export default function Sessions() {
   }, []);
 
   const { data: historicalTurns = [], isLoading: isLoadingTranscript } = useTranscript(activeSessionId ?? null);
+  const { streamingText, isStreaming, send: sendStream } = usePromptStream(activeSessionId ?? null);
 
   // Derived
   const activeSession = sessions.find((s) => s.session_id === activeSessionId) ?? null;
-  const allTurns: ChatTurn[] = [...historicalTurns, ...liveTurns];
+
+  // Build turns: merge historical, live, and (if streaming) a live streaming turn
+  const allTurns: ChatTurn[] = useMemo(() => {
+    const base: ChatTurn[] = [...historicalTurns, ...liveTurns];
+    // If we're streaming, the last liveTurn is a streaming placeholder — update its output
+    if (isStreaming && base.length > 0) {
+      const last = base[base.length - 1];
+      if (last.kind === 'streaming') {
+        return [
+          ...base.slice(0, -1),
+          { ...last, output: streamingText },
+        ];
+      }
+    }
+    return base;
+  }, [historicalTurns, liveTurns, isStreaming, streamingText]);
+
   const totalCost = (activeSession?.metadata as any)?.cost_usd as number | undefined;
 
   const handleSelect = useCallback((id: string) => {
@@ -253,23 +270,25 @@ export default function Sessions() {
     async (prompt: string): Promise<PromptResult> => {
       if (!activeSessionId) throw new Error('No active session');
 
-      // Add pending turn immediately
-      setLiveTurns((prev) => [...prev, { kind: 'pending', prompt }]);
+      // Add streaming turn immediately (shows dots + accumulating text)
+      setLiveTurns((prev) => [...prev, { kind: 'streaming', prompt, output: '' }]);
       setIsWorking(true);
 
       try {
-        const response = await api.post<PromptResponse>(
-          `/sessions/${activeSessionId}/prompt`,
-          { prompt, timeout_ms: 300_000 },
-        );
+        const result = await sendStream(prompt);
 
-        const result: PromptResult = {
-          output: response.output,
-          timed_out: response.timed_out,
-          metadata: response.metadata,
+        const metadata = result.metadata ?? {
+          cost_usd: 0,
+          num_turns: 0,
+          duration_ms: 0,
+          stop_reason: 'unknown',
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_read_tokens: 0,
+          cache_write_tokens: 0,
         };
 
-        // Replace pending turn with live turn
+        // Replace streaming turn with completed live turn
         setLiveTurns((prev) => {
           const withoutLast = prev.slice(0, -1);
           return [
@@ -278,31 +297,26 @@ export default function Sessions() {
               kind: 'live',
               prompt,
               output: result.output,
-              metadata: result.metadata ?? {
-                cost_usd: 0,
-                num_turns: 0,
-                duration_ms: 0,
-                stop_reason: 'unknown',
-                input_tokens: 0,
-                output_tokens: 0,
-                cache_read_tokens: 0,
-                cache_write_tokens: 0,
-              },
+              metadata,
               timestamp: new Date().toISOString(),
             },
           ];
         });
 
-        return result;
+        return {
+          output: result.output,
+          timed_out: result.timed_out,
+          metadata: result.metadata,
+        };
       } catch (e) {
-        // Remove the pending turn on error
+        // Remove the streaming turn on error
         setLiveTurns((prev) => prev.slice(0, -1));
         throw e;
       } finally {
         setIsWorking(false);
       }
     },
-    [activeSessionId],
+    [activeSessionId, sendStream],
   );
 
   const handleSpawn = useCallback(

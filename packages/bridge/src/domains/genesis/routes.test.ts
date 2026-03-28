@@ -145,6 +145,9 @@ function createMockSessionPool(
         adaptiveSettle: null,
       } as PtySession;
     },
+    promptStream: async (_sessionId: string, _prompt: string, onEvent: (event: any) => void) => {
+      onEvent({ type: 'done', output: '', metadata: null, timed_out: false });
+    },
     checkStale: () => ({ stale: [], killed: [] }),
     childPids: () => [],
     setObservationHook: () => {},
@@ -650,6 +653,7 @@ describe('Genesis HTTP Routes', () => {
         id: genesisSessionId,
         interrupt: () => false, // Mock: interrupt not available
       } as any),
+      promptStream: async (_sid: string, _p: string, onEvent: (e: any) => void) => { onEvent({ type: 'done', output: '', metadata: null, timed_out: false }); },
       checkStale: () => ({ stale: [], killed: [] }),
       childPids: () => [],
       setObservationHook: () => {},

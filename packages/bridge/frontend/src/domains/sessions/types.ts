@@ -101,6 +101,11 @@ export type ChatTurn =
   | {
       kind: 'pending';
       prompt: string;
+    }
+  | {
+      kind: 'streaming';
+      prompt: string;
+      output: string;
     };
 
 export interface PromptResult {

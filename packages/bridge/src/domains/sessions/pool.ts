@@ -89,6 +89,16 @@ export interface SessionSnapshot {
   prompt_count: number;
 }
 
+/** SSE stream event emitted during a streaming prompt. */
+export interface StreamEvent {
+  type: 'text' | 'done' | 'error';
+  content?: string;
+  output?: string;
+  metadata?: Record<string, unknown> | null;
+  timed_out?: boolean;
+  error?: string;
+}
+
 export interface SessionPool {
   create(options: {
     workdir: string;
@@ -113,6 +123,17 @@ export interface SessionPool {
     session_id?: string;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }>;
+  /**
+   * Streaming prompt — sends a prompt and emits incremental output chunks via callback.
+   * The onEvent callback receives StreamEvent objects as output arrives.
+   * Returns a promise that resolves when the prompt completes.
+   */
+  promptStream(
+    sessionId: string,
+    prompt: string,
+    onEvent: (event: StreamEvent) => void,
+    timeoutMs?: number,
+  ): Promise<void>;
   status(sessionId: string): SessionStatusInfo;
   kill(sessionId: string, worktreeAction?: WorktreeAction): { sessionId: string; killed: boolean; worktree_cleaned: boolean };
   list(): SessionStatusInfo[];
@@ -550,6 +571,74 @@ export function createPool(options?: PoolOptions): SessionPool {
       const metadata = printSession.printMetadata ?? null;
 
       return { output: result.output, timedOut: result.timedOut, metadata };
+    },
+
+    async promptStream(
+      sessionId: string,
+      prompt: string,
+      onEvent: (event: StreamEvent) => void,
+      timeoutMs?: number,
+    ): Promise<void> {
+      const session = sessions.get(sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
+      if (session.status === 'dead') {
+        throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
+      }
+
+      try {
+        let result: { output: string; timedOut: boolean };
+
+        if (typeof session.sendPromptStream === 'function') {
+          // Use the streaming path — emits incremental text chunks
+          result = await session.sendPromptStream(
+            prompt,
+            (chunk: string) => {
+              onEvent({ type: 'text', content: chunk });
+            },
+            timeoutMs,
+          );
+        } else {
+          // Fallback: non-streaming path (subscribes to onOutput for single emit)
+          const unsubscribe = session.onOutput((data: string) => {
+            if (data.startsWith('\n[print-mode]')) return;
+            onEvent({ type: 'text', content: data });
+          });
+          try {
+            result = await session.sendPrompt(prompt, timeoutMs);
+          } finally {
+            unsubscribe();
+          }
+        }
+
+        // Read printMetadata and map to response shape (same as non-streaming endpoint)
+        const printSession = session as unknown as { printMetadata?: PrintMetadata | null };
+        const raw = printSession.printMetadata ?? null;
+        const metadata = raw ? {
+          cost_usd: raw.total_cost_usd,
+          num_turns: raw.num_turns,
+          duration_ms: raw.duration_ms,
+          stop_reason: raw.stop_reason,
+          input_tokens: raw.usage.input_tokens,
+          output_tokens: raw.usage.output_tokens,
+          cache_read_tokens: raw.usage.cache_read_input_tokens,
+          cache_write_tokens: raw.usage.cache_creation_input_tokens,
+        } : null;
+
+        // Send done event with full response + mapped metadata
+        onEvent({
+          type: 'done',
+          output: result.output,
+          metadata,
+          timed_out: result.timedOut,
+        });
+      } catch (err) {
+        onEvent({
+          type: 'error',
+          error: (err as Error).message,
+        });
+      }
     },
 
     status(sessionId: string): SessionStatusInfo {

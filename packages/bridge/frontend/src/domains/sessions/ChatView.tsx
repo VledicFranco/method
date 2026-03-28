@@ -634,6 +634,23 @@ function PendingTurnBlock({ turn }: { turn: Extract<ChatTurn, { kind: 'pending' 
   );
 }
 
+function StreamingTurnBlock({ turn }: { turn: Extract<ChatTurn, { kind: 'streaming' }> }) {
+  return (
+    <div style={styles.turnBlock}>
+      <div style={styles.promptHeader}>
+        <span>&#x25B8;</span>
+        <span style={styles.promptText}>{turn.prompt}</span>
+      </div>
+      {turn.output ? (
+        <div style={styles.outputBlock}>
+          <MarkdownOutput content={turn.output} />
+        </div>
+      ) : null}
+      <PendingDots />
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Skeleton screen for transcript loading                            */
 /* ------------------------------------------------------------------ */
@@ -660,10 +677,22 @@ function ChatSkeleton() {
 
 export function ChatView({ session, turns, isWorking, isLoadingTranscript }: ChatViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastScrollRef = useRef(0);
+
+  // Derive a streaming content fingerprint to trigger auto-scroll during streaming
+  const lastTurn = turns[turns.length - 1];
+  const isStreamingTurn = lastTurn?.kind === 'streaming';
+  const streamingLen = isStreamingTurn ? lastTurn.output.length : 0;
 
   useEffect(() => {
+    // During streaming, throttle scroll to every 500ms to avoid performance overhead
+    if (isStreamingTurn && streamingLen > 0) {
+      const now = Date.now();
+      if (now - lastScrollRef.current < 500) return;
+      lastScrollRef.current = now;
+    }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [turns.length, isWorking]);
+  }, [turns.length, isWorking, streamingLen, isStreamingTurn]);
 
   return (
     <div style={styles.container}>
@@ -677,6 +706,7 @@ export function ChatView({ session, turns, isWorking, isLoadingTranscript }: Cha
         if (turn.kind === 'historical') return <HistoricalTurn key={i} turn={turn} />;
         if (turn.kind === 'live') return <LiveTurn key={i} turn={turn} />;
         if (turn.kind === 'pending') return <PendingTurnBlock key={i} turn={turn} />;
+        if (turn.kind === 'streaming') return <StreamingTurnBlock key={i} turn={turn} />;
         return null;
       })}
 
