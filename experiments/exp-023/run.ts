@@ -54,6 +54,7 @@ import { createObserver } from '../../packages/pacta/src/cognitive/modules/obser
 import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monitor.js';
 import { createMemoryModuleV2, handleEviction, type MemoryV2Control } from '../../packages/pacta/src/cognitive/modules/memory-module-v2.js';
 import { InMemoryMemory } from '../../packages/pacta/src/ports/memory-impl.js';
+import type { MemoryPortV2 } from '../../packages/pacta/src/ports/memory-port.js';
 
 import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/pacta/src/cognitive/algebra/index.js';
 
@@ -331,7 +332,13 @@ async function runCliAgent(task: TaskDefinition, runNumber: number): Promise<Run
 //   4. Workspace (salience eviction, capacity=8) — managed context buffer
 //   5. Reflector (conditional) — fires on forceReplan only (not yet wired)
 
-async function runCognitive(task: TaskDefinition, runNumber: number, config: CognitiveConfig, useMemory: boolean = false): Promise<RunResult> {
+async function runCognitive(
+  task: TaskDefinition,
+  runNumber: number,
+  config: CognitiveConfig,
+  useMemory: boolean = false,
+  sharedMemoryPort?: MemoryPortV2
+): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
 
@@ -368,7 +375,7 @@ async function runCognitive(task: TaskDefinition, runNumber: number, config: Cog
   const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
 
   // Memory module (PRD 031)
-  const memoryPort = new InMemoryMemory();
+  const memoryPort = sharedMemoryPort ?? new InMemoryMemory();
   const memoryModule = useMemory
     ? createMemoryModuleV2(memoryPort, workspace.getWritePort(moduleId('memory')))
     : null;
@@ -716,6 +723,17 @@ async function main() {
     process.exit(1);
   }
 
+  // Cross-task memory persistence
+  const { FactCardStore } = await import('../../packages/pacta/src/persistence/fact-card-store.js');
+  const memoryStorePath = resolve(process.cwd(), '.method/memory/exp-023-facts.jsonl');
+  const sharedMemoryStore = useMemory ? new FactCardStore(memoryStorePath) : null;
+
+  // Load any existing facts from prior runs
+  if (sharedMemoryStore) {
+    const loaded = await sharedMemoryStore.load();
+    if (loaded > 0) console.log(`    Loaded ${loaded} fact cards from prior runs`);
+  }
+
   console.log('\n=== EXP-023: Cognitive vs Flat — Strategy Shift Recovery ===');
   console.log(`    Conditions: ${[runAll || runFlat_ ? 'A(flat)' : '', runAll || runCli ? 'B(cli-agent)' : '', runAll || runCog ? 'C(cognitive)' : ''].filter(Boolean).join(', ')}`);
   console.log(`    Config: ${describeConfig(cognitiveConfig)}`);
@@ -754,15 +772,25 @@ async function main() {
     if (runAll || runCog) {
       console.log('\nCondition C: Cognitive (5-module merged cycle)');
       for (let i = 1; i <= numRuns; i++) {
-        const r = await runCognitive(task, i, cognitiveConfig, useMemory);
+        const r = await runCognitive(task, i, cognitiveConfig, useMemory, sharedMemoryStore?.port);
         printResult(r);
         results.push(r);
+      }
+      if (sharedMemoryStore) {
+        const saved = await sharedMemoryStore.save();
+        console.log(`    Saved ${saved} fact cards to ${memoryStorePath}`);
       }
     }
   }
 
   if (results.length > 1) {
     printComparison(results);
+  }
+
+  if (sharedMemoryStore) {
+    const mdPath = resolve(process.cwd(), '.method/memory/exp-023-memory.md');
+    await sharedMemoryStore.exportMarkdown(mdPath);
+    console.log(`\nMemory exported to ${mdPath}`);
   }
 
   console.log('\nDone.');
