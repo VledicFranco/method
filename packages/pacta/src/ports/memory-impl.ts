@@ -49,17 +49,26 @@ export class InMemoryMemory implements MemoryPortV2 {
   }
 
   async searchCards(query: string, options?: SearchOptions): Promise<FactCard[]> {
-    const q = query.toLowerCase();
-    let results: FactCard[] = [];
+    // Split query into words and score by number of matching words
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (queryWords.length === 0) return [];
+
+    let scored: Array<{ card: FactCard; score: number }> = [];
 
     for (const card of this.cards.values()) {
-      // Keyword substring match on content + tags
-      const contentMatch = card.content.toLowerCase().includes(q);
-      const tagMatch = card.tags.some((t) => t.toLowerCase().includes(q));
-      if (contentMatch || tagMatch) {
-        results.push({ ...card });
+      const text = (card.content + ' ' + card.tags.join(' ')).toLowerCase();
+      let matchCount = 0;
+      for (const word of queryWords) {
+        if (text.includes(word)) matchCount++;
+      }
+      if (matchCount > 0) {
+        scored.push({ card: { ...card }, score: matchCount / queryWords.length });
       }
     }
+
+    // Sort by score descending (most matching words first)
+    scored.sort((a, b) => b.score - a.score);
+    let results = scored.map(s => s.card);
 
     // Apply filters from SearchOptions
     if (options?.type) {
