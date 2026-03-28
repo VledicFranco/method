@@ -32,11 +32,11 @@ export function createApiClient(options?: ApiClientOptions): ApiClient {
     const url = `${baseUrl}${path}`;
     const init: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json' },
       signal,
     };
 
     if (body !== undefined) {
+      init.headers = { 'Content-Type': 'application/json' };
       init.body = JSON.stringify(body);
     }
 
