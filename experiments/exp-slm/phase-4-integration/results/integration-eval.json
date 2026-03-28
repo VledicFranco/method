@@ -1,0 +1,242 @@
+{
+  "timestamp": "2026-03-28T11:47:41.456Z",
+  "taskCount": 10,
+  "routineCount": 5,
+  "novelCount": 5,
+  "escalationThreshold": 0.6,
+  "results": [
+    {
+      "name": "routine-normal-high-conf",
+      "difficulty": 1,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 611,
+        "costUsd": 0.00045825,
+        "latencyMs": 0.2
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 120,
+        "costUsd": 0,
+        "latencyMs": 0.11,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-empty-signals",
+      "difficulty": 2,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 548,
+        "costUsd": 0.000411,
+        "latencyMs": 0.03
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 57,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-low-confidence",
+      "difficulty": 3,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 599,
+        "costUsd": 0.00044925,
+        "latencyMs": 0.03
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 109,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-unexpected-result",
+      "difficulty": 4,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 595,
+        "costUsd": 0.00044625000000000003,
+        "latencyMs": 0.02
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 105,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-medium-confidence",
+      "difficulty": 5,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 612,
+        "costUsd": 0.000459,
+        "latencyMs": 0.02
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 121,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "novel-borderline-confidence",
+      "difficulty": 6,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 612,
+        "costUsd": 0.000459,
+        "latencyMs": 0.02
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 121,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "novel-conflicting-signals",
+      "difficulty": 7,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 634,
+        "costUsd": 0.0004755,
+        "latencyMs": 0.02
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 144,
+        "costUsd": 0,
+        "latencyMs": 0.01,
+        "escalated": false
+      }
+    },
+    {
+      "name": "novel-mixed-many-modules",
+      "difficulty": 8,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 698,
+        "costUsd": 0.0005235,
+        "latencyMs": 0.04
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 698,
+        "costUsd": 0.0005235,
+        "latencyMs": 0.02,
+        "escalated": true,
+        "escalationReason": "low-confidence"
+      }
+    },
+    {
+      "name": "novel-compound-anomaly",
+      "difficulty": 9,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 697,
+        "costUsd": 0.00052275,
+        "latencyMs": 0.06
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 697,
+        "costUsd": 0.00052275,
+        "latencyMs": 0.03,
+        "escalated": true,
+        "escalationReason": "parse-failure"
+      }
+    },
+    {
+      "name": "novel-stagnation-edge-case",
+      "difficulty": 10,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 787,
+        "costUsd": 0.0005902500000000001,
+        "latencyMs": 0.03
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 787,
+        "costUsd": 0.0005902500000000001,
+        "latencyMs": 0.06,
+        "escalated": true,
+        "escalationReason": "parse-failure"
+      }
+    }
+  ],
+  "aggregate": {
+    "baselineSuccessRate": 1,
+    "slmSuccessRate": 1,
+    "routineTokenReductionPct": 82.73,
+    "overallEscalationRate": 0.3,
+    "escalationByDifficulty": [
+      {
+        "difficulty": 1,
+        "escalated": 0
+      },
+      {
+        "difficulty": 2,
+        "escalated": 0
+      },
+      {
+        "difficulty": 3,
+        "escalated": 0
+      },
+      {
+        "difficulty": 4,
+        "escalated": 0
+      },
+      {
+        "difficulty": 5,
+        "escalated": 0
+      },
+      {
+        "difficulty": 6,
+        "escalated": 0
+      },
+      {
+        "difficulty": 7,
+        "escalated": 0
+      },
+      {
+        "difficulty": 8,
+        "escalated": 1
+      },
+      {
+        "difficulty": 9,
+        "escalated": 1
+      },
+      {
+        "difficulty": 10,
+        "escalated": 1
+      }
+    ],
+    "spearmanRho": 0.818,
+    "catastrophicFailures": 0
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-03-28T11:47:50.747Z",
+  "phase1Baseline": {
+    "avgTotalTokens": 610,
+    "avgCostPerCall": 0.000172,
+    "tokenRange": "536-840"
+  },
+  "phase4Results": {
+    "taskCount": 10,
+    "routineCount": 5,
+    "novelCount": 5,
+    "escalationThreshold": 0.6,
+    "baselineSuccessRate": 1,
+    "slmSuccessRate": 1,
+    "routineTokenReductionPct": 82.73,
+    "vsPhase1ReductionPct": 83.21,
+    "overallEscalationRate": 0.3,
+    "spearmanRho": 0.818,
+    "catastrophicFailures": 0
+  },
+  "escalationByTier": [
+    {
+      "tier": "easy (1-3)",
+      "taskCount": 3,
+      "escalated": 0,
+      "rate": 0
+    },
+    {
+      "tier": "medium (4-6)",
+      "taskCount": 3,
+      "escalated": 0,
+      "rate": 0
+    },
+    {
+      "tier": "hard (7-8)",
+      "taskCount": 2,
+      "escalated": 1,
+      "rate": 0.5
+    },
+    {
+      "tier": "extreme (9-10)",
+      "taskCount": 2,
+      "escalated": 2,
+      "rate": 1
+    }
+  ],
+  "gates": {
+    "routineCostReduction": {
+      "target": ">=30%",
+      "actual": "82.7%",
+      "pass": true
+    },
+    "successRateVsBaseline": {
+      "target": ">= baseline - 5%",
+      "actual": "100% (baseline: 100%, delta: +0pp)",
+      "pass": true
+    },
+    "spearmanRho": {
+      "target": ">=0.6",
+      "actual": "0.818",
+      "pass": true
+    },
+    "catastrophicFailures": {
+      "target": "0",
+      "actual": "0",
+      "pass": true
+    }
+  },
+  "allGatesPass": true
+}
