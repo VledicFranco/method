@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import type { PromptMetadata } from './types';
+import type { PromptMetadata, CognitiveTurnData, CognitiveCycleData } from './types';
 
 export interface StreamDoneResult {
   output: string;
@@ -20,6 +20,8 @@ export interface UsePromptStreamResult {
   streamingText: string;
   /** Whether a streaming prompt is currently in flight */
   isStreaming: boolean;
+  /** Accumulated cognitive cycle data (null until first cognitive event) */
+  cognitiveData: CognitiveTurnData | null;
   /** Send a streaming prompt. Resolves with the final result on completion. */
   send: (prompt: string) => Promise<StreamDoneResult>;
   /** Abort the current stream */
@@ -29,11 +31,30 @@ export interface UsePromptStreamResult {
 export function usePromptStream(sessionId: string | null): UsePromptStreamResult {
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [cognitiveData, setCognitiveData] = useState<CognitiveTurnData | null>(null);
 
   // Buffer for accumulating text between animation frames
   const bufferRef = useRef('');
   const rafRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Mutable ref for cognitive data accumulation (avoids stale closures)
+  const cognitiveRef = useRef<CognitiveTurnData | null>(null);
+  const cognitiveRafRef = useRef<number | null>(null);
+
+  const flushCognitive = useCallback(() => {
+    cognitiveRafRef.current = null;
+    if (cognitiveRef.current) {
+      // Shallow-copy to trigger re-render
+      setCognitiveData({ ...cognitiveRef.current });
+    }
+  }, []);
+
+  const scheduleCognitiveFlush = useCallback(() => {
+    if (cognitiveRafRef.current === null) {
+      cognitiveRafRef.current = requestAnimationFrame(flushCognitive);
+    }
+  }, [flushCognitive]);
 
   const flushBuffer = useCallback(() => {
     rafRef.current = null;
@@ -55,6 +76,10 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+    if (cognitiveRafRef.current !== null) {
+      cancelAnimationFrame(cognitiveRafRef.current);
+      cognitiveRafRef.current = null;
+    }
     setIsStreaming(false);
   }, []);
 
@@ -64,7 +89,9 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
 
       // Reset state
       bufferRef.current = '';
+      cognitiveRef.current = null;
       setStreamingText('');
+      setCognitiveData(null);
       setIsStreaming(true);
 
       const controller = new AbortController();
@@ -116,7 +143,29 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
             const dataMatch = part.match(/^data: (.+)$/m);
             if (!dataMatch) continue;
 
-            let event: { type: string; content?: string; output?: string; metadata?: PromptMetadata | null; timed_out?: boolean; error?: string };
+            let event: {
+              type: string;
+              content?: string;
+              output?: string;
+              metadata?: PromptMetadata | null;
+              timed_out?: boolean;
+              error?: string;
+              // Cognitive event fields
+              number?: number;
+              action?: string;
+              confidence?: number;
+              tokens?: number;
+              intervention?: string;
+              restricted?: string[];
+              label?: string;
+              valence?: number;
+              arousal?: number;
+              retrieved?: number;
+              stored?: number;
+              totalCards?: number;
+              lessons?: string[];
+              profile?: string;
+            };
             try {
               event = JSON.parse(dataMatch[1]);
             } catch {
@@ -134,6 +183,72 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
               };
             } else if (event.type === 'error') {
               throw new Error(event.error ?? 'Stream error');
+
+            // ── Cognitive cycle events ─────────────────────
+            } else if (event.type === 'cycle-start') {
+              // Initialize cognitive data if this is the first cognitive event
+              if (!cognitiveRef.current) {
+                cognitiveRef.current = { cycles: [] };
+              }
+              // cycle-start may carry a profile name
+              if (event.profile) {
+                cognitiveRef.current.profile = event.profile;
+              }
+              scheduleCognitiveFlush();
+
+            } else if (event.type === 'cycle-action') {
+              if (!cognitiveRef.current) {
+                cognitiveRef.current = { cycles: [] };
+              }
+              const cycle: CognitiveCycleData = {
+                number: event.number ?? cognitiveRef.current.cycles.length + 1,
+                action: event.action ?? 'unknown',
+                confidence: event.confidence ?? 0,
+                tokens: event.tokens ?? 0,
+              };
+              cognitiveRef.current.cycles.push(cycle);
+              scheduleCognitiveFlush();
+
+            } else if (event.type === 'monitor') {
+              if (cognitiveRef.current && cognitiveRef.current.cycles.length > 0) {
+                const currentCycle = cognitiveRef.current.cycles[cognitiveRef.current.cycles.length - 1];
+                currentCycle.monitor = {
+                  intervention: event.intervention ?? 'unknown',
+                  restricted: event.restricted,
+                };
+                scheduleCognitiveFlush();
+              }
+
+            } else if (event.type === 'affect') {
+              if (cognitiveRef.current && cognitiveRef.current.cycles.length > 0) {
+                const currentCycle = cognitiveRef.current.cycles[cognitiveRef.current.cycles.length - 1];
+                currentCycle.affect = {
+                  label: event.label ?? 'neutral',
+                  valence: event.valence ?? 0,
+                  arousal: event.arousal ?? 0,
+                };
+                scheduleCognitiveFlush();
+              }
+
+            } else if (event.type === 'memory') {
+              if (!cognitiveRef.current) {
+                cognitiveRef.current = { cycles: [] };
+              }
+              cognitiveRef.current.memory = {
+                retrieved: event.retrieved ?? 0,
+                stored: event.stored ?? 0,
+                totalCards: event.totalCards ?? 0,
+              };
+              scheduleCognitiveFlush();
+
+            } else if (event.type === 'reflection') {
+              if (!cognitiveRef.current) {
+                cognitiveRef.current = { cycles: [] };
+              }
+              cognitiveRef.current.reflection = {
+                lessons: event.lessons ?? [],
+              };
+              scheduleCognitiveFlush();
             }
           }
         }
@@ -144,6 +259,15 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
           rafRef.current = null;
         }
         setStreamingText(bufferRef.current);
+
+        // Final cognitive flush
+        if (cognitiveRafRef.current !== null) {
+          cancelAnimationFrame(cognitiveRafRef.current);
+          cognitiveRafRef.current = null;
+        }
+        if (cognitiveRef.current) {
+          setCognitiveData({ ...cognitiveRef.current });
+        }
 
         if (!doneResult) {
           // Stream ended without a done event — construct from buffer
@@ -161,11 +285,15 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
           cancelAnimationFrame(rafRef.current);
           rafRef.current = null;
         }
+        if (cognitiveRafRef.current !== null) {
+          cancelAnimationFrame(cognitiveRafRef.current);
+          cognitiveRafRef.current = null;
+        }
         setIsStreaming(false);
       }
     },
-    [sessionId, scheduleFlush],
+    [sessionId, scheduleFlush, scheduleCognitiveFlush],
   );
 
-  return { streamingText, isStreaming, send, abort };
+  return { streamingText, isStreaming, cognitiveData, send, abort };
 }
