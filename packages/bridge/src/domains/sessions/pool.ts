@@ -25,7 +25,7 @@ export interface SessionChainInfo {
 
 // ── PRD 006: Worktree isolation types ────────────────────────
 
-export type SessionMode = 'print';
+export type SessionMode = 'print' | 'cognitive-agent';
 
 export type IsolationMode = 'worktree' | 'shared';
 export type WorktreeAction = 'merge' | 'keep' | 'discard';
@@ -91,12 +91,27 @@ export interface SessionSnapshot {
 
 /** SSE stream event emitted during a streaming prompt. */
 export interface StreamEvent {
-  type: 'text' | 'done' | 'error';
+  type: 'text' | 'done' | 'error' | 'cycle-start' | 'cycle-action' | 'monitor' | 'affect' | 'memory' | 'reflection';
   content?: string;
   output?: string;
   metadata?: Record<string, unknown> | null;
   timed_out?: boolean;
   error?: string;
+  // Cognitive event fields (PRD 033 — present only for cognitive event types)
+  cycle?: number;
+  maxCycles?: number;
+  action?: string;
+  confidence?: number;
+  tokens?: number;
+  intervention?: string;
+  restricted?: string[];
+  label?: string;
+  valence?: number;
+  arousal?: number;
+  retrieved?: number;
+  stored?: number;
+  totalCards?: number;
+  lessons?: string[];
 }
 
 export interface SessionPool {

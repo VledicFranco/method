@@ -5,7 +5,7 @@ export interface SessionSummary {
   nickname: string;
   purpose: string | null;
   status: string;
-  mode: 'pty' | 'print';
+  mode: 'pty' | 'print' | 'cognitive-agent';
   queue_depth: number;
   metadata: Record<string, unknown>;
   prompt_count: number;
@@ -48,7 +48,10 @@ export interface SpawnRequest {
   timeout_ms?: number;
   nickname?: string;
   purpose?: string;
-  mode?: 'pty' | 'print';
+  mode?: 'pty' | 'print' | 'cognitive-agent';
+  provider_type?: 'print' | 'cognitive-agent';
+  cognitive_config?: string;
+  cognitive_patterns?: string[];
 }
 
 export interface SpawnResponse {
@@ -163,4 +166,22 @@ export interface AggregatedEventsResponse {
 export interface ApiError {
   error: string;
   status: number;
+}
+
+// ── Cognitive Session Types (PRD 033) ─────────────────────────
+
+export interface CognitiveCycleData {
+  number: number;
+  action: string;
+  confidence: number;
+  tokens: number;
+  monitor?: { intervention: string; restricted?: string[] };
+  affect?: { label: string; valence: number; arousal: number };
+}
+
+export interface CognitiveTurnData {
+  cycles: CognitiveCycleData[];
+  memory?: { retrieved: number; stored: number; totalCards: number };
+  reflection?: { lessons: string[] };
+  profile?: string;
 }
