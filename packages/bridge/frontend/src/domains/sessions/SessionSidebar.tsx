@@ -5,10 +5,12 @@
  * PRD 029 C-4: Connection health dot + stale-mode opacity.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { wsManager } from '@/shared/websocket/ws-manager';
 import type { SessionSummary } from './types';
+
+type SortKey = 'recent' | 'name' | 'status';
 
 export interface SessionSidebarProps {
   sessions: SessionSummary[];
@@ -16,6 +18,7 @@ export interface SessionSidebarProps {
   onSelect: (id: string) => void;
   onSpawn: () => void;
   onRefresh: () => void;
+  onKill?: (id: string) => void;
   /** When true, session data may be outdated (WebSocket disconnected). */
   stale?: boolean;
 }
@@ -183,6 +186,40 @@ const styles = {
     paddingLeft: '14px',
     marginBottom: '2px',
   },
+  killBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--text-muted)',
+    fontSize: '11px',
+    lineHeight: 1,
+    padding: '2px 4px',
+    borderRadius: '3px',
+    opacity: 0,
+    transition: 'opacity 0.15s ease, color 0.15s ease',
+    marginLeft: 'auto',
+    flexShrink: 0,
+  } as React.CSSProperties,
+  sortControl: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 12px',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '10px',
+    color: 'var(--text-muted)',
+  } as React.CSSProperties,
+  sortBtn: (active: boolean): React.CSSProperties => ({
+    background: active ? 'rgba(138,155,176,0.15)' : 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: active ? 'var(--text)' : 'var(--text-muted)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '10px',
+    padding: '2px 6px',
+    borderRadius: '3px',
+    transition: 'all 0.15s ease',
+  }),
   stats: {
     fontFamily: 'var(--font-mono)',
     fontSize: '10px',
@@ -207,16 +244,41 @@ function projectNameFromWorkdir(workdir: string): string {
 
 // ── Component ───────────────────────────────────────────────────
 
+function sortSessions(sessions: SessionSummary[], sortKey: SortKey): SessionSummary[] {
+  return [...sessions].sort((a, b) => {
+    switch (sortKey) {
+      case 'recent':
+        return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+      case 'name':
+        return (a.nickname ?? '').localeCompare(b.nickname ?? '');
+      case 'status': {
+        const order: Record<string, number> = { working: 0, ready: 1, idle: 2, running: 3, dead: 4 };
+        return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+      }
+      default:
+        return 0;
+    }
+  });
+}
+
 export function SessionSidebar({
   sessions,
   activeId,
   onSelect,
   onSpawn,
   onRefresh,
+  onKill,
   stale = false,
 }: SessionSidebarProps) {
   const hasRunning = sessions.some((s) => s.status === 'running');
   const health = useConnectionHealth();
+  const [sortKey, setSortKey] = useState<SortKey>('recent');
+  const sorted = sortSessions(sessions, sortKey);
+
+  const handleKill = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (onKill) onKill(id);
+  }, [onKill]);
 
   return (
     <>
@@ -229,6 +291,13 @@ export function SessionSidebar({
         @keyframes health-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        .session-item:hover .session-kill-btn {
+          opacity: 0.6;
+        }
+        .session-kill-btn:hover {
+          opacity: 1 !important;
+          color: var(--error) !important;
         }
       `}</style>
 
@@ -280,6 +349,16 @@ export function SessionSidebar({
           ＋ new session
         </button>
 
+        {/* Sort controls */}
+        <div style={styles.sortControl}>
+          <span>sort:</span>
+          {(['recent', 'name', 'status'] as SortKey[]).map((key) => (
+            <button key={key} style={styles.sortBtn(sortKey === key)} onClick={() => setSortKey(key)}>
+              {key}
+            </button>
+          ))}
+        </div>
+
         {/* Session list */}
         <div
           style={{
@@ -288,7 +367,7 @@ export function SessionSidebar({
             transition: 'opacity 0.3s ease',
           }}
         >
-          {sessions.map((session) => {
+          {sorted.map((session) => {
             const isActive = session.session_id === activeId;
             const cost = typeof session.metadata?.cost_usd === 'number'
               ? (session.metadata.cost_usd as number)
@@ -305,10 +384,22 @@ export function SessionSidebar({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') onSelect(session.session_id);
                 }}
+                className="session-item"
               >
                 <div style={styles.sessionRow}>
                   <span style={styles.statusDot(session.status)} />
                   <span style={styles.nickname}>{session.nickname}</span>
+                  {onKill && (
+                    <button
+                      style={styles.killBtn}
+                      className="session-kill-btn"
+                      onClick={(e) => handleKill(e, session.session_id)}
+                      aria-label={`Delete session ${session.nickname}`}
+                      title="Kill session"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
                 {session.purpose && (
                   <div style={styles.purpose}>{session.purpose}</div>

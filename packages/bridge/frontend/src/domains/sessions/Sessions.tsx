@@ -181,7 +181,7 @@ class ErrorBoundary extends React.Component<
 // ── Sessions ─────────────────────────────────────────────────────────────────
 
 export default function Sessions() {
-  const { sessions, refresh, spawn, isSpawning, stale } = useSessions();
+  const { sessions, activeSessions, refresh, spawn, kill, isSpawning, stale } = useSessions();
   const { projects } = useProjects();
   const { id: activeSessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -417,11 +417,12 @@ export default function Sessions() {
               }}
             >
               <SessionSidebar
-                sessions={sessions}
+                sessions={activeSessions}
                 activeId={activeSessionId ?? null}
                 onSelect={handleSelect}
                 onSpawn={() => { setSpawnOpen(true); setSidebarOpen(false); }}
                 onRefresh={refresh}
+                onKill={kill}
                 stale={stale}
               />
             </div>
@@ -452,11 +453,12 @@ export default function Sessions() {
       }}
     >
       <SessionSidebar
-        sessions={sessions}
+        sessions={activeSessions}
         activeId={activeSessionId ?? null}
         onSelect={handleSelect}
         onSpawn={() => setSpawnOpen(true)}
         onRefresh={refresh}
+        onKill={kill}
         stale={stale}
       />
       {mainContent}
