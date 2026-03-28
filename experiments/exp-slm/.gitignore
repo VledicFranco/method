@@ -1,0 +1,22 @@
+# Model checkpoints and exports (large binaries)
+phase-3-training/models/
+*.onnx
+*.gguf
+*.safetensors
+*.bin
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Track these (experiment outputs)
+# results/    — tracked
+# grammars/   — tracked
+# corpus/     — tracked
+# traces/     — tracked

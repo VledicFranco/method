@@ -1,0 +1,28 @@
+[project]
+name = "exp-slm"
+version = "0.1.0"
+description = "SLM validation experiment for RFC 002"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "trl>=0.8.0",
+    "peft>=0.10.0",
+    "accelerate>=0.28.0",
+    "optimum[onnxruntime]>=1.18.0",
+    "datasets>=2.18.0",
+    "scikit-learn>=1.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.pytest.ini_options]
+testpaths = ["phase-0-infra", "phase-2-dsl", "phase-3-training"]
