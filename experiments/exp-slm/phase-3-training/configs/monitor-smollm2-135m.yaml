@@ -1,0 +1,26 @@
+model:
+  name: "HuggingFaceTB/SmolLM2-135M-Instruct"
+  dtype: "float32"  # loaded in FP32, AMP handles FP16
+
+training:
+  max_steps: 1000
+  per_device_train_batch_size: 8
+  learning_rate: 2.0e-5
+  warmup_steps: 50
+  weight_decay: 0.01
+  fp16: true
+  bf16: false
+  max_length: 256  # DSL outputs are short
+  logging_steps: 50
+  save_strategy: "steps"
+  save_steps: 250
+  eval_strategy: "steps"
+  eval_steps: 250
+  seed: 42
+
+data:
+  train_path: "../phase-2-dsl/corpus/monitor-v2/train-augmented.jsonl"
+  holdout_path: "../phase-2-dsl/corpus/monitor-v2/holdout.jsonl"
+
+output:
+  dir: "models/monitor-smollm2-135m"
