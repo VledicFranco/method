@@ -7,6 +7,7 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback, Component, type ComponentType, type ReactNode } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -675,11 +676,32 @@ function ChatSkeleton() {
 /*  ChatView                                                          */
 /* ------------------------------------------------------------------ */
 
-export function ChatView({ session, turns, isWorking, isLoadingTranscript }: ChatViewProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const lastScrollRef = useRef(0);
+/** Threshold: only virtualize when conversations are long */
+const VIRTUAL_THRESHOLD = 30;
 
-  // Derive a streaming content fingerprint to trigger auto-scroll during streaming
+function renderTurn(turn: ChatTurn, i: number): React.ReactNode {
+  if (turn.kind === 'historical') return <HistoricalTurn key={i} turn={turn} />;
+  if (turn.kind === 'live') return <LiveTurn key={i} turn={turn} />;
+  if (turn.kind === 'pending') return <PendingTurnBlock key={i} turn={turn} />;
+  if (turn.kind === 'streaming') return <StreamingTurnBlock key={i} turn={turn} />;
+  return null;
+}
+
+export function ChatView({ session, turns, isWorking, isLoadingTranscript }: ChatViewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollRef = useRef(0);
+  const useVirtual = turns.length > VIRTUAL_THRESHOLD;
+
+  // ── Virtual scrolling for long conversations ────────────────
+  const virtualizer = useVirtualizer({
+    count: turns.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 150,
+    overscan: 5,
+    enabled: useVirtual,
+  });
+
+  // ── Auto-scroll to bottom ──────────────────────────────────
   const lastTurn = turns[turns.length - 1];
   const isStreamingTurn = lastTurn?.kind === 'streaming';
   const streamingLen = isStreamingTurn ? lastTurn.output.length : 0;
@@ -691,58 +713,70 @@ export function ChatView({ session, turns, isWorking, isLoadingTranscript }: Cha
       if (now - lastScrollRef.current < 500) return;
       lastScrollRef.current = now;
     }
-    // Use rAF to ensure DOM is painted before scrolling
     requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (useVirtual) {
+        virtualizer.scrollToIndex(turns.length - 1, { align: 'end', behavior: 'smooth' });
+      } else {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      }
     });
-  }, [turns.length, isWorking, streamingLen, isStreamingTurn]);
+  }, [turns.length, isWorking, streamingLen, isStreamingTurn, useVirtual, virtualizer]);
+
+  // ── Extra items (spawn notice, terminated notice) ──────────
+  const spawnNotice = turns.length === 0 && (session.status === 'working' || isWorking) && (
+    <div style={styles.turnBlock}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+        <PendingDots />
+        <span>Session initializing...</span>
+      </div>
+    </div>
+  );
+
+  const terminatedNotice = session.status === 'dead' && turns.length > 0 && (
+    <div style={styles.terminatedNotice}>
+      <span>&#x2297;</span>
+      <span>session terminated</span>
+    </div>
+  );
 
   return (
-    <div style={styles.container}>
+    <div ref={scrollRef} style={styles.container}>
       {/* Inject markdown styles once */}
       <style>{markdownCSS}</style>
 
       {/* Skeleton when loading transcript */}
       {isLoadingTranscript && turns.length === 0 && <ChatSkeleton />}
 
-      {turns.map((turn, i) => {
-        if (turn.kind === 'historical') return <HistoricalTurn key={i} turn={turn} />;
-        if (turn.kind === 'live') return <LiveTurn key={i} turn={turn} />;
-        if (turn.kind === 'pending') return <PendingTurnBlock key={i} turn={turn} />;
-        if (turn.kind === 'streaming') return <StreamingTurnBlock key={i} turn={turn} />;
-        return null;
-      })}
-
-      {/* Spawn-in-progress notice (no turns yet, session is working) */}
-      {turns.length === 0 && (session.status === 'working' || isWorking) && (
-        <div style={styles.turnBlock}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <PendingDots />
-            <span>Session initializing...</span>
-          </div>
+      {useVirtual ? (
+        /* ── Virtualized rendering ── */
+        <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const turn = turns[virtualRow.index];
+            return (
+              <div
+                key={virtualRow.index}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {renderTurn(turn, virtualRow.index)}
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        /* ── Direct rendering for short conversations ── */
+        turns.map((turn, i) => renderTurn(turn, i))
       )}
 
-      {/* Terminated notice */}
-      {session.status === 'dead' && turns.length > 0 && (
-        <div style={styles.terminatedNotice}>
-          <span>&#x2297;</span>
-          <span>session terminated</span>
-        </div>
-      )}
-
-      {/* Scroll anchor */}
-      <div ref={bottomRef} style={styles.scrollAnchor} />
+      {spawnNotice}
+      {terminatedNotice}
     </div>
   );
 }
