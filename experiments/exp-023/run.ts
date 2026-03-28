@@ -413,7 +413,7 @@ async function runCognitive(
     timestamp: Date.now(),
     retrievalEnabled: true,
     extractionEnabled: true,
-    maxRetrievals: 3,
+    maxRetrievals: 1,  // tuned down from 3 — multiple retrievals flood workspace
   };
 
   // Cycle state
@@ -550,8 +550,8 @@ async function runCognitive(
         promptAdditions.push(`Start your <plan> with: PROBLEM_STATE: [one sentence — what am I solving right now?]`);
       }
 
-      // P4: Dynamic persona injection
-      if (patternFlags.personas || patternFlags.all) {
+      // P4: Dynamic persona injection (cycle 0 only — avoid per-cycle workspace noise)
+      if ((patternFlags.personas || patternFlags.all) && cycle === 0) {
         const persona = selectPersona(task.description);
         if (persona) {
           promptAdditions.push(formatPersonaPrompt(persona));

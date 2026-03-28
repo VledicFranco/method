@@ -99,11 +99,14 @@ const PROFILE_CONFIG_MAP: Record<CognitiveProfile, string> = {
  *   5. routine: fallback — memoryHits > 0, low failures, no contradictions
  */
 export function classifyTask(signals: TaskSignals): MetaComposerResult {
-  // Rule 1: muscle-memory — high-confidence known procedure, zero failures
+  // Rule 1: muscle-memory — high-confidence known procedure, zero failures, AND enough memory
+  // Requires memoryHits >= 5 to prevent generic PROCEDURE patterns from triggering muscle-memory
+  // on tasks the agent hasn't actually solved before
   if (
     signals.procedureMatch &&
     signals.procedureConfidence >= 0.8 &&
-    signals.priorFailures === 0
+    signals.priorFailures === 0 &&
+    signals.memoryHits >= 5
   ) {
     return {
       profile: 'muscle-memory',
