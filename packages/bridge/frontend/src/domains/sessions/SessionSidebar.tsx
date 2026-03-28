@@ -150,14 +150,19 @@ const styles = {
     gap: '7px',
     marginBottom: '2px',
   },
-  statusDot: (isRunning: boolean): React.CSSProperties => ({
-    width: '7px',
-    height: '7px',
-    borderRadius: '50%',
-    flexShrink: 0,
-    background: isRunning ? 'var(--bio)' : 'var(--text-muted)',
-    animation: isRunning ? 'sidebar-pulse 2s ease-in-out infinite' : 'none',
-  }),
+  statusDot: (status: string): React.CSSProperties => {
+    const isWorking = status === 'working';
+    const isDead = status === 'dead';
+    const isAlive = !isDead;
+    return {
+      width: '7px',
+      height: '7px',
+      borderRadius: '50%',
+      flexShrink: 0,
+      background: isWorking ? 'var(--solar)' : isAlive ? 'var(--bio)' : 'var(--text-muted)',
+      animation: isWorking ? 'sidebar-pulse 1s ease-in-out infinite' : isAlive ? 'sidebar-pulse 2s ease-in-out infinite' : 'none',
+    };
+  },
   nickname: {
     fontFamily: 'var(--font-mono)',
     fontSize: '12px',
@@ -285,7 +290,6 @@ export function SessionSidebar({
         >
           {sessions.map((session) => {
             const isActive = session.session_id === activeId;
-            const isRunning = session.status === 'running' || session.status === 'idle' || session.status === 'ready' || session.status === 'working';
             const cost = typeof session.metadata?.cost_usd === 'number'
               ? (session.metadata.cost_usd as number)
               : 0;
@@ -303,7 +307,7 @@ export function SessionSidebar({
                 }}
               >
                 <div style={styles.sessionRow}>
-                  <span style={styles.statusDot(isRunning)} />
+                  <span style={styles.statusDot(session.status)} />
                   <span style={styles.nickname}>{session.nickname}</span>
                 </div>
                 {session.purpose && (
