@@ -6,8 +6,9 @@
  * Renders turn output as markdown with syntax-highlighted code blocks.
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, Component, type ComponentType, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { ChatTurn, SessionSummary } from './types';
@@ -210,6 +211,148 @@ const inlineCodeStyle: React.CSSProperties = {
   border: '1px solid rgba(100,200,150,0.08)',
 };
 
+/* ------------------------------------------------------------------ */
+/*  GlyphJS integration — renders ui: fenced code blocks              */
+/* ------------------------------------------------------------------ */
+
+const BRIDGE_GLYPH_THEME = {
+  name: 'bridge-dark',
+  variables: {
+    '--glyph-bg': 'transparent',
+    '--glyph-text': 'var(--text)',
+    '--glyph-text-muted': 'var(--text-muted)',
+    '--glyph-heading': 'var(--text)',
+    '--glyph-link': 'var(--bio)',
+    '--glyph-link-hover': 'var(--bio)',
+    '--glyph-border': 'rgba(138,155,176,0.15)',
+    '--glyph-border-strong': 'rgba(138,155,176,0.3)',
+    '--glyph-surface': 'var(--abyss)',
+    '--glyph-surface-raised': 'var(--abyss-light, #1a2433)',
+    '--glyph-accent': 'var(--bio)',
+    '--glyph-accent-hover': 'var(--bio)',
+    '--glyph-accent-subtle': 'rgba(100,200,150,0.12)',
+    '--glyph-accent-muted': 'rgba(100,200,150,0.08)',
+    '--glyph-text-on-accent': 'var(--void)',
+    '--glyph-code-bg': 'var(--abyss-light, #1a2433)',
+    '--glyph-code-text': 'var(--text)',
+    '--glyph-font-body': 'var(--font-mono)',
+    '--glyph-font-heading': 'var(--font-mono)',
+    '--glyph-font-mono': 'var(--font-mono)',
+    '--glyph-color-success': 'var(--bio)',
+    '--glyph-color-warning': 'var(--solar)',
+    '--glyph-color-error': 'var(--error)',
+    '--glyph-color-info': 'var(--bio)',
+  } as Record<string, string>,
+};
+
+let _glyphPromise: Promise<{
+  compile: (md: string) => any;
+  GlyphDoc: ComponentType<{ ir: any }>;
+}> | null = null;
+
+function getGlyphRuntime() {
+  if (!_glyphPromise) {
+    _glyphPromise = Promise.all([
+      import('@glyphjs/compiler'),
+      import('@glyphjs/runtime'),
+      import('@glyphjs/components'),
+    ]).then(([compiler, runtime, components]) => {
+      const rt = runtime.createGlyphRuntime({
+        components: [...components.allComponentDefinitions] as any,
+        theme: BRIDGE_GLYPH_THEME,
+        animation: { enabled: true, duration: 200 },
+      });
+      return {
+        compile: compiler.compile,
+        GlyphDoc: rt.GlyphDocument as ComponentType<{ ir: any }>,
+      };
+    });
+  }
+  return _glyphPromise;
+}
+
+/** Mini error boundary that catches GlyphJS render failures */
+class GlyphErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: ReactNode; children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+function GlyphBlock({ language, content }: { language: string; content: string }) {
+  const [glyphResult, setGlyphResult] = useState<{ ir: any } | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getGlyphRuntime()
+      .then(({ compile }) => {
+        if (cancelled) return;
+        const markdown = '```' + language + '\n' + content + '\n```';
+        const result = compile(markdown);
+        if (result && !result.hasErrors && result.ir) {
+          setGlyphResult({ ir: result.ir });
+        } else {
+          setError(true);
+        }
+      })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
+  }, [language, content]);
+
+  const fallbackBlock = (
+    <div style={codeBlockContainerStyle}>
+      <div style={codeHeaderStyle}>
+        <span>{language}</span>
+      </div>
+      <pre style={{ margin: 0, padding: '12px', fontSize: '12px', lineHeight: 1.5, color: 'var(--text)', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap' }}>
+        {content}
+      </pre>
+    </div>
+  );
+
+  if (error) return fallbackBlock;
+
+  if (!glyphResult) {
+    return (
+      <div style={{ ...codeBlockContainerStyle, padding: '12px', textAlign: 'center' as const }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)' }}>
+          loading {language}...
+        </span>
+      </div>
+    );
+  }
+
+  return <LazyGlyphDocument ir={glyphResult.ir} fallback={fallbackBlock} />;
+}
+
+function LazyGlyphDocument({ ir, fallback }: { ir: any; fallback: ReactNode }) {
+  const [GlyphDoc, setGlyphDoc] = useState<ComponentType<{ ir: any }> | null>(null);
+
+  useEffect(() => {
+    getGlyphRuntime().then(({ GlyphDoc: Doc }) => setGlyphDoc(() => Doc));
+  }, []);
+
+  if (!GlyphDoc) return null;
+
+  return (
+    <GlyphErrorBoundary fallback={fallback}>
+      <div style={{ margin: '8px 0', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(138,155,176,0.1)' }}>
+        <GlyphDoc ir={ir} />
+      </div>
+    </GlyphErrorBoundary>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -298,12 +441,18 @@ function MarkdownOutput({ content }: { content: string }) {
   return (
     <div className="chat-markdown">
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           code(props: any) {
             const { children, className, node, ...rest } = props;
-            const match = /language-(\w+)/.exec(className || '');
+            const match = /language-([\w:.]+)/.exec(className || '');
             const codeStr = String(children).replace(/\n$/, '');
             const isBlock = !!match || codeStr.includes('\n');
+
+            // Route ui: blocks to GlyphJS
+            if (match && match[1].startsWith('ui:')) {
+              return <GlyphBlock language={match[1]} content={codeStr} />;
+            }
 
             if (isBlock) {
               const lang = match ? match[1] : 'text';
@@ -465,6 +614,26 @@ export function ChatView({ session, turns, isWorking }: ChatViewProps) {
 
         return null;
       })}
+
+      {/* Spawn-in-progress notice (no turns yet, session is working) */}
+      {turns.length === 0 && (session.status === 'working' || isWorking) && (
+        <div style={styles.turnBlock}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <PendingDots />
+            <span>Session initializing...</span>
+          </div>
+        </div>
+      )}
 
       {/* Terminated notice */}
       {session.status === 'dead' && turns.length > 0 && (

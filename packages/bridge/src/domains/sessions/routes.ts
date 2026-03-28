@@ -21,6 +21,7 @@ import type { SessionPool } from './pool.js';
 import { readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
 import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
 import type { EventBus } from '../../ports/event-bus.js';
+import { lintGlyphBlocks, buildRepairPrompt, patchResponse } from './glyph-lint.js';
 
 export interface SessionRouteDeps {
   pool: SessionPool;
@@ -302,7 +303,32 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         });
       }
 
-      return reply.status(200).send({ output: result.output, timed_out: result.timedOut, metadata });
+      // ── GlyphJS auto-repair: lint ui: blocks, re-prompt on failure ──
+      let finalOutput = result.output;
+      try {
+        const lint = lintGlyphBlocks(result.output);
+        if (lint.failures.length > 0) {
+          console.log(`[glyph-lint] ${lint.failures.length}/${lint.totalBlocks} ui: block(s) failed validation in session ${id}, attempting repair...`);
+          const repairPrompt = buildRepairPrompt(lint.failures);
+          const repairResult = await pool.prompt(id, repairPrompt, 120_000);
+          if (!repairResult.timedOut && repairResult.output) {
+            const patched = patchResponse(result.output, lint.failures, repairResult.output);
+            // Verify the patch actually fixed the blocks
+            const recheck = lintGlyphBlocks(patched);
+            if (recheck.failures.length < lint.failures.length) {
+              console.log(`[glyph-lint] Repair succeeded: ${lint.failures.length - recheck.failures.length} block(s) fixed`);
+              finalOutput = patched;
+            } else {
+              console.log(`[glyph-lint] Repair did not improve blocks, keeping original`);
+            }
+          }
+        }
+      } catch (lintErr) {
+        // Linting/repair failure is non-fatal — return original response
+        console.warn(`[glyph-lint] Error during lint/repair:`, (lintErr as Error).message);
+      }
+
+      return reply.status(200).send({ output: finalOutput, timed_out: result.timedOut, metadata });
     } catch (e) {
       const message = (e as Error).message;
       if (message.includes('not found')) return reply.status(404).send({ error: message });

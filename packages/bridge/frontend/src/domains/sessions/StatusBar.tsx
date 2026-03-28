@@ -124,7 +124,7 @@ function Field({ label, value }: { label: string; value: string }) {
 export function StatusBar({ session, totalCost }: StatusBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const shortId = `${session.session_id.slice(0, 8)}…`;
+  const shortId = `${(session.session_id ?? '').slice(0, 8)}…`;
   const cost = totalCost ?? (
     typeof session.metadata?.cost_usd === 'number'
       ? (session.metadata.cost_usd as number)

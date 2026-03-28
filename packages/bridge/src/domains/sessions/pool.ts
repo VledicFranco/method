@@ -439,12 +439,25 @@ export function createPool(options?: PoolOptions): SessionPool {
         await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
 
+      // Default system prompt guidance for rich rendering in the Bridge UI
+      const DEFAULT_SYSTEM_PROMPT_SUFFIX = [
+        'When producing diagrams, flowcharts, or architecture visualizations, use GlyphJS ui: fenced code blocks instead of ASCII art.',
+        'Available components: ui:flowchart, ui:callout, ui:table, ui:architecture, ui:timeline, ui:graph, ui:sequence, ui:tabs, ui:steps, ui:kpi, ui:mindmap.',
+        'Use proper markdown tables (| col | col |) instead of ASCII-aligned columns.',
+        'Example: ```ui:flowchart\\nnodes:\\n  - id: a\\n    label: Start\\nedges:\\n  - from: a\\n    to: b\\n```',
+      ].join(' ');
+
+      const userSystemPrompt = typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : '';
+      const effectiveSystemPrompt = userSystemPrompt
+        ? `${userSystemPrompt}\n\n${DEFAULT_SYSTEM_PROMPT_SUFFIX}`
+        : DEFAULT_SYSTEM_PROMPT_SUFFIX;
+
       const session: PtySession = createPrintSession({
         id: sessionId,
         workdir: effectiveWorkdir,
         initialPrompt: initialPrompt ?? undefined,
         maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
-        appendSystemPrompt: typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : undefined,
+        appendSystemPrompt: effectiveSystemPrompt,
         permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
         model: typeof metadata?.model === 'string' ? metadata.model : undefined,
         spawnArgs,

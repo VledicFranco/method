@@ -9,7 +9,18 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      'crypto': resolve(__dirname, 'src/shared/crypto-shim.ts'),
+      'node:crypto': resolve(__dirname, 'src/shared/crypto-shim.ts'),
+      // Use local GlyphJS source with React 18 compat patches
+      '@glyphjs/compiler': resolve(__dirname, '../../../../oss-glyphjs/packages/compiler/src/index.ts'),
+      '@glyphjs/runtime': resolve(__dirname, '../../../../oss-glyphjs/packages/runtime/src/index.ts'),
+      '@glyphjs/components': resolve(__dirname, '../../../../oss-glyphjs/packages/components/src/index.ts'),
+      '@glyphjs/types': resolve(__dirname, '../../../../oss-glyphjs/packages/types/src/index.ts'),
+      '@glyphjs/schemas': resolve(__dirname, '../../../../oss-glyphjs/packages/schemas/src/index.ts'),
+      '@glyphjs/parser': resolve(__dirname, '../../../../oss-glyphjs/packages/parser/src/index.ts'),
+      '@glyphjs/ir': resolve(__dirname, '../../../../oss-glyphjs/packages/ir/src/index.ts'),
     },
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
   },
   build: {
     outDir: '../dist/app',
