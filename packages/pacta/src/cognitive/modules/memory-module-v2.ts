@@ -307,26 +307,28 @@ export function createMemoryModuleV2(
             stored.push(observationCard);
           }
 
-          // Extract HEURISTIC from successfully executed plans
-          if (success) {
-            const planStrategy = detectSuccessfulPlan(input.snapshot);
-            if (planStrategy) {
-              const now = Date.now();
-              const heuristicCard: FactCard = {
-                id: generateCardId(),
-                content: planStrategy,
-                type: 'HEURISTIC',
-                source: { module: id },
-                tags: ['strategy', 'successful-plan'],
-                created: now,
-                updated: now,
-                confidence: 0.6,
-                links: [],
-              };
+          // Extract HEURISTIC from successful Write/Edit actions
+          // The insight (plan text) captures WHY this action was taken — the strategy
+          if (
+            success && insight &&
+            (actionName === 'Write' || actionName === 'Edit') &&
+            insight.length > 20  // avoid trivially short plans
+          ) {
+            const now = Date.now();
+            const heuristicCard: FactCard = {
+              id: generateCardId(),
+              content: `Strategy: ${insight}`,
+              type: 'HEURISTIC',
+              source: { module: id },
+              tags: ['strategy', actionName, ...(target ? [target] : [])],
+              created: now,
+              updated: now,
+              confidence: 0.6,
+              links: [observationCard.id],  // link to the observation
+            };
 
-              await memory.storeCard(heuristicCard);
-              stored.push(heuristicCard);
-            }
+            await memory.storeCard(heuristicCard);
+            stored.push(heuristicCard);
           }
         }
 
