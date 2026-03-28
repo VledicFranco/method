@@ -42,6 +42,8 @@ SyntaxHighlighter.registerLanguage('shell', bash);
 SyntaxHighlighter.registerLanguage('py', python);
 SyntaxHighlighter.registerLanguage('md', markdown);
 import type { ChatTurn, SessionSummary } from './types';
+import { CycleTrace } from './CycleTrace';
+import { ReflectionFooter } from './ReflectionFooter';
 
 export interface ChatViewProps {
   session: SessionSummary;
@@ -607,9 +609,13 @@ const LiveTurn = React.memo(function LiveTurn({ turn }: { turn: Extract<ChatTurn
         <span>&#x25B8;</span>
         <span style={styles.promptText}>{turn.prompt}</span>
       </div>
+      {turn.cognitiveData && <CycleTrace data={turn.cognitiveData} />}
       <div style={styles.outputBlock}>
         <MarkdownOutput content={turn.output} />
       </div>
+      {turn.cognitiveData?.reflection?.lessons?.length ? (
+        <ReflectionFooter lessons={turn.cognitiveData.reflection.lessons} />
+      ) : null}
       <div style={styles.chipsRow}>
         <span style={styles.chip}>${m.cost_usd.toFixed(2)}</span>
         <span style={styles.chip}>{m.num_turns} turns</span>
@@ -642,6 +648,7 @@ function StreamingTurnBlock({ turn }: { turn: Extract<ChatTurn, { kind: 'streami
         <span>&#x25B8;</span>
         <span style={styles.promptText}>{turn.prompt}</span>
       </div>
+      {turn.cognitiveData && <CycleTrace data={turn.cognitiveData} isStreaming />}
       {turn.output ? (
         <div style={styles.outputBlock}>
           <MarkdownOutput content={turn.output} />

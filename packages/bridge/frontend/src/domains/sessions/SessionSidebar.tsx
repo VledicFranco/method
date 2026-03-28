@@ -8,7 +8,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { wsManager } from '@/shared/websocket/ws-manager';
-import type { SessionSummary } from './types';
+import type { SessionSummary, CognitiveTurnData } from './types';
+import { CognitivePanel } from './CognitivePanel';
 
 type SortKey = 'recent' | 'name' | 'status';
 
@@ -21,6 +22,8 @@ export interface SessionSidebarProps {
   onKill?: (id: string) => void;
   /** When true, session data may be outdated (WebSocket disconnected). */
   stale?: boolean;
+  /** Cognitive turn data for the active session (used by CognitivePanel). */
+  cognitiveData?: CognitiveTurnData | null;
 }
 
 // ── Connection health states ────────────────────────────────────
@@ -269,6 +272,7 @@ export function SessionSidebar({
   onRefresh,
   onKill,
   stale = false,
+  cognitiveData = null,
 }: SessionSidebarProps) {
   const hasRunning = sessions.some((s) => s.status === 'running');
   const health = useConnectionHealth();
@@ -388,7 +392,10 @@ export function SessionSidebar({
               >
                 <div style={styles.sessionRow}>
                   <span style={styles.statusDot(session.status)} />
-                  <span style={styles.nickname}>{session.nickname}</span>
+                  <span style={styles.nickname}>
+                    {session.nickname}
+                    {session.mode === 'cognitive-agent' && <span style={{ marginLeft: 4 }}>{'\uD83E\uDDE0'}</span>}
+                  </span>
                   {onKill && (
                     <button
                       style={styles.killBtn}
@@ -417,6 +424,10 @@ export function SessionSidebar({
           })}
         </div>
 
+        <CognitivePanel
+          turnData={cognitiveData}
+          sessionMode={sessions.find((s) => s.session_id === activeId)?.mode ?? 'print'}
+        />
       </aside>
     </>
   );

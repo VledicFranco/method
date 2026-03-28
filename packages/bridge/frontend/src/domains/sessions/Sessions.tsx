@@ -236,7 +236,7 @@ export default function Sessions() {
   }, []);
 
   const { data: historicalTurns = [], isLoading: isLoadingTranscript } = useTranscript(activeSessionId ?? null);
-  const { streamingText, isStreaming, send: sendStream } = usePromptStream(activeSessionId ?? null);
+  const { streamingText, isStreaming, cognitiveData, send: sendStream } = usePromptStream(activeSessionId ?? null);
 
   // Derived
   const activeSession = sessions.find((s) => s.session_id === activeSessionId) ?? null;
@@ -250,12 +250,12 @@ export default function Sessions() {
       if (last.kind === 'streaming') {
         return [
           ...base.slice(0, -1),
-          { ...last, output: streamingText },
+          { ...last, output: streamingText, cognitiveData: cognitiveData ?? undefined },
         ];
       }
     }
     return base;
-  }, [historicalTurns, liveTurns, isStreaming, streamingText]);
+  }, [historicalTurns, liveTurns, isStreaming, streamingText, cognitiveData]);
 
   const totalCost = (activeSession?.metadata as any)?.cost_usd as number | undefined;
 
@@ -267,6 +267,8 @@ export default function Sessions() {
   }, [navigate]);
 
   const isWorkingRef = useRef(false);
+  const cognitiveDataRef = useRef(cognitiveData);
+  cognitiveDataRef.current = cognitiveData;
 
   const handleSend = useCallback(
     async (prompt: string): Promise<PromptResult> => {
@@ -294,6 +296,8 @@ export default function Sessions() {
         };
 
         // Replace streaming turn with completed live turn
+        // Capture cognitiveData at completion time via the ref-backed state
+        const finalCognitive = cognitiveDataRef.current ?? undefined;
         setLiveTurns((prev) => {
           const withoutLast = prev.slice(0, -1);
           return [
@@ -304,6 +308,7 @@ export default function Sessions() {
               output: result.output,
               metadata,
               timestamp: new Date().toISOString(),
+              cognitiveData: finalCognitive,
             },
           ];
         });
@@ -424,6 +429,7 @@ export default function Sessions() {
                 onRefresh={refresh}
                 onKill={kill}
                 stale={stale}
+                cognitiveData={cognitiveData}
               />
             </div>
           </>
@@ -460,6 +466,7 @@ export default function Sessions() {
         onRefresh={refresh}
         onKill={kill}
         stale={stale}
+        cognitiveData={cognitiveData}
       />
       {mainContent}
       <SpawnSessionModal

@@ -100,6 +100,7 @@ export type ChatTurn =
       metadata: PromptMetadata;
       timestamp: string;
       toolSummaries?: CollapsedToolSummary[];
+      cognitiveData?: CognitiveTurnData;
     }
   | {
       kind: 'pending';
@@ -109,6 +110,7 @@ export type ChatTurn =
       kind: 'streaming';
       prompt: string;
       output: string;
+      cognitiveData?: CognitiveTurnData;
     };
 
 export interface PromptResult {
