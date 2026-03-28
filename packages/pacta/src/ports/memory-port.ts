@@ -31,7 +31,15 @@ export interface NoteFilter {
 
 // ── FactCard System (PRD 031) ────────────────────────────────────────
 
-export type EpistemicType = 'FACT' | 'HEURISTIC' | 'RULE' | 'OBSERVATION';
+export type EpistemicType = 'FACT' | 'HEURISTIC' | 'RULE' | 'OBSERVATION' | 'PROCEDURE';
+
+/** A reusable cognitive template for common task types (PRD 032, P5). */
+export interface ThoughtPattern {
+  name: string;
+  trigger: string;
+  steps: string[];
+  exitCondition: string;
+}
 
 export interface FactCard {
   id: string;
