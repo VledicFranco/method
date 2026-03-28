@@ -999,6 +999,27 @@ export function createPool(options?: PoolOptions): SessionPool {
 
           return real.sendPrompt(prompt, _timeoutMs, _settleDelayMs);
         },
+        sendPromptStream(prompt: string, onChunk: (chunk: string) => void, _timeoutMs?: number): Promise<{ output: string; timedOut: boolean }> {
+          if (status === 'dead') {
+            return Promise.reject(new Error(`Session ${sid} is dead — cannot send prompt`));
+          }
+
+          // Lazy upgrade: replace stub with real print session on first prompt (streaming)
+          const real = createPrintSession({
+            id: sid,
+            workdir: snapshot.workdir,
+            recovered: true,
+            model: typeof snapshot.metadata?.model === 'string' ? snapshot.metadata.model : undefined,
+          });
+          for (const sub of outputSubscribers) { real.onOutput(sub); }
+          for (const cb of exitCallbacks) { real.onExit(cb); }
+          sessions.set(sid, real);
+
+          if (typeof real.sendPromptStream === 'function') {
+            return real.sendPromptStream(prompt, onChunk, _timeoutMs);
+          }
+          return real.sendPrompt(prompt, _timeoutMs);
+        },
         resize(_cols: number, _rows: number): void { /* no-op */ },
         kill(): void {
           status = 'dead';
