@@ -14,6 +14,18 @@ const Registry = lazy(() => import('./domains/registry/Registry'));
 const Settings = lazy(() => import('./shared/pages/Settings'));
 const ExecutionView = lazy(() => import('./domains/strategies/ExecutionView'));
 
+// Preload functions for route chunks — trigger on nav hover to eliminate load delay
+export const ROUTE_PRELOADS: Record<string, () => void> = {
+  '/': () => { import('./shared/pages/Dashboard'); },
+  '/sessions': () => { import('./domains/sessions/Sessions'); },
+  '/projects': () => { import('./domains/projects/ProjectsPage'); },
+  '/strategies': () => { import('./domains/strategies/Strategies'); },
+  '/governance': () => { import('./shared/pages/Governance'); },
+  '/analytics': () => { import('./domains/tokens/Analytics'); },
+  '/registry': () => { import('./domains/registry/Registry'); },
+  '/settings': () => { import('./shared/pages/Settings'); },
+};
+
 // ── Route loading skeleton ──
 
 function RouteSkeleton() {

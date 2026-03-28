@@ -6,17 +6,47 @@
  * Renders turn output as markdown with syntax-highlighted code blocks.
  */
 
-import { useRef, useEffect, useState, useCallback, Component, type ComponentType, type ReactNode } from 'react';
+import React, { useRef, useEffect, useState, useCallback, Component, type ComponentType, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+// Register only common languages for agent output
+import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
+import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
+import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
+import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
+import css from 'react-syntax-highlighter/dist/esm/languages/prism/css';
+import jsx from 'react-syntax-highlighter/dist/esm/languages/prism/jsx';
+import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx';
+
+SyntaxHighlighter.registerLanguage('typescript', typescript);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('yaml', yaml);
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('markdown', markdown);
+SyntaxHighlighter.registerLanguage('css', css);
+SyntaxHighlighter.registerLanguage('jsx', jsx);
+SyntaxHighlighter.registerLanguage('tsx', tsx);
+SyntaxHighlighter.registerLanguage('ts', typescript);
+SyntaxHighlighter.registerLanguage('js', javascript);
+SyntaxHighlighter.registerLanguage('sh', bash);
+SyntaxHighlighter.registerLanguage('shell', bash);
+SyntaxHighlighter.registerLanguage('py', python);
+SyntaxHighlighter.registerLanguage('md', markdown);
 import type { ChatTurn, SessionSummary } from './types';
 
 export interface ChatViewProps {
   session: SessionSummary;
   turns: ChatTurn[];
   isWorking: boolean;
+  isLoadingTranscript?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -149,6 +179,11 @@ const markdownCSS = `
     text-decoration-color: rgba(138,155,176,0.3);
   }
   .chat-markdown a:hover { text-decoration-color: var(--bio); }
+  @keyframes skeleton-shimmer {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.3; }
+  }
   .chat-markdown table {
     border-collapse: collapse;
     margin: 8px 0;
@@ -546,10 +581,84 @@ function formatCached(tokens: number): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Memoized turn components                                          */
+/* ------------------------------------------------------------------ */
+
+const HistoricalTurn = React.memo(function HistoricalTurn({ turn }: { turn: Extract<ChatTurn, { kind: 'historical' }> }) {
+  return (
+    <div style={styles.turnBlock}>
+      <div style={styles.promptHeader}>
+        <span>&#x25B8;</span>
+        <span style={styles.promptText}>{turn.prompt}</span>
+      </div>
+      <div style={styles.outputBlock}>
+        <MarkdownOutput content={turn.output} />
+      </div>
+    </div>
+  );
+});
+
+const LiveTurn = React.memo(function LiveTurn({ turn }: { turn: Extract<ChatTurn, { kind: 'live' }> }) {
+  const m = turn.metadata;
+  return (
+    <div style={styles.turnBlock}>
+      <div style={styles.promptHeader}>
+        <span>&#x25B8;</span>
+        <span style={styles.promptText}>{turn.prompt}</span>
+      </div>
+      <div style={styles.outputBlock}>
+        <MarkdownOutput content={turn.output} />
+      </div>
+      <div style={styles.chipsRow}>
+        <span style={styles.chip}>${m.cost_usd.toFixed(2)}</span>
+        <span style={styles.chip}>{m.num_turns} turns</span>
+        <span style={styles.chip}>{formatDuration(m.duration_ms)}</span>
+        <span style={styles.chip}>{formatCached(m.cache_read_tokens)}</span>
+        {m.stop_reason && (
+          <span style={styles.chip}>{m.stop_reason}</span>
+        )}
+      </div>
+    </div>
+  );
+});
+
+function PendingTurnBlock({ turn }: { turn: Extract<ChatTurn, { kind: 'pending' }> }) {
+  return (
+    <div style={styles.turnBlock}>
+      <div style={styles.promptHeader}>
+        <span>&#x25B8;</span>
+        <span style={styles.promptText}>{turn.prompt}</span>
+      </div>
+      <PendingDots />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Skeleton screen for transcript loading                            */
+/* ------------------------------------------------------------------ */
+
+function ChatSkeleton() {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <div key={i} style={styles.turnBlock}>
+          <div style={{ ...styles.promptHeader, width: `${120 + i * 40}px`, height: '12px', background: 'var(--abyss-light, #1a2433)', borderRadius: '4px', animation: 'skeleton-shimmer 1.5s ease-in-out infinite' }} />
+          <div style={{ ...styles.outputBlock, minHeight: `${60 + i * 20}px`, background: 'var(--abyss)', opacity: 0.5 }}>
+            <div style={{ height: '10px', width: '80%', background: 'var(--abyss-light, #1a2433)', borderRadius: '4px', marginBottom: '8px', animation: 'skeleton-shimmer 1.5s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+            <div style={{ height: '10px', width: '60%', background: 'var(--abyss-light, #1a2433)', borderRadius: '4px', animation: 'skeleton-shimmer 1.5s ease-in-out infinite', animationDelay: `${i * 0.2 + 0.1}s` }} />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  ChatView                                                          */
 /* ------------------------------------------------------------------ */
 
-export function ChatView({ session, turns, isWorking }: ChatViewProps) {
+export function ChatView({ session, turns, isWorking, isLoadingTranscript }: ChatViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -561,57 +670,13 @@ export function ChatView({ session, turns, isWorking }: ChatViewProps) {
       {/* Inject markdown styles once */}
       <style>{markdownCSS}</style>
 
+      {/* Skeleton when loading transcript */}
+      {isLoadingTranscript && turns.length === 0 && <ChatSkeleton />}
+
       {turns.map((turn, i) => {
-        if (turn.kind === 'historical') {
-          return (
-            <div key={i} style={styles.turnBlock}>
-              <div style={styles.promptHeader}>
-                <span>&#x25B8;</span>
-                <span style={styles.promptText}>{turn.prompt}</span>
-              </div>
-              <div style={styles.outputBlock}>
-                <MarkdownOutput content={turn.output} />
-              </div>
-            </div>
-          );
-        }
-
-        if (turn.kind === 'live') {
-          const m = turn.metadata;
-          return (
-            <div key={i} style={styles.turnBlock}>
-              <div style={styles.promptHeader}>
-                <span>&#x25B8;</span>
-                <span style={styles.promptText}>{turn.prompt}</span>
-              </div>
-              <div style={styles.outputBlock}>
-                <MarkdownOutput content={turn.output} />
-              </div>
-              <div style={styles.chipsRow}>
-                <span style={styles.chip}>${m.cost_usd.toFixed(2)}</span>
-                <span style={styles.chip}>{m.num_turns} turns</span>
-                <span style={styles.chip}>{formatDuration(m.duration_ms)}</span>
-                <span style={styles.chip}>{formatCached(m.cache_read_tokens)}</span>
-                {m.stop_reason && (
-                  <span style={styles.chip}>{m.stop_reason}</span>
-                )}
-              </div>
-            </div>
-          );
-        }
-
-        if (turn.kind === 'pending') {
-          return (
-            <div key={i} style={styles.turnBlock}>
-              <div style={styles.promptHeader}>
-                <span>&#x25B8;</span>
-                <span style={styles.promptText}>{turn.prompt}</span>
-              </div>
-              <PendingDots />
-            </div>
-          );
-        }
-
+        if (turn.kind === 'historical') return <HistoricalTurn key={i} turn={turn} />;
+        if (turn.kind === 'live') return <LiveTurn key={i} turn={turn} />;
+        if (turn.kind === 'pending') return <PendingTurnBlock key={i} turn={turn} />;
         return null;
       })}
 

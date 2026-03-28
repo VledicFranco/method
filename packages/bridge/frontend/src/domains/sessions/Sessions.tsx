@@ -235,7 +235,7 @@ export default function Sessions() {
     }
   }, []);
 
-  const { data: historicalTurns = [] } = useTranscript(activeSessionId ?? null);
+  const { data: historicalTurns = [], isLoading: isLoadingTranscript } = useTranscript(activeSessionId ?? null);
 
   // Derived
   const activeSession = sessions.find((s) => s.session_id === activeSessionId) ?? null;
@@ -337,6 +337,7 @@ export default function Sessions() {
             session={activeSession}
             turns={allTurns}
             isWorking={isWorking}
+            isLoadingTranscript={isLoadingTranscript}
           />
         ) : (
           <div

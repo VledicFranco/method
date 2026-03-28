@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { useIsMobile } from '@/shared/layout/useIsMobile';
 import { StatusBar, type BreadcrumbSegment } from './StatusBar';
+import { ROUTE_PRELOADS } from '@/App';
 import {
   LayoutDashboard,
   Terminal,
@@ -57,6 +58,10 @@ export function NavBar({ items, breadcrumbs = [], onSearchClick, notificationCou
     return location.pathname.startsWith(path);
   }
 
+  const handlePreload = useCallback((path: string) => {
+    ROUTE_PRELOADS[path]?.();
+  }, []);
+
   return (
     <>
       <nav
@@ -105,6 +110,8 @@ export function NavBar({ items, breadcrumbs = [], onSearchClick, notificationCou
                     <Link
                       key={item.path}
                       to={item.path}
+                      onMouseEnter={() => handlePreload(item.path)}
+                      onFocus={() => handlePreload(item.path)}
                       className={cn(
                         'relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bio focus-visible:ring-offset-2 focus-visible:ring-offset-void',
@@ -187,6 +194,8 @@ export function NavBar({ items, breadcrumbs = [], onSearchClick, notificationCou
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
+                    onMouseEnter={() => handlePreload(item.path)}
+                    onFocus={() => handlePreload(item.path)}
                     className={cn(
                       'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                       active
