@@ -60,6 +60,13 @@ import type { ReadonlyWorkspaceSnapshot, SalienceContext } from '../../packages/
 
 import { CONFIGS, describeConfig, type CognitiveConfig } from './strategies.js';
 
+// ── PRD 032 Pattern Imports ─────────────────────────────────────
+import { createReflectorV2 } from '../../packages/pacta/src/cognitive/modules/reflector-v2.js';
+import { seedPatterns, formatPatternForWorkspace } from '../../packages/pacta/src/config/thought-patterns.js';
+import { classifyTask, gatherTaskSignals } from '../../packages/pacta/src/cognitive/modules/meta-composer.js';
+import { selectPersona, formatPersonaPrompt } from '../../packages/pacta/src/config/personas.js';
+import { computeAffect, type AffectInput } from '../../packages/pacta/src/cognitive/modules/affect-module.js';
+
 import { TASK_01 } from './task-01-circular-dep.js';
 import { TASK_02 } from './task-02-test-first-bug.js';
 import { TASK_03 } from './task-03-config-migration.js';
@@ -91,6 +98,26 @@ interface RunResult {
   monitorInterventions?: number;
   strategyShifts?: number;
 }
+
+// ── PRD 032 Pattern Flags ──────────────────────────────────────
+
+interface PatternFlags {
+  reflect: boolean;   // P6: Post-task reflection via reflector-v2
+  patterns: boolean;  // P5: Thought pattern seeding
+  adaptive: boolean;  // P2: Meta-composer adaptive config selection
+  personas: boolean;  // P4: Dynamic persona injection
+  affect: boolean;    // P3: Affect computation from behavioral traces
+  all: boolean;       // --pattern=all activates everything
+}
+
+const DEFAULT_PATTERN_FLAGS: PatternFlags = {
+  reflect: false,
+  patterns: false,
+  adaptive: false,
+  personas: false,
+  affect: false,
+  all: false,
+};
 
 // ── Condition A: Flat Agent ─────────────────────────────────────
 
@@ -337,7 +364,8 @@ async function runCognitive(
   runNumber: number,
   config: CognitiveConfig,
   useMemory: boolean = false,
-  sharedMemoryPort?: MemoryPortV2
+  sharedMemoryPort?: MemoryPortV2,
+  patternFlags: PatternFlags = DEFAULT_PATTERN_FLAGS,
 ): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
@@ -522,6 +550,14 @@ async function runCognitive(
         promptAdditions.push(`Start your <plan> with: PROBLEM_STATE: [one sentence — what am I solving right now?]`);
       }
 
+      // P4: Dynamic persona injection
+      if (patternFlags.personas || patternFlags.all) {
+        const persona = selectPersona(task.description);
+        if (persona) {
+          promptAdditions.push(formatPersonaPrompt(persona));
+        }
+      }
+
       // Inject prompt strategy context into workspace
       if (promptAdditions.length > 0) {
         const strategyContext = promptAdditions.join('\n\n');
@@ -571,6 +607,31 @@ async function runCognitive(
         insight: raResult.output.plan?.slice(0, 150) ?? raResult.output.reasoning?.slice(0, 150),
       } as any;
 
+      // P3: Affect computation from behavioral traces
+      if (patternFlags.affect || patternFlags.all) {
+        const writeActions = ['Write', 'Edit', 'done'];
+        const toolNames = allToolCalls.map(tc => tc.tool);
+        let lastWriteIdx = -1;
+        for (let wi = toolNames.length - 1; wi >= 0; wi--) {
+          if (writeActions.includes(toolNames[wi])) { lastWriteIdx = wi; break; }
+        }
+        const cyclesSinceLastWrite = lastWriteIdx >= 0 ? allToolCalls.length - 1 - lastWriteIdx : cycle + 1;
+
+        const affectInput: AffectInput = {
+          recentActions: raState.recentActions
+            .slice(-5)
+            .map((name: string) => ({ name, success: true })),
+          confidenceTrend: [],
+          uniqueActionsInWindow: new Set(raState.recentActions.slice(-5)).size,
+          cyclesSinceLastWrite,
+          novelInfoDiscovered: false,
+        };
+        const affect = computeAffect(affectInput);
+        if (affect.label !== 'neutral') {
+          console.log(`    \u{1F4AD} ${affect.label} (v=${affect.valence.toFixed(1)}, a=${affect.arousal.toFixed(1)})`);
+        }
+      }
+
       // Log errors if the step failed
       if (raResult.error) {
         console.log(`    ❌ Error: ${raResult.error.message}`);
@@ -604,6 +665,32 @@ async function runCognitive(
     }
 
     const validation = task.validate(vfs.files);
+
+    // P6: Post-task reflection — runs AFTER validation to know the outcome
+    if ((patternFlags.reflect || patternFlags.all) && (useMemory || sharedMemoryPort)) {
+      try {
+        const reflectionMemory = sharedMemoryPort ?? memoryPort;
+        const reflector = createReflectorV2(reflectionMemory, adapter);
+        const reflectResult = await reflector.step(
+          {
+            taskDescription: task.description,
+            actionHistory: allToolCalls.map(tc => tc.tool),
+            outcome: { success: validation.success, reason: validation.reason },
+          },
+          reflector.initialState(),
+          { target: moduleId('reflector-v2'), timestamp: Date.now() },
+        );
+        if (reflectResult.output.lessons.length > 0) {
+          console.log(`    \u{1F4DD} Reflection: ${reflectResult.output.lessons.length} lessons learned`);
+          for (const lesson of reflectResult.output.lessons) {
+            console.log(`       - ${lesson.content.slice(0, 100)}`);
+          }
+        }
+      } catch (reflectErr) {
+        // Fire-and-forget — reflection failure should never break the run
+        console.log(`    \u{1F4DD} Reflection skipped: ${reflectErr instanceof Error ? reflectErr.message : String(reflectErr)}`);
+      }
+    }
 
     return {
       condition: 'cognitive',
@@ -694,6 +781,23 @@ async function main() {
   const runAll = !runFlat_ && !runCli && !runCog;
   const useMemory = args.includes('--memory');
 
+  // PRD 032 pattern flags
+  const useReflection = args.includes('--reflect') || args.includes('--pattern=P6');
+  const usePatterns = args.includes('--patterns') || args.includes('--pattern=P5');
+  const useAdaptive = args.includes('--adaptive') || args.includes('--pattern=P2');
+  const usePersonas = args.includes('--personas') || args.includes('--pattern=P4');
+  const useAffect = args.includes('--affect') || args.includes('--pattern=P3');
+  const useAllPatterns = args.includes('--pattern=all');
+
+  const patternFlags: PatternFlags = {
+    reflect: useReflection || useAllPatterns,
+    patterns: usePatterns || useAllPatterns,
+    adaptive: useAdaptive || useAllPatterns,
+    personas: usePersonas || useAllPatterns,
+    affect: useAffect || useAllPatterns,
+    all: useAllPatterns,
+  };
+
   const runsArg = args.find(a => a.startsWith('--runs=') || a === '--runs');
   let numRuns = 1;
   if (runsArg) {
@@ -703,7 +807,7 @@ async function main() {
 
   // Config selection: --config=baseline (default), --config=v2-minimal, etc.
   const configArg = args.find(a => a.startsWith('--config='))?.split('=')[1] ?? 'baseline';
-  const cognitiveConfig = CONFIGS[configArg];
+  let cognitiveConfig = CONFIGS[configArg];
   if (!cognitiveConfig) {
     console.error(`Unknown config: ${configArg}. Available: ${Object.keys(CONFIGS).join(', ')}`);
     process.exit(1);
@@ -737,10 +841,22 @@ async function main() {
     if (loaded > 0) console.log(`    Loaded ${loaded} fact cards from prior runs`);
   }
 
+  // Build active patterns list for header
+  const activePatterns: string[] = [];
+  if (patternFlags.all) activePatterns.push('ALL');
+  else {
+    if (patternFlags.reflect) activePatterns.push('P6(reflect)');
+    if (patternFlags.patterns) activePatterns.push('P5(patterns)');
+    if (patternFlags.adaptive) activePatterns.push('P2(adaptive)');
+    if (patternFlags.personas) activePatterns.push('P4(personas)');
+    if (patternFlags.affect) activePatterns.push('P3(affect)');
+  }
+
   console.log('\n=== EXP-023: Cognitive vs Flat — Strategy Shift Recovery ===');
   console.log(`    Conditions: ${[runAll || runFlat_ ? 'A(flat)' : '', runAll || runCli ? 'B(cli-agent)' : '', runAll || runCog ? 'C(cognitive)' : ''].filter(Boolean).join(', ')}`);
   console.log(`    Config: ${describeConfig(cognitiveConfig)}`);
   console.log('    Memory: ' + (useMemory ? 'enabled' : 'disabled'));
+  console.log(`    Patterns: ${activePatterns.length > 0 ? activePatterns.join(', ') : 'none'}`);
   console.log(`    Tasks: ${selectedTasks.map(t => t.name).join(', ')}`);
   console.log(`    Runs per condition per task: ${numRuns}\n`);
 
@@ -774,8 +890,25 @@ async function main() {
 
     if (runAll || runCog) {
       console.log('\nCondition C: Cognitive (5-module merged cycle)');
+
+      // P5: Seed thought patterns into shared memory before task runs
+      if ((patternFlags.patterns || patternFlags.all) && sharedMemoryStore) {
+        const seeded = await seedPatterns(sharedMemoryStore.port);
+        if (seeded > 0) console.log(`    Seeded ${seeded} thought patterns`);
+      }
+
+      // P2: Meta-composer adaptive config selection (per-task)
+      let taskConfig = cognitiveConfig;
+      if ((patternFlags.adaptive || patternFlags.all) && sharedMemoryStore) {
+        const signals = await gatherTaskSignals(sharedMemoryStore.port, task.description);
+        const classification = classifyTask(signals);
+        console.log(`    \u{1F9E0} Meta-composer: ${classification.profile} \u2192 ${classification.configName} (${classification.reason.slice(0, 80)})`);
+        const adaptiveConfig = CONFIGS[classification.configName];
+        if (adaptiveConfig) taskConfig = adaptiveConfig;
+      }
+
       for (let i = 1; i <= numRuns; i++) {
-        const r = await runCognitive(task, i, cognitiveConfig, useMemory, sharedMemoryStore?.port);
+        const r = await runCognitive(task, i, taskConfig, useMemory, sharedMemoryStore?.port, patternFlags);
         printResult(r);
         results.push(r);
       }
