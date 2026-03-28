@@ -76,17 +76,17 @@ export interface PoolStats {
 
 /** PRD 029: Snapshot of a session's state for recovery / restoration. */
 export interface SessionSnapshot {
-  session_id: string;
+  sessionId: string;
   nickname: string;
-  purpose?: string;
+  purpose?: string | null;
   workdir: string;
-  mode: SessionMode;
-  status: string;
+  mode: SessionMode | string;
   depth: number;
-  parent_session_id?: string | null;
-  isolation: IsolationMode;
+  parentSessionId?: string | null;
+  isolation: IsolationMode | string;
   metadata?: Record<string, unknown>;
-  prompt_count: number;
+  promptCount: number;
+  pid?: number;
 }
 
 /** SSE stream event emitted during a streaming prompt. */
@@ -670,8 +670,8 @@ export function createPool(options?: PoolOptions): SessionPool {
       }
 
       return {
-        sessionId: session.id,
-        nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
+        sessionId,
+        nickname: sessionNicknames.get(sessionId) ?? sessionId.substring(0, 8),
         purpose: sessionPurposes.get(sessionId) ?? null,
         status: effectiveStatus,
         queueDepth: session.queueDepth,
@@ -772,8 +772,8 @@ export function createPool(options?: PoolOptions): SessionPool {
         const diagnostics = tracker ? tracker.snapshot() : null;
 
         return {
-          sessionId: session.id,
-          nickname: sessionNicknames.get(sessionId) ?? session.id.substring(0, 8),
+          sessionId,
+          nickname: sessionNicknames.get(sessionId) ?? sessionId.substring(0, 8),
           purpose: sessionPurposes.get(sessionId) ?? null,
           status: effectiveStatus,
           queueDepth: session.queueDepth,
@@ -943,7 +943,7 @@ export function createPool(options?: PoolOptions): SessionPool {
     },
 
     restoreSession(snapshot: SessionSnapshot): void {
-      const sid = snapshot.session_id;
+      const sid = snapshot.sessionId;
 
       // Duplicate restore — silently skip if session already exists
       if (sessions.has(sid)) {
@@ -953,8 +953,8 @@ export function createPool(options?: PoolOptions): SessionPool {
       // Build a minimal PtySession stub that is compatible with pool operations.
       // The stub does not spawn a process — it is a placeholder for recovered state.
       // Sending a prompt creates a real print session under the hood (recovered mode).
-      let status: SessionStatus = (snapshot.status === 'dead' ? 'dead' : 'ready') as SessionStatus;
-      let promptCount = snapshot.prompt_count;
+      let status: SessionStatus = 'ready';
+      let promptCount = snapshot.promptCount;
       let lastActivityAt = new Date();
       let transcript = '';
       const outputSubscribers = new Set<(data: string) => void>();
@@ -1015,7 +1015,7 @@ export function createPool(options?: PoolOptions): SessionPool {
       // Hydrate all internal Maps
       sessions.set(sid, stubSession);
       sessionWorkdirs.set(sid, snapshot.workdir);
-      sessionModes.set(sid, snapshot.mode);
+      sessionModes.set(sid, snapshot.mode as SessionMode);
       sessionNicknames.set(sid, snapshot.nickname);
       activeNicknames.add(snapshot.nickname);
       if (snapshot.purpose) {
@@ -1025,13 +1025,13 @@ export function createPool(options?: PoolOptions): SessionPool {
         sessionMetadata.set(sid, snapshot.metadata);
       }
       sessionChains.set(sid, {
-        parent_session_id: snapshot.parent_session_id ?? null,
+        parent_session_id: snapshot.parentSessionId ?? null,
         depth: snapshot.depth,
         children: [],
         budget: { max_depth: DEFAULT_MAX_DEPTH, max_agents: DEFAULT_MAX_AGENTS, agents_spawned: 0 },
       });
       sessionWorktrees.set(sid, {
-        isolation: snapshot.isolation,
+        isolation: snapshot.isolation as IsolationMode,
         worktree_path: null,
         worktree_branch: null,
         metals_available: snapshot.isolation !== 'worktree',

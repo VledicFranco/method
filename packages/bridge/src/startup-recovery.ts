@@ -142,11 +142,11 @@ export async function runStartupRecovery(deps: RecoveryDeps): Promise<RecoveryRe
             purpose: ps.purpose ?? null,
             mode: (ps.mode as 'print' | 'pty') ?? 'print',
             pid: 0, // no live process
+            promptCount: ps.prompt_count ?? 0,
             depth: ps.depth ?? 0,
             parentSessionId: ps.parent_session_id ?? null,
             isolation: (ps.isolation as 'shared' | 'worktree') ?? 'shared',
             metadata: ps.metadata ?? {},
-            promptCount: ps.prompt_count ?? 0,
           });
           report.tombstoned++;
         } catch (err) {

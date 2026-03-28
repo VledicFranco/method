@@ -261,11 +261,11 @@ function createTestPool(maxSessions = 5) {
     },
 
     restoreSession(snapshot: SessionSnapshot): void {
-      if (sessions.has(snapshot.session_id)) return;
+      if (sessions.has(snapshot.sessionId)) return;
 
-      const sid = snapshot.session_id;
-      let status: SessionStatus = (snapshot.status === 'dead' ? 'dead' : 'ready') as SessionStatus;
-      let promptCount = snapshot.prompt_count;
+      const sid = snapshot.sessionId;
+      let status: SessionStatus = 'ready';
+      let promptCount = snapshot.promptCount;
       let lastActivityAt = new Date();
 
       const stubSession: PtySession = {
@@ -295,7 +295,7 @@ function createTestPool(maxSessions = 5) {
       sessions.set(sid, stubSession);
       sessionWorkdirs.set(sid, snapshot.workdir);
       sessionChains.set(sid, {
-        parent_session_id: snapshot.parent_session_id ?? null,
+        parent_session_id: snapshot.parentSessionId ?? null,
         depth: snapshot.depth,
         children: [],
         budget: { max_depth: 3, max_agents: 10, agents_spawned: 0 },
@@ -684,17 +684,16 @@ describe('SessionPool', () => {
 
   describe('restoreSession (PRD 029)', () => {
     const baseSnapshot: SessionSnapshot = {
-      session_id: 'restored-abc-123',
+      sessionId: 'restored-abc-123',
       nickname: 'restored-alpha',
       purpose: 'test recovery',
       workdir: '/tmp/restored',
       mode: 'print',
-      status: 'ready',
       depth: 0,
-      parent_session_id: null,
+      parentSessionId: null,
       isolation: 'shared',
       metadata: { origin: 'test' },
-      prompt_count: 5,
+      promptCount: 5,
     };
 
     it('restoreSession populates pool.list()', () => {
@@ -732,8 +731,8 @@ describe('SessionPool', () => {
     it('restored session does not count against spawn limits', async () => {
       // Pool has maxSessions = 3
       pool.restoreSession(baseSnapshot);
-      pool.restoreSession({ ...baseSnapshot, session_id: 'restored-2', nickname: 'restored-bravo' });
-      pool.restoreSession({ ...baseSnapshot, session_id: 'restored-3', nickname: 'restored-cedar' });
+      pool.restoreSession({ ...baseSnapshot, sessionId: 'restored-2', nickname: 'restored-bravo' });
+      pool.restoreSession({ ...baseSnapshot, sessionId: 'restored-3', nickname: 'restored-cedar' });
 
       // 3 restored sessions in a pool of max 3 — but create() should still work
       // because restored sessions are already tracked (not "newly spawned")
@@ -748,7 +747,7 @@ describe('SessionPool', () => {
     });
 
     it('restored session status() returns chain info', () => {
-      pool.restoreSession({ ...baseSnapshot, depth: 2, parent_session_id: 'parent-xyz' });
+      pool.restoreSession({ ...baseSnapshot, depth: 2, parentSessionId: 'parent-xyz' });
 
       const status = pool.status('restored-abc-123');
       assert.equal(status.chain.depth, 2);
