@@ -67,7 +67,7 @@ def main() -> None:
 
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.float16,
+        dtype=torch.float32,  # FP32 base; FP16 AMP handles mixed precision during training
     )
     print(f"  Model loaded — {sum(p.numel() for p in model.parameters()) / 1e6:.1f}M params")
 
@@ -96,7 +96,7 @@ def main() -> None:
         save_strategy="no",
         report_to="none",
         dataset_text_field="text",
-        max_seq_length=64,
+        max_length=64,
     )
 
     torch.cuda.reset_peak_memory_stats(device)

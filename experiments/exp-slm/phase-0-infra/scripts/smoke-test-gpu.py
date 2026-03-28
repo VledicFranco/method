@@ -58,8 +58,8 @@ def main() -> None:
 
     for idx in range(device_count):
         props = torch.cuda.get_device_properties(idx)
-        mem_total = props.total_mem / (1024**3)  # GB
-        mem_free = (props.total_mem - torch.cuda.memory_reserved(idx)) / (1024**3)
+        mem_total = props.total_memory / (1024**3)  # GB
+        mem_free = (props.total_memory - torch.cuda.memory_reserved(idx)) / (1024**3)
 
         device_info = {
             "index": idx,

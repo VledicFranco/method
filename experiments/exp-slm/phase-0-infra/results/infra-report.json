@@ -1,0 +1,33 @@
+{
+  "gpu_smoke_test": {
+    "timestamp": "2026-03-28T04:16:35-0600",
+    "torch_version": "2.11.0+cu126",
+    "cuda_version": "12.6",
+    "device_count": 1,
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 2080 Ti",
+        "compute_capability": "7.5",
+        "vram_total_gb": 11.0,
+        "vram_free_gb": 11.0,
+        "cuda_version": "12.6"
+      }
+    ],
+    "pass": true
+  },
+  "sft_smoke_test": {
+    "timestamp": "2026-03-28T04:18:48-0600",
+    "model_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+    "torch_version": "2.11.0+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 2080 Ti",
+    "fp16": true,
+    "bf16": false,
+    "max_steps": 1,
+    "batch_size": 2,
+    "peak_vram_mb": 2115.0,
+    "step_time_s": 0.831,
+    "train_loss": 2.387,
+    "pass": true
+  }
+}
