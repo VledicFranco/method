@@ -561,15 +561,15 @@ async function runCognitive(
         });
       }
 
-      // Track last action for memory extraction — target should be the file/resource acted on
-      const actionTarget = raResult.output.actionName === 'Write' || raResult.output.actionName === 'Edit'
-        ? (raResult.output.reasoning?.match(/(?:src\/|tests\/|config\/)[\w\-/.]+\.(?:ts|js|yaml|json)/)?.[0] ?? raResult.output.actionName)
-        : raResult.output.actionName;
+      // Track last action for memory extraction
+      // target = file path from reasoning, insight = the plan/reasoning summary for fact extraction
+      const fileMatch = raResult.output.reasoning?.match(/(?:src\/|tests\/|config\/)[\w\-/.]+\.(?:ts|js|yaml|json)/);
       prevAction = {
         name: raResult.output.actionName,
         success: (raResult.monitoring as any).success ?? true,
-        target: actionTarget,
-      };
+        target: fileMatch?.[0] ?? raResult.output.actionName,
+        insight: raResult.output.plan?.slice(0, 150) ?? raResult.output.reasoning?.slice(0, 150),
+      } as any;
 
       // Log errors if the step failed
       if (raResult.error) {

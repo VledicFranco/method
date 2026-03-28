@@ -278,25 +278,17 @@ export function createMemoryModuleV2(
             (actionName === 'Write' || actionName === 'Edit') &&
             success
           ) {
-            // Derive content from the tool result workspace entry (look for "=== Tool Result" marker)
-            let resultContent = '';
-            for (let i = input.snapshot.length - 1; i >= 0; i--) {
-              const entryContent = typeof input.snapshot[i].content === 'string'
-                ? input.snapshot[i].content
-                : JSON.stringify(input.snapshot[i].content);
-              if (entryContent.startsWith('=== Tool Result:')) {
-                // Extract just the status line + first 150 chars of output
-                const lines = entryContent.split('\n');
-                const statusLine = lines.find(l => l.startsWith('Status:')) ?? '';
-                const outputStart = entryContent.indexOf('Output:\n');
-                const output = outputStart >= 0 ? entryContent.slice(outputStart + 8, outputStart + 158) : '';
-                resultContent = `${statusLine} ${output}`.trim();
-                break;
-              }
+            // Use the insight (plan/reasoning summary) for meaningful fact content
+            // Falls back to tool result if no insight available
+            const insight = (input.lastAction as any)?.insight as string | undefined;
+            let factContent: string;
+            if (insight) {
+              factContent = `[${actionName} on ${target ?? 'file'}] ${insight}`;
+            } else {
+              factContent = `${actionName} completed on ${target ?? 'unknown file'}`;
             }
-            if (!resultContent) resultContent = `${actionName} completed on ${target ?? 'unknown file'}`;
 
-            const observationContent = `[${actionName}] ${target ?? 'unknown'}: ${resultContent}`;
+            const observationContent = factContent;
 
             const now = Date.now();
             const observationCard: FactCard = {
@@ -304,7 +296,7 @@ export function createMemoryModuleV2(
               content: observationContent,
               type: 'OBSERVATION',
               source: { module: id },
-              tags: target ? [target] : [],
+              tags: [actionName, ...(target ? [target] : [])].filter(Boolean),
               created: now,
               updated: now,
               confidence: 0.7,
