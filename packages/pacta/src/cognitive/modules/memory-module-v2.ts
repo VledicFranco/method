@@ -272,15 +272,14 @@ export function createMemoryModuleV2(
 
         if (control.extractionEnabled && input.lastAction) {
           const { name: actionName, success, target } = input.lastAction;
+          const insight = (input.lastAction as any)?.insight as string | undefined;
+          let observationCard: FactCard | null = null;
 
           // Extract OBSERVATION from Write/Edit actions
           if (
             (actionName === 'Write' || actionName === 'Edit') &&
             success
           ) {
-            // Use the insight (plan/reasoning summary) for meaningful fact content
-            // Falls back to tool result if no insight available
-            const insight = (input.lastAction as any)?.insight as string | undefined;
             let factContent: string;
             if (insight) {
               factContent = `[${actionName} on ${target ?? 'file'}] ${insight}`;
@@ -291,7 +290,7 @@ export function createMemoryModuleV2(
             const observationContent = factContent;
 
             const now = Date.now();
-            const observationCard: FactCard = {
+            observationCard = {
               id: generateCardId(),
               content: observationContent,
               type: 'OBSERVATION',
@@ -324,7 +323,7 @@ export function createMemoryModuleV2(
               created: now,
               updated: now,
               confidence: 0.6,
-              links: [observationCard.id],  // link to the observation
+              links: observationCard ? [observationCard.id] : [],
             };
 
             await memory.storeCard(heuristicCard);
