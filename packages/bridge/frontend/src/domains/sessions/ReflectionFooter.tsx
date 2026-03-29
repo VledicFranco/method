@@ -47,7 +47,7 @@ export function ReflectionFooter({ lessons }: ReflectionFooterProps) {
       <div style={styles.heading}>{'\uD83D\uDCDD'} Reflection</div>
       <ul style={styles.list}>
         {lessons.map((lesson, i) => (
-          <li key={i} style={styles.item}>{lesson}</li>
+          <li key={`lesson-${i}-${lesson.slice(0, 20)}`} style={styles.item}>{lesson}</li>
         ))}
       </ul>
     </div>

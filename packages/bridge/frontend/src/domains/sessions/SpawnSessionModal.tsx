@@ -42,6 +42,7 @@ export function SpawnSessionModal({
   const [prompt, setPrompt] = useState('');
   const [nickname, setNickname] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [providerType, setProviderType] = useState<'print' | 'cognitive-agent'>('print');
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   // Auto-fill workdir when only one project exists
@@ -76,8 +77,9 @@ export function SpawnSessionModal({
 
       const req: SpawnRequest = {
         workdir: workdir.trim(),
-        mode: 'print',
+        mode: providerType === 'cognitive-agent' ? 'cognitive-agent' : 'print',
       };
+      if (providerType !== 'print') req.provider_type = providerType;
       if (prompt.trim()) req.initial_prompt = prompt.trim();
       if (nickname.trim()) req.nickname = nickname.trim();
       if (purpose.trim()) req.purpose = purpose.trim();
@@ -87,9 +89,10 @@ export function SpawnSessionModal({
       setPrompt('');
       setNickname('');
       setPurpose('');
+      setProviderType('print');
       onClose();
     },
-    [workdir, prompt, nickname, purpose, onSpawn, onClose],
+    [workdir, prompt, nickname, purpose, providerType, onSpawn, onClose],
   );
 
   const handleSelectProject = useCallback(
@@ -212,6 +215,37 @@ export function SpawnSessionModal({
                 placeholder="What should this agent do?"
                 className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
               />
+            </div>
+
+            {/* Session Mode */}
+            <div>
+              <label className="block text-xs text-txt-dim font-medium mb-1.5">Session Mode</label>
+              <div className="flex rounded-lg border border-bdr overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setProviderType('print')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm font-mono transition-colors',
+                    providerType === 'print'
+                      ? 'bg-bio text-abyss font-semibold'
+                      : 'bg-void text-txt-dim hover:text-txt hover:bg-abyss-light',
+                  )}
+                >
+                  Standard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProviderType('cognitive-agent')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm font-mono transition-colors border-l border-bdr',
+                    providerType === 'cognitive-agent'
+                      ? 'bg-bio text-abyss font-semibold'
+                      : 'bg-void text-txt-dim hover:text-txt hover:bg-abyss-light',
+                  )}
+                >
+                  🧠 Cognitive Agent
+                </button>
+              </div>
             </div>
 
             {/* Initial Prompt */}

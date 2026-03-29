@@ -151,7 +151,7 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
               timed_out?: boolean;
               error?: string;
               // Cognitive event fields
-              number?: number;
+              cycle?: number;
               action?: string;
               confidence?: number;
               tokens?: number;
@@ -201,7 +201,7 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
                 cognitiveRef.current = { cycles: [] };
               }
               const cycle: CognitiveCycleData = {
-                number: event.number ?? cognitiveRef.current.cycles.length + 1,
+                number: event.cycle ?? cognitiveRef.current.cycles.length + 1,
                 action: event.action ?? 'unknown',
                 confidence: event.confidence ?? 0,
                 tokens: event.tokens ?? 0,

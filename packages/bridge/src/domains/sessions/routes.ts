@@ -17,6 +17,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import type { SessionPool } from './pool.js';
 import { readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
 import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
@@ -58,9 +59,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       mode?: 'pty' | 'print';
       allowed_paths?: string[];
       scope_mode?: 'enforce' | 'warn';
+      /** PRD 033: Provider type — 'print' (default) or 'cognitive-agent'. */
+      provider_type?: 'print' | 'cognitive-agent';
+      /** PRD 033: Cognitive session configuration overrides. */
+      cognitive_config?: {
+        name?: string;
+        maxCycles?: number;
+        workspaceCapacity?: number;
+        confidenceThreshold?: number;
+        stagnationThreshold?: number;
+        interventionBudget?: number;
+      };
+      /** PRD 033: Cognitive pattern flags (e.g. ['P5', 'P6']). */
+      cognitive_patterns?: string[];
     };
   }>('/sessions', async (request, reply) => {
-    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode } = request.body ?? {};
+    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns } = request.body ?? {};
 
     if (!workdir || typeof workdir !== 'string') {
       return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -69,6 +83,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     // PRD 028: PTY mode removed — mode field is ignored, always print
     if (mode === 'pty') {
       request.log.warn('[PRD028] mode=pty is no longer supported. Session runs in print mode.');
+    }
+
+    // Validate cognitive_config if provided
+    if (cognitive_config) {
+      const cognitiveConfigSchema = z.object({
+        name: z.string().optional(),
+        maxCycles: z.number().int().min(1).max(100).optional(),
+        workspaceCapacity: z.number().int().min(1).max(64).optional(),
+        confidenceThreshold: z.number().min(0).max(1).optional(),
+        stagnationThreshold: z.number().int().min(1).max(10).optional(),
+        interventionBudget: z.number().int().min(0).max(20).optional(),
+      });
+      const parsed = cognitiveConfigSchema.safeParse(cognitive_config);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: `Invalid cognitive_config: ${parsed.error.message}` });
+      }
     }
 
     try {
@@ -85,9 +115,11 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         nickname,
         purpose,
         spawn_delay_ms,
-        // PRD 028: mode field ignored — always print
         allowed_paths,
         scope_mode,
+        provider_type,
+        cognitive_config,
+        cognitive_patterns,
       });
 
       tokenTracker.registerSession(result.sessionId, workdir, new Date());
