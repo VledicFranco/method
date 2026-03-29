@@ -70,29 +70,38 @@ export function SpawnSessionModal({
     );
   }, [projects, workdir]);
 
+  const [spawnError, setSpawnError] = useState<string | null>(null);
+
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
       if (!workdir.trim() || isSpawning) return;
+      setSpawnError(null);
 
       const req: SpawnRequest = {
         workdir: workdir.trim(),
-        mode: providerType === 'cognitive-agent' ? 'cognitive-agent' : 'print',
       };
-      if (providerType !== 'print') req.provider_type = providerType;
+      if (providerType !== 'print') {
+        req.provider_type = providerType;
+        req.mode = 'cognitive-agent';
+      }
       if (prompt.trim()) req.initial_prompt = prompt.trim();
       if (nickname.trim()) req.nickname = nickname.trim();
       if (purpose.trim()) req.purpose = purpose.trim();
 
-      await onSpawn(req);
-      // Reset form on success
-      setPrompt('');
-      setNickname('');
-      setPurpose('');
-      setProviderType('print');
-      onClose();
+      try {
+        await onSpawn(req);
+        // Reset form on success
+        setPrompt('');
+        setNickname('');
+        setPurpose('');
+        setProviderType('print');
+        onClose();
+      } catch (err) {
+        setSpawnError(err instanceof Error ? err.message : String(err));
+      }
     },
-    [workdir, prompt, nickname, purpose, providerType, onSpawn, onClose],
+    [workdir, prompt, nickname, purpose, providerType, isSpawning, onSpawn, onClose],
   );
 
   const handleSelectProject = useCallback(
@@ -124,6 +133,7 @@ export function SpawnSessionModal({
           role="dialog"
           aria-modal="true"
           aria-label="Spawn Session"
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-bdr px-sp-5 py-sp-4">
@@ -158,6 +168,10 @@ export function SpawnSessionModal({
                   }}
                   onFocus={() => {
                     if (projects.length > 0) setShowProjectPicker(true);
+                  }}
+                  onBlur={() => {
+                    // Delay to allow click on dropdown item to register first
+                    setTimeout(() => setShowProjectPicker(false), 200);
                   }}
                   placeholder={projects.length > 0 ? 'Select a project or type a path...' : '/path/to/project'}
                   required
@@ -259,6 +273,13 @@ export function SpawnSessionModal({
                 className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio resize-y"
               />
             </div>
+
+            {/* Error display */}
+            {spawnError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {spawnError}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 pt-sp-2">
