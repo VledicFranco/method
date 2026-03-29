@@ -860,7 +860,7 @@ unchanged. SLMs add a new *implementation strategy* for existing module interfac
 
 ## Implementation Status
 
-**Status:** Validation in progress (PRD 034). Gate 3 PASSED — Phase 4 (integration) pending.
+**Status:** Validation in progress (PRD 034). Gate 4 Part 1 PASSED — Gate 4 Part 2 (integration benchmark) pending.
 
 **PRD:** `docs/prds/034-slm-validation.md`
 **Experiment:** `experiments/exp-slm/`
@@ -910,10 +910,77 @@ Three training runs on SmolLM2-135M-Instruct (134.5M params):
    generation) maintaining causal consistency. Random field variation produces learnable
    format but unlearnable semantics.
 
-### Validation Phase 2 — Cognitive Cycle Integration: PENDING
+### Validation Phase 2 — Cognitive Cycle Integration: IN PROGRESS (Gate 4 Part 1 PASS)
 
-Gate 4 requirements:
-- Temperature scaling calibration (ECE ≤ 0.15)
-- ONNX export + accuracy validation (≤ 2% delta)
+#### Gate 4 Part 1: Calibration + ONNX Export — PASS
+
+| Metric | Target | Result | Status |
+|--------|--------|--------|--------|
+| Calibration ECE | ≤ 0.15 | **0.0195** | PASS |
+| ONNX export accuracy | ≤ 2% diff vs PyTorch | **100% exact match** | PASS |
+
+Temperature scaling resolved the overconfidence problem identified in Phase 1. ECE of
+0.0195 is well below the 0.15 threshold — the SLM's calibrated confidence estimates are
+reliable enough for the escalation mechanism described in §Part V.
+
+ONNX export achieved perfect fidelity (zero divergence from PyTorch inference), validating
+the deployment path for Node.js integration via ONNX Runtime.
+
+#### Scaling Curve — Model Architecture vs Data Volume
+
+Four scaling runs explored the parameter space along two axes: model architecture/size
+and training corpus volume.
+
+| Config | Parse | Semantic | Adversarial | VRAM | Time |
+|--------|-------|----------|-------------|------|------|
+| 135M Full FT, 10K corpus | 100% | 98.60% | 70.80% | 2951 MB | 683s |
+| 135M Full FT, 20K corpus | 100% | 98.64% | 73.58% | 2950 MB | 697s |
+| 360M LoRA r=16, 10K corpus | 100% | 98.88% | 77.36% | 2367 MB | 896s |
+| Qwen2.5-0.5B LoRA r=16, 10K corpus | 99.96% | 99.60% | 92.45% | 4466 MB | 1200s |
+
+**Key findings from scaling data:**
+
+1. **Model architecture matters more than data volume.** Doubling the corpus from 10K to
+   20K on the 135M model yielded only +0.04% semantic accuracy and +2.78% adversarial
+   accuracy. Stepping from 135M to 360M (same 10K data) yielded +0.28% semantic and
+   +6.56% adversarial. Stepping to Qwen2.5-0.5B yielded +1.0% semantic and +21.65%
+   adversarial. For this DSL task, model capacity is the dominant scaling axis.
+
+2. **Adversarial accuracy is the differentiator.** All configurations saturated near
+   ~99% semantic accuracy on the holdout set. The meaningful variation is in adversarial
+   (boundary case) performance, where Qwen2.5-0.5B achieves 92.45% vs 135M's 70.8%.
+   This confirms RFC §Part V's warning about distribution tails.
+
+3. **LoRA is VRAM-efficient.** The 360M LoRA configuration uses less VRAM (2367 MB) than
+   the 135M full fine-tune (2951 MB), while achieving better adversarial accuracy. For
+   deployment on constrained hardware, LoRA on a larger base model dominates full
+   fine-tuning on a smaller one.
+
+4. **Qwen2.5-0.5B is the recommended approach.** It achieves the highest accuracy across
+   all metrics (99.60% semantic, 92.45% adversarial) while remaining within 11GB VRAM
+   (4466 MB). The 20-minute training time is acceptable. Parse accuracy of 99.96%
+   (vs 100% for SmolLM2 variants) reflects minor tokenizer differences — still well
+   above the 95% gate threshold.
+
+5. **The information-theoretic conjecture (§Part VI) gains partial support.** Larger
+   models with richer representations handle the distribution tails better, consistent
+   with the prediction that `|theta_min|` scales with output entropy. However, all
+   models achieved near-perfect holdout accuracy — the entropy bottleneck appears only
+   on adversarial inputs outside the training distribution.
+
+#### Gate 4 Part 2: Integration Benchmark — PENDING
+
+Remaining work:
 - HTTP bridge inference server (onnxruntime-node failed on Windows — Python fallback)
 - SLMProviderAdapter cycle benchmark (10 tasks, cost reduction ≥ 30%)
+- Blocked on ONNX Runtime integration for Node.js inference
+
+#### Updated Recommendation
+
+Based on the scaling data, the recommended configuration for production SLM compilation is:
+
+- **Model:** Qwen2.5-0.5B with LoRA r=16
+- **Corpus:** 10K causally consistent training pairs (sufficient — doubling shows diminishing returns)
+- **VRAM:** ~4.5 GB (fits on any modern GPU, leaves headroom for multiple concurrent SLMs)
+- **Training time:** ~20 minutes per module on consumer GPU
+- **Expected accuracy:** 99.6% semantic, 92.5% adversarial, ECE < 0.02

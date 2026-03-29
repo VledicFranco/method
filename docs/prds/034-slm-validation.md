@@ -853,8 +853,49 @@ results and lessons learned. Investigate alternative compilation mechanisms.
 
 ## Implementation Status
 
-Phase 0 (Infrastructure): Not started
-Phase 1 (LLM Monitor v2): Not started
-Phase 2 (DSL + Corpus): Not started
-Phase 3 (SLM Training): Not started
-Phase 4 (Integration): Not started
+Phase 0 (Infrastructure): **COMPLETE** — All 3 smoke tests pass. GPU 1 (RTX 2080 Ti, 11GB), CUDA 12.6.
+Phase 1 (LLM Monitor v2): **COMPLETE** — LLM Monitor v2 produces valid MonitorReport, baseline cost measured.
+Phase 2 (DSL + Corpus): **COMPLETE** — peggy PEG grammar, 12,500 corpus entries (10K train + 2.5K holdout), 100% parse + semantic validity.
+Phase 3 (SLM Training): **COMPLETE** — 4 scaling runs across 3 model architectures. Gate 3 PASS. Gate 4 Part 1 PASS.
+Phase 4 (Integration): **IN PROGRESS** — Gate 4 Part 2 (integration benchmark) pending, blocked on ONNX Runtime for Node.js.
+
+### Gate Status
+
+| Gate | Status | Date |
+|------|--------|------|
+| Pre-Gate 0 — Infrastructure Viability | **PASS** | 2026-03-28 |
+| Gate 1 — LLM Monitor Baseline | **PASS** | 2026-03-28 |
+| Gate 2 — DSL Feasibility | **PASS** | 2026-03-28 |
+| Gate 3 — Single Module Compilation | **PASS** | 2026-03-28 |
+| Gate 4 Part 1 — Calibration + ONNX | **PASS** | 2026-03-29 |
+| Gate 4 Part 2 — Cycle Integration | PENDING | — |
+
+### Phase 3 Scaling Runs (4 configurations)
+
+| Config | Parse | Semantic | Adversarial | VRAM | Time |
+|--------|-------|----------|-------------|------|------|
+| SmolLM2-135M Full FT, 10K corpus | 100% | 98.60% | 70.80% | 2951 MB | 683s |
+| SmolLM2-135M Full FT, 20K corpus | 100% | 98.64% | 73.58% | 2950 MB | 697s |
+| SmolLM2-360M LoRA r=16, 10K corpus | 100% | 98.88% | 77.36% | 2367 MB | 896s |
+| Qwen2.5-0.5B LoRA r=16, 10K corpus | 99.96% | 99.60% | 92.45% | 4466 MB | 1200s |
+
+### Gate 4 Part 1 Results
+
+| Metric | Target | Result | Status |
+|--------|--------|--------|--------|
+| Calibration ECE | ≤ 0.15 | **0.0195** | PASS |
+| ONNX export accuracy | ≤ 2% diff | **100% exact match** | PASS |
+
+### Remaining Work
+
+- Gate 4 Part 2: SLMProviderAdapter integration + cycle benchmark (10 tasks)
+- Blocked on ONNX Runtime Node.js integration (onnxruntime-node failed on Windows — Python HTTP bridge fallback required)
+- Once ONNX Runtime integration is resolved: benchmark SLM Monitor vs LLM Monitor on 5 routine + 5 novel tasks
+
+### Key Findings So Far
+
+1. **SLMs learn typed DSLs with perfect parse reliability** — 100% parse accuracy across all SmolLM2 configurations
+2. **Data quality dominates training duration** — causally consistent corpus is the critical factor, not more steps
+3. **Model architecture dominates data volume** — doubling corpus yields marginal gains; stepping to larger model yields significant adversarial improvement
+4. **Qwen2.5-0.5B LoRA r=16 is the recommended configuration** — 99.60% semantic, 92.45% adversarial, fits in 4.5 GB VRAM
+5. **Calibration works** — ECE 0.0195 after temperature scaling (target was 0.15)

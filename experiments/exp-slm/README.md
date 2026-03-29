@@ -32,6 +32,45 @@ Each phase has a hard gate. Check `results/` in each phase directory for metrics
 - GPU 0: Display GPU — do not use for training
 - Training uses `CUDA_VISIBLE_DEVICES=1` by default
 
+## Gate Status
+
+| Gate | Target | Result | Status |
+|------|--------|--------|--------|
+| Pre-Gate 0 — Infrastructure | GPU + SFTTrainer + ONNX smoke tests | All 3 pass | **PASS** |
+| Gate 1 — LLM Monitor Baseline | ≥50 tokens/invocation, ≥90% valid reports | Baseline established | **PASS** |
+| Gate 2 — DSL Feasibility | Parse 100%, semantics ≥90% in ≤3 revisions | 100% / 100%, 1st revision | **PASS** |
+| Gate 3 — Single Module Compilation | Parse ≥95%, semantic ≥85%, adversarial ≥70% | 100% / 98.6% / 70.8% | **PASS** |
+| Gate 4 Part 1 — Calibration + ONNX | ECE ≤0.15, ONNX ≤2% diff | ECE 0.0195, 100% match | **PASS** |
+| Gate 4 Part 2 — Cycle Integration | Success ≥baseline-5%, cost ↓≥30%, ρ≥0.6 | — | PENDING |
+
+## Training Runs
+
+### Phase 1 — Initial Training (SmolLM2-135M-Instruct, 134.5M params)
+
+| Run | Corpus | Steps | Parse | Semantic | Adversarial | VRAM | Time |
+|-----|--------|-------|-------|----------|-------------|------|------|
+| 1 | 4K random | 1,000 | 100% | 39.2% | 11.0% | 2.95 GB | 3.8 min |
+| 2 | 4K random | 5,000 | 100% | 39.3% | 11.6% | 2.95 GB | 16.8 min |
+| 3 | 10K causal | 3,000 | 100% | 98.6% | 70.8% | 2.95 GB | 11.4 min |
+
+### Phase 3 — Scaling Runs (model architecture + data volume)
+
+| Config | Parse | Semantic | Adversarial | VRAM | Time |
+|--------|-------|----------|-------------|------|------|
+| SmolLM2-135M Full FT, 10K | 100% | 98.60% | 70.80% | 2951 MB | 683s |
+| SmolLM2-135M Full FT, 20K | 100% | 98.64% | 73.58% | 2950 MB | 697s |
+| SmolLM2-360M LoRA r=16, 10K | 100% | 98.88% | 77.36% | 2367 MB | 896s |
+| Qwen2.5-0.5B LoRA r=16, 10K | 99.96% | 99.60% | 92.45% | 4466 MB | 1200s |
+
+### Gate 4 Part 1 — Calibration + ONNX Export
+
+| Metric | Target | Result |
+|--------|--------|--------|
+| Calibration ECE (temperature scaling) | ≤ 0.15 | **0.0195** |
+| ONNX export fidelity | ≤ 2% diff | **100% exact match** |
+
+**Recommended config:** Qwen2.5-0.5B LoRA r=16 with 10K causal corpus — best accuracy (99.60% semantic, 92.45% adversarial) within 4.5 GB VRAM.
+
 ## Structure
 
 ```
