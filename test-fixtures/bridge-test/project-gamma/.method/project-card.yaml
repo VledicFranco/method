@@ -1,0 +1,5 @@
+project_card:
+  id: test-gamma
+  project: Project Gamma
+  essence:
+    purpose: Minimal test fixture project with no strategies — tests bare project discovery.

@@ -1,0 +1,5 @@
+project_card:
+  id: test-beta
+  project: Project Beta
+  essence:
+    purpose: Test fixture with strategy directory for strategy loading validation.
