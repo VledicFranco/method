@@ -110,12 +110,12 @@ The template file `.env.tpl` is committed to git. It contains secret _references
 
 ```bash
 # .env.tpl — committed to git, contains references only
-# Format: KEY=op://vault/item/field
-ANTHROPIC_API_KEY=op://Development/anthropic-api-key/credential
-VOYAGE_API_KEY=op://Development/voyage-api-key/credential
+# Vault: Private | Items: "Method Bridge - Anthropic API Key", "Method Bridge - Voyage API Key"
+ANTHROPIC_API_KEY=op://Private/Method Bridge - Anthropic API Key/password
+VOYAGE_API_KEY=op://Private/Method Bridge - Voyage API Key/password
 ```
 
-Each value uses the `op://vault/item/field` reference syntax. At runtime, the bridge startup script detects `.env.tpl` and (if `op` is available) spawns the bridge via:
+Each value uses the `op://vault/item/field` reference syntax. The items live in the **Private** vault under names `Method Bridge - Anthropic API Key` and `Method Bridge - Voyage API Key`. At runtime, the bridge startup script detects `.env.tpl` and (if `op` is available) spawns the bridge via:
 
 ```bash
 op run --env-file=.env.tpl -- node packages/bridge/dist/server-entry.js

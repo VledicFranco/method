@@ -21,6 +21,8 @@ npm run bridge:stop:test  # Stop test instance
 npm run bridge -- --instance <name>  # Start a named instance from .method/instances/<name>.env
 ```
 
+**Secrets:** API keys resolve automatically via 1Password CLI (`op run --env-file=.env.tpl`). Fallback: plain `.env` file if `op` is not available. See Guide 30 for setup details.
+
 ## Architecture — Fractal Component Architecture (FCA)
 
 This project follows FCA (see `docs/fractal-component-architecture/`). The core principle: **the same structural discipline repeats at every scale** — from a function to a package to the system.
