@@ -7,7 +7,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync, execSync } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, relative, isAbsolute } from 'node:path';
 import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
 
 const TOOL_DEFS: ToolDefinition[] = [
@@ -20,8 +20,18 @@ const TOOL_DEFS: ToolDefinition[] = [
 
 const MAX_OUTPUT = 8000;
 
+const ALLOWED_COMMANDS = new Set(['git', 'npm', 'node', 'npx', 'ls', 'cat', 'find', 'grep', 'head', 'tail', 'wc', 'echo', 'pwd', 'which', 'diff', 'sort', 'uniq', 'tsc', 'test']);
+
 function truncate(s: string): string {
   return s.length > MAX_OUTPUT ? s.slice(0, MAX_OUTPUT) + '\n... (truncated)' : s;
+}
+
+function checkPathTraversal(workdir: string, filePath: string, rawPath: string): ToolResult | null {
+  const rel = relative(workdir, filePath);
+  if (rel.startsWith('..') || isAbsolute(rel)) {
+    return { output: `Path outside workdir not allowed: ${rawPath}`, isError: true };
+  }
+  return null;
 }
 
 export function createBridgeToolProvider(workdir: string): ToolProvider {
@@ -34,10 +44,14 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
         switch (name) {
           case 'Read': {
             const filePath = resolve(workdir, args.path);
+            const traversalErr = checkPathTraversal(workdir, filePath, args.path);
+            if (traversalErr) return traversalErr;
             return { output: truncate(readFileSync(filePath, 'utf-8')) };
           }
           case 'Write': {
             const filePath = resolve(workdir, args.path);
+            const traversalErr = checkPathTraversal(workdir, filePath, args.path);
+            if (traversalErr) return traversalErr;
             mkdirSync(dirname(filePath), { recursive: true });
             writeFileSync(filePath, args.content, 'utf-8');
             return { output: `Written to ${args.path}` };
@@ -50,10 +64,13 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
               });
               return { output: truncate(result) };
             } catch {
-              const result = execSync(`find . -name "${args.pattern.replace(/"/g, '')}" -type f 2>/dev/null | head -50`, {
+              const result = execFileSync('find', ['.', '-name', args.pattern, '-type', 'f'], {
                 cwd: workdir, encoding: 'utf-8', timeout: 10_000,
               });
-              return { output: truncate(result) };
+              // Limit output to ~50 lines like the old head -50
+              const lines = result.split('\n');
+              const limited = lines.length > 50 ? lines.slice(0, 50).join('\n') : result;
+              return { output: truncate(limited) };
             }
           }
           case 'Grep': {
@@ -64,6 +81,10 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
             return { output: truncate(result) };
           }
           case 'Bash': {
+            const baseCommand = args.command.trim().split(/\s+/)[0];
+            if (!ALLOWED_COMMANDS.has(baseCommand)) {
+              return { output: `Command not allowed: ${baseCommand}. Allowed: ${[...ALLOWED_COMMANDS].join(', ')}`, isError: true };
+            }
             const result = execSync(args.command, {
               cwd: workdir, encoding: 'utf-8', timeout: 30_000,
             });

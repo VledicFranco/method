@@ -104,8 +104,10 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     const foldedCtx: string[] = [];
     let totalTokens = 0, interventions = 0, lastOutput = '';
     let readOnlyRun = 0, prevConf = 1.0, prevAction: string | null = null;
+    let actualCycles = 0;
 
     for (let c = 0; c < maxCycles; c++) {
+      actualCycles = c + 1;
       onEvent({ type: 'cycle-start', cycle: c + 1, maxCycles });
 
       // ── Monitor (inline) ──
@@ -164,6 +166,15 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
         const tok = res.usage.totalTokens;
         totalTokens += tok;
 
+        if (!text.trim()) {
+          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'empty-response', confidence: 0.1, tokens: tok });
+          prevConf = 0.1;
+          prevAction = 'empty-response';
+          foldedCtx.push(`[c${c + 1}] empty-response`);
+          if (foldedCtx.length > 15) foldedCtx.shift();
+          continue;
+        }
+
         const plan = text.match(/<plan>([\s\S]*?)<\/plan>/)?.[1]?.trim() ?? '';
         const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/)?.[1]?.trim() ?? '';
         const actionRaw = text.match(/<action>([\s\S]*?)<\/action>/)?.[1]?.trim() ?? '';
@@ -177,16 +188,29 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
 
         // Parse + execute action
         let actionName = 'unknown', confidence = 0.5;
+
+        let parsed: { tool: string; input?: Record<string, unknown> };
         try {
-          const parsed = JSON.parse(actionRaw);
-          actionName = parsed.tool ?? 'unknown';
+          parsed = JSON.parse(actionRaw);
+        } catch {
+          actionName = actionRaw ? 'parse-error' : 'no-action';
+          confidence = 0.2;
+          prevConf = confidence;
+          prevAction = actionName;
+          onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: tok });
+          foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
+          if (foldedCtx.length > 15) foldedCtx.shift();
+          continue;
+        }
+        actionName = parsed.tool ?? 'unknown';
 
-          if (actionName === 'done') {
-            lastOutput = parsed.input?.result ?? reasoning ?? plan;
-            onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: tok });
-            break;
-          }
+        if (actionName === 'done') {
+          lastOutput = parsed.input?.result as string ?? reasoning ?? plan;
+          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: tok });
+          break;
+        }
 
+        try {
           const toolRes = await tools.execute(actionName, parsed.input ?? {});
           confidence = toolRes.isError ? 0.3 : 0.7;
           const resStr = typeof toolRes.output === 'string' ? toolRes.output : JSON.stringify(toolRes.output);
@@ -195,9 +219,14 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
             content: `[${actionName}] Result:\n${resStr}`,
             salience: 0.8, timestamp: Date.now(),
           });
-        } catch {
-          actionName = actionRaw ? 'parse-error' : 'no-action';
-          confidence = 0.2;
+        } catch (toolErr) {
+          const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
+          confidence = 0.1;
+          raWritePort.write({
+            source: moduleId('reasoner-actor'),
+            content: `[${actionName}] Tool error: ${msg}`,
+            salience: 0.8, timestamp: Date.now(),
+          });
         }
 
         prevConf = confidence;
@@ -214,10 +243,13 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
       }
     }
 
-    const output = lastOutput || '(no output — cycle limit reached)';
+    const output = lastOutput ||
+      (foldedCtx.length > 0
+        ? `Cycle limit reached. Summary of actions:\n${foldedCtx.slice(-5).join('\n')}`
+        : '(no output — cycle limit reached)');
     onEvent({
       type: 'done', output,
-      metadata: { totalTokens, totalCycles: maxCycles, monitorInterventions: interventions, workdir },
+      metadata: { totalTokens, totalCycles: actualCycles, monitorInterventions: interventions, workdir },
     });
     return output;
   }

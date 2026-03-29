@@ -17,6 +17,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import type { SessionPool } from './pool.js';
 import { readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
 import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
@@ -82,6 +83,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     // PRD 028: PTY mode removed — mode field is ignored, always print
     if (mode === 'pty') {
       request.log.warn('[PRD028] mode=pty is no longer supported. Session runs in print mode.');
+    }
+
+    // Validate cognitive_config if provided
+    if (cognitive_config) {
+      const cognitiveConfigSchema = z.object({
+        name: z.string().optional(),
+        maxCycles: z.number().int().min(1).max(100).optional(),
+        workspaceCapacity: z.number().int().min(1).max(64).optional(),
+        confidenceThreshold: z.number().min(0).max(1).optional(),
+        stagnationThreshold: z.number().int().min(1).max(10).optional(),
+        interventionBudget: z.number().int().min(0).max(20).optional(),
+      });
+      const parsed = cognitiveConfigSchema.safeParse(cognitive_config);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: `Invalid cognitive_config: ${parsed.error.message}` });
+      }
     }
 
     try {
