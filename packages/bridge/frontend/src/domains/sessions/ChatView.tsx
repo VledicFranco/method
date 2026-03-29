@@ -475,7 +475,45 @@ function CodeBlock({
 /*  Markdown-rendered output                                          */
 /* ------------------------------------------------------------------ */
 
+function ErrorBlock({ message }: { message: string }) {
+  return (
+    <div style={{
+      border: '1px solid rgba(239, 68, 68, 0.3)',
+      background: 'rgba(239, 68, 68, 0.08)',
+      borderRadius: '8px',
+      padding: '12px 16px',
+      color: '#f87171',
+      fontSize: '13px',
+      lineHeight: 1.6,
+      fontFamily: 'var(--font-mono)',
+    }}>
+      <span style={{ fontWeight: 600 }}>Error: </span>{message}
+    </div>
+  );
+}
+
+/** Try to extract a human-readable error from JSON output (e.g. claude CLI error responses). */
+function tryExtractError(content: string): string | null {
+  if (!content.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed.is_error || parsed.subtype === 'error_during_execution') {
+      if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+        return parsed.errors.join('. ');
+      }
+      if (parsed.error) return parsed.error;
+      return parsed.subtype ?? 'Unknown error';
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
 function MarkdownOutput({ content }: { content: string }) {
+  const errorMessage = tryExtractError(content);
+  if (errorMessage) {
+    return <ErrorBlock message={errorMessage} />;
+  }
+
   return (
     <div className="chat-markdown">
       <ReactMarkdown
