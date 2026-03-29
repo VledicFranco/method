@@ -1,6 +1,6 @@
 ---
 title: "PRD 029: Bridge Resilience — Crash Recovery, Observability & Session UX"
-status: draft
+status: implemented
 date: "2026-03-27"
 tier: heavyweight
 depends_on: [PRD-026, PRD-027, PRD-028]
@@ -12,7 +12,7 @@ domains_affected: [sessions, shared/event-bus, pacta-core, pacta-provider-claude
 
 # PRD 029: Bridge Resilience — Crash Recovery, Observability & Session UX
 
-**Status:** Draft
+**Status:** Implemented (Phases 1-2, 2026-03-29) — Phase 3 deferred per spec
 **Author:** Council Team (Kael, Solene, Rune, Vex, Mira, Lysander) + PO
 **Date:** 2026-03-27
 **Packages:** `@method/pacta`, `@method/pacta-provider-claude-cli`, `@method/bridge`
