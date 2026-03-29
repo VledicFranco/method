@@ -1,16 +1,16 @@
 {
   "model": "HuggingFaceTB/SmolLM2-135M-Instruct",
-  "config": "phase-3-training\\configs\\monitor-smollm2-135m-run2.yaml",
-  "final_loss": 0.2862,
-  "global_step": 5000,
-  "training_time_s": 1010.5,
-  "peak_vram_mb": 2949.6,
-  "train_entries": 4000,
-  "eval_entries": 1000,
+  "config": "phase-3-training\\configs\\monitor-smollm2-135m-run3.yaml",
+  "final_loss": 0.2767,
+  "global_step": 3000,
+  "training_time_s": 683.4,
+  "peak_vram_mb": 2951.3,
+  "train_entries": 10000,
+  "eval_entries": 2500,
   "device": "NVIDIA GeForce RTX 2080 Ti",
-  "max_steps": 5000,
+  "max_steps": 3000,
   "batch_size": 8,
   "learning_rate": 2e-05,
   "fp16": true,
-  "timestamp": "2026-03-28T20:58:11-0600"
+  "timestamp": "2026-03-28T22:14:26-0600"
 }

@@ -1,0 +1,26 @@
+model:
+  name: "HuggingFaceTB/SmolLM2-135M-Instruct"
+  dtype: "float32"
+
+training:
+  max_steps: 3000
+  per_device_train_batch_size: 8
+  learning_rate: 2.0e-5
+  warmup_steps: 100
+  weight_decay: 0.01
+  fp16: true
+  bf16: false
+  max_length: 256
+  logging_steps: 100
+  save_strategy: "steps"
+  save_steps: 1000
+  eval_strategy: "steps"
+  eval_steps: 500
+  seed: 42
+
+data:
+  train_path: "../phase-2-dsl/corpus/monitor-v2/train-augmented.jsonl"
+  holdout_path: "../phase-2-dsl/corpus/monitor-v2/holdout.jsonl"
+
+output:
+  dir: "models/monitor-smollm2-135m-run3"
