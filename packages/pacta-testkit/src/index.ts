@@ -33,6 +33,12 @@ export {
   workspaceBuilder,
   CycleConfigBuilder,
   cycleConfigBuilder,
+  buildMonitorV2Config,
+  buildReasonerActorV2Config,
+  buildPriorityAttendConfig,
+  buildEVCConfig,
+  buildEnrichedMonitoringSignal,
+  buildImpasseSignal,
 } from './cognitive-builders.js';
 
 // Cognitive — Assertions
@@ -41,4 +47,9 @@ export {
   assertMonitoringSignalEmitted,
   assertWorkspaceContains,
   assertCyclePhaseOrder,
+  assertPredictionError,
+  assertMetacognitiveJudgment,
+  assertImpasseDetected,
+  assertImpasseSubgoal,
+  assertPrecisionLevel,
 } from './cognitive-assertions.js';

@@ -11,6 +11,11 @@ import type {
   ReadonlyWorkspaceSnapshot,
   WorkspaceEntry,
   CognitiveEvent,
+  EnrichedMonitoringSignal,
+  MetacognitiveJudgment,
+  ReasonerActorV2Monitoring,
+  ImpasseType,
+  PrecisionConfig,
 } from '@method/pacta';
 
 import type { RecordingModule } from './recording-module.js';
@@ -134,5 +139,126 @@ export function assertCyclePhaseOrder(
         `Full sequence: [${actualPhases.join(', ')}]`
       );
     }
+  }
+}
+
+// ── v2 Assertion Helpers (PRD 035) ─────────────────────────────
+
+/**
+ * Assert that an EnrichedMonitoringSignal has a predictionError field,
+ * optionally within a given range.
+ *
+ * @param signal - The enriched monitoring signal to inspect.
+ * @param expectedRange - Optional [min, max] inclusive range for the prediction error.
+ */
+export function assertPredictionError(
+  signal: EnrichedMonitoringSignal,
+  expectedRange?: [number, number],
+): void {
+  if (signal.predictionError === undefined) {
+    throw new Error(
+      `assertPredictionError: signal has no predictionError field. ` +
+      `Signal source: '${signal.source}'.`
+    );
+  }
+
+  if (expectedRange !== undefined) {
+    const [min, max] = expectedRange;
+    if (signal.predictionError < min || signal.predictionError > max) {
+      throw new Error(
+        `assertPredictionError: predictionError ${signal.predictionError} is outside ` +
+        `expected range [${min}, ${max}]. Signal source: '${signal.source}'.`
+      );
+    }
+  }
+}
+
+/**
+ * Assert that a specific metacognitive judgment field is populated on the signal.
+ *
+ * Judgment types follow Nelson & Narens (1990):
+ * - eol: Ease of Learning (number)
+ * - jol: Judgment of Learning (number)
+ * - fok: Feeling of Knowing (boolean)
+ * - rc:  Retrospective Confidence (number)
+ *
+ * @param signal - The enriched monitoring signal to inspect.
+ * @param judgment - Which metacognitive judgment field to assert.
+ */
+export function assertMetacognitiveJudgment(
+  signal: EnrichedMonitoringSignal,
+  judgment: MetacognitiveJudgment,
+): void {
+  const value = signal[judgment];
+  if (value === undefined) {
+    throw new Error(
+      `assertMetacognitiveJudgment: signal has no '${judgment}' field. ` +
+      `Signal source: '${signal.source}'.`
+    );
+  }
+}
+
+/**
+ * Assert that a ReasonerActorV2Monitoring has an impasse of the given type.
+ *
+ * @param monitoring - The v2 reasoner-actor monitoring signal.
+ * @param type - Expected impasse type (tie, no-change, rejection, stall).
+ */
+export function assertImpasseDetected(
+  monitoring: ReasonerActorV2Monitoring,
+  type: ImpasseType,
+): void {
+  if (!monitoring.impasse) {
+    throw new Error(
+      `assertImpasseDetected: monitoring has no impasse. ` +
+      `Expected impasse type '${type}'.`
+    );
+  }
+
+  if (monitoring.impasse.type !== type) {
+    throw new Error(
+      `assertImpasseDetected: impasse type '${monitoring.impasse.type}' does not match ` +
+      `expected '${type}'.`
+    );
+  }
+}
+
+/**
+ * Assert that a ReasonerActorV2Monitoring has an impasse with a non-empty autoSubgoal.
+ *
+ * @param monitoring - The v2 reasoner-actor monitoring signal.
+ */
+export function assertImpasseSubgoal(
+  monitoring: ReasonerActorV2Monitoring,
+): void {
+  if (!monitoring.impasse) {
+    throw new Error(
+      `assertImpasseSubgoal: monitoring has no impasse.`
+    );
+  }
+
+  if (!monitoring.impasse.autoSubgoal || monitoring.impasse.autoSubgoal.trim() === '') {
+    throw new Error(
+      `assertImpasseSubgoal: impasse autoSubgoal is empty or missing. ` +
+      `Impasse type: '${monitoring.impasse.type}'.`
+    );
+  }
+}
+
+/**
+ * Assert that a PrecisionConfig has the expected promptDepth level.
+ *
+ * @param config - The precision configuration to inspect.
+ * @param level - Expected prompt depth: 'minimal', 'standard', or 'thorough'.
+ */
+export function assertPrecisionLevel(
+  config: PrecisionConfig,
+  level: 'minimal' | 'standard' | 'thorough',
+): void {
+  if (config.promptDepth !== level) {
+    throw new Error(
+      `assertPrecisionLevel: promptDepth '${config.promptDepth}' does not match ` +
+      `expected '${level}'.`
+    );
   }
 }

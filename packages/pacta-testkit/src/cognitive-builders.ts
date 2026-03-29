@@ -12,6 +12,13 @@ import type {
   StepResult,
   WorkspaceConfig,
   ControlPolicy,
+  MonitorV2Config,
+  ReasonerActorV2Config,
+  PriorityAttendConfig,
+  EVCConfig,
+  EnrichedMonitoringSignal,
+  ImpasseSignal,
+  ImpasseType,
 } from '@method/pacta';
 
 import { moduleId } from '@method/pacta';
@@ -183,4 +190,139 @@ export class CycleConfigBuilder {
 /** Create a CycleConfigBuilder with sensible test defaults. */
 export function cycleConfigBuilder(): CycleConfigBuilder {
   return new CycleConfigBuilder();
+}
+
+// ── v2 Config Builders (PRD 035) ──────────────────────────────
+
+/**
+ * Build a MonitorV2Config with sensible test defaults.
+ * All fields are optional in MonitorV2Config, so overrides are merged on top.
+ *
+ * Defaults: baseConfidenceThreshold 0.3, grattonDelta 0.05, thresholdFloor 0.1,
+ * thresholdCeiling 0.6, predictionErrorThreshold 1.5, expectationAlpha 0.2,
+ * stagnationThreshold 3.
+ */
+export function buildMonitorV2Config(overrides?: Partial<MonitorV2Config>): MonitorV2Config {
+  return {
+    baseConfidenceThreshold: 0.3,
+    grattonDelta: 0.05,
+    thresholdFloor: 0.1,
+    thresholdCeiling: 0.6,
+    predictionErrorThreshold: 1.5,
+    expectationAlpha: 0.2,
+    stagnationThreshold: 3,
+    id: 'monitor-v2-test',
+    ...overrides,
+  };
+}
+
+/**
+ * Build a ReasonerActorV2Config with sensible test defaults.
+ *
+ * Defaults: stallEntropyThreshold 0.3, noChangeThreshold 2,
+ * injectSubgoals true, subgoalSalience 0.9.
+ */
+export function buildReasonerActorV2Config(overrides?: Partial<ReasonerActorV2Config>): ReasonerActorV2Config {
+  return {
+    id: 'reasoner-actor-v2-test',
+    stallEntropyThreshold: 0.3,
+    noChangeThreshold: 2,
+    injectSubgoals: true,
+    subgoalSalience: 0.9,
+    ...overrides,
+  };
+}
+
+/**
+ * Build a PriorityAttendConfig with sensible test defaults.
+ *
+ * Defaults: stimulusWeight 0.3, goalWeight 0.4, historyWeight 0.3,
+ * suppressionFactor 0.2, maxHistoryEntries 100.
+ */
+export function buildPriorityAttendConfig(overrides?: Partial<PriorityAttendConfig>): PriorityAttendConfig {
+  return {
+    stimulusWeight: 0.3,
+    goalWeight: 0.4,
+    historyWeight: 0.3,
+    suppressionFactor: 0.2,
+    maxHistoryEntries: 100,
+    ...overrides,
+  };
+}
+
+/**
+ * Build an EVCConfig with sensible test defaults.
+ *
+ * Defaults: payoffWeight 1.0, costWeight 1.0, minPredictionError 0.1, bias 0.0.
+ */
+export function buildEVCConfig(overrides?: Partial<EVCConfig>): EVCConfig {
+  return {
+    payoffWeight: 1.0,
+    costWeight: 1.0,
+    minPredictionError: 0.1,
+    bias: 0.0,
+    ...overrides,
+  };
+}
+
+/**
+ * Build a test EnrichedMonitoringSignal with sensible defaults.
+ *
+ * The base MonitoringSignal requires `source` and `timestamp`.
+ * v2 enriched fields default to representative test values.
+ */
+export function buildEnrichedMonitoringSignal(
+  overrides?: Partial<EnrichedMonitoringSignal>,
+): EnrichedMonitoringSignal {
+  return {
+    source: moduleId('test-monitor'),
+    timestamp: Date.now(),
+    predictionError: 0.2,
+    precision: 0.8,
+    conflictEnergy: 0.0,
+    eol: 0.5,
+    jol: 0.6,
+    rc: 0.7,
+    ...overrides,
+  };
+}
+
+/**
+ * Build a test ImpasseSignal for a given impasse type.
+ *
+ * Each type pre-fills contextually appropriate defaults:
+ * - tie: two dummy candidates
+ * - no-change: no extra fields
+ * - rejection: a failed tool name
+ * - stall: stuck cycle count of 3
+ *
+ * @param type - The impasse type to build.
+ * @param overrides - Optional overrides merged on top.
+ */
+export function buildImpasseSignal(
+  type: ImpasseType,
+  overrides?: Partial<ImpasseSignal>,
+): ImpasseSignal {
+  const base: ImpasseSignal = {
+    type,
+    autoSubgoal: `resolve-${type}-impasse`,
+  };
+
+  // Add type-specific sensible defaults
+  switch (type) {
+    case 'tie':
+      base.candidates = ['option-a', 'option-b'];
+      break;
+    case 'rejection':
+      base.failedTool = 'test-tool';
+      break;
+    case 'stall':
+      base.stuckCycles = 3;
+      break;
+    case 'no-change':
+      // No additional defaults needed
+      break;
+  }
+
+  return { ...base, ...overrides };
 }
