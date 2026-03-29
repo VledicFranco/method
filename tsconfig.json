@@ -8,6 +8,7 @@
     { "path": "packages/pacta-provider-claude-cli" },
     { "path": "packages/pacta-playground" },
     { "path": "packages/pacta-provider-anthropic" },
+    { "path": "packages/pacta-provider-ollama" },
     { "path": "packages/cluster" },
     { "path": "packages/method-ctl" },
     { "path": "packages/bridge" }

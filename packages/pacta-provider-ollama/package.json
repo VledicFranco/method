@@ -1,0 +1,17 @@
+{
+  "name": "@method/pacta-provider-ollama",
+  "version": "0.1.0",
+  "description": "Ollama AgentProvider for Pacta — OpenAI-compatible API over local/remote Ollama instances",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*"
+  }
+}
