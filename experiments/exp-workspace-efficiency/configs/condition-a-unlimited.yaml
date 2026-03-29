@@ -1,0 +1,33 @@
+# Condition A: Unlimited Context (Control)
+#
+# Workspace capacity set to 100 — high enough that no eviction occurs
+# during any 15-cycle task. This simulates a system with no workspace
+# management, where every entry persists for the entire task.
+#
+# This is the control condition. All other conditions are compared against this.
+
+condition: A
+label: unlimited
+description: "No eviction — all workspace entries persist for the entire task"
+
+workspace:
+  capacity: 100
+  eviction_handler: discard  # irrelevant — capacity never reached
+  salience_function: default
+  default_ttl: null  # no TTL — entries persist indefinitely
+  write_quota_per_module: null  # no per-module quota
+
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  intervention_budget: infinity
+
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+
+agent:
+  model: claude-sonnet-4-20250514
+  max_output_tokens: 2048
+  max_cycles: 15

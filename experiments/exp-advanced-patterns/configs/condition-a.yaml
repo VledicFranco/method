@@ -1,0 +1,43 @@
+# Condition A: Control — base 8-module cognitive cycle, no advanced patterns.
+#
+# Matches exp-cognitive-baseline Condition C with 'baseline' config.
+# This is the comparison baseline for all other conditions.
+
+condition: A
+name: control
+description: Base 8-module cognitive cycle without advanced patterns
+
+# Strategy config (from exp-cognitive-baseline/strategies.ts)
+config_name: baseline
+workspace:
+  strategy: evict
+  capacity: 8
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  on_stagnation: constrain
+  intervention_budget: Infinity
+  track_utility: false
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+  task_anchor: false
+  cycle_budget: false
+
+# Pattern flags — all disabled
+patterns:
+  reflect: false    # P6
+  patterns: false   # P5
+  adaptive: false   # P2
+  personas: false   # P4
+  affect: false     # P3
+
+# Memory
+use_memory: false
+shared_memory: false
+
+# Run parameters
+max_cycles: 15
+model: claude-sonnet-4-20250514
+max_output_tokens: 2048

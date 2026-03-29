@@ -1,0 +1,31 @@
+# Condition B: LLM Monitor Active
+#
+# The Monitor module processes aggregated monitoring signals each cycle,
+# maintaining running state (confidence averages, conflict counts, stagnation
+# tracking). Anomaly detection is evaluated against ground truth error labels.
+
+condition: B
+name: "llm-monitor-active"
+description: "Monitor module processes signals, detects anomalies via threshold + pattern analysis"
+
+monitor:
+  active: true
+  implementation: "rule-based"  # createMonitor() — deterministic rule-based Monitor
+  config:
+    confidenceThreshold: 0.3
+    stagnationThreshold: 3
+
+evaluation:
+  method: "monitor-output"
+  # Monitor output is the MonitorReport: anomalies[], escalation, restrictedActions, forceReplan
+  # A cycle is "flagged" if anomalies.length > 0
+
+stream:
+  minCycles: 12
+  maxCycles: 18
+  minErrors: 2
+  maxErrors: 4
+
+runs:
+  count: 10
+  baseSeed: 42

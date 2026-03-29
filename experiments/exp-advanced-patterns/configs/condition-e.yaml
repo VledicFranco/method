@@ -1,0 +1,72 @@
+# Condition E: Combined — all Tier 1-2 advanced patterns active.
+#
+# Tests the full composition: P1 (conflict-resolver), P2 (meta-composer),
+# P3 (affect), P4 (personas), P5 (thought patterns), P6 (reflector-v2).
+#
+# Key question: do patterns compose synergistically, or does the overhead
+# of multiple concurrent systems degrade performance?
+
+condition: E
+name: combined
+description: All Tier 1-2 patterns (P1-P6) active
+
+# Strategy config — v2-full as base, but meta-composer may override per-task
+config_name: v2-full
+workspace:
+  strategy: two-tier
+  capacity: 5
+monitor:
+  strategy: budgeted-reframe
+  stagnation_threshold: 3
+  on_stagnation: reframe
+  intervention_budget: 3
+  track_utility: false
+prompt:
+  strategy: full
+  section_order: [action, rationale, critique]
+  plan_required: false
+  task_anchor: true
+  cycle_budget: true
+
+# Pattern flags — ALL enabled
+patterns:
+  reflect: true     # P6: Post-task reflection
+  patterns: true    # P5: Thought pattern seeding + retrieval
+  adaptive: true    # P2: Meta-composer adaptive config selection
+  personas: true    # P4: Dynamic persona injection
+  affect: true      # P3: Affect computation
+
+# Memory — fully enabled for cross-task learning + meta-composer
+use_memory: true
+shared_memory: true
+
+# Reflector config
+reflector:
+  max_lessons: 3
+  model: claude-haiku-3
+
+# Meta-composer config
+meta_composer:
+  profiles:
+    muscle_memory: baseline
+    routine: baseline
+    deliberate: v2-full
+    conflicted: v2-full
+    creative: v2-thane
+
+# Conflict resolver config
+conflict_resolver:
+  synthesis_bias: 0.5
+  model: claude-sonnet-4-20250514
+
+# Affect config
+affect:
+  confident_success_threshold: 3
+  frustrated_write_threshold: 3
+  frustrated_diversity_threshold: 2
+  anxious_decline_cycles: 3
+
+# Run parameters
+max_cycles: 15
+model: claude-sonnet-4-20250514
+max_output_tokens: 2048

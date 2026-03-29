@@ -1,0 +1,35 @@
+# Condition C: Eviction with Summary Re-injection (Capacity 8)
+#
+# Same capacity as B, but evicted entries produce a 1-line summary that
+# is re-injected as a low-salience workspace entry. This tests whether
+# preserving a compressed memory of evicted content improves task success
+# without significantly increasing token usage.
+#
+# Matches the 'summary' workspace strategy from exp-cognitive-baseline/strategies.ts.
+
+condition: C
+label: evict-summary-8
+description: "Capacity 8, lowest-salience eviction, 1-line summary re-injected"
+
+workspace:
+  capacity: 8
+  eviction_handler: summary
+  summary_max_chars: 120
+  salience_function: default
+  default_ttl: null
+  write_quota_per_module: null
+
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  intervention_budget: infinity
+
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+
+agent:
+  model: claude-sonnet-4-20250514
+  max_output_tokens: 2048
+  max_cycles: 15

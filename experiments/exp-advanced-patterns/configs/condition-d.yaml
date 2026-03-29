@@ -1,0 +1,61 @@
+# Condition D: Conflict — base cycle + meta-composer (P2) + conflict-resolver (P1).
+#
+# Tests adversarial parallel reasoning. Meta-composer classifies tasks and selects
+# cognitive profiles. When classified as 'conflicted', parallel reasoning fires:
+# two reasoner-actors produce competing proposals, conflict-resolver synthesizes.
+#
+# Expected cost: ~2x per conflicted cycle, but dual-process gating should limit
+# conflicted cycles to <=20% of total.
+
+condition: D
+name: conflict
+description: Base cycle + meta-composer (P2) + conflict-resolver (P1)
+
+# Strategy config — v2-full for full monitoring when meta-composer selects deliberate/conflicted
+config_name: v2-full
+workspace:
+  strategy: two-tier
+  capacity: 5
+monitor:
+  strategy: budgeted-reframe
+  stagnation_threshold: 3
+  on_stagnation: reframe
+  intervention_budget: 3
+  track_utility: false
+prompt:
+  strategy: full
+  section_order: [action, rationale, critique]
+  plan_required: false
+  task_anchor: true
+  cycle_budget: true
+
+# Pattern flags
+patterns:
+  reflect: false    # P6
+  patterns: false   # P5
+  adaptive: true    # P2: Meta-composer adaptive config selection
+  personas: false   # P4
+  affect: false     # P3
+
+# Memory — enabled for meta-composer signal gathering (needs FactCards for classification)
+use_memory: true
+shared_memory: true
+
+# Meta-composer config
+meta_composer:
+  profiles:
+    muscle_memory: baseline
+    routine: baseline
+    deliberate: v2-full
+    conflicted: v2-full     # triggers parallel reasoning
+    creative: v2-thane
+
+# Conflict resolver config
+conflict_resolver:
+  synthesis_bias: 0.5       # neutral — no preference for synthesis vs selection
+  model: claude-sonnet-4-20250514
+
+# Run parameters
+max_cycles: 15
+model: claude-sonnet-4-20250514
+max_output_tokens: 2048

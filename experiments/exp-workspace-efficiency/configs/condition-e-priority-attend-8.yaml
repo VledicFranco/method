@@ -1,0 +1,46 @@
+# Condition E: PriorityAttend Salience (Capacity 8)
+#
+# Same capacity as B, same silent discard, but uses the three-factor
+# PriorityAttend salience function from PRD 035 instead of the v1 default.
+#
+# Three-factor salience:
+#   1. Stimulus salience (bottom-up): recency decay + content novelty
+#   2. Goal relevance (top-down): keyword overlap with active goals/subgoals
+#   3. Selection history (learned bias): positive outcomes boost, negative suppress
+#
+# The hypothesis is that better salience scoring retains more useful entries,
+# which should reduce redundant LLM reasoning and save tokens even at the
+# same capacity as Condition B.
+#
+# Note: PRD 035 is status "proposed" — the PriorityAttend function is
+# implemented for this experiment in scripts/priority-attend.ts, not yet
+# merged into the main pacta workspace engine.
+
+condition: E
+label: priority-attend-8
+description: "Capacity 8, PriorityAttend 3-factor salience, silent discard"
+
+workspace:
+  capacity: 8
+  eviction_handler: discard
+  salience_function: priority-attend
+  selection_history_weight: 0.2
+  goal_relevance_weight: 0.4
+  recency_weight: 0.4
+  default_ttl: null
+  write_quota_per_module: null
+
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  intervention_budget: infinity
+
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+
+agent:
+  model: claude-sonnet-4-20250514
+  max_output_tokens: 2048
+  max_cycles: 15

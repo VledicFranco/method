@@ -1,0 +1,47 @@
+# Condition C: SLM Monitor — DEFERRED
+#
+# Uses the SLM-compiled Monitor (phase-2-dsl, trained via exp-slm Gate 4).
+# The SLM receives signals in the Monitor DSL format (SIGNALS: -> ANOMALIES:/
+# ESCALATE:/RESTRICT:/REPLAN:) and produces structured output parsed by the
+# monitor-v2 PEG grammar.
+#
+# BLOCKED: This condition requires R-01 (Gate 4: temperature calibration +
+# ONNX export + scaling runs) to pass first. The SLM model must be validated
+# for production-quality Monitor output before testing error detection.
+#
+# When unblocked:
+#   1. Load the ONNX-exported Monitor SLM
+#   2. Convert AggregatedSignals -> DSL input via formatAsDSL()
+#   3. Run SLM inference -> DSL output
+#   4. Parse DSL output via monitor-v2.peggy grammar -> MonitorReport
+#   5. Evaluate MonitorReport against ground truth (same as Condition B)
+
+condition: C
+name: "slm-monitor"
+description: "SLM-compiled Monitor — deferred until Gate 4 passes"
+status: blocked
+blocked_by: "R-01"
+
+monitor:
+  active: true
+  implementation: "slm"
+  config:
+    modelPath: "../../artifacts/exp-slm/models/monitor-v2/model.onnx"
+    grammarPath: "../../../experiments/exp-slm/phase-2-dsl/grammars/monitor-v2.peggy"
+    temperature: 0.0  # Deterministic inference for reproducibility
+
+evaluation:
+  method: "monitor-output"
+
+stream:
+  minCycles: 12
+  maxCycles: 18
+  minErrors: 2
+  maxErrors: 4
+
+runs:
+  count: 10
+  baseSeed: 42
+
+# Gate 4 parity requirement:
+# SLM Monitor EDR must be within 10% of LLM Monitor EDR (Gate G4)

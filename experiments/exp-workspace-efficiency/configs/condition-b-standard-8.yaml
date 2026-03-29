@@ -1,0 +1,33 @@
+# Condition B: Standard Eviction (Capacity 8)
+#
+# Current default workspace configuration. Capacity 8, lowest-salience
+# eviction with silent discard. Default salience function:
+#   salience = 0.4 * recency + 0.3 * sourcePriority + 0.3 * goalOverlap
+#
+# This matches the baseline cognitive config from exp-cognitive-baseline.
+
+condition: B
+label: standard-8
+description: "Capacity 8, lowest-salience eviction, silent discard"
+
+workspace:
+  capacity: 8
+  eviction_handler: discard
+  salience_function: default
+  default_ttl: null
+  write_quota_per_module: null
+
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  intervention_budget: infinity
+
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+
+agent:
+  model: claude-sonnet-4-20250514
+  max_output_tokens: 2048
+  max_cycles: 15

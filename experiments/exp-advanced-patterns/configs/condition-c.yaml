@@ -1,0 +1,51 @@
+# Condition C: Affect — base cycle + affect module (P3).
+#
+# Tests whether rule-based emotional metacognition (computed from behavioral
+# traces, zero LLM cost) improves stagnation recovery and task completion.
+# Affect signals are injected into the workspace as guidance text.
+
+condition: C
+name: affect
+description: Base cycle + affect module (P3)
+
+# Strategy config
+config_name: baseline
+workspace:
+  strategy: evict
+  capacity: 8
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  on_stagnation: constrain
+  intervention_budget: Infinity
+  track_utility: false
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+  task_anchor: false
+  cycle_budget: false
+
+# Pattern flags
+patterns:
+  reflect: false    # P6
+  patterns: false   # P5
+  adaptive: false   # P2
+  personas: false   # P4
+  affect: true      # P3: Affect computation from behavioral traces
+
+# Memory
+use_memory: false
+shared_memory: false
+
+# Affect config
+affect:
+  confident_success_threshold: 3
+  frustrated_write_threshold: 3
+  frustrated_diversity_threshold: 2
+  anxious_decline_cycles: 3
+
+# Run parameters
+max_cycles: 15
+model: claude-sonnet-4-20250514
+max_output_tokens: 2048

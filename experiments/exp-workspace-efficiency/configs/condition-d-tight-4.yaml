@@ -1,0 +1,36 @@
+# Condition D: Tight Workspace (Capacity 4)
+#
+# Aggressive workspace constraint — only 4 entries at any time.
+# Evicted entries produce summaries (same as Condition C).
+# Tests whether a very tight workspace forces better prioritization
+# by the salience function, or whether information loss degrades performance.
+#
+# This is the most constrained condition. If task success holds here,
+# workspace capacity can be reduced aggressively for token savings.
+
+condition: D
+label: tight-4
+description: "Capacity 4, lowest-salience eviction, summary re-injected"
+
+workspace:
+  capacity: 4
+  eviction_handler: summary
+  summary_max_chars: 80
+  salience_function: default
+  default_ttl: null
+  write_quota_per_module: null
+
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  intervention_budget: infinity
+
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+
+agent:
+  model: claude-sonnet-4-20250514
+  max_output_tokens: 2048
+  max_cycles: 15

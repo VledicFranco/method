@@ -19,13 +19,13 @@ flat ReAct agents on strategy-shift recovery tasks?
 
 | ID | Experiment | Question | Status | Claimed By | Updated |
 |----|-----------|----------|--------|------------|---------|
-| R-01 | exp-slm | Gate 4: temperature calibration + ONNX export + integration benchmark | open | — | 2026-03-29 |
+| R-01 | exp-slm | Gate 4: temperature calibration + ONNX export + scaling runs | claimed | overnight-research-20260329 | 2026-03-29 |
 | R-02 | exp-cognitive-baseline | Increase N from 3 to 10 on Task 01 (statistical significance) | open | — | 2026-03-29 |
 | R-03 | exp-cognitive-baseline | Run Tasks 02-05 under all 3 conditions (A/B/C) | open | — | 2026-03-29 |
-| R-04 | exp-metacognitive-error | Can Monitor detect reasoning errors the Reasoner misses? (EXP-024) | open | — | 2026-03-29 |
-| R-05 | exp-workspace-efficiency | Token savings from salience-based eviction vs unlimited context (EXP-025) | open | — | 2026-03-29 |
-| R-06 | exp-interventionist-cost | Cost overhead of default-interventionist vs always-on meta-level (EXP-026) | open | — | 2026-03-29 |
-| R-07 | exp-advanced-patterns | PRD 032 patterns (reflector-v2, affect, conflict-resolver) impact on task success (EXP-027) | open | — | 2026-03-29 |
+| R-04 | exp-metacognitive-error | Can Monitor detect reasoning errors the Reasoner misses? (EXP-024) | claimed | overnight-research-20260329 | 2026-03-29 |
+| R-05 | exp-workspace-efficiency | Token savings from salience-based eviction vs unlimited context (EXP-025) | claimed | overnight-research-20260329 | 2026-03-29 |
+| R-06 | exp-interventionist-cost | Cost overhead of default-interventionist vs always-on meta-level (EXP-026) | claimed | overnight-research-20260329 | 2026-03-29 |
+| R-07 | exp-advanced-patterns | PRD 032 patterns (reflector-v2, affect, conflict-resolver) impact on task success (EXP-027) | claimed | overnight-research-20260329 | 2026-03-29 |
 | R-08 | exp-slm | Multi-module scaling: compile Observer + Evaluator after Monitor validated | blocked | — | 2026-03-29 |
 
 ### Blocked Items

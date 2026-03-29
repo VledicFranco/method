@@ -1,0 +1,30 @@
+# Condition A: Baseline — No Monitor
+#
+# The Reasoner's own monitoring signals are checked for self-correction
+# indicators (low confidence, conflict flags, unexpected results) but
+# no Monitor module is active. This establishes the base detection rate
+# that the signals themselves provide without meta-level processing.
+
+condition: A
+name: "baseline-no-monitor"
+description: "Reasoner self-correction signals only, no Monitor oversight"
+
+monitor:
+  active: false
+
+evaluation:
+  # In Condition A, "detection" means the raw signals themselves contain
+  # indicators that an error occurred (confidence < threshold, conflict
+  # detected, unexpected result flagged).
+  method: "signal-inspection"
+  confidenceThreshold: 0.3
+
+stream:
+  minCycles: 12
+  maxCycles: 18
+  minErrors: 2
+  maxErrors: 4
+
+runs:
+  count: 10
+  baseSeed: 42

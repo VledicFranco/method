@@ -1,0 +1,49 @@
+# Condition B: Reflector — base cycle + reflector-v2 + thought patterns.
+#
+# Tests cross-task learning: P5 seeds reusable cognitive procedures into memory,
+# P6 fires after each task to extract transferable strategic lessons.
+# Memory is shared across tasks to enable cross-task transfer.
+
+condition: B
+name: reflector
+description: Base cycle + reflector-v2 (P6) + thought patterns (P5)
+
+# Strategy config
+config_name: baseline
+workspace:
+  strategy: evict
+  capacity: 8
+monitor:
+  strategy: constrain-force
+  stagnation_threshold: 2
+  on_stagnation: constrain
+  intervention_budget: Infinity
+  track_utility: false
+prompt:
+  strategy: baseline
+  section_order: [plan, reasoning, action]
+  plan_required: true
+  task_anchor: false
+  cycle_budget: false
+
+# Pattern flags
+patterns:
+  reflect: true     # P6: Post-task reflection via reflector-v2
+  patterns: true    # P5: Thought pattern seeding + retrieval
+  adaptive: false   # P2
+  personas: false   # P4
+  affect: false     # P3
+
+# Memory — enabled and shared for cross-task learning
+use_memory: true
+shared_memory: true
+
+# Reflector config
+reflector:
+  max_lessons: 3
+  model: claude-haiku-3  # cheap model for reflection
+
+# Run parameters
+max_cycles: 15
+model: claude-sonnet-4-20250514
+max_output_tokens: 2048
