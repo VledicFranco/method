@@ -63,16 +63,23 @@ export type {
 // Tool provider port
 export type { ToolProvider, ToolDefinition, ToolResult } from './ports/tool-provider.js';
 
-// Memory port (v2 — PRD 031)
+// Memory port (v2 — PRD 031, v3 — PRD 036)
 export type {
   MemoryPort,
   MemoryPortV2,
+  MemoryPortV3,
   MemoryEntry,
   AgentNote,
   NoteFilter,
   EpistemicType,
   FactCard,
   SearchOptions,
+  EpisodicEntry,
+  SemanticEntry,
+  DualStoreConfig,
+  ActivationConfig,
+  ConsolidationConfig,
+  ConsolidationResult,
 } from './ports/memory-port.js';
 export { InMemoryMemory } from './ports/memory-impl.js';
 
