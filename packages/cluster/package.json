@@ -1,0 +1,17 @@
+{
+  "name": "@method/cluster",
+  "version": "0.1.0",
+  "description": "Cluster protocol, membership state machine, and routing — transport-agnostic L3 package",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  }
+}
