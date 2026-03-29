@@ -2,10 +2,12 @@
 """
 Phase 3 — Fine-tune SmolLM2 on the Monitor DSL corpus.
 
-Supports full fine-tuning and LoRA (via peft). When the config YAML contains a
-``lora:`` section, the model is wrapped with a LoRA adapter before training. After
-training, LoRA weights are merged back into the base model so the saved checkpoint
-is a standard HuggingFace model (evaluate.py works unchanged).
+Supports full fine-tuning, LoRA, and QLoRA (via peft + bitsandbytes). When the
+config YAML contains a ``lora:`` section, the model is wrapped with a LoRA adapter
+before training. When a ``quantization:`` section is present, the base model is
+loaded in 4-bit (NF4) via BitsAndBytesConfig and prepared for k-bit training
+(QLoRA). After training, LoRA weights are merged back into the base model so the
+saved checkpoint is a standard HuggingFace model (evaluate.py works unchanged).
 
 Loads config from configs/*.yaml, fine-tunes using SFTTrainer from trl,
 saves checkpoints. Reports final loss, training time, peak VRAM.
@@ -100,6 +102,7 @@ def main() -> None:
     data_cfg = config["data"]
     output_cfg = config["output"]
     lora_cfg = config.get("lora", None)  # Optional LoRA config
+    quant_cfg = config.get("quantization", None)  # Optional QLoRA quantization config
 
     model_name = model_cfg["name"]
     output_dir = resolve_path(PHASE3_DIR, output_cfg["dir"])
@@ -109,7 +112,9 @@ def main() -> None:
 
     print(f"Config loaded from {args.config}")
     print(f"  Model: {model_name}")
-    if lora_cfg:
+    if quant_cfg and lora_cfg:
+        print(f"  Mode: QLoRA (4-bit NF4 + LoRA r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})")
+    elif lora_cfg:
         print(f"  Mode: LoRA (r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})")
     else:
         print(f"  Mode: Full fine-tune")
@@ -139,15 +144,40 @@ def main() -> None:
     dtype_map = {"float32": torch.float32, "float16": torch.float16}
     load_dtype = dtype_map.get(model_cfg.get("dtype", "float32"), torch.float32)
 
-    model = AutoModelForCausalLM.from_pretrained(model_name, dtype=load_dtype)
+    use_quantization = quant_cfg is not None
+    if use_quantization:
+        from transformers import BitsAndBytesConfig
+
+        compute_dtype_map = {"float16": torch.float16, "float32": torch.float32}
+        bnb_compute_dtype = compute_dtype_map.get(
+            quant_cfg.get("bnb_4bit_compute_dtype", "float16"), torch.float16
+        )
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=quant_cfg.get("load_in_4bit", True),
+            bnb_4bit_quant_type=quant_cfg.get("bnb_4bit_quant_type", "nf4"),
+            bnb_4bit_compute_dtype=bnb_compute_dtype,
+            bnb_4bit_use_double_quant=quant_cfg.get("bnb_4bit_use_double_quant", False),
+        )
+        print(f"  Quantization: 4-bit NF4, compute_dtype={bnb_compute_dtype}")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, quantization_config=bnb_config, torch_dtype=torch.float16
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_name, dtype=load_dtype)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"  Model loaded — {total_params / 1e6:.1f}M params, dtype={load_dtype}")
+    print(f"  Model loaded — {total_params / 1e6:.1f}M params, dtype={load_dtype if not use_quantization else '4-bit NF4'}")
 
     # ── Apply LoRA if configured ──────────────────────────────
     use_lora = lora_cfg is not None
     if use_lora:
         from peft import LoraConfig, TaskType, get_peft_model
+
+        # For QLoRA: prepare the quantized model for k-bit training
+        if use_quantization:
+            from peft import prepare_model_for_kbit_training
+            model = prepare_model_for_kbit_training(model)
+            print("  Model prepared for k-bit training (QLoRA)")
 
         task_type_map = {"CAUSAL_LM": TaskType.CAUSAL_LM}
         peft_config = LoraConfig(
@@ -159,6 +189,15 @@ def main() -> None:
             task_type=task_type_map.get(lora_cfg.get("task_type", "CAUSAL_LM"), TaskType.CAUSAL_LM),
         )
         model = get_peft_model(model, peft_config)
+
+        # Ensure all trainable params are FP32 for AMP compatibility
+        # (QLoRA/quantized models may leave LoRA params in BF16 which breaks
+        # the FP16 grad scaler on SM 7.5 GPUs)
+        if use_quantization:
+            for param in model.parameters():
+                if param.requires_grad:
+                    param.data = param.data.to(torch.float32)
+
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"  LoRA applied — trainable: {trainable_params / 1e6:.2f}M / {total_params / 1e6:.1f}M total ({100 * trainable_params / total_params:.2f}%)")
     else:
@@ -250,6 +289,7 @@ def main() -> None:
     if use_lora:
         print(f"\nMerging LoRA weights and saving full model to {output_dir} ...")
         # Merge LoRA adapters back into the base model
+        # For QLoRA (4-bit), merge_and_unload dequantizes automatically
         merged_model = model.merge_and_unload()
         merged_model.save_pretrained(str(output_dir))
         tokenizer.save_pretrained(str(output_dir))
@@ -262,10 +302,17 @@ def main() -> None:
 
     # ── Write training report ──────────────────────────────────
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    if use_quantization and use_lora:
+        method_str = f"QLoRA (4-bit NF4 + LoRA r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})"
+    elif use_lora:
+        method_str = f"LoRA (r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})"
+    else:
+        method_str = "full_finetune"
+
     report = {
         "model": model_name,
         "config": str(args.config),
-        "method": f"LoRA (r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})" if use_lora else "full_finetune",
+        "method": method_str,
         "total_params": total_params,
         "trainable_params": trainable_params,
         "final_loss": round(final_loss, 4),

@@ -1,0 +1,48 @@
+experiment: exp-slm
+run_id: qwen05b-lora
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 A9"
+config:
+  model: Qwen2.5-0.5B-Instruct
+  method: LoRA (r=16, alpha=32)
+  corpus: 10K causally consistent
+  steps: 3000
+  learning_rate: 2.0e-4
+  batch_size: 2
+metrics:
+  parse_accuracy: 0.9996
+  semantic_accuracy: 0.996
+  adversarial_accuracy: 0.9245
+  training_time_s: 1201.5
+  peak_vram_mb: 4465.5
+  final_loss: 0.3029
+  trainable_params: 2162688
+  total_params: 494032768
+  confidence_mean: 0.9995
+  confidence_median: 0.9998
+  confidence_p95: 0.9999
+  latency_mean_s: 0.7273
+  latency_median_s: 0.5415
+  latency_p95_s: 1.5272
+  boundary_cases: 106
+verdict: pass
+gate: "Scaling Run C — Qwen2.5-0.5B LoRA on 10K"
+notes: >
+  Qwen2.5-0.5B-Instruct with LoRA (r=16, alpha=32, 0.44% trainable params)
+  on 10K augmented corpus. All three evaluation gates pass with the best
+  results across all models tested. QLoRA (4-bit NF4) was attempted first but
+  the merge-and-unload from 4-bit quantization produced a model that couldn't
+  generate DSL output (0% accuracy). Fell back to standard LoRA with FP16 AMP.
+
+  Comparison to baselines:
+  - vs 135M full FT: parse 99.96% vs 100%, semantic 99.60% vs 98.6% (+1.0pp),
+    adversarial 92.45% vs 70.8% (+21.6pp). Major adversarial improvement.
+  - vs 360M LoRA: parse 99.96% vs 100%, semantic 99.60% vs 98.88% (+0.7pp),
+    adversarial 92.45% vs 77.36% (+15.1pp). Significant adversarial gain.
+
+  Qwen2.5-0.5B achieved the highest semantic and adversarial accuracy of any
+  model tested, with only 2.16M trainable parameters (0.44% of 494M). Peak VRAM
+  4466 MB fits comfortably in 11GB RTX 2080 Ti. Training completed in 20.0
+  minutes (3000 steps, batch_size=2). Inference latency median 0.54s — faster
+  than the 360M LoRA (0.76s) despite being a larger base model, likely due to
+  Qwen2.5's more efficient architecture. Confidence extremely high (mean 0.9995).
