@@ -1,0 +1,23 @@
+experiment: exp-slm
+run_id: 135m-20k
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 A7"
+config:
+  model: SmolLM2-135M-Instruct
+  corpus: 20K causally consistent
+  steps: 3000
+  learning_rate: 2.0e-5
+  batch_size: 8
+  fp16: true
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.9864
+  adversarial_accuracy: 0.7358
+  training_time_s: 697.4
+  peak_vram_mb: 2950.1
+  final_loss: 0.2767
+  latency_mean_s: 0.9816
+  latency_p95_s: 2.0492
+verdict: pass
+gate: "Scaling Run A — 135M on 20K corpus"
+notes: "20K corpus improves adversarial accuracy +2.78pp (70.8% → 73.6%) over 10K baseline. Parse and semantic unchanged. Data volume helps boundary cases."

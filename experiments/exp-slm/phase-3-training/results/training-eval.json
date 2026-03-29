@@ -1,19 +1,19 @@
 {
-  "model_dir": "phase-3-training\\models\\monitor-smollm2-135m-run3",
+  "model_dir": "phase-3-training\\models\\monitor-smollm2-135m-20k",
   "holdout_entries": 2500,
   "boundary_cases": 106,
   "parse_accuracy": 1.0,
-  "semantic_accuracy": 0.986,
-  "adversarial_accuracy": 0.7075,
+  "semantic_accuracy": 0.9864,
+  "adversarial_accuracy": 0.7358,
   "confidence": {
     "mean": 0.9997,
     "median": 1.0,
     "p95": 1.0
   },
   "latency_s": {
-    "mean": 1.0345,
-    "median": 0.7663,
-    "p95": 2.1535
+    "mean": 0.9816,
+    "median": 0.7202,
+    "p95": 2.0492
   },
   "targets": {
     "parse_accuracy": ">= 0.95",
@@ -25,5 +25,5 @@
     "semantic_accuracy": true,
     "adversarial_accuracy": true
   },
-  "timestamp": "2026-03-28T23:16:54-0600"
+  "timestamp": "2026-03-29T07:27:33-0600"
 }
