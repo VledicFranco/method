@@ -1,0 +1,5 @@
+project_card:
+  id: test-alpha
+  project: Project Alpha
+  essence:
+    purpose: Test fixture project for bridge integration testing — simulates a minimal repo.
