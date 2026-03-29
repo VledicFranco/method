@@ -6,10 +6,11 @@
  *   B (standard-8):         Capacity 8, default salience, silent discard
  *   C (evict-summary-8):    Capacity 8, default salience, summary re-injection
  *   D (tight-4):            Capacity 4, default salience, summary re-injection
- *   E (priority-attend-8):  Capacity 8, PriorityAttend 3-factor salience
+ *   E (priority-attend-8):  Capacity 8, PriorityAttend 3-factor salience (canonical v2 weights)
  *
- * All conditions use the cognitive agent (8-module cycle) with identical
- * monitor, prompt, and provider configuration. Only the workspace varies.
+ * All conditions use v2 cognitive modules (MonitorV2, ReasonerActorV2) with
+ * identical configuration. Only the workspace varies.
+ * Condition E uses the canonical PriorityAttend v2 module (stimulus=0.3, goal=0.4, history=0.3).
  *
  * Usage:
  *   ANTHROPIC_API_KEY=... npx tsx experiments/exp-workspace-efficiency/scripts/run.ts \
@@ -70,9 +71,9 @@ import type {
 import type { WorkspaceConfig } from '../../../packages/pacta/src/cognitive/algebra/workspace-types.js';
 import type { WorkspaceManager, EvictionInfo } from '../../../packages/pacta/src/cognitive/algebra/workspace.js';
 
-import { createReasonerActor, type ReasonerActorControl } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
+import { createReasonerActorV2, type ReasonerActorV2Control } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor-v2.js';
 import { createObserver } from '../../../packages/pacta/src/cognitive/modules/observer.js';
-import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/monitor.js';
+import { createMonitorV2 } from '../../../packages/pacta/src/cognitive/modules/monitor-v2.js';
 
 // Tasks — reused from exp-cognitive-baseline
 import { TASK_01 } from '../../exp-cognitive-baseline/task-01-circular-dep.js';
@@ -81,8 +82,8 @@ import { TASK_03 } from '../../exp-cognitive-baseline/task-03-config-migration.j
 import { TASK_04 } from '../../exp-cognitive-baseline/task-04-api-versioning.js';
 import { TASK_05 } from '../../exp-cognitive-baseline/task-05-dead-code-removal.js';
 
-// PriorityAttend salience function (Condition E)
-import { createPriorityAttendSalience } from './priority-attend.js';
+// PriorityAttend salience function (Condition E) — canonical v2 module
+import { createPrioritySalienceFunction } from '../../../packages/pacta/src/cognitive/modules/priority-attend.js';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -220,20 +221,24 @@ async function runCondition(
   const workspaceConfig: WorkspaceConfig = {
     capacity: condition.workspaceCapacity,
     salience: condition.salienceFunction === 'priority-attend'
-      ? createPriorityAttendSalience()
+      ? createPrioritySalienceFunction({
+          stimulusWeight: 0.3,
+          goalWeight: 0.4,
+          historyWeight: 0.3,
+        })
       : undefined, // use default
   };
 
   const workspace = createWorkspace(workspaceConfig, salienceContext);
 
-  // Modules — identical across all conditions
+  // Modules — identical across all conditions (v2 modules)
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));
-  const reasonerActor = createReasonerActor(
+  const reasonerActor = createReasonerActorV2(
     adapter,
     vfs,
     workspace.getWritePort(moduleId('reasoner-actor')),
   );
-  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
+  const monitor = createMonitorV2({ baseConfidenceThreshold: 0.3, stagnationThreshold: 2 });
 
   // Cycle state
   let totalTokens = 0;
@@ -243,7 +248,7 @@ async function runCondition(
   const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
 
   const MAX_CYCLES = 15;
-  const raControl: ReasonerActorControl = {
+  const raControl: ReasonerActorV2Control = {
     target: moduleId('reasoner-actor'),
     timestamp: Date.now(),
     strategy: 'plan',
@@ -331,15 +336,20 @@ async function runCondition(
       }
 
       // Update selection history for Condition E
+      // Hash function matches the canonical priority-attend.ts hashEntry():
+      //   `${entry.source}:${contentStr}`
       if (condition.salienceFunction === 'priority-attend' && raResult.output.toolResult) {
         const actionSuccess = (raResult.monitoring as any).success ?? true;
         // Record outcome for entries that were in the workspace when this action was taken
         const currentEntries = workspace.snapshot();
         for (const entry of currentEntries) {
-          const { simpleEntryHash } = await import('./priority-attend.js');
+          const contentStr = typeof entry.content === 'string'
+            ? entry.content
+            : JSON.stringify(entry.content);
+          const entryHash = `${entry.source}:${contentStr}`;
           salienceContext.selectionOutcomes = salienceContext.selectionOutcomes ?? [];
           salienceContext.selectionOutcomes.push({
-            entryHash: simpleEntryHash(entry),
+            entryHash,
             outcome: actionSuccess ? 'positive' : 'negative',
             timestamp: Date.now(),
           });

@@ -1,36 +1,32 @@
 /**
- * Condition C: Default-Interventionist Monitor
+ * Condition C: Default-Interventionist Monitor (EVC policy, default config)
  *
- * MONITOR/CONTROL phases fire only when monitoring signals cross thresholds.
- * This is the architecture's designed operating mode (RFC 001 Section IV).
+ * Uses EVC threshold policy with default parameters. The EVC equation
+ * balances expected payoff (prediction error magnitude) against expected
+ * cost (budget consumption), intervening only when the expected value
+ * of control is positive.
  *
- * Trigger conditions (matching production cycle.ts shouldIntervene logic):
- * - Reasoner confidence < 0.3
- * - Actor reports unexpected result
- * - Conflict detected in reasoning
+ * This is the architecture's designed operating mode (RFC 001 Section IV),
+ * now formalized through the Shenhav, Botvinick & Cohen (2013) EVC framework.
+ *
+ * Migrated from: manual confidence/unexpectedResult/conflict predicate
+ * Migrated to:   evcThresholdPolicy with defaults (payoffWeight=1, costWeight=1,
+ *                minPredictionError=0.1, bias=0)
  */
 
-import type { CycleConfig, ThresholdPolicy } from '../../../packages/pacta/src/cognitive/engine/cycle.js';
-import type { AggregatedSignals, MonitoringSignal } from '../../../packages/pacta/src/cognitive/algebra/index.js';
+import type { CycleConfig } from '../../../packages/pacta/src/cognitive/engine/cycle.js';
+import { evcThresholdPolicy } from '../../../packages/pacta/src/cognitive/engine/evc-policy.js';
 
-/** Production threshold policy — fires on anomaly signals. */
-export const INTERVENTIONIST_THRESHOLD: ThresholdPolicy = {
-  type: 'predicate',
-  shouldIntervene: (signals: AggregatedSignals): boolean => {
-    for (const [, signal] of signals) {
-      // Check reasoner signals
-      if (isReasonerLike(signal)) {
-        if (signal.confidence < 0.3) return true;
-        if ('conflictDetected' in signal && signal.conflictDetected) return true;
-      }
-      // Check actor signals
-      if (isActorLike(signal)) {
-        if (signal.unexpectedResult) return true;
-      }
-    }
-    return false;
-  },
-};
+/**
+ * EVC threshold policy — the designed operating mode.
+ *
+ * Default config balances payoff vs cost:
+ * - payoffWeight=1.0: prediction error fully weighted
+ * - costWeight=1.0: budget consumption fully weighted
+ * - minPredictionError=0.1: below this, never intervene (routine cycle)
+ * - bias=0.0: neutral — no inherent preference for or against intervention
+ */
+export const INTERVENTIONIST_THRESHOLD = evcThresholdPolicy();
 
 export const INTERVENTIONIST_CYCLE_CONFIG: Omit<CycleConfig, 'controlPolicy'> = {
   thresholds: INTERVENTIONIST_THRESHOLD,
@@ -45,22 +41,3 @@ export const INTERVENTIONIST_CYCLE_CONFIG: Omit<CycleConfig, 'controlPolicy'> = 
 };
 
 export const CONDITION_LABEL = 'interventionist' as const;
-
-// ── Type Guards ────────────────────────────────────────────────────
-
-interface ReasonerLike {
-  confidence: number;
-  conflictDetected?: boolean;
-}
-
-interface ActorLike {
-  unexpectedResult: boolean;
-}
-
-function isReasonerLike(signal: MonitoringSignal): signal is MonitoringSignal & ReasonerLike {
-  return 'confidence' in signal && typeof (signal as Record<string, unknown>).confidence === 'number';
-}
-
-function isActorLike(signal: MonitoringSignal): signal is MonitoringSignal & ActorLike {
-  return 'unexpectedResult' in signal && typeof (signal as Record<string, unknown>).unexpectedResult === 'boolean';
-}

@@ -28,6 +28,15 @@ export interface CycleMetrics {
   anomalyDetails: string[];
   /** Was this a useful intervention (led to strategy change or error fix)? */
   usefulIntervention: boolean;
+  // ── v2 enriched fields ──────────────────────────────────────────
+  /** Prediction error from MonitorV2 (max across signals). Null if not available. */
+  predictionError: number | null;
+  /** EVC intervention decision: true = intervened, false = skipped, null = no EVC policy. */
+  evcDecision: boolean | null;
+  /** Precision parameter from MonitorV2 (average across modules). Null if not available. */
+  precision: number | null;
+  /** Impasse type detected by ReasonerActorV2. Null if none. */
+  impasseType: string | null;
 }
 
 // ── Per-Run Metrics ───────────────────────────────────────────────
@@ -142,15 +151,42 @@ export class CostTracker implements TraceSink {
       // Check for anomaly detection in monitoring signals
       const anomalyDetails: string[] = [];
       let anomalyDetected = false;
+      // v2 enriched fields
+      let predictionError: number | null = null;
+      let precision: number | null = null;
+      let impasseType: string | null = null;
+
       for (const trace of cycleTraces) {
         if (trace.phase === 'MONITOR' && trace.monitoring) {
-          const mon = trace.monitoring as { anomalyDetected?: boolean; escalation?: string };
+          const mon = trace.monitoring as {
+            anomalyDetected?: boolean;
+            escalation?: string;
+            predictionError?: number;
+            precision?: number;
+          };
           if (mon.anomalyDetected) {
             anomalyDetected = true;
             if (mon.escalation) anomalyDetails.push(mon.escalation);
           }
+          // Extract v2 enriched fields from MonitorV2 monitoring signal
+          if (typeof mon.predictionError === 'number') {
+            predictionError = mon.predictionError;
+          }
+          if (typeof mon.precision === 'number') {
+            precision = mon.precision;
+          }
+        }
+        // Extract impasse from ReasonerActorV2 monitoring signal
+        if (trace.phase === 'REASON' && trace.monitoring) {
+          const raMon = trace.monitoring as { impasse?: { type: string } };
+          if (raMon.impasse?.type) {
+            impasseType = raMon.impasse.type;
+          }
         }
       }
+
+      // EVC decision: if monitor fired, the EVC policy decided to intervene
+      const evcDecision = monitorFired ? true : (anomalyDetected ? false : null);
 
       cycles.push({
         cycleNumber: cycleNum,
@@ -165,6 +201,11 @@ export class CostTracker implements TraceSink {
         anomalyDetails,
         // Useful intervention is determined post-hoc by comparing the next cycle's behavior
         usefulIntervention: false,
+        // v2 enriched fields
+        predictionError,
+        evcDecision,
+        precision,
+        impasseType,
       });
     }
 

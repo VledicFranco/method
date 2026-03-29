@@ -2,16 +2,15 @@
  * EXP-024 Runner — Metacognitive Error Detection
  *
  * Tests whether the Monitor module detects reasoning errors injected into
- * synthetic monitoring signal streams. Two conditions:
+ * synthetic monitoring signal streams. Three conditions:
  *
- *   A (baseline):  No Monitor — measure Reasoner's self-correction signals only
- *   B (monitor):   Monitor module active — measure anomaly detection accuracy
- *
- * Condition C (SLM Monitor) is deferred until Gate 4 (R-01) passes.
+ *   A (baseline):    No Monitor — measure Reasoner's self-correction signals only
+ *   B (v1-monitor):  v1 Monitor module active — measure anomaly detection accuracy
+ *   C (v2-monitor):  v2 MonitorV2 with prediction-error tracking, adaptive thresholds
  *
  * Usage:
  *   ANTHROPIC_API_KEY=... npx tsx experiments/exp-metacognitive-error/scripts/run.ts \
- *     [--condition a|b|all] [--runs 10] [--seed 42] [--error-type E1|E2|E3|E4|all]
+ *     [--condition a|b|c|all] [--runs 10] [--seed 42] [--error-type E1|E2|E3|E4|all]
  *
  * Output: JSON results to experiments/exp-metacognitive-error/results/
  */
@@ -50,6 +49,8 @@ try {
 import type { AggregatedSignals, MonitoringSignal } from '../../../packages/pacta/src/cognitive/algebra/index.js';
 import { moduleId } from '../../../packages/pacta/src/cognitive/algebra/index.js';
 import { createMonitor, type MonitorState, type MonitorReport } from '../../../packages/pacta/src/cognitive/modules/monitor.js';
+import { createMonitorV2 } from '../../../packages/pacta/src/cognitive/modules/monitor-v2.js';
+import type { MonitorV2State, MonitorV2Config } from '../../../packages/pacta/src/cognitive/algebra/enriched-signals.js';
 
 import {
   generateStream,
@@ -63,7 +64,7 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────
 
-type Condition = 'A' | 'B';
+type Condition = 'A' | 'B' | 'C';
 
 /** Result of evaluating a single cycle against ground truth. */
 interface CycleEvaluation {
@@ -89,6 +90,7 @@ interface StreamEvaluation {
   falseNegatives: number;
   errorDetectionRate: number;
   falsePositiveRate: number;
+  dPrime: number;
   detectionLatencies: number[];
   meanDetectionLatency: number;
   perCycle: CycleEvaluation[];
@@ -110,6 +112,8 @@ interface AggregatedResult {
   totalFN: number;
   overallEDR: number;
   overallFPR: number;
+  meanDPrime: number;
+  stdDPrime: number;
 }
 
 /** Full experiment results. */
@@ -125,6 +129,7 @@ interface ExperimentResults {
       confidenceThreshold: number;
       stagnationThreshold: number;
     };
+    monitorV2Config: MonitorV2Config;
   };
   aggregated: AggregatedResult[];
   streams: StreamEvaluation[];
@@ -133,6 +138,54 @@ interface ExperimentResults {
     gateG2: { pass: boolean; detail: string };
     gateG3: { pass: boolean; detail: string };
   };
+}
+
+// ── d' (d-prime) — Signal Detection Theory ───────────────────────────
+
+/**
+ * Approximate inverse normal CDF (probit function) using Abramowitz & Stegun
+ * rational approximation (formula 26.2.23). Accurate to ~4.5e-4.
+ *
+ * Used for computing d' = Z(hit rate) - Z(false alarm rate).
+ */
+function inverseNormalCDF(p: number): number {
+  // Handle boundary — clamp should prevent this, but be safe
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+
+  // Use symmetry: for p > 0.5, compute -Z(1-p)
+  const sign = p < 0.5 ? -1 : 1;
+  const q = p < 0.5 ? p : 1 - p;
+
+  // Rational approximation constants (Abramowitz & Stegun 26.2.23)
+  const t = Math.sqrt(-2 * Math.log(q));
+  const c0 = 2.515517;
+  const c1 = 0.802853;
+  const c2 = 0.010328;
+  const d1 = 1.432788;
+  const d2 = 0.189269;
+  const d3 = 0.001308;
+
+  const numerator = c0 + c1 * t + c2 * t * t;
+  const denominator = 1 + d1 * t + d2 * t * t + d3 * t * t * t;
+
+  return sign * (t - numerator / denominator);
+}
+
+/**
+ * Compute d' (d-prime) — metacognitive sensitivity metric from signal detection theory.
+ *
+ * d' = Z(hit rate) - Z(false alarm rate)
+ *
+ * Higher d' indicates better discrimination between error and clean cycles.
+ * d' = 0 means no discrimination; d' > 1 indicates meaningful sensitivity.
+ *
+ * Rates are clamped to [0.01, 0.99] to avoid infinite Z-scores.
+ */
+function computeDPrime(hitRate: number, falseAlarmRate: number): number {
+  const hr = Math.min(Math.max(hitRate, 0.01), 0.99);
+  const far = Math.min(Math.max(falseAlarmRate, 0.01), 0.99);
+  return inverseNormalCDF(hr) - inverseNormalCDF(far);
 }
 
 // ── Condition A: Baseline (No Monitor) ─────────────────────────────
@@ -199,6 +252,7 @@ function evaluateConditionA(stream: LabeledSignalStream): StreamEvaluation {
 
   const edr = tp + fn > 0 ? tp / (tp + fn) : 0;
   const fpr = fp + tn > 0 ? fp / (fp + tn) : 0;
+  const dPrime = computeDPrime(edr, fpr);
   const meanLatency = latencies.length > 0
     ? latencies.reduce((a, b) => a + b, 0) / latencies.length
     : Infinity;
@@ -216,6 +270,7 @@ function evaluateConditionA(stream: LabeledSignalStream): StreamEvaluation {
     falseNegatives: fn,
     errorDetectionRate: edr,
     falsePositiveRate: fpr,
+    dPrime,
     detectionLatencies: latencies,
     meanDetectionLatency: meanLatency,
     perCycle,
@@ -316,6 +371,7 @@ async function evaluateConditionB(
 
   const edr = tp + fn > 0 ? tp / (tp + fn) : 0;
   const fpr = fp + tn > 0 ? fp / (fp + tn) : 0;
+  const dPrime = computeDPrime(edr, fpr);
   const meanLatency = latencies.length > 0
     ? latencies.reduce((a, b) => a + b, 0) / latencies.length
     : Infinity;
@@ -333,6 +389,127 @@ async function evaluateConditionB(
     falseNegatives: fn,
     errorDetectionRate: edr,
     falsePositiveRate: fpr,
+    dPrime,
+    detectionLatencies: latencies,
+    meanDetectionLatency: meanLatency,
+    perCycle,
+  };
+}
+
+// ── Condition C: MonitorV2 (Prediction-Error Tracking) ───────────────
+
+/**
+ * Condition C runs the MonitorV2 module over the signal stream. MonitorV2 is a
+ * drop-in replacement for v1 Monitor, adding:
+ *   - Prediction-error tracking (Friston 2009) — per-module expectation models
+ *   - Precision weighting (Da Costa 2024) — inverse-variance reliability weights
+ *   - Adaptive thresholds (Botvinick 2001) — Gratton effect on confidence threshold
+ *   - Metacognitive taxonomy (Nelson & Narens 1990) — EOL, JOL, FOK, RC
+ *
+ * Produces the same MonitorReport output as v1 for direct comparison.
+ */
+async function evaluateConditionC(
+  stream: LabeledSignalStream,
+  v2Config: MonitorV2Config,
+): Promise<StreamEvaluation> {
+  const monitor = createMonitorV2(v2Config);
+
+  let state: MonitorV2State = monitor.initialState();
+  const perCycle: CycleEvaluation[] = [];
+  let tp = 0, fp = 0, tn = 0, fn = 0;
+  const latencies: number[] = [];
+
+  // Track pending error detections for latency measurement
+  const pendingErrors: Map<number, ErrorType> = new Map();
+
+  for (let i = 0; i < stream.cycles.length; i++) {
+    const signals = stream.cycles[i];
+    const label = stream.labels[i];
+    const hasError = label.injectedError !== null;
+
+    // Run MonitorV2.step() — same interface as v1
+    const result = await monitor.step(
+      signals,
+      state,
+      { target: moduleId('monitor'), timestamp: Date.now() } as any,
+    );
+    state = result.state;
+
+    const monitorFlagged = result.output.anomalies.length > 0;
+
+    // Track pending errors for latency
+    if (hasError) {
+      pendingErrors.set(i, label.injectedError!);
+    }
+
+    // If Monitor flagged this cycle, resolve pending errors
+    if (monitorFlagged) {
+      let closestErrorCycle: number | null = null;
+      let minDistance = Infinity;
+      for (const [errorCycle] of pendingErrors) {
+        const distance = i - errorCycle;
+        if (distance >= 0 && distance < minDistance) {
+          minDistance = distance;
+          closestErrorCycle = errorCycle;
+        }
+      }
+
+      if (closestErrorCycle !== null) {
+        latencies.push(i - closestErrorCycle);
+        pendingErrors.delete(closestErrorCycle);
+      }
+    }
+
+    let classification: CycleEvaluation['classification'];
+    if (hasError && monitorFlagged) {
+      classification = 'true-positive';
+      tp++;
+    } else if (hasError && !monitorFlagged) {
+      classification = 'false-negative';
+      fn++;
+    } else if (!hasError && monitorFlagged) {
+      classification = 'false-positive';
+      fp++;
+    } else {
+      classification = 'true-negative';
+      tn++;
+    }
+
+    perCycle.push({
+      cycleIndex: i,
+      groundTruth: label.injectedError,
+      monitorFlagged,
+      anomalies: result.output.anomalies.map(a => ({
+        moduleId: String(a.moduleId),
+        type: a.type,
+        detail: a.detail,
+      })),
+      escalation: result.output.escalation,
+      classification,
+    });
+  }
+
+  const edr = tp + fn > 0 ? tp / (tp + fn) : 0;
+  const fpr = fp + tn > 0 ? fp / (fp + tn) : 0;
+  const dPrime = computeDPrime(edr, fpr);
+  const meanLatency = latencies.length > 0
+    ? latencies.reduce((a, b) => a + b, 0) / latencies.length
+    : Infinity;
+
+  return {
+    errorType: stream.errorType,
+    condition: 'C',
+    seed: stream.seed,
+    totalCycles: stream.metadata.totalCycles,
+    errorCycles: stream.metadata.errorCycles,
+    cleanCycles: stream.metadata.cleanCycles,
+    truePositives: tp,
+    falsePositives: fp,
+    trueNegatives: tn,
+    falseNegatives: fn,
+    errorDetectionRate: edr,
+    falsePositiveRate: fpr,
+    dPrime,
     detectionLatencies: latencies,
     meanDetectionLatency: meanLatency,
     perCycle,
@@ -349,16 +526,19 @@ function aggregate(evals: StreamEvaluation[]): AggregatedResult {
 
   const edrs = evals.map(e => e.errorDetectionRate);
   const fprs = evals.map(e => e.falsePositiveRate);
+  const dPrimes = evals.map(e => e.dPrime);
   const latencies = evals.flatMap(e => e.detectionLatencies);
 
   const meanEDR = edrs.reduce((a, b) => a + b, 0) / edrs.length;
   const meanFPR = fprs.reduce((a, b) => a + b, 0) / fprs.length;
+  const meanDPrime = dPrimes.reduce((a, b) => a + b, 0) / dPrimes.length;
   const meanLatency = latencies.length > 0
     ? latencies.reduce((a, b) => a + b, 0) / latencies.length
     : Infinity;
 
   const stdEDR = Math.sqrt(edrs.reduce((sum, x) => sum + (x - meanEDR) ** 2, 0) / edrs.length);
   const stdFPR = Math.sqrt(fprs.reduce((sum, x) => sum + (x - meanFPR) ** 2, 0) / fprs.length);
+  const stdDPrime = Math.sqrt(dPrimes.reduce((sum, x) => sum + (x - meanDPrime) ** 2, 0) / dPrimes.length);
 
   const totalTP = evals.reduce((sum, e) => sum + e.truePositives, 0);
   const totalFP = evals.reduce((sum, e) => sum + e.falsePositives, 0);
@@ -380,29 +560,35 @@ function aggregate(evals: StreamEvaluation[]): AggregatedResult {
     totalFN,
     overallEDR: totalTP + totalFN > 0 ? totalTP / (totalTP + totalFN) : 0,
     overallFPR: totalFP + totalTN > 0 ? totalFP / (totalFP + totalTN) : 0,
+    meanDPrime,
+    stdDPrime,
   };
 }
 
 // ── Gate Evaluation ────────────────────────────────────────────────
 
 function evaluateGates(aggregated: AggregatedResult[]): ExperimentResults['summary'] {
+  // Evaluate gates against the best monitor condition present (prefer C over B)
+  const conditionC = aggregated.filter(a => a.condition === 'C');
   const conditionB = aggregated.filter(a => a.condition === 'B');
+  const monitorResults = conditionC.length > 0 ? conditionC : conditionB;
+  const monitorLabel = conditionC.length > 0 ? 'C (v2)' : 'B (v1)';
 
   // G1: EDR > 50% for at least 2/4 error types
-  const typesAbove50 = conditionB.filter(a => a.overallEDR > 0.5);
+  const typesAbove50 = monitorResults.filter(a => a.overallEDR > 0.5);
   const g1Pass = typesAbove50.length >= 2;
-  const g1Detail = `${typesAbove50.length}/4 error types with EDR > 50%: ${typesAbove50.map(a => `${a.errorType}(${(a.overallEDR * 100).toFixed(1)}%)`).join(', ') || 'none'}`;
+  const g1Detail = `[${monitorLabel}] ${typesAbove50.length}/4 error types with EDR > 50%: ${typesAbove50.map(a => `${a.errorType}(${(a.overallEDR * 100).toFixed(1)}%)`).join(', ') || 'none'}`;
 
   // G2: FPR < 20% across all error types
-  const typesBelow20FPR = conditionB.filter(a => a.overallFPR < 0.2);
-  const g2Pass = typesBelow20FPR.length === conditionB.length;
-  const g2Detail = `${typesBelow20FPR.length}/${conditionB.length} error types with FPR < 20%: ${conditionB.map(a => `${a.errorType}(${(a.overallFPR * 100).toFixed(1)}%)`).join(', ')}`;
+  const typesBelow20FPR = monitorResults.filter(a => a.overallFPR < 0.2);
+  const g2Pass = typesBelow20FPR.length === monitorResults.length;
+  const g2Detail = `[${monitorLabel}] ${typesBelow20FPR.length}/${monitorResults.length} error types with FPR < 20%: ${monitorResults.map(a => `${a.errorType}(${(a.overallFPR * 100).toFixed(1)}%)`).join(', ')}`;
 
   // G3: Mean detection latency <= 2 cycles
-  const finiteLat = conditionB.filter(a => isFinite(a.meanDetectionLatency));
+  const finiteLat = monitorResults.filter(a => isFinite(a.meanDetectionLatency));
   const typesLowLatency = finiteLat.filter(a => a.meanDetectionLatency <= 2);
   const g3Pass = typesLowLatency.length === finiteLat.length && finiteLat.length > 0;
-  const g3Detail = `${typesLowLatency.length}/${finiteLat.length} error types with mean latency <= 2: ${finiteLat.map(a => `${a.errorType}(${a.meanDetectionLatency.toFixed(2)} cycles)`).join(', ')}`;
+  const g3Detail = `[${monitorLabel}] ${typesLowLatency.length}/${finiteLat.length} error types with mean latency <= 2: ${finiteLat.map(a => `${a.errorType}(${a.meanDetectionLatency.toFixed(2)} cycles)`).join(', ')}`;
 
   return {
     gateG1: { pass: g1Pass, detail: g1Detail },
@@ -422,12 +608,13 @@ interface CLIArgs {
     confidenceThreshold: number;
     stagnationThreshold: number;
   };
+  monitorV2Config: MonitorV2Config;
 }
 
 function parseArgs(): CLIArgs {
   const args = process.argv.slice(2);
   const result: CLIArgs = {
-    conditions: ['A', 'B'],
+    conditions: ['A', 'B', 'C'],
     runsPerType: 10,
     baseSeed: 42,
     errorTypes: allErrorTypes(),
@@ -435,15 +622,24 @@ function parseArgs(): CLIArgs {
       confidenceThreshold: 0.3,
       stagnationThreshold: 3,
     },
+    monitorV2Config: {
+      baseConfidenceThreshold: 0.3,
+      stagnationThreshold: 3,
+      predictionErrorThreshold: 1.5,
+      expectationAlpha: 0.2,
+      grattonDelta: 0.05,
+      thresholdFloor: 0.1,
+      thresholdCeiling: 0.6,
+    },
   };
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--condition': {
         const val = args[++i]?.toUpperCase();
-        if (val === 'ALL') result.conditions = ['A', 'B'];
-        else if (val === 'A' || val === 'B') result.conditions = [val];
-        else { console.error(`Unknown condition: ${val}`); process.exit(1); }
+        if (val === 'ALL') result.conditions = ['A', 'B', 'C'];
+        else if (val === 'A' || val === 'B' || val === 'C') result.conditions = [val];
+        else { console.error(`Unknown condition: ${val}. Use A, B, C, or ALL`); process.exit(1); }
         break;
       }
       case '--runs':
@@ -501,7 +697,8 @@ async function main() {
   console.log(`Error types: ${args.errorTypes.join(', ')}`);
   console.log(`Runs per type: ${args.runsPerType}`);
   console.log(`Base seed: ${args.baseSeed}`);
-  console.log(`Monitor config: confidence=${args.monitorConfig.confidenceThreshold}, stagnation=${args.monitorConfig.stagnationThreshold}`);
+  console.log(`Monitor v1 config: confidence=${args.monitorConfig.confidenceThreshold}, stagnation=${args.monitorConfig.stagnationThreshold}`);
+  console.log(`Monitor v2 config: baseThreshold=${args.monitorV2Config.baseConfidenceThreshold}, predErrorThreshold=${args.monitorV2Config.predictionErrorThreshold}, alpha=${args.monitorV2Config.expectationAlpha}, grattonDelta=${args.monitorV2Config.grattonDelta}`);
   console.log('');
 
   const allStreamEvals: StreamEvaluation[] = [];
@@ -527,8 +724,10 @@ async function main() {
 
         if (condition === 'A') {
           evaluation = evaluateConditionA(stream);
-        } else {
+        } else if (condition === 'B') {
           evaluation = await evaluateConditionB(stream, args.monitorConfig);
+        } else {
+          evaluation = await evaluateConditionC(stream, args.monitorV2Config);
         }
 
         conditionEvals.push(evaluation);
@@ -537,13 +736,14 @@ async function main() {
         // Per-run summary
         const edrPct = (evaluation.errorDetectionRate * 100).toFixed(1);
         const fprPct = (evaluation.falsePositiveRate * 100).toFixed(1);
-        console.log(`    Run ${run + 1}: EDR=${edrPct}% FPR=${fprPct}% TP=${evaluation.truePositives} FP=${evaluation.falsePositives} FN=${evaluation.falseNegatives}`);
+        const dp = evaluation.dPrime.toFixed(2);
+        console.log(`    Run ${run + 1}: EDR=${edrPct}% FPR=${fprPct}% d'=${dp} TP=${evaluation.truePositives} FP=${evaluation.falsePositives} FN=${evaluation.falseNegatives}`);
       }
 
       // Aggregate
       const agg = aggregate(conditionEvals);
       allAggregated.push(agg);
-      console.log(`    ── Aggregate: EDR=${(agg.overallEDR * 100).toFixed(1)}% FPR=${(agg.overallFPR * 100).toFixed(1)}% Latency=${isFinite(agg.meanDetectionLatency) ? agg.meanDetectionLatency.toFixed(2) : 'N/A'}`);
+      console.log(`    ── Aggregate: EDR=${(agg.overallEDR * 100).toFixed(1)}% FPR=${(agg.overallFPR * 100).toFixed(1)}% d'=${agg.meanDPrime.toFixed(2)}(±${agg.stdDPrime.toFixed(2)}) Latency=${isFinite(agg.meanDetectionLatency) ? agg.meanDetectionLatency.toFixed(2) : 'N/A'}`);
     }
     console.log('');
   }
@@ -561,6 +761,7 @@ async function main() {
       runsPerType: args.runsPerType,
       baseSeed: args.baseSeed,
       monitorConfig: args.monitorConfig,
+      monitorV2Config: args.monitorV2Config,
     },
     aggregated: allAggregated,
     streams: allStreamEvals,
@@ -580,17 +781,35 @@ async function main() {
   console.log(`G3 (Latency <= 2 cycles):      ${summary.gateG3.pass ? 'PASS' : 'FAIL'} — ${summary.gateG3.detail}`);
 
   // Condition comparison
-  if (args.conditions.includes('A') && args.conditions.includes('B')) {
-    console.log('\n=== Condition Comparison (A vs B) ===');
+  const presentConditions = args.conditions.filter(c => allAggregated.some(a => a.condition === c));
+  if (presentConditions.length >= 2) {
+    console.log(`\n=== Condition Comparison (${presentConditions.join(' vs ')}) ===`);
     for (const errorType of args.errorTypes) {
-      const aggA = allAggregated.find(a => a.errorType === errorType && a.condition === 'A');
-      const aggB = allAggregated.find(a => a.errorType === errorType && a.condition === 'B');
-      if (aggA && aggB) {
-        const edrDelta = aggB.overallEDR - aggA.overallEDR;
-        const fprDelta = aggB.overallFPR - aggA.overallFPR;
+      const byCondition = new Map<Condition, AggregatedResult>();
+      for (const c of presentConditions) {
+        const agg = allAggregated.find(a => a.errorType === errorType && a.condition === c);
+        if (agg) byCondition.set(c, agg);
+      }
+
+      if (byCondition.size >= 2) {
         console.log(`  ${errorType}:`);
-        console.log(`    EDR: A=${(aggA.overallEDR * 100).toFixed(1)}% B=${(aggB.overallEDR * 100).toFixed(1)}% delta=${(edrDelta * 100).toFixed(1)}pp`);
-        console.log(`    FPR: A=${(aggA.overallFPR * 100).toFixed(1)}% B=${(aggB.overallFPR * 100).toFixed(1)}% delta=${(fprDelta * 100).toFixed(1)}pp`);
+        const condLabels = [...byCondition.keys()];
+        const edrLine = condLabels.map(c => `${c}=${(byCondition.get(c)!.overallEDR * 100).toFixed(1)}%`).join(' ');
+        const fprLine = condLabels.map(c => `${c}=${(byCondition.get(c)!.overallFPR * 100).toFixed(1)}%`).join(' ');
+        const dpLine = condLabels.map(c => `${c}=${byCondition.get(c)!.meanDPrime.toFixed(2)}`).join(' ');
+        console.log(`    EDR: ${edrLine}`);
+        console.log(`    FPR: ${fprLine}`);
+        console.log(`    d':  ${dpLine}`);
+
+        // Show B->C delta if both present
+        if (byCondition.has('B') && byCondition.has('C')) {
+          const aggB = byCondition.get('B')!;
+          const aggC = byCondition.get('C')!;
+          const edrDelta = aggC.overallEDR - aggB.overallEDR;
+          const fprDelta = aggC.overallFPR - aggB.overallFPR;
+          const dpDelta = aggC.meanDPrime - aggB.meanDPrime;
+          console.log(`    v2 delta: EDR=${(edrDelta * 100).toFixed(1)}pp FPR=${(fprDelta * 100).toFixed(1)}pp d'=${dpDelta.toFixed(2)}`);
+        }
       }
     }
   }

@@ -63,9 +63,9 @@ import type {
   TraceSink,
 } from '../../../packages/pacta/src/cognitive/algebra/index.js';
 
-import { createReasonerActor, type ReasonerActorControl } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
+import { createReasonerActorV2, type ReasonerActorV2Control } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor-v2.js';
 import { createObserver } from '../../../packages/pacta/src/cognitive/modules/observer.js';
-import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/monitor.js';
+import { createMonitorV2 } from '../../../packages/pacta/src/cognitive/modules/monitor-v2.js';
 
 import type { ThresholdPolicy } from '../../../packages/pacta/src/cognitive/engine/cycle.js';
 
@@ -188,14 +188,14 @@ async function executeRun(
   };
   const workspace = createWorkspace({ capacity: 8 }, salienceContext);
 
-  // Modules
+  // Modules (v2)
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));
-  const reasonerActor = createReasonerActor(
+  const reasonerActor = createReasonerActorV2(
     adapter,
     vfs,
     workspace.getWritePort(moduleId('reasoner-actor')),
   );
-  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
+  const monitor = createMonitorV2({ baseConfidenceThreshold: 0.3, stagnationThreshold: 2 });
 
   // Cycle state
   let observerState = observer.initialState();
@@ -204,7 +204,7 @@ async function executeRun(
   let prevRAMonitoring: MonitoringSignal | null = null;
 
   const MAX_CYCLES = 15;
-  const raControl: ReasonerActorControl = {
+  const raControl: ReasonerActorV2Control = {
     target: moduleId('reasoner-actor'),
     timestamp: Date.now(),
     strategy: 'plan',

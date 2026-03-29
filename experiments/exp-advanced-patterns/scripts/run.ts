@@ -66,9 +66,10 @@ import type {
   SalienceContext,
 } from '../../../packages/pacta/src/cognitive/algebra/index.js';
 
-import { createReasonerActor, type ReasonerActorControl } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
+// v2 enrichedPreset — composes MonitorV2, ReasonerActorV2, PriorityAttend, EVC, PrecisionAdapter
+import { enrichedPreset } from '../../../packages/pacta/src/cognitive/presets/enriched.js';
+import type { ReasonerActorV2Control } from '../../../packages/pacta/src/cognitive/modules/reasoner-actor-v2.js';
 import { createObserver } from '../../../packages/pacta/src/cognitive/modules/observer.js';
-import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/monitor.js';
 import { createMemoryModuleV2, type MemoryV2Control } from '../../../packages/pacta/src/cognitive/modules/memory-module-v2.js';
 import { InMemoryMemory } from '../../../packages/pacta/src/ports/memory-impl.js';
 import type { MemoryPortV2 } from '../../../packages/pacta/src/ports/memory-port.js';
@@ -202,12 +203,21 @@ async function runTask(
 
   const foldedContext: string[] = [];
 
-  // Modules
+  // Modules — v2 via enrichedPreset (MonitorV2 + ReasonerActorV2 + PriorityAttend + EVC + PrecisionAdapter)
   const observer = createObserver(workspace.getWritePort(moduleId('observer')));
-  const reasonerActor = createReasonerActor(
-    adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
+  const preset = enrichedPreset(
+    {
+      adapter,
+      tools: vfs,
+      writePort: workspace.getWritePort(moduleId('reasoner-actor')),
+    },
+    {
+      monitor: { baseConfidenceThreshold: 0.3, stagnationThreshold: 2 },
+      workspace: { capacity: config.workspace.capacity },
+    },
   );
-  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
+  const reasonerActor = preset.modules.reasoner; // ReasonerActorV2 (fills both reasoner + actor slots)
+  const monitor = preset.modules.monitor;         // MonitorV2
 
   // Memory
   const memoryPort = sharedMemoryPort ?? new InMemoryMemory();
@@ -235,7 +245,7 @@ async function runTask(
   let prevAction: { name: string; success: boolean; target?: string } | undefined;
   let cycles = 0;
 
-  const raControl: ReasonerActorControl = {
+  const raControl: ReasonerActorV2Control = {
     target: moduleId('reasoner-actor'),
     timestamp: Date.now(),
     strategy: 'plan',

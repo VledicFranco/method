@@ -1,37 +1,44 @@
-# Condition C: SLM Monitor — DEFERRED
+# Condition C: MonitorV2 — Prediction-Error Tracking + Adaptive Thresholds
 #
-# Uses the SLM-compiled Monitor (phase-2-dsl, trained via exp-slm Gate 4).
-# The SLM receives signals in the Monitor DSL format (SIGNALS: -> ANOMALIES:/
-# ESCALATE:/RESTRICT:/REPLAN:) and produces structured output parsed by the
-# monitor-v2 PEG grammar.
+# Uses MonitorV2 (createMonitorV2) which extends the v1 Monitor with:
+#   - Prediction-error tracking (Friston 2009) — per-module expectation models
+#   - Precision weighting (Da Costa 2024) — inverse-variance reliability weights
+#   - Adaptive thresholds (Botvinick 2001) — Gratton effect on confidence threshold
+#   - Metacognitive taxonomy (Nelson & Narens 1990) — EOL, JOL, FOK, RC
 #
-# BLOCKED: This condition requires R-01 (Gate 4: temperature calibration +
-# ONNX export + scaling runs) to pass first. The SLM model must be validated
-# for production-quality Monitor output before testing error detection.
+# MonitorV2 is a drop-in replacement for v1 Monitor. It produces the same
+# MonitorReport output (anomalies, escalation, restrictedActions, forceReplan)
+# with additional enriched monitoring signal fields (predictionError, precision,
+# conflictEnergy, metacognitive judgments).
 #
-# When unblocked:
-#   1. Load the ONNX-exported Monitor SLM
-#   2. Convert AggregatedSignals -> DSL input via formatAsDSL()
-#   3. Run SLM inference -> DSL output
-#   4. Parse DSL output via monitor-v2.peggy grammar -> MonitorReport
-#   5. Evaluate MonitorReport against ground truth (same as Condition B)
+# This condition replaces the previously-deferred SLM Monitor condition.
 
 condition: C
-name: "slm-monitor"
-description: "SLM-compiled Monitor — deferred until Gate 4 passes"
-status: blocked
-blocked_by: "R-01"
+name: "v2-monitor-prediction-error"
+description: "MonitorV2 with prediction-error tracking, adaptive thresholds, and precision weighting"
 
 monitor:
   active: true
-  implementation: "slm"
+  implementation: "monitorv2"  # createMonitorV2() — prediction-error tracking Monitor
   config:
-    modelPath: "../../artifacts/exp-slm/models/monitor-v2/model.onnx"
-    grammarPath: "../../../experiments/exp-slm/phase-2-dsl/grammars/monitor-v2.peggy"
-    temperature: 0.0  # Deterministic inference for reproducibility
+    baseConfidenceThreshold: 0.3
+    grattonDelta: 0.05
+    thresholdFloor: 0.1
+    thresholdCeiling: 0.6
+    predictionErrorThreshold: 1.5
+    expectationAlpha: 0.2
+    stagnationThreshold: 3
 
 evaluation:
   method: "monitor-output"
+  # Same evaluation as Condition B — MonitorReport anomalies are checked against ground truth
+  # Additional enriched fields (predictionError, precision, d') are logged but not gated
+
+metrics:
+  # d' (d-prime) from signal detection theory — metacognitive sensitivity
+  # d' = Z(hit rate) - Z(false alarm rate)
+  # d' > 1.0 indicates meaningful discrimination ability
+  dPrime: true
 
 stream:
   minCycles: 12
@@ -42,6 +49,3 @@ stream:
 runs:
   count: 10
   baseSeed: 42
-
-# Gate 4 parity requirement:
-# SLM Monitor EDR must be within 10% of LLM Monitor EDR (Gate G4)
