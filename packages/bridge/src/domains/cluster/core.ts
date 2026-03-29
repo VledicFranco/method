@@ -28,6 +28,11 @@ export class ClusterDomain {
   private readonly config: ClusterConfig;
   private readonly logger: ClusterLogger;
   private readonly manager: MembershipManager | null;
+  private readonly ports: {
+    discovery: DiscoveryProvider;
+    network: NetworkProvider;
+    resources: ResourceProvider;
+  } | null;
 
   constructor(
     config: ClusterConfig,
@@ -43,16 +48,19 @@ export class ClusterDomain {
 
     if (!config.enabled) {
       this.manager = null;
+      this.ports = null;
       return;
     }
+
+    this.ports = { discovery: ports.discovery, network: ports.network, resources: ports.resources };
 
     this.manager = new MembershipManager(
       {
         nodeId: config.nodeId,
-        instanceName: process.env.INSTANCE_NAME ?? 'bridge',
+        instanceName: config.instanceName ?? 'bridge',
         address: {
-          host: process.env.HOST ?? 'localhost',
-          port: parseInt(process.env.PORT ?? '3456', 10),
+          host: config.host ?? 'localhost',
+          port: config.port ?? 3456,
         },
       },
       { discovery: ports.discovery, network: ports.network, resources: ports.resources },
@@ -71,21 +79,61 @@ export class ClusterDomain {
 
   /** Start membership manager and run initial discovery. */
   async start(): Promise<void> {
-    if (!this.manager) {
+    if (!this.manager || !this.ports) {
       this.logger.info('[cluster] Cluster disabled — skipping start');
       return;
     }
 
     this.logger.info(`[cluster] Starting cluster node ${this.config.nodeId}`);
     this.manager.start();
+
+    // Run initial peer discovery — without this, the node starts with zero peers
+    try {
+      const peers = await this.ports.discovery.discover();
+      for (const addr of peers) {
+        try {
+          await this.ports.network.send(addr, {
+            type: 'join',
+            from: this.manager.getState().self.nodeId,
+            node: this.manager.getState().self,
+          });
+        } catch {
+          this.logger.warn(`[cluster] Failed to announce to ${addr.host}:${addr.port}`);
+        }
+      }
+      if (peers.length > 0) {
+        this.logger.info(`[cluster] Initial discovery found ${peers.length} peer(s)`);
+      }
+    } catch (err) {
+      this.logger.warn(`[cluster] Initial discovery failed: ${(err as Error).message}`);
+    }
+
     this.logger.info('[cluster] Membership manager started');
   }
 
   /** Stop membership manager and announce leave to peers. */
   async stop(): Promise<void> {
-    if (!this.manager) return;
+    if (!this.manager || !this.ports) return;
 
-    this.logger.info('[cluster] Stopping cluster node');
+    this.logger.info('[cluster] Stopping cluster node — announcing leave to peers');
+
+    // Best-effort leave announcement before stopping timers
+    const state = this.manager.getState();
+    const leaveMsg = {
+      type: 'leave' as const,
+      from: state.self.nodeId,
+      nodeId: state.self.nodeId,
+    };
+    for (const peer of state.peers.values()) {
+      if (peer.status === 'alive' || peer.status === 'suspect') {
+        try {
+          await this.ports.network.send(peer.address, leaveMsg);
+        } catch {
+          // Best-effort — peer will eventually detect via timeout
+        }
+      }
+    }
+
     this.manager.stop();
     this.logger.info('[cluster] Membership manager stopped');
   }

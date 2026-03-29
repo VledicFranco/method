@@ -164,6 +164,30 @@ export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDe
     });
   });
 
+  // ── POST /cluster/state-sync — receive full state broadcast from peer ──
+
+  app.post<{
+    Body: { from: string; nodes: import('@method/cluster').ClusterNode[] };
+  }>('/cluster/state-sync', async (request, reply) => {
+    if (!domain.isEnabled()) return clusterDisabledReply(reply);
+
+    const { from, nodes } = request.body ?? {};
+    if (!from || !Array.isArray(nodes)) {
+      return reply.status(400).send({ error: 'Missing required fields: from, nodes' });
+    }
+
+    const manager = domain.getManager();
+    if (!manager) return reply.status(500).send({ error: 'Manager unavailable' });
+
+    // Process each node from the state broadcast (handleJoin merges into local state)
+    for (const node of nodes) {
+      if (node.nodeId === manager.getState().self.nodeId) continue;
+      manager.handleJoin(node);
+    }
+
+    return reply.status(200).send({ acknowledged: true, generation: manager.getState().generation });
+  });
+
   // ── POST /cluster/events — receive federated events ──
 
   app.post<{
@@ -187,10 +211,11 @@ export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDe
   app.post('/cluster/drain', async (_request, reply) => {
     if (!domain.isEnabled()) return clusterDisabledReply(reply);
 
-    const state = domain.getState();
-    if (!state) return reply.status(500).send({ error: 'Cluster state unavailable' });
+    const manager = domain.getManager();
+    if (!manager) return reply.status(500).send({ error: 'Manager unavailable' });
 
-    state.self.status = 'draining';
+    manager.setStatus('draining');
+    const state = manager.getState();
     app.log.info(`[cluster] Node ${state.self.nodeId} entering drain mode`);
 
     return reply.status(200).send({
@@ -204,10 +229,11 @@ export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDe
   app.post('/cluster/resume', async (_request, reply) => {
     if (!domain.isEnabled()) return clusterDisabledReply(reply);
 
-    const state = domain.getState();
-    if (!state) return reply.status(500).send({ error: 'Cluster state unavailable' });
+    const manager = domain.getManager();
+    if (!manager) return reply.status(500).send({ error: 'Manager unavailable' });
 
-    state.self.status = 'alive';
+    manager.setStatus('alive');
+    const state = manager.getState();
     app.log.info(`[cluster] Node ${state.self.nodeId} resumed from drain mode`);
 
     return reply.status(200).send({

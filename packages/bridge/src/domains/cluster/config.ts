@@ -77,6 +77,12 @@ export const ClusterConfigSchema = z.object({
   federationEnabled: z.boolean().default(true),
   federationFilterSeverity: z.string().default('warning,error,critical'),
   federationFilterDomain: z.string().default(''),
+  /** Instance name passed from composition root (avoids process.env in core). */
+  instanceName: z.string().optional(),
+  /** Host address passed from composition root. */
+  host: z.string().optional(),
+  /** Port passed from composition root. */
+  port: z.number().int().positive().optional(),
 });
 
 export type ClusterConfig = z.infer<typeof ClusterConfigSchema>;
@@ -107,5 +113,8 @@ export function loadClusterConfig(fs?: NodeIdFs): ClusterConfig {
       : undefined,
     federationFilterSeverity: process.env.CLUSTER_FEDERATION_FILTER_SEVERITY ?? undefined,
     federationFilterDomain: process.env.CLUSTER_FEDERATION_FILTER_DOMAIN ?? undefined,
+    instanceName: process.env.INSTANCE_NAME ?? undefined,
+    host: process.env.HOST ?? undefined,
+    port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
   });
 }

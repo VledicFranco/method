@@ -94,7 +94,10 @@ export async function nodesCommand(options: NodesOptions): Promise<void> {
 
   let response: Response;
   try {
-    response = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Error: Could not connect to bridge at ${bridge}\n`);
@@ -128,8 +131,9 @@ export async function nodesCommand(options: NodesOptions): Promise<void> {
     return;
   }
 
-  // Node list
-  const nodes: ClusterNodeResponse[] = await response.json() as ClusterNodeResponse[];
+  // Node list — bridge wraps in { nodes: [...] }
+  const body = await response.json() as { nodes: ClusterNodeResponse[] } | ClusterNodeResponse[];
+  const nodes: ClusterNodeResponse[] = Array.isArray(body) ? body : body.nodes;
 
   if (format === 'json') {
     process.stdout.write(JSON.stringify(nodes, null, 2) + '\n');

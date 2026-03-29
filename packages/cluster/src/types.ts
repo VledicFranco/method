@@ -91,6 +91,8 @@ export interface ResourceSnapshot {
 export interface FederatedEvent {
   /** Domain that emitted the event (e.g., 'sessions', 'strategies'). */
   domain: string;
+  /** Domain-owned type string (e.g., 'session.spawned', 'strategy.gate_failed'). */
+  type: string;
   /** Severity level. */
   severity: 'debug' | 'info' | 'warning' | 'error' | 'critical';
   /** Event payload (opaque to the cluster layer). */

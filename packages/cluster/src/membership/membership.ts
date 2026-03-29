@@ -72,8 +72,10 @@ export class MembershipManager {
     return this.state;
   }
 
-  /** Start heartbeat, sweep, and broadcast loops. */
+  /** Start heartbeat, sweep, and broadcast loops. Idempotent — safe to call twice. */
   start(): void {
+    if (this.heartbeatTimer) return; // already running
+
     // Heartbeat: send ping to all peers
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeats();
@@ -113,6 +115,12 @@ export class MembershipManager {
   /** Process a node leaving gracefully. */
   handleLeave(nodeId: string): void {
     this.state.peers.delete(nodeId);
+    this.bumpGeneration();
+  }
+
+  /** Set this node's status (e.g., draining/alive). Bumps generation. */
+  setStatus(status: NodeStatus): void {
+    this.state.self.status = status;
     this.bumpGeneration();
   }
 

@@ -250,6 +250,10 @@ if (process.env.EVENT_CONNECTOR_WEBHOOK_URL) {
   eventBus.registerSink(webhookConnector);
 }
 
+// ---------- Project Discovery (hoisted for cluster resource callback) ----------
+
+const discoveryService = new DiscoveryService();
+
 // ---------- Cluster Domain (PRD 039) ----------
 
 const clusterDiscovery = new TailscaleDiscovery(
@@ -301,7 +305,7 @@ registerTranscriptRoutes(app, pool, transcriptReader);
 // ---------- Project Routes (PRD 020 Phase 2A) ----------
 
 // F-I-2: Initialize and register project discovery routes
-const discoveryService = new DiscoveryService();
+// NOTE: discoveryService declared above cluster domain wiring (TDZ prevention)
 const projectRegistry = new InMemoryProjectRegistry(undefined, { fs: fsProvider, yaml: yamlLoader });
 
 // ---------- Genesis Routes (PRD 020 Phase 2A) ----------

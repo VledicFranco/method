@@ -85,6 +85,7 @@ export class EventRelay {
 
     const federatedEvent: FederatedEvent = {
       domain: event.domain,
+      type: event.type ?? `${event.domain}.unknown`,
       severity: event.severity,
       payload: event.payload ?? {},
       timestamp: event.timestamp,
@@ -101,6 +102,6 @@ export class EventRelay {
       this.network.send(peer.address, message),
     );
 
-    await Promise.all(sends);
+    await Promise.allSettled(sends);
   }
 }

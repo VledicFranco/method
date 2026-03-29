@@ -69,6 +69,7 @@ export class HttpNetwork implements NetworkProvider {
       case 'ping': return '/cluster/ping';
       case 'join': return '/cluster/join';
       case 'leave': return '/cluster/leave';
+      case 'state-sync': return '/cluster/state-sync';
       case 'event-relay': return '/cluster/events';
       default: return '/cluster/ping';
     }
