@@ -28,6 +28,7 @@ export function GenesisStatusPoller() {
         setStatus(response.active_sessions > 1 ? 'active' : 'idle');
       } catch (err) {
         console.error('Failed to fetch Genesis status:', err);
+        setStatus('disconnected');
       }
     };
 

@@ -75,7 +75,12 @@ export function GenesisFAB() {
     setOpen(!isOpen);
   };
 
-  const statusColor = status === 'active' ? 'bg-bio' : 'bg-txt-dim';
+  const isDisconnected = status === 'disconnected';
+  const statusColor = isDisconnected
+    ? 'bg-error'
+    : status === 'active'
+      ? 'bg-bio'
+      : 'bg-txt-dim';
 
   return (
     <button
@@ -87,7 +92,8 @@ export function GenesisFAB() {
         'flex items-center justify-center gap-2',
         'transition-all duration-300 ease-out',
         'hover:scale-110 active:scale-95',
-        'bg-bio text-void',
+        // Disconnected: dimmed appearance
+        isDisconnected ? 'bg-txt-muted/60 text-void' : 'bg-bio text-void',
         // Desktop: 56px, draggable
         !isMobile && 'h-14 w-14 cursor-grab active:cursor-grabbing',
         // Mobile: 48px, fixed position, no drag cursor
@@ -99,7 +105,13 @@ export function GenesisFAB() {
           ? { transform: `rotate(${isOpen ? 45 : 0}deg)` }
           : { transform: transformStyle }
       }
-      title={status === 'active' ? 'Genesis is active' : 'Genesis is idle'}
+      title={
+        isDisconnected
+          ? 'Bridge disconnected'
+          : status === 'active'
+            ? 'Genesis is active'
+            : 'Genesis is idle'
+      }
     >
       {/* Status indicator */}
       <div
