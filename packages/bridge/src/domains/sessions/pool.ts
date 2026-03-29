@@ -9,6 +9,7 @@ import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { EventBus } from '../../ports/event-bus.js';
+import { createAgentEventAdapter } from '../../shared/event-bus/agent-event-adapter.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -560,6 +561,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
           model: typeof metadata?.model === 'string' ? metadata.model : undefined,
           spawnArgs,
+          onEvent: eventBus ? createAgentEventAdapter(eventBus, sessionId, metadata?.project_id as string ?? 'unknown') : undefined,
         });
       }
 
@@ -1076,6 +1078,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             workdir: snapshot.workdir,
             recovered: true,
             model: typeof snapshot.metadata?.model === 'string' ? snapshot.metadata.model : undefined,
+            onEvent: eventBus ? createAgentEventAdapter(eventBus, sid, snapshot.metadata?.project_id as string ?? 'unknown') : undefined,
           });
           // Migrate subscribers
           for (const sub of outputSubscribers) { real.onOutput(sub); }
@@ -1096,6 +1099,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             workdir: snapshot.workdir,
             recovered: true,
             model: typeof snapshot.metadata?.model === 'string' ? snapshot.metadata.model : undefined,
+            onEvent: eventBus ? createAgentEventAdapter(eventBus, sid, snapshot.metadata?.project_id as string ?? 'unknown') : undefined,
           });
           for (const sub of outputSubscribers) { real.onOutput(sub); }
           for (const cb of exitCallbacks) { real.onExit(cb); }
