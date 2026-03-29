@@ -139,9 +139,45 @@ Every module step produces a `TraceRecord` (module ID, phase, timestamp, input h
 
 5. **LEARN as fire-and-forget.** The reflector step runs after the cycle returns its result. State mutations are protected by a lock — on error, state rolls back to the pre-step snapshot. This prevents learning failures from blocking agent output or corrupting future cycles.
 
+## CLS Dual-Store Memory (PRD 036)
+
+### Architecture
+
+Two stores with opposite properties (McClelland et al. 1995):
+
+- **Fast store (episodic):** Verbatim episodes, FIFO eviction, sparse encoding
+- **Slow store (semantic):** Extracted patterns, updated ONLY through consolidation
+
+Connected by interleaved replay during offline consolidation (Sleep API).
+
+### Retrieval: ACT-R Activation
+
+Replaces keyword search with Anderson's activation equations:
+- Base-level activation: power-law decay from access frequency and recency
+- Spreading activation: context tag overlap
+- Partial match penalty: low-confidence entries penalized
+- Noise: stochastic component prevents retrieval loops
+
+### Modules
+
+| Module | Phase | Store Access |
+|--------|-------|-------------|
+| MemoryV3 | REMEMBER | Reads both stores via activation |
+| Consolidator | LEARN | Writes episodic (online), writes semantic (offline only) |
+
+### Sleep API
+
+`triggerSleep(store, config)` — triggers offline consolidation between sessions.
+Interleaved replay, schema consistency checking, compression, pruning.
+
+### Preset
+
+`createMemoryPreset(config)` — convenience factory wiring MemoryV3 + Consolidator + shared store.
+
 ## References
 
 - RFC: Calculus of Cognitive Composition (`docs/rfcs/001-cognitive-composition.md`)
 - PRD 030: Pacta Cognitive Composition (`docs/prds/030-pacta-cognitive-composition.md`)
 - PRD 027: Pacta SDK (`docs/prds/027-pacta.md`)
+- PRD 036: Cognitive Memory Architecture
 - FCA specification (`docs/fractal-component-architecture/`)
