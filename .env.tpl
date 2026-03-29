@@ -5,6 +5,6 @@
 # See: https://developer.1password.com/docs/cli/secrets-environment-variables/
 
 # 1Password secret references — resolved at runtime by `op run`
-# Vault paths are PLACEHOLDERS — replace with actual paths when OQ-1 is resolved
-ANTHROPIC_API_KEY=op://Development/anthropic-api-key/credential
-VOYAGE_API_KEY=op://Development/voyage-api-key/credential
+# Vault: Private | Items: "Method Bridge - Anthropic API Key", "Method Bridge - Voyage API Key"
+ANTHROPIC_API_KEY=op://Private/Method Bridge - Anthropic API Key/password
+VOYAGE_API_KEY=op://Private/Method Bridge - Voyage API Key/password
