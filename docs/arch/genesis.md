@@ -18,7 +18,8 @@ Genesis is spawned at bridge startup, after the HTTP server binds. If `GENESIS_E
 ```
 packages/bridge/src/
 └── domains/genesis/
-    ├── spawner.ts            Genesis spawn logic, session metadata setup
+    ├── spawner.ts            Genesis spawn logic, dedup on recovery, session metadata setup
+    ├── spawner.test.ts        Spawner unit tests (dedup, status helpers)
     ├── initialization.ts      OBSERVE+REPORT prompt template
     ├── routes.ts              HTTP endpoints for Genesis interaction
     └── config.ts              Zod-validated config (GENESIS_ENABLED, GENESIS_BUDGET_TOKENS_PER_DAY)
@@ -30,9 +31,30 @@ packages/bridge/src/
 
 ## Genesis Session Lifecycle
 
+### 0. Startup Recovery Dedup (PRD 029 C-3)
+
+When the bridge restarts after a crash, startup recovery (PRD 029) restores persistent sessions from disk snapshots **before** Genesis spawn runs. If the recovered sessions include a genesis-tagged session (`metadata.genesis === true`) in an adoptable state (`running`, `idle`, or `recovering`), `spawnGenesis()` adopts it instead of creating a duplicate.
+
+**Dedup invariant:** At most one genesis session exists per bridge instance. The dedup check uses `getGenesisStatus(pool)`, which scans the pool's `list()` for any session with `metadata.genesis === true`.
+
+**Adoption behavior:**
+- Adopted sessions return `initialized: false` (they were initialized in a previous bridge lifetime).
+- Dead recovered genesis sessions are ignored — a fresh session is spawned.
+- The GenesisSink is wired to the adopted session's ID, so event delivery resumes seamlessly.
+
+```
+Bridge restart
+  └─ startup recovery restores sessions from disk
+       └─ recovered sessions added to pool (may include genesis)
+  └─ spawnGenesis(pool, workdir, budget)
+       ├─ getGenesisStatus(pool) → found idle genesis?
+       │   YES → adopt: return existing sessionId, initialized=false
+       │   NO  → spawn new session via pool.create(...)
+```
+
 ### 1. Spawn Phase
 
-On bridge startup, `spawnGenesis(pool, workdir, budgetTokensPerDay)` creates a new PTY session:
+On bridge startup (or after dedup finds no adoptable session), `spawnGenesis(pool, workdir, budgetTokensPerDay)` creates a new PTY session:
 
 ```
 pool.create({
@@ -85,9 +107,12 @@ See `docs/arch/event-bus.md` for the full event bus architecture.
 
 ```
 Bridge startup
+  └─ startup recovery (PRD 029)
+       └─ restores persistent sessions from disk → pool
   └─ spawnGenesis(pool) ─┐
-                         ├─ create PTY session
-                         ├─ mark persistent=true
+                         ├─ check pool for existing genesis (dedup)
+                         ├─ if found (idle/running/recovering): adopt → return sessionId
+                         ├─ else: create PTY session, mark persistent=true
                          └─ return sessionId
 
   └─ eventBus.registerSink(new GenesisSink(...))

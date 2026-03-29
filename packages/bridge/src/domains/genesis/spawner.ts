@@ -38,6 +38,10 @@ export interface GenesisPersistentState {
 /**
  * Spawn Genesis session on bridge startup
  *
+ * PRD 029 C-3: Before spawning a new session, checks if a genesis-tagged session
+ * was already recovered during startup recovery. If so, adopts the recovered session
+ * instead of creating a duplicate — ensuring at most one genesis session per bridge instance.
+ *
  * Parameters:
  * - pool: SessionPool for spawning
  * - workdir: Working directory for Genesis
@@ -50,7 +54,24 @@ export async function spawnGenesis(
   workdir: string,
   budgetTokensPerDay: number = 50000,
 ): Promise<GenesisSpawnResult> {
+  // PRD 029 C-3: Check if a genesis session already exists (recovered from crash)
+  const existing = getGenesisStatus(pool);
+  if (existing && (existing.status === 'running' || existing.status === 'idle' || existing.status === 'recovering')) {
+    console.log(
+      `Genesis: adopting recovered session ${existing.sessionId} (status=${existing.status})`,
+    );
+    return {
+      sessionId: existing.sessionId,
+      nickname: existing.nickname ?? 'genesis-root',
+      status: existing.status,
+      projectId: 'root',
+      budgetTokensPerDay,
+      initialized: false, // Already initialized from previous run
+    };
+  }
+
   try {
+    console.log('Genesis: spawning new session');
     const result = await pool.create({
       workdir,
       initialPrompt: getGenesisInitializationPrompt(),
