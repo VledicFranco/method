@@ -1,0 +1,22 @@
+experiment: exp-slm
+run_id: onnx-export
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 A6"
+config:
+  model: SmolLM2-135M-Instruct (Run 3)
+  validation_size: 100
+metrics:
+  export_success: true
+  onnx_file_size_mb: 514.3
+  pytorch_parse_rate: 1.0
+  onnx_parse_rate: 1.0
+  accuracy_difference: 0.0
+  exact_match_rate: 1.0
+verdict: pass
+gate: "Gate 4 — ONNX Export"
+notes: >
+  ONNX export via optimum succeeded in 21.9s. The exported model achieves 100% exact
+  match with PyTorch inference across all 100 validation entries — zero accuracy
+  degradation. File size is 514.3 MB (FP32, expected for 135M params). Both parse rates
+  are 1.0, confirming the ONNX graph faithfully reproduces the fine-tuned model's
+  behavior. Ready for Phase 4 runtime integration.

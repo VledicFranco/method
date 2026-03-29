@@ -1,0 +1,13 @@
+{
+  "optimal_temperature": 10.0,
+  "optimal_temperature_ece": 0.1,
+  "ece_before": 0.0195,
+  "ece_after": 0.02,
+  "calibration_entries": 100,
+  "accuracy_on_calibration_set": 0.98,
+  "mean_confidence_before": 0.9995,
+  "mean_confidence_after": 1.0,
+  "target_ece": "<= 0.15",
+  "pass": true,
+  "timestamp": "2026-03-29T03:08:31-0600"
+}

@@ -1,0 +1,20 @@
+experiment: exp-slm
+run_id: calibration
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 A6"
+config:
+  model: SmolLM2-135M-Instruct (Run 3)
+  calibration_size: 100
+metrics:
+  ece_before: 0.0195
+  ece_after: 0.02
+  optimal_temperature: 10.0
+  accuracy_on_calibration_set: 0.98
+verdict: pass
+gate: "Gate 4 — Temperature Calibration"
+notes: >
+  Model is already well-calibrated out of the box (ECE 0.0195, far below 0.15 target).
+  The NLL-optimal temperature landed at the upper bound (10.0), which slightly increases
+  ECE to 0.02 — still well within threshold. The model's near-perfect confidence (0.9995)
+  closely matches its 98% accuracy, indicating the causal data fix in Run 3 produced
+  naturally calibrated predictions. Temperature scaling is effectively unnecessary here.
