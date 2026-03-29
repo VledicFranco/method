@@ -1,19 +1,18 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, ChevronUp } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
-
-interface GenesisFABProps {
-  onToggle: (isOpen: boolean) => void;
-  isOpen: boolean;
-  status: 'active' | 'idle';
-}
+import { useGenesisStore } from '@/shared/stores/genesis-store';
 
 // F-P-11: Cache rotation calculation
 const computeRotationTransform = (isOpen: boolean, position: { x: number; y: number }): string => {
   return `translate(${position.x}px, ${position.y}px) rotate(${isOpen ? 45 : 0}deg)`;
 };
 
-export function GenesisFAB({ onToggle, isOpen, status }: GenesisFABProps) {
+export function GenesisFAB() {
+  const isOpen = useGenesisStore((s) => s.isOpen);
+  const status = useGenesisStore((s) => s.status);
+  const setOpen = useGenesisStore((s) => s.setOpen);
+
   const fabRef = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     // Load position from localStorage
@@ -71,7 +70,7 @@ export function GenesisFAB({ onToggle, isOpen, status }: GenesisFABProps) {
   }, [isDragging, dragOffset, position]);
 
   const handleToggle = () => {
-    onToggle(!isOpen);
+    setOpen(!isOpen);
   };
 
   const statusColor = status === 'active' ? 'bg-bio' : 'bg-txt-dim';

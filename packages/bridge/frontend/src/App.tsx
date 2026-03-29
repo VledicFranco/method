@@ -1,5 +1,8 @@
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { GenesisFAB } from './domains/genesis/GenesisFAB';
+import { GenesisChatPanel } from './domains/genesis/GenesisChatPanel';
+import { GenesisStatusPoller } from './domains/genesis/GenesisStatusPoller';
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import('./shared/pages/Dashboard'));
@@ -121,6 +124,10 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        {/* Universal Genesis — always present across all pages (PRD 025) */}
+        <GenesisStatusPoller />
+        <GenesisFAB />
+        <GenesisChatPanel />
       </BrowserRouter>
     </ErrorBoundary>
   );
