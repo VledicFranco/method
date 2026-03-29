@@ -22,6 +22,9 @@ const MAX_OUTPUT = 8000;
 
 const ALLOWED_COMMANDS = new Set(['git', 'npm', 'node', 'npx', 'ls', 'cat', 'find', 'grep', 'head', 'tail', 'wc', 'echo', 'pwd', 'which', 'diff', 'sort', 'uniq', 'tsc', 'test']);
 
+/** Shell metacharacters that enable command chaining/injection. */
+const SHELL_META = /[;|&`$(){}!<>\\]/;
+
 function truncate(s: string): string {
   return s.length > MAX_OUTPUT ? s.slice(0, MAX_OUTPUT) + '\n... (truncated)' : s;
 }
@@ -32,6 +35,13 @@ function checkPathTraversal(workdir: string, filePath: string, rawPath: string):
     return { output: `Path outside workdir not allowed: ${rawPath}`, isError: true };
   }
   return null;
+}
+
+/** Validate that a path argument stays within workdir (for Grep/Glob path args). */
+function checkPathArg(workdir: string, pathArg: string): ToolResult | null {
+  if (!pathArg || pathArg === '.') return null;
+  const resolved = resolve(workdir, pathArg);
+  return checkPathTraversal(workdir, resolved, pathArg);
 }
 
 export function createBridgeToolProvider(workdir: string): ToolProvider {
@@ -57,6 +67,10 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
             return { output: `Written to ${args.path}` };
           }
           case 'Glob': {
+            // Reject patterns that attempt directory traversal
+            if (args.pattern.includes('..')) {
+              return { output: 'Glob patterns with ".." not allowed', isError: true };
+            }
             // Use git ls-files for tracked files, fall back to find
             try {
               const result = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', args.pattern], {
@@ -75,17 +89,24 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
           }
           case 'Grep': {
             const target = args.path || '.';
+            const pathErr = checkPathArg(workdir, target);
+            if (pathErr) return pathErr;
             const result = execFileSync('grep', ['-rn', '--include=*', '-m', '30', args.pattern, target], {
               cwd: workdir, encoding: 'utf-8', timeout: 10_000,
             });
             return { output: truncate(result) };
           }
           case 'Bash': {
-            const baseCommand = args.command.trim().split(/\s+/)[0];
+            const cmd = args.command.trim();
+            const baseCommand = cmd.split(/\s+/)[0];
             if (!ALLOWED_COMMANDS.has(baseCommand)) {
               return { output: `Command not allowed: ${baseCommand}. Allowed: ${[...ALLOWED_COMMANDS].join(', ')}`, isError: true };
             }
-            const result = execSync(args.command, {
+            // Reject shell metacharacters that enable command chaining/injection
+            if (SHELL_META.test(cmd)) {
+              return { output: 'Shell metacharacters (;|&`$(){}!<>) not allowed in cognitive Bash tool', isError: true };
+            }
+            const result = execSync(cmd, {
               cwd: workdir, encoding: 'utf-8', timeout: 30_000,
             });
             return { output: truncate(result) };
