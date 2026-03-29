@@ -33,6 +33,8 @@ export {
   workspaceBuilder,
   CycleConfigBuilder,
   cycleConfigBuilder,
+  DualStoreBuilder,
+  dualStoreBuilder,
 } from './cognitive-builders.js';
 
 // Cognitive — Assertions
@@ -41,4 +43,8 @@ export {
   assertMonitoringSignalEmitted,
   assertWorkspaceContains,
   assertCyclePhaseOrder,
+  assertConsolidationResult,
+  assertEpisodicStoreContains,
+  assertSemanticStoreContains,
+  assertActivationAboveThreshold,
 } from './cognitive-assertions.js';
