@@ -1,19 +1,19 @@
 {
-  "model_dir": "C:\\Users\\atfm0\\Repositories\\pv-method\\experiments\\exp-slm\\phase-3-training\\models\\monitor-smollm2-135m",
+  "model_dir": "phase-3-training\\models\\monitor-smollm2-135m-run2",
   "holdout_entries": 1000,
   "boundary_cases": 381,
   "parse_accuracy": 1.0,
-  "semantic_accuracy": 0.392,
-  "adversarial_accuracy": 0.1102,
+  "semantic_accuracy": 0.393,
+  "adversarial_accuracy": 0.1155,
   "confidence": {
-    "mean": 0.9602,
-    "median": 0.9636,
-    "p95": 0.9997
+    "mean": 0.9621,
+    "median": 0.9645,
+    "p95": 0.9999
   },
   "latency_s": {
-    "mean": 1.461,
-    "median": 1.3204,
-    "p95": 2.9465
+    "mean": 1.4358,
+    "median": 1.3152,
+    "p95": 2.845
   },
   "targets": {
     "parse_accuracy": ">= 0.95",
@@ -25,5 +25,5 @@
     "semantic_accuracy": false,
     "adversarial_accuracy": false
   },
-  "timestamp": "2026-03-28T20:08:19-0600"
+  "timestamp": "2026-03-28T21:57:46-0600"
 }

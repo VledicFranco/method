@@ -93,6 +93,59 @@ The semantic gap is likely caused by:
 3. **Run 4: If still <85%, try SmolLM2-360M with LoRA.** Larger model may capture
    the mapping function that 135M cannot.
 
+## Run 2 — SmolLM2-135M, 5000 steps (10 epochs), 4000 corpus
+
+**Date:** 2026-03-28
+**Config:** Same as Run 1 but 5000 steps, 100 warmup steps
+
+### Training Metrics
+
+| Metric | Run 1 | Run 2 | Delta |
+|--------|-------|-------|-------|
+| Steps | 1000 | 5000 | +4000 |
+| Final loss | 0.434 | 0.286 | -0.148 |
+| Training time | 3.8 min | 16.8 min | +13 min |
+| Peak VRAM | 2,950 MB | 2,950 MB | same |
+
+### Evaluation Results (1000 holdout)
+
+| Metric | Run 1 | Run 2 | Delta |
+|--------|-------|-------|-------|
+| Parse accuracy | 100.0% | **100.0%** | same |
+| Semantic accuracy | 39.2% | **39.3%** | +0.1% |
+| Adversarial accuracy | 11.0% | **11.6%** | +0.6% |
+| Confidence mean | 96.0% | **96.2%** | +0.2% |
+
+### Analysis
+
+**The model plateaued.** 5x more training steps (2 → 10 epochs) reduced loss from 0.434
+to 0.286 but semantic accuracy barely moved (39.2% → 39.3%). This rules out
+"insufficient training" as the cause. The model has converged on the current data
+distribution — it learned the format perfectly but cannot learn the input→output mapping
+from this corpus.
+
+**Root cause hypothesis:** The training data lacks explicit causal signal. The input
+format (`SIGNALS:\n[mod:type] field=value`) is too compact — the model can't infer
+*which* signal patterns map to *which* anomaly types because the mapping was generated
+by a deterministic mock, not a reasoning process. The synthetic augmentation varied
+output fields randomly rather than maintaining consistent signal→anomaly relationships.
+
+**Implication:** The corpus generation strategy needs revision. Instead of randomly
+varying output fields, the augmenter must maintain causal consistency: specific signal
+patterns should always produce specific anomaly types. The model needs to learn
+"low confidence from reasoner → low-confidence anomaly for reasoner", not just
+"here's what a low-confidence anomaly looks like."
+
+### Next Steps
+
+1. **Revise corpus generation** — ensure causal consistency between input signals and
+   output anomalies. Each training example must have a clear, learnable mapping.
+2. **Re-augment** with causally consistent examples (10K-20K entries)
+3. **Run 3** with revised corpus on same model (SmolLM2-135M)
+4. If still <85%: try SmolLM2-360M with LoRA (larger model capacity)
+
+---
+
 ### What's Validated
 
 - RFC 002 core thesis: SLMs CAN learn typed DSLs (100% parse accuracy)
