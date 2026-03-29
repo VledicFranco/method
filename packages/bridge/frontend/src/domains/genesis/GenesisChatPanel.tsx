@@ -3,22 +3,20 @@ import { X, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { useSSE } from '@/shared/websocket/useSSE';
 import { api } from '@/shared/lib/api';
+import { useGenesisStore, GENESIS_SESSION_ID } from '@/shared/stores/genesis-store';
+import type { ChatMessage } from '@/shared/stores/genesis-store';
 
-interface GenesisChatPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  sessionId: string;
-  status: 'active' | 'idle';
-  budgetPercent: number;
-}
+export function GenesisChatPanel() {
+  const isOpen = useGenesisStore((s) => s.isOpen);
+  const setOpen = useGenesisStore((s) => s.setOpen);
+  const sessionId = useGenesisStore((s) => s.sessionId) ?? GENESIS_SESSION_ID;
+  const status = useGenesisStore((s) => s.status);
+  const budgetPercent = useGenesisStore((s) => s.budgetPercent);
+  const messages = useGenesisStore((s) => s.messages);
+  const addMessage = useGenesisStore((s) => s.addMessage);
+  const inputDraft = useGenesisStore((s) => s.inputDraft);
+  const setInputDraft = useGenesisStore((s) => s.setInputDraft);
 
-export function GenesisChatPanel({
-  isOpen,
-  onClose,
-  sessionId,
-  status,
-  budgetPercent,
-}: GenesisChatPanelProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
@@ -34,8 +32,6 @@ export function GenesisChatPanel({
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [terminalOutput, setTerminalOutput] = useState<string[]>(['[Genesis Chat Panel Ready]', '']);
-  const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sseError, setSseError] = useState<string | null>(null);
 
@@ -51,21 +47,32 @@ export function GenesisChatPanel({
     }
   }, []);
 
-  // SSE stream handler (F-P-1: Cap buffer to 10000 messages)
+  // Helper: create a ChatMessage for the store
+  const createMessage = useCallback(
+    (role: ChatMessage['role'], content: string): ChatMessage => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role,
+      content,
+      timestamp: new Date().toISOString(),
+    }),
+    [],
+  );
+
+  // Seed initial system message if messages are empty
+  useEffect(() => {
+    if (messages.length === 0) {
+      addMessage(createMessage('system', '[Genesis Chat Panel Ready]'));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // SSE stream handler (F-P-1: Cap buffer via store's MAX_MESSAGES)
   const handleMessage = useCallback(
     (data: unknown) => {
       if (typeof data === 'string') {
-        setTerminalOutput((prev) => {
-          const updated = [...prev, data];
-          // Keep only the latest 10000 messages
-          if (updated.length > 10000) {
-            return updated.slice(updated.length - 10000);
-          }
-          return updated;
-        });
+        addMessage(createMessage('assistant', data));
       }
     },
-    [],
+    [addMessage, createMessage],
   );
 
   const handleError = useCallback(
@@ -92,7 +99,7 @@ export function GenesisChatPanel({
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [terminalOutput]);
+  }, [messages]);
 
   // Handle header drag
   const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -139,30 +146,30 @@ export function GenesisChatPanel({
 
   // Handle send prompt
   const handleSendPrompt = async () => {
-    if (!inputValue.trim() || isSending) return;
+    if (!inputDraft.trim() || isSending) return;
 
     setIsSending(true);
-    const promptText = inputValue;
-    setInputValue('');
+    const promptText = inputDraft;
+    setInputDraft('');
 
     try {
-      // Add user prompt to terminal
-      setTerminalOutput((prev) => [...prev, `> ${promptText}`, '']);
+      // Add user prompt to store
+      addMessage(createMessage('user', `> ${promptText}`));
 
       // Send to API
       const response = await api.post<{ output: string }>(`/sessions/${sessionId}/prompt`, {
         prompt: promptText,
       });
 
-      // Add response to terminal
+      // Add response to store
       if (response.output) {
-        setTerminalOutput((prev) => [...prev, response.output, '']);
+        addMessage(createMessage('assistant', response.output));
       }
 
       setSseError(null);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to send prompt';
-      setTerminalOutput((prev) => [...prev, `[Error: ${errorMsg}]`, '']);
+      addMessage(createMessage('system', `[Error: ${errorMsg}]`));
       setSseError(errorMsg);
     } finally {
       setIsSending(false);
@@ -183,7 +190,7 @@ export function GenesisChatPanel({
     // Escape key closes the panel
     if (e.key === 'Escape') {
       e.preventDefault();
-      onClose();
+      setOpen(false);
     }
   };
 
@@ -252,7 +259,7 @@ export function GenesisChatPanel({
         </div>
 
         <button
-          onClick={onClose}
+          onClick={() => setOpen(false)}
           className="p-1 hover:bg-abyss rounded transition-colors"
           title="Close"
           tabIndex={0}
@@ -266,9 +273,9 @@ export function GenesisChatPanel({
         ref={terminalRef}
         className="flex-1 overflow-y-auto bg-void p-sp-3 font-mono text-sm text-txt-dim"
       >
-        {terminalOutput.map((line, idx) => (
-          <div key={idx} className="whitespace-pre-wrap break-words">
-            {line || <br />}
+        {messages.map((msg) => (
+          <div key={msg.id} className="whitespace-pre-wrap break-words">
+            {msg.content || <br />}
           </div>
         ))}
         {sseError && (
@@ -276,7 +283,7 @@ export function GenesisChatPanel({
             [Connection Error: {sseError}]
           </div>
         )}
-        {!connected && !sseError && terminalOutput.length > 1 && (
+        {!connected && !sseError && messages.length > 1 && (
           <div className="text-txt-dim text-xs mt-2">
             [Connecting...]
           </div>
@@ -287,8 +294,8 @@ export function GenesisChatPanel({
       <div className="border-t border-bdr bg-abyss-light p-sp-2 flex gap-2">
         <textarea
           ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          value={inputDraft}
+          onChange={(e) => setInputDraft(e.target.value)}
           onKeyDown={handleInputKeyDown}
           placeholder="Type a prompt (Shift+Enter for newline)..."
           className={cn(
@@ -303,11 +310,11 @@ export function GenesisChatPanel({
         />
         <button
           onClick={handleSendPrompt}
-          disabled={isSending || !inputValue.trim()}
+          disabled={isSending || !inputDraft.trim()}
           className={cn(
             'self-end px-sp-2 py-sp-1.5 rounded',
             'transition-colors',
-            isSending || !inputValue.trim()
+            isSending || !inputDraft.trim()
               ? 'bg-txt-muted/20 text-txt-muted cursor-not-allowed'
               : 'bg-bio text-void hover:bg-bio/90 active:bg-bio/80',
           )}
