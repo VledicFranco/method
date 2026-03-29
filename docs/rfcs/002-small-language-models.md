@@ -860,38 +860,60 @@ unchanged. SLMs add a new *implementation strategy* for existing module interfac
 
 ## Implementation Status
 
-**Status:** Validation in progress (PRD 034). First training run complete.
+**Status:** Validation in progress (PRD 034). Gate 3 PASSED — Phase 4 (integration) pending.
 
 **PRD:** `docs/prds/034-slm-validation.md`
 **Experiment:** `experiments/exp-slm/`
 **Hardware:** 2x RTX 2080 Ti (11GB), CUDA 12.6, training on GPU 1
+**Detailed findings:** `experiments/exp-slm/phase-3-training/results/FINDINGS.md`
 
 ### Validation Phase 0 — DSL Feasibility: PASS
 
-- Grammar designed (peggy PEG format) for Monitor v2 output
-- 5600 corpus entries (600 base + 4000 augmented + 1000 holdout)
+- peggy PEG grammar for Monitor v2 output (MonitorReport type)
+- 12,500 corpus entries (10K train + 2.5K holdout, causally consistent)
 - Parse validity: **100%**, semantic validity: **100%**
 - First revision, no iterations needed
 
-### Validation Phase 1 — Single Module SLM: IN PROGRESS
+### Validation Phase 1 — Single Module SLM: PASS (Gate 3 cleared)
 
-**Run 1** (SmolLM2-135M, 1000 steps, 4000 corpus):
+Three training runs on SmolLM2-135M-Instruct (134.5M params):
 
-| Metric | Target | Result | Status |
-|--------|--------|--------|--------|
-| Parse accuracy | ≥ 95% | **100%** | **PASS** |
-| Semantic accuracy | ≥ 85% | 39.2% | FAIL |
-| Adversarial accuracy | ≥ 70% | 11.0% | FAIL |
-| Confidence (mean) | — | 96.0% | Overconfident |
-| Training time | — | 3.8 min | — |
-| Peak VRAM | ≤ 11 GB | 2.95 GB | PASS |
+| Metric | Target | Run 1 | Run 2 | Run 3 |
+|--------|--------|-------|-------|-------|
+| Corpus | — | 4K random | 4K random | **10K causal** |
+| Steps | — | 1,000 | 5,000 | 3,000 |
+| Parse accuracy | ≥ 95% | 100% | 100% | **100%** |
+| Semantic accuracy | ≥ 85% | 39.2% | 39.3% | **98.6%** |
+| Adversarial accuracy | ≥ 70% | 11.0% | 11.6% | **70.8%** |
+| Training time | — | 3.8 min | 16.8 min | 11.4 min |
+| Peak VRAM | ≤ 11 GB | 2.95 GB | 2.95 GB | 2.95 GB |
 
-**Key finding:** 100% parse accuracy validates the RFC's core thesis — a 135M parameter
-model can learn to produce valid tokens in a typed DSL with perfect reliability. The DSL
-grammar is fully internalized after only 1000 training steps.
+**Key findings:**
 
-The semantic gap (39.2%) indicates the model learned output *format* but not input→output
-*mapping*. This is a training scale issue (data diversity, step count), not an architectural
-limitation. Escalation path: increase steps to 3000-5000, augment corpus to 10K-20K.
+1. **SLMs learn typed DSLs with perfect reliability.** 100% parse accuracy across all 3
+   runs, all 4,500+ holdout entries. A 135M parameter model fully internalizes a PEG
+   grammar. This validates the RFC's central claim.
 
-### Validation Phase 2-4: Not yet started
+2. **Data quality > training duration.** Run 2 (5x more steps, same random data) didn't
+   help — semantic accuracy plateaued at 39%. Run 3 (causally consistent data) jumped
+   to 98.6%. The model can learn input→output mappings when the training data consistently
+   demonstrates them.
+
+3. **135M params is sufficient** for the Monitor module. No escalation to larger models
+   needed. 2.95 GB VRAM — massive headroom on 11 GB GPU.
+
+4. **Overconfidence risk confirmed.** Mean confidence 99.97% in Run 3. Temperature scaling
+   calibration is mandatory for the escalation mechanism.
+
+5. **Critical lesson for §Part III (Synthetic Data Generation Loop):** Phase 3 of the
+   training loop (adversarial augmentation) is insufficient without Phase 2 (corpus
+   generation) maintaining causal consistency. Random field variation produces learnable
+   format but unlearnable semantics.
+
+### Validation Phase 2 — Cognitive Cycle Integration: PENDING
+
+Gate 4 requirements:
+- Temperature scaling calibration (ECE ≤ 0.15)
+- ONNX export + accuracy validation (≤ 2% delta)
+- HTTP bridge inference server (onnxruntime-node failed on Windows — Python fallback)
+- SLMProviderAdapter cycle benchmark (10 tasks, cost reduction ≥ 30%)
