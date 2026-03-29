@@ -1,19 +1,19 @@
 {
-  "model_dir": "phase-3-training\\models\\monitor-qwen25-05b-lora",
+  "model_dir": "phase-3-training\\models\\monitor-qwen25-05b-lora-r32",
   "holdout_entries": 2500,
   "boundary_cases": 106,
-  "parse_accuracy": 0.9996,
-  "semantic_accuracy": 0.996,
-  "adversarial_accuracy": 0.9245,
+  "parse_accuracy": 1.0,
+  "semantic_accuracy": 0.9968,
+  "adversarial_accuracy": 0.934,
   "confidence": {
-    "mean": 0.9995,
-    "median": 0.9998,
+    "mean": 0.9996,
+    "median": 0.9999,
     "p95": 0.9999
   },
   "latency_s": {
-    "mean": 0.7273,
-    "median": 0.5415,
-    "p95": 1.5272
+    "mean": 0.8116,
+    "median": 0.6118,
+    "p95": 1.6554
   },
   "targets": {
     "parse_accuracy": ">= 0.95",
@@ -25,5 +25,5 @@
     "semantic_accuracy": true,
     "adversarial_accuracy": true
   },
-  "timestamp": "2026-03-29T12:37:55-0600"
+  "timestamp": "2026-03-29T16:44:13-0600"
 }

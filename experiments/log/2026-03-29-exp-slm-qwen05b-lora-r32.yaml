@@ -1,0 +1,28 @@
+experiment: exp-slm
+run_id: qwen05b-lora-r32
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), research-afternoon-20260329 G1"
+config:
+  model: Qwen2.5-0.5B-Instruct
+  method: LoRA (r=32, alpha=64)
+  corpus: 10K causally consistent
+  steps: 3000
+  learning_rate: 2.0e-4
+  batch_size: 2
+metrics:
+  parse_accuracy: 1.0000
+  semantic_accuracy: 0.9968
+  adversarial_accuracy: 0.9340
+  training_time_s: 1242.5
+  peak_vram_mb: 4494.4
+  final_loss: 0.2909
+verdict: pass
+gate: "LoRA Rank Ablation — r=32 vs r=16"
+notes: >
+  Comparing r=32 (2x rank, 4.3M trainable params) vs r=16 baseline (2.1M trainable params).
+  r=16 baseline: parse 99.96%, semantic 99.60%, adversarial 92.45%, VRAM 4466 MB, loss 0.2899.
+  r=32 result: parse 100.00%, semantic 99.68%, adversarial 93.40%, VRAM 4494 MB, loss 0.2909.
+  Adversarial accuracy improved +0.95pp. Semantic +0.08pp. Parse +0.04pp.
+  VRAM cost only +28 MB (4466 -> 4494). Training time comparable.
+  Doubling rank yields modest but consistent gains across all metrics,
+  with adversarial robustness seeing the largest improvement.

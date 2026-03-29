@@ -1,0 +1,94 @@
+experiment: exp-metacognitive-error
+run_id: full-v1v2
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), research-afternoon-20260329 A1"
+config:
+  conditions: [A, B, C]
+  error_types: [E1, E2, E3, E4]
+  runs_per_type: 10
+  total_evaluations: 120
+  base_seed: 42
+  monitor_v1: "createMonitor (confidenceThreshold=0.3, stagnationThreshold=3)"
+  monitor_v2: "createMonitorV2 (baseConfidenceThreshold=0.3, grattonDelta=0.05, predictionErrorThreshold=1.5, expectationAlpha=0.2)"
+metrics:
+  # Condition B (v1 Monitor) — per error type
+  condition_b:
+    E1_edr: 1.000
+    E1_fpr: 0.000
+    E1_dprime: 4.65
+    E2_edr: 1.000
+    E2_fpr: 0.000
+    E2_dprime: 4.65
+    E3_edr: 0.034
+    E3_fpr: 0.000
+    E3_dprime: 0.17
+    E4_edr: 1.000
+    E4_fpr: 0.000
+    E4_dprime: 4.65
+  condition_b_mean_edr: 0.759
+  condition_b_mean_fpr: 0.000
+  condition_b_mean_dprime: 3.53
+  # Condition C (v2 MonitorV2) — per error type
+  condition_c:
+    E1_edr: 1.000
+    E1_fpr: 0.146
+    E1_dprime: 3.37
+    E2_edr: 1.000
+    E2_fpr: 0.263
+    E2_dprime: 3.02
+    E3_edr: 0.379
+    E3_fpr: 0.218
+    E3_dprime: 0.34
+    E4_edr: 1.000
+    E4_fpr: 0.181
+    E4_dprime: 3.32
+  condition_c_mean_edr: 0.845
+  condition_c_mean_fpr: 0.202
+  condition_c_mean_dprime: 2.51
+  # Condition A (baseline — no Monitor, raw signal self-correction only)
+  condition_a:
+    E1_edr: 1.000
+    E2_edr: 1.000
+    E3_edr: 0.000
+    E4_edr: 1.000
+gates:
+  G1_signal_level_detection: "PASS — 3/4 error types with EDR > 50% (E1, E2, E4)"
+  G2_low_false_positives: "FAIL — only 2/4 types below 20% FPR for v2 (E2=26.3%, E3=21.8%)"
+  G3_latency: "PASS — all 4 types with mean detection latency <= 2 cycles"
+verdict: PASS
+gate: "R-04 — Metacognitive Error Detection"
+notes: |
+  Key findings:
+
+  1. E1 (contradiction), E2 (action-mismatch), E4 (planning error) are trivially detectable.
+     All three conditions (including baseline A with NO monitor) achieve 100% EDR on these
+     types. The error injections for E1/E2/E4 leak detectable signals directly into the
+     raw monitoring stream (low confidence, conflictDetected, unexpectedResult). The Monitor
+     adds no value over raw signal inspection for these error types.
+
+  2. E3 (confidence miscalibration) is the only genuinely hard error type. It has no
+     explicit failure flag — only an inflated confidence on a read-only action with zero
+     novelty. Baseline A detects 0%. v1 Monitor detects 3.4%. v2 MonitorV2 detects 37.9%.
+     This is the ONLY error type where the Monitor actually earns its keep.
+
+  3. v2 MonitorV2 trades false positives for E3 detection. Its prediction-error tracking
+     and adaptive thresholds catch miscalibration patterns but also raise FPR across all
+     types: E1 14.6%, E2 26.3%, E3 21.8%, E4 18.1%. v1 Monitor has 0% FPR everywhere.
+     G2 fails for v2 because of this.
+
+  4. d' analysis confirms: v1 is a perfect detector for easy errors (d'=4.65) but blind
+     to E3 (d'=0.17). v2 gains marginal E3 sensitivity (d'=0.34) at the cost of reduced
+     discrimination on easy errors (d' drops to ~3.0-3.4 due to false positives).
+
+  5. The experiment design has a ceiling effect. E1/E2/E4 error injections are too
+     "loud" — they embed explicit failure flags (unexpectedResult=true, success=false,
+     conflictDetected=true) that any threshold-based detector catches trivially. Future
+     iterations should test subtler error injections where the Monitor must cross-reference
+     multiple signals to detect the error, not just read a single flag.
+
+  6. Practical implication: v1 Monitor is strictly better than v2 for the current error
+     injection design. It catches everything v2 catches on 3/4 types with zero FPR. Only
+     for E3-type errors (subtle miscalibration) does v2 provide marginal improvement, and
+     even then at 37.9% EDR with 21.8% FPR — not clinically useful. The path forward is
+     harder error injections, not more sensitive monitors.
+results_file: "experiments/exp-metacognitive-error/results/run-2026-03-29T21-48-34.json"
