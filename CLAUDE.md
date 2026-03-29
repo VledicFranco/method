@@ -31,7 +31,9 @@ This project follows FCA (see `docs/fractal-component-architecture/`). The core 
 
 ```
 L4  @method/bridge     Application — HTTP server, wires everything, owns the process
-L3  @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
+    method-ctl         CLI — unified cluster management (status, nodes, projects)
+L3  @method/cluster    Cluster protocol — membership, routing, federation (PRD 039, zero transport deps)
+    @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
     @method/pacta      Modular agent SDK — pacts, providers, middleware, composition engine
     @method/pacta      cognitive/ — cognitive composition (algebra/, modules/, engine/) — PRD 030
     @method/pacta-*    Provider packages (claude-cli, anthropic), testkit, playground
@@ -54,6 +56,7 @@ src/
   server-entry.ts          Composition root — wires ports, registers domains
   ports/                   Cross-domain port interfaces (PTY, filesystem, YAML)
   domains/
+    cluster/               Cluster coordination — peer discovery, federation sink, adapters (PRD 039)
     sessions/              PTY session lifecycle, channels, parsing, scope enforcement
     methodology/           Methodology session persistence
     registry/              Registry management, resource copying

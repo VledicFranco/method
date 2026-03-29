@@ -1,6 +1,6 @@
 ---
 title: "PRD 038: Bridge Deployment — Instance Isolation, Secrets, and Packaging"
-status: draft
+status: implemented
 date: "2026-03-29"
 tier: "standard"
 depends_on: []
@@ -485,6 +485,6 @@ Full review record: `.method/sessions/prd-design-bridge-deployment/review-findin
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Instance Profiles | Not started | |
-| Phase 2: 1Password Secrets | Not started | Blocked on OQ-1 |
-| Phase 3: Portable Packaging | Not started | Contingent — ships when multi-machine need is validated |
+| Phase 1: Instance Profiles | Implemented | Landed 2026-03-29 |
+| Phase 2: 1Password Secrets | Implemented | OQ-1 resolved — real vault paths in .env.tpl |
+| Phase 3: Portable Packaging | Implemented | pack-bridge.js + method-bridge CLI entry — 2026-03-29 |

@@ -1,6 +1,6 @@
 ---
 title: "PRD 039: Bridge Cluster — Membership, Work Routing, and Event Federation"
-status: draft
+status: implemented
 date: "2026-03-29"
 tier: "heavyweight"
 depends_on: [38]
@@ -855,8 +855,8 @@ Full review: `tmp/review-report-prd038-039-2026-03-29.md`, `tmp/action-plan-prd0
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Cluster Package + Ports | Not started | Foundation — no bridge changes |
-| Phase 2: Bridge Domain + Tailscale Discovery | Not started | Depends on Phase 1 |
-| Phase 3: Work Routing + Event Federation | Not started | Depends on Phase 2 |
-| Phase 4: method-ctl CLI | Not started | Depends on Phase 3 |
+| Phase 1: Cluster Package + Ports | Implemented | @method/cluster L3 — types, ports, membership, resources, test-doubles (2026-03-29) |
+| Phase 2: Bridge Domain + Tailscale Discovery | Implemented | domains/cluster/ — core, routes, config, adapters + composition root wiring (2026-03-29) |
+| Phase 3: Work Routing + Event Federation | Implemented | CapacityWeightedRouter, EventRelay, ClusterFederationSink, POST /cluster/route (2026-03-29) |
+| Phase 4: method-ctl CLI | Implemented | @method/method-ctl — status, nodes, projects commands (2026-03-29) |
 | Phase 5: SWIM-Lite Gossip | Not scheduled | Future — when >5 nodes or Tailscale API insufficient |
