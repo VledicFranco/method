@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { useSSE } from '@/shared/websocket/useSSE';
 import { api } from '@/shared/lib/api';
 import { useGenesisStore, GENESIS_SESSION_ID } from '@/shared/stores/genesis-store';
+import { useIsMobile } from './useIsMobile';
 import type { ChatMessage } from '@/shared/stores/genesis-store';
 
 export function GenesisChatPanel() {
@@ -17,35 +18,12 @@ export function GenesisChatPanel() {
   const inputDraft = useGenesisStore((s) => s.inputDraft);
   const setInputDraft = useGenesisStore((s) => s.setInputDraft);
 
+  const isMobile = useIsMobile();
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [position, setPosition] = useState<{ x: number; y: number }>(() => {
-    const saved = localStorage.getItem('genesis-chat-position');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return { x: 50, y: 50 };
-      }
-    }
-    return { x: 50, y: 50 };
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const [isSending, setIsSending] = useState(false);
   const [sseError, setSseError] = useState<string | null>(null);
-
-  // Load position from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('genesis-chat-position');
-    if (saved) {
-      try {
-        setPosition(JSON.parse(saved));
-      } catch {
-        // Ignore parse errors
-      }
-    }
-  }, []);
 
   // Helper: create a ChatMessage for the store
   const createMessage = useCallback(
@@ -101,48 +79,22 @@ export function GenesisChatPanel() {
     }
   }, [messages]);
 
-  // Handle header drag
-  const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const header = e.currentTarget;
-    const rect = header.getBoundingClientRect();
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
-
-  // Handle mouse move while dragging
+  // Mobile keyboard avoidance via visualViewport API
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isMobile || !isOpen) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-
-      // Constrain within viewport
-      const maxX = window.innerWidth - 400; // Assuming minimum width
-      const maxY = window.innerHeight - 200;
-
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY)),
-      });
+    const handleResize = () => {
+      const keyboardHeight = window.innerHeight - viewport.height;
+      inputContainerRef.current?.style.setProperty(
+        'bottom', `${Math.max(0, keyboardHeight)}px`,
+      );
     };
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      localStorage.setItem('genesis-chat-position', JSON.stringify(position));
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset, position]);
+    viewport.addEventListener('resize', handleResize);
+    return () => viewport.removeEventListener('resize', handleResize);
+  }, [isMobile, isOpen]);
 
   // Handle send prompt
   const handleSendPrompt = async () => {
@@ -187,50 +139,54 @@ export function GenesisChatPanel() {
 
   // F-A-2: Handle keyboard navigation and focus trap
   const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Escape key closes the panel
     if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
     }
   };
 
-  if (!isOpen) return null;
-
+  // Always render for transition — use translate to show/hide
   return (
     <div
-      className="fixed z-50 flex flex-col rounded-lg shadow-2xl bg-void border border-bdr overflow-hidden"
-      style={{
-        width: '500px',
-        height: '600px',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        // F-E-1: Mobile responsive layout
-        ...(typeof window !== 'undefined' && window.innerWidth <= 768 ? {
-          width: '100%',
-          height: 'auto',
-          left: '0',
-          top: 'auto',
-          bottom: '0',
-          right: '0',
-          borderRadius: '12px 12px 0 0',
-        } : {}),
-      }}
+      className={cn(
+        // Base layout
+        'fixed z-40 flex flex-col bg-void overflow-hidden',
+        // Transition
+        'transition-transform duration-300 ease-out',
+        // Desktop: side panel anchored to right edge
+        'top-0 right-0 h-screen w-[420px] border-l border-bdr',
+        isOpen ? 'translate-x-0' : 'translate-x-full',
+        // Mobile: full-screen takeover
+        'max-md:inset-0 max-md:w-full max-md:h-full max-md:border-l-0 max-md:z-50',
+        // Mobile: slide up from bottom instead of from right
+        !isOpen && 'max-md:translate-x-0 max-md:translate-y-full',
+        isOpen && 'max-md:translate-y-0',
+      )}
       onKeyDown={handlePanelKeyDown}
       role="dialog"
       aria-label="Genesis Chat Panel"
+      aria-hidden={!isOpen}
     >
       {/* Header */}
       <div
-        onMouseDown={handleHeaderMouseDown}
         className={cn(
           'flex items-center justify-between gap-2 px-sp-3 py-sp-2',
           'bg-abyss-light border-b border-bdr',
-          'select-none',
-          isDragging && 'cursor-grabbing',
-          !isDragging && 'cursor-grab',
+          'select-none shrink-0',
         )}
       >
         <div className="flex items-center gap-2 flex-1">
+          {/* Mobile: back arrow instead of just close X */}
+          {isMobile && (
+            <button
+              onClick={() => setOpen(false)}
+              className="p-1 -ml-1 hover:bg-abyss rounded transition-colors"
+              title="Back"
+              tabIndex={0}
+            >
+              <ArrowLeft className="h-4 w-4 text-txt-dim" />
+            </button>
+          )}
           <div className="font-semibold text-txt">Genesis Chat</div>
           <div
             className={cn(
@@ -258,20 +214,23 @@ export function GenesisChatPanel() {
           </div>
         </div>
 
-        <button
-          onClick={() => setOpen(false)}
-          className="p-1 hover:bg-abyss rounded transition-colors"
-          title="Close"
-          tabIndex={0}
-        >
-          <X className="h-4 w-4 text-txt-dim" />
-        </button>
+        {/* Desktop: X close button */}
+        {!isMobile && (
+          <button
+            onClick={() => setOpen(false)}
+            className="p-1 hover:bg-abyss rounded transition-colors"
+            title="Close"
+            tabIndex={0}
+          >
+            <X className="h-4 w-4 text-txt-dim" />
+          </button>
+        )}
       </div>
 
-      {/* Terminal area */}
+      {/* Terminal area — fills remaining space, scrolls */}
       <div
         ref={terminalRef}
-        className="flex-1 overflow-y-auto bg-void p-sp-3 font-mono text-sm text-txt-dim"
+        className="flex-1 overflow-y-auto bg-void p-sp-3 font-mono text-sm text-txt-dim min-h-0"
       >
         {messages.map((msg) => (
           <div key={msg.id} className="whitespace-pre-wrap break-words">
@@ -290,8 +249,15 @@ export function GenesisChatPanel() {
         )}
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-bdr bg-abyss-light p-sp-2 flex gap-2">
+      {/* Input area — sticky at bottom, keyboard-aware on mobile */}
+      <div
+        ref={inputContainerRef}
+        className={cn(
+          'border-t border-bdr bg-abyss-light p-sp-2 flex gap-2 shrink-0',
+          // Mobile: position relative for keyboard avoidance (bottom adjusted via JS)
+          isMobile && 'relative',
+        )}
+      >
         <textarea
           ref={inputRef}
           value={inputDraft}
@@ -304,7 +270,7 @@ export function GenesisChatPanel() {
             'focus:outline-none focus:ring-2 focus:ring-bio focus:border-bio',
             'resize-none',
           )}
-          rows={3}
+          rows={isMobile ? 2 : 3}
           disabled={isSending}
           tabIndex={0}
         />
