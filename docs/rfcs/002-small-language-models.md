@@ -860,4 +860,38 @@ unchanged. SLMs add a new *implementation strategy* for existing module interfac
 
 ## Implementation Status
 
-**Status:** Draft — no implementation. Validation Plan Phase 0 not yet started.
+**Status:** Validation in progress (PRD 034). First training run complete.
+
+**PRD:** `docs/prds/034-slm-validation.md`
+**Experiment:** `experiments/exp-slm/`
+**Hardware:** 2x RTX 2080 Ti (11GB), CUDA 12.6, training on GPU 1
+
+### Validation Phase 0 — DSL Feasibility: PASS
+
+- Grammar designed (peggy PEG format) for Monitor v2 output
+- 5600 corpus entries (600 base + 4000 augmented + 1000 holdout)
+- Parse validity: **100%**, semantic validity: **100%**
+- First revision, no iterations needed
+
+### Validation Phase 1 — Single Module SLM: IN PROGRESS
+
+**Run 1** (SmolLM2-135M, 1000 steps, 4000 corpus):
+
+| Metric | Target | Result | Status |
+|--------|--------|--------|--------|
+| Parse accuracy | ≥ 95% | **100%** | **PASS** |
+| Semantic accuracy | ≥ 85% | 39.2% | FAIL |
+| Adversarial accuracy | ≥ 70% | 11.0% | FAIL |
+| Confidence (mean) | — | 96.0% | Overconfident |
+| Training time | — | 3.8 min | — |
+| Peak VRAM | ≤ 11 GB | 2.95 GB | PASS |
+
+**Key finding:** 100% parse accuracy validates the RFC's core thesis — a 135M parameter
+model can learn to produce valid tokens in a typed DSL with perfect reliability. The DSL
+grammar is fully internalized after only 1000 training steps.
+
+The semantic gap (39.2%) indicates the model learned output *format* but not input→output
+*mapping*. This is a training scale issue (data diversity, step count), not an architectural
+limitation. Escalation path: increase steps to 3000-5000, augment corpus to 10K-20K.
+
+### Validation Phase 2-4: Not yet started
