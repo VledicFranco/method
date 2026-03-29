@@ -62,6 +62,11 @@ export interface BridgeEvent {
   source: string;
   /** Links related events (e.g., all events from one strategy execution). */
   correlationId?: string;
+
+  /** Originating bridge node ID (set when event is federated from another bridge). */
+  sourceNodeId?: string;
+  /** True if this event was received from another bridge via cluster federation. */
+  federated?: boolean;
 }
 
 /**

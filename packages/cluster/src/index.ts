@@ -42,6 +42,18 @@ export {
   safeParseResourceSnapshot,
 } from './resources/resource-schema.js';
 
+// ── Routing ────────────────────────────────────────────────────
+
+export { CapacityWeightedRouter } from './routing/router.js';
+export { RouterConfigSchema } from './routing/router.config.js';
+export type { RouterConfig } from './routing/router.config.js';
+
+// ── Federation ─────────────────────────────────────────────────
+
+export { EventRelay } from './federation/event-relay.js';
+export { EventRelayConfigSchema } from './federation/event-relay.config.js';
+export type { EventRelayConfig } from './federation/event-relay.config.js';
+
 // ── Test Doubles ────────────────────────────────────────────────
 
 export { FakeDiscovery } from './test-doubles/fake-discovery.js';
