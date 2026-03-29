@@ -7,6 +7,7 @@ import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
 import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
 import { useGenesisStore } from '@/shared/stores/genesis-store';
 import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
+import { useGenesisAction } from '@/domains/genesis/useGenesisAction';
 import type { ProjectMetadata } from '@/domains/projects/types';
 
 export default function Dashboard() {
@@ -14,6 +15,21 @@ export default function Dashboard() {
 
   useGenesisPageContext('dashboard', {
     selectedProject: selectedProject?.id ?? null,
+  });
+
+  // Handle Genesis-dispatched actions for the dashboard domain
+  useGenesisAction((action) => {
+    if (action.type === 'focusProject') {
+      // Scroll to and highlight the target project in the list
+      const el = document.querySelector(`[data-project-id="${action.projectId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-bio', 'ring-offset-2', 'ring-offset-void', 'transition-all');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-bio', 'ring-offset-2', 'ring-offset-void', 'transition-all');
+        }, 2000);
+      }
+    }
   });
 
   // Sync selected project to genesis store for cross-page awareness

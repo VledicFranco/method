@@ -19,6 +19,7 @@ import { useProjects } from '@/domains/projects/useProjects';
 import { wsManager } from '@/shared/websocket/ws-manager';
 import { usePromptStream } from './usePromptStream';
 import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
+import { useGenesisAction } from '@/domains/genesis/useGenesisAction';
 import type { ChatTurn, PromptResult, SpawnRequest } from './types';
 
 // ── Recovery Banner ─────────────────────────────────────────────────────────
@@ -195,6 +196,28 @@ export default function Sessions() {
   useGenesisPageContext('sessions', {
     selectedSessionId: activeSessionId ?? null,
     activeSessionCount: activeSessions.length,
+  });
+
+  // Handle Genesis-dispatched actions for the sessions domain
+  useGenesisAction((action) => {
+    if (action.type === 'spawnSession') {
+      // Find the project path from the discovered projects list
+      const project = projects.find((p) => p.id === action.projectId);
+      if (project) {
+        spawn({
+          workdir: project.path,
+          purpose: action.prompt ?? `Session for ${project.name}`,
+          mode: 'pty',
+        }).then((res) => {
+          navigate('/sessions/' + res.session_id);
+          setLiveTurns([]);
+        }).catch((err) => {
+          console.error('[Genesis] spawnSession failed:', err);
+        });
+      } else {
+        setSpawnOpen(true);
+      }
+    }
   });
 
   // ── Recovery banner state ───────────────────────────────────────
