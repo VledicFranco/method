@@ -162,7 +162,8 @@ export function createWorkspace(
   function recomputeSalience(now: number): void {
     const ctx: SalienceContext = { ...salienceContext, now };
     for (const entry of entries) {
-      entry.salience = salienceFn(entry, ctx);
+      const computed = salienceFn(entry, ctx);
+      entry.salience = Number.isFinite(computed) ? computed : 0;
     }
   }
 
@@ -266,10 +267,11 @@ export function createWorkspace(
 
         // Compute salience for the new entry
         const ctx: SalienceContext = { ...salienceContext, now };
+        const computed = salienceFn(entry, ctx);
         const newEntry: WorkspaceEntry = {
           ...entry,
           source: moduleId,
-          salience: salienceFn(entry, ctx),
+          salience: Number.isFinite(computed) ? computed : 0,
           timestamp: entry.timestamp || now,
         };
 

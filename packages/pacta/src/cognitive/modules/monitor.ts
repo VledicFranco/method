@@ -20,6 +20,7 @@ import type {
   ModuleId,
   ReasonerMonitoring,
   ActorMonitoring,
+  ReasonerActorMonitoring,
 } from '../algebra/index.js';
 import { moduleId } from '../algebra/index.js';
 
@@ -133,9 +134,8 @@ export function createMonitor(
         }
 
         // Check actor signals for unexpected results and stagnation
-        if (isActorMonitoring(signal) || isReasonerActorMonitoring(signal)) {
-          // unexpectedResult check (only for ActorMonitoring)
-          if (isActorMonitoring(signal) && signal.unexpectedResult) {
+        if (isActorMonitoring(signal)) {
+          if (signal.unexpectedResult) {
             hasUnexpectedResult = true;
             anomalies.push({
               moduleId: sourceId,
@@ -143,10 +143,19 @@ export function createMonitor(
               detail: `Unexpected result from action: ${signal.actionTaken}`,
             });
           }
-          actorWasReadOnly = READ_ONLY_ACTIONS.has((signal as any).actionTaken);
-          // Capture the action input fingerprint for exploration vs stagnation detection
-          const inputStr = JSON.stringify((signal as any).declaredPlanAction ?? (signal as any).actionTaken ?? '');
-          currentActionInput = inputStr;
+          actorWasReadOnly = READ_ONLY_ACTIONS.has(signal.actionTaken);
+          currentActionInput = JSON.stringify(signal.actionTaken);
+        } else if (isReasonerActorMonitoring(signal)) {
+          if (signal.unexpectedResult) {
+            hasUnexpectedResult = true;
+            anomalies.push({
+              moduleId: sourceId,
+              type: 'unexpected-result',
+              detail: `Unexpected result from action: ${signal.actionTaken}`,
+            });
+          }
+          actorWasReadOnly = READ_ONLY_ACTIONS.has(signal.actionTaken);
+          currentActionInput = JSON.stringify(signal.declaredPlanAction ?? signal.actionTaken);
         }
       }
 
@@ -188,8 +197,10 @@ export function createMonitor(
       if (newConsecutiveReadOnly >= 2) {
         let stagnatingAction: string | null = null;
         for (const [, signal] of input) {
-          if (isActorMonitoring(signal) || isReasonerActorMonitoring(signal)) {
-            stagnatingAction = (signal as any).actionTaken;
+          if (isActorMonitoring(signal)) {
+            stagnatingAction = signal.actionTaken;
+          } else if (isReasonerActorMonitoring(signal)) {
+            stagnatingAction = signal.actionTaken;
           }
         }
         if (stagnatingAction) {
@@ -266,13 +277,13 @@ export function createMonitor(
 // ── Type Guards ────────────────────────────────────────────────────
 
 function isReasonerMonitoring(signal: MonitoringSignal): signal is ReasonerMonitoring {
-  return 'type' in signal && (signal as ReasonerMonitoring).type === 'reasoner';
+  return 'type' in signal && (signal as { type?: string }).type === 'reasoner';
 }
 
 function isActorMonitoring(signal: MonitoringSignal): signal is ActorMonitoring {
-  return 'type' in signal && (signal as ActorMonitoring).type === 'actor';
+  return 'type' in signal && (signal as { type?: string }).type === 'actor';
 }
 
-function isReasonerActorMonitoring(signal: MonitoringSignal): boolean {
-  return 'type' in signal && (signal as any).type === 'reasoner-actor';
+function isReasonerActorMonitoring(signal: MonitoringSignal): signal is ReasonerActorMonitoring {
+  return 'type' in signal && (signal as { type?: string }).type === 'reasoner-actor';
 }

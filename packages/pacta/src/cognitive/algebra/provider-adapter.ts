@@ -27,6 +27,9 @@ export interface AdapterConfig {
 
   /** Abort signal for cancellation. */
   abortSignal?: AbortSignal;
+
+  /** Timeout in milliseconds for the provider invocation. Default: 30000 (30s). */
+  timeoutMs?: number;
 }
 
 // ── Adapter Result ───────────────────────────────────────────────
@@ -70,37 +73,62 @@ export function createProviderAdapter(
       workspaceSnapshot: ReadonlyWorkspaceSnapshot,
       config: AdapterConfig,
     ): Promise<ProviderAdapterResult> {
-      // Build pact: merge defaults with per-call config, default mode to oneshot
-      const pact: Pact = {
-        mode: defaults.pactTemplate.mode ?? { type: 'oneshot' },
-        ...defaults.pactTemplate,
-        ...config.pactTemplate,
-      };
+      const timeoutMs = config.timeoutMs ?? defaults.timeoutMs ?? 30_000;
 
-      // Ensure mode is always present (Pact requires it)
-      if (!pact.mode) {
-        pact.mode = { type: 'oneshot' };
+      // Create a combined abort signal: user signal + timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(new Error(`Provider invocation timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      );
+
+      // If caller provided an abort signal, chain it
+      if (config.abortSignal) {
+        config.abortSignal.addEventListener(
+          'abort',
+          () => controller.abort(config.abortSignal!.reason),
+          { once: true },
+        );
+      }
+      if (defaults.abortSignal) {
+        defaults.abortSignal.addEventListener(
+          'abort',
+          () => controller.abort(defaults.abortSignal!.reason),
+          { once: true },
+        );
       }
 
-      // Build prompt from workspace snapshot contents
-      const promptParts: string[] = [];
-      for (const entry of workspaceSnapshot) {
-        const content = typeof entry.content === 'string'
-          ? entry.content
-          : JSON.stringify(entry.content);
-        promptParts.push(content);
-      }
-      const prompt = promptParts.join('\n\n');
-
-      // Build agent request
-      const request: AgentRequest = {
-        prompt,
-        systemPrompt: config.systemPrompt ?? defaults.systemPrompt,
-        abortSignal: config.abortSignal ?? defaults.abortSignal,
-      };
-
-      // Invoke provider
       try {
+        // Build pact: merge defaults with per-call config, default mode to oneshot
+        const pact: Pact = {
+          mode: defaults.pactTemplate.mode ?? { type: 'oneshot' },
+          ...defaults.pactTemplate,
+          ...config.pactTemplate,
+        };
+
+        // Ensure mode is always present (Pact requires it)
+        if (!pact.mode) {
+          pact.mode = { type: 'oneshot' };
+        }
+
+        // Build prompt from workspace snapshot contents
+        const promptParts: string[] = [];
+        for (const entry of workspaceSnapshot) {
+          const content = typeof entry.content === 'string'
+            ? entry.content
+            : JSON.stringify(entry.content);
+          promptParts.push(content);
+        }
+        const prompt = promptParts.join('\n\n');
+
+        // Build agent request — use the combined signal
+        const request: AgentRequest = {
+          prompt,
+          systemPrompt: config.systemPrompt ?? defaults.systemPrompt,
+          abortSignal: controller.signal,
+        };
+
+        // Invoke provider
         const result = await provider.invoke(pact, request);
 
         return {
@@ -109,10 +137,16 @@ export function createProviderAdapter(
           cost: result.cost,
         };
       } catch (err: unknown) {
+        // Check if this was a timeout
+        const isTimeout = controller.signal.aborted
+          && err instanceof Error
+          && err.message.includes('timed out');
+        const message = err instanceof Error ? err.message : String(err);
+
         // Propagate as StepError-compatible format
         const stepError: StepError = {
-          message: err instanceof Error ? err.message : String(err),
-          recoverable: true,
+          message: isTimeout ? `Provider timeout after ${timeoutMs}ms` : message,
+          recoverable: !isTimeout,  // Timeouts are not recoverable
           moduleId: 'provider-adapter' as import('./module.js').ModuleId,
           phase: 'invoke',
         };
@@ -120,6 +154,8 @@ export function createProviderAdapter(
           new Error(stepError.message),
           { stepError },
         );
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
   };
