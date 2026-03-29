@@ -66,7 +66,7 @@ Additional fields tracked by PtySession:
 #### `GET /health`
 ```typescript
 // Response 200
-{ status: 'ok'; active_sessions: number; max_sessions: number; uptime_ms: number; version: string }
+{ status: 'ok'; instance_name: string; active_sessions: number; max_sessions: number; uptime_ms: number; version: string }
 ```
 
 #### `POST /sessions`
@@ -178,6 +178,7 @@ All via environment variables with sensible defaults:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3456` | HTTP server listen port |
+| `INSTANCE_NAME` | `"default"` | Human-readable instance identifier surfaced in `/health` response |
 | `CLAUDE_BIN` | `"claude"` | Path to the Claude Code binary |
 | `CLAUDE_WORKDIR` | `process.cwd()` | Default workdir for new sessions |
 | `SETTLE_DELAY_MS` | `2000` | Debounce interval for response completion detection |
@@ -261,3 +262,74 @@ The bridge has no dependency on `@method/core`. This is intentional:
 - The orchestrator is the integration point — it calls both systems and composes the workflow
 
 Adding methodology awareness to the bridge would create a circular dependency and couple agent spawning to the method system's type hierarchy.
+
+## Instance Profiles
+
+Instance profiles allow running multiple bridge instances on the same machine with isolated state. Each profile is a `.env` file in `.method/instances/` that defines a set of environment variables for a bridge process.
+
+### Profile Loading Order
+
+The bridge startup script (`scripts/start-bridge.js`) resolves configuration through this chain:
+
+1. **`--instance <name>`** — If provided, loads `.method/instances/<name>.env`. The profile's env vars are merged with the process environment (explicit env vars take precedence over profile values).
+2. **`.env.tpl` + `op` CLI** — If `.env.tpl` exists and the 1Password CLI (`op`) is on PATH, the bridge spawns via `op run --env-file=.env.tpl` so that `op://` secret references are resolved at runtime.
+3. **`.env.tpl` without `op`** — If `.env.tpl` exists but `op` is not available, falls back to step 4 with a warning.
+4. **`.env` file** — If `.env` exists, its key-value pairs are parsed and merged (profile values take precedence over `.env` values).
+5. **Bare start** — No secrets configured. The bridge starts with whatever is in the process environment.
+
+Steps 1 and 2-4 are not mutually exclusive: an instance profile provides isolation variables (port, root dir, instance name), while `.env.tpl` or `.env` provides secrets (API keys). Both are merged before the bridge process starts.
+
+### Profile File Format
+
+Profiles use simple `KEY=VALUE` syntax:
+
+```
+# Comment lines start with #
+INSTANCE_NAME=test
+PORT=3457
+ROOT_DIR=test-fixtures/bridge-test
+EVENT_LOG_PATH=/tmp/method-test-events.jsonl
+GENESIS_ENABLED=false
+MAX_SESSIONS=3
+```
+
+- Blank lines and `#` comment lines are skipped.
+- Values may be quoted (single or double quotes are stripped).
+- Variable expansion (`$VAR` or `${VAR}`) is **not** supported.
+- Path-type values (`ROOT_DIR`, `EVENT_LOG_PATH`) have Windows backslashes automatically normalized to forward slashes.
+
+### Isolation Dimensions
+
+Each instance profile can isolate the following:
+
+| Dimension | Env Var | Effect |
+|-----------|---------|--------|
+| Port | `PORT` | Separate HTTP listen port — avoids conflicts |
+| Instance identity | `INSTANCE_NAME` | Surfaced in `/health` response — identifies which instance you're talking to |
+| Project discovery | `ROOT_DIR` | Separate root directory for project scanning — can point to test fixtures |
+| Event log | `EVENT_LOG_PATH` | Separate JSONL event persistence file |
+| PID tracking | *(derived from PORT)* | PID file at `$TMPDIR/method-bridge-<PORT>.pids` — stop script targets the correct process |
+| Session checkpoints | *(derived from ROOT_DIR)* | Session data stored relative to ROOT_DIR |
+
+### Built-in Profiles
+
+| Profile | Port | Purpose |
+|---------|------|---------|
+| `production.env` | 3456 | Default bridge configuration — matches bare start behavior |
+| `test.env` | 3457 | Integration testing — uses fixture repos, disables genesis, limits sessions to 3 |
+
+### Start / Stop
+
+```bash
+# Start a named instance
+npm run bridge -- --instance test
+
+# Stop a named instance (resolves port from profile)
+node scripts/kill-port.js --instance test
+
+# Convenience scripts for the test instance
+npm run bridge:test          # equivalent to --instance test
+npm run bridge:stop:test     # equivalent to kill-port --instance test
+```
+
+The stop script (`scripts/kill-port.js`) also accepts `--instance <name>`. It loads the profile to determine the port, then performs graceful shutdown via the `/shutdown` endpoint with PID-based fallback.

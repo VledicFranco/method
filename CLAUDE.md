@@ -16,6 +16,9 @@ npm test               # Run all tests (core + bridge domains)
 npm run bridge         # Start bridge server (builds first)
 npm run bridge:dev     # Dev mode (tsx, no build step)
 npm run bridge:stop    # Stop bridge + cleanup orphaned processes
+npm run bridge:test    # Start test instance on port 3457 (isolated state, fixture repos)
+npm run bridge:stop:test  # Stop test instance
+npm run bridge -- --instance <name>  # Start a named instance from .method/instances/<name>.env
 ```
 
 ## Architecture — Fractal Component Architecture (FCA)
@@ -101,6 +104,7 @@ experiments/  Research experiments — see experiments/PROTOCOL.md
   council/            Steering council (TEAM, AGENDA, LOG)
   retros/             Retrospective artifacts
   strategies/         Event trigger strategy files
+  instances/          Instance profile .env files for running multiple bridge instances on different ports with isolated state
 ```
 
 ## Delivery Rules
@@ -150,6 +154,7 @@ If you are a sub-agent spawned for implementation work:
 - **Do NOT commit to files outside your task scope.** One step, one deliverable per sub-agent.
 - **Scope decisions go to the orchestrator.** If the task requires decisions beyond your scope, report back.
 - When in doubt about a registry change, check the method's `compilation_record` to understand what gates it passed.
+- To validate bridge changes, spin up a test instance with `npm run bridge:test` (port 3457, isolated state). Stop with `npm run bridge:stop:test`. The test instance uses fixture repos in `test-fixtures/bridge-test/` and does not interfere with the production bridge.
 
 ## Governance
 
