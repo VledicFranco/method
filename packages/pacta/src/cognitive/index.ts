@@ -15,3 +15,7 @@ export * from './engine/index.js';
 // They are imported directly by consumers who need specific module factories:
 //   import { createReasoner } from '@method/pacta/cognitive/modules/reasoner.js';
 // This prevents the barrel from coupling to all 8 module implementations.
+
+// Presets (PRD 035 — pre-composed configurations)
+export { enrichedPreset } from './presets/index.js';
+export type { EnrichedPresetOverrides, EnrichedPresetPorts, ModuleSlotOverrides } from './presets/index.js';
