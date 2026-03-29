@@ -58,9 +58,22 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       mode?: 'pty' | 'print';
       allowed_paths?: string[];
       scope_mode?: 'enforce' | 'warn';
+      /** PRD 033: Provider type — 'print' (default) or 'cognitive-agent'. */
+      provider_type?: 'print' | 'cognitive-agent';
+      /** PRD 033: Cognitive session configuration overrides. */
+      cognitive_config?: {
+        name?: string;
+        maxCycles?: number;
+        workspaceCapacity?: number;
+        confidenceThreshold?: number;
+        stagnationThreshold?: number;
+        interventionBudget?: number;
+      };
+      /** PRD 033: Cognitive pattern flags (e.g. ['P5', 'P6']). */
+      cognitive_patterns?: string[];
     };
   }>('/sessions', async (request, reply) => {
-    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode } = request.body ?? {};
+    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns } = request.body ?? {};
 
     if (!workdir || typeof workdir !== 'string') {
       return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -85,9 +98,11 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         nickname,
         purpose,
         spawn_delay_ms,
-        // PRD 028: mode field ignored — always print
         allowed_paths,
         scope_mode,
+        provider_type,
+        cognitive_config,
+        cognitive_patterns,
       });
 
       tokenTracker.registerSession(result.sessionId, workdir, new Date());

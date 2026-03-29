@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { createPrintSession, type PtySession, type PrintMetadata, type SessionStatus } from './print-session.js';
+import { createCognitiveSession, type CognitiveSessionConfig } from './cognitive-provider.js';
+import { createBridgeToolProvider } from './bridge-tools.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
@@ -136,6 +138,12 @@ export interface SessionPool {
     scope_mode?: 'enforce' | 'warn';
     /** Optional session ID — if provided, reuses this ID instead of generating a new UUID. Used for resuming sessions with Claude Code's --resume flag. */
     session_id?: string;
+    /** PRD 033: Provider type — 'print' (default) or 'cognitive-agent'. */
+    provider_type?: 'print' | 'cognitive-agent';
+    /** PRD 033: Cognitive config name (e.g. 'baseline'). Only used when provider_type is 'cognitive-agent'. */
+    cognitive_config?: Partial<CognitiveSessionConfig>;
+    /** PRD 033: Cognitive pattern flags (e.g. ['P5', 'P6']). */
+    cognitive_patterns?: string[];
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }>;
   /**
@@ -241,6 +249,9 @@ export function createPool(options?: PoolOptions): SessionPool {
   // PRD 012 Phase 4: Session mode tracking
   const sessionModes = new Map<string, SessionMode>();
 
+  // PRD 033: Cognitive SSE sink registration — allows promptStream to receive cognitive events
+  const cognitiveSSESinks = new Map<string, (cb: ((event: StreamEvent) => void) | null) => void>();
+
   // OBS-19: Waiting-for-sub-agent state (set externally; PTY auto-detection removed in PRD 028 C-4)
   const sessionWaitingFor = new Map<string, string>();        // sessionId → what it's waiting for
 
@@ -341,7 +352,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id, provider_type, cognitive_config, cognitive_patterns }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -467,37 +478,90 @@ export function createPool(options?: PoolOptions): SessionPool {
         kill_timeout_ms: (timeout_ms ? timeout_ms * 2 : DEFAULT_KILL_TIMEOUT_MS),
       };
 
-      // PRD 028: Always print mode — PTY removed in C-4
-      const effectiveMode: SessionMode = 'print';
+      // PRD 033: Determine session mode from provider_type (default: print)
+      const effectiveMode: SessionMode = provider_type === 'cognitive-agent' ? 'cognitive-agent' : 'print';
 
       // PRD 012: Staggered spawn — delay before spawning process
       if (spawn_delay_ms && spawn_delay_ms > 0) {
         await new Promise(r => setTimeout(r, spawn_delay_ms));
       }
 
-      // Default system prompt guidance for rich rendering in the Bridge UI
-      const DEFAULT_SYSTEM_PROMPT_SUFFIX = [
-        'When producing diagrams, flowcharts, or architecture visualizations, use GlyphJS ui: fenced code blocks instead of ASCII art.',
-        'Available components: ui:flowchart, ui:callout, ui:table, ui:architecture, ui:timeline, ui:graph, ui:sequence, ui:tabs, ui:steps, ui:kpi, ui:mindmap.',
-        'Use proper markdown tables (| col | col |) instead of ASCII-aligned columns.',
-        'Example: ```ui:flowchart\\nnodes:\\n  - id: a\\n    label: Start\\nedges:\\n  - from: a\\n    to: b\\n```',
-      ].join(' ');
+      let session: PtySession;
 
-      const userSystemPrompt = typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : '';
-      const effectiveSystemPrompt = userSystemPrompt
-        ? `${userSystemPrompt}\n\n${DEFAULT_SYSTEM_PROMPT_SUFFIX}`
-        : DEFAULT_SYSTEM_PROMPT_SUFFIX;
+      if (effectiveMode === 'cognitive-agent') {
+        // PRD 033: Cognitive agent session — runs reasoning cycle internally
+        const { createProviderAdapter } = await import('@method/pacta');
+        const { anthropicProvider } = await import('@method/pacta-provider-anthropic');
 
-      const session: PtySession = createPrintSession({
-        id: sessionId,
-        workdir: effectiveWorkdir,
-        initialPrompt: initialPrompt ?? undefined,
-        maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
-        appendSystemPrompt: effectiveSystemPrompt,
-        permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
-        model: typeof metadata?.model === 'string' ? metadata.model : undefined,
-        spawnArgs,
-      });
+        const tools = createBridgeToolProvider(effectiveWorkdir);
+        const model = typeof metadata?.model === 'string' ? metadata.model : undefined;
+        const agentProvider = anthropicProvider({ model, toolProvider: tools });
+        const adapter = createProviderAdapter(agentProvider, {
+          pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 4096 } },
+        });
+
+        // Mutable SSE sink — set by promptStream(), cleared on completion.
+        // Allows cognitive events to flow to both the event bus and the active SSE stream.
+        let sseSink: ((event: StreamEvent) => void) | null = null;
+        cognitiveSSESinks.set(sessionId, (cb) => { sseSink = cb; });
+
+        session = createCognitiveSession({
+          id: sessionId,
+          workdir: effectiveWorkdir,
+          adapter,
+          tools,
+          config: {
+            name: cognitive_config?.name,
+            patterns: cognitive_patterns,
+            maxCycles: cognitive_config?.maxCycles,
+            workspaceCapacity: cognitive_config?.workspaceCapacity,
+            confidenceThreshold: cognitive_config?.confidenceThreshold,
+            stagnationThreshold: cognitive_config?.stagnationThreshold,
+            interventionBudget: cognitive_config?.interventionBudget,
+          },
+          initialPrompt: initialPrompt ?? undefined,
+          onEvent: (event) => {
+            // Forward to active SSE stream (if any)
+            sseSink?.(event);
+            // Route cognitive cycle events through the event bus
+            if (eventBus) {
+              eventBus.emit({
+                version: 1,
+                domain: 'session',
+                type: `session.cognitive.${event.type}`,
+                severity: 'info',
+                sessionId,
+                payload: event as unknown as Record<string, unknown>,
+                source: 'bridge/sessions/cognitive-provider',
+              });
+            }
+          },
+        });
+      } else {
+        // Default: print-mode session (claude --print)
+        const DEFAULT_SYSTEM_PROMPT_SUFFIX = [
+          'When producing diagrams, flowcharts, or architecture visualizations, use GlyphJS ui: fenced code blocks instead of ASCII art.',
+          'Available components: ui:flowchart, ui:callout, ui:table, ui:architecture, ui:timeline, ui:graph, ui:sequence, ui:tabs, ui:steps, ui:kpi, ui:mindmap.',
+          'Use proper markdown tables (| col | col |) instead of ASCII-aligned columns.',
+          'Example: ```ui:flowchart\\nnodes:\\n  - id: a\\n    label: Start\\nedges:\\n  - from: a\\n    to: b\\n```',
+        ].join(' ');
+
+        const userSystemPrompt = typeof metadata?.append_system_prompt === 'string' ? metadata.append_system_prompt : '';
+        const effectiveSystemPrompt = userSystemPrompt
+          ? `${userSystemPrompt}\n\n${DEFAULT_SYSTEM_PROMPT_SUFFIX}`
+          : DEFAULT_SYSTEM_PROMPT_SUFFIX;
+
+        session = createPrintSession({
+          id: sessionId,
+          workdir: effectiveWorkdir,
+          initialPrompt: initialPrompt ?? undefined,
+          maxBudgetUsd: typeof metadata?.max_budget_usd === 'number' ? metadata.max_budget_usd : undefined,
+          appendSystemPrompt: effectiveSystemPrompt,
+          permissionMode: process.env.PRINT_PERMISSION_MODE ?? 'bypassPermissions',
+          model: typeof metadata?.model === 'string' ? metadata.model : undefined,
+          spawnArgs,
+        });
+      }
 
       sessions.set(sessionId, session);
       sessionModes.set(sessionId, effectiveMode);
@@ -602,6 +666,10 @@ export function createPool(options?: PoolOptions): SessionPool {
         throw new Error(`Session ${sessionId} is dead — cannot send prompt`);
       }
 
+      // PRD 033: Register SSE sink for cognitive sessions so cycle events flow to SSE
+      const setSink = cognitiveSSESinks.get(sessionId);
+      if (setSink) setSink(onEvent);
+
       try {
         let result: { output: string; timedOut: boolean };
 
@@ -653,6 +721,9 @@ export function createPool(options?: PoolOptions): SessionPool {
           type: 'error',
           error: (err as Error).message,
         });
+      } finally {
+        // Clear the cognitive SSE sink to avoid leaking callbacks
+        if (setSink) setSink(null);
       }
     },
 

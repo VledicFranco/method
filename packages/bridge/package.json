@@ -14,6 +14,7 @@
     "@glyphjs/compiler": "^0.9.1",
     "@method/methodts": "*",
     "@method/pacta": "*",
+    "@method/pacta-provider-anthropic": "*",
     "@method/pacta-provider-claude-cli": "*",
     "fastify": "^5.0.0",
     "js-yaml": "^4.1.1",
