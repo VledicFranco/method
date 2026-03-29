@@ -16,13 +16,11 @@ domains_affected: [bridge-server-entry, bridge-sessions, bridge-event-bus, new-p
 
 The bridge is single-node. All work — strategy execution, session spawning, genesis monitoring — runs on one machine (`mission-control`). Three concrete limitations:
 
-1. **Capacity ceiling.** The bridge pool has a hard `MAX_SESSIONS` limit (default 10). When mission-control is saturated, excess work queues or fails with 503. Other machines on the Tailscale mesh with available CPU and memory sit idle. There is no mechanism to overflow work to another bridge.
+1. **Capacity ceiling.** The bridge pool has a hard `MAX_SESSIONS` limit (default 10). As agent workloads grow, a single machine will reach its capacity ceiling. Other machines on the Tailscale mesh with available CPU and memory would sit idle. There is no mechanism to overflow work to another bridge. (No capacity-blocking incidents have been observed yet — this PRD captures the coordination design proactively so that PRD 038's deployment model feeds into a known architectural direction.)
 
-2. **No failover.** If mission-control goes down (reboot, crash, power loss), all active sessions die and no other bridge takes over. PRD 029's crash recovery restores sessions on the same machine after restart, but there is no cross-machine resilience.
+2. **No cluster awareness.** Bridges on different machines don't know about each other. An operator managing multiple bridges must check each `/health` endpoint manually. There is no unified view of capacity and no way for an orchestrator to query "which bridge has capacity for this strategy?"
 
-3. **No cluster awareness.** Bridges on different machines don't know about each other. An operator managing 3 bridges must check each `/health` endpoint manually. There is no unified view of capacity, no shared project registry, and no way for an orchestrator to query "which bridge has capacity for this strategy?"
-
-PRD 038 (Bridge Deployment) establishes the foundation: instance profiles, secrets management, and portable packaging. Once bridges are deployable on multiple machines, the coordination problem is immediate.
+PRD 038 (Bridge Deployment) establishes the foundation: instance profiles and secrets management. Once bridges are deployable on multiple machines, coordination becomes the next concern.
 
 ### Assumptions
 
@@ -62,13 +60,12 @@ L3  @method/cluster    Package — cluster protocol, membership, routing (NEW)
     @method/pacta       Agent SDK — unchanged
 
 L2  @method/methodts   Domain extensions — unchanged
-    @method/testkit    Testing framework — gains cluster test doubles
 ```
 
 **Dependency rule (downward only):**
 - `@method/bridge` depends on `@method/cluster` (L4 → L3)
 - `method-ctl` depends on `@method/cluster` (L4 → L3)
-- `@method/cluster` depends on `@method/methodts` for shared types only (L3 → L2)
+- `@method/cluster` has no dependency on `@method/methodts` — cluster types are self-contained
 - `@method/cluster` has zero transport deps — no HTTP, no WebSocket, no Tailscale SDK
 
 ### 3.2 — `@method/cluster` Package (L3 — New)
@@ -162,7 +159,7 @@ interface ClusterNode {
   instanceName: string;              // From INSTANCE_NAME env var
   address: PeerAddress;              // How to reach this node
   resources: ResourceSnapshot;       // Last known resource state
-  status: 'alive' | 'suspect' | 'dead';
+  status: 'alive' | 'suspect' | 'dead' | 'draining';
   lastSeen: number;                  // Epoch ms
   projects: ProjectSummary[];        // Discovered project IDs + names
 }
@@ -201,9 +198,9 @@ score(node) =
   + (hasProject(node, request.projectId) ? 0.1 : 0)     // Project locality
 ```
 
-Highest score wins. Ties broken by lowest `sessionsActive` (prefer idle nodes).
+Nodes with status `draining` have score 0 and are never selected. Highest score wins among remaining nodes. Ties broken by lowest `sessionsActive` (prefer idle nodes).
 
-### 3.3 — Bridge `domains/cluster/` Domain (L2 — New)
+### 3.3 — Bridge `domains/cluster/` Domain (L4 — New)
 
 A new FCA domain in the bridge that integrates `@method/cluster` with the bridge's composition root.
 
@@ -247,6 +244,8 @@ packages/bridge/src/domains/cluster/
 | `/cluster/leave` | POST | Peer leave notification |
 | `/cluster/ping` | POST | Heartbeat ping (returns ack + state delta) |
 | `/cluster/events` | POST | Receive federated events from peers |
+| `/cluster/drain` | POST | Set node status to `draining` — stops accepting new work via routing. Existing sessions continue. |
+| `/cluster/resume` | POST | Clear `draining` status — resume accepting work. |
 
 **Integration with existing bridge surfaces:**
 
@@ -259,7 +258,7 @@ packages/bridge/src/domains/cluster/
 
 ### 3.4 — `method-ctl` CLI Application (L4 — New)
 
-A standalone CLI for cluster management. Composition root only — no domain logic (FCA P5).
+A standalone CLI for cluster management. Command handlers are HTTP clients that call cluster endpoints and format responses — they do not contain routing, membership, or federation logic.
 
 ```
 packages/method-ctl/
@@ -269,9 +268,8 @@ packages/method-ctl/
       status.ts              method-ctl status — unified cluster health
       nodes.ts               method-ctl nodes — list nodes with resources
       projects.ts            method-ctl projects — projects across cluster
-      route.ts               method-ctl route — test work routing
-      drain.ts               method-ctl drain <node> — stop new work on a node
-      upgrade.ts             method-ctl upgrade <node> — trigger remote upgrade
+      route.ts               method-ctl route — test work routing (post-MVP)
+      drain.ts               method-ctl drain <node> — stop new work on a node (post-MVP)
     config.ts                CLI config (cluster address, output format)
     README.md
   bin/
@@ -301,9 +299,8 @@ method-ctl status                    # Cluster overview (nodes, capacity, health
 method-ctl nodes                     # Detailed node list
 method-ctl nodes mission-control     # Single node detail
 method-ctl projects                  # Projects across all bridges
-method-ctl route --type strategy --project pv-method   # Test routing decision
-method-ctl drain laptop              # Stop accepting work on laptop
-method-ctl upgrade laptop            # Trigger bridge restart with latest build
+method-ctl route --type strategy --project pv-method   # Test routing decision (post-MVP)
+method-ctl drain laptop              # Stop accepting work on laptop (post-MVP)
 ```
 
 ### 3.5 — Event Federation Model
@@ -343,7 +340,10 @@ Uses the Tailscale local API (`/localapi/v0/status`) to enumerate machines on th
 ```typescript
 class TailscaleDiscovery implements DiscoveryProvider {
   async discover(): Promise<PeerAddress[]> {
-    // 1. GET http://127.0.0.1/localapi/v0/status (Tailscale local API)
+    // 1. Access Tailscale local API:
+    //    - Linux/macOS: GET http://127.0.0.1/localapi/v0/status (Unix socket)
+    //    - Windows: access via named pipe \\.\pipe\ProtectedPrefix\Administrators\Tailscale\tailscaled
+    //    - Cross-platform alternative: shell out to `tailscale status --json`
     // 2. Extract machine hostnames from status.Peer
     // 3. For each machine, probe GET http://{hostname}:{port}/health
     // 4. Return addresses of machines that respond with bridge health
@@ -399,7 +399,7 @@ This provides sub-second failure detection without O(n^2) polling. Implementatio
 
 **Cons:** No automatic failure detection. No event federation. No resource-aware routing. The operator must manually decide which bridge to use and manually check if a bridge is alive.
 
-**Why rejected:** This is what PRD 038 already enables (instance profiles + Tailscale access). The cluster PRD's value is precisely the automation that pure polling lacks — automatic discovery, state sharing, intelligent routing, and event federation.
+**Why rejected:** Alternative 3 is the expected operational model after PRD 038 deploys, and is a viable near-term approach for 2-3 machines. PRD 039 automates what operators would otherwise do manually — automatic discovery, state sharing, intelligent routing, and event federation. Implementation should begin only after manual coordination with PRD 038 proves insufficient.
 
 ### Surface-First vs. Implementation-First Trade-off
 
@@ -421,12 +421,13 @@ This provides sub-second failure detection without O(n^2) polling. Implementatio
 - Extended `/health` endpoint with cluster state
 - Cluster config via Zod-validated env vars
 - `~/.method/cluster.json` config for method-ctl
-- Test doubles and verification affordances in `@method/testkit`
+- Test doubles and verification affordances co-located in `packages/cluster/src/test-doubles/`
 - Co-located documentation per FCA P8/P10
 
 ### Out of Scope
 
-- SWIM gossip protocol (deferred to Phase 4 — designed but not implemented)
+- SWIM gossip protocol (deferred to Phase 5 — designed but not implemented)
+- Remote upgrade orchestration (use `method-ctl drain` + manual restart)
 - Server-side work forwarding (bridges accepting requests and forwarding to peers)
 - Automatic failover (restarting dead sessions on another bridge)
 - Shared project registry (cross-bridge deduplication)
@@ -443,6 +444,8 @@ This provides sub-second failure detection without O(n^2) polling. Implementatio
 - Supporting non-Tailscale networks in Phase 1 (seed addresses provide manual fallback)
 
 ## 6. Implementation Phases
+
+**Implementation gate:** Implementation begins only after (1) PRD 038 Phase 1 is operational and (2) PO validates the scale assumption in OQ-1. Until then, this PRD serves as an architectural direction document.
 
 ### Phase 1: Cluster Package Foundation + Port Interfaces
 
@@ -473,12 +476,12 @@ Files:
 - `packages/cluster/src/resources/resource-schema.test.ts` — new — 2 scenarios
 - `packages/cluster/src/resources/README.md` — new
 - `packages/cluster/README.md` — new — package documentation
-- `packages/testkit/src/cluster/` — new — `FakeDiscovery`, `FakeNetwork`, `FakeResources` test doubles
+- `packages/cluster/src/test-doubles/` — new — `FakeDiscovery`, `FakeNetwork`, `FakeResources` test doubles, co-located with the cluster package (FCA P4/P8). Note: `@method/pacta-testkit` is Pacta-scoped and should not gain cluster concerns.
 - Root `tsconfig.json` — modified — add `packages/cluster` to project references
 
 Tests:
 - All tests listed above are co-located (FCA P8)
-- Test doubles in `@method/testkit` (FCA P4)
+- Test doubles ship with `@method/cluster` in `src/test-doubles/` (FCA P4)
 
 Configuration:
 - None at this phase — config lives in the bridge domain (Phase 2)
@@ -542,8 +545,8 @@ Files:
 - `packages/cluster/src/federation/event-relay.config.ts` — new
 - `packages/cluster/src/federation/README.md` — new
 - `packages/bridge/src/domains/cluster/routes.ts` — modified — add `POST /cluster/route` endpoint
-- `packages/bridge/src/shared/event-bus/cluster-federation-sink.ts` — new — `ClusterFederationSink` implementing `EventSink`, delegates to `EventRelay`
-- `packages/bridge/src/shared/event-bus/cluster-federation-sink.test.ts` — new — 3 scenarios
+- `packages/bridge/src/domains/cluster/federation-sink.ts` — new — `ClusterFederationSink` implementing `EventSink`, delegates to `EventRelay`. Lives in domains/cluster/ (not shared/event-bus/) because it is cluster-specific logic. Registered on the event bus by the composition root when CLUSTER_ENABLED=true.
+- `packages/bridge/src/domains/cluster/federation-sink.test.ts` — new — co-located — 3 scenarios
 - `packages/bridge/src/server-entry.ts` — modified — register `ClusterFederationSink` when cluster enabled
 - `packages/bridge/src/ports/event-bus.ts` — modified — add optional `sourceNodeId` and `federated` fields to `BridgeEvent`
 
@@ -566,17 +569,14 @@ Files:
 - `packages/method-ctl/src/commands/status.ts` — new — unified cluster health
 - `packages/method-ctl/src/commands/nodes.ts` — new — node list with resources
 - `packages/method-ctl/src/commands/projects.ts` — new — cross-cluster projects
-- `packages/method-ctl/src/commands/route.ts` — new — test routing decision
-- `packages/method-ctl/src/commands/drain.ts` — new — mark node as draining
-- `packages/method-ctl/src/commands/upgrade.ts` — new — trigger remote upgrade
-- `packages/method-ctl/src/commands/__tests__/` — new — per-command tests using mocked HTTP
+- `packages/method-ctl/src/commands/route.ts` — new — test routing decision (post-MVP, added when need demonstrated)
+- `packages/method-ctl/src/commands/drain.ts` — new — mark node as draining (post-MVP, added when need demonstrated)
 - `packages/method-ctl/README.md` — new
 - Root `package.json` — modified — add `method-ctl` workspace, add `ctl` script
 
-Tests:
-- `packages/method-ctl/src/commands/__tests__/status.test.ts` — 2 scenarios (cluster healthy, node unreachable)
-- `packages/method-ctl/src/commands/__tests__/route.test.ts` — 2 scenarios (route found, no capacity)
-- `packages/method-ctl/src/commands/__tests__/drain.test.ts` — 1 scenario
+Tests (MVP — co-located per FCA P8):
+- `packages/method-ctl/src/commands/status.test.ts` — 2 scenarios (cluster healthy, node unreachable)
+- `packages/method-ctl/src/commands/nodes.test.ts` — 1 scenario (node list with resources)
 
 Configuration:
 - `~/.method/cluster.json` — cluster address config, known bridges
@@ -585,15 +585,9 @@ Configuration:
 
 **Checkpoint:** `method-ctl status` shows unified cluster health across two bridges. `method-ctl route --type strategy --project pv-method` returns the best node. `method-ctl drain laptop` stops new work on laptop.
 
-### Phase 5: SWIM-Lite Gossip (Future — Designed, Not Scheduled)
+### Phase 5: SWIM-Lite Gossip (Future — Not Scheduled)
 
-Replaces Tailscale polling with autonomous failure detection. Specified in Section 3.6. Implementation deferred until cluster exceeds 5 nodes or Tailscale local API proves unreliable.
-
-**Deliverables (when implemented):**
-- `packages/cluster/src/membership/swim-detector.ts` — SWIM failure detection
-- `packages/cluster/src/membership/swim-detector.test.ts` — 6 scenarios
-- `packages/bridge/src/domains/cluster/adapters/gossip-discovery.ts` — `DiscoveryProvider` impl using SWIM
-- Update `TailscaleDiscovery` to hybrid mode (Tailscale for initial bootstrap, gossip for ongoing)
+Replaces Tailscale polling with autonomous SWIM-based failure detection (see Section 3.6 for protocol design). Implementation deferred until cluster exceeds 5 nodes or Tailscale local API proves unreliable. Full deliverables will be specified when this phase is promoted.
 
 ## 7. Success Criteria
 
@@ -677,7 +671,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **When** bridge-1 emits a `strategy.completed` event with severity `warning`
 **Then** within 5 seconds, bridge-2's event bus contains the event with `federated: true` and `sourceNodeId` set to bridge-1's node ID
 
-**Test location:** `packages/bridge/src/shared/event-bus/cluster-federation-sink.test.ts` scenario 1
+**Test location:** `packages/bridge/src/domains/cluster/federation-sink.test.ts` scenario 1
 **Automatable:** yes
 
 ### AC-7: Federated events are not re-relayed (loop prevention)
@@ -695,7 +689,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **When** `method-ctl status` is run
 **Then** output shows both nodes with: instance name, status, active/max sessions, CPU %, memory %, project count, uptime
 
-**Test location:** `packages/method-ctl/src/commands/__tests__/status.test.ts` scenario 1
+**Test location:** `packages/method-ctl/src/commands/status.test.ts` scenario 1
 **Automatable:** yes
 
 ### AC-9: method-ctl route tests routing
@@ -704,7 +698,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **When** `method-ctl route --type strategy` is run
 **Then** output shows the selected node (20% capacity) with the routing score breakdown
 
-**Test location:** `packages/method-ctl/src/commands/__tests__/route.test.ts` scenario 1
+**Test location:** `packages/method-ctl/src/commands/route.test.ts` scenario 1
 **Automatable:** yes
 
 ### AC-10: method-ctl drain stops new work
@@ -715,7 +709,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **And** `POST /cluster/route` never selects the draining node
 **And** existing sessions continue to run
 
-**Test location:** `packages/method-ctl/src/commands/__tests__/drain.test.ts` scenario 1
+**Test location:** `packages/method-ctl/src/commands/drain.test.ts` scenario 1
 **Automatable:** yes
 
 ### AC-11: Health endpoint includes cluster info
@@ -743,7 +737,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **Then** all existing sinks continue to work without modification (fields are optional)
 **And** existing JSONL event logs are parseable (new fields absent = local event)
 
-**Test location:** `packages/bridge/src/shared/event-bus/cluster-federation-sink.test.ts` scenario 3
+**Test location:** `packages/bridge/src/domains/cluster/federation-sink.test.ts` scenario 3
 **Automatable:** yes
 
 ### AC-14: Tailscale API unavailable falls back to seeds
@@ -763,7 +757,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 **When** test doubles are implemented in `@method/testkit`
 **Then** each test double is under 20 lines of code (FCA P3 port width check)
 
-**Test location:** `packages/testkit/src/cluster/` — verify line count
+**Test location:** `packages/cluster/src/test-doubles/` — verify line count
 **Automatable:** yes (static analysis)
 
 ## 9. Risks & Mitigations
@@ -799,8 +793,7 @@ Replaces Tailscale polling with autonomous failure detection. Specified in Secti
 | NEW: `method-ctl` | New package | ~12 files | None | ~5 test scenarios | New package README |
 | `server-entry.ts` | Modified | 1 file | None | None | Updated bridge arch doc |
 | `ports/event-bus.ts` | Modified | 1 file | `BridgeEvent` gains 2 optional fields | Backward compat test | Updated event-bus arch doc |
-| `shared/event-bus/` | New sink | 1 new file | None | 3 test scenarios | Updated event-bus arch doc |
-| `@method/testkit` | Extended | 3 new files | None | Test doubles | Updated testkit docs |
+| `domains/cluster/` | Federation sink | 1 new file (federation-sink.ts) | None | 3 test scenarios | Updated event-bus arch doc |
 | Root `package.json` | Modified | 1 file | None | None | CLAUDE.md |
 
 ## 11. Documentation Impact
@@ -832,10 +825,10 @@ PRD designed with FCA compliance as primary architectural constraint. Key FCA al
 
 | FCA Principle | How Applied |
 |---------------|-------------|
-| P1 (Every layer produces a component) | New L3 package (`@method/cluster`), new L2 domain (`domains/cluster/`), new L4 app (`method-ctl`) |
+| P1 (Every layer produces a component) | New L3 package (`@method/cluster`), new L4 domain (`domains/cluster/`), new L4 app (`method-ctl`) |
 | P2 (Interface discipline) | `@method/cluster` exports a minimal public API barrel. Port interfaces are contracts. |
 | P3 (Port pattern) | 3 port interfaces with sub-20-line test doubles (AC-15). All external deps injected. |
-| P4 (Verification affordances) | Test doubles ship in `@method/testkit`. Every module has co-located tests. |
+| P4 (Verification affordances) | Test doubles ship co-located in `packages/cluster/src/test-doubles/`. Every module has co-located tests. |
 | P5 (Highest component is composition) | Bridge `server-entry.ts` wires cluster ports. `method-ctl` dispatches commands. No domain logic in composition roots. |
 | P6 (Verify independently) | `@method/cluster` tests use only test doubles. Bridge domain tests use mocked providers. No cross-domain test deps. |
 | P7 (Boundaries through structure) | `@method/cluster` has zero transport deps (enforced by CI lint). Domains don't import each other. |
@@ -843,7 +836,20 @@ PRD designed with FCA compliance as primary architectural constraint. Key FCA al
 | P9 (Observable) | Cluster metrics in `/health`, `/cluster/state`, `/cluster/nodes`. Event bus emits `cluster.peer_joined`, `cluster.peer_suspect`, `cluster.peer_dead`. |
 | P10 (README indexing) | Every directory with >1 file has a README. Package-level README indexes modules. |
 
-Adversarial review deferred — this is a draft for PO review of the architectural direction. Full adversarial review should run after PO validates assumptions in Section 1.
+Adversarial review completed 2026-03-29: 5 advisors (FCA Purist, Coherence Analyst, Codebase Auditor, Skeptic, Implementor), 83 findings, 4 synthesizers. Key resolutions applied:
+
+| Finding | Severity | Resolution |
+|---------|----------|------------|
+| F-A1-1: @method/testkit phantom | CRITICAL | Fixed: test doubles co-located in packages/cluster/src/test-doubles/ |
+| F-A5-6: drain has no backend | CRITICAL | Fixed: added POST /cluster/drain endpoint, draining status, router exclusion |
+| F-A5-7: upgrade unimplementable | CRITICAL | Fixed: removed upgrade command, added to Out of Scope |
+| F-A4-2: PRD premature | CRITICAL | Addressed: added implementation gate gated on 038 P1 + OQ-1 validation |
+| F-A1-7: federation sink domain leak | HIGH | Fixed: moved to domains/cluster/federation-sink.ts |
+| F-A3-10: L2 vs L4 mislabel | HIGH | Fixed: Section 3.3 heading + FCA table |
+| F-A5-2: Windows Tailscale API | HIGH | Fixed: added platform-specific access note |
+| F-A1-2: test co-location | HIGH | Fixed: tests co-located next to source |
+
+Full review: `tmp/review-report-prd038-039-2026-03-29.md`, `tmp/action-plan-prd038-039-2026-03-29.md`
 
 ## 14. Implementation Status
 

@@ -201,7 +201,7 @@ The tarball is published to GitHub Releases on the private `VledicFranco/method`
 **Deliverables:**
 
 Files:
-- `scripts/lib/profile-loader.js` — new — shared module for .env file parsing and profile resolution. Handles: simple KEY=VALUE parsing (no variable expansion needed — profiles are simple config), comment lines (`#`), empty lines, Windows path normalization (backslashes → forward slashes for `ROOT_DIR` and `EVENT_LOG_PATH` values, per DR-06). Used by both `start-bridge.js` and the Phase 3 CLI entry point — single source of truth, no duplication.
+- `scripts/lib/profile-loader.js` — new — shared module for .env file parsing and profile resolution. Uses CommonJS module format for compatibility with existing start scripts. Handles: simple KEY=VALUE parsing (no variable expansion needed — profiles are simple config), comment lines (`#`), empty lines, Windows path normalization (backslashes → forward slashes for `ROOT_DIR` and `EVENT_LOG_PATH` values, per DR-06). Used by both `start-bridge.js` and the Phase 3 CLI entry point — single source of truth, no duplication. If profile-loader grows beyond env parsing and path normalization, consider promoting it to a bridge utility module under FCA governance.
 - `scripts/start-bridge.js` — modified — add `--instance <name>` flag, import `profile-loader.js`, merge profile env with process.env (explicit env vars take precedence over profile values)
 - `scripts/kill-port.js` — modified — add `--instance <name>` flag, import `profile-loader.js` to resolve port from profile, target correct PID file
 - `.method/instances/production.env` — new — default production profile (PORT=3456, INSTANCE_NAME=production, standard config). Includes comments explaining each variable.
@@ -211,13 +211,14 @@ Files:
 - Root `package.json` — modified — add `bridge:test` script (`node scripts/start-bridge.js --instance test`) and `bridge:stop:test` script (`node scripts/kill-port.js --instance test`)
 
 Tests:
-- `scripts/__tests__/instance-profiles.test.js` — new — 5 scenarios
+- `scripts/lib/profile-loader.test.js` — new — co-located with profile-loader.js — 4 unit scenarios
   1. `--instance test` loads test.env and sets PORT=3457 (AC-1)
   2. No `--instance` flag uses current defaults, backward compat (AC-2)
   3. `--instance nonexistent` exits with code 1 and clear error message (AC-3)
   4. Explicit env vars take precedence over profile values (e.g., `PORT=9999 node scripts/start-bridge.js --instance test` uses port 9999)
+- `scripts/lib/instance-lifecycle.integration.test.js` — new — co-located, tagged `@integration` (excluded from default `npm test`, run via `npm run test:integration`) — 1 scenario
   5. Start production + test instances simultaneously, stop test only, verify production still running (AC-4)
-- `packages/bridge/src/__tests__/health-instance-name.test.ts` — new — 1 scenario
+- `packages/bridge/src/health-instance-name.test.ts` — new — co-located — 1 scenario
   1. When `INSTANCE_NAME=test` is set, `GET /health` response includes `instance_name: "test"` (DR-14 compliance)
 
 Configuration:
@@ -245,7 +246,7 @@ Files:
 - `.gitignore` — verified — `.env` remains ignored, `.env.tpl` is NOT ignored
 
 Tests:
-- `scripts/__tests__/secrets-resolution.test.js` — new — 3 scenarios
+- `scripts/lib/secrets-resolution.test.js` — new — co-located — 3 scenarios
   1. When `op` is on PATH and `.env.tpl` exists → spawns via `op run` (AC-5)
   2. When `op` is not available → falls back to `.env` with warning (AC-6)
   3. When neither `.env.tpl` nor `.env` exists → starts without secrets, logs warning (AC-7)
@@ -256,7 +257,7 @@ Tests:
 
 ### Phase 3: Portable Packaging (Contingent)
 
-**Status:** Contingent — ships only when a concrete multi-machine need materializes. Specified here for completeness. Do not implement until the need is validated.
+**Status:** Contingent — ships only when a concrete multi-machine need materializes. Fully specified to enable rapid implementation when the need is validated. Do not implement until triggered.
 
 **Deliverables:**
 
@@ -274,7 +275,7 @@ Files:
 - Root `package.json` — modified — add `pack` script: `node scripts/pack-bridge.js`, add `esbuild` as devDependency
 
 Tests:
-- `scripts/__tests__/pack-bridge.test.js` — new — 2 scenarios
+- `scripts/pack-bridge.test.js` — new — co-located — 2 scenarios
   1. `npm run pack` produces a `.tgz` file that contains `dist-bundle/server-entry.js`, `frontend/dist/index.html`, and `.env.tpl`; does NOT contain `.env`, `node_modules/`, or `src/` (AC-8)
   2. The tarball can be installed via `npm install --prefix /tmp/test-bridge-install` (not global) and `method-bridge --help` exits cleanly with usage text (AC-9)
 
@@ -316,7 +317,7 @@ Tests:
 **Then** the bridge starts on port 3457
 **And** `GET http://localhost:3457/health` returns `{ instance_name: "test", ... }`
 
-**Test location:** `scripts/__tests__/instance-profiles.test.js` scenario 1
+**Test location:** `scripts/lib/profile-loader.test.js` scenario 1
 **Automatable:** yes
 
 ### AC-2: Default behavior preserved
@@ -326,7 +327,7 @@ Tests:
 **Then** the bridge starts on port 3456 (default)
 **And** `GET http://localhost:3456/health` returns `{ instance_name: "default", ... }`
 
-**Test location:** `scripts/__tests__/instance-profiles.test.js` scenario 2
+**Test location:** `scripts/lib/profile-loader.test.js` scenario 2
 **Automatable:** yes
 
 ### AC-3: Invalid instance name fails clearly
@@ -336,7 +337,7 @@ Tests:
 **Then** the process exits with code 1
 **And** stderr contains the message "Instance profile not found: .method/instances/nonexistent.env"
 
-**Test location:** `scripts/__tests__/instance-profiles.test.js` scenario 3
+**Test location:** `scripts/lib/profile-loader.test.js` scenario 3
 **Automatable:** yes
 
 ### AC-4: Instance stop targets correct instance
@@ -347,7 +348,7 @@ Tests:
 **Then** the bridge on port 3457 stops
 **And** the bridge on port 3456 continues running
 
-**Test location:** `scripts/__tests__/instance-profiles.test.js` scenario 5
+**Test location:** `scripts/lib/profile-loader.test.js` scenario 5
 **Automatable:** yes (spawn both, kill one, health-check both)
 
 ### AC-5: 1Password secrets resolve at startup
@@ -358,7 +359,7 @@ Tests:
 **Then** the bridge process receives the real API key from 1Password in its environment
 **And** no `.env` file is needed
 
-**Test location:** `scripts/__tests__/secrets-resolution.test.js` scenario 1
+**Test location:** `scripts/lib/secrets-resolution.test.js` scenario 1
 **Automatable:** yes (on machines with `op`)
 
 ### AC-6: Graceful fallback to .env
@@ -369,7 +370,7 @@ Tests:
 **Then** the bridge starts normally using values from `.env`
 **And** a warning is logged: "op CLI not found — falling back to .env"
 
-**Test location:** `scripts/__tests__/secrets-resolution.test.js` scenario 2
+**Test location:** `scripts/lib/secrets-resolution.test.js` scenario 2
 **Automatable:** yes
 
 ### AC-7: No secrets, no crash
@@ -380,7 +381,7 @@ Tests:
 **Then** the bridge starts without API keys
 **And** a warning is logged about missing secrets
 
-**Test location:** `scripts/__tests__/secrets-resolution.test.js` scenario 3
+**Test location:** `scripts/lib/secrets-resolution.test.js` scenario 3
 **Automatable:** yes
 
 ### AC-8: Tarball packages correctly (Phase 3 — contingent)
@@ -391,7 +392,7 @@ Tests:
 **And** the tarball contains `dist-bundle/server-entry.js`, `dist-bundle/mcp-server.js`, `frontend/dist/index.html`, `.mcp.json`, and `.env.tpl`
 **And** the tarball does NOT contain `.env`, `node_modules/`, or `src/`
 
-**Test location:** `scripts/__tests__/pack-bridge.test.js` scenario 1
+**Test location:** `scripts/pack-bridge.test.js` scenario 1
 **Automatable:** yes
 
 ### AC-9: Tarball installs and runs (Phase 3 — contingent)
@@ -401,7 +402,7 @@ Tests:
 **Then** `method-bridge --help` prints usage information and exits with code 0 (without starting a server)
 **And** `method-bridge --instance test` starts a bridge on the configured port
 
-**Test location:** `scripts/__tests__/pack-bridge.test.js` scenario 2
+**Test location:** `scripts/pack-bridge.test.js` scenario 2
 **Automatable:** yes (uses temp directory, not global install)
 
 ## 9. Risks & Mitigations
