@@ -172,7 +172,9 @@ cd /path/to/pv-method && npm run bridge
 cd /path/to/pv-silky && npm run portal
 ```
 
-Future work: systemd services or startup scripts for automatic recovery.
+The `--instance` flag enables multi-instance operation, so you can run isolated bridge instances on different ports from the same machine (e.g., a production instance on 3456 and a test instance on 3457). For installing the bridge on a remote Tailscale machine without cloning the full repo, see Guide 30 (Bridge Deployment).
+
+Future work: systemd services or startup scripts for automatic recovery. Phase 3 will explore portable packaging for remote machines.
 
 ### No PWA install / push notifications
 
