@@ -1,6 +1,8 @@
 import { PageShell } from '@/shared/layout/PageShell';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 
 export default function Settings() {
+  useGenesisPageContext('settings', {});
   return (
     <PageShell breadcrumbs={[{ label: 'Settings' }]}>
       <div className="flex items-center justify-center h-64 rounded-card border border-bdr bg-abyss">

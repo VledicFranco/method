@@ -18,6 +18,7 @@ import { useTranscript } from './useTranscript';
 import { useProjects } from '@/domains/projects/useProjects';
 import { wsManager } from '@/shared/websocket/ws-manager';
 import { usePromptStream } from './usePromptStream';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 import type { ChatTurn, PromptResult, SpawnRequest } from './types';
 
 // ── Recovery Banner ─────────────────────────────────────────────────────────
@@ -190,6 +191,11 @@ export default function Sessions() {
   const [isWorking, setIsWorking] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useGenesisPageContext('sessions', {
+    selectedSessionId: activeSessionId ?? null,
+    activeSessionCount: activeSessions.length,
+  });
 
   // ── Recovery banner state ───────────────────────────────────────
   const [recoveryBanner, setRecoveryBanner] = useState<RecoveryBannerState>({

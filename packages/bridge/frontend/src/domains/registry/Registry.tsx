@@ -15,6 +15,7 @@ import { RegistryTree } from '@/domains/registry/RegistryTree';
 import { MethodDetail } from '@/domains/registry/MethodDetail';
 import { CopyMethodologyModal } from '@/domains/registry/CopyMethodologyModal';
 import { useRegistryTree, useMethodDetail, useRegistryManifest, useRegistryReload } from '@/domains/registry/useRegistry';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 import { cn } from '@/shared/lib/cn';
 import type { ManifestEntry } from '@/domains/registry/types';
 
@@ -168,6 +169,12 @@ export default function Registry() {
   const { data: tree, isLoading: treeLoading } = useRegistryTree();
   const { data: methodDetail, isLoading: detailLoading } = useMethodDetail(selectedMethodology, selectedMethod);
   const reload = useRegistryReload();
+
+  useGenesisPageContext('registry', {
+    viewMode,
+    selectedMethodology,
+    selectedMethod,
+  });
 
   const handleSelect = useCallback((methodologyId: string, methodId: string) => {
     setSelectedMethodology(methodologyId);

@@ -6,10 +6,15 @@ import { BridgeHealthCards } from '@/shared/data/BridgeHealthCards';
 import { TokenAggregateCards } from '@/domains/tokens/TokenAggregateCards';
 import { SubscriptionMeters } from '@/domains/tokens/SubscriptionMeters';
 import { useGenesisStore } from '@/shared/stores/genesis-store';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 import type { ProjectMetadata } from '@/domains/projects/types';
 
 export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
+
+  useGenesisPageContext('dashboard', {
+    selectedProject: selectedProject?.id ?? null,
+  });
 
   // Sync selected project to genesis store for cross-page awareness
   const handleProjectSelect = (project: ProjectMetadata) => {

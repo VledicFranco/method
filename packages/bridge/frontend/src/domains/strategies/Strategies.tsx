@@ -23,6 +23,7 @@ import {
   useResumeTriggers,
   useReloadTriggers,
 } from '@/domains/triggers/useTriggers';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 import { formatCost, formatDuration, formatRelativeTime } from '@/shared/lib/formatters';
 import type { StrategyDefinition } from '@/domains/strategies/types';
 import type { TriggerListItem } from '@/domains/triggers/types';
@@ -527,6 +528,13 @@ export default function Strategies() {
   );
 
   const recentRuns = useMemo(() => allExecutions.slice(0, 10), [allExecutions]);
+
+  useGenesisPageContext('strategies', {
+    filter,
+    expandedStrategyId: expandedId,
+    definitionCount: definitions.length,
+    triggerCount: triggers.length,
+  });
 
   // Filtered definitions
   const filtered = useMemo(() => {
