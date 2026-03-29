@@ -39,6 +39,7 @@ export type {
   WorkspaceWritePort,
   SalienceFunction,
   SalienceContext,
+  SelectionOutcome,
   WorkspaceConfig,
 } from './workspace-types.js';
 

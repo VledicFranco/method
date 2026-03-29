@@ -69,6 +69,18 @@ export interface WorkspaceWritePort<T extends WorkspaceEntry = WorkspaceEntry> {
   write(entry: T): void;
 }
 
+// ── Selection History (PRD 035 — PriorityAttend) ────────────────
+
+/** Outcome of attending to a workspace entry — used for history-based biasing. */
+export interface SelectionOutcome {
+  /** Hash or ID of the workspace entry that was attended. */
+  entryHash: string;
+  /** Whether attending this entry led to a successful action. */
+  outcome: 'positive' | 'negative' | 'neutral';
+  /** When the outcome was recorded. */
+  timestamp: number;
+}
+
 // ── Salience ─────────────────────────────────────────────────────
 
 /** Context provided to the salience function for computing entry salience. */
@@ -81,6 +93,12 @@ export interface SalienceContext {
 
   /** Priority weights per source module. */
   sourcePriorities: Map<ModuleId, number>;
+
+  /** Selection outcomes for history-based biasing (PRD 035 — PriorityAttend). */
+  selectionOutcomes?: SelectionOutcome[];
+
+  /** Active subgoals from the planner (PRD 035 — PriorityAttend). */
+  activeSubgoals?: string[];
 }
 
 /** Pluggable salience computation function. */
