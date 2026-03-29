@@ -16,6 +16,10 @@ import type {
   ReasonerActorV2Monitoring,
   ImpasseType,
   PrecisionConfig,
+  ConsolidationResult,
+  MemoryPortV3,
+  EpisodicEntry,
+  SemanticEntry,
 } from '@method/pacta';
 
 import type { RecordingModule } from './recording-module.js';
@@ -173,6 +177,33 @@ export function assertPredictionError(
   }
 }
 
+// ── assertConsolidationResult ──────────────────────────────────
+
+/**
+ * Assert that a ConsolidationResult matches expected properties.
+ *
+ * Only the fields present in `expected` are checked. Extra fields
+ * in the actual result are ignored (partial matching).
+ *
+ * @param result - The ConsolidationResult to verify
+ * @param expected - Partial expected values to match against
+ */
+export function assertConsolidationResult(
+  result: ConsolidationResult,
+  expected: Partial<ConsolidationResult>,
+): void {
+  const keys = Object.keys(expected) as Array<keyof ConsolidationResult>;
+  for (const key of keys) {
+    const actual = result[key];
+    const exp = expected[key];
+    if (actual !== exp) {
+      throw new Error(
+        `assertConsolidationResult: expected ${key} = ${String(exp)}, got ${String(actual)}`
+      );
+    }
+  }
+}
+
 /**
  * Assert that a specific metacognitive judgment field is populated on the signal.
  *
@@ -198,6 +229,31 @@ export function assertMetacognitiveJudgment(
   }
 }
 
+// ── assertEpisodicStoreContains ────────────────────────────────
+
+/**
+ * Assert that the episodic store contains at least one entry matching the predicate.
+ *
+ * @param store - The MemoryPortV3 store to inspect
+ * @param predicate - A function that returns true for a matching entry
+ * @param message - Optional custom message on failure
+ */
+export async function assertEpisodicStoreContains(
+  store: MemoryPortV3,
+  predicate: (entry: EpisodicEntry) => boolean,
+  message?: string,
+): Promise<void> {
+  const entries = await store.allEpisodic();
+  const found = entries.some(predicate);
+  if (!found) {
+    throw new Error(
+      message ??
+      `assertEpisodicStoreContains: no episodic entry matched the predicate. ` +
+      `Store contains ${entries.length} entries.`
+    );
+  }
+}
+
 /**
  * Assert that a ReasonerActorV2Monitoring has an impasse of the given type.
  *
@@ -219,6 +275,31 @@ export function assertImpasseDetected(
     throw new Error(
       `assertImpasseDetected: impasse type '${monitoring.impasse.type}' does not match ` +
       `expected '${type}'.`
+    );
+  }
+}
+
+// ── assertSemanticStoreContains ────────────────────────────────
+
+/**
+ * Assert that the semantic store contains at least one entry matching the predicate.
+ *
+ * @param store - The MemoryPortV3 store to inspect
+ * @param predicate - A function that returns true for a matching entry
+ * @param message - Optional custom message on failure
+ */
+export async function assertSemanticStoreContains(
+  store: MemoryPortV3,
+  predicate: (entry: SemanticEntry) => boolean,
+  message?: string,
+): Promise<void> {
+  const entries = await store.allSemantic();
+  const found = entries.some(predicate);
+  if (!found) {
+    throw new Error(
+      message ??
+      `assertSemanticStoreContains: no semantic entry matched the predicate. ` +
+      `Store contains ${entries.length} entries.`
     );
   }
 }
@@ -259,6 +340,34 @@ export function assertPrecisionLevel(
     throw new Error(
       `assertPrecisionLevel: promptDepth '${config.promptDepth}' does not match ` +
       `expected '${level}'.`
+    );
+  }
+}
+
+// ── assertActivationAboveThreshold ─────────────────────────────
+
+/**
+ * Assert that activation-based retrieval returns at least `expectedMinCount`
+ * entries for the given context.
+ *
+ * @param store - The MemoryPortV3 store to search
+ * @param context - Context tags for spreading activation
+ * @param expectedMinCount - Minimum number of entries expected above threshold
+ * @param message - Optional custom message on failure
+ */
+export async function assertActivationAboveThreshold(
+  store: MemoryPortV3,
+  context: string[],
+  expectedMinCount: number,
+  message?: string,
+): Promise<void> {
+  // Use a generous limit to find all entries above threshold
+  const results = await store.searchByActivation(context, 1000);
+  if (results.length < expectedMinCount) {
+    throw new Error(
+      message ??
+      `assertActivationAboveThreshold: expected at least ${expectedMinCount} entries above threshold ` +
+      `for context [${context.join(', ')}], got ${results.length}.`
     );
   }
 }

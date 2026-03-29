@@ -28,6 +28,14 @@ import type {
   CycleErrorPolicy,
   ThresholdPolicy,
   CycleBudget,
+  MemoryPortV3,
+  MemoryEntry,
+  EpisodicEntry,
+  SemanticEntry,
+  DualStoreConfig,
+  ActivationConfig,
+  ConsolidationConfig,
+  ConsolidationResult,
 } from '@method/pacta';
 
 import { RecordingModule } from './recording-module.js';
@@ -216,6 +224,205 @@ export function buildMonitorV2Config(overrides?: Partial<MonitorV2Config>): Moni
   };
 }
 
+// ── DualStoreBuilder ──────────────────────────────────────────
+
+/**
+ * Compute ACT-R activation for a memory chunk (testkit-local copy).
+ *
+ * Mirrors the production activation computation from
+ * `@method/pacta/cognitive/modules/activation.ts` without requiring
+ * a deep import into the pacta package (which is not exported from
+ * the barrel). Testkit test doubles are intentionally self-contained.
+ */
+function computeTestActivation(
+  chunk: EpisodicEntry | SemanticEntry,
+  context: string[],
+  now: number,
+  config: ActivationConfig,
+): number {
+  const isEpisodic = 'lastAccessed' in chunk && 'accessCount' in chunk && 'context' in chunk;
+
+  const lastAccessed = isEpisodic
+    ? (chunk as EpisodicEntry).lastAccessed
+    : (chunk as SemanticEntry).updated;
+  const accessCount = isEpisodic
+    ? (chunk as EpisodicEntry).accessCount
+    : Math.max(1, (chunk as SemanticEntry).sourceEpisodes.length);
+  const chunkTags = isEpisodic
+    ? (chunk as EpisodicEntry).context
+    : (chunk as SemanticEntry).tags;
+  const confidence = isEpisodic ? 1.0 : (chunk as SemanticEntry).confidence;
+
+  // 1. Base-level activation: log(accessCount / sqrt(age))
+  const ageMs = now - lastAccessed;
+  const ageSec = Math.max(1, ageMs / 1000);
+  const baseLevelActivation = Math.log(accessCount / Math.sqrt(ageSec));
+
+  // 2. Spreading activation: context/tag overlap * spreadingWeight
+  let overlap = 0;
+  for (const ctx of context) {
+    if (chunkTags.includes(ctx)) {
+      overlap++;
+    }
+  }
+  const spreadingActivation = overlap * config.spreadingWeight;
+
+  // 3. Partial match penalty: applied when confidence < 0.5
+  const partialMatch = confidence < 0.5 ? config.partialMatchPenalty : 0;
+
+  // 4. Noise: stochastic perturbation
+  const noise = (Math.random() - 0.5) * config.noiseAmplitude;
+
+  return baseLevelActivation + spreadingActivation + partialMatch + noise;
+}
+
+/**
+ * Create an in-memory MemoryPortV3 test double.
+ *
+ * Self-contained implementation that mirrors `createInMemoryDualStore`
+ * from `@method/pacta` without requiring a deep import. Follows the
+ * testkit pattern where test doubles are fully owned by the testkit.
+ */
+function createTestDualStore(
+  config: DualStoreConfig,
+  activationConfig: ActivationConfig,
+  seedEpisodic: EpisodicEntry[],
+  seedSemantic: SemanticEntry[],
+): MemoryPortV3 {
+  const episodicStore: EpisodicEntry[] = [...seedEpisodic];
+  const semanticStore: SemanticEntry[] = [...seedSemantic];
+  const kvStore = new Map<string, string>();
+
+  return {
+    // Legacy MemoryPort methods
+    async store(key: string, value: string): Promise<void> {
+      kvStore.set(key, value);
+    },
+    async retrieve(key: string): Promise<string | null> {
+      return kvStore.get(key) ?? null;
+    },
+    async search(query: string, limit?: number): Promise<MemoryEntry[]> {
+      const results: MemoryEntry[] = [];
+      const max = limit ?? 10;
+      for (const [key, value] of kvStore) {
+        if (value.includes(query) || key.includes(query)) {
+          results.push({ key, value });
+          if (results.length >= max) break;
+        }
+      }
+      return results;
+    },
+
+    // Episodic Store
+    async storeEpisodic(episode: EpisodicEntry): Promise<void> {
+      if (episodicStore.length >= config.episodic.capacity) {
+        episodicStore.shift();
+      }
+      episodicStore.push(episode);
+    },
+    async retrieveEpisodic(id: string): Promise<EpisodicEntry | null> {
+      const entry = episodicStore.find((e) => e.id === id);
+      if (!entry) return null;
+      entry.accessCount++;
+      entry.lastAccessed = Date.now();
+      return entry;
+    },
+    async allEpisodic(): Promise<EpisodicEntry[]> {
+      return [...episodicStore];
+    },
+    async expireEpisodic(id: string): Promise<void> {
+      const idx = episodicStore.findIndex((e) => e.id === id);
+      if (idx !== -1) episodicStore.splice(idx, 1);
+    },
+
+    // Semantic Store
+    async storeSemantic(pattern: SemanticEntry): Promise<void> {
+      if (semanticStore.length >= config.semantic.capacity) {
+        const now = Date.now();
+        let lowestIdx = 0;
+        let lowestActivation = Infinity;
+        for (let i = 0; i < semanticStore.length; i++) {
+          const act = computeTestActivation(semanticStore[i], [], now, activationConfig);
+          if (act < lowestActivation) {
+            lowestActivation = act;
+            lowestIdx = i;
+          }
+        }
+        semanticStore.splice(lowestIdx, 1);
+      }
+      semanticStore.push(pattern);
+    },
+    async retrieveSemantic(id: string): Promise<SemanticEntry | null> {
+      return semanticStore.find((e) => e.id === id) ?? null;
+    },
+    async allSemantic(): Promise<SemanticEntry[]> {
+      return [...semanticStore];
+    },
+    async updateSemantic(
+      id: string,
+      updates: Partial<Pick<SemanticEntry, 'confidence' | 'activationBase' | 'tags' | 'pattern'>>,
+    ): Promise<void> {
+      const entry = semanticStore.find((e) => e.id === id);
+      if (!entry) return;
+      if (updates.confidence !== undefined) entry.confidence = updates.confidence;
+      if (updates.activationBase !== undefined) entry.activationBase = updates.activationBase;
+      if (updates.tags !== undefined) entry.tags = updates.tags;
+      if (updates.pattern !== undefined) entry.pattern = updates.pattern;
+      entry.updated = Date.now();
+    },
+    async expireSemantic(id: string): Promise<void> {
+      const idx = semanticStore.findIndex((e) => e.id === id);
+      if (idx !== -1) semanticStore.splice(idx, 1);
+    },
+
+    // Activation-Based Retrieval
+    async searchByActivation(
+      context: string[],
+      limit: number,
+    ): Promise<(EpisodicEntry | SemanticEntry)[]> {
+      const now = Date.now();
+      const scored: Array<{ entry: EpisodicEntry | SemanticEntry; activation: number }> = [];
+
+      for (const entry of episodicStore) {
+        const activation = computeTestActivation(entry, context, now, activationConfig);
+        if (activation >= activationConfig.retrievalThreshold) {
+          scored.push({ entry, activation });
+        }
+      }
+      for (const entry of semanticStore) {
+        const activation = computeTestActivation(entry, context, now, activationConfig);
+        if (activation >= activationConfig.retrievalThreshold) {
+          scored.push({ entry, activation });
+        }
+      }
+
+      scored.sort((a, b) => b.activation - a.activation);
+      const results = scored.slice(0, limit).map((s) => s.entry);
+
+      for (const entry of results) {
+        if ('accessCount' in entry && 'lastAccessed' in entry) {
+          (entry as EpisodicEntry).accessCount++;
+          (entry as EpisodicEntry).lastAccessed = now;
+        }
+      }
+
+      return results;
+    },
+
+    // Consolidation Stub
+    async consolidate(_config: ConsolidationConfig): Promise<ConsolidationResult> {
+      return {
+        semanticUpdates: 0,
+        conflictsDetected: 0,
+        compressionRatio: 0,
+        entriesPruned: 0,
+        episodesReplayed: 0,
+        durationMs: 0,
+      };
+    },
+  };
+}
+
 /**
  * Build a ReasonerActorV2Config with sensible test defaults.
  *
@@ -325,4 +532,166 @@ export function buildImpasseSignal(
   }
 
   return { ...base, ...overrides };
+}
+
+/**
+ * Fluent builder for creating pre-configured MemoryPortV3 test doubles.
+ *
+ * Produces a self-contained in-memory dual-store with ACT-R activation
+ * retrieval. Supports config overrides and pre-seeded entries so tests
+ * only specify the fields they care about.
+ *
+ * @example
+ * ```typescript
+ * const store = dualStoreBuilder()
+ *   .withEpisodicCapacity(20)
+ *   .withEpisodicEntry({ id: 'e1', content: 'observed X' })
+ *   .build();
+ * ```
+ */
+export class DualStoreBuilder {
+  // DualStoreConfig fields
+  private _episodicCapacity = 50;
+  private _semanticCapacity = 500;
+  private _replayBatchSize = 5;
+  private _interleaveRatio = 0.6;
+  private _schemaConsistencyThreshold = 0.8;
+
+  // ActivationConfig fields
+  private _retrievalThreshold = -0.5;
+  private _spreadingWeight = 0.3;
+  private _noiseAmplitude = 0.1;
+  private _maxRetrievals = 5;
+
+  // Pre-seeded entries
+  private _episodicEntries: EpisodicEntry[] = [];
+  private _semanticEntries: SemanticEntry[] = [];
+
+  // ── DualStoreConfig setters ──────────────────────────────────
+
+  withEpisodicCapacity(n: number): this {
+    this._episodicCapacity = n;
+    return this;
+  }
+
+  withSemanticCapacity(n: number): this {
+    this._semanticCapacity = n;
+    return this;
+  }
+
+  withReplayBatchSize(n: number): this {
+    this._replayBatchSize = n;
+    return this;
+  }
+
+  withInterleaveRatio(r: number): this {
+    this._interleaveRatio = r;
+    return this;
+  }
+
+  withSchemaConsistencyThreshold(t: number): this {
+    this._schemaConsistencyThreshold = t;
+    return this;
+  }
+
+  // ── ActivationConfig setters ─────────────────────────────────
+
+  withRetrievalThreshold(t: number): this {
+    this._retrievalThreshold = t;
+    return this;
+  }
+
+  withSpreadingWeight(w: number): this {
+    this._spreadingWeight = w;
+    return this;
+  }
+
+  withNoiseAmplitude(a: number): this {
+    this._noiseAmplitude = a;
+    return this;
+  }
+
+  withMaxRetrievals(n: number): this {
+    this._maxRetrievals = n;
+    return this;
+  }
+
+  // ── Pre-seed entries ─────────────────────────────────────────
+
+  /**
+   * Pre-seed an episodic entry. Fills in sensible defaults for
+   * optional fields: timestamp=Date.now(), accessCount=1,
+   * lastAccessed=Date.now(), context=[].
+   */
+  withEpisodicEntry(entry: Partial<EpisodicEntry> & { id: string; content: string }): this {
+    const now = Date.now();
+    this._episodicEntries.push({
+      context: [],
+      timestamp: now,
+      accessCount: 1,
+      lastAccessed: now,
+      ...entry,
+    });
+    return this;
+  }
+
+  /**
+   * Pre-seed a semantic entry. Fills in sensible defaults for
+   * optional fields: sourceEpisodes=[], confidence=0.5,
+   * activationBase=0, tags=[], created=Date.now(), updated=Date.now().
+   */
+  withSemanticEntry(entry: Partial<SemanticEntry> & { id: string; pattern: string }): this {
+    const now = Date.now();
+    this._semanticEntries.push({
+      sourceEpisodes: [],
+      confidence: 0.5,
+      activationBase: 0,
+      tags: [],
+      created: now,
+      updated: now,
+      ...entry,
+    });
+    return this;
+  }
+
+  // ── Build ────────────────────────────────────────────────────
+
+  build(): MemoryPortV3 {
+    const dualStoreConfig: DualStoreConfig = {
+      episodic: {
+        capacity: this._episodicCapacity,
+        encoding: 'verbatim',
+      },
+      semantic: {
+        capacity: this._semanticCapacity,
+        encoding: 'extracted',
+        updateRate: 'slow',
+      },
+      consolidation: {
+        replayBatchSize: this._replayBatchSize,
+        interleaveRatio: this._interleaveRatio,
+        schemaConsistencyThreshold: this._schemaConsistencyThreshold,
+      },
+    };
+
+    const activationConfig: ActivationConfig = {
+      retrievalThreshold: this._retrievalThreshold,
+      spreadingWeight: this._spreadingWeight,
+      partialMatchPenalty: -0.2,
+      noiseAmplitude: this._noiseAmplitude,
+      maxRetrievals: this._maxRetrievals,
+    };
+
+    return createTestDualStore(
+      dualStoreConfig,
+      activationConfig,
+      this._episodicEntries,
+      this._semanticEntries,
+    );
+  }
+}
+
+/** Create a DualStoreBuilder with sensible test defaults. */
+export function dualStoreBuilder(): DualStoreBuilder {
+  return new DualStoreBuilder();
 }

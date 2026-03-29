@@ -39,6 +39,8 @@ export {
   buildEVCConfig,
   buildEnrichedMonitoringSignal,
   buildImpasseSignal,
+  DualStoreBuilder,
+  dualStoreBuilder,
 } from './cognitive-builders.js';
 
 // Cognitive — Assertions
@@ -52,4 +54,8 @@ export {
   assertImpasseDetected,
   assertImpasseSubgoal,
   assertPrecisionLevel,
+  assertConsolidationResult,
+  assertEpisodicStoreContains,
+  assertSemanticStoreContains,
+  assertActivationAboveThreshold,
 } from './cognitive-assertions.js';
