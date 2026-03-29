@@ -12,6 +12,7 @@ import { Button } from '@/shared/components/Button';
 import { useProjects } from '@/domains/projects/useProjects';
 import { useSessions } from '@/domains/sessions/useSessions';
 import { useNavigate } from 'react-router-dom';
+import { useGenesisPageContext } from '@/domains/genesis/useGenesisPageContext';
 import { cn } from '@/shared/lib/cn';
 import { RefreshCw, AlertCircle, Terminal, FolderOpen, Play, Loader2 } from 'lucide-react';
 import type { ProjectMetadata } from '@/domains/projects/types';
@@ -97,6 +98,10 @@ export default function ProjectsPage() {
   const { projects, loading, error, refetch } = useProjects();
   const { spawn, isSpawning } = useSessions();
   const navigate = useNavigate();
+
+  useGenesisPageContext('projects', {
+    projectCount: projects.length,
+  });
 
   const handleSpawn = useCallback(
     async (project: ProjectMetadata) => {
