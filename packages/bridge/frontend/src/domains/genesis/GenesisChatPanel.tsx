@@ -1,11 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, ArrowLeft } from 'lucide-react';
+import { X, Send, Loader2, ArrowLeft, Download, RefreshCw, WifiOff } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { useSSE } from '@/shared/websocket/useSSE';
 import { api } from '@/shared/lib/api';
 import { useGenesisStore, GENESIS_SESSION_ID } from '@/shared/stores/genesis-store';
 import { useIsMobile } from './useIsMobile';
 import type { ChatMessage } from '@/shared/stores/genesis-store';
+
+// ── Transcript export ─────────────────────────────────────────
+
+function exportTranscript(messages: ChatMessage[]) {
+  const lines = messages.map((msg) => {
+    const prefix =
+      msg.role === 'user'
+        ? '**You:**'
+        : msg.role === 'assistant'
+          ? '**Genesis:**'
+          : '*System:*';
+    return `${prefix} ${msg.content}\n`;
+  });
+
+  const header = `# Genesis Chat Transcript\n\nExported: ${new Date().toISOString()}\n\n---\n\n`;
+  const content = header + lines.join('\n');
+
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `genesis-transcript-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function GenesisChatPanel() {
   const isOpen = useGenesisStore((s) => s.isOpen);
@@ -24,6 +49,9 @@ export function GenesisChatPanel() {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const [isSending, setIsSending] = useState(false);
   const [sseError, setSseError] = useState<string | null>(null);
+  const [failedPrompt, setFailedPrompt] = useState<string | null>(null);
+  /** Tracks whether SSE was previously connected (null = never connected yet). */
+  const prevConnectedRef = useRef<boolean | null>(null);
 
   // Helper: create a ChatMessage for the store
   const createMessage = useCallback(
@@ -71,6 +99,30 @@ export function GenesisChatPanel() {
       reconnectMs: 3000,
     },
   );
+
+  // Track SSE connection state and update store status
+  const setStatus = useGenesisStore((s) => s.setStatus);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prev = prevConnectedRef.current;
+
+    if (connected && prev === false) {
+      // Reconnected after a known disconnection
+      addMessage(createMessage('system', '[Reconnected]'));
+      setSseError(null);
+      setStatus('idle');
+    } else if (connected && prev === null) {
+      // First connection — no banner needed
+      setStatus('idle');
+    } else if (!connected && prev === true) {
+      // Connection dropped after being connected
+      setStatus('disconnected');
+      addMessage(createMessage('system', '[Reconnecting...]'));
+    }
+
+    prevConnectedRef.current = connected;
+  }, [connected, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll terminal to bottom
   useEffect(() => {
@@ -123,6 +175,7 @@ export function GenesisChatPanel() {
       const errorMsg = err instanceof Error ? err.message : 'Failed to send prompt';
       addMessage(createMessage('system', `[Error: ${errorMsg}]`));
       setSseError(errorMsg);
+      setFailedPrompt(promptText);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -193,15 +246,17 @@ export function GenesisChatPanel() {
               'text-xs px-2 py-1 rounded-sm',
               status === 'active'
                 ? 'bg-bio-dim text-bio'
-                : 'bg-txt-muted/10 text-txt-dim',
+                : status === 'disconnected'
+                  ? 'bg-error/20 text-error'
+                  : 'bg-txt-muted/10 text-txt-dim',
             )}
           >
-            {status === 'active' ? 'Active' : 'Idle'}
+            {status === 'active' ? 'Active' : status === 'disconnected' ? 'Offline' : 'Idle'}
           </div>
         </div>
 
-        {/* Budget indicator */}
-        <div className="flex items-center gap-1 text-xs text-txt-dim">
+        {/* Budget indicator + export */}
+        <div className="flex items-center gap-2 text-xs text-txt-dim">
           <span>{Math.round(budgetPercent)}%</span>
           <div className="w-20 h-1.5 bg-txt-muted/20 rounded-full overflow-hidden">
             <div
@@ -212,6 +267,20 @@ export function GenesisChatPanel() {
               style={{ width: `${budgetPercent}%` }}
             />
           </div>
+          <button
+            onClick={() => exportTranscript(messages)}
+            disabled={messages.length === 0}
+            className={cn(
+              'p-1 rounded transition-colors',
+              messages.length === 0
+                ? 'text-txt-muted cursor-not-allowed'
+                : 'text-txt-dim hover:text-txt hover:bg-abyss',
+            )}
+            title="Export transcript"
+            tabIndex={0}
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* Desktop: X close button */}
@@ -242,6 +311,23 @@ export function GenesisChatPanel() {
             [Connection Error: {sseError}]
           </div>
         )}
+        {failedPrompt && (
+          <button
+            onClick={() => {
+              setInputDraft(failedPrompt);
+              setFailedPrompt(null);
+              setSseError(null);
+              inputRef.current?.focus();
+            }}
+            className={cn(
+              'inline-flex items-center gap-1.5 mt-1 px-2 py-1 rounded text-xs',
+              'bg-error/10 text-error hover:bg-error/20 transition-colors',
+            )}
+          >
+            <RefreshCw className="h-3 w-3" />
+            Retry
+          </button>
+        )}
         {!connected && !sseError && messages.length > 1 && (
           <div className="text-txt-dim text-xs mt-2">
             [Connecting...]
@@ -250,50 +336,62 @@ export function GenesisChatPanel() {
       </div>
 
       {/* Input area — sticky at bottom, keyboard-aware on mobile */}
-      <div
-        ref={inputContainerRef}
-        className={cn(
-          'border-t border-bdr bg-abyss-light p-sp-2 flex gap-2 shrink-0',
-          // Mobile: position relative for keyboard avoidance (bottom adjusted via JS)
-          isMobile && 'relative',
-        )}
-      >
-        <textarea
-          ref={inputRef}
-          value={inputDraft}
-          onChange={(e) => setInputDraft(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-          placeholder="Type a prompt (Shift+Enter for newline)..."
+      {status === 'disconnected' ? (
+        <div
           className={cn(
-            'flex-1 bg-void text-txt text-sm',
-            'border border-bdr rounded px-sp-2 py-sp-1.5',
-            'focus:outline-none focus:ring-2 focus:ring-bio focus:border-bio',
-            'resize-none',
+            'border-t border-bdr bg-abyss-light p-sp-3 shrink-0',
+            'flex items-center justify-center gap-2 text-sm text-txt-muted',
           )}
-          rows={isMobile ? 2 : 3}
-          disabled={isSending}
-          tabIndex={0}
-        />
-        <button
-          onClick={handleSendPrompt}
-          disabled={isSending || !inputDraft.trim()}
-          className={cn(
-            'self-end px-sp-2 py-sp-1.5 rounded',
-            'transition-colors',
-            isSending || !inputDraft.trim()
-              ? 'bg-txt-muted/20 text-txt-muted cursor-not-allowed'
-              : 'bg-bio text-void hover:bg-bio/90 active:bg-bio/80',
-          )}
-          title="Send prompt (Enter)"
-          tabIndex={0}
         >
-          {isSending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
+          <WifiOff className="h-4 w-4" />
+          <span>Bridge disconnected — waiting for reconnect</span>
+        </div>
+      ) : (
+        <div
+          ref={inputContainerRef}
+          className={cn(
+            'border-t border-bdr bg-abyss-light p-sp-2 flex gap-2 shrink-0',
+            // Mobile: position relative for keyboard avoidance (bottom adjusted via JS)
+            isMobile && 'relative',
           )}
-        </button>
-      </div>
+        >
+          <textarea
+            ref={inputRef}
+            value={inputDraft}
+            onChange={(e) => setInputDraft(e.target.value)}
+            onKeyDown={handleInputKeyDown}
+            placeholder="Type a prompt (Shift+Enter for newline)..."
+            className={cn(
+              'flex-1 bg-void text-txt text-sm',
+              'border border-bdr rounded px-sp-2 py-sp-1.5',
+              'focus:outline-none focus:ring-2 focus:ring-bio focus:border-bio',
+              'resize-none',
+            )}
+            rows={isMobile ? 2 : 3}
+            disabled={isSending}
+            tabIndex={0}
+          />
+          <button
+            onClick={handleSendPrompt}
+            disabled={isSending || !inputDraft.trim()}
+            className={cn(
+              'self-end px-sp-2 py-sp-1.5 rounded',
+              'transition-colors',
+              isSending || !inputDraft.trim()
+                ? 'bg-txt-muted/20 text-txt-muted cursor-not-allowed'
+                : 'bg-bio text-void hover:bg-bio/90 active:bg-bio/80',
+            )}
+            title="Send prompt (Enter)"
+            tabIndex={0}
+          >
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
