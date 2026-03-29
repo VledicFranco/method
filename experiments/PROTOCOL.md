@@ -5,6 +5,19 @@ Mandatory reading for any agent or human doing research in this repository.
 
 ---
 
+## 0. Machine Verification
+
+Before starting GPU-intensive work, verify the machine matches the reference spec:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 experiments/exp-slm/.venv/Scripts/python experiments/verify-machine.py
+```
+
+See `MACHINE.md` for the full hardware/software specification and known compatibility
+issues (BF16, onnxruntime-node, PyTorch CUDA wheels).
+
+---
+
 ## 1. Experiment Naming
 
 Convention: `exp-{descriptive-slug}`

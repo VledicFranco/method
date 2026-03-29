@@ -20,6 +20,7 @@ tmp/*
 # experiment artifacts (large binaries: models, checkpoints, ONNX exports)
 experiments/artifacts/*
 !experiments/artifacts/.gitkeep
+experiments/machine-check.json
 .claude/worktrees/
 coverage/
 
