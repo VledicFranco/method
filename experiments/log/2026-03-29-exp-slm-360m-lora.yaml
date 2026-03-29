@@ -1,0 +1,33 @@
+experiment: exp-slm
+run_id: 360m-lora
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 A8"
+config:
+  model: SmolLM2-360M-Instruct
+  method: LoRA (r=16, alpha=32)
+  corpus: 10K causally consistent
+  steps: 3000
+  learning_rate: 2.0e-4
+  batch_size: 4
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.9888
+  adversarial_accuracy: 0.7736
+  training_time_s: 896.1
+  peak_vram_mb: 2367.2
+  final_loss: 0.3016
+  trainable_params: 3276800
+  total_params: 361821120
+verdict: pass
+gate: "Scaling Run B — 360M LoRA on 10K"
+notes: >
+  SmolLM2-360M-Instruct with LoRA (r=16, alpha=32, 0.91% trainable params)
+  on 10K augmented corpus. All three evaluation gates pass. Compared to the
+  135M full fine-tune baseline (parse 100%, semantic 98.6%, adversarial 70.8%),
+  the 360M LoRA achieves comparable parse accuracy (100% vs 100%), slightly
+  higher semantic accuracy (98.88% vs 98.6%), and notably higher adversarial
+  accuracy (77.36% vs 70.8%). LoRA used only 2367 MB peak VRAM (vs full
+  fine-tune footprint) with 3.28M trainable parameters out of 361.8M total.
+  Training completed in 14.9 minutes (3000 steps). Confidence scores extremely
+  high (mean 0.9993, median 0.9998). Inference latency median 0.76s (larger
+  model vs 135M).

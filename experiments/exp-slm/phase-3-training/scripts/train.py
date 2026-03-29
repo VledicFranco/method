@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Phase 3 — Fine-tune SmolLM2-135M-Instruct on the Monitor DSL corpus.
+Phase 3 — Fine-tune SmolLM2 on the Monitor DSL corpus.
 
-Loads config from configs/monitor-smollm2-135m.yaml, fine-tunes using SFTTrainer
-from trl, saves checkpoints. Reports final loss, training time, peak VRAM.
+Supports full fine-tuning and LoRA (via peft). When the config YAML contains a
+``lora:`` section, the model is wrapped with a LoRA adapter before training. After
+training, LoRA weights are merged back into the base model so the saved checkpoint
+is a standard HuggingFace model (evaluate.py works unchanged).
+
+Loads config from configs/*.yaml, fine-tunes using SFTTrainer from trl,
+saves checkpoints. Reports final loss, training time, peak VRAM.
 
 Usage:
     CUDA_VISIBLE_DEVICES=1 python phase-3-training/scripts/train.py
@@ -94,6 +99,7 @@ def main() -> None:
     train_cfg = config["training"]
     data_cfg = config["data"]
     output_cfg = config["output"]
+    lora_cfg = config.get("lora", None)  # Optional LoRA config
 
     model_name = model_cfg["name"]
     output_dir = resolve_path(PHASE3_DIR, output_cfg["dir"])
@@ -103,6 +109,10 @@ def main() -> None:
 
     print(f"Config loaded from {args.config}")
     print(f"  Model: {model_name}")
+    if lora_cfg:
+        print(f"  Mode: LoRA (r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})")
+    else:
+        print(f"  Mode: Full fine-tune")
     print(f"  Train data: {train_path}")
     print(f"  Holdout data: {holdout_path}")
     print(f"  Output dir: {output_dir}")
@@ -131,8 +141,28 @@ def main() -> None:
 
     model = AutoModelForCausalLM.from_pretrained(model_name, dtype=load_dtype)
 
-    param_count = sum(p.numel() for p in model.parameters())
-    print(f"  Model loaded — {param_count / 1e6:.1f}M params, dtype={load_dtype}")
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"  Model loaded — {total_params / 1e6:.1f}M params, dtype={load_dtype}")
+
+    # ── Apply LoRA if configured ──────────────────────────────
+    use_lora = lora_cfg is not None
+    if use_lora:
+        from peft import LoraConfig, TaskType, get_peft_model
+
+        task_type_map = {"CAUSAL_LM": TaskType.CAUSAL_LM}
+        peft_config = LoraConfig(
+            r=lora_cfg["r"],
+            lora_alpha=lora_cfg["lora_alpha"],
+            target_modules=lora_cfg["target_modules"],
+            lora_dropout=lora_cfg.get("lora_dropout", 0.0),
+            bias=lora_cfg.get("bias", "none"),
+            task_type=task_type_map.get(lora_cfg.get("task_type", "CAUSAL_LM"), TaskType.CAUSAL_LM),
+        )
+        model = get_peft_model(model, peft_config)
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f"  LoRA applied — trainable: {trainable_params / 1e6:.2f}M / {total_params / 1e6:.1f}M total ({100 * trainable_params / total_params:.2f}%)")
+    else:
+        trainable_params = total_params
 
     # ── Load and format datasets ───────────────────────────────
     print("\nLoading and formatting datasets ...")
@@ -217,16 +247,27 @@ def main() -> None:
     print(f"{'='*60}")
 
     # ── Save final model ───────────────────────────────────────
-    print(f"\nSaving final model to {output_dir} ...")
-    trainer.save_model(str(output_dir))
-    tokenizer.save_pretrained(str(output_dir))
-    print("  Model and tokenizer saved.")
+    if use_lora:
+        print(f"\nMerging LoRA weights and saving full model to {output_dir} ...")
+        # Merge LoRA adapters back into the base model
+        merged_model = model.merge_and_unload()
+        merged_model.save_pretrained(str(output_dir))
+        tokenizer.save_pretrained(str(output_dir))
+        print("  Merged model and tokenizer saved.")
+    else:
+        print(f"\nSaving final model to {output_dir} ...")
+        trainer.save_model(str(output_dir))
+        tokenizer.save_pretrained(str(output_dir))
+        print("  Model and tokenizer saved.")
 
     # ── Write training report ──────────────────────────────────
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     report = {
         "model": model_name,
         "config": str(args.config),
+        "method": f"LoRA (r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']})" if use_lora else "full_finetune",
+        "total_params": total_params,
+        "trainable_params": trainable_params,
         "final_loss": round(final_loss, 4),
         "global_step": train_result.global_step,
         "training_time_s": round(elapsed, 1),

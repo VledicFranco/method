@@ -1,19 +1,19 @@
 {
-  "model_dir": "phase-3-training\\models\\monitor-smollm2-135m-20k",
+  "model_dir": "phase-3-training\\models\\monitor-smollm2-360m-lora",
   "holdout_entries": 2500,
   "boundary_cases": 106,
   "parse_accuracy": 1.0,
-  "semantic_accuracy": 0.9864,
-  "adversarial_accuracy": 0.7358,
+  "semantic_accuracy": 0.9888,
+  "adversarial_accuracy": 0.7736,
   "confidence": {
-    "mean": 0.9997,
-    "median": 1.0,
-    "p95": 1.0
+    "mean": 0.9993,
+    "median": 0.9998,
+    "p95": 0.9999
   },
   "latency_s": {
-    "mean": 0.9816,
-    "median": 0.7202,
-    "p95": 2.0492
+    "mean": 1.0449,
+    "median": 0.7648,
+    "p95": 2.1935
   },
   "targets": {
     "parse_accuracy": ">= 0.95",
@@ -25,5 +25,5 @@
     "semantic_accuracy": true,
     "adversarial_accuracy": true
   },
-  "timestamp": "2026-03-29T07:27:33-0600"
+  "timestamp": "2026-03-29T08:32:22-0600"
 }
