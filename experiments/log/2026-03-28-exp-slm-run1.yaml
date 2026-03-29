@@ -1,0 +1,22 @@
+experiment: exp-slm
+run_id: run1
+date: 2026-03-28
+agent: "Claude Opus 4.6 (1M context), Lysica session"
+config:
+  model: SmolLM2-135M-Instruct
+  corpus: 4K randomly augmented
+  steps: 1000
+  batch_size: 8
+  learning_rate: 2.0e-5
+  fp16: true
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.392
+  adversarial_accuracy: 0.110
+  confidence_mean: 0.960
+  training_time_s: 228
+  peak_vram_mb: 2950
+  final_loss: 0.434
+verdict: partial
+gate: "Gate 3 — Single Module Compilation"
+notes: "100% parse validates DSL learnability. 39% semantic = random output fields not causally linked to inputs."

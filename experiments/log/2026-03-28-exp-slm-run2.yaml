@@ -1,0 +1,22 @@
+experiment: exp-slm
+run_id: run2
+date: 2026-03-28
+agent: "Claude Opus 4.6 (1M context), Lysica session"
+config:
+  model: SmolLM2-135M-Instruct
+  corpus: 4K randomly augmented (same as run1)
+  steps: 5000
+  batch_size: 8
+  learning_rate: 2.0e-5
+  fp16: true
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.393
+  adversarial_accuracy: 0.116
+  confidence_mean: 0.962
+  training_time_s: 1010
+  peak_vram_mb: 2950
+  final_loss: 0.286
+verdict: fail
+gate: "Gate 3 — Single Module Compilation"
+notes: "5x more steps, loss dropped 0.434→0.286 but semantic accuracy flat (39.2→39.3%). Plateaued on random data."

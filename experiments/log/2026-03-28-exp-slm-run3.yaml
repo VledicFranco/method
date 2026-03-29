@@ -1,0 +1,25 @@
+experiment: exp-slm
+run_id: run3
+date: 2026-03-28
+agent: "Claude Opus 4.6 (1M context), Lysica session"
+config:
+  model: SmolLM2-135M-Instruct
+  corpus: 10K causally consistent (augment-corpus-v2.py)
+  steps: 3000
+  batch_size: 8
+  learning_rate: 2.0e-5
+  fp16: true
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.986
+  adversarial_accuracy: 0.708
+  confidence_mean: 0.9997
+  training_time_s: 683
+  peak_vram_mb: 2951
+  final_loss: 0.277
+verdict: pass
+gate: "Gate 3 — Single Module Compilation"
+notes: >
+  ALL GATE 3 METRICS PASS. Causal data fix: 39%→98.6% semantic accuracy.
+  Key insight: data quality > training duration. restrictedActions and forceReplan
+  must be deterministic functions of input signals, not random.

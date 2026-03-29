@@ -87,6 +87,14 @@ docs/
   prds/       Product requirement documents (001–027)
   guides/     Usage guides (29 guides)
   fractal-component-architecture/   FCA specification (7 parts)
+  rfcs/       Research RFCs (001 cognitive composition, 002 small language models)
+experiments/  Research experiments — see experiments/PROTOCOL.md
+  PROTOCOL.md   How we run experiments, log results, coordinate parallel work
+  AGENDA.md     Prioritized research backlog with claim protocol
+  log/          Per-run YAML entries (merge-conflict-free)
+  artifacts/    Large binaries — gitignored (models, checkpoints, ONNX exports)
+  exp-slm/      SLM compilation validation (RFC 002, PRD 034)
+  exp-cognitive-baseline/   Cognitive vs flat agent comparison (RFC 001)
 .method/      Methodology execution home
   project-card.yaml   Essence, delivery rules, processes
   manifest.yaml       Installed methodologies and protocols
@@ -106,6 +114,32 @@ docs/
 - **DR-13:** Validate YAML after registry edits: `node -e "require('js-yaml').load(require('fs').readFileSync('file.yaml','utf8'))"`.
 
 Full set: `.method/project-card.yaml` (DR-01 through DR-14).
+
+## Research & Experiments
+
+This project has active research lines validated through structured experiments.
+
+- **Protocol:** `experiments/PROTOCOL.md` — how to run experiments, log results, coordinate parallel agents, and distill findings
+- **Agenda:** `experiments/AGENDA.md` — prioritized research backlog with claim protocol for parallel work
+- **Run history:** `experiments/log/*.yaml` — one YAML per run, merge-conflict-free
+- **Active experiments:** `experiments/exp-*/README.md` — hypothesis, methodology, findings per experiment
+
+### Active Research Lines
+
+| Line | RFC | Experiment | Status |
+|------|-----|-----------|--------|
+| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | Gate 3 PASS, Gate 4 pending |
+| Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md` | `experiments/exp-cognitive-baseline/` | Preliminary (N=3) |
+
+### Related Work (cross-project)
+
+Distilled research findings live in the **ov-research** vault (`../ov-research/`), organized by knowledge domain. Key domains for this project:
+
+- `ov-research/knowledge/slm-compilation/` — SLM learnability, data quality, overconfidence risk
+- `ov-research/knowledge/methodology/` — formal theory, enforcement loops, composition algebra
+- `ov-research/experiments/EXP-023-*` through `EXP-027-*` — cognitive module experiments
+
+When asked about related work or prior findings, check ov-research first. The distillation protocol (how findings move from experiments/ to ov-research/) is in `experiments/PROTOCOL.md §7`.
 
 ## Sub-Agent Guidelines
 

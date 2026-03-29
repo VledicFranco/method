@@ -16,6 +16,10 @@ docs/prds/*BLOCKER*
 # volatile artifacts
 tmp/*
 !tmp/.gitkeep
+
+# experiment artifacts (large binaries: models, checkpoints, ONNX exports)
+experiments/artifacts/*
+!experiments/artifacts/.gitkeep
 .claude/worktrees/
 coverage/
 
