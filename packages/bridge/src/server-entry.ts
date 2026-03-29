@@ -39,6 +39,14 @@ import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
 import { loadStrategiesConfig } from './domains/strategies/config.js';
+import { loadClusterConfig } from './domains/cluster/config.js';
+import { ClusterDomain } from './domains/cluster/core.js';
+import { registerClusterRoutes } from './domains/cluster/routes.js';
+import { ClusterFederationSink } from './domains/cluster/federation-sink.js';
+import { TailscaleDiscovery } from './domains/cluster/adapters/tailscale-discovery.js';
+import { HttpNetwork } from './domains/cluster/adapters/http-network.js';
+import { NodeResource } from './domains/cluster/adapters/node-resource.js';
+import { CapacityWeightedRouter, EventRelay } from '@method/cluster';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
@@ -63,6 +71,13 @@ const yamlLoader = new JsYamlLoader();
 
 // PRD 024 MG-1/MG-2: Wire ports into all domain modules
 setResourceCopierPorts(fsProvider, yamlLoader);
+
+// PRD 039: Cluster domain config + wiring
+const clusterConfig = loadClusterConfig({
+  readFileSync: (p, enc) => fsProvider.readFileSync(p, enc),
+  writeFileSync: (p, data) => fsProvider.writeFileSync(p, data),
+  mkdirSync: (p, opts) => fsProvider.mkdirSync(p, opts),
+});
 
 // Strategies domain
 import { setRetroWriterFs } from './domains/strategies/retro-writer.js';
@@ -235,6 +250,50 @@ if (process.env.EVENT_CONNECTOR_WEBHOOK_URL) {
   eventBus.registerSink(webhookConnector);
 }
 
+// ---------- Cluster Domain (PRD 039) ----------
+
+const clusterDiscovery = new TailscaleDiscovery(
+  { bridgePort: PORT, seeds: clusterConfig.seeds },
+  { info: (msg: string) => app.log.info(msg), warn: (msg: string) => app.log.warn(msg) },
+);
+const clusterNetwork = new HttpNetwork();
+const clusterResources = new NodeResource(
+  { nodeId: clusterConfig.nodeId, instanceName: INSTANCE_NAME, version: '0.3.0', sessionsMax: sessionsConfig.maxSessions },
+  { getActiveSessions: () => pool.poolStats().activeSessions, getProjectCount: () => discoveryService.getCachedProjects().length },
+);
+
+const clusterDomain = new ClusterDomain(clusterConfig, {
+  discovery: clusterDiscovery,
+  network: clusterNetwork,
+  resources: clusterResources,
+}, {
+  info: (msg) => app.log.info(msg),
+  warn: (msg) => app.log.warn(msg),
+  error: (msg) => app.log.error(msg),
+});
+
+const clusterRouter = clusterConfig.enabled
+  ? new CapacityWeightedRouter()
+  : undefined;
+
+registerClusterRoutes(app, { domain: clusterDomain, router: clusterRouter });
+
+// PRD 039: Federation sink — relay local events to cluster peers
+if (clusterConfig.enabled && clusterConfig.federationEnabled) {
+  const severities = clusterConfig.federationFilterSeverity
+    .split(',').map(s => s.trim()).filter(Boolean) as any[];
+  const domains = clusterConfig.federationFilterDomain
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  const eventRelay = new EventRelay(clusterNetwork, {
+    federationEnabled: true,
+    severityFilter: severities,
+    domainFilter: domains,
+  });
+  const federationSink = new ClusterFederationSink(eventRelay, clusterDomain, clusterConfig.nodeId);
+  eventBus.registerSink(federationSink);
+}
+
 // ---------- Transcript Browser (PRD 007 Phase 3) ----------
 
 registerTranscriptRoutes(app, pool, transcriptReader);
@@ -265,14 +324,36 @@ const genesisRouteContext: any = {
 
 app.get('/health', async (_request, reply) => {
   const stats = pool.poolStats();
-  return reply.status(200).send({
+  const health: Record<string, unknown> = {
     status: 'ok',
     instance_name: INSTANCE_NAME,
     active_sessions: stats.activeSessions,
     max_sessions: stats.maxSessions,
     uptime_ms: Date.now() - BRIDGE_STARTED_AT.getTime(),
     version: '0.3.0',
-  });
+  };
+
+  // PRD 039: Include cluster info when enabled
+  if (clusterDomain.isEnabled()) {
+    const clusterState = clusterDomain.getState();
+    if (clusterState) {
+      let peersAlive = 0, peersSuspect = 0, peersDead = 0;
+      for (const [, node] of clusterState.peers) {
+        if (node.status === 'alive') peersAlive++;
+        else if (node.status === 'suspect') peersSuspect++;
+        else if (node.status === 'dead') peersDead++;
+      }
+      health.cluster = {
+        enabled: true,
+        node_id: clusterConfig.nodeId,
+        peers_alive: peersAlive,
+        peers_suspect: peersSuspect,
+        peers_dead: peersDead,
+      };
+    }
+  }
+
+  return reply.status(200).send(health);
 });
 
 // ---------- Pool Stats ----------
@@ -454,6 +535,9 @@ async function start() {
       copyStrategy,
     });
 
+    // PRD 039: Start cluster domain (no-op when disabled)
+    await clusterDomain.start();
+
     await app.listen({ port: PORT, host: '0.0.0.0' });
     app.log.info(`@method/bridge listening on port ${PORT}`);
 
@@ -621,6 +705,9 @@ function gracefulShutdown(signal: string) {
     persistenceSink.loadCursors()
       .then(cursors => persistenceSink.saveCursors({ ...cursors, channels: channelSink.cursor }))
       .catch(() => { /* non-fatal */ });
+
+    // PRD 039: Stop cluster domain
+    clusterDomain.stop().catch(() => { /* non-fatal */ });
 
     // Stop trigger watchers (PRD 018)
     if (triggerRouter) {
