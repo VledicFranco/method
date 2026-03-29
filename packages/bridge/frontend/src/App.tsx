@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GenesisFAB } from './domains/genesis/GenesisFAB';
 import { GenesisChatPanel } from './domains/genesis/GenesisChatPanel';
 import { GenesisStatusPoller } from './domains/genesis/GenesisStatusPoller';
+import { GenesisActionHandler } from './domains/genesis/GenesisActionHandler';
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import('./shared/pages/Dashboard'));
@@ -126,6 +127,7 @@ export function App() {
         </Suspense>
         {/* Universal Genesis — always present across all pages (PRD 025) */}
         <GenesisStatusPoller />
+        <GenesisActionHandler />
         <GenesisFAB />
         <GenesisChatPanel />
       </BrowserRouter>
