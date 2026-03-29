@@ -15,6 +15,7 @@ import type {
   ToolDefinition,
   ToolResult,
 } from '@method/pacta';
+import Anthropic from '@anthropic-ai/sdk';
 import { anthropicProvider, AnthropicApiError } from './anthropic-provider.js';
 import type {
   AnthropicMessagesResponse,
@@ -22,6 +23,11 @@ import type {
 } from './types.js';
 import { parseSseChunk } from './sse-parser.js';
 import { mapUsage, calculateCost } from './pricing.js';
+
+/** Create an Anthropic client wired to a mock fetch function. */
+function makeClient(apiKey: string, fetchFn: typeof globalThis.fetch): Anthropic {
+  return new Anthropic({ apiKey, fetch: fetchFn });
+}
 
 // ── Mock Helpers ─────────────────────────────────────────────────
 
@@ -122,7 +128,7 @@ describe('anthropicProvider', () => {
   describe('capabilities', () => {
     it('returns correct capabilities', () => {
       const { fetchFn } = mockFetch({});
-      const provider = anthropicProvider({ apiKey: 'test-key', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('test-key', fetchFn) });
       const caps: ProviderCapabilities = provider.capabilities();
 
       assert.deepStrictEqual(caps.modes, ['oneshot']);
@@ -135,7 +141,7 @@ describe('anthropicProvider', () => {
 
     it('has name "anthropic"', () => {
       const { fetchFn } = mockFetch({});
-      const provider = anthropicProvider({ apiKey: 'test-key', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('test-key', fetchFn) });
       assert.strictEqual(provider.name, 'anthropic');
     });
   });
@@ -147,7 +153,7 @@ describe('anthropicProvider', () => {
       const response = makeResponse();
       const { fetchFn, capturedRequests } = mockFetch(response);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test-key', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test-key', fetchFn) });
       await provider.invoke(basePact, baseRequest);
 
       assert.strictEqual(capturedRequests.length, 1);
@@ -178,7 +184,7 @@ describe('anthropicProvider', () => {
         scope: { model: 'claude-opus-4-20250514' },
       };
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       await provider.invoke(pact, baseRequest);
 
       const body = JSON.parse(capturedRequests[0].init.body as string) as AnthropicMessagesRequest;
@@ -194,7 +200,7 @@ describe('anthropicProvider', () => {
         systemPrompt: 'You are a helpful assistant.',
       };
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       await provider.invoke(basePact, request);
 
       const body = JSON.parse(capturedRequests[0].init.body as string) as AnthropicMessagesRequest;
@@ -206,9 +212,11 @@ describe('anthropicProvider', () => {
       const { fetchFn, capturedRequests } = mockFetch(response);
 
       const provider = anthropicProvider({
-        apiKey: 'sk-test',
-        fetchFn,
-        baseUrl: 'https://custom-proxy.example.com',
+        client: new Anthropic({
+          apiKey: 'sk-test',
+          fetch: fetchFn,
+          baseURL: 'https://custom-proxy.example.com',
+        }),
       });
       await provider.invoke(basePact, baseRequest);
 
@@ -230,7 +238,7 @@ describe('anthropicProvider', () => {
         async () => ({ output: 'ok' }),
       );
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn, toolProvider: tp });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn), toolProvider: tp });
       await provider.invoke(basePact, baseRequest);
 
       const body = JSON.parse(capturedRequests[0].init.body as string) as AnthropicMessagesRequest;
@@ -258,7 +266,7 @@ describe('anthropicProvider', () => {
         scope: { allowedTools: ['read_file', 'write_file'] },
       };
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn, toolProvider: tp });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn), toolProvider: tp });
       await provider.invoke(pact, baseRequest);
 
       const body = JSON.parse(capturedRequests[0].init.body as string) as AnthropicMessagesRequest;
@@ -278,7 +286,7 @@ describe('anthropicProvider', () => {
         budget: { maxOutputTokens: 4096 },
       };
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       await provider.invoke(pact, baseRequest);
 
       const body = JSON.parse(capturedRequests[0].init.body as string) as AnthropicMessagesRequest;
@@ -292,7 +300,7 @@ describe('anthropicProvider', () => {
       delete process.env.ANTHROPIC_API_KEY;
 
       try {
-        const provider = anthropicProvider({ fetchFn });
+        const provider = anthropicProvider({ client: new Anthropic({ apiKey: '', fetch: fetchFn }) });
         await assert.rejects(
           () => provider.invoke(basePact, baseRequest),
           (err: Error) => {
@@ -316,7 +324,7 @@ describe('anthropicProvider', () => {
       });
       const { fetchFn } = mockFetch(response);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       const result = await provider.invoke(basePact, baseRequest);
 
       assert.strictEqual(result.output, 'The answer is 42.');
@@ -331,7 +339,7 @@ describe('anthropicProvider', () => {
       const response = makeResponse({ stop_reason: 'max_tokens' });
       const { fetchFn } = mockFetch(response);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       const result = await provider.invoke(basePact, baseRequest);
 
       assert.strictEqual(result.stopReason, 'budget_exhausted');
@@ -340,7 +348,7 @@ describe('anthropicProvider', () => {
     it('throws AnthropicApiError on non-200 response', async () => {
       const { fetchFn } = mockFetch('Rate limit exceeded', 429);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       await assert.rejects(
         () => provider.invoke(basePact, baseRequest),
         (err: Error) => {
@@ -360,7 +368,7 @@ describe('anthropicProvider', () => {
       });
       const { fetchFn } = mockFetch(response);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       const result = await provider.invoke(basePact, baseRequest);
 
       assert.strictEqual(result.output, 'Part 1. Part 2.');
@@ -422,8 +430,7 @@ describe('anthropicProvider', () => {
       );
 
       const provider = anthropicProvider({
-        apiKey: 'sk-test',
-        fetchFn: fetchFn as typeof globalThis.fetch,
+        client: makeClient('sk-test', fetchFn as typeof globalThis.fetch),
         toolProvider: tp,
       });
 
@@ -469,8 +476,7 @@ describe('anthropicProvider', () => {
       );
 
       const provider = anthropicProvider({
-        apiKey: 'sk-test',
-        fetchFn: fetchFn as typeof globalThis.fetch,
+        client: makeClient('sk-test', fetchFn as typeof globalThis.fetch),
         toolProvider: tp,
       });
 
@@ -503,7 +509,7 @@ describe('anthropicProvider', () => {
       });
       const { fetchFn } = mockFetch(response);
 
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
 
       await assert.rejects(
         () => provider.invoke(basePact, baseRequest),
@@ -562,7 +568,7 @@ describe('anthropicProvider', () => {
       ].join('\n');
 
       const { fetchFn } = mockStreamingFetch(sseText);
-      const provider = anthropicProvider({ apiKey: 'sk-test', fetchFn });
+      const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
 
       const events: AgentEvent[] = [];
       for await (const event of provider.stream(basePact, baseRequest)) {
@@ -695,8 +701,7 @@ describe('anthropicProvider', () => {
       );
 
       const provider = anthropicProvider({
-        apiKey: 'sk-test',
-        fetchFn: fetchFn as typeof globalThis.fetch,
+        client: makeClient('sk-test', fetchFn as typeof globalThis.fetch),
         toolProvider: tp,
       });
 
