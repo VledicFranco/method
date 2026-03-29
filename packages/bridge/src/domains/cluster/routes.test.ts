@@ -13,6 +13,7 @@ import {
   FakeDiscovery,
   FakeNetwork,
   FakeResources,
+  CapacityWeightedRouter,
   type ClusterNode,
 } from '@method/cluster';
 import { ClusterDomain, type ClusterLogger } from './core.js';
@@ -68,7 +69,10 @@ function makePeerNode(id: string): ClusterNode {
   };
 }
 
-async function buildApp(config: ClusterConfig): Promise<{ app: FastifyInstance; domain: ClusterDomain }> {
+async function buildApp(
+  config: ClusterConfig,
+  opts: { router?: CapacityWeightedRouter } = {},
+): Promise<{ app: FastifyInstance; domain: ClusterDomain }> {
   const discovery = new FakeDiscovery();
   const network = new FakeNetwork();
   const resources = new FakeResources({ nodeId: config.nodeId, instanceName: 'test' });
@@ -77,7 +81,7 @@ async function buildApp(config: ClusterConfig): Promise<{ app: FastifyInstance; 
   await domain.start();
 
   const app = Fastify({ logger: false });
-  registerClusterRoutes(app, { domain });
+  registerClusterRoutes(app, { domain, router: opts.router });
   await app.ready();
 
   return { app, domain };
@@ -193,6 +197,7 @@ describe('Cluster Routes', () => {
         { method: 'POST' as const, url: '/cluster/drain' },
         { method: 'POST' as const, url: '/cluster/resume' },
         { method: 'POST' as const, url: '/cluster/events', payload: { from: 'x', events: [] } },
+        { method: 'POST' as const, url: '/cluster/route', payload: { type: 'session' } },
       ];
 
       for (const ep of endpoints) {
@@ -217,6 +222,61 @@ describe('Cluster Routes', () => {
 
       const body = JSON.parse(res.payload);
       assert.ok(body.error.includes('not found'));
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 7. POST /cluster/route returns best node based on cluster state
+  it('POST /cluster/route returns best node based on cluster state', async () => {
+    const router = new CapacityWeightedRouter();
+    const { app, domain } = await buildApp(makeConfig(), { router });
+
+    try {
+      // Add a peer with moderate load
+      domain.getManager()!.handleJoin(makePeerNode('peer-route-1'));
+
+      // Add a peer with lighter load (more available sessions)
+      const lightPeer = makePeerNode('peer-route-2');
+      lightPeer.resources.sessionsActive = 0;
+      lightPeer.resources.memoryAvailableMb = 7000;
+      lightPeer.resources.cpuLoadPercent = 5;
+      domain.getManager()!.handleJoin(lightPeer);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/cluster/route',
+        payload: { type: 'session' },
+      });
+      assert.equal(res.statusCode, 200);
+
+      const body = JSON.parse(res.payload);
+      assert.ok(body.node, 'Expected a node in the response');
+      assert.ok(typeof body.score === 'number', 'Expected a numeric score');
+      assert.ok(body.node.nodeId, 'Node should have a nodeId');
+      // The lighter peer should score higher
+      assert.equal(body.node.nodeId, 'peer-route-2');
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 8. POST /cluster/route returns 501 when router is not configured
+  it('POST /cluster/route returns 501 when router is not provided', async () => {
+    const { app, domain } = await buildApp(makeConfig()); // no router
+
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/cluster/route',
+        payload: { type: 'session' },
+      });
+      assert.equal(res.statusCode, 501);
+
+      const body = JSON.parse(res.payload);
+      assert.equal(body.error, 'Router not configured');
     } finally {
       await domain.stop();
       await app.close();

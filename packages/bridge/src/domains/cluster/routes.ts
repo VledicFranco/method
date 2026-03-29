@@ -11,18 +11,22 @@
  *   POST   /cluster/events         — Receive federated events
  *   POST   /cluster/drain          — Set self to draining status
  *   POST   /cluster/resume         — Clear draining status
+ *   POST   /cluster/route          — Route work to best available node
  *
  * When CLUSTER_ENABLED=false, all endpoints return 404.
  */
 
 import type { FastifyInstance } from 'fastify';
 import type { ClusterDomain } from './core.js';
-import type { ClusterNode, FederatedEvent } from '@method/cluster';
+import type { ClusterNode, FederatedEvent, WorkRequest } from '@method/cluster';
+import type { CapacityWeightedRouter } from '@method/cluster';
 
 // ── Route Deps ────────────────────────────────────────────────────
 
 export interface ClusterRouteDeps {
   domain: ClusterDomain;
+  /** Optional capacity-weighted router for POST /cluster/route. When absent, returns 501. */
+  router?: CapacityWeightedRouter;
 }
 
 // ── Disabled Guard ────────────────────────────────────────────────
@@ -50,7 +54,7 @@ function serializeNodeList(state: ReturnType<ClusterDomain['getState']>): Cluste
 // ── Route Registration ────────────────────────────────────────────
 
 export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDeps): void {
-  const { domain } = deps;
+  const { domain, router } = deps;
 
   // ── GET /cluster/state — full cluster state ──
 
@@ -210,5 +214,41 @@ export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDe
       nodeId: state.self.nodeId,
       status: 'alive',
     });
+  });
+
+  // ── POST /cluster/route — route work to best available node ──
+
+  app.post<{
+    Body: WorkRequest;
+  }>('/cluster/route', async (request, reply) => {
+    if (!domain.isEnabled()) return clusterDisabledReply(reply);
+
+    if (!router) {
+      return reply.status(501).send({ error: 'Router not configured' });
+    }
+
+    const body = request.body ?? {};
+    if (!body.type || typeof body.type !== 'string') {
+      return reply.status(400).send({ error: 'Missing required field: type' });
+    }
+
+    const state = domain.getState();
+    if (!state) return reply.status(500).send({ error: 'Cluster state unavailable' });
+
+    const workRequest: WorkRequest = {
+      type: body.type as WorkRequest['type'],
+      projectId: body.projectId,
+      resourceHint: body.resourceHint,
+      excludeNodes: body.excludeNodes,
+    };
+
+    const bestNode = router.selectNode(workRequest, state);
+    if (!bestNode) {
+      return reply.status(404).send({ error: 'No node with available capacity' });
+    }
+
+    const score = router.score(bestNode, workRequest);
+
+    return reply.status(200).send({ node: bestNode, score });
   });
 }
