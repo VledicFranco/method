@@ -291,7 +291,12 @@ async function executeRun(
 
       // Check for task completion
       const output = raResult.output as { actionName?: string };
-      if (output.actionName === 'done' || output.actionName === 'error') {
+      if (output.actionName === 'error') {
+        const errInfo = (raResult as any).error;
+        console.error(`  [cycle ${cycle}] ERROR: ${errInfo?.message ?? JSON.stringify(raResult.output).slice(0, 200)}`);
+        break;
+      }
+      if (output.actionName === 'done') {
         break;
       }
     }
@@ -376,7 +381,7 @@ async function main(): Promise<void> {
   }
 
   // Execute runs
-  const budget = new BudgetGuardian(17.0, 6.0, 0.70);
+  const budget = new BudgetGuardian(1.0, 0.50, 0.80);
   const costTracker = new CostTracker();
   const allResults: RunMetrics[] = [];
 
@@ -446,7 +451,7 @@ async function main(): Promise<void> {
   await writeFile(summaryFile, JSON.stringify(summary, null, 2), 'utf8');
   console.log(`\n=== Summary written to ${summaryFile} ===`);
   console.log(`Total runs: ${allResults.length}`);
-  console.log(`Budget: $${budget.summary().estimatedCostUsd.toFixed(2)} / $17.00`);
+  console.log(`Budget: $${budget.summary().estimatedCostUsd.toFixed(2)} / $1.00`);
 
   // Print condition comparison table
   console.log('\nCondition Comparison:');

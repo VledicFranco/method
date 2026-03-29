@@ -1,0 +1,627 @@
+[
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 16788,
+    "providerCalls": 13,
+    "durationMs": 78873,
+    "cyclesCompleted": 13,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 14,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/types.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { INameValue } from './types';\n     3\t\n     4\texport class A implements INameValue {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:52:37.508Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 16965,
+    "providerCalls": 13,
+    "durationMs": 74494,
+    "cyclesCompleted": 13,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 14,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IModuleA } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IModuleA): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IModuleA } from './interfaces';\n     3\t\n     4\texport class A implements IModuleA {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:53:52.008Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 1,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 14243,
+    "providerCalls": 10,
+    "durationMs": 56130,
+    "cyclesCompleted": 10,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 10,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:54:48.144Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 2,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 8242,
+    "providerCalls": 7,
+    "durationMs": 38936,
+    "cyclesCompleted": 7,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 7,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:55:27.088Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 17637,
+    "providerCalls": 15,
+    "durationMs": 78459,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.4941200744128351,
+    "evictionSalienceMax": 0.5189394102532069,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/types.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { AInterface } from './types';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: AInterface): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts\nsrc/types.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:56:45.555Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 17747,
+    "providerCalls": 15,
+    "durationMs": 75604,
+    "cyclesCompleted": 15,
+    "evictionCount": 9,
+    "evictionSalienceMean": 0.4975212165476366,
+    "evictionSalienceMax": 0.5372045706141264,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/interfaces.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { INamedValue } from './interfaces';\n     3\t\n     4\texport class A implements INamedValue {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T22:58:01.169Z"
+  }
+]

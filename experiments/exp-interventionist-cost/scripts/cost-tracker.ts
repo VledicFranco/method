@@ -305,8 +305,8 @@ export class BudgetGuardian {
   private estimateCostUsd(tokens: number): number {
     const inputTokens = tokens * 0.75;  // ~75% input
     const outputTokens = tokens * 0.25; // ~25% output
-    const inputCost = (inputTokens / 1_000_000) * 3;   // $3/M input
-    const outputCost = (outputTokens / 1_000_000) * 15; // $15/M output
+    const inputCost = (inputTokens / 1_000_000) * 3;   // $3/M input (Sonnet)
+    const outputCost = (outputTokens / 1_000_000) * 15; // $15/M output (Sonnet)
     return inputCost + outputCost;
   }
 

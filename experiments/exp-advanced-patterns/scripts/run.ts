@@ -182,7 +182,7 @@ async function runTask(
   const vfs = new VirtualToolProvider(task.initialFiles);
 
   const llmProvider = anthropicProvider({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     maxOutputTokens: 2048,
   });
 
@@ -444,7 +444,8 @@ async function runTask(
       const conf = (raResult.monitoring as any).confidence ?? 0;
       const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
       const stag = monResult.monitoring.anomalyDetected ? ' [stagnation]' : '';
-      console.log(`    [c${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${stag}`);
+      const errMsg = (raResult as any).error ? ` ERR: ${(raResult as any).error.message}` : '';
+      console.log(`    [c${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${stag}${errMsg}`);
 
       // Check completion
       if (raResult.output.actionName === 'done') break;
@@ -616,9 +617,9 @@ class BudgetTracker {
   private totalRuns = 0;
   private readonly maxBudgetUsd: number;
 
-  // Claude Sonnet pricing: $3/1M input, $15/1M output
-  // Approximate: 80% input, 20% output → blended rate ~$5.4/1M
-  private readonly blendedRatePerMillion = 5.4;
+  // Claude Haiku pricing: $0.8/1M input, $4/1M output
+  // Approximate: 80% input, 20% output → blended rate ~$1.44/1M
+  private readonly blendedRatePerMillion = 1.44;
 
   constructor(maxBudgetUsd: number) {
     this.maxBudgetUsd = maxBudgetUsd;

@@ -1,0 +1,66 @@
+{
+  "experiment": "exp-interventionist-cost",
+  "timestamp": "2026-03-29T23:10:52.589Z",
+  "options": {
+    "conditions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "tiers": [
+      1,
+      2,
+      3
+    ],
+    "specificTask": "circular-dep",
+    "runsPerTask": 3,
+    "pilot": true,
+    "dryRun": false
+  },
+  "budget": {
+    "totalTokens": 139222,
+    "estimatedCostUsd": 0.835332,
+    "runCount": 8
+  },
+  "totalRuns": 7,
+  "byCondition": {
+    "no-monitor": {
+      "runs": 3,
+      "successRate": 0.6666666666666666,
+      "avgTokens": 18474,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 0
+    },
+    "always-on": {
+      "runs": 3,
+      "successRate": 0.3333333333333333,
+      "avgTokens": 17333.666666666668,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 15
+    },
+    "interventionist": {
+      "runs": 1,
+      "successRate": 1,
+      "avgTokens": 15974,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 12
+    }
+  },
+  "byTier": {
+    "1": {
+      "runs": 0,
+      "successRate": null,
+      "avgTokens": null
+    },
+    "2": {
+      "runs": 0,
+      "successRate": null,
+      "avgTokens": null
+    },
+    "3": {
+      "runs": 7,
+      "successRate": 0.5714285714285714,
+      "avgTokens": 17628.14285714286
+    }
+  }
+}

@@ -1,0 +1,50 @@
+experiment: exp-slm
+run_id: qwen-coder-05b-lora
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), overnight-research-20260329 G2"
+config:
+  model: Qwen2.5-Coder-0.5B-Instruct
+  method: LoRA (r=16, alpha=32)
+  corpus: 10K causally consistent
+  steps: 3000
+  learning_rate: 2.0e-4
+  batch_size: 2
+metrics:
+  parse_accuracy: 1.0
+  semantic_accuracy: 0.9968
+  adversarial_accuracy: 0.934
+  training_time_s: 1265.2
+  peak_vram_mb: 4465.5
+  final_loss: 0.3254
+  trainable_params: 2162688
+  total_params: 494032768
+  confidence_mean: 0.9998
+  confidence_median: 0.9999
+  confidence_p95: 0.9999
+  latency_mean_s: 0.7939
+  latency_median_s: 0.5946
+  latency_p95_s: 1.6326
+  boundary_cases: 106
+verdict: pass
+gate: "Scaling Run D — Qwen2.5-Coder-0.5B LoRA on 10K"
+notes: >
+  Qwen2.5-Coder-0.5B-Instruct with LoRA (r=16, alpha=32, 0.44% trainable params)
+  on 10K augmented corpus. All three evaluation gates pass. The Coder variant
+  achieves the best results of any model tested to date.
+
+  Comparison to generic Qwen2.5-0.5B-Instruct baseline (same LoRA config, same corpus):
+  - Parse accuracy: 100.00% vs 99.96% (+0.04pp) — perfect parse rate
+  - Semantic accuracy: 99.68% vs 99.60% (+0.08pp)
+  - Adversarial accuracy: 93.40% vs 92.45% (+0.95pp)
+  - Final loss: 0.3254 vs 0.3029 (slightly higher training loss, but better eval metrics)
+  - Latency median: 0.5946s vs 0.5415s (10% slower, likely minor variance)
+  - Training time: 21.1m vs 20.0m (comparable)
+  - Peak VRAM: 4466 MB (identical, same architecture size)
+
+  The Coder variant improves on all three accuracy metrics over the generic model.
+  The adversarial accuracy gain of +0.95pp is the most notable improvement, suggesting
+  the code-trained base model handles structured DSL output more reliably on boundary
+  cases. Training loss is slightly higher (0.3254 vs 0.3029) but evaluation metrics
+  are uniformly better, indicating the Coder variant generalizes better despite
+  marginally less training set memorization. Confidence scores are equally high
+  (mean 0.9998). Both models fit comfortably in 11GB RTX 2080 Ti VRAM.

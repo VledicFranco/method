@@ -1,0 +1,505 @@
+[
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 20806,
+    "providerCalls": 15,
+    "durationMs": 86306,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 16,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { A } from './module-a';\n     2\texport { B } from './module-b';\n     3\texport { C } from './module-c';\n     4\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IAProvider } from './interfaces';\n     3\t\n     4\texport class A implements IAProvider {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IAProvider } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IAProvider): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T23:00:10.882Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 12568,
+    "providerCalls": 11,
+    "durationMs": 61316,
+    "cyclesCompleted": 11,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 11,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/types.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { A } from './module-a';\n     2\texport { B } from './module-b';\n     3\texport { C } from './module-c';\n     4\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T23:01:12.205Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 1,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10420,
+    "providerCalls": 8,
+    "durationMs": 42821,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Calculate the discounted price by subtracting the discount amount\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T23:01:55.032Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 2,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 16055,
+    "providerCalls": 10,
+    "durationMs": 60351,
+    "cyclesCompleted": 10,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 10,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T23:02:55.392Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": false,
+    "reason": "Circular dependency still exists in import graph",
+    "tokensUsed": 17502,
+    "providerCalls": 15,
+    "durationMs": 78941,
+    "cyclesCompleted": 15,
+    "evictionCount": 9,
+    "evictionSalienceMean": 0.5042534558015457,
+    "evictionSalienceMax": 0.5201342766923205,
+    "monitorInterventions": 12,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-c.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-29T23:04:14.342Z"
+  }
+]

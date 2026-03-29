@@ -534,8 +534,9 @@ async function main(): Promise<void> {
   console.log(`Total runs: ${totalRuns}`);
   console.log(`Max spend:  $${opts.maxSpendUsd}\n`);
 
-  // Results directory
-  const resultsDir = resolve(import.meta.dirname ?? '.', '../results');
+  // Results directory — import.meta.dirname is undefined in tsx, so use import.meta.url
+  const scriptDir = import.meta.dirname ?? new URL('.', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+  const resultsDir = resolve(scriptDir, '../results');
   await mkdir(resultsDir, { recursive: true });
 
   // Timestamp for this batch
