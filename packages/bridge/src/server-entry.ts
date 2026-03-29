@@ -646,6 +646,7 @@ async function start() {
     if (genesisConfig.enabled) {
       try {
         const genesisResult = await spawnGenesis(pool, ROOT_DIR, 50000);
+        genesisRouteContext.genesisSessionId = genesisResult.sessionId;
         app.log.info(
           `Genesis spawned: session_id=${genesisResult.sessionId}, budget=${genesisResult.budgetTokensPerDay} tokens/day`,
         );

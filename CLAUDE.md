@@ -64,7 +64,7 @@ src/
     strategies/            Strategy pipeline execution, gates, retros
     tokens/                LLM usage tracking, subscription polling
     triggers/              Event trigger system (file, git, webhook, schedule)
-    genesis/               Multi-project agent orchestration
+    genesis/               Multi-project agent orchestration + ambient UI (PRD 025)
   shared/                  Cross-domain utilities (config reload, validation, websocket)
     event-bus/             Universal Event Bus — single event backbone (PRD 026)
 ```

@@ -1,48 +1,61 @@
 /**
  * GenesisStatusPoller — headless component that polls Genesis status and budget.
  *
- * Extracted from Dashboard.tsx so that Genesis status is updated globally
- * regardless of which page the user is on (PRD 025 Phase 1).
+ * Discovers the real Genesis session ID from /genesis/status and writes it to the
+ * store so GenesisChatPanel uses the correct ID for prompts and SSE streaming.
+ * Also polls bridge /health for connection status and session budget.
+ *
  * Renders nothing — purely side-effect driven.
  */
 
 import { useEffect } from 'react';
 import { api } from '@/shared/lib/api';
-import { useGenesisStore, GENESIS_SESSION_ID } from '@/shared/stores/genesis-store';
+import { useGenesisStore } from '@/shared/stores/genesis-store';
 
 export function GenesisStatusPoller() {
   const isOpen = useGenesisStore((s) => s.isOpen);
   const setStatus = useGenesisStore((s) => s.setStatus);
   const setBudgetPercent = useGenesisStore((s) => s.setBudgetPercent);
+  const setSessionId = useGenesisStore((s) => s.setSessionId);
 
-  // Poll Genesis status periodically
+  // Discover real Genesis session ID and poll status
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchGenesisStatus = async () => {
       try {
-        const response = await api.get<{
+        // Try the Genesis-specific status endpoint first — it returns the real sessionId
+        const genesis = await api.get<{
+          sessionId: string;
           status: string;
-          active_sessions: number;
-          max_sessions: number;
-        }>('/health');
-        // Simple heuristic: active sessions > 1 means Genesis is active
-        setStatus(response.active_sessions > 1 ? 'active' : 'idle');
-      } catch (err) {
-        console.error('Failed to fetch Genesis status:', err);
-        setStatus('disconnected');
+          nickname: string;
+          csrf_token: string;
+        }>('/genesis/status');
+
+        // Store the real session ID (UUID, not the 'genesis-root' nickname)
+        setSessionId(genesis.sessionId);
+        setStatus(genesis.status === 'running' ? 'active' : 'idle');
+      } catch {
+        // Genesis not running — fall back to /health for bridge connectivity
+        try {
+          await api.get<{ status: string }>('/health');
+          setStatus('idle');
+        } catch {
+          setStatus('disconnected');
+        }
       }
     };
 
-    const interval = setInterval(fetchStatus, 5000);
-    fetchStatus(); // Initial fetch
+    const interval = setInterval(fetchGenesisStatus, 5000);
+    fetchGenesisStatus();
 
     return () => clearInterval(interval);
-  }, [setStatus]);
+  }, [setStatus, setSessionId]);
 
-  // Calculate budget percent from session details
+  // Poll budget from session details
   useEffect(() => {
-    const sessionId = useGenesisStore.getState().sessionId ?? GENESIS_SESSION_ID;
+    const fetchBudget = async () => {
+      const sessionId = useGenesisStore.getState().sessionId;
+      if (!sessionId) return;
 
-    const fetchSessionDetails = async () => {
       try {
         const response = await api.get<{
           budget?: {
@@ -56,19 +69,15 @@ export function GenesisStatusPoller() {
           setBudgetPercent(percent);
         }
       } catch {
-        // Genesis session may not exist yet, use default
         setBudgetPercent(0);
       }
     };
 
-    const interval = setInterval(fetchSessionDetails, 10000);
-    if (isOpen) {
-      fetchSessionDetails(); // Fetch immediately when opening
-    }
+    const interval = setInterval(fetchBudget, 10000);
+    if (isOpen) fetchBudget();
 
     return () => clearInterval(interval);
   }, [isOpen, setBudgetPercent]);
 
-  // Renders nothing — purely side-effect
   return null;
 }

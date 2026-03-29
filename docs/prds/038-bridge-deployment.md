@@ -485,6 +485,6 @@ Full review record: `.method/sessions/prd-design-bridge-deployment/review-findin
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Instance Profiles | Implemented | Landed 2026-03-29 |
-| Phase 2: 1Password Secrets | Implemented | OQ-1 resolved — real vault paths in .env.tpl |
+| Phase 1: Instance Profiles | Implemented | Landed 2026-03-29. PR #118: profile-loader, instances, test fixtures, /health instance_name, npm scripts. |
+| Phase 2: 1Password Secrets | Implemented | Landed 2026-03-29. OQ-1 resolved — real vault paths in .env.tpl, op run integration, graceful fallback. |
 | Phase 3: Portable Packaging | Implemented | pack-bridge.js + method-bridge CLI entry — 2026-03-29 |

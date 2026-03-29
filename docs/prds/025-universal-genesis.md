@@ -3,7 +3,7 @@
 **Nickname:** GES (Genesis Event Store) — the frontend user activity & page context system.
 Distinct from UEB (Universal Event Bus, PRD 026) which handles backend system events.
 
-**Status:** Draft
+**Status:** Implemented (2026-03-29)
 **Author:** PO + Lysica
 **Date:** 2026-03-24
 **Depends on:** None (foundational — WS-3 session UX builds on top)
