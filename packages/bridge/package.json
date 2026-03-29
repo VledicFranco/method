@@ -15,6 +15,7 @@
     "@method/methodts": "*",
     "@method/pacta": "*",
     "@method/pacta-provider-anthropic": "*",
+    "@method/cluster": "*",
     "@method/pacta-provider-claude-cli": "*",
     "fastify": "^5.0.0",
     "js-yaml": "^4.1.1",
