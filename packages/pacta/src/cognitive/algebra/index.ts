@@ -119,3 +119,30 @@ export type {
 // ── Trace sinks ─────────────────────────────────────────────────
 
 export { InMemoryTraceSink, ConsoleTraceSink } from './trace-sinks.js';
+
+// ── Enriched signals (PRD 035 — v2 modules) ────────────────────
+
+export type {
+  MetacognitiveJudgment,
+  EnrichedMonitoringSignal,
+  ModuleExpectation,
+  MonitorV2State,
+  MonitorV2Config,
+  ImpasseType,
+  ImpasseSignal,
+  ReasonerActorV2Monitoring,
+  ReasonerActorV2Config,
+  PriorityScore,
+  PriorityAttendConfig,
+  EVCConfig,
+} from './enriched-signals.js';
+
+// ── Precision adapter (PRD 035 — effort allocation) ────────────
+
+export type {
+  PrecisionConfig,
+  PrecisionAdapterConfig,
+  PrecisionProviderAdapter,
+} from './precision-adapter.js';
+
+export { precisionToConfig, createPrecisionAdapter } from './precision-adapter.js';
