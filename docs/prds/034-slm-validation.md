@@ -1,5 +1,5 @@
 ---
-title: "PRD 033: SLM Validation — RFC 002 Experimental Proof"
+title: "PRD 034: SLM Validation — RFC 002 Experimental Proof"
 status: draft
 date: "2026-03-28"
 tier: "standard"
@@ -11,7 +11,7 @@ domains_affected: ["pacta/cognitive/modules", "pacta/cognitive/algebra", "experi
 rfc: "002-small-language-models"
 ---
 
-# PRD 033: SLM Validation — RFC 002 Experimental Proof
+# PRD 034: SLM Validation — RFC 002 Experimental Proof
 
 **Status:** Draft
 **Author:** PO + Lysica

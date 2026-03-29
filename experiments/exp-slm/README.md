@@ -2,7 +2,7 @@
 
 Validates RFC 002's thesis: can SLMs trained on typed DSLs serve as compiled cognitive skills?
 
-**PRD:** `docs/prds/033-slm-validation.md`
+**PRD:** `docs/prds/034-slm-validation.md`
 **RFC:** `docs/rfcs/002-small-language-models.md`
 **Plan:** `.method/sessions/forge-plan-20260328-0330-slm-validation/realize-plan.md`
 
