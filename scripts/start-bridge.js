@@ -2,12 +2,13 @@
 // Bridge launcher — auto-loads CLAUDE_OAUTH_TOKEN from Claude Code credentials
 // and passes it to the bridge process.
 // Supports --instance <name> to load a profile from .method/instances/<name>.env
+// Supports 1Password CLI (op run) for secrets resolution via .env.tpl
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { spawn } from 'node:child_process';
-import { parseInstanceFlag, loadProfile, mergeEnv } from './lib/profile-loader.js';
+import { spawn, execSync } from 'node:child_process';
+import { parseInstanceFlag, loadProfile, mergeEnv, parseEnvFile } from './lib/profile-loader.js';
 
 // ── Instance profile loading ────────────────────────────────────
 
@@ -25,6 +26,72 @@ if (instanceName) {
   }
 } else {
   console.log(`\x1b[36m[bridge]\x1b[0m Instance profile: default (no --instance flag)`);
+}
+
+// ── Secrets resolution ──────────────────────────────────────────
+//
+// Resolution order:
+//   1. Instance profile env (already loaded above by C-1)
+//   2. .env.tpl + op CLI → spawn via `op run --env-file=.env.tpl`
+//   3. .env.tpl without op → warn and fall back to .env
+//   4. .env → load with parseEnvFile
+//   5. Neither → start without secrets
+//
+
+const envTplPath = join(process.cwd(), '.env.tpl');
+const envPath = join(process.cwd(), '.env');
+
+/**
+ * Detect whether the 1Password CLI (`op`) is available on PATH.
+ * @returns {boolean}
+ */
+function isOpAvailable() {
+  try {
+    const cmd = process.platform === 'win32' ? 'where op' : 'which op';
+    execSync(cmd, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const hasEnvTpl = existsSync(envTplPath);
+const hasEnv = existsSync(envPath);
+const hasOp = hasEnvTpl ? isOpAvailable() : false;
+
+/** @type {'op-run' | 'env-file' | 'none'} */
+let secretsMode = 'none';
+
+if (hasEnvTpl && hasOp) {
+  secretsMode = 'op-run';
+  console.log(`\x1b[32m[bridge]\x1b[0m Secrets: resolving via 1Password (op run)`);
+} else if (hasEnvTpl && !hasOp) {
+  console.log(`\x1b[33m[bridge]\x1b[0m op CLI not found \u2014 falling back to .env`);
+  if (hasEnv) {
+    secretsMode = 'env-file';
+    console.log(`\x1b[32m[bridge]\x1b[0m Secrets: loaded from .env`);
+  } else {
+    secretsMode = 'none';
+    console.log(`\x1b[33m[bridge]\x1b[0m Secrets: none configured (no .env found)`);
+  }
+} else if (hasEnv) {
+  secretsMode = 'env-file';
+  console.log(`\x1b[32m[bridge]\x1b[0m Secrets: loaded from .env`);
+} else {
+  secretsMode = 'none';
+  console.log(`\x1b[33m[bridge]\x1b[0m Secrets: none configured`);
+}
+
+// Load .env file secrets into profileEnv when using env-file mode
+if (secretsMode === 'env-file') {
+  const envContent = readFileSync(envPath, 'utf-8');
+  const envSecrets = parseEnvFile(envContent);
+  // Merge secrets into profileEnv (profile takes precedence over .env secrets)
+  for (const [key, value] of Object.entries(envSecrets)) {
+    if (!(key in profileEnv)) {
+      profileEnv[key] = value;
+    }
+  }
 }
 
 const credentialsPath = join(homedir(), '.claude', '.credentials.json');
@@ -122,11 +189,24 @@ if (oauthToken) {
   env.CLAUDE_OAUTH_TOKEN = oauthToken;
 }
 
-const child = spawn('node', ['packages/bridge/dist/server-entry.js'], {
-  env,
-  stdio: 'inherit',
-  cwd: process.cwd(),
-});
+const serverEntry = 'packages/bridge/dist/server-entry.js';
+
+let child;
+if (secretsMode === 'op-run') {
+  // Let 1Password resolve op:// references and inject them as env vars
+  child = spawn('op', ['run', '--env-file=.env.tpl', '--', 'node', serverEntry], {
+    env,
+    stdio: 'inherit',
+    cwd: process.cwd(),
+    shell: true,
+  });
+} else {
+  child = spawn('node', [serverEntry], {
+    env,
+    stdio: 'inherit',
+    cwd: process.cwd(),
+  });
+}
 
 child.on('exit', (code) => {
   process.exit(code ?? 1);
