@@ -10,6 +10,8 @@
     "test:coverage": "c8 --reporter=text --reporter=html npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
+    "bridge:test": "node scripts/start-bridge.js --instance test",
+    "bridge:stop:test": "node scripts/kill-port.js --instance test",
     "bridge:stop": "node scripts/kill-port.js",
     "bridge:cleanup": "node scripts/cleanup-claude.js",
     "run-method": "npx tsx scripts/run-method.ts",

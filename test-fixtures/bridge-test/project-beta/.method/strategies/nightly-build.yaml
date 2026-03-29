@@ -1,0 +1,12 @@
+# Test fixture strategy — validates strategy loading from project discovery
+strategy:
+  id: nightly-build
+  name: Nightly Build
+  description: Example strategy for testing strategy discovery.
+  trigger:
+    type: schedule
+    cron: "0 2 * * *"
+  steps:
+    - id: build
+      action: run-build
+      description: Run the project build

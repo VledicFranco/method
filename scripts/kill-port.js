@@ -2,13 +2,31 @@
 // Stop the bridge and clean up its child processes.
 // Uses graceful shutdown API first, then PID-targeted fallback.
 // NEVER kills all claude.exe — only processes tracked by the bridge.
+// Supports --instance <name> to resolve port from a profile.
 
 import { execSync } from 'node:child_process';
 import { readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { parseInstanceFlag, loadProfile } from './lib/profile-loader.js';
 
-const port = process.env.PORT || '3456';
+// ── Resolve port from instance profile or env ───────────────
+
+const instanceName = parseInstanceFlag();
+let resolvedPort = process.env.PORT || '3456';
+
+if (instanceName) {
+  try {
+    const { env } = loadProfile(instanceName);
+    resolvedPort = env.PORT || resolvedPort;
+    console.log(`Instance profile "${instanceName}" — targeting port ${resolvedPort}`);
+  } catch (err) {
+    console.error(`Failed to load instance profile "${instanceName}": ${err.message}`);
+    process.exit(1);
+  }
+}
+
+const port = resolvedPort;
 const PID_FILE = join(tmpdir(), `method-bridge-${port}.pids`);
 
 /**
