@@ -9,6 +9,7 @@
     { "path": "packages/pacta-playground" },
     { "path": "packages/pacta-provider-anthropic" },
     { "path": "packages/cluster" },
+    { "path": "packages/method-ctl" },
     { "path": "packages/bridge" }
   ]
 }
