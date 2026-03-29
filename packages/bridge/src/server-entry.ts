@@ -55,6 +55,7 @@ const strategiesConfig = loadStrategiesConfig();
 // Composition-level config (stays in server-entry)
 const ROOT_DIR = process.env.ROOT_DIR ?? process.cwd();
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
+const INSTANCE_NAME = process.env.INSTANCE_NAME ?? 'default';
 
 // PRD 023 D2: Instantiate port providers for dependency injection
 const fsProvider = new NodeFileSystemProvider();
@@ -266,6 +267,7 @@ app.get('/health', async (_request, reply) => {
   const stats = pool.poolStats();
   return reply.status(200).send({
     status: 'ok',
+    instance_name: INSTANCE_NAME,
     active_sessions: stats.activeSessions,
     max_sessions: stats.maxSessions,
     uptime_ms: Date.now() - BRIDGE_STARTED_AT.getTime(),
