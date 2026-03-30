@@ -1,6 +1,6 @@
 ---
 title: "PRD 035: Cognitive Monitoring & Control v2"
-status: proposed
+status: implemented
 date: "2026-03-29"
 tier: heavyweight
 depends_on: [30]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit]
 
 # PRD 035: Cognitive Monitoring & Control v2
 
-**Status:** Proposed
+**Status:** Implemented (MonitorV2, PriorityAttend, ReasonerActorV2, PrecisionAdapter, enrichedPreset — all with tests)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
 **Package:** `@method/pacta` (L3 — library)

@@ -1,6 +1,6 @@
 ---
 title: "PRD 036: Cognitive Memory Architecture"
-status: proposed
+status: implemented
 date: "2026-03-29"
 tier: heavyweight
 depends_on: [30]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit]
 
 # PRD 036: Cognitive Memory Architecture
 
-**Status:** Proposed
+**Status:** Implemented (CLS dual-store, ACT-R activation, consolidator, sleep API, memoryPreset — all with tests)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
 **Package:** `@method/pacta` (L3 — library)

@@ -1,6 +1,6 @@
 # PRD 012 — Session Reliability at Scale
 
-**Status:** Substantially implemented (~90-95% — Phases 0-2 and 4 complete; only Phase 3 stress test runner not built)
+**Status:** Implemented (Phases 0-2, 4 complete; Phase 3 stress runner deferred per spec)
 **Date:** 2026-03-15
 **Previous:** Draft (2026-03-15)
 **Scope:** Adaptive settle delay, PTY parser replacement, concurrency ceiling testing, diagnostic instrumentation
