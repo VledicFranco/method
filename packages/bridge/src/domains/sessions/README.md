@@ -7,6 +7,8 @@ contents:
   - auto-retro.test.ts
   - channels.ts
   - channels.test.ts
+  - cognitive-provider.ts
+  - cognitive-sink.ts
   - config.ts
   - diagnostics.ts
   - diagnostics.test.ts
@@ -94,3 +96,49 @@ All session state flows through `SessionPool`. No route handler, event sink, or 
 | [config.ts](config.ts) | Session domain configuration (Zod schema) |
 | [types.ts](types.ts) | Domain type definitions |
 | [index.ts](index.ts) | Domain barrel export |
+| [cognitive-provider.ts](cognitive-provider.ts) | Cognitive-agent session factory — multi-tool cycles, workspace persistence, cost tracking |
+| [cognitive-sink.ts](cognitive-sink.ts) | CognitiveSink — bridges pacta CognitiveEvent algebra to the Universal Event Bus |
+
+## CognitiveSink — Event Plumbing
+
+`CognitiveSink` is the bridge between the `@method/pacta` cognitive algebra and the Universal Event Bus (PRD 026). It maps all 9 typed `CognitiveEvent` variants to `BridgeEvent` objects and emits them on the injected `EventBus` port.
+
+### Role in the event pipeline
+
+```
+cognitive-provider.ts
+  ├── onEvent(StreamEvent)       — SSE streaming for the frontend (unchanged)
+  └── cognitiveSink.handle(CognitiveEvent)
+        └── CognitiveSink.handle()
+              └── bus.emit(BridgeEvent)   → all registered EventSinks
+                    ├── WebSocketSink     — real-time frontend push
+                    ├── PersistenceSink   — JSONL event log
+                    └── GenesisSink       — batch summaries to Genesis agent
+```
+
+The `CognitiveSink` is constructed with an `EventBus` and an optional context object (`sessionId`, `projectId`, `experimentId`, `runId`). Context is forwarded to every emitted `BridgeEvent`. Call `setContext()` to update context mid-session (e.g. when a run ID is assigned after construction).
+
+The composition root (`server-entry.ts`) is responsible for constructing the sink and passing it into `createCognitiveSession()` via the `cognitiveSink` option.
+
+### Severity mapping
+
+| CognitiveEvent type | BridgeEvent type | Severity |
+|---------------------|-----------------|----------|
+| `cognitive:module_step` | `cognitive.module_step` | info |
+| `cognitive:monitoring_signal` | `cognitive.monitoring_signal` | info |
+| `cognitive:control_directive` | `cognitive.control_directive` | info |
+| `cognitive:workspace_write` | `cognitive.workspace_write` | info |
+| `cognitive:cycle_phase` | `cognitive.cycle_phase` | info |
+| `cognitive:control_policy_violation` | `cognitive.control_policy_violation` | warning |
+| `cognitive:workspace_eviction` | `cognitive.workspace_eviction` | warning |
+| `cognitive:learn_failed` | `cognitive.learn_failed` | warning |
+| `cognitive:cycle_aborted` | `cognitive.cycle_aborted` | error |
+
+### BridgeEvent shape
+
+Every event emitted by `CognitiveSink` has:
+- `domain = 'cognitive'`
+- `type = 'cognitive.{variant}'` (colon in algebra type replaced with dot for bridge convention)
+- `payload` — the full `CognitiveEvent` data plus optional `experimentId`, `runId`, and top-level `cycleNumber` (surfaced from events that carry it)
+- `source = 'bridge/sessions/cognitive-sink'`
+- `sessionId`, `projectId` — forwarded from context when set
