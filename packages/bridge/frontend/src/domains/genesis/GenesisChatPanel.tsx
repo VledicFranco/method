@@ -89,14 +89,15 @@ export function GenesisChatPanel() {
     [],
   );
 
-  // Subscribe to SSE stream
+  // Subscribe to SSE stream — only when genesis is reachable (not disconnected)
+  const genesisReachable = status !== 'disconnected';
   const { connected } = useSSE<string>(
     `/sessions/${sessionId}/stream`,
     {
       onMessage: handleMessage,
       onError: handleError,
-      enabled: isOpen,
-      reconnectMs: 3000,
+      enabled: isOpen && genesisReachable,
+      reconnectMs: 5000,
     },
   );
 
