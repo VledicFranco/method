@@ -1,6 +1,6 @@
 ---
 title: "PRD 035: Cognitive Monitoring & Control v2"
-status: implemented
+status: validated
 date: "2026-03-29"
 tier: heavyweight
 depends_on: [30]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit]
 
 # PRD 035: Cognitive Monitoring & Control v2
 
-**Status:** Implemented (MonitorV2, PriorityAttend, ReasonerActorV2, PrecisionAdapter, enrichedPreset — all with tests)
+**Status:** Validated (2026-03-29) — v2 modules empirically tested, see Validation Results section
 **Author:** PO + Lysica
 **Date:** 2026-03-29
 **Package:** `@method/pacta` (L3 — library)
@@ -833,3 +833,72 @@ Nothing. PRD 030 is implemented.
 ### Validated Agent Architectures
 
 - Webb, T., Mondal, S.S. et al. (2025). "The MAP architecture: Brain-inspired metacognitive planner." *Nature Communications*. — Monitor + Predictor + Evaluator validated on Tower of Hanoi (11% → 74% accuracy, 0% invalid moves vs 31% hallucination baseline).
+
+## Validation Results (2026-03-29)
+
+Four experiments (R-04 through R-07) validated the v2 modules delivered by this PRD. Results from overnight research session (6 waves, 12 agents).
+
+### R-04: MonitorV2 — Metacognitive Error Detection
+
+N=120 evaluations across 4 error types (E1-E4), conditions A (no monitor), B (v1), C (v2).
+
+| Error Type | Baseline (A) | v1 Monitor (B) | v2 MonitorV2 (C) | v2 FPR |
+|------------|-------------|----------------|-------------------|--------|
+| E1 (contradiction) | 100% | 100% | 100% | 14.6% |
+| E2 (action-mismatch) | 100% | 100% | 100% | 26.3% |
+| E3 (confidence miscalibration) | 0% | 3.4% | **37.9%** | 21.8% |
+| E4 (planning error) | 100% | 100% | 100% | 18.1% |
+
+- **Key finding:** MonitorV2 is **11x better** than v1 on the only genuinely hard error type (E3). E1/E2/E4 leak explicit failure flags — any threshold detector catches them.
+- **FPR tradeoff:** v2 mean FPR 20.2% vs v1 0%. Prediction-error tracking introduces false positives.
+- **Gates:** G1 PASS, G2 FAIL (v2 FPR), G3 PASS.
+- **Log:** `experiments/log/2026-03-29-exp-metacognitive-error-full.yaml`
+
+### R-05: PriorityAttend — Workspace Efficiency (Strongest Result)
+
+N=41 runs across 3 tasks, conditions A (unlimited), B (default-8), E (PriorityAttend-8).
+
+| Metric | Unlimited (A) | Default-8 (B) | PriorityAttend-8 (E) |
+|--------|--------------|----------------|---------------------|
+| Success rate | 73% (11/15) | 73% (11/15) | **91% (10/11)** |
+| Tokens (median) | 21,651 | 17,434 | **15,735** |
+| Token savings vs A | — | 19.5% | **27.3%** |
+| Eviction salience (mean) | — | 0.518 | **0.387** |
+| Monitor interventions | 6.7 | 6.9 | **5.8** |
+
+- **Key finding:** PriorityAttend three-factor salience (stimulus 0.3 + goal 0.4 + history 0.3) saves 27% tokens while achieving higher success. Evicts entries with 25% lower salience — discards less important information.
+- **Gates:** G0 PASS, G1 PASS, G2 PARTIAL PASS (E saves 9.7% more than B; incomplete T3 data).
+- **Log:** `experiments/log/2026-03-29-exp-workspace-efficiency-core.yaml`
+
+### R-06: EVC Policy — Interventionist Cost
+
+N=45 runs across 3 tasks, conditions A (no monitor), B (always-on), C (EVC interventionist).
+
+| Metric | No-Monitor (A) | Always-On (B) | EVC Interventionist (C) |
+|--------|---------------|----------------|------------------------|
+| Success rate | **93%** (14/15) | **93%** (14/15) | 67% (10/15) |
+| Cost multiplier vs A | 1.00x | **1.07x** | 1.42x |
+| Interventions/cycle | 0 | 11.4 | 8.9 |
+
+- **Key finding:** Always-on monitoring is essentially free (1.07x) because MonitorV2 is rule-based. EVC interventionist costs 1.42x and degrades success to 67%. Root cause: minPredictionError=0.1 is too sensitive, triggering on nearly every cycle. forceReplan directives on low-severity anomalies cause spiraling.
+- **Gate:** PARTIAL — cost target met (<1.5x), quality target missed (67%/93% = 0.72 < 0.80).
+- **Recommendation:** Increase minPredictionError to 0.25-0.3; separate anomaly severity levels; add warm-up period.
+- **Log:** `experiments/log/2026-03-29-exp-interventionist-cost-core.yaml`
+
+### R-07: Full Pattern Composition (Negative Result)
+
+N=17 runs across 3 tasks, conditions A (baseline 8-module), E (all v2 patterns active).
+
+| Metric | Baseline (A) | All Patterns (E) |
+|--------|-------------|------------------|
+| Success rate | **75%** (6/8) | 22% (2/9) |
+| Tokens (mean) | 19,583 | 25,299 |
+| Token ratio | 1.00x | 1.29x |
+
+- **Key finding:** All patterns combined **degrades performance** from 75% to 22%. Root causes: context pollution (50-200 extra tokens/cycle per pattern), workspace saturation (pattern injections evict task-relevant content), and overhead without adaptation (affect/memory signals injected but not acted upon).
+- **Gate:** FAIL. Selective activation required.
+- **Log:** `experiments/log/2026-03-29-exp-advanced-patterns-core.yaml`
+
+### Emerging Thesis
+
+**Selective metacognition > maximal metacognition.** The cognitive architecture benefits from targeted module activation gated on task complexity, not always-on full instrumentation. Individual v2 modules provide clear value (MonitorV2 on subtle errors, PriorityAttend on token efficiency, always-on monitoring at near-zero cost). Combining all patterns simultaneously creates context pollution that degrades the core reasoning signal. The path forward is complexity-adaptive composition: simple tasks use minimal modules, hard tasks progressively activate v2 capabilities.
