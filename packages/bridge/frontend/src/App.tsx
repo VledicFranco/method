@@ -17,6 +17,9 @@ const Analytics = lazy(() => import('./domains/tokens/Analytics'));
 const Registry = lazy(() => import('./domains/registry/Registry'));
 const Settings = lazy(() => import('./shared/pages/Settings'));
 const ExecutionView = lazy(() => import('./domains/strategies/ExecutionView'));
+const ExperimentList = lazy(() => import('./domains/experiments/ExperimentList'));
+const ExperimentDetail = lazy(() => import('./domains/experiments/ExperimentDetail'));
+const RunDetail = lazy(() => import('./domains/experiments/RunDetail'));
 
 // Preload functions for route chunks — trigger on nav hover to eliminate load delay
 export const ROUTE_PRELOADS: Record<string, () => void> = {
@@ -28,6 +31,7 @@ export const ROUTE_PRELOADS: Record<string, () => void> = {
   '/analytics': () => { import('./domains/tokens/Analytics'); },
   '/registry': () => { import('./domains/registry/Registry'); },
   '/settings': () => { import('./shared/pages/Settings'); },
+  '/lab': () => { import('./domains/experiments/ExperimentList'); },
 };
 
 // ── Route loading skeleton ──
@@ -121,6 +125,10 @@ export function App() {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/registry" element={<Registry />} />
             <Route path="/settings" element={<Settings />} />
+            {/* PRD 041: Cognitive Experiment Lab */}
+            <Route path="/lab" element={<ExperimentList />} />
+            <Route path="/lab/:id" element={<ExperimentDetail />} />
+            <Route path="/lab/:id/run/:runId" element={<RunDetail />} />
             {/* Catch-all: redirect to dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

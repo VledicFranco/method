@@ -9,6 +9,7 @@ import { lookupTheory } from "./theory.js";
 import { createValidationMiddleware } from "./validate-project-access.js";
 import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
+import { experimentHandlers, EXPERIMENT_TOOLS } from "./experiment-tools.js";
 
 // Path resolution
 const ROOT = process.env.METHOD_ROOT ?? process.cwd();
@@ -944,6 +945,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["message"],
       },
     },
+    // PRD 041: Cognitive Experiment Lab tools
+    ...EXPERIMENT_TOOLS,
   ],
 }));
 
@@ -1027,6 +1030,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "genesis_report": {
         const handler = bridgeHandlers[name];
         if (!handler) throw new Error(`Unknown bridge tool: ${name}`);
+        return handler(args as Record<string, unknown>, bridgeFetch, BRIDGE_URL);
+      }
+
+      // PRD 041: Cognitive Experiment Lab tools
+      case "experiment_create":
+      case "experiment_run":
+      case "experiment_results":
+      case "experiment_compare":
+      case "lab_list_presets":
+      case "lab_describe_module":
+      case "lab_read_traces":
+      case "lab_read_workspace": {
+        const handler = experimentHandlers[name];
+        if (!handler) throw new Error(`Unknown experiment tool: ${name}`);
         return handler(args as Record<string, unknown>, bridgeFetch, BRIDGE_URL);
       }
 
