@@ -192,6 +192,26 @@ ROOT_DIR=/home/user/projects
 
 Each machine runs its own bridge with its own profile. The Tailscale mesh makes all machines reachable by hostname.
 
-### Future: portable packaging (Phase 3)
+### Portable packaging
 
-A lightweight deployment package that can run the bridge on a remote machine without cloning the full repo is planned but not yet implemented. The current approach requires the full repo checkout. This section will be updated when Phase 3 lands.
+The bridge can be bundled into a single tarball for installation on remote machines without cloning the full monorepo:
+
+```bash
+node scripts/pack-bridge.js
+```
+
+This runs an esbuild bundle of the bridge server and MCP server, packages them with the frontend, instance profile templates, and `.env.tpl`, and produces `method-bridge-{version}.tgz`.
+
+On the target machine:
+
+```bash
+npm install -g method-bridge-{version}.tgz
+method-bridge --help                     # Print usage
+method-bridge --instance production      # Start with a profile
+```
+
+The CLI entry point (`packages/bridge/bin/method-bridge.js`) parses `--instance`, `--port`, and `--help` flags. It includes an inlined profile loader so it works independently of the monorepo.
+
+### Clustering
+
+Multiple bridges across machines can form a coordinated cluster with automatic peer discovery, capacity-aware work routing, and event federation. See Guide 31 (Bridge Cluster) for the full setup.

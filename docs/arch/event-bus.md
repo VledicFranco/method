@@ -39,6 +39,8 @@ interface BridgeEvent {
   payload: Record<string, unknown>;
   source: string;          // Emitting component
   correlationId?: string;  // Links related events
+  sourceNodeId?: string;   // Originating bridge node (cluster federation)
+  federated?: boolean;     // true if received from another bridge
 }
 ```
 
@@ -50,6 +52,7 @@ interface BridgeEvent {
 | PersistenceSink | Disk persistence | JSONL write-ahead batching (1s/100 events), 24h replay on restart |
 | ChannelSink | Parent agent visibility | Per-session ring buffers (200 cap), severity-based push notifications |
 | GenesisSink | Genesis agent awareness | 30s batch window, severity filter (warning+error+critical), narrow callback |
+| ClusterFederationSink | Cross-bridge event relay | Relays local events to cluster peers via EventRelay; skips `federated: true` events (loop prevention) |
 
 ## Connector Architecture
 

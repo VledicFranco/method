@@ -14,6 +14,7 @@ Evolving architecture documentation for `pv-method`.
 | [mcp-layer.md](mcp-layer.md) | Thin MCP adapter design, 14 tools, error handling, response formatting |
 | [dependencies.md](dependencies.md) | Package dependencies and principles |
 | [bridge.md](bridge.md) | PTY bridge HTTP server — session pool, output parser, API routes |
+| [cluster.md](cluster.md) | Bridge cluster — membership, routing, event federation, method-ctl CLI |
 | [pacta.md](pacta.md) | Pacta Agent SDK — pact contracts, ports, composition engine, reasoning, context, providers |
 
 ## Conventions
