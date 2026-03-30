@@ -11,6 +11,7 @@ import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { EventBus } from '../../ports/event-bus.js';
 import { createAgentEventAdapter } from '../../shared/event-bus/agent-event-adapter.js';
 import type { AgentProvider } from '@method/pacta';
+import { CognitiveSink } from './cognitive-sink.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -150,6 +151,10 @@ export interface SessionPool {
     llm_provider?: 'anthropic' | 'ollama';
     /** LLM provider config overrides (e.g. Ollama baseUrl, model). */
     llm_config?: { baseUrl?: string; model?: string };
+    /** PRD 041: Experiment ID for cognitive event tracing — creates a per-session CognitiveSink with context. */
+    experiment_id?: string;
+    /** PRD 041: Run ID for cognitive event tracing — paired with experiment_id. */
+    run_id?: string;
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }>;
   /**
@@ -195,7 +200,7 @@ export interface PoolOptions {
   /** PRD 026: Event bus for unified event emission. */
   eventBus?: EventBus;
   /** PRD 041: CognitiveSink for routing typed CognitiveEvents to the event bus. */
-  cognitiveSink?: import('./cognitive-sink.js').CognitiveSink;
+  cognitiveSink?: CognitiveSink;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -387,7 +392,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   }
 
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config, experiment_id, run_id }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -539,12 +544,19 @@ export function createPool(options?: PoolOptions): SessionPool {
         let sseSink: ((event: StreamEvent) => void) | null = null;
         cognitiveSSESinks.set(sessionId, (cb) => { sseSink = cb; });
 
+        // PRD 041: Create a per-session CognitiveSink with experiment context so that
+        // ExperimentEventSink can route emitted BridgeEvents to the correct JSONL file.
+        // Falls back to the pool-level sink when no experiment context is present.
+        const sessionCognitiveSink = (experiment_id && run_id && eventBus)
+          ? new CognitiveSink(eventBus, { sessionId, experimentId: experiment_id, runId: run_id })
+          : cognitiveSink;
+
         session = createCognitiveSession({
           id: sessionId,
           workdir: effectiveWorkdir,
           adapter,
           tools,
-          cognitiveSink,
+          cognitiveSink: sessionCognitiveSink,
           config: {
             name: cognitive_config?.name,
             patterns: cognitive_patterns,

@@ -76,9 +76,13 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       llm_provider?: 'anthropic' | 'ollama';
       /** LLM provider config overrides. */
       llm_config?: { baseUrl?: string; model?: string };
+      /** PRD 041: Route cognitive events to this experiment run's JSONL. */
+      experiment_id?: string;
+      /** PRD 041: Run ID paired with experiment_id for cognitive event tracing. */
+      run_id?: string;
     };
   }>('/sessions', async (request, reply) => {
-    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config } = request.body ?? {};
+    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config, experiment_id, run_id } = request.body ?? {};
 
     if (!workdir || typeof workdir !== 'string') {
       return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -138,6 +142,8 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         cognitive_patterns,
         llm_provider,
         llm_config,
+        experiment_id,
+        run_id,
       });
 
       tokenTracker.registerSession(result.sessionId, workdir, new Date());

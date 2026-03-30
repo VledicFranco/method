@@ -110,6 +110,9 @@ function buildSpawnBody(s: z.infer<typeof bridgeSpawnInput>): Record<string, unk
   // LLM provider selection for cognitive-agent mode
   if (s.llm_provider) body.llm_provider = s.llm_provider;
   if (s.llm_config) body.llm_config = s.llm_config;
+  // PRD 041: Experiment tracing context — routes cognitive events to the right JSONL
+  if (s.experiment_id) body.experiment_id = s.experiment_id;
+  if (s.run_id) body.run_id = s.run_id;
   return body;
 }
 
