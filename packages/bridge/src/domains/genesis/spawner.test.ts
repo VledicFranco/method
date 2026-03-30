@@ -90,6 +90,7 @@ function createMockPool(sessions: SessionStatusInfo[] = []): SessionPool & { cre
     childPids: () => [],
     setObservationHook: () => {},
     restoreSession: () => {},
+    cleanupStaleCognitiveSessions: () => ({ killed: [] }),
   } as SessionPool & { createCalled: boolean };
   return mock;
 }

@@ -111,4 +111,5 @@ export class MockSessionPool implements SessionPool {
   setObservationHook(): void {}
 
   restoreSession(): void {}
+  cleanupStaleCognitiveSessions(): { killed: string[] } { return { killed: [] }; }
 }

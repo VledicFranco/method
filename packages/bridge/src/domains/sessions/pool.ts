@@ -177,6 +177,8 @@ export interface SessionPool {
   setObservationHook(hook: ((observation: { category: string; detail: Record<string, unknown>; session_id: string }) => void) | null): void;
   /** PRD 029: Restore a session from a persisted snapshot without spawning a process. */
   restoreSession(snapshot: SessionSnapshot): void;
+  /** PRD 040 C-3: Kill any cognitive-agent sessions restored during startup — they are in-memory only and cannot survive a restart. */
+  cleanupStaleCognitiveSessions(): { killed: string[] };
 }
 
 export interface PoolOptions {
@@ -369,7 +371,10 @@ export function createPool(options?: PoolOptions): SessionPool {
       }
       case 'ollama': {
         const { ollamaProvider } = await import('@method/pacta-provider-ollama');
-        const provider = ollamaProvider({ baseUrl: config.baseUrl ?? 'http://chobits:11434', model: config.model });
+        const provider = ollamaProvider({
+          baseUrl: config.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://chobits:11434',
+          model: config.model,
+        });
         await provider.init();
         return provider;
       }
@@ -1181,6 +1186,35 @@ export function createPool(options?: PoolOptions): SessionPool {
       sessionChannels.set(sid, createSessionChannels());
 
       // Note: totalSpawned is NOT incremented — restored sessions don't count as newly spawned.
+    },
+
+    cleanupStaleCognitiveSessions(): { killed: string[] } {
+      const killed: string[] = [];
+      for (const [sessionId] of sessions.entries()) {
+        if (sessionModes.get(sessionId) === 'cognitive-agent') {
+          const session = sessions.get(sessionId);
+          if (session && session.status !== 'dead') {
+            session.kill();
+            killed.push(sessionId);
+            if (eventBus) {
+              eventBus.emit({
+                version: 1,
+                domain: 'session',
+                type: 'session.killed',
+                severity: 'info',
+                sessionId,
+                payload: {
+                  session_id: sessionId,
+                  killed_by: 'startup_recovery',
+                  reason: 'cognitive sessions are in-memory only and cannot survive a restart',
+                },
+                source: 'bridge/sessions/pool',
+              });
+            }
+          }
+        }
+      }
+      return { killed };
     },
   };
 }

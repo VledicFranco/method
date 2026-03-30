@@ -316,6 +316,10 @@ function createStaleTestPool(maxSessions = 5) {
     restoreSession() {
       // no-op in test pool
     },
+
+    cleanupStaleCognitiveSessions() {
+      return { killed: [] };
+    },
   };
 
   return pool;

@@ -303,6 +303,10 @@ function createTestPool(maxSessions = 5) {
       sessionChannelsMap.set(sid, createSessionChannels());
       // Note: totalSpawned NOT incremented for restored sessions
     },
+
+    cleanupStaleCognitiveSessions() {
+      return { killed: [] };
+    },
   };
 
   return pool;
