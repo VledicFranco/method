@@ -211,3 +211,63 @@ export const projectReadEventsInput = z.object({
 export const genesisReportInput = z.object({
   message: z.string(),
 });
+
+// ---------------------------------------------------------------------------
+// Experiment tool input schemas (PRD 041 Phase 3)
+// ---------------------------------------------------------------------------
+
+export const ExperimentCreateSchema = z.object({
+  name: z.string().describe("Human-readable experiment name"),
+  hypothesis: z.string().describe("The research hypothesis being tested"),
+  conditions: z.array(z.object({
+    name: z.string().describe("Human-readable condition name"),
+    preset: z.string().optional().describe("Optional preset name to use as base configuration"),
+    overrides: z.record(z.string(), z.unknown()).optional().describe("Module-level override parameters applied on top of the preset"),
+    provider: z.object({
+      type: z.string().describe("Provider type (e.g., 'anthropic', 'ollama')"),
+      model: z.string().optional().describe("Model name"),
+      baseUrl: z.string().optional().describe("Base URL for the provider API"),
+    }).optional().describe("Provider configuration"),
+    workspace: z.object({
+      capacity: z.number().optional().describe("Workspace entry capacity"),
+    }).optional().describe("Workspace configuration overrides"),
+    cycle: z.object({
+      maxCycles: z.number().optional().describe("Maximum cognitive cycles"),
+      maxToolsPerCycle: z.number().optional().describe("Maximum tool calls per cycle"),
+    }).optional().describe("Cycle control overrides"),
+  })).describe("Named configurations under comparison"),
+  tasks: z.array(z.string()).describe("Task prompts to run under each condition"),
+});
+
+export const ExperimentRunSchema = z.object({
+  experimentId: z.string().describe("ID of the parent experiment"),
+  conditionName: z.string().describe("Name of the condition to use for this run"),
+  task: z.string().describe("Task prompt to execute"),
+});
+
+export const ExperimentResultsSchema = z.object({
+  experimentId: z.string().describe("Experiment ID to retrieve results for"),
+  runId: z.string().optional().describe("Optional: specific run ID to retrieve. Omit to list all runs."),
+});
+
+export const ExperimentCompareSchema = z.object({
+  runIds: z.array(z.string()).min(2).describe("Two or more run IDs to compare"),
+});
+
+export const LabListPresetsSchema = z.object({});
+
+export const LabDescribeModuleSchema = z.object({
+  moduleId: z.string().describe("Module ID to describe (e.g., 'monitor', 'reason', 'act')"),
+});
+
+export const LabReadTracesSchema = z.object({
+  experimentId: z.string().describe("Experiment ID"),
+  runId: z.string().describe("Run ID to read traces for"),
+  cycleNumber: z.number().optional().describe("Filter to a specific cycle number"),
+  moduleId: z.string().optional().describe("Filter to a specific module ID"),
+  phase: z.string().optional().describe("Filter to a specific execution phase"),
+});
+
+export const LabReadWorkspaceSchema = z.object({
+  sessionId: z.string().describe("Bridge session ID to read workspace state for"),
+});
