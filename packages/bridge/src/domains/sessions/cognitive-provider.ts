@@ -66,6 +66,8 @@ const FORMAT_INSTRUCTION =
 The <action> tag MUST contain valid JSON with a "tool" field matching one of the available tools.
 When the task is complete, use: <action>{"tool":"done","input":{"result":"your final answer here"}}</action>
 
+CRITICAL RULE — If you see "[✓ DELIVERABLE WRITTEN" anywhere in your context, the task output is already saved. Your ONLY valid next action is done. Do not read, write, or research further.
+
 IMPORTANT — For Write operations with large or multi-line content, use a <content> block INSTEAD of putting content in the JSON. This avoids JSON escaping issues:
 <action>{"tool":"Write","input":{"path":"output.md"}}</action>
 <content>
@@ -388,14 +390,14 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
                 salience: 0.88, timestamp: Date.now(),
               });
             }
-            // Write-completion hint: after a successful Write, inject a max-salience note so
-            // the agent doesn't forget it produced the deliverable and keeps re-reading files.
-            // Salience 1.0 ensures this entry is never evicted (always last to leave workspace).
+            // Write-completion hint: after a successful Write, inject a max-salience entry
+            // with the exact done action pre-filled. Salience 1.0 = never evicted.
+            // Without this, workspace eviction causes the agent to forget it already wrote.
             if (actionName === 'Write' && !toolRes.isError) {
-              const writePath = (parsed.input as Record<string, unknown>)?.path;
+              const writePath = (parsed.input as Record<string, unknown>)?.path as string ?? 'file';
               obsPort.write({
                 source: moduleId('observer'),
-                content: `[✓ DELIVERABLE WRITTEN → ${writePath}] Your primary output is DONE. Call <action>{"tool":"done","input":{"result":"brief summary"}}</action> NOW. Do NOT read more files. Do NOT write again.`,
+                content: `[✓ DELIVERABLE WRITTEN → ${writePath}]\nTask output is saved. Execute this action immediately:\n<action>{"tool":"done","input":{"result":"Output written to ${writePath}"}}</action>`,
                 salience: 1.0, timestamp: Date.now(),
               });
             }
