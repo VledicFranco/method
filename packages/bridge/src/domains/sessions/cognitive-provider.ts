@@ -1,12 +1,18 @@
 /**
- * Cognitive Agent Provider — runs the cognitive cycle as a bridge session (PRD 033).
+ * Cognitive Agent Provider v2 — multi-tool cycles, workspace persistence,
+ * cost tracking, and impasse detection (PRD 040 C-2).
  *
- * Instead of spawning `claude --print`, this provider runs the 5-module cognitive cycle
- * (observer -> monitor -> reasoner-actor) internally, emitting cycle-by-cycle events
- * via the onEvent callback for real-time frontend visualization.
+ * Upgrade from v1 inline cycle loop to v2 architecture:
+ * - Multi-tool cycles: up to maxToolsPerCycle (default 5) tool calls per cycle
+ *   before the monitor evaluates
+ * - Workspace persistence: workspace persists across prompts within a session
+ *   (TTL-based eviction between prompts)
+ * - Cost & token tracking: cumulative inputTokens, outputTokens, costUsd across
+ *   all LLM calls, included in done event metadata
+ * - Impasse detection: consecutive identical toolName+toolInput triggers
+ *   "try a different approach" workspace injection
  *
- * Pattern: experiments/exp-023/run.ts lines 362-660 (manual cycle loop).
- * Does NOT use createCognitiveAgent (which requires all 8 modules).
+ * Keeps the same external interface: createCognitiveSession returning PtySession.
  */
 
 import PQueue from 'p-queue';
@@ -27,6 +33,7 @@ export interface CognitiveSessionConfig {
   name?: string;
   patterns?: string[];
   maxCycles?: number;              // default 15
+  maxToolsPerCycle?: number;       // default 5
   workspaceCapacity?: number;      // default 8
   confidenceThreshold?: number;    // default 0.3
   stagnationThreshold?: number;    // default 2
@@ -54,11 +61,17 @@ Use tool "done" with {"result":"summary"} when the task is complete.`;
 
 const READ_ONLY_ACTIONS = new Set(['Read', 'Glob', 'Grep', 'Search', 'List']);
 
+// ── Cost estimation constants ───────────────────────────────────
+// Sonnet ~$3/$15 per M tokens (input/output). Order of magnitude is fine.
+const INPUT_COST_PER_TOKEN = 3.0 / 1_000_000;
+const OUTPUT_COST_PER_TOKEN = 15.0 / 1_000_000;
+
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createCognitiveSession(options: CognitiveSessionOptions): PtySession {
   const { id, workdir, onEvent, adapter, tools, config: cfg, initialPrompt } = options;
   const maxCycles = cfg?.maxCycles ?? 15;
+  const maxToolsPerCycle = cfg?.maxToolsPerCycle ?? 5;
   const wsCapacity = cfg?.workspaceCapacity ?? 8;
   const confThreshold = cfg?.confidenceThreshold ?? 0.3;
   const stagThreshold = cfg?.stagnationThreshold ?? 2;
@@ -73,6 +86,22 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
   const exitCbs: Array<(code: number) => void> = [];
   const getStatus = (): SessionStatus => status;
 
+  // ── Session-level workspace (persists across prompts) ─────────
+  const salienceCtx: SalienceContext = {
+    now: Date.now(),
+    goals: ['complete the task', 'produce correct output'],
+    sourcePriorities: new Map([
+      [moduleId('reasoner-actor'), 0.9],
+      [moduleId('observer'), 0.6],
+    ]),
+  };
+  const ws: WorkspaceManager = createWorkspace({ capacity: wsCapacity }, salienceCtx);
+
+  // ── Session-level cumulative token/cost tracking ──────────────
+  let sessionInputTokens = 0;
+  let sessionOutputTokens = 0;
+  let sessionCostUsd = 0;
+
   function notify(data: string): void {
     for (const sub of outputSubs) { try { sub(data); } catch { /* */ } }
   }
@@ -80,15 +109,6 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
   // ── Cognitive cycle ─────────────────────────────────────────
 
   async function runCycle(prompt: string, onChunk?: StreamChunkCallback): Promise<string> {
-    const ctx: SalienceContext = {
-      now: Date.now(),
-      goals: ['complete the task', 'produce correct output'],
-      sourcePriorities: new Map([
-        [moduleId('reasoner-actor'), 0.9],
-        [moduleId('observer'), 0.6],
-      ]),
-    };
-    const ws: WorkspaceManager = createWorkspace({ capacity: wsCapacity }, ctx);
     const obsPort = ws.getWritePort(moduleId('observer'));
     const raWritePort = ws.getWritePort(moduleId('reasoner-actor'));
     const raReadPort = ws.getReadPort(moduleId('reasoner-actor'));
@@ -102,13 +122,19 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     });
 
     const foldedCtx: string[] = [];
-    let totalTokens = 0, interventions = 0, lastOutput = '';
+    let promptInputTokens = 0, promptOutputTokens = 0;
+    let interventions = 0, lastOutput = '';
     let readOnlyRun = 0, prevConf = 1.0, prevAction: string | null = null;
     let actualCycles = 0;
+
+    // Impasse detection: track previous tool call for no-change detection
+    let prevToolName: string | null = null;
+    let prevToolInput: string | null = null;
 
     for (let c = 0; c < maxCycles; c++) {
       actualCycles = c + 1;
       onEvent({ type: 'cycle-start', cycle: c + 1, maxCycles });
+      ws.resetCycleQuotas();
 
       // ── Monitor (inline) ──
       let forceReplan = false;
@@ -140,108 +166,157 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
         obsPort.write({ source: moduleId('observer'), content: parts.join('\n\n'), salience: 0.9, timestamp: Date.now() });
       }
 
-      // ── Reasoner-Actor (LLM call + tool exec) ──
-      const wsEntries = raReadPort.read();
+      // ── Multi-tool inner loop ──
+      let toolsThisCycle = 0;
+      let cycleDone = false;
+      let lastActionInCycle: string | null = null;
 
-      const strat = forceReplan
-        ? 'Consider the problem deeply. Weigh alternatives and identify the strongest path.'
-        : 'Produce a structured plan with numbered steps. Identify dependencies and risks.';
-      const toolList = tools.list().map((t) => `- ${t.name}: ${t.description ?? ''}`).join('\n');
+      while (toolsThisCycle < maxToolsPerCycle) {
+        // ── Reasoner-Actor (LLM call + tool exec) ──
+        const wsEntries = raReadPort.read();
 
-      // Build a synthetic snapshot: strategy + tools + format + workspace entries
-      const now = Date.now();
-      const syntheticSnapshot: ReadonlyWorkspaceSnapshot = [
-        { source: moduleId('observer'), content: strat, salience: 1.0, timestamp: now },
-        { source: moduleId('observer'), content: `Available tools:\n${toolList}`, salience: 0.95, timestamp: now },
-        { source: moduleId('observer'), content: FORMAT_INSTRUCTION, salience: 0.95, timestamp: now },
-        ...wsEntries,
-      ];
+        const strat = forceReplan && toolsThisCycle === 0
+          ? 'Consider the problem deeply. Weigh alternatives and identify the strongest path.'
+          : 'Produce a structured plan with numbered steps. Identify dependencies and risks.';
+        const toolList = tools.list().map((t) => `- ${t.name}: ${t.description ?? ''}`).join('\n');
 
-      try {
-        const res = await adapter.invoke(syntheticSnapshot, {
-          pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
-        });
+        // Build a synthetic snapshot: strategy + tools + format + workspace entries
+        const now = Date.now();
+        const syntheticSnapshot: ReadonlyWorkspaceSnapshot = [
+          { source: moduleId('observer'), content: strat, salience: 1.0, timestamp: now },
+          { source: moduleId('observer'), content: `Available tools:\n${toolList}`, salience: 0.95, timestamp: now },
+          { source: moduleId('observer'), content: FORMAT_INSTRUCTION, salience: 0.95, timestamp: now },
+          ...wsEntries,
+        ];
 
-        const text = String(res.output);
-        const tok = res.usage.totalTokens;
-        totalTokens += tok;
-
-        if (!text.trim()) {
-          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'empty-response', confidence: 0.1, tokens: tok });
-          prevConf = 0.1;
-          prevAction = 'empty-response';
-          foldedCtx.push(`[c${c + 1}] empty-response`);
-          if (foldedCtx.length > 15) foldedCtx.shift();
-          continue;
-        }
-
-        const plan = text.match(/<plan>([\s\S]*?)<\/plan>/)?.[1]?.trim() ?? '';
-        const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/)?.[1]?.trim() ?? '';
-        const actionRaw = text.match(/<action>([\s\S]*?)<\/action>/)?.[1]?.trim() ?? '';
-
-        // Stream reasoning
-        if (reasoning) {
-          const chunk = `**[Cycle ${c + 1}]** ${reasoning}\n`;
-          onEvent({ type: 'text', content: chunk });
-          onChunk?.(chunk);
-        }
-
-        // Parse + execute action
-        let actionName = 'unknown', confidence = 0.5;
-
-        let parsed: { tool: string; input?: Record<string, unknown> };
         try {
-          parsed = JSON.parse(actionRaw);
-        } catch {
-          actionName = actionRaw ? 'parse-error' : 'no-action';
-          confidence = 0.2;
+          const res = await adapter.invoke(syntheticSnapshot, {
+            pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
+          });
+
+          const text = String(res.output);
+          const inTok = res.usage.inputTokens;
+          const outTok = res.usage.outputTokens;
+          promptInputTokens += inTok;
+          promptOutputTokens += outTok;
+
+          if (!text.trim()) {
+            onEvent({ type: 'cycle-action', cycle: c + 1, action: 'empty-response', confidence: 0.1, tokens: res.usage.totalTokens });
+            prevConf = 0.1;
+            prevAction = 'empty-response';
+            lastActionInCycle = 'empty-response';
+            foldedCtx.push(`[c${c + 1}] empty-response`);
+            if (foldedCtx.length > 15) foldedCtx.shift();
+            break; // exit inner loop on empty response
+          }
+
+          const plan = text.match(/<plan>([\s\S]*?)<\/plan>/)?.[1]?.trim() ?? '';
+          const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/)?.[1]?.trim() ?? '';
+          const actionRaw = text.match(/<action>([\s\S]*?)<\/action>/)?.[1]?.trim() ?? '';
+
+          // Stream reasoning immediately (with cycle number)
+          if (reasoning) {
+            const chunk = `**[Cycle ${c + 1}/${maxCycles} | Tool ${toolsThisCycle + 1}]** ${reasoning}\n`;
+            onEvent({ type: 'text', content: chunk });
+            onChunk?.(chunk);
+          }
+
+          // Parse + execute action
+          let actionName = 'unknown', confidence = 0.5;
+
+          let parsed: { tool: string; input?: Record<string, unknown> };
+          try {
+            parsed = JSON.parse(actionRaw);
+          } catch {
+            actionName = actionRaw ? 'parse-error' : 'no-action';
+            confidence = 0.2;
+            prevConf = confidence;
+            prevAction = actionName;
+            lastActionInCycle = actionName;
+            onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
+            foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
+            if (foldedCtx.length > 15) foldedCtx.shift();
+            break; // exit inner loop on parse error
+          }
+          actionName = parsed.tool ?? 'unknown';
+
+          if (actionName === 'done') {
+            lastOutput = parsed.input?.result as string ?? reasoning ?? plan;
+            onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: res.usage.totalTokens });
+            cycleDone = true;
+            break; // exit inner loop
+          }
+
+          // ── Impasse detection: consecutive identical toolName+toolInput ──
+          const currentToolInput = JSON.stringify(parsed.input ?? {});
+          if (prevToolName === actionName && prevToolInput === currentToolInput) {
+            // Impasse detected: inject "try a different approach" into workspace
+            raWritePort.write({
+              source: moduleId('reasoner-actor'),
+              content: '[IMPASSE] You are repeating the same action with identical input. Try a fundamentally different approach.',
+              salience: 0.95, timestamp: Date.now(),
+            });
+            onEvent({
+              type: 'monitor', cycle: c + 1,
+              intervention: 'impasse-detected',
+              action: actionName,
+            });
+          }
+          prevToolName = actionName;
+          prevToolInput = currentToolInput;
+
+          try {
+            const toolRes = await tools.execute(actionName, parsed.input ?? {});
+            confidence = toolRes.isError ? 0.3 : 0.7;
+            const resStr = typeof toolRes.output === 'string' ? toolRes.output : JSON.stringify(toolRes.output);
+            raWritePort.write({
+              source: moduleId('reasoner-actor'),
+              content: `[${actionName}] Result:\n${resStr}`,
+              salience: 0.8, timestamp: Date.now(),
+            });
+          } catch (toolErr) {
+            const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
+            confidence = 0.1;
+            raWritePort.write({
+              source: moduleId('reasoner-actor'),
+              content: `[${actionName}] Tool error: ${msg}`,
+              salience: 0.8, timestamp: Date.now(),
+            });
+          }
+
           prevConf = confidence;
           prevAction = actionName;
-          onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: tok });
+          lastActionInCycle = actionName;
+          onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
+
           foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
           if (foldedCtx.length > 15) foldedCtx.shift();
-          continue;
+
+          toolsThisCycle++;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'error', confidence: 0, tokens: 0 });
+          onEvent({ type: 'text', content: `\n[cycle ${c + 1}] Error: ${msg}\n` });
+          onChunk?.(`\n[cycle ${c + 1}] Error: ${msg}\n`);
+          break; // exit inner loop on error
         }
-        actionName = parsed.tool ?? 'unknown';
-
-        if (actionName === 'done') {
-          lastOutput = parsed.input?.result as string ?? reasoning ?? plan;
-          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: tok });
-          break;
-        }
-
-        try {
-          const toolRes = await tools.execute(actionName, parsed.input ?? {});
-          confidence = toolRes.isError ? 0.3 : 0.7;
-          const resStr = typeof toolRes.output === 'string' ? toolRes.output : JSON.stringify(toolRes.output);
-          raWritePort.write({
-            source: moduleId('reasoner-actor'),
-            content: `[${actionName}] Result:\n${resStr}`,
-            salience: 0.8, timestamp: Date.now(),
-          });
-        } catch (toolErr) {
-          const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
-          confidence = 0.1;
-          raWritePort.write({
-            source: moduleId('reasoner-actor'),
-            content: `[${actionName}] Tool error: ${msg}`,
-            salience: 0.8, timestamp: Date.now(),
-          });
-        }
-
-        prevConf = confidence;
-        prevAction = actionName;
-        onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: tok });
-
-        foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
-        if (foldedCtx.length > 15) foldedCtx.shift();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        onEvent({ type: 'cycle-action', cycle: c + 1, action: 'error', confidence: 0, tokens: 0 });
-        onEvent({ type: 'text', content: `\n[cycle ${c + 1}] Error: ${msg}\n` });
-        onChunk?.(`\n[cycle ${c + 1}] Error: ${msg}\n`);
       }
+
+      // Update lastActionInCycle for monitor tracking
+      if (lastActionInCycle) {
+        prevAction = lastActionInCycle;
+      }
+
+      if (cycleDone) break; // exit outer loop
     }
+
+    // ── Accumulate into session-level totals ──
+    sessionInputTokens += promptInputTokens;
+    sessionOutputTokens += promptOutputTokens;
+    const promptCostUsd = promptInputTokens * INPUT_COST_PER_TOKEN + promptOutputTokens * OUTPUT_COST_PER_TOKEN;
+    sessionCostUsd += promptCostUsd;
+
+    const totalTokens = promptInputTokens + promptOutputTokens;
 
     const output = lastOutput ||
       (foldedCtx.length > 0
@@ -249,7 +324,18 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
         : '(no output — cycle limit reached)');
     onEvent({
       type: 'done', output,
-      metadata: { totalTokens, totalCycles: actualCycles, monitorInterventions: interventions, workdir },
+      metadata: {
+        totalTokens,
+        totalCycles: actualCycles,
+        monitorInterventions: interventions,
+        costUsd: promptCostUsd,
+        inputTokens: promptInputTokens,
+        outputTokens: promptOutputTokens,
+        sessionCostUsd,
+        sessionInputTokens,
+        sessionOutputTokens,
+        workdir,
+      },
     });
     return output;
   }
