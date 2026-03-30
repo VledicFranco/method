@@ -66,6 +66,12 @@ const FORMAT_INSTRUCTION =
 The <action> tag MUST contain valid JSON with a "tool" field matching one of the available tools.
 When the task is complete, use: <action>{"tool":"done","input":{"result":"your final answer here"}}</action>
 
+IMPORTANT — For Write operations with large or multi-line content, use a <content> block INSTEAD of putting content in the JSON. This avoids JSON escaping issues:
+<action>{"tool":"Write","input":{"path":"output.md"}}</action>
+<content>
+...your multi-line content here, no escaping needed...
+</content>
+
 Example response:
 <plan>1. Read the file. 2. Report the contents.</plan>
 <reasoning>I need to read the file to answer the question.</reasoning>
@@ -188,6 +194,34 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
             timestamp: Date.now(),
           });
         }
+
+        // ── Workspace saturation intervention ──
+        // If the workspace is ≥ 80% full, the model is losing context via eviction.
+        // Inject a compression note so it stops accumulating and moves toward done.
+        const wsEntries = ws.snapshot();
+        const wsUtilization = wsEntries.length / wsCapacity;
+        if (wsUtilization >= 0.8) {
+          obsPort.write({
+            source: moduleId('observer'),
+            content: `[WORKSPACE ${wsEntries.length}/${wsCapacity} entries — near capacity] Context entries are being evicted. Stop accumulating information. Summarize what you know and produce your final output NOW.`,
+            salience: 0.92,
+            timestamp: Date.now(),
+          });
+          onEvent({ type: 'monitor', cycle: c + 1, intervention: 'workspace-saturation' });
+        }
+
+        // ── Token budget intervention ──
+        // If accumulated input tokens exceed 100k, the model is near context window limits.
+        // Force it toward completion before the context fills further.
+        if (promptInputTokens > 100_000) {
+          obsPort.write({
+            source: moduleId('observer'),
+            content: `[TOKEN BUDGET ALERT: ~${Math.round(promptInputTokens / 1000)}k input tokens used] Context window pressure is high. Do NOT read more files. Use what you already know to produce your final Write + done action immediately.`,
+            salience: 0.95,
+            timestamp: Date.now(),
+          });
+          onEvent({ type: 'monitor', cycle: c + 1, intervention: 'token-budget-pressure' });
+        }
       }
 
       // ── Context injection ──
@@ -255,6 +289,9 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           const plan = text.match(/<plan>([\s\S]*?)<\/plan>/)?.[1]?.trim() ?? '';
           const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/)?.[1]?.trim() ?? '';
           const actionRaw = text.match(/<action>([\s\S]*?)<\/action>/)?.[1]?.trim() ?? '';
+          // <content> block: allows Write operations to pass large multi-line content
+          // without JSON escaping. If present and the action is a Write, inject it as `content`.
+          const contentBlock = text.match(/<content>([\s\S]*?)<\/content>/)?.[1] ?? null;
 
           // Stream reasoning immediately (with cycle number)
           if (reasoning) {
@@ -270,6 +307,12 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           try {
             parsed = JSON.parse(actionRaw);
             consecutiveFailedParses = 0; // reset on successful parse
+            // If a <content> block was provided for a Write action, use it as the content
+            // field — this bypasses JSON escaping issues with large multi-line strings.
+            if (contentBlock !== null && parsed.tool === 'Write') {
+              parsed.input = parsed.input ?? {};
+              parsed.input.content = contentBlock;
+            }
           } catch {
             actionName = actionRaw ? 'parse-error' : 'no-action';
             confidence = 0.2;
@@ -335,6 +378,27 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
               content: `[${actionName}] Result:\n${resStr}`,
               salience: 0.8, timestamp: Date.now(),
             });
+            // Truncation hint: when a Read result was cut off, immediately tell the agent
+            // how to continue reading rather than letting it retry the same call.
+            if (actionName === 'Read' && resStr.endsWith('... (truncated)')) {
+              const readPath = (parsed.input as Record<string, unknown>)?.path;
+              raWritePort.write({
+                source: moduleId('observer'),
+                content: `[READ TRUNCATED] Output was cut at 8000 chars. To read the rest, use: Read({"path":"${readPath}","offset":<next_line_number>,"limit":100}). First, estimate the line number from the truncated content.`,
+                salience: 0.88, timestamp: Date.now(),
+              });
+            }
+            // Write-completion hint: after a successful Write, inject a persistent high-salience
+            // note so the agent doesn't forget it produced the deliverable and re-read files.
+            // Without this, workspace eviction can cause the agent to lose track of what it wrote.
+            if (actionName === 'Write' && !toolRes.isError) {
+              const writePath = (parsed.input as Record<string, unknown>)?.path;
+              obsPort.write({
+                source: moduleId('observer'),
+                content: `[DELIVERABLE WRITTEN] File saved: ${writePath}. If this was the primary output required by the task, call done NOW with a summary. Do NOT re-read files or write again unless you need to fix an error.`,
+                salience: 0.95, timestamp: Date.now(),
+              });
+            }
           } catch (toolErr) {
             const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
             confidence = 0.1;
