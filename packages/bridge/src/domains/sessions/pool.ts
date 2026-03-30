@@ -722,27 +722,32 @@ export function createPool(options?: PoolOptions): SessionPool {
           }
         }
 
-        // Read printMetadata and map to response shape (same as non-streaming endpoint)
-        const printSession = session as unknown as { printMetadata?: PrintMetadata | null };
-        const raw = printSession.printMetadata ?? null;
-        const metadata = raw ? {
-          cost_usd: raw.total_cost_usd,
-          num_turns: raw.num_turns,
-          duration_ms: raw.duration_ms,
-          stop_reason: raw.stop_reason,
-          input_tokens: raw.usage.input_tokens,
-          output_tokens: raw.usage.output_tokens,
-          cache_read_tokens: raw.usage.cache_read_input_tokens,
-          cache_write_tokens: raw.usage.cache_creation_input_tokens,
-        } : null;
+        // Cognitive sessions emit their own 'done' event via the SSE sink —
+        // skip the pool's redundant done to avoid overwriting metadata with nulls.
+        const isCognitive = cognitiveSSESinks.has(sessionId);
+        if (!isCognitive) {
+          // Read printMetadata and map to response shape (same as non-streaming endpoint)
+          const printSession = session as unknown as { printMetadata?: PrintMetadata | null };
+          const raw = printSession.printMetadata ?? null;
+          const metadata = raw ? {
+            cost_usd: raw.total_cost_usd,
+            num_turns: raw.num_turns,
+            duration_ms: raw.duration_ms,
+            stop_reason: raw.stop_reason,
+            input_tokens: raw.usage.input_tokens,
+            output_tokens: raw.usage.output_tokens,
+            cache_read_tokens: raw.usage.cache_read_input_tokens,
+            cache_write_tokens: raw.usage.cache_creation_input_tokens,
+          } : null;
 
-        // Send done event with full response + mapped metadata
-        onEvent({
-          type: 'done',
-          output: result.output,
-          metadata,
-          timed_out: result.timedOut,
-        });
+          // Send done event with full response + mapped metadata
+          onEvent({
+            type: 'done',
+            output: result.output,
+            metadata,
+            timed_out: result.timedOut,
+          });
+        }
       } catch (err) {
         onEvent({
           type: 'error',

@@ -177,9 +177,22 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
               bufferRef.current += event.content;
               scheduleFlush();
             } else if (event.type === 'done') {
+              // Map cognitive metadata to the standard PromptMetadata shape
+              // Cognitive sessions send { totalTokens, totalCycles, monitorInterventions }
+              const rawMeta = event.metadata as (PromptMetadata & Record<string, unknown>) | null;
+              const mappedMeta: PromptMetadata | null = rawMeta ? {
+                cost_usd: rawMeta.cost_usd ?? 0,
+                num_turns: rawMeta.num_turns ?? rawMeta.totalCycles ?? 0,
+                duration_ms: rawMeta.duration_ms ?? 0,
+                stop_reason: rawMeta.stop_reason ?? (rawMeta.totalCycles ? 'cognitive_done' : null),
+                input_tokens: rawMeta.input_tokens ?? rawMeta.totalTokens ?? 0,
+                output_tokens: rawMeta.output_tokens ?? 0,
+                cache_read_tokens: rawMeta.cache_read_tokens ?? 0,
+                cache_write_tokens: rawMeta.cache_write_tokens ?? 0,
+              } : null;
               doneResult = {
                 output: event.output ?? bufferRef.current,
-                metadata: event.metadata ?? null,
+                metadata: mappedMeta,
                 timed_out: event.timed_out ?? false,
               };
             } else if (event.type === 'error') {

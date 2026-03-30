@@ -42,7 +42,7 @@ export function SpawnSessionModal({
   const [prompt, setPrompt] = useState('');
   const [nickname, setNickname] = useState('');
   const [purpose, setPurpose] = useState('');
-  const [providerType, setProviderType] = useState<'print' | 'cognitive-agent'>('print');
+  const [providerType, setProviderType] = useState<'print' | 'cognitive-agent'>('cognitive-agent');
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'ollama'>('anthropic');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('http://chobits:11434');
   const [ollamaModel, setOllamaModel] = useState('qwen3-coder:30b');
@@ -105,7 +105,7 @@ export function SpawnSessionModal({
         setPrompt('');
         setNickname('');
         setPurpose('');
-        setProviderType('print');
+        setProviderType('cognitive-agent');
         setLlmProvider('anthropic');
         onClose();
       } catch (err) {
