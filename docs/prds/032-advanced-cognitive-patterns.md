@@ -1,6 +1,6 @@
 ---
 title: "PRD 032: Advanced Cognitive Patterns — Composable Agent Intelligence"
-status: partially-implemented
+status: implemented
 date: "2026-03-28"
 tier: heavyweight
 depends_on: [30, 31]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-playground, experiments]
 
 # PRD 032: Advanced Cognitive Patterns — Composable Agent Intelligence
 
-**Status:** Partially implemented (~75% — 6/8 patterns complete; P4 personas and P5 pattern library pending)
+**Status:** Implemented (all 8 patterns — including P4 dynamic personas with 5 built-in profiles)
 **Author:** PO + Lysica
 **Date:** 2026-03-28
 **Package:** `@method/pacta` (L3 — library)

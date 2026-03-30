@@ -1,6 +1,6 @@
 ---
 title: "PRD 033: Cognitive Agent Session UX — Observable Reasoning in the Bridge"
-status: partially-implemented
+status: implemented
 date: "2026-03-28"
 tier: medium
 depends_on: [30, 31, 32, 23]
@@ -12,7 +12,7 @@ domains_affected: [bridge, pacta]
 
 # PRD 033: Cognitive Agent Session UX — Observable Reasoning in the Bridge
 
-**Status:** Partially implemented (~85% — backend + CycleTrace/ReflectionFooter/CognitivePanel complete; memory viewer modal pending)
+**Status:** Implemented (all 4 phases — CognitiveProvider, CycleTrace, CognitivePanel, MemoryViewer)
 **Author:** PO + Lysica
 **Date:** 2026-03-28
 **Packages:** `@method/bridge` (L4), `@method/pacta` (L3)

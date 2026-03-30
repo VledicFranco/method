@@ -1,6 +1,6 @@
 ---
 title: "PRD 037: Cognitive Affect & Exploration"
-status: partially-implemented
+status: implemented
 date: "2026-03-29"
 tier: standard
 depends_on: [30, 35]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit]
 
 # PRD 037: Cognitive Affect & Exploration
 
-**Status:** Partially implemented (~50% — Affect module complete with somatic markers; Curiosity module and exploration presets pending)
+**Status:** Implemented (Affect module with somatic markers + Curiosity module with learning progress + 3 composition presets)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
 **Package:** `@method/pacta` (L3 -- library)

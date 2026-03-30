@@ -1,6 +1,6 @@
 ---
 title: "PRD 031: Cognitive Memory Module — RAG-Based Fact Cards for Agent Learning"
-status: partially-implemented
+status: implemented
 date: "2026-03-27"
 tier: heavyweight
 depends_on: [30]
@@ -12,7 +12,7 @@ domains_affected: [pacta, pacta-testkit, pacta-playground]
 
 # PRD 031: Cognitive Memory Module — RAG-Based Fact Cards for Agent Learning
 
-**Status:** Partially implemented (~50% — FactCards + MemoryPortV2 complete; hybrid search and persistence phases pending)
+**Status:** Implemented (all 5 phases — FactCards, MemoryPortV2, hybrid BM25+vector search, JSONL persistence)
 **Author:** PO + Lysica
 **Date:** 2026-03-27
 **Package:** `@method/pacta` (L3 — library)
