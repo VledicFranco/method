@@ -183,9 +183,28 @@ export interface CognitiveCycleData {
   affect?: { label: string; valence: number; arousal: number };
 }
 
+export type EpistemicType = 'FACT' | 'HEURISTIC' | 'RULE' | 'OBSERVATION' | 'PROCEDURE';
+
+export interface MemoryCard {
+  id: string;
+  content: string;
+  type: EpistemicType;
+  source: { task?: string; cycle?: number; module?: string };
+  tags: string[];
+  created: number;  // timestamp ms
+  confidence: number;  // 0-1
+}
+
+export interface CognitiveMemoryData {
+  retrieved: number;
+  stored: number;
+  totalCards: number;
+  cards?: MemoryCard[];
+}
+
 export interface CognitiveTurnData {
   cycles: CognitiveCycleData[];
-  memory?: { retrieved: number; stored: number; totalCards: number };
+  memory?: CognitiveMemoryData;
   reflection?: { lessons: string[] };
   profile?: string;
 }

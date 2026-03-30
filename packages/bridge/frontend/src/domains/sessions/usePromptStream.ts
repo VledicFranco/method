@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import type { PromptMetadata, CognitiveTurnData, CognitiveCycleData } from './types';
+import type { PromptMetadata, CognitiveTurnData, CognitiveCycleData, MemoryCard } from './types';
 
 export interface StreamDoneResult {
   output: string;
@@ -163,6 +163,7 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
               retrieved?: number;
               stored?: number;
               totalCards?: number;
+              cards?: MemoryCard[];
               lessons?: string[];
               profile?: string;
             };
@@ -238,6 +239,7 @@ export function usePromptStream(sessionId: string | null): UsePromptStreamResult
                 retrieved: event.retrieved ?? 0,
                 stored: event.stored ?? 0,
                 totalCards: event.totalCards ?? 0,
+                cards: event.cards ?? cognitiveRef.current.memory?.cards,
               };
               scheduleCognitiveFlush();
 
