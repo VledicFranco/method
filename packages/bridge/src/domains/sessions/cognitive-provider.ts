@@ -26,6 +26,7 @@ import type {
 import { moduleId, createWorkspace } from '@method/pacta';
 import type { PtySession, SessionStatus, StreamChunkCallback } from './print-session.js';
 import type { StreamEvent } from './pool.js';
+import type { CognitiveSink } from './cognitive-sink.js';
 
 // ── Configuration ───────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ export interface CognitiveSessionOptions {
   tools: ToolProvider;
   config?: CognitiveSessionConfig;
   initialPrompt?: string;
+  /** Optional CognitiveSink for emitting typed CognitiveEvents to the bridge event bus (PRD 026). */
+  cognitiveSink?: CognitiveSink;
 }
 
 // ── Reasoner-Actor prompt format ────────────────────────────────
@@ -77,7 +80,7 @@ const OUTPUT_COST_PER_TOKEN = 15.0 / 1_000_000;
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createCognitiveSession(options: CognitiveSessionOptions): PtySession {
-  const { id, workdir, onEvent, adapter, tools, config: cfg, initialPrompt } = options;
+  const { id, workdir, onEvent, adapter, tools, config: cfg, initialPrompt, cognitiveSink } = options;
   const maxCycles = cfg?.maxCycles ?? 15;
   const maxToolsPerCycle = cfg?.maxToolsPerCycle ?? 5;
   const wsCapacity = cfg?.workspaceCapacity ?? 8;
@@ -145,6 +148,8 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     for (let c = 0; c < maxCycles; c++) {
       actualCycles = c + 1;
       onEvent({ type: 'cycle-start', cycle: c + 1, maxCycles });
+      // Emit CognitiveCyclePhase via sink for event bus consumers
+      cognitiveSink?.handle({ type: 'cognitive:cycle_phase', phase: 'start', cycleNumber: c + 1, timestamp: Date.now() });
       ws.resetCycleQuotas();
 
       // ── Monitor (inline) ──
@@ -160,10 +165,20 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           interventions++;
           forceReplan = true;
           if (interventions < 3 && prevAction) restricted.push(prevAction);
+          const interventionKind = interventions >= 3 ? 'reframe' : 'constrain';
           onEvent({
             type: 'monitor', cycle: c + 1,
-            intervention: interventions >= 3 ? 'reframe' : 'constrain',
+            intervention: interventionKind,
             restricted: restricted.length > 0 ? restricted : undefined,
+          });
+          // Emit CognitiveControlDirective via sink for event bus consumers
+          cognitiveSink?.handle({
+            type: 'cognitive:control_directive',
+            directive: {
+              target: moduleId('reasoner-actor'),
+              timestamp: Date.now(),
+            },
+            timestamp: Date.now(),
           });
         }
       }
@@ -213,6 +228,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
 
           if (!text.trim()) {
             onEvent({ type: 'cycle-action', cycle: c + 1, action: 'empty-response', confidence: 0.1, tokens: res.usage.totalTokens });
+            cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: 'empty-response', durationMs: 0, hasError: true, timestamp: Date.now() });
             prevConf = 0.1;
             prevAction = 'empty-response';
             lastActionInCycle = 'empty-response';
@@ -247,6 +263,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
             lastActionInCycle = actionName;
             consecutiveFailedParses++;
             onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
+            cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: actionName, durationMs: 0, hasError: true, timestamp: Date.now() });
             foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
             if (foldedCtx.length > 15) foldedCtx.shift();
 
@@ -255,6 +272,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
               lastOutput = reasoning || plan || `Model could not produce a valid action after ${MAX_CONSECUTIVE_FAILED_PARSES} attempts. Last response:\n${text.slice(0, 500)}`;
               onEvent({ type: 'text', content: `\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures. The model may not support the required output format.\n` });
               onChunk?.(`\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures.\n`);
+              cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: `${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures`, phase: 'action', cycleNumber: c + 1, timestamp: Date.now() });
               cycleDone = true;
             }
             break; // exit inner loop on parse error
@@ -264,6 +282,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           if (actionName === 'done') {
             lastOutput = parsed.input?.result as string ?? reasoning ?? plan;
             onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: res.usage.totalTokens });
+            cognitiveSink?.handle({ type: 'cognitive:cycle_phase', phase: 'done', cycleNumber: c + 1, timestamp: Date.now() });
             cycleDone = true;
             break; // exit inner loop
           }
@@ -281,6 +300,12 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
               type: 'monitor', cycle: c + 1,
               intervention: 'impasse-detected',
               action: actionName,
+            });
+            cognitiveSink?.handle({
+              type: 'cognitive:control_policy_violation',
+              directive: { target: moduleId('reasoner-actor'), timestamp: Date.now() },
+              reason: `impasse: repeated action ${actionName} with identical input`,
+              timestamp: Date.now(),
             });
           }
           prevToolName = actionName;
@@ -309,6 +334,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           prevAction = actionName;
           lastActionInCycle = actionName;
           onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
+          cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: actionName, durationMs: 0, hasError: confidence < 0.5, timestamp: Date.now() });
 
           foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
           if (foldedCtx.length > 15) foldedCtx.shift();
@@ -319,6 +345,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           onEvent({ type: 'cycle-action', cycle: c + 1, action: 'error', confidence: 0, tokens: 0 });
           onEvent({ type: 'text', content: `\n[cycle ${c + 1}] Error: ${msg}\n` });
           onChunk?.(`\n[cycle ${c + 1}] Error: ${msg}\n`);
+          cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: msg, phase: 'action', cycleNumber: c + 1, timestamp: Date.now() });
           break; // exit inner loop on error
         }
       }
