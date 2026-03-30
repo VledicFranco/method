@@ -388,15 +388,15 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
                 salience: 0.88, timestamp: Date.now(),
               });
             }
-            // Write-completion hint: after a successful Write, inject a persistent high-salience
-            // note so the agent doesn't forget it produced the deliverable and re-read files.
-            // Without this, workspace eviction can cause the agent to lose track of what it wrote.
+            // Write-completion hint: after a successful Write, inject a max-salience note so
+            // the agent doesn't forget it produced the deliverable and keeps re-reading files.
+            // Salience 1.0 ensures this entry is never evicted (always last to leave workspace).
             if (actionName === 'Write' && !toolRes.isError) {
               const writePath = (parsed.input as Record<string, unknown>)?.path;
               obsPort.write({
                 source: moduleId('observer'),
-                content: `[DELIVERABLE WRITTEN] File saved: ${writePath}. If this was the primary output required by the task, call done NOW with a summary. Do NOT re-read files or write again unless you need to fix an error.`,
-                salience: 0.95, timestamp: Date.now(),
+                content: `[✓ DELIVERABLE WRITTEN → ${writePath}] Your primary output is DONE. Call <action>{"tool":"done","input":{"result":"brief summary"}}</action> NOW. Do NOT read more files. Do NOT write again.`,
+                salience: 1.0, timestamp: Date.now(),
               });
             }
           } catch (toolErr) {
