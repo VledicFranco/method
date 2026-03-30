@@ -1,10 +1,10 @@
 /**
  * Tests for cognitive-modules.ts — BridgeReasonerActorModule and BridgeMonitorModule.
  *
- * PRD 042 Phase 1-3: CognitiveModule implementations extracted from the
- * monolithic cognitive-provider.ts inline loop.
+ * PRD 042 Phase 1-4: CognitiveModule implementations extracted from the
+ * monolithic cognitive-provider.ts inline loop, plus manual composition integration.
  *
- * 10 unit test scenarios covering AC-1 through AC-5 and AC-11.
+ * 12 test scenarios covering AC-1 through AC-7 and AC-11.
  */
 
 import { describe, it } from 'node:test';
@@ -430,5 +430,135 @@ describe('cognitive-modules (PRD 042 Phase 1-3)', () => {
     assert.equal(state.interventions, 0);
     assert.equal(state.readOnlyRun, 0);
     assert.equal(state.accumulatedInputTokens, 0);
+  });
+
+  // ── Scenario 11: AC-6 — Manual loop with monitor + raModule produces 'done' ──
+
+  it('Manual composition loop: monitor + raModule produces done when adapter returns done action', async () => {
+    const { ws, obsPort, raWritePort, raReadPort, monitorPort } = createTestWorkspace();
+    const { events, onEvent } = createEventCollector();
+    const adapter = createMockAdapter([
+      buildResponse('Complete task', 'Task is done', { tool: 'done', input: { result: 'completed successfully' } }),
+    ]);
+    const tools = createMockTools();
+
+    const raConfig = { maxToolsPerCycle: 5, maxOutputTokens: 8192, wsCapacity: 8, cycleNumber: 1, maxCycles: 3 };
+    const raModule = createBridgeReasonerActorModule(
+      adapter, tools, ws, raWritePort, raReadPort, obsPort, raConfig, onEvent,
+    );
+    const monModule = createBridgeMonitorModule(
+      ws, monitorPort, 8,
+      { confThreshold: 0.3, stagThreshold: 2, intBudget: 5 },
+      onEvent,
+    );
+
+    // Seed workspace (Observer seeds)
+    obsPort.write({ source: moduleId('observer'), content: 'Do the task', salience: 0.95, timestamp: Date.now() });
+
+    let raState = raModule.initialState();
+    let monState = monModule.initialState();
+    let lastRAMonitoring: BridgeReasonerActorMonitoring | null = null;
+    let lastOutput = '';
+    let actualCycles = 0;
+
+    for (let c = 0; c < 3; c++) {
+      actualCycles = c + 1;
+      raConfig.cycleNumber = c + 1;
+
+      // Monitor FIRST
+      const monResult = await monModule.step(
+        lastRAMonitoring,
+        monState,
+        { target: moduleId('monitor'), timestamp: Date.now() },
+      );
+      monState = monResult.state;
+      const control: BridgeMonitorControl = monResult.output;
+
+      // RA SECOND
+      const raResult = await raModule.step('Do the task', raState, control);
+      raState = raResult.state;
+      lastRAMonitoring = raResult.monitoring;
+
+      if (raResult.monitoring.cycleDone) {
+        lastOutput = raResult.monitoring.lastOutput;
+        break;
+      }
+    }
+
+    assert.equal(lastOutput, 'completed successfully');
+    assert.equal(actualCycles, 1, 'Should complete in cycle 1');
+    // Verify both modules ran (cycle-action 'done' event present)
+    const doneEvent = events.find(e => e.type === 'cycle-action' && e.action === 'done');
+    assert.ok(doneEvent, 'done action event should be emitted');
+  });
+
+  // ── Scenario 12: AC-7 — Monitor fires anomaly intervention in cycle 2 ──
+
+  it('Manual composition loop: monitor fires anomaly in cycle 2 when cycle 1 has low confidence', async () => {
+    const { ws, obsPort, raWritePort, raReadPort, monitorPort } = createTestWorkspace();
+    const { events, onEvent } = createEventCollector();
+    // Cycle 1: empty response → prevConf 0.1 (low confidence)
+    // Cycle 2 (after monitor intervention with forceReplan): done
+    const adapter = createMockAdapter([
+      // Cycle 1: empty response → prevConf 0.1
+      '   ',
+      // Cycle 2 (after monitor intervention): done
+      buildResponse('Done', 'Complete', { tool: 'done', input: { result: 'recovered' } }),
+    ]);
+    const tools = createMockTools();
+
+    const raConfig = { maxToolsPerCycle: 5, maxOutputTokens: 8192, wsCapacity: 8, cycleNumber: 1, maxCycles: 5 };
+    const raModule = createBridgeReasonerActorModule(
+      adapter, tools, ws, raWritePort, raReadPort, obsPort, raConfig, onEvent,
+    );
+    const monModule = createBridgeMonitorModule(
+      ws, monitorPort, 8,
+      { confThreshold: 0.3, stagThreshold: 2, intBudget: 5 },
+      onEvent,
+    );
+
+    obsPort.write({ source: moduleId('observer'), content: 'Task', salience: 0.95, timestamp: Date.now() });
+
+    let raState = raModule.initialState();
+    let monState = monModule.initialState();
+    let lastRAMonitoring: BridgeReasonerActorMonitoring | null = null;
+    let lastOutput = '';
+    let cycle2Control: BridgeMonitorControl | null = null;
+
+    for (let c = 0; c < 5; c++) {
+      raConfig.cycleNumber = c + 1;
+
+      // Monitor FIRST
+      const monResult = await monModule.step(
+        lastRAMonitoring,
+        monState,
+        { target: moduleId('monitor'), timestamp: Date.now() },
+      );
+      monState = monResult.state;
+      const control: BridgeMonitorControl = monResult.output;
+
+      if (c === 1) {
+        cycle2Control = control;
+      }
+
+      // RA SECOND
+      const raResult = await raModule.step('Task', raState, control);
+      raState = raResult.state;
+      lastRAMonitoring = raResult.monitoring;
+
+      if (raResult.monitoring.cycleDone) {
+        lastOutput = raResult.monitoring.lastOutput;
+        break;
+      }
+    }
+
+    // Verify: cycle 1 produced low-confidence monitoring (empty response → prevConf 0.1)
+    // Monitor in cycle 2 should have detected anomaly and set forceReplan
+    assert.ok(cycle2Control, 'Cycle 2 control should exist');
+    assert.equal(cycle2Control!.forceReplan, true, 'Monitor should set forceReplan in cycle 2 due to low confidence from cycle 1');
+    // Verify a monitor event was emitted for the anomaly
+    const monitorEvent = events.find(e => e.type === 'monitor' && (e.intervention === 'constrain' || e.intervention === 'reframe'));
+    assert.ok(monitorEvent, 'Monitor anomaly event should be emitted in cycle 2');
+    assert.equal(lastOutput, 'recovered', 'Session should complete with recovered output');
   });
 });
