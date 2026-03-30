@@ -8,6 +8,8 @@
     { "path": "../methodts" },
     { "path": "../pacta" },
     { "path": "../pacta-provider-claude-cli" },
+    { "path": "../pacta-provider-anthropic" },
+    { "path": "../pacta-provider-ollama" },
     { "path": "../pacta-testkit" }
   ],
   "include": ["src"]

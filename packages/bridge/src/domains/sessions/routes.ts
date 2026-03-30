@@ -72,9 +72,13 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       };
       /** PRD 033: Cognitive pattern flags (e.g. ['P5', 'P6']). */
       cognitive_patterns?: string[];
+      /** LLM provider for cognitive-agent mode. Default: 'anthropic'. */
+      llm_provider?: 'anthropic' | 'ollama';
+      /** LLM provider config overrides. */
+      llm_config?: { baseUrl?: string; model?: string };
     };
   }>('/sessions', async (request, reply) => {
-    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns } = request.body ?? {};
+    const { workdir, initial_prompt, spawn_args, metadata, parent_session_id, depth, budget, isolation, timeout_ms, nickname, purpose, spawn_delay_ms, mode, allowed_paths, scope_mode, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config } = request.body ?? {};
 
     if (!workdir || typeof workdir !== 'string') {
       return reply.status(400).send({ error: 'Missing required field: workdir' });
@@ -101,6 +105,18 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
       }
     }
 
+    // Validate llm_config if provided
+    if (llm_config) {
+      const llmConfigSchema = z.object({
+        baseUrl: z.string().url().optional(),
+        model: z.string().optional(),
+      });
+      const parsed = llmConfigSchema.safeParse(llm_config);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: `Invalid llm_config: ${parsed.error.message}` });
+      }
+    }
+
     try {
       const result = await pool.create({
         workdir,
@@ -120,6 +136,8 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
         provider_type,
         cognitive_config,
         cognitive_patterns,
+        llm_provider,
+        llm_config,
       });
 
       tokenTracker.registerSession(result.sessionId, workdir, new Date());

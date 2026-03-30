@@ -10,6 +10,7 @@ import { installScopeHook } from './scope-hook.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { EventBus } from '../../ports/event-bus.js';
 import { createAgentEventAdapter } from '../../shared/event-bus/agent-event-adapter.js';
+import type { AgentProvider } from '@method/pacta';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -145,6 +146,10 @@ export interface SessionPool {
     cognitive_config?: Partial<CognitiveSessionConfig>;
     /** PRD 033: Cognitive pattern flags (e.g. ['P5', 'P6']). */
     cognitive_patterns?: string[];
+    /** LLM provider for cognitive-agent mode. Default: 'anthropic'. */
+    llm_provider?: 'anthropic' | 'ollama';
+    /** LLM provider config overrides (e.g. Ollama baseUrl, model). */
+    llm_config?: { baseUrl?: string; model?: string };
   }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }>;
   prompt(sessionId: string, prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean; metadata: PrintMetadata | null }>;
   /**
@@ -352,8 +357,29 @@ export function createPool(options?: PoolOptions): SessionPool {
     // Future: print-mode retro generation can be added here if needed.
   }
 
+  // ── LLM provider resolution for cognitive-agent mode ────────
+  async function resolveProvider(
+    providerName: string | undefined,
+    config: { model?: string; baseUrl?: string; toolProvider?: ReturnType<typeof createBridgeToolProvider> },
+  ): Promise<AgentProvider> {
+    switch (providerName ?? 'anthropic') {
+      case 'anthropic': {
+        const { anthropicProvider } = await import('@method/pacta-provider-anthropic');
+        return anthropicProvider({ model: config.model, toolProvider: config.toolProvider });
+      }
+      case 'ollama': {
+        const { ollamaProvider } = await import('@method/pacta-provider-ollama');
+        const provider = ollamaProvider({ baseUrl: config.baseUrl ?? 'http://chobits:11434', model: config.model });
+        await provider.init();
+        return provider;
+      }
+      default:
+        throw new Error(`Unknown LLM provider: ${providerName}`);
+    }
+  }
+
   return {
-    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id, provider_type, cognitive_config, cognitive_patterns }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
+    async create({ workdir, initialPrompt, spawnArgs, metadata, parentSessionId, depth, budget, isolation, timeout_ms, nickname, purpose, persistent, spawn_delay_ms, mode, allowed_paths, scope_mode, session_id, provider_type, cognitive_config, cognitive_patterns, llm_provider, llm_config }): Promise<{ sessionId: string; nickname: string; status: string; chain: SessionChainInfo; worktree: WorktreeInfo; mode: SessionMode }> {
       // Count active (non-dead) sessions toward the limit
       const activeSessions = [...sessions.values()].filter((s) => s.status !== 'dead').length;
       if (activeSessions >= maxSessions) {
@@ -492,11 +518,10 @@ export function createPool(options?: PoolOptions): SessionPool {
       if (effectiveMode === 'cognitive-agent') {
         // PRD 033: Cognitive agent session — runs reasoning cycle internally
         const { createProviderAdapter } = await import('@method/pacta');
-        const { anthropicProvider } = await import('@method/pacta-provider-anthropic');
 
         const tools = createBridgeToolProvider(effectiveWorkdir);
-        const model = typeof metadata?.model === 'string' ? metadata.model : undefined;
-        const agentProvider = anthropicProvider({ model, toolProvider: tools });
+        const model = llm_config?.model ?? (typeof metadata?.model === 'string' ? metadata.model : undefined);
+        const agentProvider = await resolveProvider(llm_provider, { model, baseUrl: llm_config?.baseUrl, toolProvider: tools });
         const adapter = createProviderAdapter(agentProvider, {
           pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 4096 } },
         });

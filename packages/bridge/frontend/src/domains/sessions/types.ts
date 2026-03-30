@@ -52,6 +52,8 @@ export interface SpawnRequest {
   provider_type?: 'print' | 'cognitive-agent';
   cognitive_config?: string;
   cognitive_patterns?: string[];
+  llm_provider?: 'anthropic' | 'ollama';
+  llm_config?: { baseUrl?: string; model?: string };
 }
 
 export interface SpawnResponse {

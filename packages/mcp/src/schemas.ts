@@ -61,6 +61,11 @@ export const bridgeSpawnInput = z.object({
   mode: z.enum(["pty", "print"]).optional(),
   allowed_paths: z.array(z.string()).optional(),
   scope_mode: z.enum(["enforce", "warn"]).optional(),
+  llm_provider: z.enum(["anthropic", "ollama"]).optional(),
+  llm_config: z.object({
+    baseUrl: z.string().optional(),
+    model: z.string().optional(),
+  }).optional(),
 });
 
 export const bridgeSpawnBatchInput = z.object({

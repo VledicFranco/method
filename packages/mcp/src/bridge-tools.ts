@@ -104,6 +104,9 @@ function buildSpawnBody(s: z.infer<typeof bridgeSpawnInput>): Record<string, unk
   // PRD 014: scope enforcement
   if (s.allowed_paths) body.allowed_paths = s.allowed_paths;
   if (s.scope_mode) body.scope_mode = s.scope_mode;
+  // LLM provider selection for cognitive-agent mode
+  if (s.llm_provider) body.llm_provider = s.llm_provider;
+  if (s.llm_config) body.llm_config = s.llm_config;
   return body;
 }
 

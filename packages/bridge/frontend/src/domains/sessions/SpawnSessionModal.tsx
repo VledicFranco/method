@@ -43,6 +43,9 @@ export function SpawnSessionModal({
   const [nickname, setNickname] = useState('');
   const [purpose, setPurpose] = useState('');
   const [providerType, setProviderType] = useState<'print' | 'cognitive-agent'>('print');
+  const [llmProvider, setLlmProvider] = useState<'anthropic' | 'ollama'>('anthropic');
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState('http://chobits:11434');
+  const [ollamaModel, setOllamaModel] = useState('qwen3-coder:30b');
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   // Auto-fill workdir when only one project exists
@@ -84,6 +87,13 @@ export function SpawnSessionModal({
       if (providerType !== 'print') {
         req.provider_type = providerType;
         req.mode = 'cognitive-agent';
+        if (llmProvider !== 'anthropic') {
+          req.llm_provider = llmProvider;
+          req.llm_config = {
+            baseUrl: ollamaBaseUrl.trim() || undefined,
+            model: ollamaModel.trim() || undefined,
+          };
+        }
       }
       if (prompt.trim()) req.initial_prompt = prompt.trim();
       if (nickname.trim()) req.nickname = nickname.trim();
@@ -96,12 +106,13 @@ export function SpawnSessionModal({
         setNickname('');
         setPurpose('');
         setProviderType('print');
+        setLlmProvider('anthropic');
         onClose();
       } catch (err) {
         setSpawnError(err instanceof Error ? err.message : String(err));
       }
     },
-    [workdir, prompt, nickname, purpose, providerType, isSpawning, onSpawn, onClose],
+    [workdir, prompt, nickname, purpose, providerType, llmProvider, ollamaBaseUrl, ollamaModel, isSpawning, onSpawn, onClose],
   );
 
   const handleSelectProject = useCallback(
@@ -237,7 +248,7 @@ export function SpawnSessionModal({
               <div className="flex rounded-lg border border-bdr overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setProviderType('print')}
+                  onClick={() => { setProviderType('print'); setLlmProvider('anthropic'); }}
                   className={cn(
                     'flex-1 px-3 py-2 text-sm font-mono transition-colors',
                     providerType === 'print'
@@ -261,6 +272,66 @@ export function SpawnSessionModal({
                 </button>
               </div>
             </div>
+
+            {/* LLM Provider (visible only in cognitive-agent mode) */}
+            {providerType === 'cognitive-agent' && (
+              <>
+                <div>
+                  <label className="block text-xs text-txt-dim font-medium mb-1.5">LLM Provider</label>
+                  <div className="flex rounded-lg border border-bdr overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setLlmProvider('anthropic')}
+                      className={cn(
+                        'flex-1 px-3 py-2 text-sm font-mono transition-colors',
+                        llmProvider === 'anthropic'
+                          ? 'bg-bio text-abyss font-semibold'
+                          : 'bg-void text-txt-dim hover:text-txt hover:bg-abyss-light',
+                      )}
+                    >
+                      Anthropic (Claude)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLlmProvider('ollama')}
+                      className={cn(
+                        'flex-1 px-3 py-2 text-sm font-mono transition-colors border-l border-bdr',
+                        llmProvider === 'ollama'
+                          ? 'bg-bio text-abyss font-semibold'
+                          : 'bg-void text-txt-dim hover:text-txt hover:bg-abyss-light',
+                      )}
+                    >
+                      Ollama
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ollama config */}
+                {llmProvider === 'ollama' && (
+                  <div className="space-y-sp-3 pl-3 border-l-2 border-bio/30">
+                    <div>
+                      <label className="block text-xs text-txt-dim font-medium mb-1.5">Base URL</label>
+                      <input
+                        type="text"
+                        value={ollamaBaseUrl}
+                        onChange={(e) => setOllamaBaseUrl(e.target.value)}
+                        className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-txt-dim font-medium mb-1.5">Model</label>
+                      <input
+                        type="text"
+                        value={ollamaModel}
+                        onChange={(e) => setOllamaModel(e.target.value)}
+                        placeholder="qwen3-coder:30b"
+                        className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Initial Prompt */}
             <div>

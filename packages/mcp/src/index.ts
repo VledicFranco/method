@@ -355,6 +355,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             enum: ["enforce", "warn"],
             description: "Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. PRD 014.",
           },
+          llm_provider: {
+            type: "string",
+            enum: ["anthropic", "ollama"],
+            description: "LLM provider for cognitive-agent mode. 'anthropic' (default) uses Claude API. 'ollama' uses a local/remote Ollama instance.",
+          },
+          llm_config: {
+            type: "object",
+            properties: {
+              baseUrl: { type: "string", description: "Base URL for the LLM provider (e.g., 'http://chobits:11434' for Ollama)" },
+              model: { type: "string", description: "Model name override (e.g., 'qwen3-coder:30b' for Ollama)" },
+            },
+            description: "Optional configuration for the selected LLM provider.",
+          },
         },
         required: ["workdir"],
       },
