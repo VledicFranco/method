@@ -39,6 +39,7 @@ export interface CognitiveSessionConfig {
   confidenceThreshold?: number;    // default 0.3
   stagnationThreshold?: number;    // default 2
   interventionBudget?: number;     // default 5
+  maxOutputTokens?: number;        // default 8192 — max tokens per LLM call (2048 caused no-action loops on large Write ops)
 }
 
 export interface CognitiveSessionOptions {
@@ -87,6 +88,9 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
   const confThreshold = cfg?.confidenceThreshold ?? 0.3;
   const stagThreshold = cfg?.stagnationThreshold ?? 2;
   const intBudget = cfg?.interventionBudget ?? 5;
+  // 8192 gives enough room for Write tool calls on large outputs (reports, code files).
+  // 2048 caused no-action loops: plan used most tokens, leaving no room for the action JSON.
+  const maxOutputTokens = cfg?.maxOutputTokens ?? 8192;
 
   const queue = new PQueue({ concurrency: 1 });
   let status: SessionStatus = 'ready';
@@ -147,6 +151,9 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
 
     for (let c = 0; c < maxCycles; c++) {
       actualCycles = c + 1;
+      // Reset per-cycle: consecutive parse failures count resets at each new cycle boundary.
+      // This prevents no-action in cycle N from "using up" one strike for cycle N+1.
+      consecutiveFailedParses = 0;
       onEvent({ type: 'cycle-start', cycle: c + 1, maxCycles });
       // Emit CognitiveCyclePhase via sink for event bus consumers
       cognitiveSink?.handle({ type: 'cognitive:cycle_phase', phase: 'start', cycleNumber: c + 1, timestamp: Date.now() });
@@ -187,7 +194,15 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
       if (foldedCtx.length > 0 || forceReplan) {
         const parts = [`[Cycle ${c + 1}/${maxCycles}]`];
         if (foldedCtx.length > 0) parts.push(`## Completed Actions\n${foldedCtx.join('\n')}`);
-        if (forceReplan) parts.push('MUST try a different strategy. Previous approach is stagnating.');
+        if (forceReplan) {
+          // Tailor the intervention message to the specific failure mode:
+          // - no-action: agent has a plan but isn't producing a tool call → remind format
+          // - other stagnation: generic "try something else"
+          const noActionStall = prevAction === 'no-action' || prevAction === 'parse-error';
+          parts.push(noActionStall
+            ? 'Your last response had NO <action> block. You MUST end with <action>{"tool":"ToolName","input":{...}}</action>. Do not describe what you would do — call the tool directly NOW.'
+            : 'MUST try a different strategy. Previous approach is stagnating.');
+        }
         if (restricted.length > 0) parts.push(`RESTRICTED actions: ${restricted.join(', ')}`);
         obsPort.write({ source: moduleId('observer'), content: parts.join('\n\n'), salience: 0.9, timestamp: Date.now() });
       }
@@ -217,7 +232,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
 
         try {
           const res = await adapter.invoke(syntheticSnapshot, {
-            pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
+            pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: maxOutputTokens } },
           });
 
           const text = String(res.output);
