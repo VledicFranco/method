@@ -26,6 +26,7 @@ contents:
   - transcript-reader.ts
   - transcript-reader.test.ts
   - transcript-route.ts
+  - transcript-route.test.ts
   - types.ts
   - worktree-stale.test.ts
 ---
