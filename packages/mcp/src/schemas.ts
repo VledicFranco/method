@@ -73,6 +73,9 @@ export const bridgeSpawnInput = z.object({
     baseUrl: z.string().optional().describe("LLM API base URL (e.g. http://chobits:11434 for remote Ollama)"),
     model: z.string().optional().describe("Model name (e.g. qwen3:8b, claude-sonnet-4-6)"),
   }).optional().describe("LLM configuration for cognitive-agent sessions"),
+  /** PRD 041: Route cognitive events to a specific experiment run's JSONL. */
+  experiment_id: z.string().optional().describe("Experiment ID for cognitive-agent tracing — routes cognitive events to this experiment's JSONL file. Obtain from experiment_create."),
+  run_id: z.string().optional().describe("Run ID for cognitive-agent tracing — routes cognitive events to this run's JSONL file. Obtain from experiment_run. Must be paired with experiment_id."),
 });
 
 export const bridgeSpawnBatchInput = z.object({
