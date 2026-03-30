@@ -656,9 +656,15 @@ const LiveTurn = React.memo(function LiveTurn({ turn }: { turn: Extract<ChatTurn
       ) : null}
       <div style={styles.chipsRow}>
         <span style={styles.chip}>${m.cost_usd.toFixed(2)}</span>
-        <span style={styles.chip}>{m.num_turns} turns</span>
-        <span style={styles.chip}>{formatDuration(m.duration_ms)}</span>
-        <span style={styles.chip}>{formatCached(m.cache_read_tokens)}</span>
+        <span style={styles.chip}>
+          {m.num_turns} {m.stop_reason === 'cognitive_done' ? 'cycles' : 'turns'}
+        </span>
+        {m.duration_ms > 0 && (
+          <span style={styles.chip}>{formatDuration(m.duration_ms)}</span>
+        )}
+        {m.cache_read_tokens > 0 && (
+          <span style={styles.chip}>{formatCached(m.cache_read_tokens)}</span>
+        )}
         {m.stop_reason && (
           <span style={styles.chip}>{m.stop_reason}</span>
         )}
@@ -690,9 +696,11 @@ function StreamingTurnBlock({ turn }: { turn: Extract<ChatTurn, { kind: 'streami
       {turn.output ? (
         <div style={styles.outputBlock}>
           <MarkdownOutput content={turn.output} />
+          <PendingDots />
         </div>
-      ) : null}
-      <PendingDots />
+      ) : (
+        <PendingDots />
+      )}
     </div>
   );
 }
