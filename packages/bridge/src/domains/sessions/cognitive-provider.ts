@@ -53,11 +53,19 @@ export interface CognitiveSessionOptions {
 // ── Reasoner-Actor prompt format ────────────────────────────────
 
 const FORMAT_INSTRUCTION =
-`Respond in exactly three XML sections:
+`You MUST respond with exactly three XML sections. No other text outside these tags.
+
 <plan>Brief 2-3 step plan.</plan>
-<reasoning>Analysis and rationale.</reasoning>
-<action>{"tool":"ToolName","input":{...}}</action>
-Use tool "done" with {"result":"summary"} when the task is complete.`;
+<reasoning>Your analysis and rationale.</reasoning>
+<action>{"tool":"ToolName","input":{"key":"value"}}</action>
+
+The <action> tag MUST contain valid JSON with a "tool" field matching one of the available tools.
+When the task is complete, use: <action>{"tool":"done","input":{"result":"your final answer here"}}</action>
+
+Example response:
+<plan>1. Read the file. 2. Report the contents.</plan>
+<reasoning>I need to read the file to answer the question.</reasoning>
+<action>{"tool":"Read","input":{"path":"package.json"}}</action>`;
 
 const READ_ONLY_ACTIONS = new Set(['Read', 'Glob', 'Grep', 'Search', 'List']);
 
@@ -130,6 +138,9 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     // Impasse detection: track previous tool call for no-change detection
     let prevToolName: string | null = null;
     let prevToolInput: string | null = null;
+    // Early bail-out: consecutive failed parses (no-action/parse-error)
+    let consecutiveFailedParses = 0;
+    const MAX_CONSECUTIVE_FAILED_PARSES = 3;
 
     for (let c = 0; c < maxCycles; c++) {
       actualCycles = c + 1;
@@ -227,15 +238,25 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
           let parsed: { tool: string; input?: Record<string, unknown> };
           try {
             parsed = JSON.parse(actionRaw);
+            consecutiveFailedParses = 0; // reset on successful parse
           } catch {
             actionName = actionRaw ? 'parse-error' : 'no-action';
             confidence = 0.2;
             prevConf = confidence;
             prevAction = actionName;
             lastActionInCycle = actionName;
+            consecutiveFailedParses++;
             onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
             foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
             if (foldedCtx.length > 15) foldedCtx.shift();
+
+            // Early bail-out: if the model can't produce valid actions repeatedly, stop
+            if (consecutiveFailedParses >= MAX_CONSECUTIVE_FAILED_PARSES) {
+              lastOutput = reasoning || plan || `Model could not produce a valid action after ${MAX_CONSECUTIVE_FAILED_PARSES} attempts. Last response:\n${text.slice(0, 500)}`;
+              onEvent({ type: 'text', content: `\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures. The model may not support the required output format.\n` });
+              onChunk?.(`\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures.\n`);
+              cycleDone = true;
+            }
             break; // exit inner loop on parse error
           }
           actionName = parsed.tool ?? 'unknown';
