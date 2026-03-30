@@ -163,6 +163,23 @@ export const MONITOR_STRATEGIES: Record<string, MonitorStrategy> = {
     interventionBudget: 5,      // after 3 constrain interventions, switch to reframe
     trackUtility: true,
   },
+
+  // R-15 threshold ablation variants — same constrain-force strategy, different thresholds
+  'constrain-force-t3': {
+    name: 'constrain-force-t3',
+    stagnationThreshold: 3,
+    onStagnation: 'constrain',
+    interventionBudget: Infinity,
+    trackUtility: false,
+  },
+
+  'constrain-force-t4': {
+    name: 'constrain-force-t4',
+    stagnationThreshold: 4,
+    onStagnation: 'constrain',
+    interventionBudget: Infinity,
+    trackUtility: false,
+  },
 };
 
 // ── Prompt Strategy ─────────────────────────────────────────────
@@ -322,6 +339,21 @@ export const CONFIGS: Record<string, CognitiveConfig> = {
     workspace: WORKSPACE_STRATEGIES['summary'],
     monitor: MONITOR_STRATEGIES['hybrid'],
     prompt: PROMPT_STRATEGIES['anchored'],
+  },
+
+  // R-15: true threshold ablation configs (same workspace+prompt as baseline, threshold varies)
+  'baseline-t3': {
+    name: 'baseline-t3',
+    workspace: WORKSPACE_STRATEGIES['evict'],
+    monitor: MONITOR_STRATEGIES['constrain-force-t3'],
+    prompt: PROMPT_STRATEGIES['baseline'],
+  },
+
+  'baseline-t4': {
+    name: 'baseline-t4',
+    workspace: WORKSPACE_STRATEGIES['evict'],
+    monitor: MONITOR_STRATEGIES['constrain-force-t4'],
+    prompt: PROMPT_STRATEGIES['baseline'],
   },
 };
 

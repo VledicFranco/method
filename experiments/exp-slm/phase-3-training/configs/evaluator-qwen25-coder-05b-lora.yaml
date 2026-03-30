@@ -1,0 +1,34 @@
+model:
+  name: "Qwen/Qwen2.5-Coder-0.5B-Instruct"
+  dtype: "float32"
+
+lora:
+  r: 16
+  lora_alpha: 32
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+  lora_dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+training:
+  max_steps: 3000
+  per_device_train_batch_size: 2
+  learning_rate: 2.0e-4
+  warmup_steps: 100
+  weight_decay: 0.01
+  fp16: true
+  bf16: false
+  max_length: 256
+  logging_steps: 100
+  save_strategy: "steps"
+  save_steps: 1000
+  eval_strategy: "steps"
+  eval_steps: 500
+  seed: 42
+
+data:
+  train_path: "../phase-2-dsl/corpus/evaluator-v1/train.jsonl"
+  holdout_path: "../phase-2-dsl/corpus/evaluator-v1/holdout.jsonl"
+
+output:
+  dir: "models/evaluator-qwen25-coder-05b-lora"

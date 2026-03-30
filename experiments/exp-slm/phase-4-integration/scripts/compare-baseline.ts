@@ -22,7 +22,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, '..', 'results');
-const EVAL_PATH = join(RESULTS_DIR, 'integration-eval.json');
+const EVAL_PATH = process.argv[2]
+  ? join(RESULTS_DIR, process.argv[2])
+  : join(RESULTS_DIR, 'integration-eval.json');
 const BASELINE_PATH = join(__dirname, '..', '..', 'phase-1-llm-monitor', 'results', 'baseline-cost.json');
 const OUTPUT_PATH = join(RESULTS_DIR, 'comparison.json');
 

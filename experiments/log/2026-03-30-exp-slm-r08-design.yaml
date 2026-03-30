@@ -1,0 +1,72 @@
+experiment: exp-slm
+run_id: r08-observer-evaluator-design
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+phase: "R-08 — Observer + Evaluator module corpus design + training start"
+findings:
+  - id: F1
+    title: "Observer DSL design"
+    detail: >
+      Input format: OBS-SIGNALS block with one line per observer signal —
+      [observer:<id>] novelty=<float> processed=<True|False> content=<text|code|error|tool-output>.
+      Output format: 4-field report — PRIORITY: (high/medium/low), FOCUS: (comma-separated
+      module list or "none"), NOVELTY: (max novelty score across all signals, 2dp), NOTE: (quoted
+      string or "none"). Deterministic mapping rules: PRIORITY=high if any signal has content=error
+      OR max_novelty>=0.75; medium if max_novelty>=0.40; low otherwise. FOCUS=["reasoner","planner"]
+      for high (+"reflector" if any unprocessed), ["reasoner"] for medium (+"planner" if
+      max_novelty>=0.60), empty for low. NOTE templates are tied to each priority/condition
+      combination with no ambiguity. Error content always forces PRIORITY:high regardless of
+      novelty score — this is the key causal override. Format is compact (4 output lines), well
+      within the 0.5B model's capacity.
+
+  - id: F2
+    title: "Evaluator DSL design"
+    detail: >
+      Input format: EVAL-SIGNALS block with one line per evaluator signal —
+      [evaluator:<id>] progress=<float> diminishing=<True|False> steps=<int> clarity=<high|medium|low>.
+      Output format: 4-field report — PROGRESS: (on-track/stagnant/diverging), CONFIDENCE: (0.0–1.0,
+      2dp), ACTION: (continue/replan/escalate), NOTE: (quoted string or "none"). Deterministic
+      mapping rules: PROGRESS=diverging if progress<0.0 OR (progress<0.20 AND steps>15) OR
+      (clarity==low AND steps>10); stagnant if diminishing==True OR (progress<0.30 AND steps>10);
+      on-track otherwise. ACTION=escalate only for diverging+long-running or diverging+low-clarity;
+      replan for all other diverging/stagnant; continue for on-track. CONFIDENCE is a linear
+      function of progress, clarity, diminishing flag, and step count — avoids random mapping.
+      The primary signal (first in the list) drives the assessment when multiple signals present.
+      NOTE strings are fully determined by (progress_label, action, clarity) combination.
+
+  - id: F3
+    title: "Corpus statistics"
+    detail: >
+      Observer corpus: 8000 train, 2000 holdout (10000 total).
+      Distribution — high priority: 70%, medium: 18%, low: 11%, with-error: 45%.
+      High-error bias is intentional: error content is the most consequential signal for the
+      observer and benefits from overrepresentation. Coverage scenarios: high_novelty_single,
+      high_novelty_multi, error_content, low_novelty, medium_novelty, unprocessed_high,
+      unprocessed_low, error_low_novelty (error overrides low novelty), tool_output_medium,
+      code_high — 100 targeted examples each, rest random.
+      Evaluator corpus: 8000 train, 2000 holdout (10000 total).
+      Distribution — on-track: 32%, stagnant: 37%, diverging: 30%.
+      Action distribution — continue: 32%, replan: 40%, escalate: 28%.
+      Coverage scenarios: on_track_strong, on_track_moderate, stagnant_diminishing,
+      stagnant_plateau, diverging_negative, diverging_low_clarity, escalate_low_clarity,
+      escalate_extended, early_progress_ok, multi_signal_mixed, stagnant_low_progress_early —
+      ~90 targeted examples each, rest random. More balanced than Monitor corpus by design —
+      all three progress classes are roughly equal to prevent on-track dominance.
+
+  - id: F4
+    title: "Training started"
+    detail: >
+      Observer training started on GPU 0 (RTX 2080 Ti, CUDA_VISIBLE_DEVICES=0).
+      Config: observer-qwen25-coder-05b-lora.yaml — same model/LoRA/hyperparameters as Monitor
+      (Qwen2.5-Coder-0.5B-Instruct, LoRA r=16 alpha=32, 3000 steps, lr=2e-4, batch=2).
+      Log: overnight-logs/r08-observer-train.log. Evaluator training queued to start
+      sequentially after Observer completes on same GPU 0.
+      Log: overnight-logs/r08-evaluator-train.log.
+      R-09 retrain is running on GPU 1 — no conflict.
+
+status: training_started
+next: >
+  Evaluate both models after training completes (Gate 4 style: exact-match accuracy on holdout,
+  token reduction vs frontier LLM baseline). Target >= 90% accuracy matching Monitor Gate 4
+  result. If accuracy < 85% on either module, audit causal rule coverage and consider
+  targeted augmentation before Gate 4.

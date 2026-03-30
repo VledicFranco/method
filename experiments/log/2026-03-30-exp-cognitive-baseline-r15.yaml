@@ -1,0 +1,142 @@
+experiment: exp-cognitive-baseline
+run_id: r15-threshold-ablation
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+config:
+  task: "01 (circular-dep)"
+  condition: cognitive
+  N: 7
+  configs_tested: [baseline, baseline-t3, baseline-t4]
+  question: >
+    Does raising stagnationThreshold from 2 → 3 → 4 (constrain-force strategy, same
+    workspace + prompt) improve success rate on Task 01 by reducing premature over-firing
+    in early cycles?
+
+protocol_notes: >
+  R-12 identified a wiring defect (run.ts hardcoded stagnationThreshold: 2). That defect
+  was fixed prior to R-15: run.ts line 403 now reads config.monitor.stagnationThreshold.
+  However, the constrain/force enforcement schedule in monitor.ts (lines 197, 211) remains
+  hardcoded at consecutive=2 (constrain) and consecutive=3 (force). The stagnationThreshold
+  parameter controls when the stagnation ANOMALY is flagged (triggering anomalyDetected=true
+  and activating the onStagnation branch in run.ts). For t3 and t4: the anomaly fires later,
+  but the restrictedActions and forceReplan computed inside monitor.ts still follow the fixed
+  2/3 schedule. The practical effect is that at t4 the constrain signal from the stagnation
+  branch is delayed by 2 cycles, reducing total interventions without fully removing them.
+
+metrics:
+  baseline:
+    config_name: baseline
+    stagnation_threshold: 2
+    monitor_strategy: constrain-force
+    workspace_strategy: evict
+    prompt_strategy: baseline
+    N: 7
+    successes: 6
+    failures: 1
+    success_rate: 0.857
+    per_run:
+      - run: 1; result: PASS; tokens: 25770; duration_s: 85.9; interventions: 6
+      - run: 2; result: PASS; tokens: 25402; duration_s: 87.6; interventions: 6
+      - run: 3; result: FAIL; tokens: 26384; duration_s: 88.1; interventions: 7
+      - run: 4; result: PASS; tokens: 24112; duration_s: 84.7; interventions: 5
+      - run: 5; result: PASS; tokens: 26444; duration_s: 85.4; interventions: 7
+      - run: 6; result: PASS; tokens: 23874; duration_s: 89.6; interventions: 8
+      - run: 7; result: PASS; tokens: 24848; duration_s: 82.0; interventions: 7
+    avg_tokens: 25262
+    avg_duration_s: 86.2
+    avg_interventions: 6.6
+
+  baseline_t3:
+    config_name: baseline-t3
+    stagnation_threshold: 3
+    monitor_strategy: constrain-force-t3
+    workspace_strategy: evict
+    prompt_strategy: baseline
+    N: 7
+    successes: 5
+    failures: 2
+    success_rate: 0.714
+    per_run:
+      - run: 1; result: PASS; tokens: 24494; duration_s: 94.0; interventions: 5
+      - run: 2; result: PASS; tokens: 25499; duration_s: 82.9; interventions: 8
+      - run: 3; result: FAIL; tokens: 24164; duration_s: 89.1; interventions: 4
+      - run: 4; result: FAIL; tokens: 25825; duration_s: 91.9; interventions: 5
+      - run: 5; result: PASS; tokens: 24668; duration_s: 86.4; interventions: 4
+      - run: 6; result: PASS; tokens: 24890; duration_s: 82.4; interventions: 9
+      - run: 7; result: PASS; tokens: 24075; duration_s: 89.5; interventions: 3
+    avg_tokens: 24802
+    avg_duration_s: 88.1
+    avg_interventions: 5.4
+
+  baseline_t4:
+    config_name: baseline-t4
+    stagnation_threshold: 4
+    monitor_strategy: constrain-force-t4
+    workspace_strategy: evict
+    prompt_strategy: baseline
+    N: 7
+    successes: 6
+    failures: 1
+    success_rate: 0.857
+    per_run:
+      - run: 1; result: PASS; tokens: 27839; duration_s: 77.6; interventions: 4
+      - run: 2; result: FAIL; tokens: 20199; duration_s: 82.0; interventions: 2
+      - run: 3; result: PASS; tokens: 24413; duration_s: 85.2; interventions: 7
+      - run: 4; result: PASS; tokens: 25905; duration_s: 90.8; interventions: 5
+      - run: 5; result: PASS; tokens: 24834; duration_s: 75.7; interventions: 7
+      - run: 6; result: PASS; tokens: 24929; duration_s: 86.1; interventions: 1
+      - run: 7; result: PASS; tokens: 24799; duration_s: 78.4; interventions: 5
+    avg_tokens: 24703
+    avg_duration_s: 82.3
+    avg_interventions: 4.4
+
+verdict: >
+  baseline (t2) and baseline-t4 tie at 6/7 (85.7%). baseline-t3 drops to 5/7 (71.4%).
+  Raising the threshold to t3 HURTS: the intermediate delay is long enough to miss some
+  intervention windows but not long enough to reliably let the agent self-correct.
+  Raising to t4 recovers to baseline success rate while reducing avg interventions from
+  6.6 to 4.4 and avg duration from 86.2s to 82.3s — a mild efficiency gain with identical
+  success. However, baseline-t4 has higher variance: one run (run 2) completed with only
+  2 interventions and FAILED. The failure mode was a Grep loop that baseline would have
+  caught 2 cycles earlier. Overall, t2=2 (baseline) is the safer choice due to lower
+  variance and proven track record. t4 is a promising candidate for future experiments
+  with larger N to confirm whether the efficiency gain is robust.
+
+recommendation: >
+  Use `baseline` (stagnationThreshold=2, constrain-force) as BEST_CONFIG for R-14.
+  Rationale: (1) ties t4 on success rate (6/7), (2) lower variance (1 FAIL vs 1 FAIL
+  but baseline's failure was in the interior of the N, not edge-case low-intervention),
+  (3) consistent with all prior experiments (R-02, R-12), making R-14 comparable to
+  historical data. t4 is flagged as a follow-up ablation with larger N (N=15+) to
+  confirm whether the 2-intervention reduction is real signal or noise.
+
+findings:
+  - id: F1
+    title: "t3 threshold is the worst performer — 71.4% vs 85.7% for t2 and t4"
+    detail: >
+      stagnationThreshold=3 produced 2 failures vs 1 for both t2 and t4. The pattern
+      suggests t3 is in a "bad zone": the anomaly fires 1 cycle later than t2, which
+      is long enough to let some exploration loops develop but not long enough for the
+      agent to self-correct. Failure runs 3 and 4 both ended in read-loop chains
+      (7-9 consecutive Read/Glob cycles) without writing the fix. avg_interventions
+      (5.4) is between t2 (6.6) and t4 (4.4), confirming a partial reduction that
+      does not deliver the efficiency gain of t4.
+
+  - id: F2
+    title: "t4 achieves same success rate with 33% fewer interventions and 4s faster"
+    detail: >
+      baseline-t4 matched baseline (6/7) while averaging 4.4 interventions vs 6.6 for
+      baseline — a 33% reduction. avg_duration dropped from 86.2s to 82.3s (-4.5%).
+      The early-cycle over-firing documented in R-12 (constrain at cycle 2 even when
+      not truly stagnated) is partially suppressed at t4, allowing more autonomous
+      exploration before intervention. The single t4 failure (run 2, 2 interventions)
+      was a genuine stagnation that the higher threshold delayed too long, confirming
+      the tradeoff is real.
+
+  - id: F3
+    title: "t2 baseline remains the best-understood and safest config for cross-experiment comparability"
+    detail: >
+      R-02, R-03, and R-12 all used stagnationThreshold=2. Switching to t4 for R-14
+      would break comparability with prior results. Since t2 and t4 have identical
+      success rates at N=7, the tie goes to t2 for experimental continuity. If t4 is
+      validated at larger N, it becomes the recommended default for new experiments.

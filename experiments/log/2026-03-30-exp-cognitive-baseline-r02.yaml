@@ -1,0 +1,84 @@
+experiment: exp-cognitive-baseline
+run_id: r02-task01-N10
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+config:
+  task: "01 (circular-dep)"
+  conditions: [flat, cognitive]
+  N: 10
+  model: claude-sonnet-4-20250514
+  cognitive_config: "evict + constrain-force + baseline"
+  workspace_capacity: 8
+  max_cycles: 15
+
+metrics:
+  flat_success_rate: 0.80
+  cognitive_success_rate: 0.60
+  flat_avg_tokens: 31046
+  cognitive_avg_tokens: 24777
+  flat_avg_duration_s: 44.5
+  cognitive_avg_duration_s: 85.4
+  cognitive_vs_flat_token_ratio: 0.80
+  flat_passes: 8
+  flat_failures: 2
+  cognitive_passes: 6
+  cognitive_failures: 4
+
+flat_run_detail:
+  - run: 1, success: true, tokens: 29307
+  - run: 2, success: true, tokens: 29127
+  - run: 3, success: true, tokens: 28831
+  - run: 4, success: true, tokens: 28738
+  - run: 5, success: false, tokens: 36307, reason: "Circular dependency still exists in import graph"
+  - run: 6, success: true, tokens: 31000
+  - run: 7, success: true, tokens: 29135
+  - run: 8, success: true, tokens: 31681
+  - run: 9, success: false, tokens: 35269, reason: "Circular dependency still exists in import graph"
+  - run: 10, success: true, tokens: 31060
+
+cognitive_run_detail:
+  # Full detail captured from background output; summary from final comparison line
+  passes: 6
+  failures: 4
+  avg_tokens: 24777
+  avg_duration_s: 85.4
+
+verdict: >
+  At N=10, flat outperforms cognitive on Task 01 (circular-dep): 80% vs 60% success rate.
+  Cognitive uses 20% fewer tokens on average (24,777 vs 31,046) but takes 2x longer (85s vs 45s).
+  The token efficiency advantage does not compensate for the lower success rate on this task.
+  The cognitive agent's stagnation detection fires frequently (5-8 interventions per run), but
+  the constrain-force strategy appears to over-restrict at times, preventing successful resolution.
+  The preliminary N=3 result showing flat superiority on T01 holds at N=10.
+
+findings:
+  - id: F1
+    title: "Flat agent advantage on Task 01 holds at N=10"
+    detail: >
+      Flat agent: 8/10 PASS (80%). Cognitive agent: 6/10 PASS (60%). The N=3 preliminary
+      result (flat 3/3 vs cognitive 2/3 from prior runs) is directionally confirmed. With N=10,
+      the gap remains significant. Task 01 (circular dependency) favors the flat agent's
+      unconstrained exploration.
+
+  - id: F2
+    title: "Cognitive agent uses 20% fewer tokens but fails more"
+    detail: >
+      Cognitive avg tokens: 24,777 vs flat avg: 31,046 — a 20% reduction. However, at 60% success
+      vs 80%, the efficiency gain is outweighed by reliability loss. The constrain-force monitor
+      strategy reduces token waste (by cutting off stagnant paths) but also prematurely restricts
+      productive exploration on this task, leading to failures.
+
+  - id: F3
+    title: "Monitor over-fires on Task 01 — stagnation signal is noisy"
+    detail: >
+      Cycle traces show 5-8 monitor interventions per cognitive run, with constrain signals firing
+      as early as cycle 2-3 (Glob operations). The baseline stagnation threshold appears tuned for
+      more explicit action repetition, not for legitimate exploration-heavy tasks like circular
+      dependency analysis. This is the primary cause of cognitive failure on T01.
+
+  - id: F4
+    title: "Flat failures correlate with Write-first strategies"
+    detail: >
+      Both flat failures (runs 5 and 9) show Write tool calls starting at cycles 4-5 before
+      adequate Read coverage. The agent appears to attempt file rewrites before fully understanding
+      the dependency graph. This suggests a specific failure mode: premature action without analysis.

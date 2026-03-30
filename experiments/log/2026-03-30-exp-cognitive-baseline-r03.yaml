@@ -1,0 +1,114 @@
+experiment: exp-cognitive-baseline
+run_id: r03-tasks02-05-N3
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+config:
+  tasks: ["02 (test-first-bug)", "03 (config-migration)", "04 (api-versioning)", "05 (dead-code-removal)"]
+  conditions: [flat, cognitive]
+  N: 3
+  model: claude-sonnet-4-20250514
+  cognitive_config: "evict + constrain-force + baseline"
+  workspace_capacity: 8
+  max_cycles: 15
+
+metrics:
+  task_02_test_first_bug:
+    flat_success_rate: 1.00
+    cognitive_success_rate: 1.00
+    flat_avg_tokens: 13231
+    cognitive_avg_tokens: 25941
+    cognitive_vs_flat_token_ratio: 1.96
+
+  task_03_config_migration:
+    flat_success_rate: 0.67
+    cognitive_success_rate: 0.33
+    flat_avg_tokens: 35130
+    cognitive_avg_tokens: 24975
+    cognitive_vs_flat_token_ratio: 0.71
+
+  task_04_api_versioning:
+    flat_success_rate: 1.00
+    cognitive_success_rate: 0.00
+    flat_avg_tokens: 33837
+    cognitive_avg_tokens: 39184
+    cognitive_vs_flat_token_ratio: 1.16
+
+  task_05_dead_code_removal:
+    flat_success_rate: 1.00
+    cognitive_success_rate: 1.00
+    flat_avg_tokens: 22713
+    cognitive_avg_tokens: 21388
+    cognitive_vs_flat_token_ratio: 0.94
+
+  cross_task_flat_overall: 0.92  # 11/12 PASS
+  cross_task_cognitive_overall: 0.58  # 7/12 PASS
+
+run_detail:
+  task_02:
+    flat: [{run: 1, success: true, tokens: 13198}, {run: 2, success: true, tokens: 13272}, {run: 3, success: true, tokens: 13222}]
+    cognitive: [{run: 1, success: true, tokens: 25293, interventions: 9}, {run: 2, success: true, tokens: 23123, interventions: 4}, {run: 3, success: true, tokens: 29408, interventions: 6}]
+  task_03:
+    flat: [{run: 1, success: true, tokens: 34877}, {run: 2, success: false, tokens: 35623, reason: "Missing process.env reference for SERVER_HOST"}, {run: 3, success: true, tokens: 34891}]
+    cognitive: [{run: 1, success: false, tokens: 31257, interventions: 6, reason: "Missing process.env reference for SERVER_HOST"}, {run: 2, success: false, tokens: 21404, interventions: 2, reason: "Missing process.env reference for SERVER_HOST"}, {run: 3, success: true, tokens: 22264, interventions: 7}]
+  task_04:
+    flat: [{run: 1, success: true, tokens: 34549}, {run: 2, success: true, tokens: 32282}, {run: 3, success: true, tokens: 34680}]
+    cognitive: [{run: 1, success: false, tokens: 29713, interventions: 6, reason: "v2 handler imports notifications service"}, {run: 2, success: false, tokens: 24736, interventions: 4, reason: "v2 handler imports notifications service"}, {run: 3, success: false, tokens: 63104, interventions: 6, reason: "v2 handler imports notifications service"}]
+  task_05:
+    flat: [{run: 1, success: true, tokens: 26781}, {run: 2, success: true, tokens: 20073}, {run: 3, success: true, tokens: 21286}]
+    cognitive: [{run: 1, success: true, tokens: 20133, interventions: 7}, {run: 2, success: true, tokens: 20012, interventions: 6}, {run: 3, success: true, tokens: 24020, interventions: 13}]
+
+verdict: >
+  Flat dominates cognitive across the multi-task sweep (Tasks 02-05). Flat: 11/12 PASS (92%).
+  Cognitive: 7/12 PASS (58%). The cognitive agent matches flat only on T02 (simple bug fix) and
+  T05 (dead code recognition) — tasks that reward careful search. It fails completely on T04
+  (api-versioning, 0/3) and significantly underperforms on T03 (config-migration, 1/3 vs 2/3).
+  T04 reveals a systematic failure: cognitive always produces a v2 handler that imports the
+  notifications service despite the constraint. The monitor does not catch or correct this
+  specific semantic error. Token use is volatile: T04 cognitive run 3 consumed 63,104 tokens
+  (1.86x flat) while still failing. Cognitive has no advantage in cost or quality on these tasks.
+
+findings:
+  - id: F1
+    title: "Flat agent wins decisively overall: 92% vs 58% across Tasks 02-05"
+    detail: >
+      Flat: 11/12 PASS. Cognitive: 7/12 PASS. Combined with R-02 (T01: flat 80% vs cognitive 60%),
+      the aggregate across all 5 tasks is flat 75% (19/25 hypothetical N=5), cognitive 58%.
+      The 8-module cognitive cycle as currently configured provides no quality advantage over
+      a flat ReAct agent on strategy-shift recovery tasks.
+
+  - id: F2
+    title: "Task 04 (api-versioning side-effect) is a systematic failure for cognitive: 0/3"
+    detail: >
+      All three cognitive runs produced a v2 handler that imports the notifications service —
+      the exact constraint the task forbids. The failure reason is identical across runs:
+      "v2 handler file (src/handlers/v2.ts) imports from notifications service". The monitor
+      detects stagnation but cannot detect semantic constraint violations. This exposes a
+      fundamental gap: the cognitive cycle has no constraint-awareness layer. The flat agent
+      passed 3/3 by naturally reading the task constraints and respecting them.
+
+  - id: F3
+    title: "Tasks 02 and 05 show parity (3/3 both conditions) — monitor noise does not hurt on read-heavy tasks"
+    detail: >
+      T02 (test-first bug fix) and T05 (dead code trap) both show 3/3 PASS for flat and cognitive.
+      These tasks reward careful search before acting. Cognitive uses 2x more tokens on T02
+      (25,941 vs 13,231) due to overhead, but still succeeds. T05 shows near-token-parity
+      (21,388 vs 22,713). The monitor's constrain-force strategy is less harmful when the task
+      naturally calls for Grep/Read exploration.
+
+  - id: F4
+    title: "Task 03 (config-migration) exposes shared failure mode: missing a specific env var"
+    detail: >
+      Both flat and cognitive fail on T03 with the same error: "Missing process.env reference
+      for SERVER_HOST". This is a task-level challenge — the agent misses one required env
+      variable during migration. The failure rates differ (flat 1/3 failures, cognitive 2/3
+      failures), suggesting cognitive's workspace constraints cause it to drop the SERVER_HOST
+      detail more often under salience eviction pressure.
+
+  - id: F5
+    title: "Cognitive token overhead is task-dependent and can spiral on generative tasks"
+    detail: >
+      T04 cognitive run 3 consumed 63,104 tokens vs flat's avg of 33,837 — nearly 2x. The
+      cognitive agent entered a write-read loop (Write→Read→Write→Read sequence in cycles 7-14)
+      building increasingly large file content without converging. The monitor's constrain
+      interventions did not break this loop. This token spiral pattern is a reliability risk
+      for generative tasks (write new code) as opposed to refactoring or analysis tasks.

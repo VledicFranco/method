@@ -400,7 +400,7 @@ async function runCognitive(
     vfs,
     workspace.getWritePort(moduleId('reasoner-actor')),
   );
-  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: 2 });
+  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: config.monitor.stagnationThreshold });
 
   // Memory module (PRD 031)
   const memoryPort = sharedMemoryPort ?? new InMemoryMemory();

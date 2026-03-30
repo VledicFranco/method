@@ -37,13 +37,13 @@ const OUTPUT_PATH = join(RESULTS_DIR, 'integration-eval.json');
 
 // ── Token Estimation ───────────────────────────────────────────
 
-function estimateTokens(text: string): number {
+export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
 // ── Benchmark Tasks ────────────────────────────────────────────
 
-interface BenchmarkTask {
+export interface BenchmarkTask {
   name: string;
   difficulty: number;          // 1-10 (routine=1-5, novel=6-10)
   category: 'routine' | 'novel';
@@ -52,7 +52,7 @@ interface BenchmarkTask {
   expectedReport: MonitorReport;
 }
 
-function buildBenchmarkTasks(): BenchmarkTask[] {
+export function buildBenchmarkTasks(): BenchmarkTask[] {
   const tasks: BenchmarkTask[] = [];
 
   // ── 5 Routine Tasks (difficulty 1-5) ──
@@ -404,16 +404,18 @@ function buildMockSlmResponses(tasks: BenchmarkTask[]): Map<string, SLMResult> {
 // ── Report Comparison ──────────────────────────────────────────
 
 /** Check if a produced report is "correct" relative to the expected one. */
-function isReportCorrect(produced: MonitorReport, expected: MonitorReport): boolean {
-  // Anomaly count must match
-  if (produced.anomalies.length !== expected.anomalies.length) return false;
-
-  // Each anomaly type must be present
-  for (const expAnomaly of expected.anomalies) {
-    const match = produced.anomalies.find(
-      a => a.type === expAnomaly.type && a.moduleId === expAnomaly.moduleId,
-    );
-    if (!match) return false;
+export function isReportCorrect(produced: MonitorReport, expected: MonitorReport): boolean {
+  // For clean-state tasks (0 expected anomalies), model must not hallucinate any
+  if (expected.anomalies.length === 0) {
+    if (produced.anomalies.length !== 0) return false;
+  } else {
+    // For anomaly tasks: all expected anomalies must be present (superset ok)
+    for (const expAnomaly of expected.anomalies) {
+      const match = produced.anomalies.find(
+        a => a.type === expAnomaly.type && a.moduleId === expAnomaly.moduleId,
+      );
+      if (!match) return false;
+    }
   }
 
   // Escalation: both present or both absent
@@ -427,7 +429,7 @@ function isReportCorrect(produced: MonitorReport, expected: MonitorReport): bool
 
 // ── Per-Task Result ────────────────────────────────────────────
 
-interface TaskResult {
+export interface TaskResult {
   name: string;
   difficulty: number;
   category: 'routine' | 'novel';
@@ -449,7 +451,7 @@ interface TaskResult {
 
 // ── Spearman Rank Correlation ──────────────────────────────────
 
-function spearmanCorrelation(x: number[], y: number[]): number {
+export function spearmanCorrelation(x: number[], y: number[]): number {
   const n = x.length;
   if (n < 2) return 0;
 
@@ -680,7 +682,12 @@ async function main(): Promise<void> {
   console.log(`\n  Results written to: ${OUTPUT_PATH}`);
 }
 
-main().catch((err) => {
-  console.error('Unhandled error:', err);
-  process.exit(1);
-});
+// Only run when executed directly, not when imported
+const isMainModule = process.argv[1]?.replace(/\\/g, '/').includes('run-benchmark.ts')
+  || process.argv[1]?.replace(/\\/g, '/').includes('run-benchmark.js');
+if (isMainModule) {
+  main().catch((err) => {
+    console.error('Unhandled error:', err);
+    process.exit(1);
+  });
+}

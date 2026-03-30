@@ -1,0 +1,268 @@
+{
+  "timestamp": "2026-03-30T09:41:47.677Z",
+  "mode": "live",
+  "infrastructure": {
+    "ollama": {
+      "url": "http://localhost:11434",
+      "model": "qwen3:8b"
+    },
+    "slm": {
+      "url": "http://localhost:8100",
+      "model": "smollm2-135m-onnx"
+    }
+  },
+  "taskCount": 10,
+  "routineCount": 5,
+  "novelCount": 5,
+  "escalationThreshold": 0.6,
+  "results": [
+    {
+      "name": "routine-normal-high-conf",
+      "difficulty": 1,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 752,
+        "costUsd": 0,
+        "latencyMs": 2906.83
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 83,
+        "costUsd": 0,
+        "latencyMs": 1540.89,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-empty-signals",
+      "difficulty": 2,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 729,
+        "costUsd": 0,
+        "latencyMs": 6387.79
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 59,
+        "costUsd": 0,
+        "latencyMs": 2903.86,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-low-confidence",
+      "difficulty": 3,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 866,
+        "costUsd": 0,
+        "latencyMs": 7880.37
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 90,
+        "costUsd": 0,
+        "latencyMs": 3988.79,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-unexpected-result",
+      "difficulty": 4,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 826,
+        "costUsd": 0,
+        "latencyMs": 7582.25
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 79,
+        "costUsd": 0,
+        "latencyMs": 3947,
+        "escalated": false
+      }
+    },
+    {
+      "name": "routine-medium-confidence",
+      "difficulty": 5,
+      "category": "routine",
+      "baseline": {
+        "success": true,
+        "totalTokens": 783,
+        "costUsd": 0,
+        "latencyMs": 6940.3
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 83,
+        "costUsd": 0,
+        "latencyMs": 5356.22,
+        "escalated": false
+      }
+    },
+    {
+      "name": "novel-borderline-confidence",
+      "difficulty": 6,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 865,
+        "costUsd": 0,
+        "latencyMs": 6885.29
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 83,
+        "costUsd": 0,
+        "latencyMs": 8250.6,
+        "escalated": false
+      }
+    },
+    {
+      "name": "novel-conflicting-signals",
+      "difficulty": 7,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 989,
+        "costUsd": 0,
+        "latencyMs": 10194.14
+      },
+      "slm": {
+        "success": true,
+        "totalTokens": 991,
+        "costUsd": 0,
+        "latencyMs": 16048.93,
+        "escalated": true,
+        "escalationReason": "slm-error"
+      }
+    },
+    {
+      "name": "novel-mixed-many-modules",
+      "difficulty": 8,
+      "category": "novel",
+      "baseline": {
+        "success": true,
+        "totalTokens": 1143,
+        "costUsd": 0,
+        "latencyMs": 11730.62
+      },
+      "slm": {
+        "success": false,
+        "totalTokens": 1153,
+        "costUsd": 0,
+        "latencyMs": 6145.28,
+        "escalated": true,
+        "escalationReason": "slm-error"
+      }
+    },
+    {
+      "name": "novel-compound-anomaly",
+      "difficulty": 9,
+      "category": "novel",
+      "baseline": {
+        "success": false,
+        "totalTokens": 1056,
+        "costUsd": 0,
+        "latencyMs": 11796.63
+      },
+      "slm": {
+        "success": false,
+        "totalTokens": 1056,
+        "costUsd": 0,
+        "latencyMs": 6050.47,
+        "escalated": true,
+        "escalationReason": "slm-error"
+      }
+    },
+    {
+      "name": "novel-stagnation-edge-case",
+      "difficulty": 10,
+      "category": "novel",
+      "baseline": {
+        "success": false,
+        "totalTokens": 1259,
+        "costUsd": 0,
+        "latencyMs": 11599.2
+      },
+      "slm": {
+        "success": false,
+        "totalTokens": 1259,
+        "costUsd": 0,
+        "latencyMs": 6176.7,
+        "escalated": true,
+        "escalationReason": "slm-error"
+      }
+    }
+  ],
+  "aggregate": {
+    "baselineSuccessRate": 0.8,
+    "slmSuccessRate": 0.7,
+    "routineTokenReductionPct": 90.04,
+    "overallEscalationRate": 0.4,
+    "escalationByDifficulty": [
+      {
+        "difficulty": 1,
+        "escalated": 0
+      },
+      {
+        "difficulty": 2,
+        "escalated": 0
+      },
+      {
+        "difficulty": 3,
+        "escalated": 0
+      },
+      {
+        "difficulty": 4,
+        "escalated": 0
+      },
+      {
+        "difficulty": 5,
+        "escalated": 0
+      },
+      {
+        "difficulty": 6,
+        "escalated": 0
+      },
+      {
+        "difficulty": 7,
+        "escalated": 1
+      },
+      {
+        "difficulty": 8,
+        "escalated": 1
+      },
+      {
+        "difficulty": 9,
+        "escalated": 1
+      },
+      {
+        "difficulty": 10,
+        "escalated": 1
+      }
+    ],
+    "spearmanRhoDifficultyFailure": 0.818,
+    "spearmanGate": {
+      "metric": "difficulty→failure",
+      "target": "<=0.3",
+      "actual": 0.818,
+      "verdict": "fail"
+    },
+    "catastrophicFailures": 1
+  },
+  "adapterMetrics": {
+    "totalCalls": 10,
+    "slmHandled": 6,
+    "fallbackCalls": 4,
+    "parseFailures": 0,
+    "lowConfidenceEscalations": 0,
+    "escalationRate": 0.4
+  }
+}

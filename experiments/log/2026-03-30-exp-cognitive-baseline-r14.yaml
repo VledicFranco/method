@@ -1,0 +1,196 @@
+experiment: exp-cognitive-baseline
+run_id: r14-full-matrix-tuned
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+config:
+  tasks: [01, 02, 03, 04, 05]
+  conditions: [flat, cognitive]
+  N: 5
+  cognitive_config: baseline
+  stagnation_threshold: 2
+  monitor_strategy: constrain-force
+  workspace_strategy: evict
+  prompt_strategy: baseline
+  notes: >
+    BEST_CONFIG from R-15 is `baseline` (stagnationThreshold=2, constrain-force).
+    Chosen over baseline-t4 (also 6/7 on T01) for cross-experiment comparability
+    with R-02 and R-03. All tasks run in parallel (10 background processes).
+
+metrics:
+  per_task:
+    task_01:
+      task_name: circular-dependency-refactor
+      flat_success_rate: 0.60
+      flat_successes: 3
+      flat_tokens: 28217
+      flat_duration_s: 38.7
+      cognitive_success_rate: 1.00
+      cognitive_successes: 5
+      cognitive_tokens: 24432
+      cognitive_duration_s: 88.7
+      delta: +0.40
+
+    task_02:
+      task_name: test-first-bug-fix-misdirection
+      flat_success_rate: 1.00
+      flat_successes: 5
+      flat_tokens: 13230
+      flat_duration_s: 24.6
+      cognitive_success_rate: 1.00
+      cognitive_successes: 5
+      cognitive_tokens: 21802
+      cognitive_duration_s: 78.4
+      delta: 0.00
+
+    task_03:
+      task_name: config-migration-env-interpolation
+      flat_success_rate: 0.40
+      flat_successes: 2
+      flat_tokens: 34040
+      flat_duration_s: 47.2
+      cognitive_success_rate: 0.00
+      cognitive_successes: 0
+      cognitive_tokens: 23703
+      cognitive_duration_s: 83.6
+      delta: -0.40
+
+    task_04:
+      task_name: api-versioning-side-effect-trap
+      flat_success_rate: 1.00
+      flat_successes: 5
+      flat_tokens: 34280
+      flat_duration_s: 41.3
+      cognitive_success_rate: 0.00
+      cognitive_successes: 0
+      cognitive_tokens: 33269
+      cognitive_duration_s: 107.8
+      delta: -1.00
+
+    task_05:
+      task_name: dead-code-removal-dynamic-trap
+      flat_success_rate: 1.00
+      flat_successes: 5
+      flat_tokens: 17876
+      flat_duration_s: 29.8
+      cognitive_success_rate: 1.00
+      cognitive_successes: 5
+      cognitive_tokens: 21679
+      cognitive_duration_s: 83.7
+      delta: 0.00
+
+  overall:
+    flat_success_rate: 0.80
+    flat_successes: 20
+    flat_total: 25
+    flat_avg_tokens: 25529
+    flat_avg_duration_s: 36.3
+    cognitive_success_rate: 0.60
+    cognitive_successes: 15
+    cognitive_total: 25
+    cognitive_avg_tokens: 24977
+    cognitive_avg_duration_s: 88.4
+    cognitive_vs_flat_delta: -0.20
+
+verdict: >
+  The tuned cognitive config (baseline, stagnationThreshold=2) does NOT outperform flat.
+  Overall: flat 80% vs cognitive 60% — a -20pp gap. This is consistent with R-03 results
+  (flat 92% vs cognitive 58%) and confirms the R-03 pattern at larger N. No reversal has
+  occurred. The tuning of the stagnation threshold in R-15 (which confirmed t2 remains
+  optimal) did not change the fundamental outcome.
+
+  There is a split picture by task:
+  - T01: cognitive WINS (+40pp). Flat 60% vs cognitive 100%. This reverses R-02 (flat 80%,
+    cognitive 60%) — at N=5, cognitive is now superior on circular-dep. The difference from
+    R-02 may reflect N=5 variance or genuine improvement.
+  - T02: parity (both 100%). The test-first-bug task is solved trivially by both.
+  - T03: cognitive CATASTROPHIC FAILURE (0%). Config migration fails 5/5 cognitive vs
+    2/5 flat. The cognitive agent produces syntactically wrong TypeScript on every run —
+    the constrain-force intervention does not help with a different failure mode (schema/
+    type export errors vs exploration loops). Flat also struggles (2/5) but recovers
+    more often.
+  - T04: cognitive CATASTROPHIC FAILURE (0%). Side-effect constraint blindness confirmed
+    at full N. Flat 100% vs cognitive 0%. This is the same failure as R-03. Cognitive
+    monitors stagnation but cannot detect constraint violations: the agent writes code
+    that solves the task structure but violates the "no notifications" constraint because
+    the monitor never flags it as a stagnation event.
+  - T05: parity (both 100%). Dead-code preservation is solved equally well by both.
+
+  The cognitive advantage is concentrated in T01 (complex refactoring with exploration
+  loops). The flat advantage is concentrated in T03 and T04 (constraint compliance +
+  schema precision tasks). This is not a threshold tuning problem — it is a fundamental
+  architectural gap: the cognitive monitor is a stagnation detector, not a constraint
+  compliance detector.
+
+findings:
+  - id: F1
+    title: "T01 reversal: cognitive now outperforms flat (100% vs 60%) at N=5"
+    detail: >
+      R-02 showed flat 80% vs cognitive 60% on T01. This run shows flat 60% vs cognitive
+      100% — a complete reversal. The N=5 variance is large enough that neither result
+      is definitive, but the consistency of cognitive T01 PASS across 5/5 runs (vs flat's
+      2 failures from write-loop patterns) suggests the constrain-force monitor genuinely
+      helps on circular-dep. The flat agent wrote many Write cycles without checking the
+      result, producing malformed graphs. The cognitive monitor caught those loops and
+      forced replanning.
+
+  - id: F2
+    title: "T03 cognitive failure: AppConfig export error across 4/5 runs — different failure mode"
+    detail: >
+      Cognitive 0/5 on config-migration. Failure: AppConfig interface not exported (4/5)
+      or SERVER_HOST missing (1/5). The agent writes the TypeScript correctly but omits
+      the type export — a different error class from T01's circular-loop pattern. The
+      constrain-force monitor detects stagnation cycles but the T03 failure happens when
+      the agent writes a complete-looking file that fails validation. The monitor has no
+      way to know the written file is wrong until after the cycle. Flat also fails (2/5)
+      but the flat agent's free-form exploration sometimes self-corrects on re-reads.
+
+  - id: F3
+    title: "T04 constraint blindness persists at 0% — identical to R-03"
+    detail: >
+      5/5 cognitive runs on T04 violate the no-notifications constraint. The failure
+      is deterministic: every run imports from the notifications service. The cognitive
+      agent's workspace-monitor-constrain cycle tracks action repetition, not constraint
+      compliance. The task description contains "v2 must not trigger notifications" but
+      the cognitive cycle has no dedicated constraint-checking module. Flat 5/5 — the
+      flat agent's free-form reasoning about the full task description catches the
+      constraint naturally. This is not fixable by threshold tuning.
+
+  - id: F4
+    title: "Cognitive is 2.4x slower than flat across all tasks"
+    detail: >
+      Cognitive avg_duration 88.4s vs flat 36.3s. The overhead comes from the 15-cycle
+      cap + inter-module latency. On tasks where cognitive doesn't improve success (T02,
+      T03, T04, T05), this is pure overhead. Only on T01 does the cognitive overhead
+      translate to better outcomes. Token costs are roughly comparable (24977 vs 25529
+      avg) — cognitive doesn't use more tokens, it just takes longer per cycle.
+
+  - id: F5
+    title: "Threshold tuning (R-15) did not change the structural outcome"
+    detail: >
+      R-15 found baseline (t2) and baseline-t4 tie at 85.7% on T01. The choice of t2
+      for R-14 was correct for comparability. Even at optimal threshold, the cognitive
+      architecture cannot address constraint blindness (T04) or schema precision (T03).
+      These require different interventions: constraint tracking (R-13) and output
+      validation feedback loops, not stagnation monitoring.
+
+recommendations:
+  - >
+    Prioritize R-13 (constraint-awareness). T04 is a deterministic 0% failure at the
+    current architecture. Adding a constraint-checking module or a dedicated constraint
+    violation signal to the workspace would specifically address the T04 failure mode.
+  - >
+    Investigate T03 failure. The AppConfig export error is consistent — the agent
+    produces TypeScript files that are structurally correct but miss the required
+    export. A post-write validation hook (run tsc --noEmit or ts-node type-check)
+    would give the cognitive cycle actionable feedback. Without this, the monitor
+    cannot detect "file written but invalid" as a failure.
+  - >
+    Consider splitting the T01 result from the overall metric. T01 is the task class
+    where cognitive adds genuine value (exploration loops in refactoring). For the
+    general benchmark, cognitive underperforms flat. For exploration-heavy tasks,
+    cognitive outperforms. The architecture should be positioned selectively, not
+    universally.
+  - >
+    R-14 closes the loop on the R-02/R-03 investigation. The hypothesis "tuning the
+    threshold improves cognitive performance" is REJECTED. The bottleneck is not
+    threshold calibration — it is missing constraint compliance and output validation.

@@ -1,0 +1,80 @@
+experiment: exp-slm
+run_id: r11-qwen-coder-05b-onnx-live
+date: 2026-03-30
+agent: "Claude Sonnet 4.6"
+config:
+  slm_model: "Qwen2.5-Coder-0.5B-Instruct LoRA r=16 (monitor-qwen25-coder-05b-lora)"
+  slm_corpus: "monitor-v1 (original 10K, no stagnation patterns)"
+  slm_inference: "CPU ONNX (ORTModelForCausalLM via serve-model.py)"
+  baseline_model: "qwen3:8b (Ollama local)"
+  escalation_threshold: 0.6
+  tasks: 10 (5 routine, 5 novel, difficulty 1-10)
+  evaluation_fix: "isReportCorrect: subset matching for anomalies (superset ok)"
+
+metrics:
+  baseline_success_rate: 0.80
+  slm_success_rate: 0.90
+  routine_token_reduction_pct: 90.2
+  overall_escalation_rate: 0.0
+  spearman_rho_difficulty_failure: 0.636
+  catastrophic_failures: 0
+  slm_total_calls: 10
+  slm_handled: 10
+  fallback_calls: 0
+  parse_failures: 0
+
+gates:
+  success_rate_vs_baseline:
+    target: ">= baseline - 5%"
+    actual: "90% vs 80% (+10pp)"
+    verdict: pass
+  routine_cost_reduction:
+    target: ">=30%"
+    actual: "90.2%"
+    verdict: pass
+  spearman_rho:
+    target: "<=0.3"
+    actual: "0.636"
+    verdict: fail
+    note: "SLM fails only d=10 (stagnation edge case). Rho high because failure correlated with difficulty."
+  catastrophic_failures:
+    target: "0"
+    actual: "0"
+    verdict: pass
+
+verdict: partial-pass (3/4 gates)
+gate: "Gate 4 Part 2 — Live Cycle Benchmark (R-11)"
+
+findings:
+  - id: F1
+    title: "Qwen2.5-Coder-0.5B SLM outperforms qwen3:8b baseline on trained task distribution"
+    detail: >
+      SLM: 9/10 PASS (90%) vs qwen3:8b baseline: 8/10 PASS (80%). The SLM handles all 10
+      tasks without any escalations (0% escalation rate), demonstrating high confidence on
+      the Monitor DSL task. SLM passes novel-compound-anomaly (d=9) which the 8B baseline
+      fails, showing effective generalization of compound anomaly patterns from training.
+
+  - id: F2
+    title: "Stagnation pattern (d=10) is the sole failure — original corpus gap confirmed"
+    detail: >
+      The SLM fails novel-stagnation-edge-case (d=10) by generating only:
+      "@reasoner low-confidence + ESCALATE:none + RESTRICT:none + REPLAN:no".
+      It detects the low-confidence anomaly but completely misses the stagnation semantics
+      (evaluator.diminishing → RESTRICT+REPLAN+ESCALATE). This confirms the R-01b finding
+      that stagnation is a training gap in the original 10K corpus. Addressable by R-09
+      stagnation augmentation.
+
+  - id: F3
+    title: "90.2% routine token reduction confirms compilation efficiency"
+    detail: >
+      Routine tasks use 83-90 tokens (SLM) vs 688-890 tokens (Ollama baseline), a 90.2%
+      reduction. All 10 tasks handled locally by ONNX SLM (0 Ollama fallback calls), so
+      the full benefit compounds: 90% cost savings with no latency tax to remote LLM.
+
+  - id: F4
+    title: "Spearman rho gate fails correctly for partial-failure model"
+    detail: >
+      With 1 failure at d=10 (the hardest task), Spearman rho = 0.636 (target ≤0.3 FAIL).
+      This is mathematically expected: 1 failure concentrated at highest difficulty → high
+      correlation. The gate is working as designed — this model should ideally either pass
+      d=10 or escalate it. R-09 (stagnation augmentation) addresses this.

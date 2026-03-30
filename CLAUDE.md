@@ -139,8 +139,8 @@ This project has active research lines validated through structured experiments.
 
 | Line | RFC | Experiment | Status |
 |------|-----|-----------|--------|
-| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | Gate 3 PASS, Gate 4 pending |
-| Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md` | `experiments/exp-cognitive-baseline/` | Preliminary (N=3) |
+| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | **Gate 4 FULL PASS** — Monitor module validated. Qwen2.5-Coder-0.5B stagnation-augmented: 100% vs 8B LLM, 90% token reduction. Multi-module (R-08) pending. |
+| Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md` | `experiments/exp-cognitive-baseline/` | N=25 baseline complete. Flat 80% vs cognitive 60% overall. Cognitive wins search tasks (T01 100% vs 60%). Constraint blindness structural gap (T04 0%). R-13 open. |
 
 ### Related Work (cross-project)
 

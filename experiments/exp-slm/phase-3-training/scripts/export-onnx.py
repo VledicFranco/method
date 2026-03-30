@@ -151,12 +151,15 @@ def main() -> None:
         tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
         tokenizer.save_pretrained(str(onnx_output_dir))
 
-        # Find the ONNX file and report size
+        # Find the ONNX file and report size (include external data files)
         onnx_files = list(onnx_output_dir.glob("*.onnx"))
+        onnx_data_files = list(onnx_output_dir.glob("*.onnx_data"))
         if onnx_files:
-            total_size = sum(f.stat().st_size for f in onnx_files)
+            total_size = sum(f.stat().st_size for f in onnx_files + onnx_data_files)
             onnx_file_size_mb = total_size / (1024**2)
             print(f"  ONNX file(s): {[f.name for f in onnx_files]}")
+            if onnx_data_files:
+                print(f"  External data: {[f.name for f in onnx_data_files]}")
             print(f"  Total ONNX size: {onnx_file_size_mb:.1f} MB")
             export_success = True
         else:
@@ -228,8 +231,11 @@ def main() -> None:
     # Load PyTorch model for comparison
     print("  Loading PyTorch model ...")
     tokenizer_pt = AutoTokenizer.from_pretrained(str(model_dir))
-    if tokenizer_pt.pad_token is None:
-        tokenizer_pt.pad_token = tokenizer_pt.eos_token
+    # Use a separate pad token ID to avoid early EOS termination during validation.
+    # When pad_token == eos_token, generate() may stop immediately on pad tokens.
+    if tokenizer_pt.pad_token is None or tokenizer_pt.pad_token_id == tokenizer_pt.eos_token_id:
+        tokenizer_pt.pad_token = tokenizer_pt.bos_token or tokenizer_pt.eos_token
+        tokenizer_pt.pad_token_id = tokenizer_pt.bos_token_id or tokenizer_pt.eos_token_id
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_pt = AutoModelForCausalLM.from_pretrained(
@@ -266,6 +272,7 @@ def main() -> None:
                 pt_out = model_pt.generate(
                     pt_ids,
                     max_new_tokens=args.max_new_tokens,
+                    min_new_tokens=1,
                     do_sample=False,
                     pad_token_id=tokenizer_pt.pad_token_id,
                 )
