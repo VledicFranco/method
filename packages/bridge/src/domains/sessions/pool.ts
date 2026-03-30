@@ -194,6 +194,8 @@ export interface PoolOptions {
   fsProvider?: FileSystemProvider;
   /** PRD 026: Event bus for unified event emission. */
   eventBus?: EventBus;
+  /** PRD 041: CognitiveSink for routing typed CognitiveEvents to the event bus. */
+  cognitiveSink?: import('./cognitive-sink.js').CognitiveSink;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -235,6 +237,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   const maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const fsProvider = options?.fsProvider;
   const eventBus = options?.eventBus;
+  const cognitiveSink = options?.cognitiveSink;
 
   const sessions = new Map<string, PtySession>();
   const sessionMetadata = new Map<string, Record<string, unknown>>();
@@ -541,6 +544,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           workdir: effectiveWorkdir,
           adapter,
           tools,
+          cognitiveSink,
           config: {
             name: cognitive_config?.name,
             patterns: cognitive_patterns,
