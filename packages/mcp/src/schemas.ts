@@ -61,11 +61,18 @@ export const bridgeSpawnInput = z.object({
   mode: z.enum(["pty", "print"]).optional(),
   allowed_paths: z.array(z.string()).optional(),
   scope_mode: z.enum(["enforce", "warn"]).optional(),
-  llm_provider: z.enum(["anthropic", "ollama"]).optional(),
+  provider_type: z.enum(["print", "cognitive-agent"]).optional().describe("Session provider: 'print' for Claude CLI, 'cognitive-agent' for cognitive cycle engine"),
+  cognitive_config: z.object({
+    maxCycles: z.number().optional().describe("Max reasoning cycles (default: 15)"),
+    maxToolsPerCycle: z.number().optional().describe("Max tool calls per cycle (default: 5)"),
+    workspaceCapacity: z.number().optional().describe("Workspace entry capacity (default: 8)"),
+    confidenceThreshold: z.number().optional().describe("Monitor intervention threshold (default: 0.3)"),
+  }).optional().describe("Configuration overrides for cognitive-agent sessions"),
+  llm_provider: z.enum(["anthropic", "ollama"]).optional().describe("LLM provider for cognitive-agent sessions"),
   llm_config: z.object({
-    baseUrl: z.string().optional(),
-    model: z.string().optional(),
-  }).optional(),
+    baseUrl: z.string().optional().describe("LLM API base URL (e.g. http://chobits:11434 for remote Ollama)"),
+    model: z.string().optional().describe("Model name (e.g. qwen3:8b, claude-sonnet-4-6)"),
+  }).optional().describe("LLM configuration for cognitive-agent sessions"),
 });
 
 export const bridgeSpawnBatchInput = z.object({

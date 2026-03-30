@@ -286,7 +286,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "bridge_spawn",
-      description: "Spawn a new Claude Code agent session via the bridge. Supports parent-child session chains with budget enforcement, worktree isolation, and stale detection (PRD 006). Agent identity via nicknames and purpose (PRD 007).",
+      description: "Spawn a new agent session via the bridge. Supports standard (Claude CLI) and cognitive-agent modes. Set provider_type to 'cognitive-agent' for observable reasoning cycles with tool use, workspace, and monitor interventions. Use llm_provider/llm_config to select Ollama or Anthropic.",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -354,6 +354,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             enum: ["enforce", "warn"],
             description: "Scope enforcement mode. 'enforce' installs a pre-commit hook (requires worktree). 'warn' emits events only. Default: 'enforce'. PRD 014.",
+          },
+          provider_type: {
+            type: "string",
+            enum: ["print", "cognitive-agent"],
+            description: "Session type: 'print' for Claude CLI (default), 'cognitive-agent' for cognitive reasoning cycle with observable workspace, monitor, and tools.",
+          },
+          cognitive_config: {
+            type: "object",
+            properties: {
+              maxCycles: { type: "number", description: "Max reasoning cycles (default: 15)" },
+              maxToolsPerCycle: { type: "number", description: "Max tool calls per cycle (default: 5)" },
+              workspaceCapacity: { type: "number", description: "Workspace entry capacity (default: 8)" },
+              confidenceThreshold: { type: "number", description: "Monitor intervention threshold (default: 0.3)" },
+            },
+            description: "Configuration for cognitive-agent sessions. Only used when provider_type is 'cognitive-agent'.",
           },
           llm_provider: {
             type: "string",
