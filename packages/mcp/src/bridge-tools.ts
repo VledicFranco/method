@@ -44,7 +44,7 @@ type ToolResult = {
   isError?: true;
 };
 
-type BridgeFetchFn = (url: string, init?: RequestInit) => Promise<Response>;
+type BridgeFetchFn = (url: string, init?: RequestInit, timeoutMs?: number) => Promise<Response>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -225,11 +225,17 @@ const bridge_prompt = createBridgeHandler({
     const body: Record<string, unknown> = { prompt: parsed.prompt };
     if (parsed.timeout_ms !== undefined) body.timeout_ms = parsed.timeout_ms;
 
+    // When timeout_ms is explicitly set (e.g. for long cognitive sessions), use it as
+    // the HTTP client timeout (+ 10s grace buffer) instead of the global BRIDGE_TIMEOUT_MS.
+    const httpTimeout = parsed.timeout_ms !== undefined
+      ? parsed.timeout_ms + 10_000
+      : undefined;
+
     const res = await bridgeFetch(`${bridgeUrl}/sessions/${parsed.bridge_session_id}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    });
+    }, httpTimeout);
 
     const data = await res.json() as { output: string; timed_out: boolean };
     const charCount = data.output.length;
