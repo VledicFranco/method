@@ -32,10 +32,11 @@ async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response
   }
 }
 
-async function bridgeFetch(url: string, init?: RequestInit): Promise<Response> {
+async function bridgeFetch(url: string, init?: RequestInit, timeoutMs?: number): Promise<Response> {
   // Add timeout to prevent indefinite hangs if bridge is unresponsive
+  // timeoutMs overrides BRIDGE_TIMEOUT_MS (used by bridge_prompt for long cognitive sessions)
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), BRIDGE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs ?? BRIDGE_TIMEOUT_MS);
 
   let res: Response;
   try {
