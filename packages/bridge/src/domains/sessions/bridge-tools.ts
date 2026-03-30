@@ -11,7 +11,7 @@ import { resolve, dirname, relative, isAbsolute } from 'node:path';
 import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
 
 const TOOL_DEFS: ToolDefinition[] = [
-  { name: 'Read', description: 'Read a file by path. Input: { path: string }' },
+  { name: 'Read', description: 'Read a file by path. Input: { path: string, offset?: number, limit?: number } — offset/limit are line numbers (1-based start, count of lines). Use these for large files that exceed the 8000-char output limit.' },
   { name: 'Write', description: 'Write content to a file. Input: { path: string, content: string }' },
   { name: 'Edit', description: 'Replace a specific string in a file. Input: { path: string, old_string: string, new_string: string }' },
   { name: 'Glob', description: 'Find files matching a glob pattern. Input: { pattern: string }' },
@@ -57,7 +57,18 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
             const filePath = resolve(workdir, args.path);
             const traversalErr = checkPathTraversal(workdir, filePath, args.path);
             if (traversalErr) return traversalErr;
-            return { output: truncate(readFileSync(filePath, 'utf-8')) };
+            const rawContent = readFileSync(filePath, 'utf-8');
+            // Support optional offset (1-based line start) and limit (line count) for large files.
+            if (args.offset !== undefined || args.limit !== undefined) {
+              const lines = rawContent.split('\n');
+              const start = Math.max(0, (Number(args.offset) || 1) - 1); // convert 1-based to 0-based
+              const count = Number(args.limit) || (lines.length - start);
+              const slice = lines.slice(start, start + count).join('\n');
+              const totalLines = lines.length;
+              const header = `Lines ${start + 1}-${Math.min(start + count, totalLines)} of ${totalLines}:\n`;
+              return { output: truncate(header + slice) };
+            }
+            return { output: truncate(rawContent) };
           }
           case 'Write': {
             const filePath = resolve(workdir, args.path);
