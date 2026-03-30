@@ -35,6 +35,11 @@ Conceptual and operational guides for the method system — what methods and met
 | 27 | [Pacta: Assembling Agents](27-pacta-assembling-agents.md) | pacta | Contributors, agent operators | Compose agents from typed parts — middleware, reasoning, context |
 | 28 | [Pacta: Implementing Providers](28-pacta-providers.md) | pacta | Contributors | AgentProvider interface, capabilities, streaming, building your own |
 | 29 | [Pacta: Testing with Playground](29-pacta-testing-with-playground.md) | pacta | Contributors, agent operators | RecordingProvider, VirtualToolProvider, scenarios, EvalReport |
+| 30 | [Bridge Deployment](30-bridge-deployment.md) | bridge | Agent operators | Deployment setup, secrets, 1Password integration |
+| 31 | [Bridge Cluster](31-bridge-cluster.md) | bridge | Agent operators, contributors | Cluster protocol, peer discovery, federation |
+| 32 | [Cognitive Personas](32-cognitive-personas.md) | pacta | Agent operators, contributors | Dynamic reasoning styles, auto-selection, persona module |
+| 33 | [Cognitive Affect & Curiosity](33-cognitive-affect-curiosity.md) | pacta | Agent operators, contributors | Affect signals, curiosity-driven exploration, composition presets |
+| 34 | [Memory: Hybrid Search & Persistence](34-memory-hybrid-search.md) | pacta | Agent operators, contributors | BM25, embedding fusion, JSONL persistence, Markdown export |
 
 ## Guide Frontmatter Spec
 
@@ -75,11 +80,11 @@ touches:                           # Source paths this guide documents (for stal
 | `concepts` | Core theory — what methods and methodologies are | 1, 2 |
 | `registry` | Method/methodology specs, compilation, discovery | 3, 4, 5, 7, 11 |
 | `governance` | Project cards, councils, retros, installation | 6, 9, 12, 13 |
-| `bridge` | Session server, orchestration, dashboard, prompting | 8, 10, 14, 15, 17 |
+| `bridge` | Session server, orchestration, dashboard, prompting | 8, 10, 14, 15, 17, 30, 31 |
 | `strategy` | Pipeline execution, triggers, context continuity | 16, 18 |
 | `multi-project` | Genesis, project discovery, resource sharing | 19, 20, 21 |
 | `testkit` | Test framework, assertions, diagnostics | 22, 23, 24, 25 |
-| `pacta` | Modular Agent SDK — pacts, providers, composition, testing | 26, 27, 28, 29 |
+| `pacta` | Modular Agent SDK — pacts, providers, composition, testing | 26, 27, 28, 29, 32, 33, 34 |
 
 ### Audience Values
 
@@ -103,7 +108,7 @@ Choose the path that matches your role, then follow guide numbers in order. Each
 - **Working with multi-project setups?** 1 → 2 → 10 → 19 → 20 → 21
 - **Building strategy pipelines?** 1 → 2 → 10 → 16 → 18
 - **Contributing to the bridge UI?** 10 → 14 → 17
-- **Building or testing agents with Pacta?** 26 → 27 → 28 → 29
+- **Building or testing agents with Pacta?** 26 → 27 → 28 → 29 → 32 → 33 → 34
 - **Just curious?** Guide 1 is self-contained — 5 minutes.
 
 ## Staleness Detection
