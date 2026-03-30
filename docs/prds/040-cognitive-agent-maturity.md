@@ -1,6 +1,6 @@
 ---
 title: "PRD 040: Cognitive Agent Maturity — Production-Grade Cognitive Sessions"
-status: proposed
+status: implemented
 date: "2026-03-29"
 tier: heavyweight
 depends_on: [33, 35, 37]
@@ -12,7 +12,7 @@ domains_affected: [bridge/sessions, pacta, pacta-provider-ollama, bridge/fronten
 
 # PRD 040: Cognitive Agent Maturity — Production-Grade Cognitive Sessions
 
-**Status:** Proposed
+**Status:** Implemented (all 4 phases — Edit tool, cognitive engine v2, pool wiring, lifecycle+genesis)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
 **Packages:** `@method/bridge` (L4), `@method/pacta` (L3), `@method/pacta-provider-ollama` (L3)
