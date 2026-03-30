@@ -90,7 +90,7 @@ export function GenesisFAB() {
       className={cn(
         'fixed bottom-sp-4 right-sp-4 rounded-full shadow-lg',
         'flex items-center justify-center gap-2',
-        'transition-all duration-300 ease-out',
+        'transition-all duration-300 ease-out origin-bottom-right',
         'hover:scale-110 active:scale-95',
         // Disconnected: dimmed appearance
         isDisconnected ? 'bg-txt-muted/60 text-void' : 'bg-bio text-void',
