@@ -14,3 +14,9 @@ export type {
   EnrichedPresetPorts,
   ModuleSlotOverrides,
 } from './enriched.js';
+
+// ── Affect & Explore Presets (PRD 037 — affect + curiosity) ────
+
+export { affectivePreset, exploratoryPreset, fullPreset } from './affect-explore.js';
+
+export type { AffectExploreOverrides } from './affect-explore.js';
