@@ -1,7 +1,7 @@
 /**
  * Bridge Tool Provider — real filesystem-backed tools for cognitive sessions.
  *
- * Provides Read, Write, Glob, Grep, and Bash tools scoped to a workdir.
+ * Provides Read, Write, Edit, Glob, Grep, and Bash tools scoped to a workdir.
  * Used by cognitive-provider.ts to give the reasoner-actor real file access.
  */
 
@@ -13,6 +13,7 @@ import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
 const TOOL_DEFS: ToolDefinition[] = [
   { name: 'Read', description: 'Read a file by path. Input: { path: string }' },
   { name: 'Write', description: 'Write content to a file. Input: { path: string, content: string }' },
+  { name: 'Edit', description: 'Replace a specific string in a file. Input: { path: string, old_string: string, new_string: string }' },
   { name: 'Glob', description: 'Find files matching a glob pattern. Input: { pattern: string }' },
   { name: 'Grep', description: 'Search file contents with a regex. Input: { pattern: string, path?: string }' },
   { name: 'Bash', description: 'Execute a shell command. Input: { command: string }' },
@@ -65,6 +66,22 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
             mkdirSync(dirname(filePath), { recursive: true });
             writeFileSync(filePath, args.content, 'utf-8');
             return { output: `Written to ${args.path}` };
+          }
+          case 'Edit': {
+            const filePath = resolve(workdir, args.path);
+            const traversalErr = checkPathTraversal(workdir, filePath, args.path);
+            if (traversalErr) return traversalErr;
+            const content = readFileSync(filePath, 'utf-8');
+            const occurrences = content.split(args.old_string).length - 1;
+            if (occurrences === 0) {
+              return { output: 'String not found in file', isError: true };
+            }
+            if (occurrences >= 2) {
+              return { output: `Ambiguous: string appears ${occurrences} times. Provide more context to make it unique.`, isError: true };
+            }
+            const updated = content.replace(args.old_string, args.new_string);
+            writeFileSync(filePath, updated, 'utf-8');
+            return { output: 'Edit applied successfully' };
           }
           case 'Glob': {
             // Reject patterns that attempt directory traversal
