@@ -235,6 +235,7 @@ Files:
 - `packages/bridge/src/domains/experiments/routes.ts` — NEW — REST endpoints for dashboard
 - `packages/bridge/src/domains/experiments/types.ts` — NEW — Experiment, Run, Condition types
 - `packages/bridge/src/domains/experiments/config.ts` — NEW — Zod schemas
+- `packages/bridge/src/domains/experiments/README.md` — NEW — domain documentation (FCA P10)
 
 Tests:
 - Experiment CRUD operations
