@@ -1,183 +1,257 @@
-# Cognitive Composition — Architecture
+# Cognitive Composition — Bridge Integration
 
-## Responsibility
+Concern: how the bridge (L4) consumes `@method/pacta`'s `CognitiveModule` interface to
+structure its cognitive agent loop with explicit module boundaries and typed composition.
 
-The `cognitive/` domain within `@method/pacta` implements the Calculus of Cognitive Composition (RFC `docs/rfcs/001-cognitive-composition.md`). It provides a typed module abstraction, composition operators, a port-mediated workspace, and an 8-phase cognitive cycle orchestrator. This is a **parallel execution model** alongside the existing flat middleware pipeline — not a replacement.
+**PRD:** `docs/prds/042-cognitive-composition-bridge-integration.md`
+**Domain:** `packages/bridge/src/domains/sessions/`
+**Source files:** `cognitive-provider.ts` (monolith), `cognitive-modules.ts` (modules)
 
-**Position in the layer stack:** L3 (library), co-located with `@method/pacta`.
+---
 
-**Core thesis:** Agents are assemblies of cognitive modules that compose via typed operators and communicate through a shared workspace with salience-based attention. A two-level architecture (object-level + meta-level) enables metacognitive monitoring and control.
+## 1. Overview
 
-## Sub-Domain Structure
+The bridge cognitive provider (`cognitive-provider.ts`) implements a monolithic `runCycle()`
+function where the Observer, ReasonerActor, and Monitor are entangled in a single closure.
+State flows through mutable locals (`prevConf`, `readOnlyRun`, `writeGateFired`, etc.) with
+no formal interfaces separating the modules.
+
+PRD 042 extracts the monolith into two `CognitiveModule` implementations:
+
+- **BridgeReasonerActorModule** -- the multi-tool inner loop (LLM call, parse, tool exec)
+- **BridgeMonitorModule** -- anomaly detection, workspace saturation, token budget, write gate
+
+The Observer remains inline (a workspace write at the top of `runCycle()`). The external
+API (`createCognitiveSession`, `CognitiveSessionConfig`) is unchanged.
+
+---
+
+## 2. Module Boundary Definitions
+
+Both modules implement `CognitiveModule<I, O, S, Mu, Kappa>` from
+`packages/pacta/src/cognitive/algebra/module.ts`.
+
+### BridgeReasonerActorModule
 
 ```
-packages/pacta/src/cognitive/
-  algebra/       Pure types, composition operators, workspace types, trace, events
-  modules/       8 module implementations (4 object-level + 4 meta-level)
-  engine/        CognitiveCycle, createCognitiveAgent, asFlatAgent adapter
+CognitiveModule<
+  I     = string,                          // prompt text
+  O     = BridgeReasonerActorMonitoring,   // output equals monitoring (see section 6)
+  S     = BridgeReasonerActorState,        // foldedCtx, read/write counters, writeGateFired
+  Mu    = BridgeReasonerActorMonitoring,   // prevConf, prevAction, tokens, cycleDone, etc.
+  Kappa = BridgeMonitorControl             // forceReplan, restricted[], interventionMessage
+>
 ```
 
-**Boundary rules (G-BOUNDARY):**
-- `algebra/` depends on nothing within `cognitive/` (leaf)
-- `modules/` depends only on `algebra/` types and pacta ports — never on `engine/`
-- `engine/` depends only on `algebra/` types — receives modules via injection, never imports from `modules/`
-- `cognitive/` must not import from `agents/` and vice versa
+**State (`BridgeReasonerActorState`):** `foldedCtx` (last 15 action summaries),
+`promptSuccessfulReads`, `promptSuccessfulWrites`, `writeGateFired`. Note:
+`prevSemanticKey` is a within-step local (reset at each `step()` call), not state.
 
-Modules are not re-exported from the domain barrel. Consumers import module factories directly (e.g., `import { createReasoner } from '@method/pacta/cognitive/modules/reasoner.js'`).
+**Monitoring (`BridgeReasonerActorMonitoring`):** `prevConf`, `prevAction`,
+`consecutiveFailedParses`, `wsUtilization`, per-cycle token deltas, `writeGateFired`,
+read/write counters, `cycleDone`, `lastOutput`.
 
-## Module Contracts
+### BridgeMonitorModule
 
-The fundamental type is `CognitiveModule<I, O, S, Mu, Kappa>` with `step: (I, S, kappa) -> (O, S', mu)`.
+```
+CognitiveModule<
+  I     = BridgeReasonerActorMonitoring,   // last cycle's RA monitoring (null on cycle 0)
+  O     = BridgeMonitorControl,            // control directives for this cycle's RA
+  S     = BridgeMonitorState,              // readOnlyRun, interventions, accumulatedInputTokens
+  Mu    = MonitoringSignal,                // base type (anomaly flags)
+  Kappa = ControlDirective                 // base type -- monitor accepts no meaningful control
+>
+```
 
-### Object-Level
+**State (`BridgeMonitorState`):** `readOnlyRun` (consecutive read-only cycles),
+`interventions` (total fired this prompt), `accumulatedInputTokens` (running total for
+100k threshold). Reset to `initialState()` at the start of each `runCycle()` call.
 
-| Module | Uses Port | Mu (monitoring) | Kappa (control) |
-|--------|-----------|-----------------|-----------------|
-| Observer | WorkspaceWritePort | `{ type: 'observer', inputProcessed, noveltyScore }` | `{ focusFilter? }` |
-| Memory | MemoryPort, WorkspaceWritePort | `{ type: 'memory', retrievalCount, relevanceScore }` | `{ retrievalStrategy }` |
-| Reasoner | ProviderAdapter, WorkspaceReadPort, WorkspaceWritePort | `{ type: 'reasoner', confidence, conflictDetected, effortLevel }` | `{ strategy, effort }` |
-| Actor | ToolProvider, WorkspaceReadPort | `{ type: 'actor', actionTaken, success, unexpectedResult }` | `{ allowedActions?, escalate? }` |
+**Output (`BridgeMonitorControl`):** `forceReplan`, `restricted` (tool names to
+discourage), `interventionMessage` (workspace injection text, or null).
 
-### Meta-Level
+---
 
-| Module | Uses Port | Mu (monitoring) | Kappa (control) |
-|--------|-----------|-----------------|-----------------|
-| Monitor | (reads AggregatedSignals) | `{ type: 'monitor', escalation?, anomalyDetected }` | `never` (top-level) |
-| Evaluator | (reads workspace + signals) | `{ type: 'evaluator', estimatedProgress, diminishingReturns }` | `{ evaluationHorizon }` |
-| Planner | ProviderAdapter | `{ type: 'planner', planRevised, subgoalCount }` | `{ replanTrigger? }` |
-| Reflector | MemoryPort | `{ type: 'reflector', lessonsExtracted }` | `{ reflectionDepth }` |
+## 3. Composition Topology
 
-## Composition Operators
+The two modules are wired in a manual for-loop that preserves the monolith's
+**monitor-first** execution order. This is not a formal operator call -- it is a direct
+loop where each module's `step()` output is captured as a local variable.
 
-Four operators produce new cognitive modules from existing ones:
+```
+runCycle(prompt)
+  Observer: seed workspace with task
+  for c = 0..maxCycles:
+    Monitor.step(lastRAMonitoring)  -->  BridgeMonitorControl
+    RA.step(prompt, raState, ctrl)  -->  BridgeReasonerActorMonitoring
+```
 
-| Operator | Signature | Semantics | Error Behavior |
-|----------|-----------|-----------|----------------|
-| `sequential(A, B)` | A's output feeds B's input | Both signals emitted | Abort on first error |
-| `parallel(A, B, merge)` | Both execute on same input | Merge combines outputs | Collect errors, pass to error merge function |
-| `competitive(A, B, selector)` | Both produce; selector chooses | Selector has own signal | Throwing module is non-candidate |
-| `hierarchical(M, T)` | M reads T's mu, issues kappa | Temporal: T first, M reacts | T error propagates; M error escalates |
+### Cycle-lag diagram
 
-Plus `tower(M, n)` — bounded recursive hierarchical composition (max depth: 3 by default). Budget constraints propagate downward.
+```
+Cycle 1: Monitor(noop) --> defaultCtrl    RA(defaultCtrl) --> monitoring_1
+Cycle 2: Monitor(monitoring_1) --> ctrl_1   RA(ctrl_1) --> monitoring_2
+Cycle 3: Monitor(monitoring_2) --> ctrl_2   RA(ctrl_2) --> monitoring_3
+```
 
-All operators perform both compile-time (TypeScript generics) and runtime (`CompositionError`) validation.
+On cycle 0, `lastRAMonitoring` is null. The monitor returns a default control (no
+interventions, no restrictions). From cycle 1 onward, the monitor reads the previous
+cycle's RA monitoring signal.
 
-## Workspace Access Model
+---
 
-Modules interact with the workspace through typed, per-module port interfaces — not through a shared mutable bag.
+## 4. Control Flow
 
-**Ports:**
-- `WorkspaceReadPort` — `read(filter?)`, `attend(budget)`, `snapshot()`
-- `WorkspaceWritePort` — `write(entry)`
+### Within a single cycle
 
-**Access contracts (enforced by WorkspaceManager):**
-- Per-module write quota: max entries per cycle
-- Salience computation: pluggable `SalienceFunction`, default formula = `0.4 * recency + 0.3 * sourcePriority + 0.3 * goalOverlap`
-- Capacity enforcement: lowest-salience eviction with FIFO tie-breaking
-- TTL-based expiry
-- Eviction notifications via `CognitiveWorkspaceEviction` events
+1. **Monitor reads** the previous cycle's RA monitoring signal
+2. **Monitor produces** a `BridgeMonitorControl` as direct output
+3. **RA receives** that control on the **same cycle** -- zero lag within a cycle
+4. **RA runs** the inner `while (toolsThisCycle < maxToolsPerCycle)` loop with
+   `control.forceReplan` and `control.restricted` applied immediately
+5. **RA produces** a `BridgeReasonerActorMonitoring` signal for next cycle
 
-**WorkspaceConfig:**
+### Signal timing
+
+The effective lag is **1 cycle**: a signal emitted at cycle N is read by the monitor at
+cycle N+1, which produces control applied to cycle N+1's RA execution. This matches the
+monolith's timing exactly -- the inline monitor block runs at the top of each cycle
+iteration, reading mutable locals set by the previous cycle's RA execution.
+
+### Comparison to the monolith
+
+The monolith's execution order within cycle N:
+
+```
+1. Monitor block (reads prevConf, prevAction from cycle N-1)
+2. Context injection (forceReplan, restricted)
+3. Inner while-loop (LLM call, parse, tool exec)
+4. Update prevConf, prevAction (visible to cycle N+1's monitor)
+```
+
+The manual composition maps this 1:1. The monitor's output becomes the RA's control input
+on the same cycle. The RA's monitoring output becomes the monitor's input on the next
+cycle. No stored-state workaround is needed.
+
+---
+
+## 5. Why Not `hierarchical()`
+
+The `hierarchical(monitor, target)` operator in
+`packages/pacta/src/cognitive/algebra/composition.ts` was designed for observational
+hierarchical composition. Three problems prevent its use here:
+
+**1. Execution order (2-cycle lag).** The operator runs target **before** monitor:
+
 ```typescript
-interface WorkspaceConfig {
-  capacity: number;
-  salience?: SalienceFunction;
-  writeQuotaPerModule?: number;
-  defaultTtl?: number;
-}
+// composition.ts — hierarchical() step implementation
+const targetResult = await target.step(input, state.targetState, control.first);
+// ... then monitor reacts to *previous* step's monitoring
+const monitorInput = state.lastMonitoring ?? makeNoopMonitoring(target.id);
 ```
 
-## Cognitive Cycle
+This creates a 2-cycle lag: signal at cycle N is stored in `lastMonitoring`, monitor
+reads it at cycle N+1, but the monitor's output is discarded. The bridge needs
+monitor-first ordering (1-cycle lag).
 
-Eight phases per agent turn. Async/await sequential (phases 1-7). LEARN is fire-and-forget with state-lock.
+**2. Monitor output discarded.** The operator returns `OTarget` as the composed output.
+The monitor's output (`OMonitor`) is not accessible to the target or the caller. The
+bridge requires the monitor's `BridgeMonitorControl` to be passed to the RA as control
+input on the same cycle.
 
-```
-1. OBSERVE   — Observer processes new input
-2. ATTEND    — Workspace attention selects salient entries
-3. REMEMBER  — Memory retrieves relevant knowledge
-4. REASON    — Reasoner produces reasoning trace
-5. MONITOR   — Meta: reads aggregated monitoring signals [DEFAULT-INTERVENTIONIST]
-6. CONTROL   — Meta: issues control directives, validated by ControlPolicy [DEFAULT-INTERVENTIONIST]
-7. ACT       — Actor selects and executes action
-8. LEARN     — Reflector distills cycle into memory [FIRE-AND-FORGET, state-locked]
-```
+**3. Unconstructable `ComposedControl`.** The operator requires
+`ComposedControl<KappaTarget, KappaMonitor>` as control input. Since the monitor's
+`Kappa` is `ControlDirective` (base type requiring `target` and `timestamp` fields) and
+the bridge has no meaningful external control for the monitor, constructing a valid
+`ComposedControl<BridgeMonitorControl, ControlDirective>` adds noise with no value.
 
-**Default-interventionist pattern:** MONITOR/CONTROL only fire when monitoring signals cross configurable thresholds (`ThresholdPolicy`). This keeps cost low on routine turns.
+The manual loop preserves the monolith's 1-cycle lag, gives the caller direct access to
+monitor output, and avoids composition operator indirection.
 
-**Error handling:** `CycleErrorPolicy` with per-module override (`abort | skip | retry`). LEARN failures emit `CognitiveLEARNFailed` events and roll back reflector state (state-lock). Cycle aborts emit `CognitiveCycleAborted` events.
+---
 
-**CycleConfig:**
+## 6. How to Extend
+
+### Swapping a module implementation
+
+Both modules are created via factory functions (`createBridgeReasonerActorModule`,
+`createBridgeMonitorModule`). To swap an implementation:
+
+1. Write a new factory that returns the same `CognitiveModule<...>` type
+2. Replace the factory call in `cognitive-provider.ts`'s `runCycle()`
+3. TypeScript enforces interface compliance at compile time
+
+### Adding new composition patterns (PRD 043)
+
+The manual loop serves as the behavioral specification for a future `controlLoop()`
+operator. To formalize it:
+
 ```typescript
-interface CycleConfig {
-  thresholds: ThresholdPolicy;
-  errorPolicy: CycleErrorPolicy;
-  controlPolicy: ControlPolicy;
-  cycleBudget?: CycleBudget;
-  maxConsecutiveInterventions?: number;
-}
+// Hypothetical operator — PRD 043
+function controlLoop<I, O, SM, ST, MuT, MuM, KappaT>(
+  monitor: CognitiveModule<MuT, KappaT, SM, MuM, never>,
+  target: CognitiveModule<I, O, ST, MuT, KappaT>,
+): CognitiveModule<I, O, ...>
 ```
 
-## Observability
+This operator would run monitor-first (unlike `hierarchical()`), pass the monitor's
+output as the target's control input, and return the target's output. It could also
+enable `parallel()` compositions where each branch has its own monitor-control loop.
 
-Every module step produces a `TraceRecord` (module ID, phase, timestamp, input hash, output summary, monitoring signal, state hash, duration, optional token usage). Traces flow through `TraceSink` ports.
+### O=Mu for BridgeReasonerActorModule
 
-**Built-in sinks:**
-- `InMemoryTraceSink` — array-backed, for testing and programmatic inspection
-- `ConsoleTraceSink` — formatted output for development
+The RA module currently sets `O = Mu = BridgeReasonerActorMonitoring`. This is
+intentional for the hierarchical-only use case: the outer loop needs the monitoring
+signal as the direct output. For `sequential()` or `parallel()` compositions where the
+RA's output feeds another module's input, `O` and `Mu` should be separated (e.g.,
+`O = string` for the task result, `Mu` for monitoring telemetry). This separation is
+deferred to PRD 043.
 
-**Cognitive events** (`CognitiveEvent` union): 9 event types covering module steps, monitoring signals, control directives, policy violations, workspace writes/evictions, cycle phases, LEARN failures, and cycle aborts. All events carry timestamps and relevant context.
+---
 
-## Design Decisions
+## 7. Behavioral Fixes
 
-1. **Separate interface, not subtype.** `CognitiveAgent` is a separate interface from `Agent`. The `asFlatAgent()` adapter bridges the two explicitly, making impedance mismatch visible and testable. This prevents leaky abstractions where cognitive semantics (phases, workspace, monitoring) would be hidden behind the flat Agent contract.
+All 11 behavioral fixes live inside the bridge modules (L4), not in `@method/pacta` (L3).
+The canonical pacta modules remain lean and theory-grounded. Bridge-specific thresholds,
+workspace injection patterns, and tool-aware heuristics belong at the application layer.
 
-2. **Port-mediated workspace.** Modules access the workspace through typed read/write ports, not through a shared mutable bag. This makes data flow explicit, enforces write quotas at the engine level, and allows salience computation to be centralized rather than trusting module-reported values.
+### ReasonerActor module (6 fixes)
 
-3. **Three sub-domains (algebra/modules/engine).** The algebra is the leaf — pure types and operators with zero awareness of specific modules. Modules depend only on algebra types. The engine depends only on algebra types and receives modules via injection. This prevents circular dependencies and ensures modules can be tested without the engine and vice versa.
+| # | Fix | What it does |
+|---|-----|-------------|
+| 1 | Write-completion hint | After successful Write, injects salience 1.0 entry with pre-filled done action |
+| 2 | Write gate counters | Tracks `promptSuccessfulReads` / `promptSuccessfulWrites`, resets after Write |
+| 3 | Impasse detection | Exact-match `tool:input` key detects consecutive identical actions |
+| 4 | Parse failure circuit-breaker | Aborts after 3 consecutive failed parses (`consecutiveFailedParses >= 3`) |
+| 5 | Content block handling | `<content>` tag bypasses JSON escaping for Write operations |
+| 6 | Truncation hint | After truncated Read, injects offset/limit guidance for continuation |
 
-4. **Default-interventionist meta-level.** Rather than always running 8 phases (expensive), MONITOR/CONTROL are gated by threshold policies. This is grounded in dual-process theory: the meta-level only engages when object-level signals indicate something noteworthy. The threshold mechanism is pluggable (predicate or field-based rules).
+### Monitor module (5 fixes)
 
-5. **LEARN as fire-and-forget.** The reflector step runs after the cycle returns its result. State mutations are protected by a lock — on error, state rolls back to the pre-step snapshot. This prevents learning failures from blocking agent output or corrupting future cycles.
+| # | Fix | What it does |
+|---|-----|-------------|
+| 7 | Anomaly detection | `prevConf < threshold` or `readOnlyRun >= stagThreshold` triggers replan |
+| 8 | Workspace saturation | `wsUtilization >= 0.8` injects compression note |
+| 9 | Token budget pressure | `accumulatedInputTokens > 100k` forces completion |
+| 10 | Write gate intervention | `reads >= 3, writes == 0, !fired` restricts read-only tools |
+| 11 | No-action stall message | Tailored intervention when `prevAction` is `no-action` or `parse-error` |
 
-## CLS Dual-Store Memory (PRD 036)
+### Why not in pacta (L3)?
 
-### Architecture
+- Thresholds (0.8 saturation, 100k tokens, 3 reads) are bridge-tuned, not universal
+- Workspace injection messages reference bridge-specific tool names (Read, Write, Glob)
+- The write-completion hint pre-fills a `done` action -- a bridge session concept
+- The content block handler is format-specific to the bridge's XML prompt template
+- Convergence with canonical pacta modules is a future concern, not a current goal
 
-Two stores with opposite properties (McClelland et al. 1995):
-
-- **Fast store (episodic):** Verbatim episodes, FIFO eviction, sparse encoding
-- **Slow store (semantic):** Extracted patterns, updated ONLY through consolidation
-
-Connected by interleaved replay during offline consolidation (Sleep API).
-
-### Retrieval: ACT-R Activation
-
-Replaces keyword search with Anderson's activation equations:
-- Base-level activation: power-law decay from access frequency and recency
-- Spreading activation: context tag overlap
-- Partial match penalty: low-confidence entries penalized
-- Noise: stochastic component prevents retrieval loops
-
-### Modules
-
-| Module | Phase | Store Access |
-|--------|-------|-------------|
-| MemoryV3 | REMEMBER | Reads both stores via activation |
-| Consolidator | LEARN | Writes episodic (online), writes semantic (offline only) |
-
-### Sleep API
-
-`triggerSleep(store, config)` — triggers offline consolidation between sessions.
-Interleaved replay, schema consistency checking, compression, pruning.
-
-### Preset
-
-`createMemoryPreset(config)` — convenience factory wiring MemoryV3 + Consolidator + shared store.
+---
 
 ## References
 
-- RFC: Calculus of Cognitive Composition (`docs/rfcs/001-cognitive-composition.md`)
-- PRD 030: Pacta Cognitive Composition (`docs/prds/030-pacta-cognitive-composition.md`)
-- PRD 027: Pacta SDK (`docs/prds/027-pacta.md`)
-- PRD 036: Cognitive Memory Architecture
-- FCA specification (`docs/fractal-component-architecture/`)
+- PRD 042: `docs/prds/042-cognitive-composition-bridge-integration.md`
+- PRD 030: `docs/prds/030-pacta-cognitive-composition.md` (algebra)
+- PRD 043: parallel composition (future -- enables `controlLoop()` operator)
+- RFC 001: `docs/rfcs/001-cognitive-composition.md`
+- CognitiveModule interface: `packages/pacta/src/cognitive/algebra/module.ts`
+- Composition operators: `packages/pacta/src/cognitive/algebra/composition.ts`
+- Bridge monolith: `packages/bridge/src/domains/sessions/cognitive-provider.ts`
