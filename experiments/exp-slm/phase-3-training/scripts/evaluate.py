@@ -22,6 +22,7 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -40,9 +41,39 @@ sys.path.insert(0, str(EXP_ROOT))
 from shared.metrics.accuracy import (
     compute_parse_accuracy,
     compute_semantic_accuracy,
+    evaluator_reports_match,
+    observer_reports_match,
+    parse_evaluator_dsl,
     parse_monitor_dsl,
+    parse_observer_dsl,
 )
 from shared.metrics.calibration import compute_confidence
+
+
+def detect_dsl_type(config: dict) -> str:
+    """Detect DSL type from config paths. Returns 'monitor', 'evaluator', or 'observer'."""
+    indicators = config.get("output", {}).get("dir", "") + config.get("data", {}).get("train_path", "")
+    if "evaluator" in indicators:
+        return "evaluator"
+    if "observer" in indicators:
+        return "observer"
+    return "monitor"
+
+
+DSL_REGISTRY = {
+    "monitor": {
+        "parser": parse_monitor_dsl,
+        "matcher": None,  # uses default _reports_match
+    },
+    "evaluator": {
+        "parser": parse_evaluator_dsl,
+        "matcher": evaluator_reports_match,
+    },
+    "observer": {
+        "parser": parse_observer_dsl,
+        "matcher": observer_reports_match,
+    },
+}
 
 
 def load_config(config_path: Path) -> dict:
@@ -90,42 +121,58 @@ def extract_assistant_response(full_text: str, prompt: str) -> str:
     return response.strip()
 
 
-def classify_boundary_cases(entries: list[dict]) -> list[int]:
+def classify_boundary_cases(
+    entries: list[dict],
+    parser_fn: Callable = None,
+    dsl_type: str = "monitor",
+) -> list[int]:
     """
     Identify indices of adversarial/boundary cases in the holdout set.
-    These are entries that are particularly challenging:
-      - Compound anomalies (multiple anomaly types)
-      - Edge cases with escalation + no anomalies or vice versa
-      - Complex restrict lists
+    Supports monitor, evaluator, and observer DSL types.
     """
+    if parser_fn is None:
+        parser_fn = parse_monitor_dsl
+
     indices = []
     for i, entry in enumerate(entries):
         output = entry.get("output", "")
-        parsed = parse_monitor_dsl(output)
+        parsed = parser_fn(output)
         if parsed is None:
             continue
 
         is_boundary = False
-        anomalies = parsed.get("anomalies", [])
-        has_escalation = parsed.get("escalation") is not None
-        has_restrict = len(parsed.get("restrictedActions", [])) > 0
-        has_replan = parsed.get("forceReplan", False)
 
-        # Compound anomaly
-        if any(a.get("type") == "compound" for a in anomalies):
-            is_boundary = True
-        # Multiple anomalies
-        if len(anomalies) >= 3:
-            is_boundary = True
-        # Escalation without anomalies (edge case)
-        if has_escalation and len(anomalies) == 0:
-            is_boundary = True
-        # Complex restrict (3+ actions)
-        if len(parsed.get("restrictedActions", [])) >= 3:
-            is_boundary = True
-        # All flags active
-        if has_escalation and has_restrict and has_replan and len(anomalies) > 0:
-            is_boundary = True
+        if dsl_type == "monitor":
+            anomalies = parsed.get("anomalies", [])
+            has_escalation = parsed.get("escalation") is not None
+            has_restrict = len(parsed.get("restrictedActions", [])) > 0
+            has_replan = parsed.get("forceReplan", False)
+            if any(a.get("type") == "compound" for a in anomalies):
+                is_boundary = True
+            if len(anomalies) >= 3:
+                is_boundary = True
+            if has_escalation and len(anomalies) == 0:
+                is_boundary = True
+            if len(parsed.get("restrictedActions", [])) >= 3:
+                is_boundary = True
+            if has_escalation and has_restrict and has_replan and len(anomalies) > 0:
+                is_boundary = True
+
+        elif dsl_type == "evaluator":
+            # Stagnant + escalate, or low confidence + continue (risky)
+            if parsed.get("progress") == "stagnant" and parsed.get("action") == "escalate":
+                is_boundary = True
+            if parsed.get("confidence", 1.0) < 0.2 and parsed.get("action") == "continue":
+                is_boundary = True
+            if parsed.get("progress") == "regressing":
+                is_boundary = True
+
+        elif dsl_type == "observer":
+            # High novelty + high priority, or many focus modules
+            if parsed.get("novelty", 0) > 0.8 and parsed.get("priority") == "high":
+                is_boundary = True
+            if len(parsed.get("focus", [])) >= 4:
+                is_boundary = True
 
         if is_boundary:
             indices.append(i)
@@ -166,8 +213,14 @@ def main() -> None:
     model_dir = args.model_dir or PHASE3_DIR / config["output"]["dir"]
     holdout_path = (PHASE3_DIR / config["data"]["holdout_path"]).resolve()
 
+    dsl_type = detect_dsl_type(config)
+    dsl_info = DSL_REGISTRY[dsl_type]
+    parser_fn = dsl_info["parser"]
+    match_fn = dsl_info["matcher"]
+
     print(f"Model directory: {model_dir}")
     print(f"Holdout data: {holdout_path}")
+    print(f"DSL type: {dsl_type}")
 
     if not model_dir.exists():
         print(f"ERROR: Model directory not found: {model_dir}")
@@ -205,7 +258,7 @@ def main() -> None:
     print(f"  Holdout entries: {len(holdout)}")
 
     # ── Identify boundary cases ────────────────────────────────
-    boundary_indices = set(classify_boundary_cases(holdout))
+    boundary_indices = set(classify_boundary_cases(holdout, parser_fn=parser_fn, dsl_type=dsl_type))
     print(f"  Boundary/adversarial cases: {len(boundary_indices)}")
 
     # ── Run inference ──────────────────────────────────────────
@@ -265,13 +318,13 @@ def main() -> None:
     print("\nComputing metrics ...")
 
     # Parse accuracy
-    parse_acc = compute_parse_accuracy(generated_outputs)
+    parse_acc = compute_parse_accuracy(generated_outputs, parser_fn=parser_fn)
     print(f"  Parse accuracy:    {parse_acc:.4f} (target >= 0.95)")
 
     # Semantic accuracy
-    parsed_outputs = [parse_monitor_dsl(o) for o in generated_outputs]
-    expected_reports = [parse_monitor_dsl(e["output"]) for e in holdout]
-    semantic_acc = compute_semantic_accuracy(parsed_outputs, expected_reports)
+    parsed_outputs = [parser_fn(o) for o in generated_outputs]
+    expected_reports = [parser_fn(e["output"]) for e in holdout]
+    semantic_acc = compute_semantic_accuracy(parsed_outputs, expected_reports, match_fn=match_fn)
     print(f"  Semantic accuracy: {semantic_acc:.4f} (target >= 0.85)")
 
     # Adversarial accuracy (on boundary cases only)

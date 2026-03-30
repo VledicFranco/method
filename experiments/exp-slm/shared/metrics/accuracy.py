@@ -159,6 +159,150 @@ def _parse_quoted_string(s: str) -> str:
     return inner.replace('\\"', '"').replace('\\\\', '\\')
 
 
+def _parse_note(value: str) -> str | None:
+    """Parse a NOTE value — either 'none' or a quoted string."""
+    value = value.strip()
+    if value == "none":
+        return None
+    if value.startswith('"') and value.endswith('"'):
+        return value[1:-1]
+    return value  # tolerate unquoted notes
+
+
+# ── Evaluator DSL Parser ─────────────────────────────────────
+
+
+VALID_PROGRESS = {"on-track", "stagnant", "regressing"}
+VALID_ACTION = {"continue", "replan", "escalate"}
+
+
+def parse_evaluator_dsl(dsl: str) -> dict[str, Any] | None:
+    """
+    Parse an Evaluator DSL string into a structured dict.
+
+    Expected format:
+        PROGRESS: on-track | stagnant | regressing
+        CONFIDENCE: <float 0-1>
+        ACTION: continue | replan | escalate
+        NOTE: "text" | none
+    """
+    try:
+        return _parse_evaluator_strict(dsl)
+    except ParseError:
+        return None
+
+
+def _parse_evaluator_strict(dsl: str) -> dict[str, Any]:
+    lines = dsl.strip().split("\n")
+    result: dict[str, Any] = {}
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("PROGRESS: "):
+            val = line[len("PROGRESS: "):].strip()
+            if val not in VALID_PROGRESS:
+                raise ParseError(f"Invalid PROGRESS: {val!r}")
+            result["progress"] = val
+        elif line.startswith("CONFIDENCE: "):
+            try:
+                result["confidence"] = float(line[len("CONFIDENCE: "):].strip())
+            except ValueError as e:
+                raise ParseError(f"Invalid CONFIDENCE: {e}")
+        elif line.startswith("ACTION: "):
+            val = line[len("ACTION: "):].strip()
+            if val not in VALID_ACTION:
+                raise ParseError(f"Invalid ACTION: {val!r}")
+            result["action"] = val
+        elif line.startswith("NOTE: "):
+            result["note"] = _parse_note(line[len("NOTE: "):])
+        else:
+            raise ParseError(f"Unexpected line: {line!r}")
+
+    for key in ("progress", "confidence", "action"):
+        if key not in result:
+            raise ParseError(f"Missing required field: {key}")
+
+    return result
+
+
+# ── Observer DSL Parser ──────────────────────────────────────
+
+
+VALID_PRIORITY = {"high", "medium", "low"}
+
+
+def parse_observer_dsl(dsl: str) -> dict[str, Any] | None:
+    """
+    Parse an Observer DSL string into a structured dict.
+
+    Expected format:
+        PRIORITY: high | medium | low
+        FOCUS: module1, module2, ...
+        NOVELTY: <float 0-1>
+        NOTE: "text" | none
+    """
+    try:
+        return _parse_observer_strict(dsl)
+    except ParseError:
+        return None
+
+
+def _parse_observer_strict(dsl: str) -> dict[str, Any]:
+    lines = dsl.strip().split("\n")
+    result: dict[str, Any] = {}
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("PRIORITY: "):
+            val = line[len("PRIORITY: "):].strip()
+            if val not in VALID_PRIORITY:
+                raise ParseError(f"Invalid PRIORITY: {val!r}")
+            result["priority"] = val
+        elif line.startswith("FOCUS: "):
+            modules = [m.strip() for m in line[len("FOCUS: "):].split(",")]
+            result["focus"] = sorted(modules)
+        elif line.startswith("NOVELTY: "):
+            try:
+                result["novelty"] = float(line[len("NOVELTY: "):].strip())
+            except ValueError as e:
+                raise ParseError(f"Invalid NOVELTY: {e}")
+        elif line.startswith("NOTE: "):
+            result["note"] = _parse_note(line[len("NOTE: "):])
+        else:
+            raise ParseError(f"Unexpected line: {line!r}")
+
+    for key in ("priority", "focus", "novelty"):
+        if key not in result:
+            raise ParseError(f"Missing required field: {key}")
+
+    return result
+
+
+# ── Semantic matchers per DSL ────────────────────────────────
+
+
+def evaluator_reports_match(actual: dict[str, Any], expected: dict[str, Any]) -> bool:
+    """Semantic match for evaluator: progress + action must match."""
+    if actual.get("progress") != expected.get("progress"):
+        return False
+    if actual.get("action") != expected.get("action"):
+        return False
+    return True
+
+
+def observer_reports_match(actual: dict[str, Any], expected: dict[str, Any]) -> bool:
+    """Semantic match for observer: priority + focus set must match."""
+    if actual.get("priority") != expected.get("priority"):
+        return False
+    if sorted(actual.get("focus", [])) != sorted(expected.get("focus", [])):
+        return False
+    return True
+
+
 # ── Accuracy Metrics ───────────────────────────────────────────
 
 
@@ -190,20 +334,21 @@ def compute_parse_accuracy(
 def compute_semantic_accuracy(
     parsed_outputs: list[dict[str, Any] | None],
     expected_reports: list[dict[str, Any]],
+    match_fn: Callable[[dict[str, Any], dict[str, Any]], bool] | None = None,
 ) -> float:
     """
     Compute the fraction of parsed outputs that semantically match expected reports.
 
-    Comparison is field-by-field:
+    When match_fn is None (default), uses the Monitor DSL matcher:
       - anomalies: same count, same types (order-insensitive by moduleId)
-      - escalation: both None or both non-None (content not compared due to
-        generation variability)
+      - escalation: both None or both non-None
       - restrictedActions: same set of actions (order-insensitive)
       - forceReplan: exact match
 
     Args:
         parsed_outputs: List of parsed dicts (or None for failed parses).
         expected_reports: List of expected parsed dicts (same length).
+        match_fn: Optional custom matcher function.
 
     Returns:
         Semantic accuracy as a float in [0, 1].
@@ -211,11 +356,14 @@ def compute_semantic_accuracy(
     if not expected_reports:
         return 0.0
 
+    if match_fn is None:
+        match_fn = _reports_match
+
     matches = 0
     for parsed, expected in zip(parsed_outputs, expected_reports):
-        if parsed is None:
+        if parsed is None or expected is None:
             continue
-        if _reports_match(parsed, expected):
+        if match_fn(parsed, expected):
             matches += 1
 
     return matches / len(expected_reports)
