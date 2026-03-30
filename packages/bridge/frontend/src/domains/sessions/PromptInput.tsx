@@ -74,12 +74,14 @@ export function PromptInput({
     const trimmed = value.trim();
     if (!trimmed || isLoading || disabled) return;
 
+    // PRD 040 C-6: Clear input immediately on send — don't wait for response
+    setValue('');
     setIsLoading(true);
     try {
       await onSend(trimmed);
-      setValue('');
     } catch {
-      // On error: re-enable input, preserve value
+      // On error: restore the prompt text so the user can retry
+      setValue(trimmed);
     } finally {
       setIsLoading(false);
     }

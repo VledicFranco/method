@@ -392,9 +392,35 @@ export function SessionSidebar({
               >
                 <div style={styles.sessionRow}>
                   <span style={styles.statusDot(session.status)} />
-                  <span style={styles.nickname}>
+                  <span style={{
+                    ...styles.nickname,
+                    // PRD 040 C-6 / AC-07: Dim dead cognitive sessions
+                    ...(session.status === 'dead' && session.mode === 'cognitive-agent'
+                      ? { opacity: 0.5 }
+                      : {}),
+                  }}>
                     {session.nickname}
-                    {session.mode === 'cognitive-agent' && <span style={{ marginLeft: 4 }}>{'\uD83E\uDDE0'}</span>}
+                    {session.mode === 'cognitive-agent' && (
+                      <span style={{
+                        marginLeft: 4,
+                        // Gray out brain emoji for expired cognitive sessions
+                        ...(session.status === 'dead'
+                          ? { filter: 'grayscale(1)', opacity: 0.5 }
+                          : {}),
+                      }}>{'\uD83E\uDDE0'}</span>
+                    )}
+                    {session.status === 'dead' && session.mode === 'cognitive-agent' && (
+                      <span style={{
+                        marginLeft: 6,
+                        fontSize: '9px',
+                        padding: '1px 4px',
+                        borderRadius: '3px',
+                        background: 'rgba(138,155,176,0.15)',
+                        color: 'var(--text-muted)',
+                        fontWeight: 500,
+                        letterSpacing: '0.03em',
+                      }}>expired</span>
+                    )}
                   </span>
                   {onKill && (
                     <button
