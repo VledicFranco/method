@@ -4,7 +4,7 @@
  * If only one project exists, auto-fills workdir immediately.
  */
 
-import { useState, useCallback, useEffect, useMemo, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import { Button } from '@/shared/components/Button';
 import { cn } from '@/shared/lib/cn';
 import { usePreferenceStore } from '@/shared/stores/preference-store';
@@ -46,6 +46,10 @@ export function SpawnSessionModal({
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'ollama'>('anthropic');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('http://chobits:11434');
   const [ollamaModel, setOllamaModel] = useState('qwen3-coder:30b');
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [ollamaFetchFailed, setOllamaFetchFailed] = useState(false);
+  const [ollamaFetching, setOllamaFetching] = useState(false);
+  const [anthropicModel, setAnthropicModel] = useState('claude-sonnet-4-6');
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   // Auto-fill workdir when only one project exists
@@ -61,6 +65,48 @@ export function SpawnSessionModal({
       setWorkdir(initialWorkdir);
     }
   }, [initialWorkdir]);
+
+  // Fetch Ollama models when Ollama is selected and base URL changes
+  const ollamaFetchRef = useRef(0);
+  useEffect(() => {
+    if (llmProvider !== 'ollama' || providerType !== 'cognitive-agent') return;
+    const fetchId = ++ollamaFetchRef.current;
+    const url = ollamaBaseUrl.trim();
+    if (!url) return;
+
+    setOllamaFetching(true);
+    setOllamaFetchFailed(false);
+
+    fetch(`${url}/api/tags`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: { models?: { name: string }[] }) => {
+        if (fetchId !== ollamaFetchRef.current) return; // stale
+        const names = (data.models ?? []).map((m) => m.name).filter(Boolean);
+        if (names.length > 0) {
+          setOllamaModels(names);
+          setOllamaFetchFailed(false);
+          // Default to first model if current selection isn't in the list
+          if (!names.includes(ollamaModel)) {
+            setOllamaModel(names[0]);
+          }
+        } else {
+          setOllamaModels([]);
+          setOllamaFetchFailed(true);
+        }
+      })
+      .catch(() => {
+        if (fetchId !== ollamaFetchRef.current) return;
+        setOllamaModels([]);
+        setOllamaFetchFailed(true);
+        if (!ollamaModel.trim()) setOllamaModel('qwen3-coder:30b');
+      })
+      .finally(() => {
+        if (fetchId === ollamaFetchRef.current) setOllamaFetching(false);
+      });
+  }, [llmProvider, providerType, ollamaBaseUrl]);
 
   // Filter projects based on workdir input for autocomplete
   const filteredProjects = useMemo(() => {
@@ -87,11 +133,16 @@ export function SpawnSessionModal({
       if (providerType !== 'print') {
         req.provider_type = providerType;
         req.mode = 'cognitive-agent';
-        if (llmProvider !== 'anthropic') {
+        if (llmProvider === 'ollama') {
           req.llm_provider = llmProvider;
           req.llm_config = {
             baseUrl: ollamaBaseUrl.trim() || undefined,
             model: ollamaModel.trim() || undefined,
+          };
+        } else {
+          // Anthropic — include model selection
+          req.llm_config = {
+            model: anthropicModel || undefined,
           };
         }
       }
@@ -112,7 +163,7 @@ export function SpawnSessionModal({
         setSpawnError(err instanceof Error ? err.message : String(err));
       }
     },
-    [workdir, prompt, nickname, purpose, providerType, llmProvider, ollamaBaseUrl, ollamaModel, isSpawning, onSpawn, onClose],
+    [workdir, prompt, nickname, purpose, providerType, llmProvider, anthropicModel, ollamaBaseUrl, ollamaModel, isSpawning, onSpawn, onClose],
   );
 
   const handleSelectProject = useCallback(
@@ -306,6 +357,22 @@ export function SpawnSessionModal({
                   </div>
                 </div>
 
+                {/* Anthropic model picker */}
+                {llmProvider === 'anthropic' && (
+                  <div>
+                    <label className="block text-xs text-txt-dim font-medium mb-1.5">Model</label>
+                    <select
+                      value={anthropicModel}
+                      onChange={(e) => setAnthropicModel(e.target.value)}
+                      className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                    >
+                      <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+                      <option value="claude-opus-4-6">claude-opus-4-6</option>
+                      <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+                    </select>
+                  </div>
+                )}
+
                 {/* Ollama config */}
                 {llmProvider === 'ollama' && (
                   <div className="space-y-sp-3 pl-3 border-l-2 border-bio/30">
@@ -320,13 +387,35 @@ export function SpawnSessionModal({
                     </div>
                     <div>
                       <label className="block text-xs text-txt-dim font-medium mb-1.5">Model</label>
-                      <input
-                        type="text"
-                        value={ollamaModel}
-                        onChange={(e) => setOllamaModel(e.target.value)}
-                        placeholder="qwen3-coder:30b"
-                        className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
-                      />
+                      {!ollamaFetchFailed && ollamaModels.length > 0 ? (
+                        <select
+                          value={ollamaModel}
+                          onChange={(e) => setOllamaModel(e.target.value)}
+                          className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                        >
+                          {ollamaModels.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            value={ollamaModel}
+                            onChange={(e) => setOllamaModel(e.target.value)}
+                            placeholder="e.g. qwen3-coder:30b"
+                            className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                          />
+                          {ollamaFetchFailed && !ollamaFetching && (
+                            <p className="mt-1 text-[0.65rem] text-txt-muted">
+                              Could not fetch models from Ollama — enter a model name manually
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {ollamaFetching && (
+                        <p className="mt-1 text-[0.65rem] text-txt-muted">Fetching models...</p>
+                      )}
                     </div>
                   </div>
                 )}
