@@ -81,7 +81,11 @@ export type {
   ConsolidationConfig,
   ConsolidationResult,
 } from './ports/memory-port.js';
-export { InMemoryMemory } from './ports/memory-impl.js';
+export { InMemoryMemory, cosineSimilarity, reciprocalRankFusion } from './ports/memory-impl.js';
+export type { InMemoryMemoryOptions } from './ports/memory-impl.js';
+
+// JSONL persistence (PRD 031, Phase 5)
+export { JsonlMemoryStore } from './ports/memory-persistence.js';
 
 // Embedding port (PRD 031)
 export type { EmbeddingPort } from './ports/embedding-port.js';
