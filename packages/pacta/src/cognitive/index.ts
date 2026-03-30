@@ -23,3 +23,7 @@ export { PERSONAS, selectPersona, getPersona } from './config/personas.js';
 // Presets (PRD 035 — pre-composed configurations)
 export { enrichedPreset } from './presets/index.js';
 export type { EnrichedPresetOverrides, EnrichedPresetPorts, ModuleSlotOverrides } from './presets/index.js';
+
+// Presets (PRD 037 — affect + curiosity compositions)
+export { affectivePreset, exploratoryPreset, fullPreset } from './presets/index.js';
+export type { AffectExploreOverrides } from './presets/index.js';
