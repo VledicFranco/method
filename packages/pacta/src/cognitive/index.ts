@@ -16,6 +16,10 @@ export * from './engine/index.js';
 //   import { createReasoner } from '@method/pacta/cognitive/modules/reasoner.js';
 // This prevents the barrel from coupling to all 8 module implementations.
 
+// Config (PRD 032 — persona registry)
+export type { PersonaProfile } from './config/personas.js';
+export { PERSONAS, selectPersona, getPersona } from './config/personas.js';
+
 // Presets (PRD 035 — pre-composed configurations)
 export { enrichedPreset } from './presets/index.js';
 export type { EnrichedPresetOverrides, EnrichedPresetPorts, ModuleSlotOverrides } from './presets/index.js';
