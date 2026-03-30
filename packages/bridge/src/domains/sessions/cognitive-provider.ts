@@ -1,23 +1,20 @@
 /**
- * Cognitive Agent Provider v2 — multi-tool cycles, workspace persistence,
- * cost tracking, and impasse detection (PRD 040 C-2).
+ * Cognitive Agent Provider v3 — manual module composition (PRD 042 Phase 4).
  *
- * Upgrade from v1 inline cycle loop to v2 architecture:
- * - Multi-tool cycles: up to maxToolsPerCycle (default 5) tool calls per cycle
- *   before the monitor evaluates
- * - Workspace persistence: workspace persists across prompts within a session
- *   (TTL-based eviction between prompts)
- * - Cost & token tracking: cumulative inputTokens, outputTokens, costUsd across
- *   all LLM calls, included in done event metadata
- * - Impasse detection: consecutive identical toolName+toolInput triggers
- *   "try a different approach" workspace injection
+ * Architecture: BridgeMonitorModule + BridgeReasonerActorModule composed in a
+ * manual for-loop with monitor-first execution order. Module factories from
+ * cognitive-modules.ts encapsulate all behavioral logic (11 fixes from PRDs
+ * 033/040/041). This file owns the outer cycle engine and session lifecycle.
  *
- * Keeps the same external interface: createCognitiveSession returning PtySession.
+ * Execution order per cycle:
+ *   1. Monitor reads last cycle's RA monitoring -> produces BridgeMonitorControl
+ *   2. RA runs inner while-loop with monitor's control applied immediately
+ *
+ * External interface unchanged: createCognitiveSession returning PtySession.
  */
 
 import PQueue from 'p-queue';
 import type {
-  ReadonlyWorkspaceSnapshot,
   SalienceContext,
   ProviderAdapter,
   WorkspaceManager,
@@ -27,6 +24,14 @@ import { moduleId, createWorkspace } from '@method/pacta';
 import type { PtySession, SessionStatus, StreamChunkCallback } from './print-session.js';
 import type { StreamEvent } from './pool.js';
 import type { CognitiveSink } from './cognitive-sink.js';
+import {
+  createBridgeReasonerActorModule,
+  createBridgeMonitorModule,
+} from './cognitive-modules.js';
+import type {
+  BridgeReasonerActorMonitoring,
+  BridgeMonitorControl,
+} from './cognitive-modules.js';
 
 // ── Configuration ───────────────────────────────────────────────
 
@@ -53,33 +58,6 @@ export interface CognitiveSessionOptions {
   /** Optional CognitiveSink for emitting typed CognitiveEvents to the bridge event bus (PRD 026). */
   cognitiveSink?: CognitiveSink;
 }
-
-// ── Reasoner-Actor prompt format ────────────────────────────────
-
-const FORMAT_INSTRUCTION =
-`You MUST respond with exactly three XML sections. No other text outside these tags.
-
-<plan>Brief 2-3 step plan.</plan>
-<reasoning>Your analysis and rationale.</reasoning>
-<action>{"tool":"ToolName","input":{"key":"value"}}</action>
-
-The <action> tag MUST contain valid JSON with a "tool" field matching one of the available tools.
-When the task is complete, use: <action>{"tool":"done","input":{"result":"your final answer here"}}</action>
-
-CRITICAL RULE — If you see "[✓ DELIVERABLE WRITTEN" anywhere in your context, the task output is already saved. Your ONLY valid next action is done. Do not read, write, or research further.
-
-IMPORTANT — For Write operations with large or multi-line content, use a <content> block INSTEAD of putting content in the JSON. This avoids JSON escaping issues:
-<action>{"tool":"Write","input":{"path":"output.md"}}</action>
-<content>
-...your multi-line content here, no escaping needed...
-</content>
-
-Example response:
-<plan>1. Read the file. 2. Report the contents.</plan>
-<reasoning>I need to read the file to answer the question.</reasoning>
-<action>{"tool":"Read","input":{"path":"package.json"}}</action>`;
-
-const READ_ONLY_ACTIONS = new Set(['Read', 'Glob', 'Grep', 'Search', 'List']);
 
 // ── Cost estimation constants ───────────────────────────────────
 // Sonnet ~$3/$15 per M tokens (input/output). Order of magnitude is fine.
@@ -144,299 +122,61 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
       salience: 0.95, timestamp: Date.now(),
     });
 
-    const foldedCtx: string[] = [];
     let promptInputTokens = 0, promptOutputTokens = 0;
-    let interventions = 0, lastOutput = '';
-    let readOnlyRun = 0, prevConf = 1.0, prevAction: string | null = null;
+    let lastOutput = '';
     let actualCycles = 0;
 
-    // Impasse detection: track previous tool call for no-change detection
-    let prevToolName: string | null = null;
-    let prevToolInput: string | null = null;
-    // Early bail-out: consecutive failed parses (no-action/parse-error)
-    let consecutiveFailedParses = 0;
-    const MAX_CONSECUTIVE_FAILED_PARSES = 3;
+    // ── Instantiate modules — per-prompt, session-scoped dependencies injected ──
+    const monitorPort = ws.getWritePort(moduleId('monitor'));
+    const raConfig = {
+      maxToolsPerCycle, maxOutputTokens, wsCapacity, cycleNumber: 1, maxCycles,
+    };
+    const raModule = createBridgeReasonerActorModule(
+      adapter, tools, ws, raWritePort, raReadPort, obsPort, raConfig, onEvent, cognitiveSink,
+    );
+    const monModule = createBridgeMonitorModule(
+      ws, monitorPort, wsCapacity,
+      { confThreshold, stagThreshold, intBudget },
+      onEvent, cognitiveSink,
+    );
+
+    // State initialized per-prompt (not per-session).
+    let raState = raModule.initialState();
+    let monState = monModule.initialState();
+    let lastRAMonitoring: BridgeReasonerActorMonitoring | null = null;
 
     for (let c = 0; c < maxCycles; c++) {
       actualCycles = c + 1;
-      // Reset per-cycle: consecutive parse failures count resets at each new cycle boundary.
-      // This prevents no-action in cycle N from "using up" one strike for cycle N+1.
-      consecutiveFailedParses = 0;
       onEvent({ type: 'cycle-start', cycle: c + 1, maxCycles });
-      // Emit CognitiveCyclePhase via sink for event bus consumers
       cognitiveSink?.handle({ type: 'cognitive:cycle_phase', phase: 'start', cycleNumber: c + 1, timestamp: Date.now() });
       ws.resetCycleQuotas();
 
-      // ── Monitor (inline) ──
-      let forceReplan = false;
-      const restricted: string[] = [];
+      // Update cycle number in RA config (mutable field).
+      raConfig.cycleNumber = c + 1;
 
-      if (c > 0) {
-        if (prevAction && READ_ONLY_ACTIONS.has(prevAction)) readOnlyRun++;
-        else readOnlyRun = 0;
+      // Monitor runs FIRST — reads last cycle's RA monitoring, produces control.
+      // On cycle 0, lastRAMonitoring is null → monitor returns defaultControl (no interventions).
+      const monResult = await monModule.step(
+        lastRAMonitoring,
+        monState,
+        { target: moduleId('monitor'), timestamp: Date.now() },
+      );
+      monState = monResult.state;
+      const control: BridgeMonitorControl = monResult.output;
 
-        const anomaly = prevConf < confThreshold || readOnlyRun >= stagThreshold;
-        if (anomaly && interventions < intBudget) {
-          interventions++;
-          forceReplan = true;
-          if (interventions < 3 && prevAction) restricted.push(prevAction);
-          const interventionKind = interventions >= 3 ? 'reframe' : 'constrain';
-          onEvent({
-            type: 'monitor', cycle: c + 1,
-            intervention: interventionKind,
-            restricted: restricted.length > 0 ? restricted : undefined,
-          });
-          // Emit CognitiveControlDirective via sink for event bus consumers
-          cognitiveSink?.handle({
-            type: 'cognitive:control_directive',
-            directive: {
-              target: moduleId('reasoner-actor'),
-              timestamp: Date.now(),
-            },
-            timestamp: Date.now(),
-          });
-        }
+      // RA runs SECOND — with this cycle's monitor control applied immediately.
+      const raResult = await raModule.step(prompt, raState, control);
+      raState = raResult.state;
+      lastRAMonitoring = raResult.monitoring;
 
-        // ── Workspace saturation intervention ──
-        // If the workspace is ≥ 80% full, the model is losing context via eviction.
-        // Inject a compression note so it stops accumulating and moves toward done.
-        const wsEntries = ws.snapshot();
-        const wsUtilization = wsEntries.length / wsCapacity;
-        if (wsUtilization >= 0.8) {
-          obsPort.write({
-            source: moduleId('observer'),
-            content: `[WORKSPACE ${wsEntries.length}/${wsCapacity} entries — near capacity] Context entries are being evicted. Stop accumulating information. Summarize what you know and produce your final output NOW.`,
-            salience: 0.92,
-            timestamp: Date.now(),
-          });
-          onEvent({ type: 'monitor', cycle: c + 1, intervention: 'workspace-saturation' });
-        }
+      // Accumulate token totals from per-cycle deltas.
+      promptInputTokens += raResult.monitoring.promptInputTokens;
+      promptOutputTokens += raResult.monitoring.promptOutputTokens;
 
-        // ── Token budget intervention ──
-        // If accumulated input tokens exceed 100k, the model is near context window limits.
-        // Force it toward completion before the context fills further.
-        if (promptInputTokens > 100_000) {
-          obsPort.write({
-            source: moduleId('observer'),
-            content: `[TOKEN BUDGET ALERT: ~${Math.round(promptInputTokens / 1000)}k input tokens used] Context window pressure is high. Do NOT read more files. Use what you already know to produce your final Write + done action immediately.`,
-            salience: 0.95,
-            timestamp: Date.now(),
-          });
-          onEvent({ type: 'monitor', cycle: c + 1, intervention: 'token-budget-pressure' });
-        }
+      if (raResult.monitoring.cycleDone) {
+        lastOutput = raResult.monitoring.lastOutput;
+        break;
       }
-
-      // ── Context injection ──
-      if (foldedCtx.length > 0 || forceReplan) {
-        const parts = [`[Cycle ${c + 1}/${maxCycles}]`];
-        if (foldedCtx.length > 0) parts.push(`## Completed Actions\n${foldedCtx.join('\n')}`);
-        if (forceReplan) {
-          // Tailor the intervention message to the specific failure mode:
-          // - no-action: agent has a plan but isn't producing a tool call → remind format
-          // - other stagnation: generic "try something else"
-          const noActionStall = prevAction === 'no-action' || prevAction === 'parse-error';
-          parts.push(noActionStall
-            ? 'Your last response had NO <action> block. You MUST end with <action>{"tool":"ToolName","input":{...}}</action>. Do not describe what you would do — call the tool directly NOW.'
-            : 'MUST try a different strategy. Previous approach is stagnating.');
-        }
-        if (restricted.length > 0) parts.push(`RESTRICTED actions: ${restricted.join(', ')}`);
-        obsPort.write({ source: moduleId('observer'), content: parts.join('\n\n'), salience: 0.9, timestamp: Date.now() });
-      }
-
-      // ── Multi-tool inner loop ──
-      let toolsThisCycle = 0;
-      let cycleDone = false;
-      let lastActionInCycle: string | null = null;
-
-      while (toolsThisCycle < maxToolsPerCycle) {
-        // ── Reasoner-Actor (LLM call + tool exec) ──
-        const wsEntries = raReadPort.read();
-
-        const strat = forceReplan && toolsThisCycle === 0
-          ? 'Consider the problem deeply. Weigh alternatives and identify the strongest path.'
-          : 'Produce a structured plan with numbered steps. Identify dependencies and risks.';
-        const toolList = tools.list().map((t) => `- ${t.name}: ${t.description ?? ''}`).join('\n');
-
-        // Build a synthetic snapshot: strategy + tools + format + workspace entries
-        const now = Date.now();
-        const syntheticSnapshot: ReadonlyWorkspaceSnapshot = [
-          { source: moduleId('observer'), content: strat, salience: 1.0, timestamp: now },
-          { source: moduleId('observer'), content: `Available tools:\n${toolList}`, salience: 0.95, timestamp: now },
-          { source: moduleId('observer'), content: FORMAT_INSTRUCTION, salience: 0.95, timestamp: now },
-          ...wsEntries,
-        ];
-
-        try {
-          const res = await adapter.invoke(syntheticSnapshot, {
-            pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: maxOutputTokens } },
-          });
-
-          const text = String(res.output);
-          const inTok = res.usage.inputTokens;
-          const outTok = res.usage.outputTokens;
-          promptInputTokens += inTok;
-          promptOutputTokens += outTok;
-
-          if (!text.trim()) {
-            onEvent({ type: 'cycle-action', cycle: c + 1, action: 'empty-response', confidence: 0.1, tokens: res.usage.totalTokens });
-            cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: 'empty-response', durationMs: 0, hasError: true, timestamp: Date.now() });
-            prevConf = 0.1;
-            prevAction = 'empty-response';
-            lastActionInCycle = 'empty-response';
-            foldedCtx.push(`[c${c + 1}] empty-response`);
-            if (foldedCtx.length > 15) foldedCtx.shift();
-            break; // exit inner loop on empty response
-          }
-
-          const plan = text.match(/<plan>([\s\S]*?)<\/plan>/)?.[1]?.trim() ?? '';
-          const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/)?.[1]?.trim() ?? '';
-          const actionRaw = text.match(/<action>([\s\S]*?)<\/action>/)?.[1]?.trim() ?? '';
-          // <content> block: allows Write operations to pass large multi-line content
-          // without JSON escaping. If present and the action is a Write, inject it as `content`.
-          const contentBlock = text.match(/<content>([\s\S]*?)<\/content>/)?.[1] ?? null;
-
-          // Stream reasoning immediately (with cycle number)
-          if (reasoning) {
-            const chunk = `**[Cycle ${c + 1}/${maxCycles} | Tool ${toolsThisCycle + 1}]** ${reasoning}\n`;
-            onEvent({ type: 'text', content: chunk });
-            onChunk?.(chunk);
-          }
-
-          // Parse + execute action
-          let actionName = 'unknown', confidence = 0.5;
-
-          let parsed: { tool: string; input?: Record<string, unknown> };
-          try {
-            parsed = JSON.parse(actionRaw);
-            consecutiveFailedParses = 0; // reset on successful parse
-            // If a <content> block was provided for a Write action, use it as the content
-            // field — this bypasses JSON escaping issues with large multi-line strings.
-            if (contentBlock !== null && parsed.tool === 'Write') {
-              parsed.input = parsed.input ?? {};
-              parsed.input.content = contentBlock;
-            }
-          } catch {
-            actionName = actionRaw ? 'parse-error' : 'no-action';
-            confidence = 0.2;
-            prevConf = confidence;
-            prevAction = actionName;
-            lastActionInCycle = actionName;
-            consecutiveFailedParses++;
-            onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
-            cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: actionName, durationMs: 0, hasError: true, timestamp: Date.now() });
-            foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
-            if (foldedCtx.length > 15) foldedCtx.shift();
-
-            // Early bail-out: if the model can't produce valid actions repeatedly, stop
-            if (consecutiveFailedParses >= MAX_CONSECUTIVE_FAILED_PARSES) {
-              lastOutput = reasoning || plan || `Model could not produce a valid action after ${MAX_CONSECUTIVE_FAILED_PARSES} attempts. Last response:\n${text.slice(0, 500)}`;
-              onEvent({ type: 'text', content: `\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures. The model may not support the required output format.\n` });
-              onChunk?.(`\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures.\n`);
-              cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: `${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures`, phase: 'action', cycleNumber: c + 1, timestamp: Date.now() });
-              cycleDone = true;
-            }
-            break; // exit inner loop on parse error
-          }
-          actionName = parsed.tool ?? 'unknown';
-
-          if (actionName === 'done') {
-            lastOutput = parsed.input?.result as string ?? reasoning ?? plan;
-            onEvent({ type: 'cycle-action', cycle: c + 1, action: 'done', confidence: 1.0, tokens: res.usage.totalTokens });
-            cognitiveSink?.handle({ type: 'cognitive:cycle_phase', phase: 'done', cycleNumber: c + 1, timestamp: Date.now() });
-            cycleDone = true;
-            break; // exit inner loop
-          }
-
-          // ── Impasse detection: consecutive identical toolName+toolInput ──
-          const currentToolInput = JSON.stringify(parsed.input ?? {});
-          if (prevToolName === actionName && prevToolInput === currentToolInput) {
-            // Impasse detected: inject "try a different approach" into workspace
-            raWritePort.write({
-              source: moduleId('reasoner-actor'),
-              content: '[IMPASSE] You are repeating the same action with identical input. Try a fundamentally different approach.',
-              salience: 0.95, timestamp: Date.now(),
-            });
-            onEvent({
-              type: 'monitor', cycle: c + 1,
-              intervention: 'impasse-detected',
-              action: actionName,
-            });
-            cognitiveSink?.handle({
-              type: 'cognitive:control_policy_violation',
-              directive: { target: moduleId('reasoner-actor'), timestamp: Date.now() },
-              reason: `impasse: repeated action ${actionName} with identical input`,
-              timestamp: Date.now(),
-            });
-          }
-          prevToolName = actionName;
-          prevToolInput = currentToolInput;
-
-          try {
-            const toolRes = await tools.execute(actionName, parsed.input ?? {});
-            confidence = toolRes.isError ? 0.3 : 0.7;
-            const resStr = typeof toolRes.output === 'string' ? toolRes.output : JSON.stringify(toolRes.output);
-            raWritePort.write({
-              source: moduleId('reasoner-actor'),
-              content: `[${actionName}] Result:\n${resStr}`,
-              salience: 0.8, timestamp: Date.now(),
-            });
-            // Truncation hint: when a Read result was cut off, immediately tell the agent
-            // how to continue reading rather than letting it retry the same call.
-            if (actionName === 'Read' && resStr.endsWith('... (truncated)')) {
-              const readPath = (parsed.input as Record<string, unknown>)?.path;
-              raWritePort.write({
-                source: moduleId('observer'),
-                content: `[READ TRUNCATED] Output was cut at 8000 chars. To read the rest, use: Read({"path":"${readPath}","offset":<next_line_number>,"limit":100}). First, estimate the line number from the truncated content.`,
-                salience: 0.88, timestamp: Date.now(),
-              });
-            }
-            // Write-completion hint: after a successful Write, inject a max-salience entry
-            // with the exact done action pre-filled. Salience 1.0 = never evicted.
-            // Without this, workspace eviction causes the agent to forget it already wrote.
-            if (actionName === 'Write' && !toolRes.isError) {
-              const writePath = (parsed.input as Record<string, unknown>)?.path as string ?? 'file';
-              obsPort.write({
-                source: moduleId('observer'),
-                content: `[✓ DELIVERABLE WRITTEN → ${writePath}]\nTask output is saved. Execute this action immediately:\n<action>{"tool":"done","input":{"result":"Output written to ${writePath}"}}</action>`,
-                salience: 1.0, timestamp: Date.now(),
-              });
-            }
-          } catch (toolErr) {
-            const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
-            confidence = 0.1;
-            raWritePort.write({
-              source: moduleId('reasoner-actor'),
-              content: `[${actionName}] Tool error: ${msg}`,
-              salience: 0.8, timestamp: Date.now(),
-            });
-          }
-
-          prevConf = confidence;
-          prevAction = actionName;
-          lastActionInCycle = actionName;
-          onEvent({ type: 'cycle-action', cycle: c + 1, action: actionName, confidence, tokens: res.usage.totalTokens });
-          cognitiveSink?.handle({ type: 'cognitive:module_step', moduleId: moduleId('reasoner-actor'), phase: actionName, durationMs: 0, hasError: confidence < 0.5, timestamp: Date.now() });
-
-          foldedCtx.push(`[c${c + 1}] ${actionName}: ${(plan || reasoning).slice(0, 80)}`);
-          if (foldedCtx.length > 15) foldedCtx.shift();
-
-          toolsThisCycle++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          onEvent({ type: 'cycle-action', cycle: c + 1, action: 'error', confidence: 0, tokens: 0 });
-          onEvent({ type: 'text', content: `\n[cycle ${c + 1}] Error: ${msg}\n` });
-          onChunk?.(`\n[cycle ${c + 1}] Error: ${msg}\n`);
-          cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: msg, phase: 'action', cycleNumber: c + 1, timestamp: Date.now() });
-          break; // exit inner loop on error
-        }
-      }
-
-      // Update lastActionInCycle for monitor tracking
-      if (lastActionInCycle) {
-        prevAction = lastActionInCycle;
-      }
-
-      if (cycleDone) break; // exit outer loop
     }
 
     // ── Accumulate into session-level totals ──
@@ -448,15 +188,15 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     const totalTokens = promptInputTokens + promptOutputTokens;
 
     const output = lastOutput ||
-      (foldedCtx.length > 0
-        ? `Cycle limit reached. Summary of actions:\n${foldedCtx.slice(-5).join('\n')}`
+      (raState.foldedCtx.length > 0
+        ? `Cycle limit reached. Summary of actions:\n${raState.foldedCtx.slice(-5).join('\n')}`
         : '(no output — cycle limit reached)');
     onEvent({
       type: 'done', output,
       metadata: {
         totalTokens,
         totalCycles: actualCycles,
-        monitorInterventions: interventions,
+        monitorInterventions: monState.interventions,
         costUsd: promptCostUsd,
         inputTokens: promptInputTokens,
         outputTokens: promptOutputTokens,
