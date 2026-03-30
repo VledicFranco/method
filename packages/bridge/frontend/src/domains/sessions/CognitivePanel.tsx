@@ -2,9 +2,12 @@
  * CognitivePanel — Cognitive state dashboard for the sidebar.
  * Only visible when the active session is a cognitive-agent session.
  * PRD 033 C-3: Cognitive State Sidebar Panel.
+ * PRD 033 C-5: Memory Viewer modal trigger.
  */
 
+import { useState } from 'react';
 import type { CognitiveTurnData } from './types';
+import { MemoryViewer } from './MemoryViewer';
 
 export interface CognitivePanelProps {
   turnData: CognitiveTurnData | null;
@@ -65,6 +68,8 @@ const MEM_TAGS: [string, string][] = [
 // ── Component ───────────────────────────────────────────────────
 
 export function CognitivePanel({ turnData, sessionMode }: CognitivePanelProps) {
+  const [memoryOpen, setMemoryOpen] = useState(false);
+
   if (sessionMode !== 'cognitive-agent') return null;
 
   const cycles = turnData?.cycles ?? [];
@@ -99,9 +104,43 @@ export function CognitivePanel({ turnData, sessionMode }: CognitivePanelProps) {
         <div style={styles.muted}>{pct}%</div>
       </div>
 
-      {/* Memory Summary */}
+      {/* Memory Summary + View Memory Button */}
       <div>
-        <div style={styles.metric}>Memory: {totalCards} cards</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={styles.metric}>Memory: {totalCards} cards</div>
+          {totalCards > 0 && turnData?.memory && (
+            <button
+              onClick={() => setMemoryOpen(true)}
+              style={{
+                background: 'none',
+                border: '1px solid rgba(138,155,176,0.25)',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                fontFamily: mono,
+                fontSize: '10px',
+                color: 'var(--text-muted)',
+                transition: 'color 0.15s ease, border-color 0.15s ease',
+              }}
+              title="View memory cards"
+              aria-label="View memory cards"
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--bio)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--bio)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(138,155,176,0.25)';
+              }}
+            >
+              <span>{'\uD83E\uDDE0'}</span>
+              <span>view</span>
+            </button>
+          )}
+        </div>
         <div>
           {MEM_TAGS.map(([type, color]) => (
             <span key={type} style={styles.tag(color)}>{type}</span>
@@ -129,6 +168,15 @@ export function CognitivePanel({ turnData, sessionMode }: CognitivePanelProps) {
         <span>{'\uD83E\uDDE0'}</span>
         <span>{profile}</span>
       </div>
+
+      {/* Memory Viewer Modal */}
+      {turnData?.memory && (
+        <MemoryViewer
+          isOpen={memoryOpen}
+          onClose={() => setMemoryOpen(false)}
+          memory={turnData.memory}
+        />
+      )}
     </div>
   );
 }
