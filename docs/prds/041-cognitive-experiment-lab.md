@@ -1,6 +1,6 @@
 ---
 title: "PRD 041: Cognitive Experiment Lab — Programmatic Agent Experimentation Infrastructure"
-status: proposed
+status: implemented
 date: "2026-03-30"
 tier: heavyweight
 depends_on: [33, 35, 40]
@@ -12,7 +12,7 @@ domains_affected: [bridge/sessions, bridge/experiments (new), mcp, pacta/cogniti
 
 # PRD 041: Cognitive Experiment Lab — Programmatic Agent Experimentation Infrastructure
 
-**Status:** Proposed
+**Status:** Implemented (2026-03-30)
 **Author:** PO + Lysica (informed by council debate — Warden, Spark, Dr. Meridian, Prism, Atlas, Cipher)
 **Date:** 2026-03-30
 **Packages:** `@method/bridge` (L4), `@method/mcp` (L3), `@method/pacta` (L3)
