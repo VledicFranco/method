@@ -52,6 +52,8 @@ import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
 import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink, WebhookConnector } from './shared/event-bus/index.js';
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
+import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
+import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -105,6 +107,9 @@ import { setDiscoveryRegistryPorts } from './domains/projects/discovery-registry
 setDiscoveryServicePorts(fsProvider, yamlLoader);
 setDiscoveryRegistryPorts(fsProvider, yamlLoader);
 
+// PRD 041: Experiments domain
+setExperimentRoutesPorts(fsProvider, yamlLoader);
+
 // PRD 026: Universal Event Bus — single event backbone for all domains
 const eventBus = new InMemoryEventBus();
 
@@ -155,6 +160,9 @@ const channelSink = new ChannelSink({
 setStrategyRoutesEventBus(eventBus);
 setProjectRoutesEventBus(eventBus);
 
+// PRD 041: CognitiveSink — adapts algebra-level CognitiveEvents to BridgeEvent bus
+const cognitiveSink = new CognitiveSink(eventBus);
+
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
   claudeBin: sessionsConfig.claudeBin,
@@ -162,6 +170,7 @@ const pool = createPool({
   minSpawnGapMs: sessionsConfig.minSpawnGapMs,
   fsProvider,
   eventBus,
+  cognitiveSink,
 });
 
 // Adaptive oversight: wire pool into strategy routes for auto-spawn on escalation
@@ -281,6 +290,12 @@ const clusterRouter = clusterConfig.enabled
   : undefined;
 
 registerClusterRoutes(app, { domain: clusterDomain, router: clusterRouter });
+
+// PRD 041: Register CognitiveSink on the event bus (onEvent is a no-op — sink emits TO the bus, not from it)
+eventBus.registerSink(cognitiveSink);
+
+// PRD 041: Experiment EventSink — persists cognitive events to per-run JSONL
+eventBus.registerSink(createExperimentEventSink());
 
 // PRD 039: Federation sink — relay local events to cluster peers
 if (clusterConfig.enabled && clusterConfig.federationEnabled) {
@@ -457,6 +472,10 @@ registerPersistenceRoutes(app, {
 if (strategiesConfig.enabled) {
   registerStrategyRoutes(app);
 }
+
+// ---------- Experiment Lab API (PRD 041) ----------
+
+registerExperimentRoutes(app);
 
 // ---------- Registry API (PRD 019.2) ----------
 
