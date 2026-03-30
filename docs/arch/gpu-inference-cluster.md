@@ -117,6 +117,62 @@ Cognitive Cycle
 - **Reasoning modules** (Reasoner, Planner): frontier LLM (Claude) — poor SLM compilation candidates
 - **Escalation**: SLMProviderAdapter routes to Claude when confidence is below threshold
 
+## SLM Training on Chobits
+
+Chobits is also the primary SLM **training** host for the `exp-slm` experiment (RFC 002, PRD 034). Training runs on the RTX 4090 via SSH — no physical access required.
+
+### Environment
+
+```
+Python:   C:\Users\atfm0\miniconda3\envs\slm\python.exe  (3.11, PyTorch 2.5.1+cu121)
+Repo:     C:\Users\atfm0\pv-method\  (git clone of VledicFranco/method)
+CUDA dev: 0  (RTX 4090 is the only GPU — CUDA_VISIBLE_DEVICES=0)
+```
+
+### Running Training via SSH
+
+```bash
+# Single training run (specify config with --config, or use default)
+ssh chobits "cd C:\Users\atfm0\pv-method\experiments\exp-slm; set CUDA_VISIBLE_DEVICES=0; C:\Users\atfm0\miniconda3\envs\slm\python.exe phase-3-training\scripts\train.py --config phase-3-training\configs\<config>.yaml 2>&1"
+
+# Evaluation
+ssh chobits "cd C:\Users\atfm0\pv-method\experiments\exp-slm; set CUDA_VISIBLE_DEVICES=0; C:\Users\atfm0\miniconda3\envs\slm\python.exe phase-3-training\scripts\evaluate.py --model phase-3-training\models\<model> 2>&1"
+
+# ONNX export
+ssh chobits "cd C:\Users\atfm0\pv-method\experiments\exp-slm; C:\Users\atfm0\miniconda3\envs\slm\python.exe phase-3-training\scripts\export-onnx.py --model phase-3-training\models\<model> 2>&1"
+```
+
+### Sync Results Back
+
+After training, sync checkpoints and results back to mission-control:
+
+```bash
+# Pull results (JSONL metrics, configs) — not model weights (too large)
+scp -r "chobits:C:\Users\atfm0\pv-method\experiments\exp-slm\phase-3-training\results\*" \
+  experiments/exp-slm/phase-3-training/results/
+
+# Pull a specific model checkpoint for ONNX inference on mission-control
+scp -r "chobits:C:\Users\atfm0\pv-method\experiments\exp-slm\phase-3-training\models\<model>" \
+  experiments/exp-slm/phase-3-training/models/
+```
+
+> Model checkpoints are in `.gitignore` (`experiments/artifacts/`) — transfer manually, never commit.
+
+### Keep Repo in Sync
+
+```bash
+# Pull latest configs/scripts on chobits before a training run
+ssh chobits "cd C:\Users\atfm0\pv-method; git pull"
+```
+
+### Training Performance (RTX 4090 vs RTX 2080 Ti)
+
+| Config | 2080 Ti (11 GB) | 4090 (24 GB) |
+|--------|-----------------|--------------|
+| Qwen2.5-Coder-0.5B LoRA r=16, 3K steps | ~1200s | ~450–600s (est.) |
+| Max batch size | 2 | 4–8 |
+| Larger model headroom | Limited | Qwen2.5-Coder-1.5B feasible |
+
 ## Future: Bridge Cluster Mode (PRD 039)
 
 PRD 039 designs peer-to-peer bridge clustering over Tailscale. Not yet implemented — current setup is inference-only (bridge stays on mission-control, only model calls cross the network). See `docs/prds/039-bridge-cluster.md` for the full architecture.

@@ -28,9 +28,30 @@ Each phase has a hard gate. Check `results/` in each phase directory for metrics
 
 ## Hardware
 
-- GPU 1: RTX 2080 Ti (11GB VRAM) — training + inference
-- GPU 0: Display GPU — do not use for training
-- Training uses `CUDA_VISIBLE_DEVICES=1` by default
+| Machine | GPU | VRAM | Role |
+|---------|-----|------|------|
+| `chobits` (SSH) | RTX 4090 | 24 GB | **Primary training host** — all new runs |
+| `mission-control` (local) | RTX 2080 Ti (GPU 1) | 11 GB | ONNX inference, serve-model.py |
+
+### Training on chobits (via SSH)
+
+```bash
+# Ensure repo is up to date on chobits first
+ssh chobits "cd C:\Users\atfm0\pv-method; git pull"
+
+# Run training (CUDA_DEVICE=0 — only GPU on chobits)
+ssh chobits "cd C:\Users\atfm0\pv-method\experiments\exp-slm; set CUDA_VISIBLE_DEVICES=0; C:\Users\atfm0\miniconda3\envs\slm\python.exe phase-3-training\scripts\train.py --config phase-3-training\configs\<config>.yaml"
+
+# Pull results back after training
+scp -r "chobits:C:\Users\atfm0\pv-method\experiments\exp-slm\phase-3-training\results\*" phase-3-training/results/
+```
+
+See `docs/arch/gpu-inference-cluster.md` for full reference (model sync, ONNX export, perf estimates).
+
+### Local (mission-control) — legacy / ONNX only
+
+- `CUDA_VISIBLE_DEVICES=1` (GPU 0 = display, GPU 1 = 2080 Ti)
+- No longer used for new training runs
 
 ## Gate Status
 
