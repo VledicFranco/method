@@ -1,13 +1,13 @@
 {
-  "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
-  "config": "phase-3-training\\configs\\monitor-qwen25-coder-05b-lora.yaml",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "config": "phase-3-training\\configs\\typegen-qwen25-05b-lora.yaml",
   "method": "LoRA (r=16, alpha=32)",
   "total_params": 494032768,
   "trainable_params": 2162688,
-  "final_loss": 0.3254,
+  "final_loss": 0.3446,
   "global_step": 3000,
-  "training_time_s": 1265.2,
-  "peak_vram_mb": 4465.5,
+  "training_time_s": 5914.3,
+  "peak_vram_mb": 7395.1,
   "train_entries": 10000,
   "eval_entries": 2500,
   "device": "NVIDIA GeForce RTX 2080 Ti",
@@ -15,5 +15,5 @@
   "batch_size": 2,
   "learning_rate": 0.0002,
   "fp16": true,
-  "timestamp": "2026-03-29T17:15:27-0600"
+  "timestamp": "2026-03-29T19:40:41-0600"
 }

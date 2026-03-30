@@ -1,0 +1,151 @@
+experiment: exp-advanced-patterns
+run_id: core-A-vs-E
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), research-overnight-20260329 A7"
+config:
+  conditions: [A, E]
+  tasks: [T01-circular-dep, T02-test-first-bug, T03-config-migration]
+  runs_per_condition_per_task: 3
+  total_runs_planned: 18
+  total_runs_completed: 17
+  model: claude-sonnet-4-20250514
+  budget_cap_usd: 2.00
+  budget_spent_usd: 2.08
+  condition_A: "Base 8-module cognitive cycle (baseline config)"
+  condition_E: "All Tier 1-2 patterns active: reflector-v2 (P6), thought patterns (P5), meta-composer (P2), affect (P3), personas (P4)"
+  config_A: "baseline (evict + constrain-force + baseline prompt)"
+  config_E: "baseline (overridden by P2 meta-composer, which classified all tasks as routine/muscle-memory -> baseline)"
+
+metrics:
+  # Overall
+  condition_A_pass_rate: 0.750       # 6/8 (1 run missing: T03-run2 budget exceeded)
+  condition_E_pass_rate: 0.222       # 2/9
+  condition_A_avg_tokens: 19583
+  condition_E_avg_tokens: 25299
+  token_ratio_E_over_A: 1.29
+  condition_A_avg_cycles: 11.3
+  condition_E_avg_cycles: 14.7
+  condition_A_avg_duration_s: 68.4
+  condition_E_avg_duration_s: 86.6
+
+  # T01: circular-dependency-refactor
+  T01_A_pass_rate: 1.000             # 3/3
+  T01_E_pass_rate: 0.333             # 1/3
+  T01_A_avg_tokens: 24378
+  T01_E_avg_tokens: 26836
+  T01_A_avg_cycles: 15.0
+  T01_E_avg_cycles: 15.0
+
+  # T02: test-first-bug-fix-misdirection
+  T02_A_pass_rate: 1.000             # 3/3
+  T02_E_pass_rate: 0.333             # 1/3
+  T02_A_avg_tokens: 7524
+  T02_E_avg_tokens: 23747
+  T02_A_avg_cycles: 6.0
+  T02_E_avg_cycles: 14.0
+  T02_token_ratio_E_over_A: 3.16    # E uses 3.16x more tokens on T02
+
+  # T03: config-migration-env-interpolation
+  T03_A_pass_rate: 0.000             # 0/2 (1 run missing)
+  T03_E_pass_rate: 0.000             # 0/3
+  T03_A_avg_tokens: 30481
+  T03_E_avg_tokens: 25314
+  T03_A_avg_cycles: 13.5
+  T03_E_avg_cycles: 15.0
+
+  # Pattern-specific metrics (E condition only)
+  total_reflections_generated: 27     # 3 lessons per run, 9 runs
+  total_memory_retrievals: 132
+  affect_frustrated_count: 56         # number of cycles labeled 'frustrated'
+  affect_confident_count: 71          # number of cycles labeled 'confident'
+  affect_neutral_count: 18            # first 2 cycles of each run
+  total_monitor_interventions_A: 50
+  total_monitor_interventions_E: 78
+
+verdict: "FAIL — enriched preset (E) significantly underperforms control (A)"
+gate: "R-07 — Advanced Patterns Core (A vs E)"
+
+findings:
+  F1_E_hurts_performance: |
+    Condition E (all advanced patterns) achieved 22% pass rate vs 75% for control A.
+    This is a strong negative result. The enriched preset with all v2 patterns active
+    DEGRADES task performance rather than improving it.
+
+  F2_token_overhead_substantial: |
+    E uses 1.29x more tokens overall, but the ratio is task-dependent. On T02
+    (test-first-bug-fix), E uses 3.16x more tokens than A while achieving a lower
+    pass rate (33% vs 100%). A solves T02 in 6 cycles with ~7.5K tokens. E takes
+    12-15 cycles with ~24K tokens. The additional prompt injections (persona, affect,
+    task anchor, cycle budget, memory) inflate context without improving action quality.
+
+  F3_prompt_injection_creates_noise: |
+    E injects persona prompt, affect signals, memory retrievals, thought patterns,
+    and meta-composer classification into the workspace each cycle. On T02, A reads
+    the files, identifies the bug, edits, and calls done in 6 cycles. E reads the
+    same files but gets distracted by the overhead — it explores more broadly (Glob,
+    Grep patterns) before acting, and sometimes fails to actually make the edit.
+    The additional context appears to dilute the task signal.
+
+  F4_T03_hard_for_both: |
+    T03 (config migration with env interpolation) defeated both conditions. The task
+    requires preserving process.env references for SERVER_HOST — a specific detail
+    that both A and E miss. This suggests the task difficulty exceeds what 15 cycles
+    of Sonnet can reliably handle, independent of cognitive architecture.
+
+  F5_affect_module_correctly_signals: |
+    The affect module correctly detected frustration in early cycles (read-only
+    exploration phase) and transitioned to confident once write actions began.
+    On T02 E run 2, the affect trace was frustrated for all 15 cycles — correctly
+    reflecting the agent's inability to make the fix. However, the affect signal
+    injection ("You appear stuck") did not help the agent recover; it just added
+    noise to the prompt.
+
+  F6_reflections_are_generic: |
+    All 27 reflection lessons across 9 E runs are generic software engineering
+    advice ("map dependencies before changing", "verify after editing", "fix at
+    source"). None are task-specific enough to provide actionable transfer learning.
+    The reflector-v2 produces reasonable-sounding but non-operational lessons.
+
+  F7_meta_composer_classified_everything_as_routine: |
+    The P2 meta-composer classified every task as "routine" or "muscle-memory",
+    selecting baseline config for all E runs. This means the adaptive config
+    selection mechanism (P2) provided zero value — it never diverged from the
+    control's config. The task signal gathering from memory is too coarse to
+    differentiate task types.
+
+  F8_stagnation_pattern: |
+    Both A and E show a consistent pattern: 6-8 cycles of read-only exploration
+    (Read, Glob, Grep) before the first Write/Edit. The monitor correctly detects
+    stagnation but constrain-force intervention does not accelerate the transition
+    to writing. The real bottleneck is the LLM's tendency to explore exhaustively
+    before acting, not stagnation detection quality.
+
+root_causes:
+  RC1: |
+    Context pollution. Each additional pattern (persona, affect, memory, patterns)
+    adds 50-200 tokens of prompt injection per cycle. Over 15 cycles this compounds.
+    The LLM's attention is split between task signal and meta-cognitive scaffolding.
+    On simple tasks (T02), A's clean context lets it act decisively. E's noisy context
+    causes hesitation and exploration loops.
+
+  RC2: |
+    Workspace capacity saturation. Both conditions use capacity-8 workspace with
+    evict strategy. E fills workspace slots faster because memory retrievals,
+    affect signals, and pattern injections compete with task-relevant observations.
+    Critical task context gets evicted earlier in E than in A.
+
+  RC3: |
+    Overhead without adaptation. The patterns inject signals but the core
+    reasoner-actor does not adapt its behavior in response. Affect says "frustrated"
+    but the RA module doesn't change strategy. Memory retrieves lessons but they're
+    too generic to influence the next action. The information flows one way (pattern
+    -> workspace) without closing the feedback loop.
+
+recommendations:
+  R1: "Gate pattern activation on task complexity. Simple tasks (T02) need zero patterns. Only activate patterns for tasks where A fails."
+  R2: "Increase workspace capacity for E condition to prevent context eviction from pattern noise."
+  R3: "Make affect signals actionable: instead of injecting text guidance, use affect to modify RA control signals (e.g., frustrated -> switch strategy to 'think')."
+  R4: "Improve reflector-v2 to produce specific, testable lessons (e.g., 'check for process.env references after migration') not generic advice."
+  R5: "Fix meta-composer: currently classifies everything as routine. Needs better signal extraction to differentiate task types."
+
+results_dir: "experiments/exp-advanced-patterns/results/"

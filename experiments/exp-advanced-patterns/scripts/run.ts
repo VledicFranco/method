@@ -182,7 +182,7 @@ async function runTask(
   const vfs = new VirtualToolProvider(task.initialFiles);
 
   const llmProvider = anthropicProvider({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-20250514',
     maxOutputTokens: 2048,
   });
 
@@ -617,9 +617,9 @@ class BudgetTracker {
   private totalRuns = 0;
   private readonly maxBudgetUsd: number;
 
-  // Claude Haiku pricing: $0.8/1M input, $4/1M output
-  // Approximate: 80% input, 20% output → blended rate ~$1.44/1M
-  private readonly blendedRatePerMillion = 1.44;
+  // Claude Sonnet 4 pricing: $3/1M input, $15/1M output
+  // Approximate: 80% input, 20% output → blended rate ~$5.40/1M
+  private readonly blendedRatePerMillion = 5.40;
 
   constructor(maxBudgetUsd: number) {
     this.maxBudgetUsd = maxBudgetUsd;
@@ -665,6 +665,8 @@ async function main(): Promise<void> {
   const runsArg = args.find(a => a.startsWith('--runs='))?.split('=')[1] ?? '1';
   const isPilot = args.includes('--pilot');
   const isDryRun = args.includes('--dry-run');
+  const maxSpendArg = args.find(a => a.startsWith('--max-spend='))?.split('=')[1] ?? '17';
+  const maxSpendUsd = parseFloat(maxSpendArg);
   const outputDir = args.find(a => a.startsWith('--output-dir='))?.split('=')[1]
     ?? resolve(import.meta.dirname ?? '.', '../results');
 
@@ -704,6 +706,8 @@ async function main(): Promise<void> {
   console.log(`  Runs per condition per task: ${numRuns}`);
   console.log(`  Total runs: ${totalRuns}`);
   console.log(`  Output: ${outputDir}`);
+  console.log(`  Budget: $${maxSpendUsd.toFixed(2)}`);
+  console.log(`  Model: claude-sonnet-4-20250514`);
   if (isPilot) console.log('  MODE: PILOT (N=2, T01, conditions A+E)');
   console.log('');
 
@@ -716,7 +720,7 @@ async function main(): Promise<void> {
   await mkdir(outputDir, { recursive: true });
 
   // Budget tracker
-  const budget = new BudgetTracker(17);
+  const budget = new BudgetTracker(maxSpendUsd);
 
   // Per-condition shared memory
   const conditionMemory: Record<string, MemoryPortV2> = {};

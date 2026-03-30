@@ -1,0 +1,39 @@
+{
+  "model_dir": "phase-3-training\\models\\typegen-qwen25-05b-lora",
+  "holdout_entries": 500,
+  "task": "json-schema-to-typescript",
+  "parse_rate": 1.0,
+  "exact_match_rate": 0.996,
+  "structural_match_rate": 0.996,
+  "per_complexity": {
+    "simple": {
+      "count": 234,
+      "exact_match": 1.0,
+      "parse_rate": 1.0,
+      "structural_match": 1.0
+    },
+    "medium": {
+      "count": 154,
+      "exact_match": 0.9935,
+      "parse_rate": 1.0,
+      "structural_match": 0.9935
+    },
+    "complex": {
+      "count": 112,
+      "exact_match": 0.9911,
+      "parse_rate": 1.0,
+      "structural_match": 0.9911
+    }
+  },
+  "confidence": {
+    "mean": 0.9992,
+    "median": 0.9996,
+    "p95": 0.9999
+  },
+  "latency_s": {
+    "mean": 0.8415,
+    "median": 0.6888,
+    "p95": 2.0563
+  },
+  "timestamp": "2026-03-29T19:49:45-0600"
+}

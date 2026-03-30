@@ -1,0 +1,138 @@
+experiment: exp-interventionist-cost
+run_id: core-A-B-C
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), research-overnight-20260329 A6"
+config:
+  conditions: [A, B, C]
+  tasks: [simple-rename (T1), config-migration (T2), circular-dep (T3)]
+  runs_per_condition_per_task: 5
+  total_runs_planned: 45
+  total_runs_completed: 45
+  model: claude-sonnet-4-20250514
+  budget_cap_usd: 5.00
+  budget_spent_usd: 3.76
+  total_tokens: 626897
+  condition_A: "no-monitor — MONITOR/CONTROL never fire, baseline"
+  condition_B: "always-on — EVC with costWeight=0, bias=1.0 (fires every cycle)"
+  condition_C: "interventionist — EVC default (payoff=1, cost=1, minPE=0.1, bias=0)"
+
+metrics:
+  # ── Condition A (no-monitor, baseline) ──
+  condition_A_runs: 15
+  condition_A_pass_rate: 0.933         # 14/15
+  condition_A_tokens_mean: 11985
+  condition_A_interventions_mean: 0.0
+  condition_A_per_task:
+    simple-rename:  { pass: "5/5", tokens_mean: 12931 }
+    config-migration: { pass: "5/5", tokens_mean: 5299 }
+    circular-dep:   { pass: "4/5", tokens_mean: 17725 }
+
+  # ── Condition B (always-on) ──
+  condition_B_runs: 15
+  condition_B_pass_rate: 0.933         # 14/15
+  condition_B_tokens_mean: 12819
+  condition_B_interventions_mean: 11.4
+  condition_B_per_task:
+    simple-rename:  { pass: "4/5", tokens_mean: 16225, interventions_mean: 13.8 }
+    config-migration: { pass: "5/5", tokens_mean: 5319, interventions_mean: 5.4 }
+    circular-dep:   { pass: "5/5", tokens_mean: 16912, interventions_mean: 15.0 }
+
+  # ── Condition C (interventionist) ──
+  condition_C_runs: 15
+  condition_C_pass_rate: 0.667         # 10/15
+  condition_C_tokens_mean: 16989
+  condition_C_interventions_mean: 8.9
+  condition_C_per_task:
+    simple-rename:  { pass: "2/5", tokens_mean: 25459, interventions_mean: 11.0 }
+    config-migration: { pass: "5/5", tokens_mean: 6467, interventions_mean: 3.8 }
+    circular-dep:   { pass: "3/5", tokens_mean: 19043, interventions_mean: 12.0 }
+
+  # ── Cost Multipliers (vs no-monitor baseline) ──
+  cost_multiplier_always_on: 1.070     # 12819 / 11985
+  cost_multiplier_interventionist: 1.418  # 16989 / 11985
+
+  # ── Per-Task Cost Multipliers ──
+  per_task_multipliers:
+    simple-rename:
+      always_on: 1.255                 # 16225 / 12931
+      interventionist: 1.969           # 25459 / 12931 (skewed by 69620-token outlier in run 4)
+    config-migration:
+      always_on: 1.004                 # 5319 / 5299
+      interventionist: 1.220           # 6467 / 5299
+    circular-dep:
+      always_on: 0.954                 # 16912 / 17725 (always-on slightly cheaper)
+      interventionist: 1.074           # 19043 / 17725
+
+analysis:
+  headline: |
+    Hypothesis NOT supported. Interventionist (C) costs 1.42x baseline but has LOWER success
+    rate (67% vs 93%). Always-on (B) costs only 1.07x and matches baseline success. The EVC
+    policy is intervening too aggressively on easy tasks (simple-rename) and creating
+    interference that degrades performance.
+
+  cost_findings:
+    - "Always-on (B) overhead is remarkably low at 1.07x, far below the expected >2x. This
+      suggests the monitor is essentially free because MonitorV2 is rule-based (no LLM call).
+      The token cost is dominated by the REASON phase (object-level LLM calls)."
+    - "Interventionist (C) at 1.42x satisfies the <1.5x target but only because of config-
+      migration (1.22x) and circular-dep (1.07x). Simple-rename at 1.97x exceeds the target."
+    - "The 69620-token outlier in interventionist/simple-rename/run4 suggests the EVC policy
+      can trigger spiraling behavior: intervention -> replan -> more intervention -> longer
+      context -> more tokens per cycle."
+
+  success_findings:
+    - "No-monitor (A) 93% success rate is the highest, suggesting the baseline model (Sonnet)
+      is competent enough that monitoring provides minimal error-detection benefit on these tasks."
+    - "Always-on (B) matches at 93% — monitoring neither helps nor hurts much."
+    - "Interventionist (C) at 67% is significantly worse. The EVC-triggered interventions on
+      simple-rename (40% pass rate vs 100% baseline) actively degrade performance."
+    - "Config-migration is 100% across all conditions — the ideal case for interventionist,
+      where it saves tokens on an easy task."
+    - "Circular-dep: always-on 100% > no-monitor 80% > interventionist 60%. Monitoring helps
+      on hard tasks (B vs A) but the EVC policy's selectivity loses that benefit (C vs B)."
+
+  intervention_findings:
+    - "Interventionist triggers on ~8.9/cycle avg, vs always-on 11.4. Only 22% fewer
+      interventions, not the expected 80-90% reduction. The EVC minPredictionError=0.1
+      threshold is too sensitive."
+    - "Config-migration shows the best selectivity: 3.8 interventions (interventionist) vs
+      5.4 (always-on) = 30% reduction."
+    - "Simple-rename: 11.0 interventions vs 13.8 = only 20% reduction. The EVC policy
+      is triggering on nearly every cycle for a task that needs zero monitoring."
+
+  root_cause: |
+    The EVC policy with default parameters (minPredictionError=0.1) is too sensitive. It
+    fires on almost every cycle because:
+    1. ReasonerActorV2 emits prediction error signals on tool-use results (file reads/writes),
+       and even successful operations can have PE > 0.1.
+    2. The monitor's re-planning directives (forceReplan, restrictedActions) interfere with
+       the agent's natural task completion flow.
+    3. On simple tasks, this interference causes the agent to lose its plan and spiral.
+
+    The "default-interventionist" architecture requires either:
+    (a) Higher PE threshold (e.g., minPredictionError=0.3) to reduce false-positive triggers
+    (b) Task-adaptive thresholds (calibrate based on task difficulty signal)
+    (c) Monitor that doesn't issue forceReplan on low-severity anomalies
+
+  comparison_to_pilot: |
+    Pilot (N=1 on circular-dep) found interventionist at 100% success. N=5 shows it's 60%
+    on the same task. Confirms N=1 pilot was insufficient for reliable success rate estimates.
+
+verdict: FAIL
+verdict_reason: |
+  Interventionist (C) overhead 1.42x satisfies the <1.5x cost target BUT success rate (67%)
+  is significantly worse than both baseline (93%) and always-on (93%). The cost savings are
+  illusory when the agent fails more often. By the experiment's own decision criteria
+  (detection rate >= 0.8x of always-on), interventionist fails: 67% / 93% = 0.72 < 0.80.
+
+recommendations:
+  - "Increase minPredictionError from 0.1 to 0.25-0.3 to reduce false-positive interventions"
+  - "Separate anomaly severity levels: forceReplan only on high-severity anomalies, not all"
+  - "Add a 'warm-up' period (skip monitoring for first 3 cycles) to let the agent establish its plan"
+  - "Re-run with calibrated thresholds (proposed R-06b follow-up)"
+  - "Investigate the 69620-token spiral: add a per-cycle token cap that triggers early exit"
+
+artifacts:
+  summary_json: "experiments/exp-interventionist-cost/results/summary-2026-03-30T00-50-26.json"
+  results_dir: "C:/Users/atfm0/Repositories/results/"
+  note: "Results written to repo root /results/ due to import.meta.dirname resolution issue in the runner script"

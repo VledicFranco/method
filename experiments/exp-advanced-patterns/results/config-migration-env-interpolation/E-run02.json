@@ -1,0 +1,217 @@
+{
+  "condition": "E",
+  "task": "config-migration-env-interpolation",
+  "run": 2,
+  "success": false,
+  "reason": "Missing process.env reference for SERVER_HOST",
+  "tokensUsed": 22891,
+  "providerCalls": 15,
+  "durationMs": 85121,
+  "cycles": 15,
+  "toolCalls": [
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "config/app.yaml"
+      },
+      "success": true
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+      },
+      "success": true
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+      },
+      "success": true
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "Missing pattern parameter",
+        "isError": true
+      },
+      "success": false
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "(no matches)"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "(no matches)"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "(no matches)"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+      },
+      "success": true
+    },
+    {
+      "tool": "Glob",
+      "input": {
+        "output": "(no matches)"
+      },
+      "success": true
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+      },
+      "success": true
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "File not found: config-loader.ts",
+        "isError": true
+      },
+      "success": false
+    },
+    {
+      "tool": "Read",
+      "input": {
+        "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+      },
+      "success": true
+    }
+  ],
+  "monitorInterventions": 9,
+  "affectSignals": [
+    {
+      "cycle": 1,
+      "label": "neutral",
+      "valence": 0,
+      "arousal": 0.3
+    },
+    {
+      "cycle": 2,
+      "label": "neutral",
+      "valence": 0,
+      "arousal": 0.3
+    },
+    {
+      "cycle": 3,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 4,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 5,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 6,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 7,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 8,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 9,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 10,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 11,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 12,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 13,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 14,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    },
+    {
+      "cycle": 15,
+      "label": "frustrated",
+      "valence": -0.7,
+      "arousal": 0.9
+    }
+  ],
+  "conflictResolutions": [],
+  "reflectionLessons": 3,
+  "memoryRetrievals": 15,
+  "configUsed": "baseline"
+}

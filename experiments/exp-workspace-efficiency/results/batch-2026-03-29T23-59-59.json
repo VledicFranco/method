@@ -1,0 +1,4279 @@
+[
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 21990,
+    "providerCalls": 15,
+    "durationMs": 83410,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 9,
+    "workspaceEntriesAtEnd": 17,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IAProvider } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IAProvider): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IAProvider } from './interfaces';\n     3\t\n     4\texport class A implements IAProvider {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:01:22.484Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 21651,
+    "providerCalls": 15,
+    "durationMs": 87252,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 10,
+    "workspaceEntriesAtEnd": 17,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IWrappable } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IWrappable): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/interfaces.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:02:49.742Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 3,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 16990,
+    "providerCalls": 13,
+    "durationMs": 75014,
+    "cyclesCompleted": 13,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 14,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IWrappable } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IWrappable): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:04:04.762Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 4,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 12901,
+    "providerCalls": 11,
+    "durationMs": 64340,
+    "cyclesCompleted": 11,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 12,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IValueProvider } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IValueProvider): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:05:09.118Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 5,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 21814,
+    "providerCalls": 15,
+    "durationMs": 88883,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 17,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IAProvider } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IAProvider): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IAProvider } from './interfaces';\n     3\t\n     4\texport class A implements IAProvider {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:06:38.010Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 1,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10460,
+    "providerCalls": 8,
+    "durationMs": 45936,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount: return original price minus discount amount\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:07:23.956Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 2,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10406,
+    "providerCalls": 8,
+    "durationMs": 43820,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount: return price minus the discount amount\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:08:07.786Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 3,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 14226,
+    "providerCalls": 10,
+    "durationMs": 57842,
+    "cyclesCompleted": 10,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 10,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount percentage to get the final discounted price\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:09:05.641Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 4,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 9075,
+    "providerCalls": 8,
+    "durationMs": 39838,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 9,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:09:45.492Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 5,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 8689,
+    "providerCalls": 7,
+    "durationMs": 38925,
+    "cyclesCompleted": 7,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 7,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:10:24.432Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 1,
+    "success": true,
+    "reason": "Config migrated to TypeScript with proper process.env lookups, type exported, static values preserved",
+    "tokensUsed": 24586,
+    "providerCalls": 15,
+    "durationMs": 79619,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 17,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Pure TypeScript config loader - reads from environment variables\n     2\texport interface AppConfig {\n     3\t  server: { host: string; port: number };\n     4\t  database: { url: string; pool_size: number; timeout_ms: number };\n     5\t  auth: { secret: string; token_ttl: number };\n     6\t  logging: { level: string; format: string };\n     7\t}\n     8\t\n     9\texport function loadConfig(): AppConfig {\n    10\t  // Read from environment variables with static values preserved\n    11\t  return {\n    12\t    server: {\n    13\t      host: process.env.SERVER_HOST || 'localhost',\n    14\t      port: parseInt(process.env.SERVER_PORT || '3000', 10)\n    15\t    },\n    16\t    database: {\n    17\t      url: process.env.DATABASE_URL || '',\n    18\t      pool_size: 10, // static value preserved\n    19\t      timeout_ms: 5000 // static value preserved\n    20\t    },\n    21\t    auth: {\n    22\t      secret: process.env.AUTH_SECRET || '',\n    23\t      token_ttl: 3600 // static value preserved\n    24\t    },\n    25\t    logging: {\n    26\t      level: process.env.LOG_LEVEL || 'info',\n    27\t      format: 'json' // static value preserved\n    28\t    }\n    29\t  };\n    30\t}\n    31\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:11:44.067Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 2,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 23871,
+    "providerCalls": 15,
+    "durationMs": 84066,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 11,
+    "workspaceEntriesAtEnd": 18,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:13:08.149Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 3,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 24254,
+    "providerCalls": 15,
+    "durationMs": 80335,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 9,
+    "workspaceEntriesAtEnd": 18,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:14:28.501Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 4,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 23624,
+    "providerCalls": 15,
+    "durationMs": 80780,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 17,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:15:49.298Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "A",
+    "conditionName": "unlimited",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 5,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 26501,
+    "providerCalls": 15,
+    "durationMs": 88049,
+    "cyclesCompleted": 15,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 18,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Pure TypeScript config loader - reads from environment variables\n     2\tinterface AppConfig {\n     3\t  server: { host: string; port: number };\n     4\t  database: { url: string; pool_size: number; timeout_ms: number };\n     5\t  auth: { secret: string; token_ttl: number };\n     6\t  logging: { level: string; format: string };\n     7\t}\n     8\t\n     9\texport function loadConfig(): AppConfig {\n    10\t  return {\n    11\t    server: {\n    12\t      host: process.env.SERVER_HOST || 'localhost',\n    13\t      port: parseInt(process.env.SERVER_PORT || '3000', 10)\n    14\t    },\n    15\t    database: {\n    16\t      url: process.env.DATABASE_URL || '',\n    17\t      pool_size: 10,\n    18\t      timeout_ms: 5000\n    19\t    },\n    20\t    auth: {\n    21\t      secret: process.env.AUTH_SECRET || '',\n    22\t      token_ttl: 3600\n    23\t    },\n    24\t    logging: {\n    25\t      level: process.env.LOG_LEVEL || 'info',\n    26\t      format: 'json'\n    27\t    }\n    28\t  };\n    29\t}\n    30\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:17:17.366Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 17721,
+    "providerCalls": 15,
+    "durationMs": 75893,
+    "cyclesCompleted": 15,
+    "evictionCount": 11,
+    "evictionSalienceMean": 0.4947700636336748,
+    "evictionSalienceMax": 0.5439643204138436,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { A } from './module-a';\n     2\texport { B } from './module-b';\n     3\texport { C } from './module-c';\n     4\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IComputable } from './interfaces';\n     2\t\n     3\texport class A {\n     4\t  private b: IComputable;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IComputable } from './interfaces';\n     2\t\n     3\texport class A {\n     4\t  private b: IComputable;\n     5\t\n     6\t  constructor(b: IComputable) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IComputable } from './interfaces';\n     2\t\n     3\texport class A {\n     4\t  private b: IComputable;\n     5\t\n     6\t  constructor(b: IComputable) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IComputable } from './interfaces';\n     2\t\n     3\texport class A {\n     4\t  private b: IComputable;\n     5\t\n     6\t  constructor(b: IComputable) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:18:33.288Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 18491,
+    "providerCalls": 15,
+    "durationMs": 82002,
+    "cyclesCompleted": 15,
+    "evictionCount": 9,
+    "evictionSalienceMean": 0.49549941709402645,
+    "evictionSalienceMax": 0.5134426068147406,
+    "monitorInterventions": 5,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/interfaces.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IWrappable } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IWrappable): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:19:55.312Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 3,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 18663,
+    "providerCalls": 15,
+    "durationMs": 80318,
+    "cyclesCompleted": 15,
+    "evictionCount": 11,
+    "evictionSalienceMean": 0.4948268750651469,
+    "evictionSalienceMax": 0.5248218177789044,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:21:15.653Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 4,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 17465,
+    "providerCalls": 15,
+    "durationMs": 78559,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.5086610555761254,
+    "evictionSalienceMax": 0.5355795839814196,
+    "monitorInterventions": 9,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/interfaces.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:22:34.236Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 5,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 10742,
+    "providerCalls": 10,
+    "durationMs": 54026,
+    "cyclesCompleted": 10,
+    "evictionCount": 3,
+    "evictionSalienceMean": 0.5048464775790796,
+    "evictionSalienceMax": 0.5193891547930041,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:23:28.290Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 1,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10536,
+    "providerCalls": 8,
+    "durationMs": 43796,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount: return price minus the discount amount\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:24:12.112Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 2,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 8643,
+    "providerCalls": 7,
+    "durationMs": 38472,
+    "cyclesCompleted": 7,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 7,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:24:50.611Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 3,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10413,
+    "providerCalls": 8,
+    "durationMs": 44295,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount: return price minus the discount amount\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:25:34.932Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 4,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 8585,
+    "providerCalls": 7,
+    "durationMs": 36346,
+    "cyclesCompleted": 7,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 7,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:26:11.307Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 5,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 14680,
+    "providerCalls": 12,
+    "durationMs": 61552,
+    "cyclesCompleted": 12,
+    "evictionCount": 5,
+    "evictionSalienceMean": 0.5310034746770445,
+    "evictionSalienceMax": 0.537039845257786,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:27:12.889Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 1,
+    "success": false,
+    "reason": "Missing process.env reference for SERVER_HOST",
+    "tokensUsed": 17434,
+    "providerCalls": 15,
+    "durationMs": 71698,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.5232617390941599,
+    "evictionSalienceMax": 0.5386398093737106,
+    "monitorInterventions": 13,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      }
+    ],
+    "timestamp": "2026-03-30T00:28:24.616Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 2,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 21291,
+    "providerCalls": 15,
+    "durationMs": 71819,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.5334476656880949,
+    "evictionSalienceMax": 0.556706253989193,
+    "monitorInterventions": 9,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Pure TypeScript config loader (migrated from YAML)\n     2\t\n     3\tinterface AppConfig {\n     4\t  server: { host: string; port: number };\n     5\t  database: { url: string; pool_size: number; timeout_ms: number };\n     6\t  auth: { secret: string; token_ttl: number };\n     7\t  logging: { level: string; format: string };\n     8\t}\n     9\t\n    10\texport function loadConfig(): AppConfig {\n    11\t  return {\n    12\t    server: {\n    13\t      host: process.env.SERVER_HOST || 'localhost',\n    14\t      port: parseInt(process.env.SERVER_PORT || '3000', 10)\n    15\t    },\n    16\t    database: {\n    17\t      url: process.env.DATABASE_URL || '',\n    18\t      pool_size: 10,\n    19\t      timeout_ms: 5000\n    20\t    },\n    21\t    auth: {\n    22\t      secret: process.env.AUTH_SECRET || '',\n    23\t      token_ttl: 3600\n    24\t    },\n    25\t    logging: {\n    26\t      level: process.env.LOG_LEVEL || 'info',\n    27\t      format: 'json'\n    28\t    }\n    29\t  };\n    30\t}\n    31\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:29:36.463Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 3,
+    "success": false,
+    "reason": "AppConfig interface/type is not exported from any TypeScript file",
+    "tokensUsed": 20717,
+    "providerCalls": 15,
+    "durationMs": 79574,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.5225470278595326,
+    "evictionSalienceMax": 0.5445099178138665,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:30:56.072Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 4,
+    "success": false,
+    "reason": "Missing process.env reference for SERVER_HOST",
+    "tokensUsed": 25177,
+    "providerCalls": 15,
+    "durationMs": 75146,
+    "cyclesCompleted": 15,
+    "evictionCount": 14,
+    "evictionSalienceMean": 0.5683304106388257,
+    "evictionSalienceMax": 0.6392465385546544,
+    "monitorInterventions": 13,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:32:11.250Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "B",
+    "conditionName": "standard-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 5,
+    "success": true,
+    "reason": "Config migrated to TypeScript with proper process.env lookups, type exported, static values preserved",
+    "tokensUsed": 13172,
+    "providerCalls": 10,
+    "durationMs": 51992,
+    "cyclesCompleted": 10,
+    "evictionCount": 3,
+    "evictionSalienceMean": 0.5162021968050517,
+    "evictionSalienceMax": 0.5226271148297847,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:33:03.274Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 1,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 18882,
+    "providerCalls": 15,
+    "durationMs": 86750,
+    "cyclesCompleted": 15,
+    "evictionCount": 8,
+    "evictionSalienceMean": 0.3096131879117705,
+    "evictionSalienceMax": 0.43643130241340256,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { AInterface } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:34:30.084Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 2,
+    "success": false,
+    "reason": "Circular dependency still exists in import graph",
+    "tokensUsed": 18755,
+    "providerCalls": 15,
+    "durationMs": 79158,
+    "cyclesCompleted": 15,
+    "evictionCount": 11,
+    "evictionSalienceMean": 0.2829162932724841,
+    "evictionSalienceMax": 0.44898501171308564,
+    "monitorInterventions": 12,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "(no matches)"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { A } from './module-a';\n     2\texport { B } from './module-b';\n     3\texport { C } from './module-c';\n     4\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:35:49.282Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 3,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 15735,
+    "providerCalls": 13,
+    "durationMs": 76562,
+    "cyclesCompleted": 13,
+    "evictionCount": 6,
+    "evictionSalienceMean": 0.3454426832294444,
+    "evictionSalienceMax": 0.43536192893213904,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "File not found: module-a.ts",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:37:05.884Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 4,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 18232,
+    "providerCalls": 15,
+    "durationMs": 83868,
+    "cyclesCompleted": 15,
+    "evictionCount": 8,
+    "evictionSalienceMean": 0.3838925984160917,
+    "evictionSalienceMax": 0.459774893905328,
+    "monitorInterventions": 6,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "Missing file_path parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:38:29.790Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "circular-dependency-refactor",
+    "taskIndex": 0,
+    "run": 5,
+    "success": true,
+    "reason": "Circular dependency resolved, all classes and methods preserved",
+    "tokensUsed": 17627,
+    "providerCalls": 15,
+    "durationMs": 79634,
+    "cyclesCompleted": 15,
+    "evictionCount": 8,
+    "evictionSalienceMean": 0.4553457572606371,
+    "evictionSalienceMax": 0.46799610289966126,
+    "monitorInterventions": 7,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/interfaces.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-c.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/module-a.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { IWrappable } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IWrappable): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/module-b.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/module-a.ts\nsrc/module-b.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:39:49.469Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 1,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 8409,
+    "providerCalls": 7,
+    "durationMs": 37451,
+    "cyclesCompleted": 7,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 7,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:40:26.964Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 2,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 9256,
+    "providerCalls": 8,
+    "durationMs": 39628,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:41:06.638Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 3,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 9155,
+    "providerCalls": 8,
+    "durationMs": 39312,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:41:45.991Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 4,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 10415,
+    "providerCalls": 8,
+    "durationMs": 41473,
+    "cyclesCompleted": 8,
+    "evictionCount": 0,
+    "evictionSalienceMean": 0,
+    "evictionSalienceMax": 0,
+    "monitorInterventions": 4,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "Missing pattern parameter",
+          "isError": true
+        },
+        "success": false
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // Apply discount: return price after discount is applied\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:42:27.507Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "test-first-bug-fix-misdirection",
+    "taskIndex": 1,
+    "run": 5,
+    "success": true,
+    "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+    "tokensUsed": 9203,
+    "providerCalls": 8,
+    "durationMs": 39703,
+    "cyclesCompleted": 8,
+    "evictionCount": 1,
+    "evictionSalienceMean": 0.4693478490483085,
+    "evictionSalienceMax": 0.4693478490483085,
+    "monitorInterventions": 3,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/discount.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Edit",
+        "input": {
+          "output": "File edited: src/discount.ts"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:43:07.256Z"
+  },
+  {
+    "experiment": "exp-workspace-efficiency",
+    "condition": "E",
+    "conditionName": "priority-attend-8",
+    "task": "config-migration-env-interpolation",
+    "taskIndex": 2,
+    "run": 1,
+    "success": true,
+    "reason": "Config migrated to TypeScript with proper process.env lookups, type exported, static values preserved",
+    "tokensUsed": 20170,
+    "providerCalls": 15,
+    "durationMs": 74454,
+    "cyclesCompleted": 15,
+    "evictionCount": 10,
+    "evictionSalienceMean": 0.4641877271693577,
+    "evictionSalienceMax": 0.48550624195204883,
+    "monitorInterventions": 8,
+    "workspaceEntriesAtEnd": 8,
+    "toolCalls": [
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/index.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Grep",
+        "input": {
+          "output": "src/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+        },
+        "success": true
+      },
+      {
+        "tool": "Write",
+        "input": {
+          "output": "File written: src/config-loader.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Glob",
+        "input": {
+          "output": "config/app.yaml"
+        },
+        "success": true
+      },
+      {
+        "tool": "Read",
+        "input": {
+          "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+        },
+        "success": true
+      }
+    ],
+    "timestamp": "2026-03-30T00:44:21.761Z"
+  }
+]

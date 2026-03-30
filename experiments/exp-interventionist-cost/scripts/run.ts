@@ -110,9 +110,11 @@ interface RunOptions {
   conditions: string[];          // 'A', 'B', 'C'
   tiers: number[];               // 1, 2, 3
   specificTask: string | null;
+  specificTasks: string[] | null; // multiple tasks via --tasks t1,t2,t3
   runsPerTask: number;
   pilot: boolean;
   dryRun: boolean;
+  maxSpend: number;              // total budget in USD
 }
 
 function parseArgs(): RunOptions {
@@ -121,9 +123,11 @@ function parseArgs(): RunOptions {
     conditions: ['A', 'B', 'C'],
     tiers: [1, 2, 3],
     specificTask: null,
+    specificTasks: null,
     runsPerTask: 10,
     pilot: false,
     dryRun: false,
+    maxSpend: 17.0,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -137,8 +141,14 @@ function parseArgs(): RunOptions {
       case '--task':
         opts.specificTask = args[++i];
         break;
+      case '--tasks':
+        opts.specificTasks = args[++i].split(',');
+        break;
       case '--runs':
         opts.runsPerTask = parseInt(args[++i]);
+        break;
+      case '--max-spend':
+        opts.maxSpend = parseFloat(args[++i]);
         break;
       case '--pilot':
         opts.pilot = true;
@@ -337,7 +347,18 @@ async function main(): Promise<void> {
 
   // Determine task list
   let tasks: TaskDefinition[];
-  if (opts.specificTask) {
+  if (opts.specificTasks) {
+    tasks = [];
+    for (const taskId of opts.specificTasks) {
+      const task = getTaskById(taskId.trim());
+      if (!task) {
+        console.error(`Unknown task: ${taskId}`);
+        console.error(`Available: ${ALL_TASKS.map(t => t.id).join(', ')}`);
+        process.exit(1);
+      }
+      tasks.push(task);
+    }
+  } else if (opts.specificTask) {
     const task = getTaskById(opts.specificTask);
     if (!task) {
       console.error(`Unknown task: ${opts.specificTask}`);
@@ -381,7 +402,8 @@ async function main(): Promise<void> {
   }
 
   // Execute runs
-  const budget = new BudgetGuardian(1.0, 0.50, 0.80);
+  const perConditionBudget = opts.maxSpend / opts.conditions.length;
+  const budget = new BudgetGuardian(opts.maxSpend, perConditionBudget, 0.90);
   const costTracker = new CostTracker();
   const allResults: RunMetrics[] = [];
 
@@ -451,7 +473,7 @@ async function main(): Promise<void> {
   await writeFile(summaryFile, JSON.stringify(summary, null, 2), 'utf8');
   console.log(`\n=== Summary written to ${summaryFile} ===`);
   console.log(`Total runs: ${allResults.length}`);
-  console.log(`Budget: $${budget.summary().estimatedCostUsd.toFixed(2)} / $1.00`);
+  console.log(`Budget: $${budget.summary().estimatedCostUsd.toFixed(2)} / $${opts.maxSpend.toFixed(2)}`);
 
   // Print condition comparison table
   console.log('\nCondition Comparison:');

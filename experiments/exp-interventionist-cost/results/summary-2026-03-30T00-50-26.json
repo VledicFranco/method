@@ -1,0 +1,72 @@
+{
+  "experiment": "exp-interventionist-cost",
+  "timestamp": "2026-03-30T00:50:26.580Z",
+  "options": {
+    "conditions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "tiers": [
+      1,
+      2,
+      3
+    ],
+    "specificTask": null,
+    "specificTasks": [
+      "simple-rename",
+      "config-migration",
+      "circular-dep"
+    ],
+    "runsPerTask": 5,
+    "pilot": false,
+    "dryRun": false,
+    "maxSpend": 5
+  },
+  "budget": {
+    "totalTokens": 626897,
+    "estimatedCostUsd": 3.7613820000000002,
+    "runCount": 45
+  },
+  "totalRuns": 45,
+  "byCondition": {
+    "no-monitor": {
+      "runs": 15,
+      "successRate": 0.9333333333333333,
+      "avgTokens": 11985.066666666668,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 0
+    },
+    "always-on": {
+      "runs": 15,
+      "successRate": 0.9333333333333333,
+      "avgTokens": 12818.6,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 11.4
+    },
+    "interventionist": {
+      "runs": 15,
+      "successRate": 0.6666666666666666,
+      "avgTokens": 16989.466666666667,
+      "avgMonitorTokens": 0,
+      "avgInterventions": 8.933333333333334
+    }
+  },
+  "byTier": {
+    "1": {
+      "runs": 15,
+      "successRate": 0.7333333333333333,
+      "avgTokens": 18205.2
+    },
+    "2": {
+      "runs": 15,
+      "successRate": 1,
+      "avgTokens": 5694.733333333334
+    },
+    "3": {
+      "runs": 15,
+      "successRate": 0.8,
+      "avgTokens": 17893.2
+    }
+  }
+}

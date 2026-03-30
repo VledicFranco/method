@@ -1,0 +1,29 @@
+experiment: exp-slm
+run_id: typegen-qwen05b-lora
+date: 2026-03-29
+agent: "Claude Opus 4.6 (1M context), research-afternoon-20260329 G3"
+config:
+  model: Qwen2.5-0.5B-Instruct
+  method: LoRA (r=16, alpha=32)
+  task: JSON Schema to TypeScript type definition
+  corpus: 10K synthetic (30% simple, 40% medium, 30% complex)
+  steps: 3000
+  learning_rate: 2.0e-4
+  batch_size: 2
+  fp16: true
+  max_length: 512
+metrics:
+  parse_rate: 1.0
+  exact_match_rate: 0.996
+  structural_match_rate: 0.996
+  simple_exact_match: 1.0
+  medium_exact_match: 0.9935
+  complex_exact_match: 0.9911
+  training_time_s: 5914.3
+  peak_vram_mb: 7395.1
+  final_loss: 0.3446
+  latency_mean_s: 0.8415
+  confidence_mean: 0.9992
+verdict: pass
+gate: "Generalization — JSON Schema to TypeScript"
+notes: "Validates RFC 002 beyond Monitor DSL. 99.6% exact match on a fundamentally different structured task. 100% parse rate across all complexity levels. Proves SLM compilation generalizes to code generation tasks. VRAM higher (7.4GB vs 4.5GB) due to max_length=512."

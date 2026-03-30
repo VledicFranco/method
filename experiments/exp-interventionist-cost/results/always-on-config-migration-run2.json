@@ -1,0 +1,167 @@
+{
+  "runId": "always-on-config-migration-run2",
+  "condition": "always-on",
+  "taskId": "config-migration",
+  "tier": 2,
+  "hasInjectedError": false,
+  "success": true,
+  "reason": "Config migrated and loader updated",
+  "totalTokens": 7602,
+  "monitorTokens": 0,
+  "objectLevelTokens": 7602,
+  "tokenOverheadFactor": null,
+  "totalDurationMs": 0,
+  "cycleCount": 7,
+  "monitorInvocationCount": 7,
+  "anomaliesDetected": 3,
+  "usefulInterventions": 0,
+  "errorDetectionRate": null,
+  "interventionPrecision": 0,
+  "costEffectivenessRatio": null,
+  "cycles": [
+    {
+      "cycleNumber": 1,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 565,
+      "monitorTokens": 0,
+      "objectLevelTokens": 565,
+      "durationMs": 0,
+      "anomalyDetected": false,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0,
+      "evcDecision": true,
+      "precision": 0,
+      "impasseType": null
+    },
+    {
+      "cycleNumber": 2,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 764,
+      "monitorTokens": 0,
+      "objectLevelTokens": 764,
+      "durationMs": 0,
+      "anomalyDetected": false,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0,
+      "evcDecision": true,
+      "precision": 1000000,
+      "impasseType": null
+    },
+    {
+      "cycleNumber": 3,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 958,
+      "monitorTokens": 0,
+      "objectLevelTokens": 958,
+      "durationMs": 0,
+      "anomalyDetected": true,
+      "anomalyDetails": [
+        "Compound anomaly: low confidence combined with unexpected result"
+      ],
+      "usefulIntervention": false,
+      "predictionError": 1000,
+      "evcDecision": true,
+      "precision": 4.99998000008,
+      "impasseType": null
+    },
+    {
+      "cycleNumber": 4,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 1212,
+      "monitorTokens": 0,
+      "objectLevelTokens": 1212,
+      "durationMs": 0,
+      "anomalyDetected": false,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0.4933199632030821,
+      "evcDecision": true,
+      "precision": 5.8915277000528095,
+      "impasseType": "rejection"
+    },
+    {
+      "cycleNumber": 5,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 1076,
+      "monitorTokens": 0,
+      "objectLevelTokens": 1076,
+      "durationMs": 0,
+      "anomalyDetected": true,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0.6210743173666787,
+      "evcDecision": true,
+      "precision": 6.716696258889239,
+      "impasseType": null
+    },
+    {
+      "cycleNumber": 6,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 1457,
+      "monitorTokens": 0,
+      "objectLevelTokens": 1457,
+      "durationMs": 0,
+      "anomalyDetected": true,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0.742601436047659,
+      "evcDecision": true,
+      "precision": 7.378622292880411,
+      "impasseType": null
+    },
+    {
+      "cycleNumber": 7,
+      "phasesExecuted": [
+        "MONITOR",
+        "REASON"
+      ],
+      "monitorFired": true,
+      "controlFired": false,
+      "totalTokens": 1570,
+      "monitorTokens": 0,
+      "objectLevelTokens": 1570,
+      "durationMs": 0,
+      "anomalyDetected": false,
+      "anomalyDetails": [],
+      "usefulIntervention": false,
+      "predictionError": 0.2252361842099157,
+      "evcDecision": true,
+      "precision": 9.107765581029028,
+      "impasseType": null
+    }
+  ],
+  "startedAt": "2026-03-30T00:22:37.935Z",
+  "completedAt": "2026-03-30T00:23:14.078Z"
+}
