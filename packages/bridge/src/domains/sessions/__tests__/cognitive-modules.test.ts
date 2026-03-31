@@ -561,4 +561,212 @@ describe('cognitive-modules (PRD 042 Phase 1-3)', () => {
     assert.ok(monitorEvent, 'Monitor anomaly event should be emitted in cycle 2');
     assert.equal(lastOutput, 'recovered', 'Session should complete with recovered output');
   });
+
+  // ── Scenario 13: Workspace saturation intervention ──
+
+  it('Monitor step() with workspace near capacity (>=0.8) -> workspace-saturation intervention', async () => {
+    const capacity = 5;
+    const { ws, monitorPort } = createTestWorkspace(capacity);
+    const { events, onEvent } = createEventCollector();
+
+    const monModule = createBridgeMonitorModule(
+      ws, monitorPort, capacity,
+      { confThreshold: 0.3, stagThreshold: 2, intBudget: 5 },
+      onEvent,
+    );
+
+    // Fill workspace to >= 0.8 utilization (need 4 out of 5 entries)
+    const obsPort = ws.getWritePort(moduleId('observer'));
+    for (let i = 0; i < 4; i++) {
+      obsPort.write({ source: moduleId('observer'), content: `Entry ${i}`, salience: 0.5, timestamp: Date.now() });
+    }
+
+    const state = monModule.initialState();
+    const monitoring: BridgeReasonerActorMonitoring = {
+      source: moduleId('reasoner-actor'),
+      timestamp: Date.now(),
+      type: 'bridge-reasoner-actor',
+      prevConf: 0.7,                  // above threshold — no anomaly
+      prevAction: 'Read',
+      consecutiveFailedParses: 0,
+      wsUtilization: 0.85,            // reported by RA, but monitor recomputes from ws.snapshot()
+      promptInputTokens: 500,
+      promptOutputTokens: 200,
+      writeGateFired: false,
+      promptSuccessfulReads: 1,
+      promptSuccessfulWrites: 0,
+      cycleDone: false,
+      lastOutput: '',
+    };
+
+    const noControl: ControlDirective = { target: moduleId('monitor'), timestamp: Date.now() };
+    await monModule.step(monitoring, state, noControl);
+
+    // Assert: workspace contains a [WORKSPACE entry
+    const snapshot = ws.snapshot();
+    const saturationEntry = snapshot.find(e =>
+      typeof e.content === 'string' && e.content.includes('[WORKSPACE'));
+    assert.ok(saturationEntry, 'Workspace should contain a saturation intervention entry');
+
+    // Assert: workspace-saturation event was emitted
+    const saturationEvent = events.find(e => e.type === 'monitor' && e.intervention === 'workspace-saturation');
+    assert.ok(saturationEvent, 'workspace-saturation event should be emitted');
+  });
+
+  // ── Scenario 14: Token budget threshold ──
+
+  it('Monitor step() accumulates input tokens and fires token-budget-pressure when >100k', async () => {
+    const { ws, monitorPort } = createTestWorkspace();
+    const { events, onEvent } = createEventCollector();
+
+    const monModule = createBridgeMonitorModule(
+      ws, monitorPort, 8,
+      { confThreshold: 0.3, stagThreshold: 2, intBudget: 5 },
+      onEvent,
+    );
+
+    const state = monModule.initialState();
+    const noControl: ControlDirective = { target: moduleId('monitor'), timestamp: Date.now() };
+
+    // First call: 60k tokens — should NOT trigger budget pressure
+    const monitoring1: BridgeReasonerActorMonitoring = {
+      source: moduleId('reasoner-actor'),
+      timestamp: Date.now(),
+      type: 'bridge-reasoner-actor',
+      prevConf: 0.7,
+      prevAction: 'Write',
+      consecutiveFailedParses: 0,
+      wsUtilization: 0.3,
+      promptInputTokens: 60000,
+      promptOutputTokens: 200,
+      writeGateFired: false,
+      promptSuccessfulReads: 1,
+      promptSuccessfulWrites: 1,
+      cycleDone: false,
+      lastOutput: '',
+    };
+
+    const result1 = await monModule.step(monitoring1, state, noControl);
+
+    // No token-budget-pressure after first call (60k < 100k)
+    const budgetEventBefore = events.find(e => e.type === 'monitor' && e.intervention === 'token-budget-pressure');
+    assert.equal(budgetEventBefore, undefined, 'No token-budget-pressure at 60k');
+
+    // Second call: 50k more (accumulated = 110k > 100k)
+    const monitoring2: BridgeReasonerActorMonitoring = {
+      source: moduleId('reasoner-actor'),
+      timestamp: Date.now(),
+      type: 'bridge-reasoner-actor',
+      prevConf: 0.7,
+      prevAction: 'Write',
+      consecutiveFailedParses: 0,
+      wsUtilization: 0.3,
+      promptInputTokens: 50000,
+      promptOutputTokens: 200,
+      writeGateFired: false,
+      promptSuccessfulReads: 1,
+      promptSuccessfulWrites: 1,
+      cycleDone: false,
+      lastOutput: '',
+    };
+
+    const result2 = await monModule.step(monitoring2, result1.state, noControl);
+
+    // Assert: token-budget-pressure event emitted
+    const budgetEvent = events.find(e => e.type === 'monitor' && e.intervention === 'token-budget-pressure');
+    assert.ok(budgetEvent, 'token-budget-pressure event should be emitted when accumulated > 100k');
+
+    // Assert: accumulated tokens in state
+    assert.equal(result2.state.accumulatedInputTokens, 110000, 'accumulatedInputTokens should be 110000');
+  });
+
+  // ── Scenario 15: Tool execution error handling ──
+
+  it('RA step() handles tool execution errors gracefully — error caught, workspace gets Tool error entry, confidence degraded', async () => {
+    const { ws, obsPort, raWritePort, raReadPort } = createTestWorkspace();
+    const { events, onEvent } = createEventCollector();
+    const adapter = createMockAdapter([
+      buildResponse('Read file', 'Reading the file', { tool: 'Read', input: { path: 'missing.ts' } }),
+      buildResponse('Done', 'Complete', { tool: 'done', input: { result: 'recovered from error' } }),
+    ]);
+
+    // Tool provider that THROWS on execute
+    const throwingTools: ToolProvider = {
+      list: () => [
+        { name: 'Read', description: 'Read a file' },
+        { name: 'Write', description: 'Write a file' },
+      ],
+      async execute(_name: string, _input: unknown) {
+        throw new Error('Simulated tool crash');
+      },
+    };
+
+    const raModule = createBridgeReasonerActorModule(
+      adapter, throwingTools, ws, raWritePort, raReadPort, obsPort,
+      { maxToolsPerCycle: 5, maxOutputTokens: 8192, wsCapacity: 8, cycleNumber: 1, maxCycles: 15 },
+      onEvent,
+    );
+
+    obsPort.write({ source: moduleId('observer'), content: 'Read a file', salience: 0.95, timestamp: Date.now() });
+
+    const state = raModule.initialState();
+    const control = defaultBridgeMonitorControl();
+
+    // step() should NOT throw even though tool.execute throws
+    const result = await raModule.step('Read a file', state, control);
+
+    // Assert: workspace contains a Tool error entry
+    const snapshot = ws.snapshot();
+    const errorEntry = snapshot.find(e =>
+      typeof e.content === 'string' && e.content.includes('Tool error:'));
+    assert.ok(errorEntry, 'Workspace should contain a Tool error entry');
+
+    // Assert: confidence was degraded (prevConf should be 0.1 for the error tool call)
+    // After the error, the next tool call (done) sets prevConf to 1.0,
+    // but the cycle-action event for the errored Read should show confidence 0.1
+    const errorActionEvent = events.find(e =>
+      e.type === 'cycle-action' && e.action === 'Read' && e.confidence === 0.1);
+    assert.ok(errorActionEvent, 'Tool error should produce a cycle-action event with confidence 0.1');
+  });
+
+  // ── Scenario 16: Adapter invoke() throw handling ──
+
+  it('RA step() handles adapter invoke() throw — error caught, error event emitted, does not throw', async () => {
+    const { ws, obsPort, raWritePort, raReadPort } = createTestWorkspace();
+    const { events, onEvent } = createEventCollector();
+
+    // Adapter that THROWS on invoke
+    const throwingAdapter: ProviderAdapter = {
+      async invoke() {
+        throw new Error('Simulated adapter crash');
+      },
+    };
+    const tools = createMockTools();
+
+    const raModule = createBridgeReasonerActorModule(
+      throwingAdapter, tools, ws, raWritePort, raReadPort, obsPort,
+      { maxToolsPerCycle: 5, maxOutputTokens: 8192, wsCapacity: 8, cycleNumber: 1, maxCycles: 15 },
+      onEvent,
+    );
+
+    obsPort.write({ source: moduleId('observer'), content: 'Do something', salience: 0.95, timestamp: Date.now() });
+
+    const state = raModule.initialState();
+    const control = defaultBridgeMonitorControl();
+
+    // step() should NOT throw even though adapter.invoke throws
+    const result = await raModule.step('Do something', state, control);
+
+    // Assert: an error event was emitted
+    const errorEvent = events.find(e => e.type === 'cycle-action' && e.action === 'error');
+    assert.ok(errorEvent, 'An error cycle-action event should be emitted');
+
+    // Assert: cycleDone should be false (error breaks the inner loop, but doesn't set cycleDone)
+    // The error is caught by the outer try/catch which breaks out of the while loop.
+    // cycleDone stays false since 'done' was never reached.
+    assert.equal(result.monitoring.cycleDone, false, 'cycleDone should be false — error is not a clean done');
+
+    // Assert: lastOutput is empty (no successful completion)
+    assert.equal(result.monitoring.lastOutput, '', 'lastOutput should be empty on adapter error');
+  });
 });
