@@ -132,7 +132,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
       maxToolsPerCycle, maxOutputTokens, wsCapacity, cycleNumber: 1, maxCycles,
     };
     const raModule = createBridgeReasonerActorModule(
-      adapter, tools, ws, raWritePort, raReadPort, obsPort, raConfig, onEvent, cognitiveSink,
+      adapter, tools, ws, raWritePort, raReadPort, obsPort, raConfig, onEvent, cognitiveSink, onChunk,
     );
     const monModule = createBridgeMonitorModule(
       ws, monitorPort, wsCapacity,

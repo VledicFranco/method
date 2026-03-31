@@ -25,6 +25,7 @@ import type {
 } from '@method/pacta';
 import { moduleId } from '@method/pacta';
 import type { StreamEvent } from './pool.js';
+import type { StreamChunkCallback } from './print-session.js';
 import type { CognitiveSink } from './cognitive-sink.js';
 
 // ── Constants (duplicated from cognitive-provider.ts — forbidden to import) ──
@@ -63,6 +64,8 @@ export interface BridgeMonitorControl extends ControlDirective {
   forceReplan: boolean;
   restricted: string[];
   interventionMessage: string | null;
+  writeGateFired: boolean;
+  prevCycleAction: string | null;
 }
 
 /** Persistent state for one prompt's worth of ReasonerActor execution. */
@@ -143,6 +146,8 @@ export function defaultBridgeMonitorControl(): BridgeMonitorControl {
     forceReplan: false,
     restricted: [],
     interventionMessage: null,
+    writeGateFired: false,
+    prevCycleAction: null,
   };
 }
 
@@ -170,6 +175,7 @@ export function createBridgeReasonerActorModule(
   config: ReasonerActorModuleConfig,
   onEvent: (e: StreamEvent) => void,
   cognitiveSink?: CognitiveSink,
+  onChunk?: StreamChunkCallback,
 ): BridgeReasonerActorModuleType {
   const raModuleId = moduleId('reasoner-actor');
 
@@ -207,6 +213,9 @@ export function createBridgeReasonerActorModule(
       let cycleOutputTokens = 0;
 
       const { maxToolsPerCycle, maxOutputTokens, wsCapacity, cycleNumber, maxCycles } = config;
+      // Bug 1 fix: propagate writeGateFired from monitor control into RA state
+      if (control.writeGateFired) writeGateFired = true;
+
       const forceReplan = control.forceReplan;
       const restricted = control.restricted;
 
@@ -215,7 +224,7 @@ export function createBridgeReasonerActorModule(
         const parts = [`[Cycle ${cycleNumber}/${maxCycles}]`];
         if (foldedCtx.length > 0) parts.push(`## Completed Actions\n${foldedCtx.join('\n')}`);
         if (forceReplan) {
-          const noActionStall = prevAction === 'no-action' || prevAction === 'parse-error';
+          const noActionStall = control.prevCycleAction === 'no-action' || control.prevCycleAction === 'parse-error';
           parts.push(noActionStall
             ? 'Your last response had NO <action> block. You MUST end with <action>{"tool":"ToolName","input":{...}}</action>. Do not describe what you would do — call the tool directly NOW.'
             : 'MUST try a different strategy. Previous approach is stagnating.');
@@ -273,6 +282,7 @@ export function createBridgeReasonerActorModule(
           if (reasoning) {
             const chunk = `**[Cycle ${cycleNumber}/${maxCycles} | Tool ${toolsThisCycle + 1}]** ${reasoning}\n`;
             onEvent({ type: 'text', content: chunk });
+            onChunk?.(chunk);
           }
 
           let actionName = 'unknown';
@@ -300,7 +310,9 @@ export function createBridgeReasonerActorModule(
             // Early bail-out: circuit-breaker
             if (consecutiveFailedParses >= MAX_CONSECUTIVE_FAILED_PARSES) {
               lastOutput = reasoning || plan || `Model could not produce a valid action after ${MAX_CONSECUTIVE_FAILED_PARSES} attempts. Last response:\n${text.slice(0, 500)}`;
-              onEvent({ type: 'text', content: `\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures. The model may not support the required output format.\n` });
+              const cbMsg = `\n[cognitive] Stopping: ${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures. The model may not support the required output format.\n`;
+              onEvent({ type: 'text', content: cbMsg });
+              onChunk?.(cbMsg);
               cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: `${MAX_CONSECUTIVE_FAILED_PARSES} consecutive parse failures`, phase: 'action', cycleNumber, timestamp: Date.now() });
               cycleDone = true;
               break;
@@ -401,7 +413,9 @@ export function createBridgeReasonerActorModule(
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           onEvent({ type: 'cycle-action', cycle: cycleNumber, action: 'error', confidence: 0, tokens: 0 });
-          onEvent({ type: 'text', content: `\n[cycle ${cycleNumber}] Error: ${msg}\n` });
+          const errMsg = `\n[cycle ${cycleNumber}] Error: ${msg}\n`;
+          onEvent({ type: 'text', content: errMsg });
+          onChunk?.(errMsg);
           cognitiveSink?.handle({ type: 'cognitive:cycle_aborted', reason: msg, phase: 'action', cycleNumber, timestamp: Date.now() });
           break;
         }
@@ -558,8 +572,10 @@ export function createBridgeMonitorModule(
       }
 
       // ── Write gate intervention ──
+      let writeGateJustFired = false;
       if (monitoring.promptSuccessfulReads >= 3 && monitoring.promptSuccessfulWrites === 0 && !monitoring.writeGateFired) {
         forceReplan = true;
+        writeGateJustFired = true;
         for (const tool of READ_ONLY_ACTIONS) {
           if (!restricted.includes(tool)) restricted.push(tool);
         }
@@ -584,6 +600,8 @@ export function createBridgeMonitorModule(
         forceReplan,
         restricted,
         interventionMessage,
+        writeGateFired: writeGateJustFired,
+        prevCycleAction: monitoring.prevAction,
       };
 
       return {
