@@ -163,7 +163,7 @@ function buildScenarios(): MultiModuleScenario[] {
     expected: {
       monitor: { anomalies: [{ moduleId: moduleId('evaluator'), type: 'low-confidence', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
       observer: { priority: 'low', focus: [], novelty: 0.15, note: null },
-      evaluator: { progress: 'stagnant', confidence: 0.26, action: 'replan', note: null },
+      evaluator: { progress: 'stagnant', confidence: 0.26, action: 'replan', note: 'Diminishing returns detected \u2014 strategy revision recommended' },
     },
   });
 
@@ -184,7 +184,7 @@ function buildScenarios(): MultiModuleScenario[] {
     ],
     expected: {
       monitor: { anomalies: [], escalation: undefined, restrictedActions: [], forceReplan: false },
-      observer: { priority: 'high', focus: ['planner', 'reasoner', 'reflector'], novelty: 0.85, note: null },
+      observer: { priority: 'high', focus: ['reasoner', 'planner', 'reflector'], novelty: 0.85, note: 'Unprocessed input with high novelty \u2014 reflector intervention needed' },
       evaluator: { progress: 'on-track', confidence: 0.73, action: 'continue', note: null },
     },
   });
@@ -205,8 +205,8 @@ function buildScenarios(): MultiModuleScenario[] {
     ],
     expected: {
       monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
-      observer: { priority: 'high', focus: ['planner', 'reasoner'], novelty: 0.70, note: null },
-      evaluator: { progress: 'diverging', confidence: 0.10, action: 'escalate', note: null },
+      observer: { priority: 'high', focus: ['reasoner', 'planner', 'reflector'], novelty: 0.70, note: 'High novelty error signal requires strategy reassessment' },
+      evaluator: { progress: 'diverging', confidence: 0.10, action: 'escalate', note: 'Goal clarity too low to recover without intervention' },
     },
   });
 
@@ -228,8 +228,8 @@ function buildScenarios(): MultiModuleScenario[] {
     ],
     expected: {
       monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
-      observer: { priority: 'high', focus: ['planner', 'reasoner', 'reflector'], novelty: 0.92, note: null },
-      evaluator: { progress: 'stagnant', confidence: 0.10, action: 'replan', note: null },
+      observer: { priority: 'high', focus: ['reasoner', 'planner', 'reflector'], novelty: 0.92, note: 'High novelty error signal requires strategy reassessment' },
+      evaluator: { progress: 'diverging', confidence: 0.10, action: 'escalate', note: 'Goal clarity too low to recover without intervention' },
     },
   });
 
@@ -250,7 +250,7 @@ function buildScenarios(): MultiModuleScenario[] {
     expected: {
       monitor: { anomalies: [], escalation: undefined, restrictedActions: [], forceReplan: false },
       observer: { priority: 'low', focus: [], novelty: 0.05, note: null },
-      evaluator: { progress: 'on-track', confidence: 0.91, action: 'continue', note: null },
+      evaluator: { progress: 'on-track', confidence: 0.91, action: 'continue', note: 'Strong progress \u2014 maintain current approach' },
     },
   });
 
@@ -269,7 +269,7 @@ function buildScenarios(): MultiModuleScenario[] {
     ],
     expected: {
       monitor: { anomalies: [], escalation: undefined, restrictedActions: [], forceReplan: false },
-      observer: { priority: 'medium', focus: ['planner', 'reasoner'], novelty: 0.55, note: null },
+      observer: { priority: 'medium', focus: ['reasoner'], novelty: 0.55, note: 'Moderate novelty \u2014 monitor for pattern development' },
       evaluator: { progress: 'on-track', confidence: 0.50, action: 'continue', note: null },
     },
   });
@@ -291,7 +291,7 @@ function buildScenarios(): MultiModuleScenario[] {
     expected: {
       monitor: { anomalies: [], escalation: undefined, restrictedActions: [], forceReplan: false },
       observer: { priority: 'low', focus: [], novelty: 0.10, note: null },
-      evaluator: { progress: 'stagnant', confidence: 0.33, action: 'replan', note: null },
+      evaluator: { progress: 'stagnant', confidence: 0.33, action: 'replan', note: 'Progress plateau \u2014 consider replanning approach' },
     },
   });
 
@@ -312,8 +312,8 @@ function buildScenarios(): MultiModuleScenario[] {
     ],
     expected: {
       monitor: { anomalies: [], escalation: undefined, restrictedActions: [], forceReplan: false },
-      observer: { priority: 'low', focus: [], novelty: 0.40, note: null },
-      evaluator: { progress: 'diverging', confidence: 0.17, action: 'replan', note: null },
+      observer: { priority: 'medium', focus: ['reasoner'], novelty: 0.40, note: 'Moderate novelty \u2014 monitor for pattern development' },
+      evaluator: { progress: 'diverging', confidence: 0.17, action: 'escalate', note: 'Goal clarity too low to recover without intervention' },
     },
   });
 
