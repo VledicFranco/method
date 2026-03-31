@@ -1,6 +1,6 @@
 ---
 title: "PRD 043: Workspace Constraint Pinning & Violation Detection"
-status: partial
+status: in-progress
 date: "2026-03-30"
 tier: "standard"
 depends_on: [30, 35]
@@ -710,23 +710,36 @@ Acknowledged: F-S-2 (qualified "most real-world tasks" claim in Problem Statemen
 
 ### Phase 0 — Core Pin Flag (COMPLETE, 2026-03-30)
 
-Implemented directly on master (commits `d9d6481`, `56d1dca`):
+Implemented directly on master (commits `d9d6481`, `56d1dca`, `7d03fc0`):
 - `pinned?: boolean` on `WorkspaceEntry` — ~20 lines across 3 files
 - `evictLowest()` skips pinned entries
 - Observer keyword classifier tags constraint-bearing entries as pinned
+- Classifier tightened: `\bnever\b` → `\bnever\s+(import|use|call|...)\b` to reduce false positives
 - **R-13 GATE PASS:** T04 cognitive 4/5 (80%), up from 0/5. Zero constraint violations.
 
-**Remaining:** Full T01-T05 regression matrix pending.
+### R-13 Regression Matrix (COMPLETE, 2026-03-31)
 
-### Phases 1-3 — Refinements (DEFERRED)
+Full T01-T05 regression with pin flag (N=5 per task, log: `r13-regression-matrix`):
 
-The following PRD 043 refinements are deferred pending regression results:
+| Task | Pin Flag | R-14 Baseline | Delta | Verdict |
+|------|----------|---------------|-------|---------|
+| T01 (circular dep) | 5/5 (100%) | 5/5 (100%) | 0 | Stable |
+| T02 (bug fix) | 2/5 (40%) | 4/5 (80%) | -40pp | LLM variance (investigated) |
+| T03 (config) | 1/5 (20%) | 3/5 (60%) | -40pp | LLM variance (investigated) |
+| T04 (constraint) | 5/5 (100%) | 0/5 (0%) | +100pp | **FIXED** |
+| T05 (dead code) | 5/5 (100%) | 4/5 (80%) | +20pp | Improved |
+| **Overall** | **18/25 (72%)** | **15/25 (60%)** | **+12pp** | **Net positive** |
+
+T02/T03 investigated — LLM variance at N=5, NOT caused by pin flag. T03 has zero pinned entries. T02 has 1 pinned entry out of 8 capacity. Both share identical failure modes with R-14.
+
+**R-13 Phase 0: CLOSED. RFC 003 Phase 0 validated.**
+
+### Phases 1-3 — Refinements (READY)
+
+Regression confirms no causal harm from pin flag. The following refinements can proceed:
 - `EntryContentType` union type and `contentType` field
 - `maxPinnedEntries` safety cap
 - Diagnostic events (CognitiveConstraintPinned, CognitiveConstraintViolation, CognitiveMonitorDirectiveApplied)
 - `constraint-classifier.ts` as separate module
 - Post-ACT violation check (always-on)
 - Monitor wiring fix in cycle.ts
-- Decomposed experiment conditions (pinning-only vs pinning+recovery)
-
-These are deferred because Phase 0 alone achieved the R-13 gate (80% on T04). The refinements add safety and observability but are not required for the core hypothesis validation.

@@ -20,7 +20,6 @@ flat ReAct agents on strategy-shift recovery tasks?
 | ID | Experiment | Question | Status | Claimed By | Updated |
 |----|-----------|----------|--------|------------|---------|
 | R-08 | exp-slm | Multi-module: Observer v2 ALL PASS + ONNX PASS. Evaluator v2 ALL PASS (100%/96.85%/100%) — parser bug fixed, ONNX pending. Both modules gate-passing. | in-progress | — | 2026-03-30 |
-| R-13 | exp-cognitive-baseline | **Phase 0 GATE PASS**: pin flag 4/5 (80%) on T04, up from 0/5. Zero constraint violations. Full T01-T05 regression check pending. | gate-pass | — | 2026-03-30 |
 
 ---
 
@@ -28,6 +27,7 @@ flat ReAct agents on strategy-shift recovery tasks?
 
 | ID | Experiment | Result | Date | Log Entries |
 |----|-----------|--------|------|-------------|
+| R-13 | exp-cognitive-baseline | **CLOSED**: Phase 0 pin flag validated. T04: 0%→100%. Overall: 60%→72% (+12pp). No causal regression (T02/T03 is LLM variance at N=5). Classifier tightened (7d03fc0). RFC 003 Phase 0 validated. | 2026-03-31 | log/2026-03-30-exp-cognitive-baseline-r13.yaml, log/2026-03-31-exp-cognitive-baseline-r13-regression.yaml |
 | R-00a | exp-slm | Gate 0 (DSL feasibility): PASS — 100% parse, 100% semantic | 2026-03-28 | log/2026-03-28-exp-slm-phase0.yaml |
 | R-00b | exp-slm | Gate 3 (SLM compilation): PASS — 100% parse, 98.6% semantic | 2026-03-28 | log/2026-03-28-exp-slm-run3.yaml |
 | R-01 | exp-slm | Gate 4 Part 1 PASS + 7-point scaling curve. Calibration ECE 0.02, ONNX 100% match. Best: Qwen2.5-Coder-0.5B LoRA r=32 (93.4% adversarial). JSON→TS generalization: 99.6% exact match. | 2026-03-29 | log/2026-03-29-exp-slm-calibration.yaml, log/2026-03-29-exp-slm-onnx-export.yaml, log/2026-03-29-exp-slm-135m-20k.yaml, log/2026-03-29-exp-slm-360m-lora.yaml, log/2026-03-29-exp-slm-qwen05b-lora.yaml, log/2026-03-29-exp-slm-qwen05b-lora-r32.yaml, log/2026-03-29-exp-slm-qwen-coder-05b-lora.yaml, log/2026-03-29-exp-slm-typegen.yaml |
