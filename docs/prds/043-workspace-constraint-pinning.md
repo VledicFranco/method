@@ -1,6 +1,6 @@
 ---
 title: "PRD 043: Workspace Constraint Pinning & Violation Detection"
-status: in-progress
+status: implemented
 date: "2026-03-30"
 tier: "standard"
 depends_on: [30, 35]
@@ -734,12 +734,26 @@ T02/T03 investigated — LLM variance at N=5, NOT caused by pin flag. T03 has ze
 
 **R-13 Phase 0: CLOSED. RFC 003 Phase 0 validated.**
 
-### Phases 1-3 — Refinements (READY)
+### Phase 1 — Algebra Refinements (COMPLETE, 2026-03-31)
 
-Regression confirms no causal harm from pin flag. The following refinements can proceed:
-- `EntryContentType` union type and `contentType` field
-- `maxPinnedEntries` safety cap
-- Diagnostic events (CognitiveConstraintPinned, CognitiveConstraintViolation, CognitiveMonitorDirectiveApplied)
-- `constraint-classifier.ts` as separate module
-- Post-ACT violation check (always-on)
-- Monitor wiring fix in cycle.ts
+Commit `e947cba` (C-1):
+- `EntryContentType` union type (`'constraint' | 'goal' | 'operational'`)
+- `contentType?: EntryContentType` on WorkspaceEntry
+- `maxPinnedEntries` config with safety-valve eviction (default: 10)
+- 3 diagnostic event types: CognitiveConstraintPinned, CognitiveConstraintViolation, CognitiveMonitorDirectiveApplied
+- 4 new workspace test scenarios
+
+### Phase 2 — Constraint Classifier Module (COMPLETE, 2026-03-31)
+
+Commit `d2fdd4e` (C-2):
+- `constraint-classifier.ts`: classifyEntry(), extractProhibitions(), checkConstraintViolations()
+- Observer refactored to use classifier (inline isConstraint removed)
+- 15 classifier test scenarios + 2 observer test scenarios
+
+### Phase 3 — Post-ACT Verification & Wiring Fix (COMPLETE, 2026-03-31)
+
+Commit `85547d1` (C-3):
+- cycle.ts: always-on post-ACT constraint verification (not gated by shouldIntervene)
+- cycle.ts: Monitor wiring fix (restrictedActions/forceReplan forwarded to Actor)
+- run.ts: post-ACT verification in experiment runner with recovery directives
+- 4 new cycle test scenarios
