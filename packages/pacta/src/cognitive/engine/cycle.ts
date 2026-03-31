@@ -25,9 +25,13 @@ import type {
   CognitiveCyclePhase,
   CognitiveLEARNFailed,
   CognitiveCycleAborted,
+  CognitiveConstraintViolation,
+  CognitiveMonitorDirectiveApplied,
   WorkspaceManager,
   ReadonlyWorkspaceSnapshot,
 } from '../algebra/index.js';
+
+import { checkConstraintViolations } from '../modules/constraint-classifier.js';
 
 // ── Cycle Configuration ──────────────────────────────────────────
 
@@ -388,6 +392,9 @@ export function createCognitiveCycle(
       const budgetAllowsIntervention = config.cycleBudget?.maxConsecutiveMetaInterventions === undefined
         || consecutiveInterventions < config.cycleBudget.maxConsecutiveMetaInterventions;
 
+      // Capture Monitor output for forwarding to Actor (Change A: Monitor wiring fix)
+      let monitorOutput: { restrictedActions?: string[]; forceReplan?: boolean } | undefined;
+
       if (interventionNeeded && budgetAllowsIntervention
           && consecutiveInterventions < maxConsecutiveInterventions) {
         emitPhase('MONITOR');
@@ -398,6 +405,9 @@ export function createCognitiveCycle(
           defaultControl(modules.monitor), 'MONITOR',
         );
         if (aborted) return { output: undefined, traces, signals, cycleNumber, phasesExecuted, aborted };
+
+        // Capture monitor output for Actor wiring
+        monitorOutput = monitorResult?.output as { restrictedActions?: string[]; forceReplan?: boolean } | undefined;
 
         // Also run evaluator as part of monitoring
         const evalSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
@@ -498,11 +508,55 @@ export function createCognitiveCycle(
 
       const actSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
       const actorInput = { snapshot: actSnapshot };
+
+      // Build Actor control — forward Monitor output when available (D5 wiring fix)
+      // ControlDirective is the base type; restrictedActions/forceReplan are extension
+      // fields consumed by module-specific control types (e.g. ReasonerActorControl).
+      let actorControl: ControlDirective = defaultControl(modules.actor);
+      if (monitorOutput) {
+        actorControl = {
+          ...actorControl,
+          restrictedActions: monitorOutput.restrictedActions ?? [],
+          forceReplan: monitorOutput.forceReplan ?? false,
+        } as ControlDirective;
+        const directiveEvent: CognitiveMonitorDirectiveApplied = {
+          type: 'cognitive:monitor_directive_applied',
+          restrictedActions: monitorOutput.restrictedActions ?? [],
+          forceReplan: monitorOutput.forceReplan ?? false,
+          source: 'monitor',
+          targetModule: 'actor',
+          timestamp: Date.now(),
+        };
+        emitEvent(directiveEvent);
+      }
+
       const actResult = await runModuleStep(
         'actor', modules.actor, actorInput,
-        defaultControl(modules.actor), 'ACT',
+        actorControl, 'ACT',
       );
       if (aborted) return { output: undefined, traces, signals, cycleNumber, phasesExecuted, aborted };
+
+      // ── Post-ACT Constraint Verification (always-on, D4) ──────
+      // Runs unconditionally after every ACT phase — NOT gated by shouldIntervene.
+      // Pure-function check against pinned workspace constraints.
+      const pinnedEntries = workspace.snapshot().filter((e: any) => e.pinned);
+      if (pinnedEntries.length > 0 && actResult?.output) {
+        const actContent = typeof actResult.output === 'string'
+          ? actResult.output : JSON.stringify(actResult.output);
+        const violations = checkConstraintViolations(pinnedEntries, actContent);
+        if (violations.length > 0) {
+          for (const v of violations) {
+            const violationEvent: CognitiveConstraintViolation = {
+              type: 'cognitive:constraint_violation',
+              constraint: v.constraint,
+              violation: v.violation,
+              pattern: v.pattern,
+              timestamp: Date.now(),
+            };
+            emitEvent(violationEvent);
+          }
+        }
+      }
 
       // ── Phase 8: LEARN (FIRE-AND-FORGET) ──────────────────────
       emitPhase('LEARN');
