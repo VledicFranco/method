@@ -10,6 +10,11 @@
 
 import type { ModuleId } from './module.js';
 
+// ── Entry Content Classification ────────────────────────────────
+
+/** Closed union for content classification — prevents classifier drift (PRD 043 D7). */
+export type EntryContentType = 'constraint' | 'goal' | 'operational';
+
 // ── Workspace Entry ──────────────────────────────────────────────
 
 /** A single entry in the cognitive workspace. */
@@ -31,6 +36,9 @@ export interface WorkspaceEntry {
 
   /** Pinned entries are exempt from capacity eviction. */
   pinned?: boolean;
+
+  /** Content classification for typed workspace entries (PRD 043). */
+  contentType?: EntryContentType;
 }
 
 // ── Workspace Filter ─────────────────────────────────────────────
@@ -122,4 +130,7 @@ export interface WorkspaceConfig {
 
   /** Default TTL in milliseconds for entries without explicit TTL. */
   defaultTtl?: number;
+
+  /** Maximum number of pinned entries before safety-valve eviction (default: 10). */
+  maxPinnedEntries?: number;
 }

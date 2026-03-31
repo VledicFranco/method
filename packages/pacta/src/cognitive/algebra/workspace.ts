@@ -167,9 +167,17 @@ export function createWorkspace(
     }
   }
 
-  /** Evict the lowest-salience entry. FIFO tie-breaking (oldest first). Pinned entries are exempt. */
+  /**
+   * Evict the lowest-salience entry. FIFO tie-breaking (oldest first). Pinned entries are exempt.
+   *
+   * Safety valve (PRD 043): when ALL entries are pinned and pinned count >= maxPinnedEntries,
+   * evict the oldest pinned entry to prevent unbounded growth. When all entries are pinned but
+   * count < maxPinnedEntries, return undefined (allow capacity overflow by 1).
+   */
   function evictLowest(now: number, triggeringSalience?: number): EvictionInfo | undefined {
     if (entries.length === 0) return undefined;
+
+    const maxPinned = config.maxPinnedEntries ?? 10;
 
     let lowestIdx = -1;
     let lowestSalience = Infinity;
@@ -192,7 +200,36 @@ export function createWorkspace(
       }
     }
 
-    if (lowestIdx === -1) return undefined;
+    // All entries are pinned — apply safety valve
+    if (lowestIdx === -1) {
+      const pinnedCount = entries.filter(e => e.pinned).length;
+      if (pinnedCount >= maxPinned) {
+        // Evict the oldest pinned entry as safety valve
+        let oldestPinnedIdx = -1;
+        let oldestTimestamp = Infinity;
+        for (let i = 0; i < entries.length; i++) {
+          if (entries[i].pinned && entries[i].timestamp < oldestTimestamp) {
+            oldestPinnedIdx = i;
+            oldestTimestamp = entries[i].timestamp;
+          }
+        }
+        if (oldestPinnedIdx !== -1) {
+          const evicted = entries.splice(oldestPinnedIdx, 1)[0];
+          const info: EvictionInfo = {
+            entry: evicted,
+            reason: 'capacity',
+            salience: evicted.salience,
+            salienceDelta: triggeringSalience !== undefined
+              ? triggeringSalience - evicted.salience
+              : undefined,
+            timestamp: now,
+          };
+          evictions.push(info);
+          return info;
+        }
+      }
+      return undefined;
+    }
 
     const evicted = entries.splice(lowestIdx, 1)[0];
     const info: EvictionInfo = {

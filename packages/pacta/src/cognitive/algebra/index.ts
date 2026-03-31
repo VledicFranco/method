@@ -32,6 +32,7 @@ export { moduleId, CompositionError } from './module.js';
 // ── Workspace types ──────────────────────────────────────────────
 
 export type {
+  EntryContentType,
   WorkspaceEntry,
   WorkspaceFilter,
   ReadonlyWorkspaceSnapshot,
@@ -64,6 +65,9 @@ export type {
   CognitiveCyclePhase,
   CognitiveLEARNFailed,
   CognitiveCycleAborted,
+  CognitiveConstraintPinned,
+  CognitiveConstraintViolation,
+  CognitiveMonitorDirectiveApplied,
 } from './events.js';
 
 // ── Provider adapter ─────────────────────────────────────────────
