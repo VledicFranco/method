@@ -140,7 +140,7 @@ This project has active research lines validated through structured experiments.
 
 | Line | RFC | Experiment | Status |
 |------|-----|-----------|--------|
-| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | **Gate 4 FULL PASS** — Monitor validated. R-08 multi-module: Observer v2 ALL PASS (100%/100%/100%), Evaluator v2 parse 71% (corpus quality issue). Training on chobits RTX 4090. |
+| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | **Gate 4 FULL PASS** — Monitor validated. R-08 multi-module: Observer v2 ALL PASS + ONNX, Evaluator v2 ALL PASS (100%/96.85%/100%). 3 of 3 compiled modules gate-passing. |
 | Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md`, `003-cortical-workspace-composition.md` | `experiments/exp-cognitive-baseline/` | N=25 baseline complete. Flat 80% vs cognitive 60%. T04 constraint blindness (0%). RFC 003 drafted + reviewed — Phase 0 pin flag fix designed. |
 
 ### Related Work (cross-project)

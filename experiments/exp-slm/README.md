@@ -111,11 +111,11 @@ Trained on chobits (RTX 4090, bf16). Both use Qwen2.5-Coder-0.5B LoRA r=16, 3000
 | Module | Corpus | Train Loss | Parse | Semantic | Adversarial | Status |
 |--------|--------|-----------|-------|----------|-------------|--------|
 | Observer v2 | observer-v1 (10K) | 0.2613 | **100%** | **100%** | **100%** | **ALL PASS** |
-| Evaluator v2 | evaluator-v1 (8K) | 0.3701 | 71.0% | 69.8% | 85.7% | 1/3 PASS |
+| Evaluator v2 | evaluator-v1 (8K) | 0.3701 | **100%** | **96.85%** | **100%** | **ALL PASS** |
 
 **Observer:** Perfect scores across all metrics — ready for ONNX export and integration.
 
-**Evaluator:** High adversarial accuracy (85.7%) but parse rate only 71%. Semantic-to-parse ratio is 98.2% — the model reasons correctly but doesn't reliably produce valid DSL format. Root cause: corpus quality (same pattern as Monitor early runs: random corpus 39% → causal corpus 98.6%). Evaluator corpus needs causal consistency redesign before retrain.
+**Evaluator:** Initially showed 71% parse — root cause was parser vocabulary bug (`"diverging"` vs `"regressing"`), NOT corpus quality. With fixed parser: 100% parse, 96.85% semantic, 100% adversarial. Ready for ONNX export.
 
 **bf16 fix validated:** Original evaluator training (fp16, LR 2e-4) produced NaN loss from step 0. Switching to bf16 on RTX 4090 (Ada Lovelace, native bf16 support) resolved the gradient overflow completely.
 
