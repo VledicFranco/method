@@ -172,7 +172,7 @@ def _parse_note(value: str) -> str | None:
 # ── Evaluator DSL Parser ─────────────────────────────────────
 
 
-VALID_PROGRESS = {"on-track", "stagnant", "regressing"}
+VALID_PROGRESS = {"on-track", "stagnant", "diverging"}
 VALID_ACTION = {"continue", "replan", "escalate"}
 
 
