@@ -10,7 +10,7 @@ import { describe } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { registerGenesisRoutes, type GenesisRouteContext } from './routes.js';
-import type { SessionPool, SessionStatusInfo } from '../sessions/pool.js';
+import type { SessionPool, SessionStatusInfo } from '../../ports/session-pool.js';
 import type { PtySession } from '../sessions/print-session.js';
 import type { GenesisToolsContext } from './tools.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';

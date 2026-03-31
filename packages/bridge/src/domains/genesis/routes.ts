@@ -24,7 +24,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { SessionPool, SessionStatusInfo } from '../sessions/pool.js';
+import type { SessionPool, SessionStatusInfo } from '../../ports/session-pool.js';
 import { randomBytes } from 'crypto';
 import {
   projectListTool,

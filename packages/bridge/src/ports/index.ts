@@ -6,3 +6,4 @@ export { InMemorySource } from './in-memory-source.js';
 export type { EventBus, EventSink, EventFilter, EventSubscription, BridgeEvent, BridgeEventInput, EventDomain, EventSeverity } from './event-bus.js';
 export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session-discovery.js';
 export { createNodeNativeSessionDiscovery } from './native-session-discovery.js';
+export type { SessionPool, SessionStatusInfo, SessionBudget, SessionChainInfo, WorktreeInfo, SessionMode, IsolationMode, WorktreeAction, StreamEvent } from './session-pool.js';

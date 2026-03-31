@@ -22,7 +22,7 @@
 
 import type { FastifyInstance } from "fastify";
 import type { MethodologySessionStore } from "./store.js";
-import type { SessionPool } from "../sessions/pool.js";
+import type { SessionPool } from "../../ports/session-pool.js";
 import type { EventBus } from "../../ports/event-bus.js";
 
 export interface MethodologyRoutesDeps {

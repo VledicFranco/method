@@ -31,7 +31,7 @@ export function setStrategyRoutesEventBus(bus: EventBus): void {
 }
 
 // Adaptive oversight: SessionPool port for auto-spawning oversight sessions
-import type { SessionPool } from '../sessions/pool.js';
+import type { SessionPool } from '../../ports/session-pool.js';
 let _pool: SessionPool | null = null;
 
 /** Configure SessionPool for adaptive oversight auto-spawn. Called from composition root. */

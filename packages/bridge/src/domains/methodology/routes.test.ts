@@ -16,7 +16,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { registerMethodologyRoutes } from './routes.js';
 import { MethodologySessionStore } from './store.js';
 import { StdlibSource } from '../../ports/stdlib-source.js';
-import type { SessionPool } from '../sessions/pool.js';
+import type { SessionPool } from '../../ports/session-pool.js';
 
 // ── Helpers ──
 

@@ -5,7 +5,7 @@
  * domains that test against the SessionPool interface.
  */
 
-import type { SessionPool, SessionStatusInfo } from '../../domains/sessions/pool.js';
+import type { SessionPool, SessionStatusInfo } from '../../ports/session-pool.js';
 
 export class MockSessionPool implements SessionPool {
   private sessions = new Map<string, SessionStatusInfo>();
