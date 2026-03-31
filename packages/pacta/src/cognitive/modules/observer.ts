@@ -11,7 +11,6 @@
 
 import type {
   CognitiveModule,
-  ModuleId,
   ObserverMonitoring,
   ControlDirective,
   StepResult,
@@ -98,6 +97,22 @@ function computeNovelty(
   return Math.min(1, (lengthScore + diffRatio) / 2);
 }
 
+// ── Constraint Classification ───────────────────────────────────
+
+const CONSTRAINT_PATTERNS = [
+  /\bmust\s+not\b/i,
+  /\bshall\s+not\b/i,
+  /\bdo\s+not\b/i,
+  /\bnever\b/i,
+  /\bcannot\b/i,
+  /\bconstraint:/i,
+  /\binvariant:/i,
+];
+
+function isConstraint(content: string): boolean {
+  return CONSTRAINT_PATTERNS.some((p) => p.test(content));
+}
+
 // ── Factory ──────────────────────────────────────────────────────
 
 /**
@@ -164,6 +179,7 @@ export function createObserver(
           content: input.content,
           salience: noveltyScore,
           timestamp: Date.now(),
+          pinned: isConstraint(input.content) || undefined,
         };
         writePort.write(entry);
 

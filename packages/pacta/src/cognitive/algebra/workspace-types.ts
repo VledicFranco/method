@@ -28,6 +28,9 @@ export interface WorkspaceEntry {
 
   /** Time-to-live in milliseconds. Entry expires after timestamp + ttl. */
   ttl?: number;
+
+  /** Pinned entries are exempt from capacity eviction. */
+  pinned?: boolean;
 }
 
 // ── Workspace Filter ─────────────────────────────────────────────

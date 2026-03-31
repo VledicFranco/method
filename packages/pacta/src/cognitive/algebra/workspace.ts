@@ -167,30 +167,32 @@ export function createWorkspace(
     }
   }
 
-  /** Evict the lowest-salience entry. FIFO tie-breaking (oldest first). */
+  /** Evict the lowest-salience entry. FIFO tie-breaking (oldest first). Pinned entries are exempt. */
   function evictLowest(now: number, triggeringSalience?: number): EvictionInfo | undefined {
     if (entries.length === 0) return undefined;
 
-    let lowestIdx = 0;
-    let lowestSalience = entries[0].salience;
-    let lowestTimestamp = entries[0].timestamp;
+    let lowestIdx = -1;
+    let lowestSalience = Infinity;
+    let lowestTimestamp = Infinity;
 
-    for (let i = 1; i < entries.length; i++) {
+    for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
+      if (entry.pinned) continue;
+
       const diff = entry.salience - lowestSalience;
 
-      if (diff < -SALIENCE_EPSILON) {
-        // Strictly lower salience
+      if (lowestIdx === -1 || diff < -SALIENCE_EPSILON) {
         lowestIdx = i;
         lowestSalience = entry.salience;
         lowestTimestamp = entry.timestamp;
       } else if (Math.abs(diff) <= SALIENCE_EPSILON && entry.timestamp < lowestTimestamp) {
-        // Equal salience within epsilon — FIFO: evict oldest
         lowestIdx = i;
         lowestSalience = entry.salience;
         lowestTimestamp = entry.timestamp;
       }
     }
+
+    if (lowestIdx === -1) return undefined;
 
     const evicted = entries.splice(lowestIdx, 1)[0];
     const info: EvictionInfo = {
