@@ -375,19 +375,6 @@ app.get('/health', async (_request, reply) => {
   return reply.status(200).send(health);
 });
 
-// ---------- Pool Stats ----------
-
-app.get('/pool/stats', async (_request, reply) => {
-  const stats = pool.poolStats();
-  return reply.status(200).send({
-    max_sessions: stats.maxSessions,
-    active_count: stats.activeSessions,
-    dead_count: stats.deadSessions,
-    total_spawned: stats.totalSpawned,
-    uptime_ms: Date.now() - stats.startedAt.getTime(),
-  });
-});
-
 // ---------- Connectors Health (PRD 026 Phase 5) ----------
 
 app.get('/api/connectors', async (_request, reply) => {
@@ -398,47 +385,6 @@ app.get('/api/connectors', async (_request, reply) => {
 // ---------- Token & Usage API ----------
 
 registerTokenRoutes(app, tokenTracker, usagePoller);
-
-// ---------- Unified Events API (PRD 026 Phase 3) ----------
-
-app.get<{
-  Querystring: {
-    domain?: string;
-    type?: string;
-    severity?: string;
-    projectId?: string;
-    sessionId?: string;
-    since?: string;
-    limit?: string;
-  };
-}>('/api/events', async (request, reply) => {
-  const { domain, type, severity, projectId, sessionId, since, limit } = request.query;
-
-  const filter: Record<string, unknown> = {};
-  if (domain) filter.domain = domain;
-  if (type) filter.type = type;
-  if (severity) filter.severity = severity;
-  if (projectId) filter.projectId = projectId;
-  if (sessionId) filter.sessionId = sessionId;
-
-  const events = eventBus.query(
-    filter as any,
-    {
-      limit: limit ? parseInt(limit, 10) : undefined,
-      since: since ?? undefined,
-    },
-  );
-
-  const nextCursor = events.length > 0
-    ? events[events.length - 1].timestamp
-    : since ?? new Date().toISOString();
-
-  return reply.status(200).send({
-    events,
-    nextCursor,
-    hasMore: false,
-  });
-});
 
 // ---------- Session Routes (extracted to domains/sessions/routes.ts) ----------
 // NOTE: triggerChannels is created early so session routes can access it for cross-session aggregation

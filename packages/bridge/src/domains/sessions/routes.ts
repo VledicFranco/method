@@ -755,6 +755,19 @@ export function registerSessionRoutes(app: FastifyInstance, deps: SessionRouteDe
     return reply.status(200).send({ events, last_sequence: globalLastSequence });
   });
 
+  // ── GET /pool/stats — Session pool statistics ──
+
+  app.get('/pool/stats', async (_request, reply) => {
+    const stats = pool.poolStats();
+    return reply.status(200).send({
+      max_sessions: stats.maxSessions,
+      active_count: stats.activeSessions,
+      dead_count: stats.deadSessions,
+      total_spawned: stats.totalSpawned,
+      uptime_ms: Date.now() - stats.startedAt.getTime(),
+    });
+  });
+
   // ── POST /shutdown ──
 
   app.post('/shutdown', async (request, reply) => {

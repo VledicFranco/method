@@ -550,6 +550,51 @@ export async function registerProjectRoutes(
     },
   );
 
+  // GET /api/events — Unified Events API (PRD 026 Phase 3)
+  // Queries the EventBus ring buffer with optional filters
+  app.get<{
+    Querystring: {
+      domain?: string;
+      type?: string;
+      severity?: string;
+      projectId?: string;
+      sessionId?: string;
+      since?: string;
+      limit?: string;
+    };
+  }>('/api/events', async (request, reply) => {
+    if (!_eventBus) {
+      return reply.status(200).send({ events: [], nextCursor: new Date().toISOString(), hasMore: false });
+    }
+
+    const { domain, type, severity, projectId, sessionId, since, limit } = request.query;
+
+    const filter: Record<string, unknown> = {};
+    if (domain) filter.domain = domain;
+    if (type) filter.type = type;
+    if (severity) filter.severity = severity;
+    if (projectId) filter.projectId = projectId;
+    if (sessionId) filter.sessionId = sessionId;
+
+    const events = _eventBus.query(
+      filter as any,
+      {
+        limit: limit ? parseInt(limit, 10) : undefined,
+        since: since ?? undefined,
+      },
+    );
+
+    const nextCursor = events.length > 0
+      ? events[events.length - 1].timestamp
+      : since ?? new Date().toISOString();
+
+    return reply.status(200).send({
+      events,
+      nextCursor,
+      hasMore: false,
+    });
+  });
+
   // Helper endpoint for testing: append a test event
   app.post<{ Body: { projectId: string; type: string }; Reply: ProjectEvent }>(
     '/api/events/test',
