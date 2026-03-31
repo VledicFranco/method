@@ -12,7 +12,7 @@ import {
   goalOverlap,
 } from '../workspace.js';
 import type { WorkspaceManager } from '../workspace.js';
-import type { WorkspaceEntry, SalienceContext } from '../workspace-types.js';
+import type { WorkspaceEntry, SalienceContext, EntryContentType } from '../workspace-types.js';
 import { moduleId } from '../module.js';
 import type { ModuleId } from '../module.js';
 
@@ -246,6 +246,121 @@ describe('workspace', () => {
     assert.ok(typeof evictions[0].salience === 'number');
     assert.ok(typeof evictions[0].salienceDelta === 'number');
     assert.ok(evictions[0].timestamp > 0);
+  });
+
+  it('11. maxPinnedEntries cap evicts oldest pinned when all entries pinned and count >= cap', () => {
+    const ctx = makeContext();
+    const now = Date.now();
+    const ws = createWorkspace(
+      {
+        capacity: 3,
+        maxPinnedEntries: 3,
+        salience: () => 0.5,
+      },
+      ctx,
+    );
+
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Fill to capacity with pinned entries
+    writeA.write(makeEntry(MOD_A, 'pinned-oldest', { pinned: true, timestamp: now - 300 }));
+    writeA.write(makeEntry(MOD_A, 'pinned-middle', { pinned: true, timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'pinned-newest', { pinned: true, timestamp: now - 100 }));
+
+    // At capacity (3), all pinned, count (3) >= maxPinnedEntries (3).
+    // Writing another should evict the oldest pinned entry as safety valve.
+    writeA.write(makeEntry(MOD_A, 'new-entry', { timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3);
+
+    // The oldest pinned entry should have been evicted
+    const evictions = ws.getEvictions();
+    assert.strictEqual(evictions.length, 1);
+    assert.strictEqual(evictions[0].entry.content, 'pinned-oldest');
+    assert.strictEqual(evictions[0].reason, 'capacity');
+  });
+
+  it('12. all-pinned below cap allows overflow (returns undefined from evictLowest, entry added)', () => {
+    const ctx = makeContext();
+    const now = Date.now();
+    const ws = createWorkspace(
+      {
+        capacity: 2,
+        maxPinnedEntries: 5, // cap is well above the 2 pinned entries
+        salience: () => 0.5,
+      },
+      ctx,
+    );
+
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Fill to capacity with pinned entries
+    writeA.write(makeEntry(MOD_A, 'pinned-1', { pinned: true, timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'pinned-2', { pinned: true, timestamp: now - 100 }));
+
+    // At capacity (2), all pinned, but count (2) < maxPinnedEntries (5).
+    // evictLowest returns undefined — entry is added, causing overflow to 3.
+    writeA.write(makeEntry(MOD_A, 'overflow-entry', { timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3, 'Should allow capacity overflow when below pin cap');
+
+    // No evictions should have occurred
+    const evictions = ws.getEvictions();
+    assert.strictEqual(evictions.length, 0);
+  });
+
+  it('13. write preserves contentType field through spread', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace({ capacity: 10 }, ctx);
+
+    const writeA = ws.getWritePort(MOD_A);
+    writeA.write(makeEntry(MOD_A, 'constraint text', {
+      pinned: true,
+      contentType: 'constraint' as EntryContentType,
+    }));
+    writeA.write(makeEntry(MOD_A, 'goal text', {
+      contentType: 'goal' as EntryContentType,
+    }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 2);
+
+    const constraintEntry = snapshot.find(e => e.content === 'constraint text');
+    assert.ok(constraintEntry, 'constraint entry should exist');
+    assert.strictEqual(constraintEntry!.contentType, 'constraint');
+    assert.strictEqual(constraintEntry!.pinned, true);
+
+    const goalEntry = snapshot.find(e => e.content === 'goal text');
+    assert.ok(goalEntry, 'goal entry should exist');
+    assert.strictEqual(goalEntry!.contentType, 'goal');
+  });
+
+  it('14. contentType field is optional (existing entries without it still work)', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace({ capacity: 10 }, ctx);
+
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Write an entry without contentType (legacy behavior)
+    writeA.write(makeEntry(MOD_A, 'no content type'));
+
+    // Write an entry with contentType
+    writeA.write(makeEntry(MOD_A, 'with content type', {
+      contentType: 'operational' as EntryContentType,
+    }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 2);
+
+    const legacy = snapshot.find(e => e.content === 'no content type');
+    assert.ok(legacy, 'legacy entry should exist');
+    assert.strictEqual(legacy!.contentType, undefined, 'legacy entry should have no contentType');
+
+    const typed = snapshot.find(e => e.content === 'with content type');
+    assert.ok(typed, 'typed entry should exist');
+    assert.strictEqual(typed!.contentType, 'operational');
   });
 });
 
