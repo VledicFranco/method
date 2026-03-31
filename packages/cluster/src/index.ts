@@ -51,8 +51,9 @@ export type { RouterConfig } from './routing/router.config.js';
 // ── Federation ─────────────────────────────────────────────────
 
 export { EventRelay } from './federation/event-relay.js';
+export type { RelayableEvent } from './federation/event-relay.js';
 export { EventRelayConfigSchema } from './federation/event-relay.config.js';
-export type { EventRelayConfig } from './federation/event-relay.config.js';
+export type { EventRelayConfig, EventSeverity } from './federation/event-relay.config.js';
 
 // ── Test Doubles ────────────────────────────────────────────────
 

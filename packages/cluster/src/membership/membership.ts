@@ -5,6 +5,17 @@
 // setInterval/setTimeout (language primitives, not transport deps).
 //
 // All I/O enters through port interfaces injected via constructor.
+//
+// Consistency model: eventual consistency, no split-brain protection.
+// Designed for small (2-10 node) trusted clusters on Tailscale.
+// Partitioned halves operate independently; state reconciles on
+// partition heal via state-sync merge (latest lastSeen wins).
+// No quorum or leader election.
+//
+// Clock assumption: assumes NTP-synchronized clocks across cluster
+// nodes. mergeState() uses wall-clock timestamps (lastSeen) for
+// conflict resolution. Clock skew > heartbeatMs may cause stale
+// state to win merge conflicts.
 
 import type { ClusterState, ClusterNode, NodeIdentity, PeerAddress, ClusterMessage, NodeStatus } from '../types.js';
 import type { DiscoveryProvider } from '../ports/discovery-provider.js';
@@ -19,6 +30,8 @@ export interface MembershipPorts {
   discovery: DiscoveryProvider;
   network: NetworkProvider;
   resources: ResourceProvider;
+  /** Optional callback for network send errors (L3 has no logger dependency). */
+  onSendError?: (peer: PeerAddress, error: Error) => void;
 }
 
 // ── Membership Manager ─────────────────────────────────────────
@@ -82,9 +95,11 @@ export class MembershipManager {
     }, this.config.heartbeatMs);
 
     // Sweep: check for suspect/dead/gc transitions
+    // Add jitter (80%-120% of heartbeatMs) to avoid thundering herd
+    const sweepJitter = Math.floor(this.config.heartbeatMs * (0.8 + 0.4 * Math.random()));
     this.sweepTimer = setInterval(() => {
       this.sweep();
-    }, this.config.heartbeatMs);
+    }, sweepJitter);
 
     // State broadcast: full state sync to all peers
     this.broadcastTimer = setInterval(() => {
@@ -102,8 +117,16 @@ export class MembershipManager {
     this.broadcastTimer = null;
   }
 
-  /** Process a node joining the cluster. */
+  /** Process a node joining the cluster. Rejects if maxPeers limit is reached. */
   handleJoin(node: ClusterNode): void {
+    // Allow updating an existing peer even at capacity
+    if (!this.state.peers.has(node.nodeId) && this.state.peers.size >= this.config.maxPeers) {
+      this.ports.onSendError?.(
+        node.address,
+        new Error(`maxPeers limit reached (${this.config.maxPeers}), rejecting join from ${node.nodeId}`),
+      );
+      return;
+    }
     this.state.peers.set(node.nodeId, {
       ...node,
       status: 'alive',
@@ -191,8 +214,8 @@ export class MembershipManager {
       if (peer.status !== 'dead') {
         try {
           await this.ports.network.send(peer.address, msg);
-        } catch {
-          // Network failures are detected by the sweep timer
+        } catch (err) {
+          this.ports.onSendError?.(peer.address, err as Error);
         }
       }
     }
@@ -211,8 +234,8 @@ export class MembershipManager {
       if (peer.status === 'alive' || peer.status === 'suspect') {
         try {
           await this.ports.network.send(peer.address, msg);
-        } catch {
-          // Handled by sweep
+        } catch (err) {
+          this.ports.onSendError?.(peer.address, err as Error);
         }
       }
     }

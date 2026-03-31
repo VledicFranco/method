@@ -83,6 +83,10 @@ export const ClusterConfigSchema = z.object({
   host: z.string().optional(),
   /** Port passed from composition root. */
   port: z.number().int().positive().optional(),
+  /** Shared secret for authenticating cluster POST requests. When set, peers must include x-cluster-secret header. */
+  clusterSecret: z.string().optional(),
+  /** Maximum number of peers allowed. Joins beyond this limit are rejected. */
+  maxPeers: z.number().int().positive().default(50),
 });
 
 export type ClusterConfig = z.infer<typeof ClusterConfigSchema>;
@@ -116,5 +120,9 @@ export function loadClusterConfig(fs?: NodeIdFs): ClusterConfig {
     instanceName: process.env.INSTANCE_NAME ?? undefined,
     host: process.env.HOST ?? undefined,
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
+    clusterSecret: process.env.CLUSTER_SECRET ?? undefined,
+    maxPeers: process.env.CLUSTER_MAX_PEERS
+      ? parseInt(process.env.CLUSTER_MAX_PEERS, 10)
+      : undefined,
   });
 }

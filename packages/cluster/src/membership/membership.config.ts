@@ -20,6 +20,9 @@ export const MembershipConfigSchema = z.object({
 
   /** Time after dead before a node is garbage-collected from peers. Defaults to 3x suspectTimeout. */
   gcTimeoutMs: z.number().int().positive().optional(),
+
+  /** Maximum number of peers allowed. Joins beyond this limit are rejected. */
+  maxPeers: z.number().int().positive().default(50),
 });
 
 export type MembershipConfig = z.infer<typeof MembershipConfigSchema>;
@@ -32,5 +35,6 @@ export function resolveConfig(raw: MembershipConfig): Required<MembershipConfig>
     stateBroadcastMs: raw.stateBroadcastMs,
     deadTimeoutMs: raw.deadTimeoutMs ?? raw.suspectTimeoutMs * 2,
     gcTimeoutMs: raw.gcTimeoutMs ?? raw.suspectTimeoutMs * 3,
+    maxPeers: raw.maxPeers,
   };
 }

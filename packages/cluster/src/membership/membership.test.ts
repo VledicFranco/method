@@ -46,9 +46,10 @@ const FAST_CONFIG = {
   deadTimeoutMs: 600,
   gcTimeoutMs: 900,
   stateBroadcastMs: 500,
+  maxPeers: 50,
 };
 
-function createManager(config = FAST_CONFIG) {
+function createManager(config: Partial<import('./membership.config.js').MembershipConfig> = FAST_CONFIG) {
   const discovery = new FakeDiscovery();
   const network = new FakeNetwork();
   const resources = new FakeResources({ nodeId: SELF_IDENTITY.nodeId, instanceName: SELF_IDENTITY.instanceName });
@@ -257,7 +258,57 @@ describe('MembershipManager', () => {
     });
   });
 
-  // 8. Self-node state always reflects local resources
+  // 8. maxPeers limit — rejects join when at capacity
+  it('rejects join when maxPeers limit is reached', () => {
+    const { manager } = createManager({ ...FAST_CONFIG, maxPeers: 2 });
+    track(manager);
+
+    // Fill to capacity
+    manager.handleJoin(makePeerNode('peer-1'));
+    manager.handleJoin(makePeerNode('peer-2'));
+    assert.equal(manager.getState().peers.size, 2);
+
+    // Third peer should be rejected
+    manager.handleJoin(makePeerNode('peer-3'));
+    assert.equal(manager.getState().peers.size, 2);
+    assert.equal(manager.getState().peers.has('peer-3'), false);
+
+    // Updating an existing peer should still work
+    const updated = makePeerNode('peer-1');
+    updated.resources.cpuLoadPercent = 99;
+    manager.handleJoin(updated);
+    assert.equal(manager.getState().peers.get('peer-1')!.resources.cpuLoadPercent, 99);
+  });
+
+  // 9. onSendError callback is invoked on network failures
+  it('invokes onSendError callback on network send failure', async () => {
+    const discovery = new FakeDiscovery();
+    const network = new FakeNetwork();
+    const resources = new FakeResources({ nodeId: SELF_IDENTITY.nodeId, instanceName: SELF_IDENTITY.instanceName });
+
+    // Make network.send fail
+    const errors: Array<{ peer: import('../types.js').PeerAddress; error: Error }> = [];
+    network.send = async () => { throw new Error('connection refused'); };
+
+    const manager = new MembershipManager(SELF_IDENTITY, {
+      discovery,
+      network,
+      resources,
+      onSendError: (peer, err) => { errors.push({ peer, error: err }); },
+    }, FAST_CONFIG);
+    track(manager);
+
+    manager.handleJoin(makePeerNode('peer-1'));
+    manager.start();
+
+    // Wait for heartbeat to fire
+    await new Promise<void>(resolve => setTimeout(resolve, FAST_CONFIG.heartbeatMs + 50));
+
+    assert.ok(errors.length > 0, 'onSendError should have been called');
+    assert.ok(errors[0].error.message.includes('connection refused'));
+  });
+
+  // 10. Self-node state always reflects local resources
   it('refreshes self-node resources on every getState call', () => {
     const { manager, resources } = createManager();
     track(manager);

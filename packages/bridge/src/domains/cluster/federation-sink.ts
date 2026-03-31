@@ -11,7 +11,8 @@
 // re-relaying events received from other bridges.
 
 import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
-import type { EventRelay } from '@method/cluster';
+import type { EventRelay, RelayableEvent } from '@method/cluster';
+import type { EventSeverity } from '@method/cluster';
 import type { ClusterDomain } from './core.js';
 import type { ClusterNode } from '@method/cluster';
 
@@ -50,13 +51,14 @@ export class ClusterFederationSink implements EventSink {
       peers.push(node);
     }
 
-    // Adapt BridgeEvent to the shape EventRelay.relay() expects.
-    // EventRelay's RelayableEvent is not re-exported from @method/cluster,
-    // but relay() accepts compatible structural types.
-    const relayable = {
+    // Adapt BridgeEvent to RelayableEvent (exported from @method/cluster).
+    // Bridge EventSeverity intentionally diverges from L3 — bridge does not
+    // support 'debug', while L3 EventSeverity includes it. The federation
+    // sink only forwards bridge-level events which are already info+.
+    const relayable: RelayableEvent = {
       domain: event.domain,
       type: event.type,
-      severity: event.severity,
+      severity: event.severity as EventSeverity,
       payload: event.payload,
       timestamp: Date.parse(event.timestamp),
       sourceNodeId: event.sourceNodeId,

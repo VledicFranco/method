@@ -11,6 +11,7 @@ import {
   type DiscoveryProvider,
   type NetworkProvider,
   type ResourceProvider,
+  type PeerAddress,
 } from '@method/cluster';
 import type { ClusterConfig } from './config.js';
 
@@ -63,11 +64,19 @@ export class ClusterDomain {
           port: config.port ?? 3456,
         },
       },
-      { discovery: ports.discovery, network: ports.network, resources: ports.resources },
+      {
+        discovery: ports.discovery,
+        network: ports.network,
+        resources: ports.resources,
+        onSendError: (peer: PeerAddress, err: Error) => {
+          logger.warn(`[cluster] send to ${peer.host}:${peer.port} failed: ${err.message}`);
+        },
+      },
       {
         heartbeatMs: config.heartbeatMs,
         suspectTimeoutMs: config.suspectTimeoutMs,
         stateBroadcastMs: config.stateBroadcastMs,
+        maxPeers: config.maxPeers,
       },
     );
   }
@@ -117,21 +126,28 @@ export class ClusterDomain {
 
     this.logger.info('[cluster] Stopping cluster node — announcing leave to peers');
 
-    // Best-effort leave announcement before stopping timers
+    // Best-effort parallel leave announcement with total timeout
     const state = this.manager.getState();
     const leaveMsg = {
       type: 'leave' as const,
       from: state.self.nodeId,
       nodeId: state.self.nodeId,
     };
-    for (const peer of state.peers.values()) {
-      if (peer.status === 'alive' || peer.status === 'suspect') {
-        try {
-          await this.ports.network.send(peer.address, leaveMsg);
-        } catch {
+
+    const alivePeers = [...state.peers.values()].filter(
+      p => p.status === 'alive' || p.status === 'suspect',
+    );
+
+    if (alivePeers.length > 0) {
+      const sends = alivePeers.map(peer =>
+        this.ports!.network.send(peer.address, leaveMsg).catch(() => {
           // Best-effort — peer will eventually detect via timeout
-        }
-      }
+        }),
+      );
+
+      // Race all sends against a 10s total timeout
+      const timeout = new Promise<void>(resolve => setTimeout(resolve, 10_000));
+      await Promise.race([Promise.allSettled(sends), timeout]);
     }
 
     this.manager.stop();

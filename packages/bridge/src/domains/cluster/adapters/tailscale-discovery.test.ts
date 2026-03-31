@@ -101,7 +101,48 @@ describe('TailscaleDiscovery', () => {
     assert.ok(logger.messages.some(m => m.includes('Tailscale API unavailable')));
   });
 
-  // 3. No Tailscale, no seeds — returns empty array
+  // 3. Hostname validation — skips peers with invalid hostnames
+  it('skips peers with invalid hostnames', async () => {
+    const logger = makeLogger();
+
+    const statusWithBadHost = JSON.stringify({
+      Self: { DNSName: 'self-node.ts.net.' },
+      Peer: {
+        'good-key': {
+          DNSName: 'good-host.ts.net.',
+          HostName: 'good-host',
+          TailscaleIPs: ['100.64.0.2'],
+          Online: true,
+        },
+        'bad-key': {
+          DNSName: 'evil;rm -rf /.ts.net.',
+          HostName: 'evil',
+          TailscaleIPs: ['100.64.0.3'],
+          Online: true,
+        },
+      },
+    });
+
+    const exec: ExecFn = async () => statusWithBadHost;
+
+    // Accept all probes
+    const probe: ProbeFn = async () => true;
+
+    const discovery = new TailscaleDiscovery(
+      { bridgePort: 3456, seeds: '' },
+      logger,
+      { exec, probe },
+    );
+
+    const peers = await discovery.discover();
+
+    // Only good-host should be returned
+    assert.equal(peers.length, 1);
+    assert.equal(peers[0].host, 'good-host.ts.net');
+    assert.ok(logger.messages.some(m => m.includes('invalid hostname')));
+  });
+
+  // 4. No Tailscale, no seeds — returns empty array
   it('returns empty array when no Tailscale and no seeds', async () => {
     const logger = makeLogger();
 

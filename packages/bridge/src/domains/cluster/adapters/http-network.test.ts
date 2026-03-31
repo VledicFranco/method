@@ -40,7 +40,98 @@ describe('HttpNetwork', () => {
     assert.equal(sentBody.generation, 1);
   });
 
-  // 2. onMessage handler receives dispatched messages
+  // 2. send() maps message types to correct routes (exhaustive switch)
+  it('maps all message types to correct routes', async () => {
+    const routes: string[] = [];
+
+    const fakeFetch: FetchFn = async (url, init) => {
+      routes.push(new URL(url).pathname);
+      return new Response('{}', { status: 200 });
+    };
+
+    const network = new HttpNetwork({ fetch: fakeFetch });
+    const peer: PeerAddress = { host: 'peer.ts.net', port: 3456 };
+
+    // Test all message types
+    await network.send(peer, { type: 'ping', from: 'self', generation: 1 });
+    await network.send(peer, { type: 'join', from: 'self', node: {} as any });
+    await network.send(peer, { type: 'leave', from: 'self', nodeId: 'self' });
+    await network.send(peer, { type: 'state-sync', from: 'self', nodes: [] });
+    await network.send(peer, { type: 'event-relay', from: 'self', events: [] });
+    await network.send(peer, { type: 'ack', from: 'self', generation: 1, state: { self: {} as any, peers: new Map(), generation: 0 } });
+
+    assert.deepEqual(routes, [
+      '/cluster/ping',
+      '/cluster/join',
+      '/cluster/leave',
+      '/cluster/state-sync',
+      '/cluster/events',
+      '/cluster/ack',
+    ]);
+  });
+
+  // 3. send() serializes Map in ack messages
+  it('serializes Map→Object in ack message state.peers', async () => {
+    let sentBody = '';
+
+    const fakeFetch: FetchFn = async (url, init) => {
+      sentBody = init.body as string;
+      return new Response('{}', { status: 200 });
+    };
+
+    const network = new HttpNetwork({ fetch: fakeFetch });
+    const peer: PeerAddress = { host: 'peer.ts.net', port: 3456 };
+
+    const peersMap = new Map([['node-1', { nodeId: 'node-1' }]]);
+    const msg: ClusterMessage = {
+      type: 'ack',
+      from: 'self',
+      generation: 1,
+      state: { self: { nodeId: 'self' } as any, peers: peersMap as any, generation: 1 },
+    };
+
+    await network.send(peer, msg);
+
+    const parsed = JSON.parse(sentBody);
+    assert.equal(parsed.state.peers['node-1'].nodeId, 'node-1');
+    assert.ok(!Array.isArray(parsed.state.peers), 'peers should be an object, not array');
+  });
+
+  // 4. send() includes x-cluster-secret header when configured
+  it('includes x-cluster-secret header when configured', async () => {
+    let sentHeaders: Record<string, string> = {};
+
+    const fakeFetch: FetchFn = async (url, init) => {
+      sentHeaders = init.headers as Record<string, string>;
+      return new Response('{}', { status: 200 });
+    };
+
+    const network = new HttpNetwork({ fetch: fakeFetch, clusterSecret: 'test-secret' });
+    const peer: PeerAddress = { host: 'peer.ts.net', port: 3456 };
+
+    await network.send(peer, { type: 'ping', from: 'self', generation: 1 });
+
+    assert.equal(sentHeaders['x-cluster-secret'], 'test-secret');
+  });
+
+  // 5. sendWithRetry retries on failure then succeeds
+  it('sendWithRetry retries and eventually succeeds', async () => {
+    let attempt = 0;
+
+    const fakeFetch: FetchFn = async () => {
+      attempt++;
+      if (attempt < 3) throw new Error('timeout');
+      return new Response('{}', { status: 200 });
+    };
+
+    const network = new HttpNetwork({ fetch: fakeFetch });
+    const peer: PeerAddress = { host: 'peer.ts.net', port: 3456 };
+
+    await network.sendWithRetry(peer, { type: 'join', from: 'self', node: {} as any }, 2, 10);
+    assert.equal(attempt, 3);
+  });
+
+  // 6. onMessage handler receives dispatched messages
   it('dispatches incoming messages to registered handler', () => {
     const network = new HttpNetwork();
 

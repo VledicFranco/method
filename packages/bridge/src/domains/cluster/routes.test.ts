@@ -33,6 +33,7 @@ function makeConfig(overrides: Partial<ClusterConfig> = {}): ClusterConfig {
     federationEnabled: true,
     federationFilterSeverity: 'warning,error,critical',
     federationFilterDomain: '',
+    maxPeers: 50,
     ...overrides,
   };
 }
@@ -277,6 +278,138 @@ describe('Cluster Routes', () => {
 
       const body = JSON.parse(res.payload);
       assert.equal(body.error, 'Router not configured');
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 9. Zod validation — invalid join body returns 400
+  it('POST /cluster/join returns 400 for invalid body', async () => {
+    const { app, domain } = await buildApp(makeConfig());
+
+    try {
+      // Missing node entirely
+      const res1 = await app.inject({
+        method: 'POST',
+        url: '/cluster/join',
+        payload: {},
+      });
+      assert.equal(res1.statusCode, 400);
+
+      // node missing nodeId
+      const res2 = await app.inject({
+        method: 'POST',
+        url: '/cluster/join',
+        payload: { node: { instanceName: 'x' } },
+      });
+      assert.equal(res2.statusCode, 400);
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 10. Zod validation — invalid ping body returns 400
+  it('POST /cluster/ping returns 400 for invalid body', async () => {
+    const { app, domain } = await buildApp(makeConfig());
+
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/cluster/ping',
+        payload: { from: 123, generation: 'not-a-number' },
+      });
+      assert.equal(res.statusCode, 400);
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 11. Zod validation — invalid route body type returns 400
+  it('POST /cluster/route returns 400 for invalid work request type', async () => {
+    const router = new CapacityWeightedRouter();
+    const { app, domain } = await buildApp(makeConfig(), { router });
+
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/cluster/route',
+        payload: { type: 'invalid-type' },
+      });
+      assert.equal(res.statusCode, 400);
+
+      const body = JSON.parse(res.payload);
+      assert.ok(body.details, 'Should include Zod error details');
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 12. CLUSTER_SECRET auth — returns 401 when secret is wrong
+  it('returns 401 when x-cluster-secret header is missing/wrong', async () => {
+    const discovery = new FakeDiscovery();
+    const network = new FakeNetwork();
+    const resources = new FakeResources({ nodeId: 'auth-test', instanceName: 'test' });
+
+    const domain = new ClusterDomain(makeConfig({ nodeId: 'auth-test' }), { discovery, network, resources }, makeLogger());
+    await domain.start();
+
+    const app = Fastify({ logger: false });
+    registerClusterRoutes(app, { domain, clusterSecret: 'my-secret-123' });
+    await app.ready();
+
+    try {
+      // No header
+      const res1 = await app.inject({
+        method: 'POST',
+        url: '/cluster/ping',
+        payload: { from: 'peer-1', generation: 1 },
+      });
+      assert.equal(res1.statusCode, 401);
+
+      // Wrong header
+      const res2 = await app.inject({
+        method: 'POST',
+        url: '/cluster/ping',
+        headers: { 'x-cluster-secret': 'wrong' },
+        payload: { from: 'peer-1', generation: 1 },
+      });
+      assert.equal(res2.statusCode, 401);
+
+      // Correct header
+      domain.getManager()!.handleJoin(makePeerNode('peer-1'));
+      const res3 = await app.inject({
+        method: 'POST',
+        url: '/cluster/ping',
+        headers: { 'x-cluster-secret': 'my-secret-123' },
+        payload: { from: 'peer-1', generation: 1 },
+      });
+      assert.equal(res3.statusCode, 200);
+    } finally {
+      await domain.stop();
+      await app.close();
+    }
+  });
+
+  // 13. GET endpoints are not gated by auth (no secret required)
+  it('GET endpoints do not require x-cluster-secret', async () => {
+    const discovery = new FakeDiscovery();
+    const network = new FakeNetwork();
+    const resources = new FakeResources({ nodeId: 'auth-get-test', instanceName: 'test' });
+
+    const domain = new ClusterDomain(makeConfig({ nodeId: 'auth-get-test' }), { discovery, network, resources }, makeLogger());
+    await domain.start();
+
+    const app = Fastify({ logger: false });
+    registerClusterRoutes(app, { domain, clusterSecret: 'my-secret' });
+    await app.ready();
+
+    try {
+      const res = await app.inject({ method: 'GET', url: '/cluster/state' });
+      assert.equal(res.statusCode, 200);
     } finally {
       await domain.stop();
       await app.close();

@@ -69,6 +69,11 @@ const defaultProbe: ProbeFn = async (url, timeoutMs) => {
   }
 };
 
+// ── Hostname Validation ──────────────────────────────────────
+
+/** Only allow safe characters in hostnames used to construct URLs. */
+const VALID_HOSTNAME_RE = /^[a-zA-Z0-9._-]+$/;
+
 // ── Implementation ────────────────────────────────────────────
 
 export class TailscaleDiscovery implements DiscoveryProvider {
@@ -129,6 +134,12 @@ export class TailscaleDiscovery implements DiscoveryProvider {
       if (!host) continue;
       if (host === selfDns.replace(/\.$/, '')) continue; // skip self
 
+      // Validate hostname to prevent URL injection
+      if (!VALID_HOSTNAME_RE.test(host)) {
+        this.logger.warn(`[tailscale-discovery] Skipping peer with invalid hostname: ${host}`);
+        continue;
+      }
+
       candidates.push({ host, name: peer.HostName ?? host });
     }
 
@@ -138,18 +149,19 @@ export class TailscaleDiscovery implements DiscoveryProvider {
     }
 
     // Probe each candidate at the bridge port for a /health endpoint
-    const results: PeerAddress[] = [];
-    const probes = candidates.map(async (c) => {
-      const url = `http://${c.host}:${this.config.bridgePort}/health`;
-      const reachable = await this.probe(url, probeTimeout);
-      if (reachable) {
-        results.push({ host: c.host, port: this.config.bridgePort });
-        this.logger.info(`[tailscale-discovery] Found bridge peer: ${c.name} at ${c.host}:${this.config.bridgePort}`);
-      }
-    });
+    // Returns results without mutating a shared array
+    const probed = await Promise.all(
+      candidates.map(async (c) => {
+        const url = `http://${c.host}:${this.config.bridgePort}/health`;
+        const reachable = await this.probe(url, probeTimeout);
+        if (reachable) {
+          this.logger.info(`[tailscale-discovery] Found bridge peer: ${c.name} at ${c.host}:${this.config.bridgePort}`);
+        }
+        return { host: c.host, port: this.config.bridgePort, reachable };
+      }),
+    );
 
-    await Promise.all(probes);
-    return results;
+    return probed.filter(p => p.reachable).map(({ host, port }) => ({ host, port }));
   }
 
   private discoverViaSeeds(): PeerAddress[] {

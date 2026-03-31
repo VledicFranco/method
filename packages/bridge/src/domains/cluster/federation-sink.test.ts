@@ -35,6 +35,7 @@ function makeConfig(overrides: Partial<ClusterConfig> = {}): ClusterConfig {
     federationEnabled: true,
     federationFilterSeverity: 'warning,error,critical',
     federationFilterDomain: '',
+    maxPeers: 50,
     ...overrides,
   };
 }

@@ -289,7 +289,17 @@ const clusterRouter = clusterConfig.enabled
   ? new CapacityWeightedRouter()
   : undefined;
 
-registerClusterRoutes(app, { domain: clusterDomain, router: clusterRouter });
+// Pass network + eventBus + clusterSecret so routes dispatch through L3 port contract
+if (clusterConfig.clusterSecret) {
+  clusterNetwork.setClusterSecret(clusterConfig.clusterSecret);
+}
+registerClusterRoutes(app, {
+  domain: clusterDomain,
+  router: clusterRouter,
+  network: clusterNetwork,
+  eventBus,
+  clusterSecret: clusterConfig.clusterSecret,
+});
 
 // PRD 041: Register CognitiveSink on the event bus (onEvent is a no-op — sink emits TO the bus, not from it)
 eventBus.registerSink(cognitiveSink);
@@ -299,8 +309,14 @@ eventBus.registerSink(createExperimentEventSink());
 
 // PRD 039: Federation sink — relay local events to cluster peers
 if (clusterConfig.enabled && clusterConfig.federationEnabled) {
-  const severities = clusterConfig.federationFilterSeverity
-    .split(',').map(s => s.trim()).filter(Boolean) as any[];
+  const validSeverities = new Set(['debug', 'info', 'warning', 'error', 'critical']);
+  const rawSeverities = clusterConfig.federationFilterSeverity
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const severities = rawSeverities.filter(s => {
+    if (validSeverities.has(s)) return true;
+    app.log.warn(`[cluster] Ignoring unrecognized federation severity: '${s}'`);
+    return false;
+  }) as Array<'debug' | 'info' | 'warning' | 'error' | 'critical'>;
   const domains = clusterConfig.federationFilterDomain
     .split(',').map(s => s.trim()).filter(Boolean);
 
