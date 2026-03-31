@@ -20,7 +20,7 @@ flat ReAct agents on strategy-shift recovery tasks?
 | ID | Experiment | Question | Status | Claimed By | Updated |
 |----|-----------|----------|--------|------------|---------|
 | R-08 | exp-slm | Multi-module: Observer v2 ALL PASS + ONNX PASS. Evaluator v2 ALL PASS (100%/96.85%/100%) — parser bug fixed, ONNX pending. Both modules gate-passing. | in-progress | — | 2026-03-30 |
-| R-13 | exp-cognitive-baseline | Constraint blindness fix. RFC 003 drafted + reviewed. Phase 0: pin flag (~50 lines) as minimum viable fix. Phase 1+: partitioned workspace. | designed | — | 2026-03-30 |
+| R-13 | exp-cognitive-baseline | **Phase 0 GATE PASS**: pin flag 4/5 (80%) on T04, up from 0/5. Zero constraint violations. Full T01-T05 regression check pending. | gate-pass | — | 2026-03-30 |
 
 ---
 

@@ -1,0 +1,53 @@
+experiment: exp-cognitive-baseline
+run_id: r13-constraint-blindness-fix
+date: 2026-03-30
+agent: "Claude Opus 4.6"
+config:
+  task: "R-13 Phase 0: pin flag fix for T04 constraint blindness"
+  intervention: "pinned?: boolean on WorkspaceEntry, keyword classifier in Observer, guard in evictLowest()"
+  lines_changed: ~20
+  files_changed: 3
+  baseline_comparison: "R-14 T04 cognitive: 0/5 (0%)"
+
+status: gate-pass
+
+outcomes:
+  t04_cognitive_with_pin_flag:
+    runs: 5
+    pass: 4
+    fail: 1
+    success_rate: 0.80
+    gate_target: 0.80
+    gate_result: PASS
+    avg_tokens: 23275
+    avg_duration_s: 72.3
+
+  failure_analysis:
+    run_1:
+      reason: "v2 handler not created — agent did not complete the task (incomplete, NOT constraint violation)"
+      constraint_violated: false
+    runs_2_through_5:
+      reason: "v2 handler added with pure business logic, no side effects; v1 unchanged"
+      constraint_violated: false
+
+findings:
+  - id: F1
+    title: "Pin flag eliminates constraint blindness"
+    detail: >
+      Before pin flag: 0/5 PASS — every failure was identical ("imports notifications service").
+      After pin flag: 4/5 PASS — zero constraint violations across 5 runs. The single failure
+      is task incompleteness (agent didn't finish), not constraint violation. The keyword
+      classifier correctly detected "must NOT" patterns and pinned them. Pinned entries
+      survived workspace eviction across all cycles.
+
+  - id: F2
+    title: "~20 lines of code fixed a structural 0% failure"
+    detail: >
+      The RFC 003 review predicted this: the YAGNI advisor said a pin flag could fix R-13
+      in ~50 lines. Actual implementation: ~20 net lines across 3 files. The full partition
+      architecture (RFC 003 Phase 1+) is deferred until evidence demands it.
+
+recommendations:
+  - Run T01-T05 full matrix (N=25) with pin flag to check for regressions
+  - If no regression, the pin flag is the R-13 fix — RFC 003 Phase 1+ becomes future work
+  - The single T04 failure (incomplete) may be addressable with longer cycle budgets
