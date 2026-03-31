@@ -134,4 +134,34 @@ describe('Observer Module', () => {
     // State should remain unchanged
     assert.strictEqual(result.state.observationCount, 0);
   });
+
+  it('sets pinned=true for constraint input via classifier', async () => {
+    const writePort = createMockWritePort();
+    const observer = createObserver(writePort);
+    const state = observer.initialState();
+
+    await observer.step(
+      { content: 'You must NOT import notifications from the audit module' },
+      state,
+      makeControl(),
+    );
+
+    assert.strictEqual(writePort.entries.length, 1);
+    assert.strictEqual(writePort.entries[0].pinned, true);
+  });
+
+  it('does NOT pin generic operational input', async () => {
+    const writePort = createMockWritePort();
+    const observer = createObserver(writePort);
+    const state = observer.initialState();
+
+    await observer.step(
+      { content: 'Build a REST endpoint for user profiles' },
+      state,
+      makeControl(),
+    );
+
+    assert.strictEqual(writePort.entries.length, 1);
+    assert.strictEqual(writePort.entries[0].pinned, undefined);
+  });
 });
