@@ -19,6 +19,7 @@ import type {
   WorkspaceEntry,
 } from '../algebra/index.js';
 import { moduleId } from '../algebra/index.js';
+import { classifyEntry } from './constraint-classifier.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -97,24 +98,6 @@ function computeNovelty(
   return Math.min(1, (lengthScore + diffRatio) / 2);
 }
 
-// ── Constraint Classification ───────────────────────────────────
-
-const CONSTRAINT_PATTERNS = [
-  /\bmust\s+not\b/i,
-  /\bshall\s+not\b/i,
-  /\bdo\s+not\b/i,
-  /\bnever\s+(?:import|use|call|trigger|modify|change|delete|remove|touch)\b/i,
-  /\bcannot\b/i,
-  /\bprohibited\b/i,
-  /\bforbidden\b/i,
-  /\bconstraint:/i,
-  /\binvariant:/i,
-];
-
-function isConstraint(content: string): boolean {
-  return CONSTRAINT_PATTERNS.some((p) => p.test(content));
-}
-
 // ── Factory ──────────────────────────────────────────────────────
 
 /**
@@ -175,13 +158,17 @@ export function createObserver(
         // Compute novelty
         const noveltyScore = computeNovelty(input.content, state.previousContent, baseNovelty);
 
+        // Classify task input for constraint/goal/operational content
+        const classification = classifyEntry(input.content);
+
         // Write observation to workspace
-        const entry: WorkspaceEntry = {
+        const entry: WorkspaceEntry & { contentType?: string } = {
           source: id,
           content: input.content,
           salience: noveltyScore,
           timestamp: Date.now(),
-          pinned: isConstraint(input.content) || undefined,
+          pinned: classification.pinned || undefined,
+          contentType: classification.contentType,
         };
         writePort.write(entry);
 
