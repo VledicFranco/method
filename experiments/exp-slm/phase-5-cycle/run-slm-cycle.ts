@@ -4,17 +4,18 @@
  * Wires 3 SLM-compiled modules (Monitor, Observer, Evaluator) into the cognitive
  * cycle and measures their impact on T01-T05 tasks.
  *
- * Four conditions:
- *   flat:           anthropicProvider + VirtualToolProvider (no cycle)
- *   rule-cognitive:  rule-based Observer + Monitor + Evaluator + ReasonerActor
- *   monitor-only:    SLM Monitor + rule-based Observer (cycle 0 only) + rule-based Evaluator
- *   slm-cognitive:   SLM Monitor + SLM Observer + SLM Evaluator + frontier ReasonerActor
+ * Five conditions:
+ *   flat:                   anthropicProvider + VirtualToolProvider (no cycle)
+ *   rule-cognitive:          rule-based Observer + Monitor + Evaluator + ReasonerActor
+ *   partitioned-cognitive:   rule-based modules + partitioned workspace (PRD 044 C-4)
+ *   monitor-only:            SLM Monitor + rule-based Observer (cycle 0 only) + rule-based Evaluator
+ *   slm-cognitive:           SLM Monitor + SLM Observer + SLM Evaluator + frontier ReasonerActor
  *
  * Usage:
  *   npx tsx experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts [options]
  *
  * Options:
- *   --condition  slm-cognitive | monitor-only | rule-cognitive | flat  (default: all)
+ *   --condition  slm-cognitive | monitor-only | rule-cognitive | partitioned-cognitive | flat  (default: all)
  *   --task       1-5 or 'all'   (default: all)
  *   --runs       N               (default: 3)
  *   --config     baseline | v2-minimal  (default: baseline)
@@ -73,6 +74,9 @@ import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/mon
 import { createEvaluator, type EvaluatorInput } from '../../../packages/pacta/src/cognitive/modules/evaluator.js';
 import { checkConstraintViolations } from '../../../packages/pacta/src/cognitive/modules/constraint-classifier.js';
 
+import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
+import type { ContextSelector, PartitionId, PartitionMonitorContext } from '../../../packages/pacta/src/cognitive/algebra/index.js';
+
 // CJS/ESM interop: exp-cognitive-baseline has no package.json "type":"module",
 // so its exports need default-import destructuring under Node16 resolution.
 import strategiesModule from '../../exp-cognitive-baseline/strategies.js';
@@ -115,7 +119,7 @@ interface TaskDefinition {
 
 const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05, TASK_06];
 
-type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive';
+type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive';
 
 interface ContextProfile {
   cycle: number;
@@ -123,6 +127,11 @@ interface ContextProfile {
   estimatedTokens: number;
   pinnedEntries: number;
   observerEntries: number;
+}
+
+interface PartitionedContextProfile extends ContextProfile {
+  perPartition: Record<string, { entries: number; tokens: number }>;
+  perModule: Record<string, { entries: number; tokens: number }>;
 }
 
 interface RunResult {
@@ -373,6 +382,283 @@ async function runRuleCognitive(
   } catch (err) {
     return {
       condition: 'rule-cognitive',
+      task: task.name,
+      run: runNumber,
+      success: false,
+      reason: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      tokensUsed: totalTokens,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+    };
+  }
+}
+
+// ── Condition E: Partitioned Cognitive ─────────────────────────
+
+async function runPartitionedCognitive(
+  task: TaskDefinition,
+  runNumber: number,
+  config: CognitiveConfig,
+): Promise<RunResult> {
+  const startTime = Date.now();
+  const vfs = new VirtualToolProvider(task.initialFiles);
+
+  const llmProvider = anthropicProvider({
+    model: 'claude-sonnet-4-20250514',
+    maxOutputTokens: 2048,
+  });
+  const adapter = createProviderAdapter(llmProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
+  });
+
+  const salienceContext: SalienceContext = {
+    now: Date.now(),
+    goals: ['complete the coding task', 'preserve functionality'],
+    sourcePriorities: new Map([
+      [moduleId('reasoner-actor'), 0.9],
+      [moduleId('observer'), 0.6],
+    ]),
+  };
+
+  // Monolithic workspace — modules still write here via their write ports
+  const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
+
+  // Partition system — entries are dual-written here for partitioned context reads
+  const partitions = createPartitionSystem({
+    constraintCapacity: 10,
+    operationalCapacity: 12,
+    taskCapacity: 6,
+  });
+
+  const observer = createObserver(workspace.getWritePort(moduleId('observer')));
+  const monitor = createMonitor({ confidenceThreshold: 0.3, stagnationThreshold: config.monitor.stagnationThreshold });
+  const evaluator = createEvaluator();
+  const reasonerActor = createReasonerActor(
+    adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
+  );
+
+  let totalTokens = 0;
+  let providerCalls = 0;
+  let monitorInterventions = 0;
+  const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
+  const contextProfiles: PartitionedContextProfile[] = [];
+
+  // Track last write cycle per partition for monitor context
+  const lastWriteCycle = new Map<PartitionId, number>([
+    ['constraint', 0],
+    ['operational', 0],
+    ['task', 0],
+  ]);
+
+  let observerState = observer.initialState();
+  let monitorState = monitor.initialState();
+  let evaluatorState = evaluator.initialState();
+  let raState = reasonerActor.initialState();
+  let prevRAMonitoring: MonitoringSignal | null = null;
+
+  const raControl: ReasonerActorControl = {
+    target: moduleId('reasoner-actor'),
+    timestamp: Date.now(),
+    strategy: 'plan',
+    effort: 'medium',
+  };
+
+  // Selector for the reasoner-actor: reads task + constraint + operational partitions
+  const reasonerSelector: ContextSelector = {
+    sources: ['task', 'constraint', 'operational'] as PartitionId[],
+    budget: 8192,
+    strategy: 'salience',
+  };
+
+  try {
+    for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+      partitions.resetCycleQuotas();
+
+      // 1. OBSERVE (cycle 0 only)
+      if (cycle === 0) {
+        const obsResult = await observer.step(
+          { content: task.description },
+          observerState,
+          { target: moduleId('observer'), timestamp: Date.now() } as any,
+        );
+        observerState = obsResult.state;
+
+        // Dual-write: replicate observer entries into partition system
+        // Read what the observer just wrote to workspace and route it through partitions
+        const observerEntries = workspace.getReadPort(moduleId('observer')).read();
+        for (const entry of observerEntries) {
+          partitions.write(entry, moduleId('observer'));
+        }
+        // Track writes — entries may land in task or constraint partitions
+        lastWriteCycle.set('task', cycle);
+        lastWriteCycle.set('constraint', cycle);
+      }
+
+      // 2. MONITOR
+      const monitorSignals: AggregatedSignals = new Map();
+      if (prevRAMonitoring) {
+        monitorSignals.set(moduleId('reasoner-actor'), prevRAMonitoring);
+      }
+      const monResult = await monitor.step(
+        monitorSignals, monitorState,
+        { target: moduleId('monitor'), timestamp: Date.now() } as any,
+      );
+      monitorState = monResult.state;
+
+      // 3. EVALUATE
+      const evalInput: EvaluatorInput = {
+        workspace: workspace.getReadPort(moduleId('evaluator')).read(),
+        signals: monitorSignals,
+      };
+      const evalResult = await evaluator.step(
+        evalInput, evaluatorState,
+        { target: moduleId('evaluator'), timestamp: Date.now(), evaluationHorizon: 'trajectory' },
+      );
+      evaluatorState = evalResult.state;
+
+      // Apply monitor enforcement
+      if (monResult.monitoring.anomalyDetected) {
+        monitorInterventions++;
+        raControl.restrictedActions = monResult.output.restrictedActions;
+        raControl.forceReplan = monResult.output.forceReplan;
+        if (monResult.output.forceReplan) raControl.strategy = 'think';
+      }
+
+      // 4. REASON+ACT — context comes from partitioned system, not monolithic workspace
+      // Monolithic context (for comparison profiling)
+      const monoSnapshot = workspace.getReadPort(moduleId('reasoner-actor')).read();
+      const monoTokens = monoSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
+
+      // Partitioned context (what the agent actually sees)
+      const partSnapshot = partitions.buildContext(reasonerSelector);
+      const partTokens = partSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
+
+      const reduction = monoTokens > 0 ? Math.round((1 - partTokens / monoTokens) * 100) : 0;
+      console.log(`    [c${cycle + 1}] context: mono=${monoSnapshot.length}e/${monoTokens}tok → part=${partSnapshot.length}e/${partTokens}tok (${reduction}% reduction)`);
+
+      // Per-partition breakdown
+      const perPartition: Record<string, { entries: number; tokens: number }> = {};
+      for (const pid of ['constraint', 'operational', 'task'] as PartitionId[]) {
+        const pEntries = partitions.getPartition(pid).snapshot();
+        perPartition[pid] = {
+          entries: pEntries.length,
+          tokens: pEntries.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0),
+        };
+      }
+
+      // Per-module breakdown from monolithic workspace (for profiling)
+      const perModule: Record<string, { entries: number; tokens: number }> = {};
+      for (const entry of monoSnapshot) {
+        const src = String((entry as any).source ?? 'unknown');
+        if (!perModule[src]) perModule[src] = { entries: 0, tokens: 0 };
+        perModule[src].entries++;
+        perModule[src].tokens += Math.ceil(String(entry.content).length / 4);
+      }
+
+      const contextProfile: PartitionedContextProfile = {
+        cycle,
+        totalEntries: partSnapshot.length,
+        estimatedTokens: partTokens,
+        pinnedEntries: partSnapshot.filter((e: any) => e.pinned).length,
+        observerEntries: partSnapshot.filter((e: any) => String(e.source) === 'observer').length,
+        perPartition,
+        perModule,
+      };
+      contextProfiles.push(contextProfile);
+
+      // Feed partitioned context to reasoner-actor
+      const snapshot: ReadonlyWorkspaceSnapshot = partSnapshot;
+      const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
+      raState = raResult.state;
+      prevRAMonitoring = raResult.monitoring;
+      providerCalls++;
+      totalTokens += (raResult.monitoring as any).tokensThisStep ?? 0;
+
+      if (raResult.output.toolResult) {
+        allToolCalls.push({
+          tool: raResult.output.actionName,
+          input: raResult.output.toolResult,
+          success: (raResult.monitoring as any).success ?? true,
+        });
+
+        // Dual-write: replicate RA tool result into partition system as operational entry
+        const toolContent = typeof raResult.output.toolResult === 'object'
+          ? JSON.stringify(raResult.output.toolResult)
+          : String(raResult.output.toolResult);
+        partitions.write(
+          {
+            content: `[${raResult.output.actionName}] ${toolContent.slice(0, 500)}`,
+            timestamp: Date.now(),
+            source: moduleId('reasoner-actor'),
+            contentType: 'tool-result',
+          } as any,
+          moduleId('reasoner-actor'),
+        );
+        lastWriteCycle.set('operational', cycle);
+      }
+
+      // Per-cycle trace
+      const conf = (raResult.monitoring as any).confidence ?? 0;
+      const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
+      const stag = monResult.monitoring.anomalyDetected ? ' stag' : '';
+      console.log(`    [c${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}  ctx=${contextProfile.totalEntries}e/${contextProfile.estimatedTokens}tok${stag}`);
+
+      // Post-ACT constraint verification via partition monitors (PRD 044)
+      const actContent = typeof (raResult.output as any).lastOutput === 'string'
+        ? (raResult.output as any).lastOutput : '';
+      const partMonitorCtx: PartitionMonitorContext = {
+        cycleNumber: cycle,
+        lastWriteCycle,
+        actorOutput: actContent || undefined,
+      };
+      const partSignals = partitions.checkPartitions(partMonitorCtx);
+      const criticalSignals = partSignals.filter(s => s.severity === 'critical' || s.severity === 'high');
+      if (criticalSignals.length > 0) {
+        for (const sig of criticalSignals) {
+          console.log(`    partition signal [${sig.severity}] ${sig.partition}: ${sig.type} — ${sig.detail}`);
+        }
+        raControl.restrictedActions = ['Write'];
+        raControl.forceReplan = true;
+        raControl.strategy = 'think';
+      }
+
+      // Also run legacy constraint check for backward compat
+      const pinnedEntries = workspace.getReadPort(moduleId('observer')).read().filter((e: any) => e.pinned);
+      if (pinnedEntries.length > 0 && raResult?.output && actContent) {
+        const violations = checkConstraintViolations(pinnedEntries, actContent);
+        if (violations.length > 0) {
+          for (const v of violations) {
+            console.log(`    constraint violation: ${v.constraint.slice(0, 80)} | matched: ${v.violation}`);
+          }
+          raControl.restrictedActions = ['Write'];
+          raControl.forceReplan = true;
+          raControl.strategy = 'think';
+        }
+      }
+
+      if (raResult.output.actionName === 'done') break;
+    }
+
+    const validation = task.validate(vfs.files);
+    return {
+      condition: 'partitioned-cognitive',
+      task: task.name,
+      run: runNumber,
+      success: validation.success,
+      reason: validation.reason,
+      tokensUsed: totalTokens,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+    };
+  } catch (err) {
+    return {
+      condition: 'partitioned-cognitive',
       task: task.name,
       run: runNumber,
       success: false,
@@ -874,7 +1160,7 @@ function printResult(r: RunResult) {
 }
 
 function printComparison(results: RunResult[]) {
-  const conditions: Condition[] = ['flat', 'rule-cognitive', 'monitor-only', 'slm-cognitive'];
+  const conditions: Condition[] = ['flat', 'rule-cognitive', 'partitioned-cognitive', 'monitor-only', 'slm-cognitive'];
 
   console.log('\n--- Comparison ---');
   console.log(`${'Condition'.padEnd(20)} ${'Pass'.padEnd(8)} ${'Avg Tok'.padEnd(10)} ${'Avg Dur'.padEnd(10)} ${'Fallback%'.padEnd(10)}`);
@@ -923,7 +1209,7 @@ async function main() {
   const runConditions = new Set<Condition>(
     condArg
       ? [condArg as Condition]
-      : ['flat', 'rule-cognitive', 'monitor-only', 'slm-cognitive'],
+      : ['flat', 'rule-cognitive', 'partitioned-cognitive', 'monitor-only', 'slm-cognitive'],
   );
 
   // Parse task
@@ -1042,6 +1328,15 @@ async function main() {
       console.log('\nCondition: rule-cognitive');
       for (let i = 1; i <= numRuns; i++) {
         const r = await runRuleCognitive(task, i, cognitiveConfig);
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runConditions.has('partitioned-cognitive')) {
+      console.log('\nCondition: partitioned-cognitive');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runPartitionedCognitive(task, i, cognitiveConfig);
         printResult(r);
         results.push(r);
       }

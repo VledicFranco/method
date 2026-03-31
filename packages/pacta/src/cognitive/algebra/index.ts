@@ -124,6 +124,33 @@ export type {
 
 export { InMemoryTraceSink, ConsoleTraceSink } from './trace-sinks.js';
 
+// ── Partition types (PRD 044 — RFC 003 Phase 1) ────────────────
+
+export type {
+  PartitionId,
+  SelectStrategy,
+  PartitionSelectOptions,
+  EvictionPolicy,
+  PartitionReadPort,
+  ContextSelector,
+  PartitionSignalType,
+  PartitionSignal,
+  EntryRouter,
+  PartitionMonitorContext,
+  PartitionMonitor,
+  PartitionSystem,
+} from './partition-types.js';
+
+// ── Constraint utilities (promoted from modules/, PRD 044) ─────
+
+export {
+  extractProhibitions,
+  checkConstraintViolations,
+  CONSTRAINT_PATTERNS,
+} from './constraint-utils.js';
+
+export type { ConstraintViolation } from './constraint-utils.js';
+
 // ── Enriched signals (PRD 035 — v2 modules) ────────────────────
 
 export type {

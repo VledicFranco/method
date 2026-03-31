@@ -29,8 +29,15 @@ import type {
   CognitiveMonitorDirectiveApplied,
   WorkspaceManager,
   ReadonlyWorkspaceSnapshot,
+  PartitionSystem,
+  ContextSelector,
+  PartitionMonitorContext,
+  PartitionSignal,
+  PartitionId,
+  WorkspaceEntry,
 } from '../algebra/index.js';
 
+import { moduleId as createModuleId } from '../algebra/module.js';
 import { checkConstraintViolations } from '../modules/constraint-classifier.js';
 
 // ── Cycle Configuration ──────────────────────────────────────────
@@ -61,6 +68,21 @@ export interface CycleConfig {
   controlPolicy: ControlPolicy;
   cycleBudget?: CycleBudget;
   maxConsecutiveInterventions?: number; // default 3
+
+  /**
+   * PRD 044 — RFC 003 Phase 1: Partitioned workspace.
+   * When provided, modules receive typed context via buildContext()
+   * instead of monolithic workspace.snapshot(). Legacy path unchanged
+   * when omitted.
+   */
+  partitionSystem?: PartitionSystem;
+
+  /**
+   * Per-module context selectors. When partitionSystem is provided,
+   * each module gets context built from its selector. Falls back to
+   * DEFAULT_MODULE_SELECTORS for modules without an explicit selector.
+   */
+  moduleSelectors?: Map<ModuleId, ContextSelector>;
 }
 
 // ── Cycle Modules ────────────────────────────────────────────────
@@ -193,6 +215,40 @@ function buildTrace(
   };
 }
 
+// ── Default Module Selectors (PRD 044) ──────────────────────────
+
+const DEFAULT_MODULE_SELECTORS: Record<string, ContextSelector> = {
+  observer:  { sources: ['task'],                              budget: 1024,  strategy: 'all' },
+  memory:    { sources: ['task', 'operational'],               budget: 2048,  strategy: 'salience' },
+  reasoner:  { sources: ['task', 'constraint', 'operational'], budget: 8192,  strategy: 'salience' },
+  actor:     { sources: ['operational', 'task'],               budget: 4096,  strategy: 'recency' },
+  monitor:   { sources: ['constraint', 'operational'],         budget: 2048,  strategy: 'all' },
+  evaluator: { sources: ['task', 'operational'],               budget: 2048,  strategy: 'salience' },
+  planner:   { sources: ['task', 'constraint'],                budget: 4096,  strategy: 'salience' },
+  reflector: { sources: ['task', 'operational'],               budget: 2048,  strategy: 'recency' },
+};
+
+/**
+ * Build typed context for a module from the partition system.
+ * Falls back to partition snapshot if no selector is found.
+ */
+function buildModuleContext(
+  moduleKey: string,
+  partitions: PartitionSystem,
+  customSelectors?: Map<ModuleId, ContextSelector>,
+  moduleId?: ModuleId,
+): ReadonlyWorkspaceSnapshot {
+  // Check custom selectors first (by ModuleId), then defaults (by key)
+  const selector = (moduleId && customSelectors?.get(moduleId))
+    ?? DEFAULT_MODULE_SELECTORS[moduleKey];
+
+  if (!selector) {
+    return partitions.snapshot();
+  }
+
+  return partitions.buildContext(selector);
+}
+
 // ── Factory ──────────────────────────────────────────────────────
 
 let cycleCounter = 0;
@@ -227,6 +283,11 @@ export function createCognitiveCycle(
 
       // Reset workspace write quotas for this cycle
       workspace.resetCycleQuotas();
+      config.partitionSystem?.resetCycleQuotas();
+
+      // Track partition monitor state for post-ACT checking
+      const partitionLastWriteCycle = new Map<PartitionId, number>();
+      let consecutiveCriticalSignals = 0;
 
       function emitEvent(event: CognitiveEvent): void {
         onEvent?.(event);
@@ -356,7 +417,9 @@ export function createCognitiveCycle(
       emitPhase('REMEMBER');
       phasesExecuted.push('REMEMBER');
 
-      const snapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
+      const snapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+        ? buildModuleContext('memory', config.partitionSystem, config.moduleSelectors, modules.memory.id)
+        : workspace.snapshot();
       const memoryInput = { snapshot };
       const memoryControl = {
         target: modules.memory.id,
@@ -373,7 +436,9 @@ export function createCognitiveCycle(
       emitPhase('REASON');
       phasesExecuted.push('REASON');
 
-      const reasonSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
+      const reasonSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+        ? buildModuleContext('reasoner', config.partitionSystem, config.moduleSelectors, modules.reasoner.id)
+        : workspace.snapshot();
       const reasonerInput = { snapshot: reasonSnapshot };
       const reasonerControl = {
         target: modules.reasoner.id,
@@ -410,7 +475,9 @@ export function createCognitiveCycle(
         monitorOutput = monitorResult?.output as { restrictedActions?: string[]; forceReplan?: boolean } | undefined;
 
         // Also run evaluator as part of monitoring
-        const evalSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
+        const evalSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+          ? buildModuleContext('evaluator', config.partitionSystem, config.moduleSelectors, modules.evaluator.id)
+          : workspace.snapshot();
         const evaluatorInput = { workspace: evalSnapshot, signals };
         const evaluatorControl = {
           target: modules.evaluator.id,
@@ -427,7 +494,9 @@ export function createCognitiveCycle(
         emitPhase('CONTROL');
         phasesExecuted.push('CONTROL');
 
-        const plannerSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
+        const plannerSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+          ? buildModuleContext('planner', config.partitionSystem, config.moduleSelectors, modules.planner.id)
+          : workspace.snapshot();
         const plannerInput = { workspace: plannerSnapshot };
         const plannerControl = {
           target: modules.planner.id,
@@ -506,7 +575,9 @@ export function createCognitiveCycle(
       emitPhase('ACT');
       phasesExecuted.push('ACT');
 
-      const actSnapshot: ReadonlyWorkspaceSnapshot = workspace.snapshot();
+      const actSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+        ? buildModuleContext('actor', config.partitionSystem, config.moduleSelectors, modules.actor.id)
+        : workspace.snapshot();
       const actorInput = { snapshot: actSnapshot };
 
       // Build Actor control — forward Monitor output when available (D5 wiring fix)
@@ -554,6 +625,61 @@ export function createCognitiveCycle(
               timestamp: Date.now(),
             };
             emitEvent(violationEvent);
+          }
+        }
+      }
+
+      // ── Post-ACT Partition Monitor Check (PRD 044) ──────────────
+      // When partitionSystem is provided, run per-partition monitors and
+      // aggregate signals by severity. This subsumes the inline constraint
+      // check above for partitioned mode — but both paths coexist for
+      // backward compatibility.
+      if (config.partitionSystem && actResult?.output) {
+        const actContent = typeof actResult.output === 'string'
+          ? actResult.output : JSON.stringify(actResult.output);
+
+        const monitorContext: PartitionMonitorContext = {
+          cycleNumber,
+          lastWriteCycle: partitionLastWriteCycle,
+          actorOutput: actContent,
+        };
+
+        const partitionSignals = config.partitionSystem.checkPartitions(monitorContext);
+
+        for (const sig of partitionSignals) {
+          // Emit constraint violations as CognitiveConstraintViolation events
+          // for backward compatibility with existing event consumers
+          if (sig.type === 'constraint-violation') {
+            const violationEvent: CognitiveConstraintViolation = {
+              type: 'cognitive:constraint_violation',
+              constraint: sig.detail,
+              violation: sig.detail,
+              pattern: 'partition-monitor',
+              timestamp: Date.now(),
+            };
+            emitEvent(violationEvent);
+          }
+
+          // Critical signals → RESTRICT + REPLAN (same behavioral contract)
+          if (sig.severity === 'critical') {
+            consecutiveCriticalSignals++;
+            // Force next cycle to intervene by injecting a high-severity signal
+            signals.set(createModuleId('partition-monitor') as unknown as ModuleId, {
+              source: createModuleId('partition-monitor') as unknown as ModuleId,
+              timestamp: Date.now(),
+              anomalyDetected: true,
+              escalation: 'critical',
+              partitionSignal: sig,
+            } as unknown as MonitoringSignal);
+          } else if (sig.severity === 'high' && consecutiveCriticalSignals >= 2) {
+            // Persistent high signals also escalate
+            signals.set(createModuleId('partition-monitor') as unknown as ModuleId, {
+              source: createModuleId('partition-monitor') as unknown as ModuleId,
+              timestamp: Date.now(),
+              anomalyDetected: true,
+              escalation: 'high',
+              partitionSignal: sig,
+            } as unknown as MonitoringSignal);
           }
         }
       }

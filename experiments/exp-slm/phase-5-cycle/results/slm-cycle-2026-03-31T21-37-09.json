@@ -1,0 +1,407 @@
+{
+  "timestamp": "2026-03-31T21:37:09.061Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-cognitive"
+  ],
+  "tasks": [
+    "dead-code-removal-dynamic-trap"
+  ],
+  "runsPerCondition": 1,
+  "results": [
+    {
+      "condition": "partitioned-cognitive",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 1,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 8884,
+      "providerCalls": 10,
+      "durationMs": 55429,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 5,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 118,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 158,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 158
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 52
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 196,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 196
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 105
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 236,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 236
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 158
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 304,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 304
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 240
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 313,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 313
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 269
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 440,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 440
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 478
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 466,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 466
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 521
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 506,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 506
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 577
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 532,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 532
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 568
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-cognitive": {
+        "total": 1,
+        "passes": 1,
+        "avgTokens": 8884,
+        "avgDurationMs": 55429,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}
