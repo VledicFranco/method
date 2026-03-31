@@ -28,6 +28,10 @@ export class FileWatchTrigger implements TriggerWatcher {
   /** Per-file dedup: maps file path to last event timestamp (ms) to collapse Windows double-fires */
   private readonly lastEventTimes = new Map<string, number>();
   private static readonly DEDUP_WINDOW_MS = 50;
+  /** Evict stale dedup entries every 60s to prevent unbounded map growth */
+  private static readonly DEDUP_EVICT_INTERVAL_MS = 60_000;
+  private static readonly DEDUP_STALE_THRESHOLD_MS = 10_000;
+  private dedupEvictTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: FileWatchTriggerConfig, baseDir: string) {
     this.config = config;
@@ -46,6 +50,14 @@ export class FileWatchTrigger implements TriggerWatcher {
     if (this._active) return;
     this.onFire = onFire;
     this._active = true;
+
+    // Start periodic eviction of stale dedup entries
+    this.dedupEvictTimer = setInterval(() => {
+      const cutoff = Date.now() - FileWatchTrigger.DEDUP_STALE_THRESHOLD_MS;
+      for (const [path, ts] of this.lastEventTimes) {
+        if (ts < cutoff) this.lastEventTimes.delete(path);
+      }
+    }, FileWatchTrigger.DEDUP_EVICT_INTERVAL_MS);
 
     // Resolve unique directories from the configured glob paths
     const watchDirs = this.resolveWatchDirectories();
@@ -76,6 +88,10 @@ export class FileWatchTrigger implements TriggerWatcher {
 
   stop(): void {
     this._active = false;
+    if (this.dedupEvictTimer) {
+      clearInterval(this.dedupEvictTimer);
+      this.dedupEvictTimer = null;
+    }
     for (const w of this.watchers) {
       try { w.close(); } catch { /* already closed */ }
     }
