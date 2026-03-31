@@ -1,0 +1,304 @@
+{
+  "timestamp": "2026-03-31T07:54:00.334Z",
+  "config": "baseline",
+  "conditions": [
+    "monitor-only"
+  ],
+  "tasks": [
+    "circular-dependency-refactor"
+  ],
+  "runsPerCondition": 1,
+  "results": [
+    {
+      "condition": "monitor-only",
+      "task": "circular-dependency-refactor",
+      "run": 1,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 17434,
+      "providerCalls": 15,
+      "durationMs": 142746,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: module-a.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 4,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 3187.9247,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 0,
+            "confidence": 0,
+            "parseSuccess": false,
+            "usedFallback": true,
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 3907.047699999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 4046.1900000000023,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 4271.069299999996,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 74,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 0,
+            "confidence": 0,
+            "parseSuccess": false,
+            "usedFallback": true,
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 4003.828300000001,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 74,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 0,
+            "confidence": 0,
+            "parseSuccess": false,
+            "usedFallback": true,
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 4356.327600000004,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 74,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 0,
+            "confidence": 0,
+            "parseSuccess": false,
+            "usedFallback": true,
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 4222.9418000000005,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3761.650600000008,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 3934.9793999999965,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 3760.5573000000004,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 74,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 3942.869000000006,
+            "confidence": 0.9972,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          }
+        ],
+        "totalFallbacks": 4,
+        "totalSlmCalls": 15,
+        "fallbackRate": 0.26666666666666666,
+        "avgLatencyMs": 2893.0257133333344
+      }
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "monitor-only": {
+        "total": 1,
+        "passes": 0,
+        "avgTokens": 17434,
+        "avgDurationMs": 142746,
+        "avgFallbackRate": 0.26666666666666666
+      }
+    }
+  }
+}

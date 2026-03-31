@@ -1,0 +1,357 @@
+{
+  "timestamp": "2026-03-31T17:13:20.979Z",
+  "scenarios": 10,
+  "moduleStats": {
+    "monitor": {
+      "parse": 10,
+      "semantic": 9,
+      "totalLatencyMs": 59943.6089,
+      "totalTokens": 983
+    },
+    "observer": {
+      "parse": 10,
+      "semantic": 10,
+      "totalLatencyMs": 55558.28850000002,
+      "totalTokens": 886
+    },
+    "evaluator": {
+      "parse": 10,
+      "semantic": 10,
+      "totalLatencyMs": 48175.68830000002,
+      "totalTokens": 847
+    }
+  },
+  "allCorrectRate": 0.9,
+  "gates": {
+    "monitorParse": true,
+    "monitorSemantic": true,
+    "observerParse": true,
+    "observerSemantic": true,
+    "evaluatorParse": true,
+    "evaluatorSemantic": true,
+    "allCorrectRate": true
+  },
+  "allPass": true,
+  "results": [
+    {
+      "name": "routine-healthy",
+      "category": "routine",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3008.1468,
+        "inputTokens": 60,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3426.5211999999997,
+        "inputTokens": 68,
+        "outputTokens": 24,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: low\nFOCUS: none\nNOVELTY: 0.12\nNOTE: none"
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3732.3742,
+        "inputTokens": 55,
+        "outputTokens": 24,
+        "confidence": 0.9404,
+        "rawOutput": "PROGRESS: on-track\nCONFIDENCE: 0.78\nACTION: continue\nNOTE: none"
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "low-confidence",
+      "category": "routine",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5186.7730999999985,
+        "inputTokens": 49,
+        "outputTokens": 41,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES:\n@reasoner low-confidence \"Confidence 0.15 below threshold 0.3\"\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3006.0869999999977,
+        "inputTokens": 50,
+        "outputTokens": 24,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: low\nFOCUS: none\nNOVELTY: 0.30\nNOTE: none"
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4808.336200000002,
+        "inputTokens": 55,
+        "outputTokens": 24,
+        "confidence": 0.9678,
+        "rawOutput": "PROGRESS: on-track\nCONFIDENCE: 0.45\nACTION: continue\nNOTE: none"
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "stagnation-diminishing",
+      "category": "stagnation",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": false,
+        "latencyMs": 6272.028399999999,
+        "inputTokens": 75,
+        "outputTokens": 28,
+        "confidence": 0.9261,
+        "rawOutput": "ANOMALIES:\n@evaluator low-profit-risk\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4911.821900000003,
+        "inputTokens": 52,
+        "outputTokens": 24,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: low\nFOCUS: none\nNOVELTY: 0.15\nNOTE: none"
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5355.376700000001,
+        "inputTokens": 56,
+        "outputTokens": 34,
+        "confidence": 0.9779,
+        "rawOutput": "PROGRESS: stagnant\nCONFIDENCE: 0.27\nACTION: replan\nNOTE: \"Diminishing returns detected — strategy revision recommended\""
+      },
+      "allCorrect": false
+    },
+    {
+      "name": "novel-high-novelty",
+      "category": "novel",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 6351.0458,
+        "inputTokens": 60,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 10469.3295,
+        "inputTokens": 67,
+        "outputTokens": 42,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: high\nFOCUS: reasoner, planner, reflector\nNOVELTY: 0.85\nNOTE: \"Unprocessed input with high novelty — reflector intervention needed\""
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 6402.039600000004,
+        "inputTokens": 55,
+        "outputTokens": 24,
+        "confidence": 0.9593,
+        "rawOutput": "PROGRESS: on-track\nCONFIDENCE: 0.73\nACTION: continue\nNOTE: none"
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "diverging-escalation",
+      "category": "diverging",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 16908.556600000004,
+        "inputTokens": 61,
+        "outputTokens": 75,
+        "confidence": 0.9962,
+        "rawOutput": "ANOMALIES:\n@reasoner low-confidence \"Confidence 0.2 below threshold 0.3\"\n@actor unexpected-result \"Actor reported unexpected result\"\n@llm-monitor compound \"Compound anomaly: low confidence combined with unexpected result\"\nESCALATE: \"Compound anomaly: low confidence combined with unexpected result\"\nRESTRICT: none\nREPLAN: yes"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 8433.015999999989,
+        "inputTokens": 51,
+        "outputTokens": 39,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: high\nFOCUS: reasoner, planner, reflector\nNOVELTY: 0.70\nNOTE: \"High novelty error signal requires strategy reassessment\""
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5142.205500000011,
+        "inputTokens": 56,
+        "outputTokens": 33,
+        "confidence": 0.9848,
+        "rawOutput": "PROGRESS: diverging\nCONFIDENCE: 0.10\nACTION: escalate\nNOTE: \"Goal clarity too low to recover without intervention\""
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "compound-multi-anomaly",
+      "category": "compound",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 9979.967799999999,
+        "inputTokens": 76,
+        "outputTokens": 92,
+        "confidence": 0.9472,
+        "rawOutput": "ANOMALIES:\n@reasoner low-confidence \"Confidence 0.25 below threshold 0.3\"\n@actor unexpected-result \"Actor reported unexpected result\"\n@evaluator diminishing-returns \"Reducing the number of candidates slows down the process\"\n@llm-monitor compound \"Compound anomaly: diminishing returns with low confidence\"\nESCALATE: \"Compound anomaly: diminishing returns with low confidence\"\nRESTRICT: none\nREPLAN: yes"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 6073.544699999999,
+        "inputTokens": 69,
+        "outputTokens": 39,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: high\nFOCUS: reasoner, planner, reflector\nNOVELTY: 0.92\nNOTE: \"High novelty error signal requires strategy reassessment\""
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4379.179299999989,
+        "inputTokens": 56,
+        "outputTokens": 33,
+        "confidence": 0.9971,
+        "rawOutput": "PROGRESS: diverging\nCONFIDENCE: 0.10\nACTION: escalate\nNOTE: \"Goal clarity too low to recover without intervention\""
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "strong-progress",
+      "category": "routine",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 2221.2674000000115,
+        "inputTokens": 60,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4213.561399999991,
+        "inputTokens": 52,
+        "outputTokens": 24,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: low\nFOCUS: none\nNOVELTY: 0.05\nNOTE: none"
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5191.243199999997,
+        "inputTokens": 55,
+        "outputTokens": 31,
+        "confidence": 0.9719,
+        "rawOutput": "PROGRESS: on-track\nCONFIDENCE: 0.91\nACTION: continue\nNOTE: \"Strong progress — maintain current approach\""
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "medium-novelty",
+      "category": "novel",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 2720.2734999999957,
+        "inputTokens": 49,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5354.655600000013,
+        "inputTokens": 51,
+        "outputTokens": 34,
+        "confidence": 0.9998,
+        "rawOutput": "PRIORITY: medium\nFOCUS: reasoner\nNOVELTY: 0.55\nNOTE: \"Moderate novelty — monitor for pattern development\""
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3900.3696000000054,
+        "inputTokens": 55,
+        "outputTokens": 24,
+        "confidence": 0.9589,
+        "rawOutput": "PROGRESS: on-track\nCONFIDENCE: 0.51\nACTION: continue\nNOTE: none"
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "stagnation-plateau",
+      "category": "stagnation",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4001.3391999999876,
+        "inputTokens": 60,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3735.978700000007,
+        "inputTokens": 50,
+        "outputTokens": 24,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: low\nFOCUS: none\nNOVELTY: 0.10\nNOTE: none"
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 4133.772400000016,
+        "inputTokens": 56,
+        "outputTokens": 32,
+        "confidence": 0.9704,
+        "rawOutput": "PROGRESS: stagnant\nCONFIDENCE: 0.35\nACTION: replan\nNOTE: \"Progress plateau — consider replanning approach\""
+      },
+      "allCorrect": true
+    },
+    {
+      "name": "diverging-low-clarity",
+      "category": "diverging",
+      "monitor": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 3294.210300000006,
+        "inputTokens": 59,
+        "outputTokens": 23,
+        "confidence": 0.9999,
+        "rawOutput": "ANOMALIES: none\nESCALATE: none\nRESTRICT: none\nREPLAN: no"
+      },
+      "observer": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5933.772500000021,
+        "inputTokens": 68,
+        "outputTokens": 34,
+        "confidence": 0.9999,
+        "rawOutput": "PRIORITY: medium\nFOCUS: reasoner\nNOVELTY: 0.40\nNOTE: \"Moderate novelty — monitor for pattern development\""
+      },
+      "evaluator": {
+        "parsed": true,
+        "semanticMatch": true,
+        "latencyMs": 5130.791599999997,
+        "inputTokens": 56,
+        "outputTokens": 33,
+        "confidence": 0.9792,
+        "rawOutput": "PROGRESS: diverging\nCONFIDENCE: 0.14\nACTION: escalate\nNOTE: \"Goal clarity too low to recover without intervention\""
+      },
+      "allCorrect": true
+    }
+  ]
+}

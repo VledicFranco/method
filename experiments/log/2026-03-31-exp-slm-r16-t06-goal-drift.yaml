@@ -1,0 +1,63 @@
+experiment: exp-slm
+run_id: r16-t06-goal-drift
+date: 2026-03-31
+agent: "Claude Opus 4.6"
+config:
+  task: "T06 multi-module-extract at MAX_CYCLES=30 — goal drift test"
+  conditions: ["slm-cognitive (cycle0)"]
+  n_per_task: 3
+  max_cycles: 30
+
+status: closed-validated
+
+outcomes:
+  t06_multi_module_extract:
+    slm_cognitive_cycle0:
+      pass: 0
+      fail: 3
+      rate: 0.00
+    failure_mode: "src/event-bus.ts does not exist — EventBus was not extracted"
+    note: "All 3 runs spent 30 cycles in Read/Grep loops without ever creating the extraction target"
+
+  context_profile:
+    run1: { avg_entries: 7, avg_tokens: 3194, peak_entries: 8, peak_tokens: 5025, observer_pct: 14 }
+    run2: { avg_entries: 7, avg_tokens: 3368, peak_entries: 8, peak_tokens: 5741, observer_pct: 14 }
+    run3: { avg_entries: 7, avg_tokens: 2549, peak_entries: 8, peak_tokens: 4368, observer_pct: 14 }
+
+  comparison_to_t01_t05:
+    t01_t05_avg_tokens: 672
+    t06_avg_tokens: 3037
+    ratio: "4.5x larger workspace context on T06"
+    note: "T06 workspace saturated with file contents (170-line event-system.ts + 8 other files)"
+
+findings:
+  - id: F1
+    title: "Goal drift confirmed on 30-cycle tasks — RFC 003 Trigger 1 FIRED"
+    detail: >
+      T06 (multi-module extraction from 9-file codebase) failed 0/3 at 30 cycles.
+      The agent never created src/event-bus.ts — it spent all cycles reading files.
+      Workspace context profile shows 8 entries saturated with file contents (3-5K tokens),
+      leaving no room for the original goal ("extract EventBus into its own module").
+      The Monitor flagged stagnation repeatedly but the agent couldn't recover because
+      the goal context was already evicted. A TaskPartition with GoalSalience eviction
+      would preserve the extraction goal while operational entries (file reads) churn.
+
+  - id: F2
+    title: "Workspace capacity (8 entries) is the bottleneck, not module quality"
+    detail: >
+      The SLM modules performed correctly (0% fallback, Monitor flagged stagnation,
+      Evaluator detected low progress). The cognitive cycle's metacognition is working.
+      The failure is structural: the workspace can't hold both the goal and the operational
+      context needed to achieve it. This is exactly the problem RFC 003 was designed to solve.
+
+  - id: F3
+    title: "RFC 003 Phase 1 implementation now justified by empirical evidence"
+    detail: >
+      Trigger 1 (goal drift on long tasks) is confirmed. Combined with the strategic
+      evaluation (research optionality, ARC-AGI readiness), RFC 003 Phase 1 should
+      be implemented. Priority: P0 for the research program.
+
+next_steps:
+  - "Implement RFC 003 Phase 1 — TaskPartition + ConstraintPartition + OperationalPartition"
+  - "Re-run T06 with partitioned workspace to validate the fix"
+  - "Begin ARC-AGI-3 SDK integration (experiments/exp-arc-agi/)"

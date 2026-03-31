@@ -16,6 +16,7 @@
     "phase-1-llm-monitor/**/*.ts",
     "phase-2-dsl/**/*.ts",
     "phase-4-integration/**/*.ts",
+    "phase-5-cycle/**/*.ts",
     "shared/**/*.ts"
   ],
   "references": [

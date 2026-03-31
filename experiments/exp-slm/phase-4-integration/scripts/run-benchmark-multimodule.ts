@@ -161,7 +161,11 @@ function buildScenarios(): MultiModuleScenario[] {
       { id: 'main', progress: 0.35, diminishing: true, steps: 12, clarity: 'medium' },
     ],
     expected: {
-      monitor: { anomalies: [{ moduleId: moduleId('evaluator'), type: 'low-confidence', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
+      // Training corpus teaches compound stagnation for evaluator-diminishing signals.
+      // The SLM still hallucinates the anomaly type (low-profit-risk vs compound) due to
+      // signal ordering distribution shift — this scenario correctly fails until corpus
+      // adds varied signal orderings. See C2 investigation 2026-03-31.
+      monitor: { anomalies: [{ moduleId: moduleId('evaluator'), type: 'compound', detail: '' }], escalation: 'Compound anomaly: diminishing returns with low confidence', restrictedActions: [], forceReplan: true },
       observer: { priority: 'low', focus: [], novelty: 0.15, note: null },
       evaluator: { progress: 'stagnant', confidence: 0.26, action: 'replan', note: 'Diminishing returns detected \u2014 strategy revision recommended' },
     },
@@ -204,7 +208,11 @@ function buildScenarios(): MultiModuleScenario[] {
       { id: 'main', progress: -0.15, diminishing: false, steps: 22, clarity: 'low' },
     ],
     expected: {
-      monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
+      // Low confidence (0.20 < 0.3) + unexpected result → compound anomaly with escalation.
+      // Both rule-based monitor and SLM training corpus agree on this. Previous expected
+      // incorrectly omitted escalation and compound anomaly. Fixed per C2 2026-03-31.
+      // SLM uses moduleId 'llm-monitor' for compound (corpus convention).
+      monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }, { moduleId: moduleId('llm-monitor'), type: 'compound', detail: '' }], escalation: 'Compound anomaly: low confidence combined with unexpected result', restrictedActions: [], forceReplan: true },
       observer: { priority: 'high', focus: ['reasoner', 'planner', 'reflector'], novelty: 0.70, note: 'High novelty error signal requires strategy reassessment' },
       evaluator: { progress: 'diverging', confidence: 0.10, action: 'escalate', note: 'Goal clarity too low to recover without intervention' },
     },
@@ -227,7 +235,10 @@ function buildScenarios(): MultiModuleScenario[] {
       { id: 'main', progress: 0.20, diminishing: true, steps: 18, clarity: 'low' },
     ],
     expected: {
-      monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }], escalation: undefined, restrictedActions: [], forceReplan: false },
+      // Same as S5: low confidence + unexpected → compound + escalation + forceReplan.
+      // Plus evaluator-diminishing signal — SLM may hallucinate type here (same as S3).
+      // Fixed per C2 2026-03-31.
+      monitor: { anomalies: [{ moduleId: moduleId('reasoner'), type: 'low-confidence', detail: '' }, { moduleId: moduleId('actor'), type: 'unexpected-result', detail: '' }, { moduleId: moduleId('llm-monitor'), type: 'compound', detail: '' }], escalation: 'Compound anomaly: low confidence combined with unexpected result', restrictedActions: [], forceReplan: true },
       observer: { priority: 'high', focus: ['reasoner', 'planner', 'reflector'], novelty: 0.92, note: 'High novelty error signal requires strategy reassessment' },
       evaluator: { progress: 'diverging', confidence: 0.10, action: 'escalate', note: 'Goal clarity too low to recover without intervention' },
     },

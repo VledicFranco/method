@@ -140,8 +140,9 @@ This project has active research lines validated through structured experiments.
 
 | Line | RFC | Experiment | Status |
 |------|-----|-----------|--------|
-| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | **Gate 4 FULL PASS** — Monitor validated. R-08 multi-module: Observer v2 ALL PASS + ONNX, Evaluator v2 ALL PASS (100%/96.85%/100%). 3 of 3 compiled modules gate-passing. |
-| Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md`, `003-cortical-workspace-composition.md` | `experiments/exp-cognitive-baseline/` | N=25 baseline complete. Flat 80% vs cognitive 60%. T04 constraint blindness (0%). RFC 003 drafted + reviewed — Phase 0 pin flag fix designed. |
+| SLM Compilation | `docs/rfcs/002-small-language-models.md` | `experiments/exp-slm/` | **Gate 5 PASS** — R-14/R-15: 3-module SLM cognitive cycle 73% vs 72% baseline. 0.15% fallback. Observer ablation: cycle0 mode fixes T01 (33%→100%). T06 long-task experiment in progress. |
+| Cognitive Architecture | `docs/rfcs/001-cognitive-composition.md`, `003-cortical-workspace-composition.md` | `experiments/exp-cognitive-baseline/` | Phase 0 (pin flag) validated (T04: 0%→100%). RFC 003 Phase 1 (partitions) deferred pending empirical trigger — strategic evaluation recommends implementation for research optionality. See `docs/rfcs/003-strategic-evaluation.md`. |
+| ARC-AGI Integration | `experiments/ROADMAP.md` | planned: `experiments/exp-arc-agi/` | **NEW** — Use ARC-AGI-3 interactive benchmark as external AGI validation. Cognitive architecture (modules + SLMs + partitions) maps directly to ARC-AGI-3 requirements. See `experiments/ROADMAP.md` for the research program. |
 
 ### Related Work (cross-project)
 

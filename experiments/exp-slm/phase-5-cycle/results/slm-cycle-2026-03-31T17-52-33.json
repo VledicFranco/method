@@ -1,0 +1,2210 @@
+{
+  "timestamp": "2026-03-31T17:52:33.781Z",
+  "config": "baseline",
+  "conditions": [
+    "slm-cognitive"
+  ],
+  "tasks": [
+    "config-migration-env-interpolation"
+  ],
+  "runsPerCondition": 5,
+  "results": [
+    {
+      "condition": "slm-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 1,
+      "success": false,
+      "reason": "AppConfig interface/type is not exported from any TypeScript file",
+      "tokensUsed": 19148,
+      "providerCalls": 15,
+      "durationMs": 220700,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 10,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 7185.634,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 3652.3119000000006,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 5990.767700000002,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 3156.5413999999982,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 4124.937900000001,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 3729.745600000002,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 5415.982100000001,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 4253.341899999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 3881.976600000002,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 4272.359700000001,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 6052.693300000006,
+            "confidence": 0.9781,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 3522.839000000007,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 5756.082399999999,
+            "confidence": 0.9775,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 3683.4532000000036,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 5821.718099999998,
+            "confidence": 0.9682,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 2972.054299999989,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 6051.4800000000105,
+            "confidence": 0.9655,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 2414.5123999999923,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 4200.059099999999,
+            "confidence": 0.9698,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 3024.5738999999885,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 4666.3384999999835,
+            "confidence": 0.9697,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 3035.6083999999973,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 5361.186799999996,
+            "confidence": 0.9631,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3465.453200000018,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 4522.714099999983,
+            "confidence": 0.9635,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 3067.310999999987,
+            "confidence": 0.9995,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 4753.68829999998,
+            "confidence": 0.9691,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 3952.458800000022,
+            "confidence": 0.9997,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 4853.500999999989,
+            "confidence": 0.9734,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 3435.576000000001,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 3813.2682000000204,
+            "confidence": 0.9621,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 31,
+        "fallbackRate": 0,
+        "avgLatencyMs": 4325.489316129032
+      }
+    },
+    {
+      "condition": "slm-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 2,
+      "success": false,
+      "reason": "AppConfig interface/type is not exported from any TypeScript file",
+      "tokensUsed": 23819,
+      "providerCalls": 15,
+      "durationMs": 230912,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Pure TypeScript config loader - reads from environment variables\n     2\t\n     3\tinterface AppConfig {\n     4\t  server: { host: string; port: number };\n     5\t  database: { url: string; pool_size: number; timeout_ms: number };\n     6\t  auth: { secret: string; token_ttl: number };\n     7\t  logging: { level: string; format: string };\n     8\t}\n     9\t\n    10\texport function loadConfig(): AppConfig {\n    11\t  return {\n    12\t    server: {\n    13\t      host: process.env.SERVER_HOST || 'localhost',\n    14\t      port: parseInt(process.env.SERVER_PORT || '3000', 10)\n    15\t    },\n    16\t    database: {\n    17\t      url: process.env.DATABASE_URL || '',\n    18\t      pool_size: 10,\n    19\t      timeout_ms: 5000\n    20\t    },\n    21\t    auth: {\n    22\t      secret: process.env.AUTH_SECRET || '',\n    23\t      token_ttl: 3600\n    24\t    },\n    25\t    logging: {\n    26\t      level: process.env.LOG_LEVEL || 'info',\n    27\t      format: 'json'\n    28\t    }\n    29\t  };\n    30\t}\n    31\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: install-yaml.js"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: package.json"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 9,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 5753.651900000026,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 3328.5706000000064,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 4083.1214000000036,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 3390.4619999999995,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 4749.347200000018,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 2914.5529999999853,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 4212.496099999989,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 2879.8319000000483,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 3311.9837999999872,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 2637.7247000000207,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 3487.7361000000383,
+            "confidence": 0.9781,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 2727.9355000000214,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 5144.090899999952,
+            "confidence": 0.9775,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 4847.5532999999705,
+            "confidence": 0.9995,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 77,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 4464.339199999988,
+            "confidence": 0.9934,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 3081.6092000000062,
+            "confidence": 0.9983,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 4401.920999999973,
+            "confidence": 0.9727,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 3806.7577000000165,
+            "confidence": 0.9969,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 4952.3138000000035,
+            "confidence": 0.9719,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 3556.4205000000075,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 5661.928599999985,
+            "confidence": 0.9656,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 3397.376099999994,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 5143.43829999998,
+            "confidence": 0.972,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3542.202099999995,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 5310.023199999996,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 3749.566200000001,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 5452.465299999982,
+            "confidence": 0.9743,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 4640.000300000014,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 5198.181600000011,
+            "confidence": 0.9794,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 4288.614100000006,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 5793.830100000021,
+            "confidence": 0.9727,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 31,
+        "fallbackRate": 0,
+        "avgLatencyMs": 4190.646635483872
+      }
+    },
+    {
+      "condition": "slm-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 3,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 22289,
+      "providerCalls": 15,
+      "durationMs": 252689,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: package.json"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: tsconfig.json"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: .env"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 10,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 6429.266199999955,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 4984.227899999998,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 5064.566899999976,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 2828.994699999981,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 4738.734899999981,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 5050.255000000005,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 6013.144000000029,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 3845.448299999989,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 2923.1705000000075,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 4168.357599999988,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 6947.691200000001,
+            "confidence": 0.9781,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 5447.943599999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 6853.721399999922,
+            "confidence": 0.9775,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 3898.0487999999896,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 6256.962600000086,
+            "confidence": 0.9682,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 4674.376099999994,
+            "confidence": 0.9976,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 7157.990499999956,
+            "confidence": 0.9727,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 5461.916699999943,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 7909.395400000038,
+            "confidence": 0.9662,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 4024.5019999999786,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 5760.870500000077,
+            "confidence": 0.9697,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 4247.452600000077,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 6465.607300000032,
+            "confidence": 0.972,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3579.513099999982,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 4792.213800000027,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 3120.0128999999724,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 4566.549899999984,
+            "confidence": 0.9749,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 4503.907399999909,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 6562.990800000029,
+            "confidence": 0.973,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 4113.42379999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 5299.69160000002,
+            "confidence": 0.9727,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 31,
+        "fallbackRate": 0,
+        "avgLatencyMs": 5086.804774193546
+      }
+    },
+    {
+      "condition": "slm-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 4,
+      "success": false,
+      "reason": "AppConfig interface/type is not exported from any TypeScript file",
+      "tokensUsed": 21464,
+      "providerCalls": 15,
+      "durationMs": 241785,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadConfig } from './config-loader';\n     2\t\n     3\tconst config = loadConfig();\n     4\tconsole.log(`Starting server on ${config.server.host}:${config.server.port}`);\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: package.json",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Pure TypeScript config module - reads from environment variables\n     2\t\n     3\tinterface AppConfig {\n     4\t  server: { host: string; port: number };\n     5\t  database: { url: string; pool_size: number; timeout_ms: number };\n     6\t  auth: { secret: string; token_ttl: number };\n     7\t  logging: { level: string; format: string };\n     8\t}\n     9\t\n    10\texport function loadConfig(): AppConfig {\n    11\t  // Read environment variables with fallbacks and type conversion\n    12\t  const serverHost = process.env.SERVER_HOST || 'localhost';\n    13\t  const serverPort = parseInt(process.env.SERVER_PORT || '3000', 10);\n    14\t  const databaseUrl = process.env.DATABASE_URL || '';\n    15\t  const authSecret = process.env.AUTH_SECRET || '';\n    16\t  const logLevel = process.env.LOG_LEVEL || 'info';\n    17\t\n    18\t  return {\n    19\t    server: {\n    20\t      host: serverHost,\n    21\t      port: serverPort\n    22\t    },\n    23\t    database: {\n    24\t      url: databaseUrl,\n    25\t      pool_size: 10,        // Static value preserved from YAML\n    26\t      timeout_ms: 5000      // Static value preserved from YAML\n    27\t    },\n    28\t    auth: {\n    29\t      secret: authSecret,\n    30\t      token_ttl: 3600       // Static value preserved from YAML\n    31\t    },\n    32\t    logging: {\n    33\t      level: logLevel,\n    34\t      format: 'json'        // Static value preserved from YAML\n    35\t    }\n    36\t  };\n    37\t}\n    38\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 11,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 6521.004799999995,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 5769.63049999997,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 6432.949400000041,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 6446.786699999939,
+            "confidence": 0.9997,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 58,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 4227.905400000047,
+            "confidence": 0.9482,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 2811.4823000000324,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 3535.5369000000646,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 2009.9495999999344,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 3471.8456000000006,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 3451.194999999949,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 4199.499199999962,
+            "confidence": 0.9781,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 4456.237899999949,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 5562.990499999956,
+            "confidence": 0.9775,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 2765.783400000073,
+            "confidence": 0.9978,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 4478.636000000057,
+            "confidence": 0.971,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 3400.5220999999437,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 4912.408999999985,
+            "confidence": 0.9655,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 3710.763200000045,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 5259.500999999931,
+            "confidence": 0.9662,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 3566.8315999999177,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 5920.776900000055,
+            "confidence": 0.9697,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 5607.176100000041,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 5716.824600000051,
+            "confidence": 0.9778,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 4896.035599999945,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 7697.9805999998935,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 5540.111200000043,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 8247.29740000004,
+            "confidence": 0.9749,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 6701.942399999942,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 77,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 6216.037999999942,
+            "confidence": 0.9974,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 3445.411300000036,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 5939.325499999919,
+            "confidence": 0.9707,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 31,
+        "fallbackRate": 0,
+        "avgLatencyMs": 4932.915474193539
+      }
+    },
+    {
+      "condition": "slm-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 5,
+      "success": true,
+      "reason": "Config migrated to TypeScript with proper process.env lookups, type exported, static values preserved",
+      "tokensUsed": 20913,
+      "providerCalls": 15,
+      "durationMs": 229903,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { loadConfig } from './config-loader';\n     2\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/index.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: config/app.yaml.bak"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: MIGRATION.md"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: package.json",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: package.json"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: tsconfig.json"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 11,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 6762.614700000035,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 2578.371299999999,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 5798.169500000076,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 2930.1080000000075,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 5681.964900000021,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 3500.314999999944,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 4206.051399999997,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 3165.8869000000414,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 3969.4344000000274,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 3092.189999999944,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 59,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 4299.996299999999,
+            "confidence": 0.9732,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 3568.2380999999586,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 5605.621500000008,
+            "confidence": 0.9767,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 2752.708699999959,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 5620.55700000003,
+            "confidence": 0.9685,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 3921.313700000057,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 6500.167099999962,
+            "confidence": 0.9755,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 3937.15419999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 4177.828599999892,
+            "confidence": 0.963,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 3342.2328999999445,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 5165.0429,
+            "confidence": 0.962,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 2920.129900000058,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 5577.536699999822,
+            "confidence": 0.9751,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3679.5262000001967,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 5845.4513999999035,
+            "confidence": 0.9751,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 3483.0418000000063,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 5258.654499999946,
+            "confidence": 0.9755,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 5165.279800000135,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 5345.532399999909,
+            "confidence": 0.9774,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 3414.503400000045,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 5392.540299999993,
+            "confidence": 0.9621,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 31,
+        "fallbackRate": 0,
+        "avgLatencyMs": 4408.327854838707
+      }
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "slm-cognitive": {
+        "total": 5,
+        "passes": 1,
+        "avgTokens": 21527,
+        "avgDurationMs": 235198,
+        "avgFallbackRate": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,601 @@
+{
+  "timestamp": "2026-03-31T08:08:55.965Z",
+  "config": "baseline",
+  "conditions": [
+    "slm-cognitive"
+  ],
+  "tasks": [
+    "dead-code-removal-dynamic-trap"
+  ],
+  "runsPerCondition": 1,
+  "results": [
+    {
+      "condition": "slm-cognitive",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 1,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 19933,
+      "providerCalls": 15,
+      "durationMs": 316839,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  return JSON.parse(input);\n     3\t}\n     4\t\n     5\texport const name = 'json-parser';\n     6\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  // Simple XML-like parsing (mock)\n     3\t  const match = input.match(/<value>(.*?)<\\/value>/);\n     4\t  return match ? match[1] : null;\n     5\t}\n     6\t\n     7\texport const name = 'xml-parser';\n     8\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// This parser handles the old proprietary format from the v1 system.\n     2\t// It looks unused but is loaded dynamically by the plugin loader.\n     3\texport function parse(input: string): unknown {\n     4\t  const lines = input.split('\\n');\n     5\t  const result: Record<string, string> = {};\n     6\t  for (const line of lines) {\n     7\t    const [key, value] = line.split('=');\n     8\t    if (key && value) result[key.trim()] = value.trim();\n     9\t  }\n    10\t  return result;\n    11\t}\n    12\t\n    13\texport const name = 'legacy-parser';\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 5,
+      "slmMetrics": {
+        "cycles": [
+          {
+            "cycle": 0,
+            "module": "observer",
+            "latencyMs": 7754.3966,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 0,
+            "module": "monitor",
+            "latencyMs": 4043.925799999999,
+            "confidence": 0.9993,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 36,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 0,
+            "module": "evaluator",
+            "latencyMs": 5621.446499999998,
+            "confidence": 0.9497,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 32
+          },
+          {
+            "cycle": 1,
+            "module": "observer",
+            "latencyMs": 6170.074299999997,
+            "confidence": 0.9998,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 1,
+            "module": "monitor",
+            "latencyMs": 4062.3775000000023,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 1,
+            "module": "evaluator",
+            "latencyMs": 4032.6345999999976,
+            "confidence": 0.9736,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 2,
+            "module": "observer",
+            "latencyMs": 5866.551899999999,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 2,
+            "module": "monitor",
+            "latencyMs": 4003.230000000003,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 57,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 2,
+            "module": "evaluator",
+            "latencyMs": 4886.342699999994,
+            "confidence": 0.9733,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 31
+          },
+          {
+            "cycle": 3,
+            "module": "observer",
+            "latencyMs": 5498.021599999993,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 3,
+            "module": "monitor",
+            "latencyMs": 3381.993199999997,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 73,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 3,
+            "module": "evaluator",
+            "latencyMs": 4357.383700000006,
+            "confidence": 0.947,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 4,
+            "module": "observer",
+            "latencyMs": 7753.420200000008,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 4,
+            "module": "monitor",
+            "latencyMs": 4720.721300000005,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 74,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 4,
+            "module": "evaluator",
+            "latencyMs": 5592.300400000007,
+            "confidence": 0.9781,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 5,
+            "module": "observer",
+            "latencyMs": 6518.230299999996,
+            "confidence": 0.9998,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 5,
+            "module": "monitor",
+            "latencyMs": 4777.889099999986,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 5,
+            "module": "evaluator",
+            "latencyMs": 5746.679199999999,
+            "confidence": 0.9775,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 6,
+            "module": "observer",
+            "latencyMs": 5754.125500000009,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 6,
+            "module": "monitor",
+            "latencyMs": 3510.3361999999906,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 6,
+            "module": "evaluator",
+            "latencyMs": 6199.266000000003,
+            "confidence": 0.971,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "observer",
+            "latencyMs": 5225.144299999985,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 7,
+            "module": "monitor",
+            "latencyMs": 5244.871600000013,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 59,
+            "outputTokens": 38
+          },
+          {
+            "cycle": 7,
+            "module": "evaluator",
+            "latencyMs": 6215.8946,
+            "confidence": 0.9954,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 8,
+            "module": "observer",
+            "latencyMs": 6226.193400000018,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 8,
+            "module": "monitor",
+            "latencyMs": 3953.6790000000037,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 8,
+            "module": "evaluator",
+            "latencyMs": 5384.123300000007,
+            "confidence": 0.9719,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 9,
+            "module": "observer",
+            "latencyMs": 7840.496099999989,
+            "confidence": 0.9998,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 52,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 9,
+            "module": "monitor",
+            "latencyMs": 3786.0395000000135,
+            "confidence": 0.9995,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 9,
+            "module": "evaluator",
+            "latencyMs": 5992.992200000008,
+            "confidence": 0.9728,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 55,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 10,
+            "module": "observer",
+            "latencyMs": 5230.6514000000025,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 10,
+            "module": "monitor",
+            "latencyMs": 3548.5373000000254,
+            "confidence": 0.9976,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 10,
+            "module": "evaluator",
+            "latencyMs": 4784.03899999999,
+            "confidence": 0.9735,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 11,
+            "module": "observer",
+            "latencyMs": 5804.065200000012,
+            "confidence": 0.9996,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 35
+          },
+          {
+            "cycle": 11,
+            "module": "monitor",
+            "latencyMs": 3605.6743000000133,
+            "confidence": 0.9992,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 11,
+            "module": "evaluator",
+            "latencyMs": 5607.059300000023,
+            "confidence": 0.9712,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          },
+          {
+            "cycle": 12,
+            "module": "observer",
+            "latencyMs": 6580.3989,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 51,
+            "outputTokens": 42
+          },
+          {
+            "cycle": 12,
+            "module": "monitor",
+            "latencyMs": 4990.206799999985,
+            "confidence": 0.9984,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 76,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 12,
+            "module": "evaluator",
+            "latencyMs": 5864.014200000034,
+            "confidence": 0.9691,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 33
+          },
+          {
+            "cycle": 13,
+            "module": "observer",
+            "latencyMs": 5379.21590000001,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 13,
+            "module": "monitor",
+            "latencyMs": 3012.4444999999832,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 13,
+            "module": "evaluator",
+            "latencyMs": 6236.783699999971,
+            "confidence": 0.9626,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 34
+          },
+          {
+            "cycle": 14,
+            "module": "observer",
+            "latencyMs": 4445.024600000004,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 50,
+            "outputTokens": 24
+          },
+          {
+            "cycle": 14,
+            "module": "monitor",
+            "latencyMs": 4343.154100000043,
+            "confidence": 0.9999,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 75,
+            "outputTokens": 23
+          },
+          {
+            "cycle": 14,
+            "module": "evaluator",
+            "latencyMs": 3934.4782000000123,
+            "confidence": 0.9468,
+            "parseSuccess": true,
+            "usedFallback": false,
+            "inputTokens": 56,
+            "outputTokens": 24
+          }
+        ],
+        "totalFallbacks": 0,
+        "totalSlmCalls": 45,
+        "fallbackRate": 0,
+        "avgLatencyMs": 5188.589511111113
+      }
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "slm-cognitive": {
+        "total": 1,
+        "passes": 1,
+        "avgTokens": 19933,
+        "avgDurationMs": 316839,
+        "avgFallbackRate": 0
+      }
+    }
+  }
+}

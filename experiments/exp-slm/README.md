@@ -63,6 +63,7 @@ See `docs/arch/gpu-inference-cluster.md` for full reference (model sync, ONNX ex
 | Gate 3 — Single Module Compilation | Parse ≥95%, semantic ≥85%, adversarial ≥70% | 100% / 98.6% / 70.8% | **PASS** |
 | Gate 4 Part 1 — Calibration + ONNX | ECE ≤0.15, ONNX ≤2% diff | ECE 0.0195, 100% match | **PASS** |
 | Gate 4 Part 2 — Cycle Integration | Success ≥baseline-5%, cost ↓≥30%, ρ≤0.3 | SLM 100% vs 70-80% baseline, 90.3% token reduction, ρ=0.0 | **PASS** |
+| Gate 5 — Full Cognitive Cycle | G1: ≥baseline-5%, G3: 0 SLM failures | 73% vs 72%, 0.15% fallback | **PASS (G2 TBD)** |
 
 ## Training Runs
 
@@ -119,6 +120,27 @@ Trained on chobits (RTX 4090, bf16). Both use Qwen2.5-Coder-0.5B LoRA r=16, 3000
 
 **bf16 fix validated:** Original evaluator training (fp16, LR 2e-4) produced NaN loss from step 0. Switching to bf16 on RTX 4090 (Ada Lovelace, native bf16 support) resolved the gradient overflow completely.
 
+### R-14 — SLM Cognitive Cycle (Phase 5)
+
+First end-to-end test of RFC 002 thesis: 3 SLM-compiled modules wired into the cognitive cycle on T01-T05 × N=3.
+
+| Task | SLM Cognitive | Rule-Based Baseline | Delta |
+|------|-------------|-------------------|-------|
+| T01 circular deps | 1/3 (33%) | ~72% | -39pp |
+| T02 test-first bug | **3/3 (100%)** | ~72% | +28pp |
+| T03 config migration | 1/3 (33%) | ~72% | -39pp |
+| T04 API versioning | **3/3 (100%)** | ~72% | +28pp |
+| T05 dead code trap | **3/3 (100%)** | ~100% | 0pp |
+| **Overall** | **11/15 (73%)** | **72%** | **+1pp** |
+
+**Key metrics:** 0.15% fallback rate (1/675 SLM calls), 4.6s avg latency (CPU-only ONNX), 21.9K avg frontier tokens.
+
+**Gates:** G1 (no regression) PASS, G2 (token reduction) INCONCLUSIVE, G3 (no catastrophic failure) PASS.
+
+**Findings:** T02/T04 (constraint-heavy) improved with Evaluator escalation. T01/T03 (search-heavy) regressed — Observer-every-cycle may add workspace noise. Needs N>3 and Observer ablation to confirm.
+
+See `experiments/log/2026-03-31-exp-slm-r14-slm-cognitive-cycle.yaml` for full analysis.
+
 ## Structure
 
 ```
@@ -127,5 +149,6 @@ phase-1-llm-monitor/ LLM-backed Monitor v2 (TypeScript)
 phase-2-dsl/        DSL grammar + corpus (Python + TypeScript)
 phase-3-training/   SLM training + evaluation (Python)
 phase-4-integration/ SLMProviderAdapter + benchmark (TypeScript)
+phase-5-cycle/      SLM cognitive cycle experiment (TypeScript)
 shared/             Cross-phase: fixtures, metrics, parser
 ```

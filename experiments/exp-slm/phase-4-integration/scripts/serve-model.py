@@ -59,10 +59,17 @@ def load_model():
             f"Run 'make phase-3' to train and export the model first."
         )
 
-    logger.info("Loading ONNX model from %s", model_path)
+    # GPU inference requires re-exporting ONNX on the target GPU architecture.
+    # Models exported on RTX 4090 (Ada/sm_89) fail on RTX 2080 Ti (Turing/sm_75).
+    # Use SLM_PROVIDER env var to override, default CPU.
+    import onnxruntime
+    provider = os.environ.get("SLM_PROVIDER", "CPUExecutionProvider")
+    if provider not in onnxruntime.get_available_providers():
+        provider = "CPUExecutionProvider"
+    logger.info("Loading ONNX model from %s (provider: %s)", model_path, provider)
     ort_model = ORTModelForCausalLM.from_pretrained(
         model_path,
-        provider="CPUExecutionProvider",
+        provider=provider,
     )
     tok = AutoTokenizer.from_pretrained(model_path)
     if tok.pad_token is None:

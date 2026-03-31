@@ -1,6 +1,6 @@
 # RFC: Partitioned Workspace Composition
 
-**Status:** Draft — exploratory theory document
+**Status:** Approved for Phase 1 — Trigger 1 (goal drift) confirmed by R-16 (T06: 0/3 at 30 cycles). See `003-decision-brief.md` and `003-strategic-evaluation.md`.
 **Author:** PO + Lysica
 **Date:** 2026-03-30
 **Applies to:** `@method/pacta` (future phases), potentially `pv-agi`
