@@ -347,4 +347,122 @@ describe('CognitiveCycle', () => {
     assert.ok(result.phasesExecuted.includes('REASON'), 'REASON phase still recorded');
     assert.ok(result.phasesExecuted.includes('ACT'), 'ACT phase still ran after skip');
   });
+
+  // ── PRD 043 Phase 3: Post-ACT Constraint Verification ──────────
+
+  it('10. Post-ACT constraint verification catches violation (PRD 043)', async () => {
+    const events: CognitiveEvent[] = [];
+    // Actor produces output containing "import notifications" — violates pinned constraint
+    const actor = createStubModule({
+      id: 'actor',
+      output: 'import notifications from "./notifications"',
+      monitoring: { type: 'actor', actionTaken: 'Write', success: true, unexpectedResult: false } as any,
+    });
+    const modules = defaultModules({ actor });
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+
+    // Create workspace with a pinned constraint entry
+    const workspace = createStubWorkspace();
+    const writePort = workspace.getWritePort(moduleId('observer'));
+    writePort.write({
+      source: moduleId('observer'),
+      content: 'must NOT import notifications',
+      salience: 1.0,
+      timestamp: Date.now(),
+      pinned: true,
+      contentType: 'constraint',
+    } as WorkspaceEntry);
+
+    await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    const violations = events.filter((e) => e.type === 'cognitive:constraint_violation');
+    assert.ok(violations.length > 0, 'At least one constraint_violation event emitted');
+    assert.equal((violations[0] as any).pattern, 'import.*notifications', 'Violation pattern matches prohibition');
+  });
+
+  it('11. Post-ACT verification is no-op when no pinned entries (PRD 043)', async () => {
+    const events: CognitiveEvent[] = [];
+    // Actor produces output that would match a constraint pattern,
+    // but no pinned entries exist in workspace
+    const actor = createStubModule({
+      id: 'actor',
+      output: 'import notifications from "./notifications"',
+      monitoring: { type: 'actor', actionTaken: 'Write', success: true, unexpectedResult: false } as any,
+    });
+    const modules = defaultModules({ actor });
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    const violations = events.filter((e) => e.type === 'cognitive:constraint_violation');
+    assert.equal(violations.length, 0, 'No constraint violation events when no pinned entries');
+  });
+
+  it('12. Monitor restrictedActions reach Actor control (wiring fix, PRD 043)', async () => {
+    const events: CognitiveEvent[] = [];
+    // Monitor returns restrictedActions and forceReplan
+    const monitor = createStubModule({
+      id: 'monitor',
+      output: { restrictedActions: ['Write', 'Edit'], forceReplan: true },
+      monitoring: { type: 'monitor', anomalyDetected: true } as any,
+    });
+    // Actor stub captures control passed to it
+    const actor = createStubModule({
+      id: 'actor',
+      output: { actionName: 'test-action', result: { output: 'done' }, escalated: false },
+      monitoring: { type: 'actor', actionTaken: 'test-action', success: true, unexpectedResult: false } as any,
+    });
+    const modules = defaultModules({ monitor, actor });
+    // Thresholds configured so Monitor always intervenes
+    const config = defaultConfig({
+      thresholds: { type: 'predicate', shouldIntervene: () => true },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    // Check that the Actor received restrictedActions in its control directive
+    const actorCalls = (actor as any)._stepCalls as Array<{ control: any }>;
+    assert.ok(actorCalls.length > 0, 'Actor was called');
+    const actorControlReceived = actorCalls[0].control;
+    assert.deepEqual(actorControlReceived.restrictedActions, ['Write', 'Edit'], 'Actor received restrictedActions from Monitor');
+    assert.equal(actorControlReceived.forceReplan, true, 'Actor received forceReplan from Monitor');
+
+    // Also check that a monitor_directive_applied event was emitted
+    const directiveEvents = events.filter((e) => e.type === 'cognitive:monitor_directive_applied');
+    assert.ok(directiveEvents.length > 0, 'monitor_directive_applied event emitted');
+  });
+
+  it('13. When Monitor does not intervene, Actor gets default control (regression, PRD 043)', async () => {
+    const events: CognitiveEvent[] = [];
+    const actor = createStubModule({
+      id: 'actor',
+      output: { actionName: 'test-action', result: { output: 'done' }, escalated: false },
+      monitoring: { type: 'actor', actionTaken: 'test-action', success: true, unexpectedResult: false } as any,
+    });
+    const modules = defaultModules({ actor });
+    // Thresholds configured so Monitor does NOT intervene
+    const config = defaultConfig({
+      thresholds: { type: 'predicate', shouldIntervene: () => false },
+    });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+
+    await cycle.run('test input', workspace, [], (e) => events.push(e));
+
+    // Check that the Actor received default control (no restrictedActions, no forceReplan)
+    const actorCalls = (actor as any)._stepCalls as Array<{ control: any }>;
+    assert.ok(actorCalls.length > 0, 'Actor was called');
+    const actorControlReceived = actorCalls[0].control;
+    assert.equal(actorControlReceived.restrictedActions, undefined, 'No restrictedActions in default control');
+    assert.equal(actorControlReceived.forceReplan, undefined, 'No forceReplan in default control');
+
+    // No monitor_directive_applied events should be emitted
+    const directiveEvents = events.filter((e) => e.type === 'cognitive:monitor_directive_applied');
+    assert.equal(directiveEvents.length, 0, 'No monitor_directive_applied event when Monitor did not intervene');
+  });
 });

@@ -52,6 +52,7 @@ import type { AggregatedSignals, MonitoringSignal } from '../../packages/pacta/s
 import { createReasonerActor, type ReasonerActorControl } from '../../packages/pacta/src/cognitive/modules/reasoner-actor.js';
 import { createObserver } from '../../packages/pacta/src/cognitive/modules/observer.js';
 import { createMonitor } from '../../packages/pacta/src/cognitive/modules/monitor.js';
+import { checkConstraintViolations } from '../../packages/pacta/src/cognitive/modules/constraint-classifier.js';
 import { createMemoryModuleV2, handleEviction, type MemoryV2Control } from '../../packages/pacta/src/cognitive/modules/memory-module-v2.js';
 import { InMemoryMemory } from '../../packages/pacta/src/ports/memory-impl.js';
 import type { MemoryPortV2 } from '../../packages/pacta/src/ports/memory-port.js';
@@ -652,6 +653,25 @@ async function runCognitive(
           : ' ⚠ (budget exhausted)'
         : '';
       console.log(`    [cycle ${cycle + 1}] ${raResult.output.actionName}  conf=${conf.toFixed(2)}  tok=${tok}${stagnationTag}`);
+
+      // Post-ACT constraint verification (always-on, PRD 043 D4)
+      const pinnedEntries = workspace.getReadPort(moduleId('observer')).read().filter((e: any) => e.pinned);
+      if (pinnedEntries.length > 0 && raResult?.output) {
+        const actContent = typeof (raResult.output as any).lastOutput === 'string'
+          ? (raResult.output as any).lastOutput : '';
+        if (actContent) {
+          const violations = checkConstraintViolations(pinnedEntries, actContent);
+          if (violations.length > 0) {
+            for (const v of violations) {
+              console.log(`    \u26D4 constraint violation: ${v.constraint.slice(0, 80)} | matched: ${v.violation}`);
+            }
+            // Set recovery for next cycle
+            raControl.restrictedActions = ['Write'];
+            raControl.forceReplan = true;
+            raControl.strategy = 'think';
+          }
+        }
+      }
 
       // Check for completion
       if (raResult.output.actionName === 'done') {
