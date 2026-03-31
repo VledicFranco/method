@@ -104,6 +104,21 @@ ONNX model format: `model.onnx` (1.1 MB graph) + `model.onnx_data` (1.88 GB weig
 
 **Recommended config:** Qwen2.5-Coder-0.5B LoRA r=16, monitor-v2 stagnation-augmented corpus — Gate 4 Part 2 FULL PASS.
 
+### R-08 — Multi-Module SLM Compilation (Observer + Evaluator)
+
+Trained on chobits (RTX 4090, bf16). Both use Qwen2.5-Coder-0.5B LoRA r=16, 3000 steps.
+
+| Module | Corpus | Train Loss | Parse | Semantic | Adversarial | Status |
+|--------|--------|-----------|-------|----------|-------------|--------|
+| Observer v2 | observer-v1 (10K) | 0.2613 | **100%** | **100%** | **100%** | **ALL PASS** |
+| Evaluator v2 | evaluator-v1 (8K) | 0.3701 | 71.0% | 69.8% | 85.7% | 1/3 PASS |
+
+**Observer:** Perfect scores across all metrics — ready for ONNX export and integration.
+
+**Evaluator:** High adversarial accuracy (85.7%) but parse rate only 71%. Semantic-to-parse ratio is 98.2% — the model reasons correctly but doesn't reliably produce valid DSL format. Root cause: corpus quality (same pattern as Monitor early runs: random corpus 39% → causal corpus 98.6%). Evaluator corpus needs causal consistency redesign before retrain.
+
+**bf16 fix validated:** Original evaluator training (fp16, LR 2e-4) produced NaN loss from step 0. Switching to bf16 on RTX 4090 (Ada Lovelace, native bf16 support) resolved the gradient overflow completely.
+
 ## Structure
 
 ```
