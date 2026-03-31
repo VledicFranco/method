@@ -93,7 +93,7 @@ registry/     Compiled methodology YAML specs — PRODUCTION ARTIFACTS, do not m
 theory/       Formal theory files (F1-FTH, F4-PHI)
 docs/
   arch/       Architecture specs (one concern per file)
-  prds/       Product requirement documents (001–042)
+  prds/       Product requirement documents (001–043)
   guides/     Usage guides (38 guides)
   fractal-component-architecture/   FCA specification (7 parts)
   rfcs/       Research RFCs (001 cognitive composition, 002 small language models)

@@ -1,6 +1,6 @@
 ---
 title: "PRD 043: Workspace Constraint Pinning & Violation Detection"
-status: draft
+status: partial
 date: "2026-03-30"
 tier: "standard"
 depends_on: [30, 35]
@@ -708,4 +708,25 @@ Acknowledged: F-S-2 (qualified "most real-world tasks" claim in Problem Statemen
 
 ## Implementation Status
 
-*(Empty — filled during realization)*
+### Phase 0 — Core Pin Flag (COMPLETE, 2026-03-30)
+
+Implemented directly on master (commits `d9d6481`, `56d1dca`):
+- `pinned?: boolean` on `WorkspaceEntry` — ~20 lines across 3 files
+- `evictLowest()` skips pinned entries
+- Observer keyword classifier tags constraint-bearing entries as pinned
+- **R-13 GATE PASS:** T04 cognitive 4/5 (80%), up from 0/5. Zero constraint violations.
+
+**Remaining:** Full T01-T05 regression matrix pending.
+
+### Phases 1-3 — Refinements (DEFERRED)
+
+The following PRD 043 refinements are deferred pending regression results:
+- `EntryContentType` union type and `contentType` field
+- `maxPinnedEntries` safety cap
+- Diagnostic events (CognitiveConstraintPinned, CognitiveConstraintViolation, CognitiveMonitorDirectiveApplied)
+- `constraint-classifier.ts` as separate module
+- Post-ACT violation check (always-on)
+- Monitor wiring fix in cycle.ts
+- Decomposed experiment conditions (pinning-only vs pinning+recovery)
+
+These are deferred because Phase 0 alone achieved the R-13 gate (80% on T04). The refinements add safety and observability but are not required for the core hypothesis validation.
