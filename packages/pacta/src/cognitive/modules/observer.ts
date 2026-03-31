@@ -103,8 +103,10 @@ const CONSTRAINT_PATTERNS = [
   /\bmust\s+not\b/i,
   /\bshall\s+not\b/i,
   /\bdo\s+not\b/i,
-  /\bnever\b/i,
+  /\bnever\s+(?:import|use|call|trigger|modify|change|delete|remove|touch)\b/i,
   /\bcannot\b/i,
+  /\bprohibited\b/i,
+  /\bforbidden\b/i,
   /\bconstraint:/i,
   /\binvariant:/i,
 ];
