@@ -66,7 +66,7 @@ The bridge itself remains methodology-unaware: it just spawns agents and relays 
    - Auto-loads OAuth token from `~/.claude/.credentials.json` for subscription usage meters
    - Shows plan type, rate limit tier, and token expiry on startup
    - Default port: 3456
-2. **Dashboard:** Open `http://localhost:3456/dashboard` in a browser for live observability (see [Guide 14](14-bridge-dashboard-ui.md))
+2. **Dashboard:** Open `http://localhost:3456/app/` in a browser for live observability (see [Guide 14](14-bridge-dashboard-ui.md))
 3. **MCP server configured:** `.mcp.json` in the project workdir so spawned agents connect to the method MCP server
 4. **`BRIDGE_URL` env var:** The MCP server reads `BRIDGE_URL` (default `http://localhost:3456`) to know where to proxy bridge tool calls
 5. **Claude Code available:** The `CLAUDE_BIN` environment variable (or `claude` on PATH) must point to the Claude Code binary

@@ -5,7 +5,7 @@
  * Keeps the bridge index.ts clean (DR-04: thin wrappers).
  */
 
-import { join } from 'node:path';
+import { join, resolve, isAbsolute } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
@@ -203,6 +203,20 @@ export function registerStrategyRoutes(
     if (strategy_yaml) {
       yamlContent = strategy_yaml;
     } else if (strategy_path) {
+      // Path traversal guard: reject absolute paths and '..' segments
+      if (isAbsolute(strategy_path) || strategy_path.includes('..')) {
+        return reply.status(400).send({
+          error: 'Invalid strategy_path: absolute paths and ".." segments are not allowed',
+        });
+      }
+      const strategyBaseDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+      const resolvedPath = resolve(strategyBaseDir, strategy_path);
+      const resolvedBase = resolve(strategyBaseDir);
+      if (!resolvedPath.startsWith(resolvedBase)) {
+        return reply.status(400).send({
+          error: 'Invalid strategy_path: path escapes the strategy directory',
+        });
+      }
       try {
         yamlContent = await (_fs ?? new NodeFileSystemProvider()).readFile(strategy_path, 'utf-8');
       } catch (e) {
@@ -423,50 +437,30 @@ export function registerStrategyRoutes(
 
   /**
    * POST /strategies/:id/resume — Resume a suspended strategy execution.
-   * Optionally accepts modified context inputs for the resumed execution.
+   *
+   * NOT YET IMPLEMENTED: The DAG executor does not support resumption from a
+   * suspended state. Re-execute the strategy instead. This endpoint is reserved
+   * for Phase 2b when checkpoint-based resumption is available.
    */
   app.post<{
     Params: { id: string };
     Body: {
       modified_inputs?: Record<string, unknown>;
     };
-  }>('/strategies/:id/resume', async (request, reply) => {
-    const { id } = request.params;
-    const entry = executions.get(id);
-
-    if (!entry) {
-      return reply.status(404).send({ error: `Execution not found: ${id}` });
-    }
-
-    if (entry.status !== 'suspended') {
-      return reply.status(400).send({
-        error: `Cannot resume execution with status '${entry.status}'. Only 'suspended' executions can be resumed.`,
-      });
-    }
-
-    const { modified_inputs } = request.body ?? {};
-
-    // Update status to running
-    entry.status = 'running';
-    entry.completed_at = undefined;
-    notifyExecutionChange(entry);
-
-    app.log.info(
-      `Strategy ${entry.strategy_id} execution ${id} resumed${modified_inputs ? ' with modified inputs' : ''}`,
-    );
-
-    return reply.status(200).send({
-      execution_id: entry.execution_id,
-      strategy_id: entry.strategy_id,
-      strategy_name: entry.strategy_name,
-      status: entry.status,
-      modified_inputs: modified_inputs ?? null,
+  }>('/strategies/:id/resume', async (_request, reply) => {
+    return reply.status(501).send({
+      error: 'Resume is not yet implemented. The DAG executor does not support resumption from a suspended state. Re-execute the strategy instead.',
+      phase: '2b',
     });
   });
 
   /**
    * POST /strategies/:id/abort — Abort a running or suspended strategy execution.
    * Sets the execution status to 'failed' with the provided reason.
+   *
+   * CAVEAT: For 'running' executions, this sets the status to 'failed' but does
+   * NOT cancel in-flight LLM calls. The current node may continue until it
+   * completes. Full cancellation via AbortController is planned for Phase 2b.
    */
   app.post<{
     Params: { id: string };
@@ -488,6 +482,7 @@ export function registerStrategyRoutes(
     }
 
     const { reason } = request.body ?? {};
+    const wasRunning = entry.status === 'running' || entry.status === 'started';
 
     entry.status = 'failed';
     entry.error = reason ?? 'Aborted by user';
@@ -505,6 +500,7 @@ export function registerStrategyRoutes(
       status: entry.status,
       reason: entry.error,
       aborted: true,
+      ...(wasRunning ? { caveat: 'In-flight LLM calls may continue until the current node completes. Full cancellation is planned for Phase 2b.' } : {}),
     });
   });
 

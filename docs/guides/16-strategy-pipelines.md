@@ -7,8 +7,8 @@ summary: >-
   Automated DAG workflows that compose methodology invocations, gates, and scripts with event triggers.
 prereqs: [1, 2, 10]
 touches:
-  - packages/bridge/src/strategy/
-  - packages/bridge/src/triggers/
+  - packages/bridge/src/domains/strategies/
+  - packages/bridge/src/domains/triggers/
   - .method/strategies/
 ---
 
@@ -22,13 +22,109 @@ The bridge (Guide 10) lets an orchestrator spawn sub-agents and coordinate multi
 
 Strategy Pipelines make these workflows **declarative and automatic**. You define the DAG in YAML, declare gates for quality, and the executor runs it — parallelizing independent steps, retrying on gate failures, and producing a mandatory retrospective. With event triggers, pipelines fire automatically on git commits, file changes, schedules, or webhooks.
 
+## Quickstart: Your First Automated Strategy
+
+**Goal:** Set up a file-watch trigger that auto-fires a strategy when a file changes.
+
+### 1. Write the strategy YAML
+
+Create `.method/strategies/hello-automation.yaml`:
+
+```yaml
+strategy:
+  id: S-HELLO-AUTO
+  name: "Hello Automation"
+  version: "1.0"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths: ["tmp/trigger-test/*.txt"]
+      events: [create, modify]
+      debounce_ms: 3000
+      debounce_strategy: trailing
+
+  context:
+    inputs:
+      - { name: trigger_event, type: object }
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+
+  dag:
+    nodes:
+      - id: summarize
+        type: methodology
+        methodology: P2-SD
+        method_hint: M3-TMP
+        capabilities: [read_only]
+        inputs: [trigger_event]
+        outputs: [summary]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+
+  oversight:
+    rules:
+      - { condition: "total_cost_usd > 1.00", action: warn_human }
+      - { condition: "total_cost_usd > 5.00", action: escalate_to_human }
+```
+
+> **Important:** Set `STRATEGY_DEFAULT_BUDGET_USD` to a safe cap (e.g., `5`) when running automated triggers. Without it, there is no budget limit.
+
+### 2. Start the bridge
+
+```bash
+npm run bridge
+```
+
+### 3. Verify triggers registered
+
+```bash
+curl http://localhost:3456/triggers
+# Look for S-HELLO-AUTO in the triggers list with status enabled
+```
+
+### 4. Fire it
+
+```bash
+mkdir -p tmp/trigger-test
+echo "hello automation" > tmp/trigger-test/test.txt
+```
+
+The file_watch trigger fires after the 3s debounce window. The strategy executor spawns `claude --print` to run the methodology node.
+
+### 5. Check results
+
+```bash
+# List executions
+curl http://localhost:3456/strategies
+
+# Check a specific execution
+curl http://localhost:3456/strategies/{execution_id}/status
+
+# View trigger fire history
+curl http://localhost:3456/triggers/history
+```
+
+The retro lands at `.method/retros/retro-strategy-*.yaml`.
+
+### 6. Hot reload after edits
+
+```bash
+curl -X POST http://localhost:3456/triggers/reload
+```
+
+---
+
 ## Architecture
 
 ```
 Strategy YAML (.method/strategies/*.yaml)
     │
     ├── Trigger System (PRD 018)
-    │   FileWatch, GitCommit, Schedule, PtyWatcher, ChannelEvent, Webhook
+    │   FileWatch, GitCommit, Schedule, PtyWatcher, Webhook
     │   → debounce engine → TriggerRouter → executor
     │
     ├── DAG Executor (PRD 017)
@@ -212,7 +308,7 @@ Strategy gates are **single-shot** (no retries) — they validate the whole pipe
 
 ## Event Triggers
 
-Strategies fire automatically when project events occur. Six trigger types:
+Strategies fire automatically when project events occur. Five event trigger types (plus `manual` and `mcp_tool` invocation types):
 
 | Type | Fires when | Example |
 |------|-----------|---------|
@@ -221,7 +317,8 @@ Strategies fire automatically when project events occur. Six trigger types:
 | `schedule` | Cron expression matches | Nightly drift audit |
 | `webhook` | External HTTP POST (HMAC validated) | GitHub PR webhook triggers CI |
 | `pty_watcher` | PTY observation pattern detected | Test failure triggers quality review |
-| `channel_event` | Bridge channel event emitted | Session completion triggers summary |
+
+> **Note:** `channel_event` was removed in PRD 026 Phase 5 and replaced by EventBus subscriptions. YAML files with `channel_event` triggers will parse but the watcher will not be created.
 
 ### Debounce
 
@@ -306,10 +403,41 @@ curl http://localhost:3456/api/strategies/exec-S-MY-STRATEGY-1774011072980/dag
 
 Returns the parsed DAG for a given execution: nodes (with `id`, `type`, `depends_on`, `inputs`, `outputs`, `gates`, `config`), `strategy_gates`, `capabilities`, `oversight_rules`, and `context_inputs`. Used by the dashboard visualizer.
 
-### Strategy Definitions
+### Resume / Abort
 
 ```bash
+# Resume — NOT YET IMPLEMENTED (returns 501)
+curl -X POST http://localhost:3456/strategies/{execution_id}/resume
+
+# Abort a running or suspended execution
+curl -X POST http://localhost:3456/strategies/{execution_id}/abort \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Manual abort — investigating unexpected cost"}'
+```
+
+> **Caveat:** Abort sets the status to `failed` but does not cancel in-flight LLM calls. The current node may continue until it finishes.
+
+### Strategy Definitions (CRUD)
+
+```bash
+# List all definitions
 curl http://localhost:3456/api/strategies/definitions
+
+# Create a new strategy
+curl -X POST http://localhost:3456/api/strategies/definitions \
+  -H "Content-Type: application/json" \
+  -d '{"id": "s-my-new-strategy", "yaml": "strategy:\n  id: S-MY-NEW-STRATEGY\n  ..."}'
+
+# Update an existing strategy
+curl -X PUT http://localhost:3456/api/strategies/definitions/s-my-strategy \
+  -H "Content-Type: application/json" \
+  -d '{"yaml": "strategy:\n  id: S-MY-STRATEGY\n  ..."}'
+
+# Delete a strategy
+curl -X DELETE http://localhost:3456/api/strategies/definitions/s-my-strategy
+
+# Force reload all definitions
+curl -X POST http://localhost:3456/api/strategies/reload
 ```
 
 Lists all strategy YAML definitions found in `.method/strategies/`. Each entry includes the parsed `id`, `name`, `version`, `triggers`, `nodes`, `strategy_gates`, `oversight_rules`, `context_inputs`, `outputs`, and `last_execution` (cross-referenced from in-memory executions). Files that fail to parse are included with an `error` field.
@@ -319,14 +447,26 @@ Lists all strategy YAML definitions found in `.method/strategies/`. Each entry i
 From Claude Code sessions:
 
 ```
-strategy_execute   — start a strategy execution
-strategy_status    — poll execution status
-trigger_list       — list all registered triggers
-trigger_enable     — enable a trigger
-trigger_disable    — disable a trigger
-trigger_pause_all  — maintenance mode (pause all triggers)
-trigger_resume_all — resume after maintenance
-trigger_reload     — hot reload strategy files
+# Strategy execution
+strategy_execute          — start a strategy execution
+strategy_execution_status — poll execution status (detailed)
+strategy_status           — poll execution status (legacy alias)
+strategy_resume           — resume a suspended execution (not yet implemented — Phase 2b)
+strategy_abort            — abort a running/suspended execution
+
+# Strategy CRUD
+strategy_create           — create a new strategy YAML definition
+strategy_update           — update an existing strategy definition
+strategy_delete           — delete a strategy definition
+strategy_reload           — force reload all strategy definitions
+
+# Trigger management
+trigger_list              — list all registered triggers
+trigger_enable            — enable a trigger
+trigger_disable           — disable a trigger
+trigger_pause_all         — maintenance mode (pause all triggers)
+trigger_resume_all        — resume after maintenance
+trigger_reload            — hot reload strategy files + triggers
 ```
 
 ## Trigger Management
@@ -404,7 +544,7 @@ curl -X POST http://localhost:3456/triggers/reload
 
 ## Dashboard
 
-The bridge dashboard at `http://localhost:3456/dashboard` includes a **Triggers** panel showing:
+The bridge dashboard at `http://localhost:3456/app/` includes a **Triggers** panel showing:
 - Registered triggers with status (active/disabled/paused)
 - Fire count, last fired time, error count
 - Fire history timeline (last 20 fires)
@@ -476,7 +616,7 @@ Statuses `completed`, `failed`, and `suspended` are terminal — these execution
 | `STRATEGY_MAX_PARALLEL` | `3` | Max concurrent nodes per execution |
 | `STRATEGY_DEFAULT_GATE_RETRIES` | `3` | Default max retries for algorithmic gates |
 | `STRATEGY_DEFAULT_TIMEOUT_MS` | `600000` | Per-node timeout (10 min) |
-| `STRATEGY_DEFAULT_BUDGET_USD` | *(none)* | Per-execution LLM cost budget cap (USD) |
+| `STRATEGY_DEFAULT_BUDGET_USD` | *(none — no cap)* | Per-execution LLM cost budget cap (USD). When unset, executions have no budget limit. Set this to a safe cap (e.g., `5`) when running automated triggers. |
 | `STRATEGY_RETRO_DIR` | `.method/retros` | Override retro output directory |
 | `STRATEGY_EXECUTION_TTL_MS` | `3600000` | TTL for completed executions in memory (1 hour) |
 | `STRATEGY_MAX_EXECUTIONS` | `50` | Max executions retained in memory |
@@ -553,7 +693,8 @@ Every strategy execution generates a retro at `.method/retros/retro-strategy-YYY
 
 - **No sub-strategy composition** — strategies cannot invoke other strategies as nodes (Phase 3)
 - **No LLM review gates** — gates are algorithmic expressions only, not LLM-evaluated (Phase 2b)
-- **No resumption** — suspended executions (from `escalate_to_human`) cannot be resumed; they must be re-executed (Phase 2b)
+- **No resumption** — suspended executions (from `escalate_to_human`) cannot be resumed; they must be re-executed. The `POST /strategies/:id/resume` endpoint returns `501 Not Implemented`. Checkpoint-based resumption is planned for Phase 2b.
+- **Abort does not cancel in-flight LLM calls** — `POST /strategies/:id/abort` sets the execution status to `failed` but does not signal the running `claude --print` process. The current node may continue until it finishes. Full cancellation via AbortController is planned for Phase 2b.
 - **No runtime DAG visualization** — the dashboard shows trigger status but not live execution graph (Phase 2b)
 - **Script node timeout** cannot interrupt synchronous infinite loops — use short scripts
 - **Sandbox is not a security boundary** — `new Function()` with shadowed globals, known escape vectors documented

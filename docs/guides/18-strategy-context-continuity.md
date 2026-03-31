@@ -7,8 +7,8 @@ summary: >-
   Maintaining LLM context across strategy pipeline steps and sub-agent calls via refresh_context.
 prereqs: [16]
 touches:
-  - packages/bridge/src/strategy/strategy-executor.ts
-  - packages/bridge/src/strategy/strategy-parser.ts
+  - packages/bridge/src/domains/strategies/strategy-executor.ts
+  - packages/bridge/src/domains/strategies/strategy-parser.ts
 ---
 
 # Guide 18: Strategy Context Continuity
