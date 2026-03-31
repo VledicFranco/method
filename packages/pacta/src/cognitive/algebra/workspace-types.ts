@@ -10,6 +10,19 @@
 
 import type { ModuleId } from './module.js';
 
+// ── Entry Content Type ──────────────────────────────────────────
+
+/**
+ * Closed union for workspace entry classification.
+ * Prevents classifier drift and ensures type safety.
+ * - 'constraint': prohibition/invariant entries — pinned to survive eviction
+ * - 'goal': task objective entries
+ * - 'operational': tool results, intermediate data (default)
+ *
+ * PRD 043 — Phase 0 rule-based classification.
+ */
+export type EntryContentType = 'constraint' | 'goal' | 'operational';
+
 // ── Workspace Entry ──────────────────────────────────────────────
 
 /** A single entry in the cognitive workspace. */
@@ -28,6 +41,12 @@ export interface WorkspaceEntry {
 
   /** Time-to-live in milliseconds. Entry expires after timestamp + ttl. */
   ttl?: number;
+
+  /** Whether this entry is pinned (survives salience-based eviction). PRD 043. */
+  pinned?: boolean;
+
+  /** Content classification for eviction policy differentiation. PRD 043. */
+  contentType?: EntryContentType;
 }
 
 // ── Workspace Filter ─────────────────────────────────────────────
@@ -119,4 +138,12 @@ export interface WorkspaceConfig {
 
   /** Default TTL in milliseconds for entries without explicit TTL. */
   defaultTtl?: number;
+
+  /**
+   * Maximum number of pinned entries allowed before the safety valve engages.
+   * When all entries are pinned AND pinned count >= this cap, the oldest
+   * pinned entry is evicted. Prevents unbounded growth from classifier
+   * false positives. Default: 10. PRD 043.
+   */
+  maxPinnedEntries?: number;
 }

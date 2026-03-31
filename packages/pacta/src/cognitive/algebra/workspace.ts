@@ -64,9 +64,9 @@ export interface WorkspaceManager {
   getWritePort(moduleId: ModuleId): WorkspaceWritePort;
   /** Reset per-module write quotas (called between cycles). */
   resetCycleQuotas(): void;
-  /** Get all eviction events since last reset/creation. */
+  /** Get eviction events (most recent 100 — older entries are dropped). */
   getEvictions(): readonly EvictionInfo[];
-  /** Get the full write log. */
+  /** Get the write log (most recent 100 — older entries are dropped). */
   getWriteLog(): readonly WriteLogEntry[];
   /** Get a snapshot of the current workspace state. */
   snapshot(): ReadonlyWorkspaceSnapshot;
@@ -139,71 +139,135 @@ export function createWorkspace(
   const evictions: EvictionInfo[] = [];
   const writeCounts = new Map<ModuleId, number>();
 
+  // Lazy salience recomputation: only recompute when entries have changed (dirty).
+  // Version is bumped on every write and on TTL expiry so reads always reflect
+  // the current entry set. Recency drift between writes is accepted as a trade-off
+  // for avoiding O(n) recomputation on every read call.
+  let salienceVersion = 0;
+  let lastRecomputeVersion = -1;
+
   // ── Internal Helpers ─────────────────────────────────────────
 
-  /** Expire entries whose TTL has elapsed. Returns eviction infos. */
+  /** Expire entries whose TTL has elapsed. Bumps salienceVersion when entries are removed. */
   function expireTtl(now: number): void {
     for (let i = entries.length - 1; i >= 0; i--) {
       const entry = entries[i];
       const ttl = entry.ttl ?? config.defaultTtl;
       if (ttl !== undefined && (entry.timestamp + ttl) <= now) {
         entries.splice(i, 1);
-        evictions.push({
-          entry,
-          reason: 'ttl',
-          salience: entry.salience,
-          timestamp: now,
-        });
+        salienceVersion++; // entry set changed — force salience recompute
+        evictions.push({ entry, reason: 'ttl', salience: entry.salience, timestamp: now });
+        if (evictions.length > 100) evictions.shift();
       }
     }
   }
 
-  /** Recompute salience for all entries. */
+  /** Recompute salience for all entries (lazy — skips if version is clean). */
   function recomputeSalience(now: number): void {
+    if (salienceVersion === lastRecomputeVersion) return;
     const ctx: SalienceContext = { ...salienceContext, now };
     for (const entry of entries) {
       const computed = salienceFn(entry, ctx);
       entry.salience = Number.isFinite(computed) ? computed : 0;
     }
+    lastRecomputeVersion = salienceVersion;
   }
 
-  /** Evict the lowest-salience entry. FIFO tie-breaking (oldest first). */
+  /** Max pinned entries before safety valve engages. Default 10. PRD 043. */
+  const maxPinned = config.maxPinnedEntries ?? 10;
+
+  /**
+   * Evict the lowest-salience entry. FIFO tie-breaking (oldest first).
+   *
+   * PRD 043 pinning rules:
+   * 1. Skip entries where pinned === true when searching for eviction candidate.
+   * 2. If ALL entries are pinned AND pinned count >= maxPinnedEntries,
+   *    fall back to evicting the oldest pinned entry (safety valve).
+   * 3. If all entries are pinned but count < maxPinnedEntries,
+   *    return undefined (allow capacity overflow by 1).
+   */
   function evictLowest(now: number, triggeringSalience?: number): EvictionInfo | undefined {
     if (entries.length === 0) return undefined;
 
-    let lowestIdx = 0;
-    let lowestSalience = entries[0].salience;
-    let lowestTimestamp = entries[0].timestamp;
+    // First pass: find lowest-salience NON-pinned entry
+    let lowestIdx = -1;
+    let lowestSalience = Infinity;
+    let lowestTimestamp = Infinity;
 
-    for (let i = 1; i < entries.length; i++) {
+    for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
+      if (entry.pinned) continue; // Skip pinned entries
+
+      if (lowestIdx === -1) {
+        // First non-pinned entry found
+        lowestIdx = i;
+        lowestSalience = entry.salience;
+        lowestTimestamp = entry.timestamp;
+        continue;
+      }
+
       const diff = entry.salience - lowestSalience;
 
       if (diff < -SALIENCE_EPSILON) {
-        // Strictly lower salience
         lowestIdx = i;
         lowestSalience = entry.salience;
         lowestTimestamp = entry.timestamp;
       } else if (Math.abs(diff) <= SALIENCE_EPSILON && entry.timestamp < lowestTimestamp) {
-        // Equal salience within epsilon — FIFO: evict oldest
         lowestIdx = i;
         lowestSalience = entry.salience;
         lowestTimestamp = entry.timestamp;
       }
     }
 
-    const evicted = entries.splice(lowestIdx, 1)[0];
-    const info: EvictionInfo = {
-      entry: evicted,
-      reason: 'capacity',
-      salience: evicted.salience,
-      salienceDelta: triggeringSalience !== undefined
-        ? triggeringSalience - evicted.salience
-        : undefined,
-      timestamp: now,
-    };
-    evictions.push(info);
-    return info;
+    // If we found a non-pinned candidate, evict it
+    if (lowestIdx !== -1) {
+      const evicted = entries.splice(lowestIdx, 1)[0];
+      const info: EvictionInfo = {
+        entry: evicted,
+        reason: 'capacity',
+        salience: evicted.salience,
+        salienceDelta: triggeringSalience !== undefined
+          ? triggeringSalience - evicted.salience
+          : undefined,
+        timestamp: now,
+      };
+      evictions.push(info);
+      if (evictions.length > 100) evictions.shift();
+      return info;
+    }
+
+    // All entries are pinned — check safety valve
+    const pinnedCount = entries.filter(e => e.pinned).length;
+
+    if (pinnedCount >= maxPinned) {
+      // Safety valve: evict oldest pinned entry (lowest timestamp)
+      let oldestIdx = 0;
+      let oldestTimestamp = entries[0].timestamp;
+
+      for (let i = 1; i < entries.length; i++) {
+        if (entries[i].timestamp < oldestTimestamp) {
+          oldestIdx = i;
+          oldestTimestamp = entries[i].timestamp;
+        }
+      }
+
+      const evicted = entries.splice(oldestIdx, 1)[0];
+      const info: EvictionInfo = {
+        entry: evicted,
+        reason: 'capacity',
+        salience: evicted.salience,
+        salienceDelta: triggeringSalience !== undefined
+          ? triggeringSalience - evicted.salience
+          : undefined,
+        timestamp: now,
+      };
+      evictions.push(info);
+      if (evictions.length > 100) evictions.shift();
+      return info;
+    }
+
+    // All pinned but below cap — allow overflow (return undefined, don't evict)
+    return undefined;
   }
 
   // ── Port Factories ───────────────────────────────────────────
@@ -275,6 +339,8 @@ export function createWorkspace(
           timestamp: entry.timestamp || now,
         };
 
+        // Mark salience dirty — a new entry is about to be added
+        salienceVersion++;
         // Recompute salience for existing entries
         recomputeSalience(now);
 
@@ -291,12 +357,8 @@ export function createWorkspace(
         const count = writeCounts.get(moduleId) ?? 0;
         writeCounts.set(moduleId, count + 1);
 
-        writeLog.push({
-          moduleId,
-          entry: newEntry,
-          timestamp: now,
-          eviction: evictionInfo,
-        });
+        writeLog.push({ moduleId, entry: newEntry, timestamp: now, eviction: evictionInfo });
+        if (writeLog.length > 100) writeLog.shift();
       },
     };
   }

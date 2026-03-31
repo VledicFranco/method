@@ -22,7 +22,10 @@ export type CognitiveEvent =
   | CognitiveWorkspaceEviction
   | CognitiveCyclePhase
   | CognitiveLEARNFailed
-  | CognitiveCycleAborted;
+  | CognitiveCycleAborted
+  | CognitiveConstraintPinned
+  | CognitiveConstraintViolation
+  | CognitiveMonitorDirectiveApplied;
 
 // ── Individual Event Types ───────────────────────────────────────
 
@@ -95,5 +98,35 @@ export interface CognitiveCycleAborted {
   reason: string;
   phase: string;
   cycleNumber: number;
+  timestamp: number;
+}
+
+// ── PRD 043 Diagnostic Events ───────────────────────────────────
+
+/** Emitted when Observer classifies and pins a constraint entry. */
+export interface CognitiveConstraintPinned {
+  type: 'cognitive:constraint_pinned';
+  content: string;        // Truncated (first 200 chars)
+  matchedPatterns: string[];
+  pinnedCount: number;    // Total pinned entries after this one
+  timestamp: number;
+}
+
+/** Emitted when post-ACT check detects a constraint violation. */
+export interface CognitiveConstraintViolation {
+  type: 'cognitive:constraint_violation';
+  constraint: string;     // Truncated
+  violation: string;      // What matched
+  pattern: string;        // Prohibition regex
+  timestamp: number;
+}
+
+/** Emitted when Monitor/violation directives are applied to downstream modules. */
+export interface CognitiveMonitorDirectiveApplied {
+  type: 'cognitive:monitor_directive_applied';
+  restrictedActions: string[];
+  forceReplan: boolean;
+  source: 'monitor' | 'constraint-violation';
+  targetModule: string;
   timestamp: number;
 }

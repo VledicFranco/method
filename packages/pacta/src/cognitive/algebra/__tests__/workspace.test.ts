@@ -247,6 +247,176 @@ describe('workspace', () => {
     assert.ok(typeof evictions[0].salienceDelta === 'number');
     assert.ok(evictions[0].timestamp > 0);
   });
+
+  // ── PRD 043: Constraint Pinning Tests ──────────────────────────
+
+  it('11. pinned entry survives eviction', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace(
+      { capacity: 3, salience: () => 0.5 },
+      ctx,
+    );
+
+    const now = Date.now();
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Write 3 entries: one pinned, two non-pinned
+    writeA.write(makeEntry(MOD_A, 'pinned-constraint', { pinned: true, timestamp: now - 300 }));
+    writeA.write(makeEntry(MOD_A, 'normal-1', { timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'normal-2', { timestamp: now - 100 }));
+
+    // At capacity (3). Writing a 4th triggers eviction.
+    writeA.write(makeEntry(MOD_A, 'newcomer', { timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3);
+
+    // The pinned entry must survive
+    const pinnedEntries = snapshot.filter(e => e.content === 'pinned-constraint');
+    assert.strictEqual(pinnedEntries.length, 1, 'Pinned entry should survive eviction');
+
+    // A non-pinned entry should have been evicted
+    const evictions = ws.getEvictions();
+    const capacityEvictions = evictions.filter(e => e.reason === 'capacity');
+    assert.ok(capacityEvictions.length >= 1);
+    assert.ok(!capacityEvictions[0].entry.pinned, 'Evicted entry should not be pinned');
+  });
+
+  it('12. non-pinned evicted normally (lowest salience among non-pinned)', () => {
+    const ctx = makeContext();
+    // MOD_A has priority 0.8, MOD_B has priority 0.3
+    const ws = createWorkspace({ capacity: 2 }, ctx);
+
+    const writeA = ws.getWritePort(MOD_A);
+    const writeB = ws.getWritePort(MOD_B);
+
+    // MOD_B entry has lower salience (priority 0.3 vs 0.8)
+    writeB.write(makeEntry(MOD_B, 'low priority'));
+    writeA.write(makeEntry(MOD_A, 'high priority'));
+
+    // At capacity. Writing another triggers eviction of lowest-salience non-pinned.
+    writeA.write(makeEntry(MOD_A, 'another high'));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 2);
+
+    const evictions = ws.getEvictions();
+    assert.ok(evictions.length >= 1);
+    // The low-priority (MOD_B) entry should be evicted
+    assert.strictEqual(evictions[0].entry.source, MOD_B);
+  });
+
+  it('13. multiple pinned entries survive eviction', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace(
+      { capacity: 3, salience: () => 0.5 },
+      ctx,
+    );
+
+    const now = Date.now();
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Write 3 entries: 2 pinned, 1 non-pinned
+    writeA.write(makeEntry(MOD_A, 'pinned-1', { pinned: true, timestamp: now - 300 }));
+    writeA.write(makeEntry(MOD_A, 'pinned-2', { pinned: true, timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'normal', { timestamp: now - 100 }));
+
+    // At capacity. Writing a 4th triggers eviction.
+    writeA.write(makeEntry(MOD_A, 'newcomer', { timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3);
+
+    // Both pinned entries must survive
+    const pinnedEntries = snapshot.filter(e =>
+      e.content === 'pinned-1' || e.content === 'pinned-2',
+    );
+    assert.strictEqual(pinnedEntries.length, 2, 'Both pinned entries should survive');
+
+    // The non-pinned entry was evicted
+    const normalEntries = snapshot.filter(e => e.content === 'normal');
+    assert.strictEqual(normalEntries.length, 0, 'Non-pinned entry should be evicted');
+  });
+
+  it('14. all-pinned below cap allows overflow', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace(
+      { capacity: 2, maxPinnedEntries: 5, salience: () => 0.5 },
+      ctx,
+    );
+
+    const now = Date.now();
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Write 2 pinned entries — at capacity
+    writeA.write(makeEntry(MOD_A, 'pinned-1', { pinned: true, timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'pinned-2', { pinned: true, timestamp: now - 100 }));
+
+    // Write a 3rd pinned entry — pinned count (3) < maxPinnedEntries (5), should overflow
+    writeA.write(makeEntry(MOD_A, 'pinned-3', { pinned: true, timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3, 'Capacity should be exceeded (overflow by 1)');
+
+    // All 3 entries should be present
+    const contents = snapshot.map(e => e.content).sort();
+    assert.deepStrictEqual(contents, ['pinned-1', 'pinned-2', 'pinned-3']);
+  });
+
+  it('15. maxPinnedEntries cap evicts oldest pinned', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace(
+      { capacity: 3, maxPinnedEntries: 2, salience: () => 0.5 },
+      ctx,
+    );
+
+    const now = Date.now();
+    const writeA = ws.getWritePort(MOD_A);
+
+    // Write 2 pinned entries with distinct timestamps
+    writeA.write(makeEntry(MOD_A, 'oldest-pinned', { pinned: true, timestamp: now - 200 }));
+    writeA.write(makeEntry(MOD_A, 'newer-pinned', { pinned: true, timestamp: now - 100 }));
+
+    // Write a 3rd pinned entry — hits cap, one non-pinned slot remains empty.
+    // But all entries are pinned, so we must write the 3rd to fill capacity first.
+    // Actually let's fill capacity with all pinned and trigger safety valve.
+    writeA.write(makeEntry(MOD_A, 'filler-pinned', { pinned: true, timestamp: now - 50 }));
+
+    // Now at capacity=3, all pinned, pinned count=3 >= maxPinnedEntries=2.
+    // Writing a 4th pinned entry should evict the oldest pinned.
+    writeA.write(makeEntry(MOD_A, 'newest-pinned', { pinned: true, timestamp: now }));
+
+    const snapshot = ws.snapshot();
+    assert.strictEqual(snapshot.length, 3, 'Should stay at capacity');
+
+    // The oldest pinned (timestamp t1) should be evicted
+    const contents = snapshot.map(e => e.content);
+    assert.ok(!contents.includes('oldest-pinned'), 'Oldest pinned entry should be evicted');
+    assert.ok(contents.includes('newest-pinned'), 'Newest pinned entry should be present');
+
+    const evictions = ws.getEvictions();
+    const capacityEvictions = evictions.filter(e => e.reason === 'capacity');
+    assert.ok(capacityEvictions.length >= 1);
+    assert.strictEqual(capacityEvictions[0].entry.content, 'oldest-pinned');
+  });
+
+  it('16. write preserves pinned and contentType fields', () => {
+    const ctx = makeContext();
+    const ws = createWorkspace({ capacity: 10 }, ctx);
+
+    const writeA = ws.getWritePort(MOD_A);
+    const readA = ws.getReadPort(MOD_A);
+
+    writeA.write(makeEntry(MOD_A, 'constraint entry', {
+      pinned: true,
+      contentType: 'constraint',
+    }));
+
+    const entries = readA.read();
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].pinned, true, 'pinned field should be preserved');
+    assert.strictEqual(entries[0].contentType, 'constraint', 'contentType field should be preserved');
+  });
 });
 
 // ── Salience Component Tests ────────────────────────────────────
