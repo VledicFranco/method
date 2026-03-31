@@ -352,9 +352,9 @@ async function main(): Promise<void> {
   await preflight();
 
   // Create SLM clients
-  const monitorSlm = createHttpSLMInference({ modelId: 'monitor-stagnation', serverUrl: MONITOR_URL, timeoutMs: 30_000 });
-  const observerSlm = createHttpSLMInference({ modelId: 'observer-v2', serverUrl: OBSERVER_URL, timeoutMs: 30_000 });
-  const evaluatorSlm = createHttpSLMInference({ modelId: 'evaluator-v2', serverUrl: EVALUATOR_URL, timeoutMs: 30_000 });
+  const monitorSlm = createHttpSLMInference({ modelId: 'monitor-stagnation', serverUrl: MONITOR_URL, timeoutMs: 120_000 });
+  const observerSlm = createHttpSLMInference({ modelId: 'observer-v2', serverUrl: OBSERVER_URL, timeoutMs: 120_000 });
+  const evaluatorSlm = createHttpSLMInference({ modelId: 'evaluator-v2', serverUrl: EVALUATOR_URL, timeoutMs: 120_000 });
 
   await Promise.all([monitorSlm.init(), observerSlm.init(), evaluatorSlm.init()]);
   console.log('  All SLM clients initialized.\n');
@@ -371,12 +371,22 @@ async function main(): Promise<void> {
     const observerInput = encodeObserverSignals(scenario.observerSignals);
     const evaluatorInput = encodeEvaluatorSignals(scenario.evaluatorSignals);
 
-    // Run all 3 modules in parallel
-    const [monitorRes, observerRes, evaluatorRes] = await Promise.all([
-      monitorSlm.generate(monitorInput),
-      observerSlm.generate(observerInput),
-      evaluatorSlm.generate(evaluatorInput),
-    ]);
+    // Run all 3 modules — sequential to avoid overloading CPU ONNX
+    let monitorRes, observerRes, evaluatorRes;
+    try {
+      monitorRes = await monitorSlm.generate(monitorInput);
+      observerRes = await observerSlm.generate(observerInput);
+      evaluatorRes = await evaluatorSlm.generate(evaluatorInput);
+    } catch (err) {
+      console.log(`  [ERROR] ${scenario.name} — inference failed: ${err}`);
+      results.push({
+        name: scenario.name, category: scenario.category, allCorrect: false,
+        monitor: { parsed: false, semanticMatch: false, latencyMs: 0, inputTokens: 0, outputTokens: 0, confidence: 0, rawOutput: `ERROR: ${err}` },
+        observer: { parsed: false, semanticMatch: false, latencyMs: 0, inputTokens: 0, outputTokens: 0, confidence: 0, rawOutput: '' },
+        evaluator: { parsed: false, semanticMatch: false, latencyMs: 0, inputTokens: 0, outputTokens: 0, confidence: 0, rawOutput: '' },
+      });
+      continue;
+    }
 
     // Parse outputs
     const monitorParsed = parseDsl(monitorRes.tokens);

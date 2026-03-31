@@ -36,7 +36,7 @@ MODEL_DIR = Path(os.environ.get("SLM_MODEL_DIR", str(
     / "phase-3-training" / "models" / "monitor-smollm2-135m-run3" / "onnx"
 )))
 HOST = "0.0.0.0"
-PORT = 8100
+PORT = int(os.environ.get("PORT", "8100"))
 
 logger = logging.getLogger("slm-bridge")
 
