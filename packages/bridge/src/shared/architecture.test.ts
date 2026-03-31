@@ -110,34 +110,50 @@ const FS_EXCEPTIONS = new Set([
   'triggers/file-watch-trigger.ts',
   // Scope-hook generates git pre-commit hooks — platform-coupled infrastructure
   'sessions/scope-hook.ts',
+  // Bridge-tools — filesystem/process boundary adapter for cognitive tool execution
+  'sessions/bridge-tools.ts',
   // Event persistence files — deferred to PRD 025
   'projects/events/yaml-event-persistence.ts',
   'projects/events/jsonl-event-persistence.ts',
+]);
+
+/** Files that may use direct child_process — boundary adapters requiring OS-level process execution. */
+const EXEC_EXCEPTIONS = new Set([
+  // Bridge-tools — filesystem/process boundary adapter for cognitive tool execution
+  'sessions/bridge-tools.ts',
+  // Pool — git worktree management requires direct process execution
+  'sessions/pool.ts',
+  // Scope-hook — pre-commit hook installation requires direct process access
+  'sessions/scope-hook.ts',
+  // Git-commit trigger — git event detection requires execFile for SHA/branch queries
+  'triggers/git-commit-trigger.ts',
+  // Tailscale discovery — adapter shell-outs to `tailscale` CLI for peer detection
+  'cluster/adapters/tailscale-discovery.ts',
 ]);
 
 // ── G-PORT: No direct external imports in domain production code ──
 
 describe('G-PORT: Domain production code uses ports, not direct imports', () => {
   const FORBIDDEN_MODULES = [
-    { pattern: /^(node:)?fs(\/promises)?$/, name: 'fs' },
-    { pattern: /^js-yaml$/, name: 'js-yaml' },
+    { pattern: /^(node:)?fs(\/promises)?$/, name: 'fs', exceptions: FS_EXCEPTIONS },
+    { pattern: /^js-yaml$/, name: 'js-yaml', exceptions: FS_EXCEPTIONS },
+    { pattern: /^(node:)?child_process$/, name: 'child_process', exceptions: EXEC_EXCEPTIONS },
   ];
 
   const domainFiles = collectTsFiles(DOMAINS_DIR).filter(f => !isTestFile(f));
 
-  it('no direct fs or js-yaml imports in domain production code', () => {
+  it('no direct fs, js-yaml, or child_process imports in domain production code', () => {
     const violations: string[] = [];
 
     for (const file of domainFiles) {
       const rel = relative(DOMAINS_DIR, file).replace(/\\/g, '/');
 
-      // Skip known exceptions
-      if (FS_EXCEPTIONS.has(rel)) continue;
-
       const imports = extractImports(file);
       for (const imp of imports) {
         for (const forbidden of FORBIDDEN_MODULES) {
           if (forbidden.pattern.test(imp.specifier)) {
+            // Skip if this file is in the per-module exception set
+            if (forbidden.exceptions.has(rel)) continue;
             violations.push(
               `${rel}:${imp.line} — imports '${imp.specifier}' directly (use port instead)`,
             );
