@@ -1,3 +1,8 @@
+---
+title: "PRD 016 — Portal as Auth Proxy: Mobile Bridge Access"
+status: implemented
+---
+
 # PRD 016 — Portal as Auth Proxy: Mobile Bridge Access
 
 **Status:** Implemented

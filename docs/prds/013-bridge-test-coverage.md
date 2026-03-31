@@ -1,3 +1,8 @@
+---
+title: "PRD 013 — Bridge Test Coverage Extension"
+status: implemented
+---
+
 # PRD 013 — Bridge Test Coverage Extension
 
 **Status:** Implemented (Phases 1-2 complete; Phase 3 coverage tooling deferred)

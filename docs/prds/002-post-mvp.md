@@ -1,3 +1,8 @@
+---
+title: "PRD — Post-MVP Hardening"
+status: implemented
+---
+
 # PRD — Post-MVP Hardening
 
 **Status:** Implemented

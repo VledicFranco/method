@@ -1,3 +1,8 @@
+---
+title: "PRD 012 — Session Reliability at Scale"
+status: implemented
+---
+
 # PRD 012 — Session Reliability at Scale
 
 **Status:** Implemented (Phases 0-2, 4 complete; Phase 3 stress runner deferred per spec)

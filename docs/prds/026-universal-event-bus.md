@@ -1,3 +1,8 @@
+---
+title: "PRD 026: Universal Event Bus (UEB) — Bridge Event Backbone"
+status: implemented
+---
+
 # PRD 026: Universal Event Bus (UEB) — Bridge Event Backbone
 
 **Nickname:** UEB (Universal Event Bus) — the backend system event bus.

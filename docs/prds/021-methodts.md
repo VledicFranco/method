@@ -1,3 +1,8 @@
+---
+title: "PRD 021: MethodTS — Typed Methodology SDK"
+status: implemented
+---
+
 # PRD 021: MethodTS — Typed Methodology SDK
 
 **Status:** Phase 2 Complete (2026-03-22). 1171 methodts tests + 1045 monorepo tests. MCP rewired, core cleaned, @method/types shared package created.

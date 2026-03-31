@@ -1,3 +1,8 @@
+---
+title: "PRD 015 — Default Execution Method: Keep Agents Active via Step DAG"
+status: implemented
+---
+
 # PRD 015 — Default Execution Method: Keep Agents Active via Step DAG
 
 **Status:** Not implemented (building blocks exist but M-EXEC method, commission YAML schema, and auto-load are absent)

@@ -1,3 +1,8 @@
+---
+title: "PRD — Runtime Methodology Execution: Live δ_Φ Sessions"
+status: implemented
+---
+
 # PRD — Runtime Methodology Execution: Live δ_Φ Sessions
 
 **Status:** Implemented

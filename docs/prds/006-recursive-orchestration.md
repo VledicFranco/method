@@ -1,3 +1,8 @@
+---
+title: "PRD 006 — Recursive Agent Orchestration"
+status: implemented
+---
+
 # PRD 006 — Recursive Agent Orchestration
 
 **Status:** Implemented

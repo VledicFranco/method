@@ -1,6 +1,6 @@
 ---
 title: "PRD 035: Cognitive Monitoring & Control v2"
-status: validated
+status: implemented
 date: "2026-03-29"
 tier: heavyweight
 depends_on: [30]

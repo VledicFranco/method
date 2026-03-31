@@ -1,3 +1,8 @@
+---
+title: "PRD 010 — PTY Activity Auto-Detection"
+status: implemented
+---
+
 # PRD 010 — PTY Activity Auto-Detection
 
 **Status:** Implemented

@@ -1,3 +1,8 @@
+---
+title: "PRD 014 — Sub-Agent Scope Enforcement"
+status: implemented
+---
+
 # PRD 014 — Sub-Agent Scope Enforcement
 
 **Status:** Implemented (all 3 phases — reviewed via adversarial pipeline, 27 findings, 8 fixed)

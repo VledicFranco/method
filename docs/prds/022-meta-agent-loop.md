@@ -1,3 +1,8 @@
+---
+title: "PRD 022: Meta Agent Loop — Methodology-Native Agent Orchestrator"
+status: implemented
+---
+
 # PRD 022: Meta Agent Loop — Methodology-Native Agent Orchestrator
 
 **Status:** Draft (post-review synthesis applied 2026-03-21)

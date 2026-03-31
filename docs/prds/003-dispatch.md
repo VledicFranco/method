@@ -1,3 +1,8 @@
+---
+title: "PRD — P3-DISPATCH: Methodology-Driven Agent Orchestration"
+status: implemented
+---
+
 # PRD — P3-DISPATCH: Methodology-Driven Agent Orchestration
 
 **Status:** Implemented

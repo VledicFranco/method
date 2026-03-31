@@ -1,3 +1,8 @@
+---
+title: "PRD 017 — Strategy Pipelines: Methodology DAG Automation"
+status: implemented
+---
+
 # PRD 017 — Strategy Pipelines: Methodology DAG Automation
 
 **Status:** Implemented (Phase 1 complete — static DAG visualization deferred to Phase 2)

@@ -1,3 +1,8 @@
+---
+title: "PRD 011 — Remote Bridge: Mission Control from Anywhere"
+status: implemented
+---
+
 # PRD 011 — Remote Bridge: Mission Control from Anywhere
 
 **Status:** Implemented (scope refined by PRD 016 — custom portal UI replaced with mobile-responsive bridge dashboard + auth proxy model)

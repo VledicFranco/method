@@ -1,3 +1,8 @@
+---
+title: "PRD 020: Multi-Project Bridge & Genesis Agent"
+status: implemented
+---
+
 # PRD 020: Multi-Project Bridge & Genesis Agent
 
 **Status:** Phase 1-5 Complete + All 9 TIER_0 Fixes (1409 tests passing, +336 from baseline). Completed: 9 of 9 critical blockers (F-P-1, F-S-1/2/3, F-R-001, F-R-002, F-R-003, F-T-001, F-T-003). Production-ready: all security, performance, reliability, and test infrastructure fixes deployed. **Merge-approved and deployed to master.** See commits cfac067, 85093f3, ee2e4c1, 11d88de for implementation details.

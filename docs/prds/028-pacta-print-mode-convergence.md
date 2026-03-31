@@ -1,3 +1,8 @@
+---
+title: "PRD 028: Pacta Print-Mode Convergence + PTY Deprecation"
+status: implemented
+---
+
 # PRD 028: Pacta Print-Mode Convergence + PTY Deprecation
 
 **Status:** Implemented (2026-03-26)

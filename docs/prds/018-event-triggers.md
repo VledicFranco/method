@@ -1,3 +1,8 @@
+---
+title: "PRD 018 — Strategy Phase 2: Event Triggers"
+status: implemented
+---
+
 # PRD 018 — Strategy Phase 2: Event Triggers
 
 **Status:** Implemented (all 4 phases: 2a-1 through 2a-4)

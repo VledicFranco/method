@@ -1,3 +1,8 @@
+---
+title: "PRD 008 — Agent Visibility and Communication"
+status: implemented
+---
+
 # PRD 008 — Agent Visibility and Communication
 
 **Status:** Implemented (MVP)

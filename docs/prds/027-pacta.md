@@ -1,3 +1,8 @@
+---
+title: "PRD 027: Pacta — Modular Agent SDK"
+status: implemented
+---
+
 # PRD 027: Pacta — Modular Agent SDK
 
 **Status:** Implemented (2026-03-25)

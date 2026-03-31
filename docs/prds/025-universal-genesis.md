@@ -1,3 +1,8 @@
+---
+title: "PRD 025: Universal Genesis — Ambient Agent UI"
+status: implemented
+---
+
 # PRD 025: Universal Genesis — Ambient Agent UI
 
 **Nickname:** GES (Genesis Event Store) — the frontend user activity & page context system.

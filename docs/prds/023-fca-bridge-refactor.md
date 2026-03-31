@@ -1,3 +1,8 @@
+---
+title: "PRD 023: FCA Bridge Refactor — Domain-Co-located Architecture"
+status: implemented
+---
+
 # PRD 023: FCA Bridge Refactor — Domain-Co-located Architecture
 
 **Status:** Implemented (PR #46 — Phases 0-10, 12 complete + last-mile types/routes extraction)
