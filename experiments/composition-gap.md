@@ -1,4 +1,6 @@
 
+> **Superseded by PRD 042** (2026-03-30). The monolithic inline loop described below was refactored into `BridgeReasonerActorModule` + `BridgeMonitorModule` in `cognitive-modules.ts`. See `docs/arch/cognitive-composition.md` for the current architecture.
+
 # Cognitive Composition Gap Analysis
 
 ## Executive Summary

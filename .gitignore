@@ -24,6 +24,11 @@ experiments/machine-check.json
 .claude/worktrees/
 coverage/
 
+# runtime-generated state
+.method/cluster-node-id
+.method/events.jsonl
+.method/events-cursors.json
+
 # agent-generated junk (review artifacts, logs, debug output)
 *.stackdump
 test-output.*

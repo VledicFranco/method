@@ -5,10 +5,13 @@ package: bridge
 contents:
   - auto-retro.ts
   - auto-retro.test.ts
+  - bridge-tools.ts
   - channels.ts
   - channels.test.ts
+  - cognitive-modules.ts
   - cognitive-provider.ts
   - cognitive-sink.ts
+  - glyph-lint.ts
   - config.ts
   - diagnostics.ts
   - diagnostics.test.ts

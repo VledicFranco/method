@@ -20,7 +20,7 @@ strategies/  ──emit──→  EventBus { emit(), subscribe(), query() }     
 triggers/    ──emit──→                                                   ──→ GenesisSink (30s batch → agent)
 projects/    ──emit──→                                                   ──→ ChannelSink (parent agent push)
 methodology/ ──emit──→                                                   ──→ WebhookConnector (HTTP POST)
-pty-watcher/ ──emit──→                                                   ──→ [future connectors]
+experiments/ ──emit──→                                                   ──→ [future connectors]
 ```
 
 ## BridgeEvent Schema

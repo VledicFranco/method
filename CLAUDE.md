@@ -65,6 +65,7 @@ src/
     tokens/                LLM usage tracking, subscription polling
     triggers/              Event trigger system (file, git, webhook, schedule)
     genesis/               Multi-project agent orchestration + ambient UI (PRD 025)
+    experiments/           Cognitive experiment lab — programmatic agent experimentation (PRD 041)
   shared/                  Cross-domain utilities (config reload, validation, websocket)
     event-bus/             Universal Event Bus — single event backbone (PRD 026)
 ```
@@ -92,8 +93,8 @@ registry/     Compiled methodology YAML specs — PRODUCTION ARTIFACTS, do not m
 theory/       Formal theory files (F1-FTH, F4-PHI)
 docs/
   arch/       Architecture specs (one concern per file)
-  prds/       Product requirement documents (001–027)
-  guides/     Usage guides (29 guides)
+  prds/       Product requirement documents (001–042)
+  guides/     Usage guides (38 guides)
   fractal-component-architecture/   FCA specification (7 parts)
   rfcs/       Research RFCs (001 cognitive composition, 002 small language models)
 experiments/  Research experiments — see experiments/PROTOCOL.md

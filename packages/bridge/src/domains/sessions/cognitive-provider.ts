@@ -93,6 +93,7 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
     goals: ['complete the task', 'produce correct output'],
     sourcePriorities: new Map([
       [moduleId('reasoner-actor'), 0.9],
+      [moduleId('monitor'), 0.7],
       [moduleId('observer'), 0.6],
     ]),
   };

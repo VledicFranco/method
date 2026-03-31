@@ -1,4 +1,6 @@
 
+> **Superseded by PRD 042** (2026-03-30). The composition gap described below was addressed by extracting modules into `cognitive-modules.ts`. See `docs/arch/cognitive-composition.md`.
+
 # Composition Gap Analysis v2
 **Analysis Date:** 2024-12-28  
 **Files Analyzed:**

@@ -1,4 +1,6 @@
 
+> **Superseded by PRD 042** (2026-03-30). Monitor logic was extracted from the inline provider into `BridgeMonitorModule` in `cognitive-modules.ts`. See `docs/arch/cognitive-composition.md` for the current architecture.
+
 # Monitor Audit v3 - Cognitive Provider Intervention Analysis
 
 ## Executive Summary
