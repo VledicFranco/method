@@ -139,6 +139,10 @@ export type {
   PartitionMonitorContext,
   PartitionMonitor,
   PartitionSystem,
+  // PRD 045 — workspace composition surfaces
+  PartitionWriteAdapter,
+  TypeResolver,
+  ModuleContextBinding,
 } from './partition-types.js';
 
 // ── Constraint utilities (promoted from modules/, PRD 044) ─────

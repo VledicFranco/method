@@ -146,6 +146,72 @@ export interface PartitionMonitor {
   ): PartitionSignal[];
 }
 
+// ── S-8: Partition Write Adapter (PRD 045) ─────────────────────
+
+/**
+ * Adapts WorkspaceWritePort to route writes through a PartitionSystem.
+ *
+ * Modules call write(entry) as before. The adapter:
+ * 1. Calls partitionSystem.write(entry, source) — EntryRouter classifies and stores
+ * 2. Tracks which partition received the write (for partitionLastWriteCycle)
+ *
+ * Created by the cycle orchestrator and injected into modules when partitions
+ * are enabled. Satisfies the WorkspaceWritePort interface so modules are unaware
+ * of the partition routing happening underneath.
+ */
+export interface PartitionWriteAdapter {
+  /** Write an entry, routing through the partition system's EntryRouter. */
+  write(entry: WorkspaceEntry): void;
+
+  /** Returns which partitions received writes since last reset. Map<PartitionId, cycleNumber>. */
+  getWrittenPartitions(): Map<PartitionId, number>;
+
+  /** Reset per-cycle write tracking. Called at cycle start. */
+  resetCycleTracking(): void;
+}
+
+// ── S-9: Type Resolver (PRD 045) ───────────────────────────────
+
+/**
+ * Resolves entry content types to the partitions that store them.
+ *
+ * Uses partition configs as the registry. The mapping is static — derived
+ * from partition definitions at system creation time. Decouples modules
+ * from partition identity (RFC 003 Q5).
+ *
+ * Resolution rules (current):
+ *   'constraint'  → ['constraint']
+ *   'goal'        → ['task']
+ *   'operational'  → ['operational']
+ */
+export interface TypeResolver {
+  /** Given entry content types, return the partitions that accept entries of those types. */
+  resolve(types: EntryContentType[]): PartitionId[];
+}
+
+// ── S-10: Module Context Binding (PRD 045) ─────────────────────
+
+/**
+ * A module's declaration of what context it needs from the workspace.
+ *
+ * Expressed in entry content types — decoupled from partition identity.
+ * The cycle orchestrator uses TypeResolver to map types → partitions,
+ * then builds a ContextSelector to query the PartitionSystem.
+ *
+ * Replaces the hardcoded DEFAULT_MODULE_SELECTORS in the cycle with
+ * per-module declarations co-located with each module factory.
+ */
+export interface ModuleContextBinding {
+  /** What entry types this module needs to see. */
+  types: EntryContentType[];
+
+  /** Maximum token budget for this module's context window. */
+  budget: number;
+
+  /** Selection strategy within the budget. */
+  strategy: SelectStrategy;
+}
+
 // ── S-6: Partition System ───────────────────────────────────────
 
 /**

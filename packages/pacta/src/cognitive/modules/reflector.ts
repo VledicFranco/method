@@ -28,6 +28,7 @@ import type { MemoryPort } from '../../ports/memory-port.js';
 export interface ReflectorConfig {
   /** Module ID override. Default: 'reflector'. */
   id?: string;
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 /** Input: completed cycle traces. */
@@ -74,6 +75,7 @@ export function createReflector(
 
   return {
     id,
+    contextBinding: config?.contextBinding,
 
     async step(
       input: ReflectorInput,

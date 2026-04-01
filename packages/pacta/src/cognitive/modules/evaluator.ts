@@ -30,6 +30,7 @@ export interface EvaluatorConfig {
   diminishingReturnsWindow?: number;
   /** Module ID override. Default: 'evaluator'. */
   id?: string;
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 /** Combined input: workspace snapshot + monitoring signals. */
@@ -75,6 +76,7 @@ export function createEvaluator(
 
   return {
     id,
+    contextBinding: config?.contextBinding,
 
     async step(
       input: EvaluatorInput,

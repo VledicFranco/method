@@ -62,6 +62,8 @@ export interface ReasonerActorControl extends ControlDirective {
 export interface ReasonerActorConfig {
   id?: string;
   pactTemplate?: AdapterConfig['pactTemplate'];
+  /** PRD 045: type-driven context binding. Declares what entry types this module needs. */
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 // ── Monitoring Signal ────────────────────────────────────────────
@@ -269,6 +271,7 @@ export function createReasonerActor(
 
   return {
     id,
+    contextBinding: config?.contextBinding,
 
     initialState(): ReasonerActorState {
       return {

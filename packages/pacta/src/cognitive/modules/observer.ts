@@ -63,6 +63,7 @@ export interface ObserverConfig {
   id?: string;
   /** Base novelty score for empty comparison. Defaults to 0.5. */
   baseNovelty?: number;
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 // ── Novelty Heuristic ────────────────────────────────────────────
@@ -115,6 +116,7 @@ export function createObserver(
 
   return {
     id,
+    contextBinding: config?.contextBinding,
 
     initialState(): ObserverState {
       return {

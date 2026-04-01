@@ -34,6 +34,7 @@ export interface MonitorConfig {
   stagnationThreshold?: number;
   /** Module ID override. Default: 'monitor'. */
   id?: string;
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 /** Anomaly detected by the monitor. */
@@ -96,6 +97,7 @@ export function createMonitor(
 
   return {
     id,
+    contextBinding: config?.contextBinding,
 
     async step(
       input: AggregatedSignals,

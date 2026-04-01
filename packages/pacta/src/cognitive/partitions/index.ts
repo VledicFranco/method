@@ -12,3 +12,4 @@ export { DefaultEntryRouter } from './entry-router.js';
 export type { EntryRouterConfig } from './entry-router.js';
 export { createPartitionSystem } from './partition-system.js';
 export type { PartitionSystemConfig } from './partition-system.js';
+export { createTypeResolver } from './type-resolver.js';
