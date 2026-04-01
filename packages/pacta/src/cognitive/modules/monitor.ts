@@ -97,7 +97,7 @@ export function createMonitor(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['constraint', 'operational'], budget: 2048, strategy: 'all' as const },
 
     async step(
       input: AggregatedSignals,

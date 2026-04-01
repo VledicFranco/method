@@ -271,7 +271,7 @@ export function createReasonerActor(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['goal', 'constraint', 'operational'], budget: 8192, strategy: 'salience' as const },
 
     initialState(): ReasonerActorState {
       return {

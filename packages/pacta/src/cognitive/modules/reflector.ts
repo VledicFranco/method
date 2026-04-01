@@ -75,7 +75,7 @@ export function createReflector(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['goal', 'operational'], budget: 2048, strategy: 'recency' as const },
 
     async step(
       input: ReflectorInput,

@@ -116,7 +116,7 @@ export function createObserver(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['goal'], budget: 1024, strategy: 'all' as const },
 
     initialState(): ObserverState {
       return {

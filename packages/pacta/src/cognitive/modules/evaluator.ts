@@ -76,7 +76,7 @@ export function createEvaluator(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['goal', 'operational'], budget: 2048, strategy: 'salience' as const },
 
     async step(
       input: EvaluatorInput,

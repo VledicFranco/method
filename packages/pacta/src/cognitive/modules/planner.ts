@@ -83,7 +83,7 @@ export function createPlanner(
 
   return {
     id,
-    contextBinding: config?.contextBinding,
+    contextBinding: config?.contextBinding ?? { types: ['goal', 'constraint'], budget: 4096, strategy: 'salience' as const },
 
     async step(
       input: PlannerInput,
