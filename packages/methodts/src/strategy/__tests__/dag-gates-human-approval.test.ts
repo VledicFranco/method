@@ -158,6 +158,28 @@ describe("dag-gates: HumanApprovalResolver integration", () => {
     expect(result.reason).toBe("Awaiting human approval");
   });
 
+  it("times out when resolver takes too long (F-L-2)", async () => {
+    const gate = makeGate({ timeout_ms: 100 }); // Very short timeout for test
+    const ctx = makeContext();
+    const approvalCtx = makeApprovalContext({ timeout_ms: 100 });
+
+    // Create a resolver that never resolves (simulates a hung human approval)
+    const resolver: HumanApprovalResolver = {
+      requestApproval: vi.fn().mockReturnValue(
+        new Promise<HumanApprovalDecision>(() => {
+          // Never resolves
+        }),
+      ),
+    };
+
+    const result = await evaluateGate(gate, "node-a:gate[0]", ctx, resolver, approvalCtx);
+
+    expect(result.passed).toBe(false);
+    expect(result.type).toBe("human_approval");
+    expect(result.reason).toContain("rejected");
+    expect(result.feedback).toContain("timed out");
+  });
+
   it("does not call resolver for algorithmic gates", async () => {
     const gate: DagGateConfig = {
       type: "algorithmic",

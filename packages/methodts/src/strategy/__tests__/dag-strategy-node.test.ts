@@ -297,6 +297,134 @@ describe("DagStrategyExecutor: strategy-type node execution", () => {
   });
 });
 
+describe("DagStrategyExecutor: indirect strategy cycle detection (F-L-5)", () => {
+  it("detects indirect A→B→A cycle and fails the node", async () => {
+    // dagA has a strategy node calling "S-B"
+    const dagA: StrategyDAG = {
+      id: "S-A",
+      name: "Strategy A",
+      version: "1.0",
+      nodes: [
+        {
+          id: "call-b",
+          type: "strategy",
+          depends_on: [],
+          inputs: [],
+          outputs: [],
+          gates: [],
+          config: { type: "strategy", strategy_id: "S-B" },
+        },
+      ],
+      strategy_gates: [],
+      capabilities: {},
+      oversight_rules: [],
+      context_inputs: [],
+    };
+
+    // dagB has a strategy node calling "S-A" — creates the cycle
+    const dagB: StrategyDAG = {
+      id: "S-B",
+      name: "Strategy B",
+      version: "1.0",
+      nodes: [
+        {
+          id: "call-a",
+          type: "strategy",
+          depends_on: [],
+          inputs: [],
+          outputs: [],
+          gates: [],
+          config: { type: "strategy", strategy_id: "S-A" },
+        },
+      ],
+      strategy_gates: [],
+      capabilities: {},
+      oversight_rules: [],
+      context_inputs: [],
+    };
+
+    const source: SubStrategySource = {
+      getStrategy: vi.fn().mockImplementation(async (id: string) => {
+        if (id === "S-A") return dagA;
+        if (id === "S-B") return dagB;
+        return null;
+      }),
+    };
+
+    const executor = new DagStrategyExecutor(
+      makeMockNodeExecutor(),
+      makeConfig(),
+      source,
+    );
+
+    const result = await executor.execute(dagA, {});
+
+    // The indirect cycle S-A → S-B → S-A is detected
+    expect(result.node_results["call-b"].status).toBe("failed");
+    expect(result.node_results["call-b"].error).toContain("cycle");
+  });
+});
+
+describe("DagStrategyExecutor: parallel sub-strategy execution (F-L-4)", () => {
+  it("executes two independent strategy nodes in parallel and both complete", async () => {
+    const subDagX = makeSimpleDag("S-X", { x_output: "from-X" });
+    const subDagY = makeSimpleDag("S-Y", { y_output: "from-Y" });
+
+    const source: SubStrategySource = {
+      getStrategy: vi.fn().mockImplementation(async (id: string) => {
+        if (id === "S-X") return subDagX;
+        if (id === "S-Y") return subDagY;
+        return null;
+      }),
+    };
+
+    // Parent DAG has two independent strategy nodes (no depends_on between them)
+    const parentDag: StrategyDAG = {
+      id: "S-PARALLEL-PARENT",
+      name: "Parallel parent",
+      version: "1.0",
+      nodes: [
+        {
+          id: "invoke-x",
+          type: "strategy",
+          depends_on: [],
+          inputs: [],
+          outputs: [],
+          gates: [],
+          config: { type: "strategy", strategy_id: "S-X" },
+        },
+        {
+          id: "invoke-y",
+          type: "strategy",
+          depends_on: [],
+          inputs: [],
+          outputs: [],
+          gates: [],
+          config: { type: "strategy", strategy_id: "S-Y" },
+        },
+      ],
+      strategy_gates: [],
+      capabilities: {},
+      oversight_rules: [],
+      context_inputs: [],
+    };
+
+    const executor = new DagStrategyExecutor(
+      makeMockNodeExecutor(),
+      makeConfig(),
+      source,
+    );
+
+    const result = await executor.execute(parentDag, {});
+
+    expect(result.status).toBe("completed");
+    expect(result.node_results["invoke-x"].status).toBe("completed");
+    expect(result.node_results["invoke-y"].status).toBe("completed");
+    expect(source.getStrategy).toHaveBeenCalledWith("S-X");
+    expect(source.getStrategy).toHaveBeenCalledWith("S-Y");
+  });
+});
+
 describe("DagStrategyExecutor: prompt field injection on methodology nodes", () => {
   it("prepends prompt to retryFeedback when methodology node has a prompt", async () => {
     let capturedFeedback: string | undefined;
