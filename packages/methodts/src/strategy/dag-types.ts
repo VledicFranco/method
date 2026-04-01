@@ -109,6 +109,7 @@ export interface SubStrategyResult {
   readonly artifacts: ArtifactBundle;
   readonly cost_usd: number;
   readonly duration_ms: number;
+  readonly error_message?: string;
 }
 
 /** PRD-044: Port for looking up a sub-strategy DAG by ID.
