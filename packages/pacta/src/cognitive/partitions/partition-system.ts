@@ -96,12 +96,13 @@ export function createPartitionSystem(config?: PartitionSystemConfig): Partition
       return partition;
     },
 
-    write(entry: WorkspaceEntry, source: ModuleId): void {
+    write(entry: WorkspaceEntry, source: ModuleId): PartitionId {
       const targetId = router.route(entry.content, source);
       const partition = partitions.get(targetId);
       if (partition) {
         partition.write(entry);
       }
+      return targetId;
     },
 
     buildContext(selector: ContextSelector): WorkspaceEntry[] {

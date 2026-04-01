@@ -1,0 +1,7814 @@
+{
+  "timestamp": "2026-04-01T04:15:11.630Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-smart"
+  ],
+  "tasks": [
+    "circular-dependency-refactor",
+    "test-first-bug-fix-misdirection",
+    "config-migration-env-interpolation",
+    "api-versioning-side-effect-trap",
+    "dead-code-removal-dynamic-trap",
+    "multi-module-extract"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "partitioned-smart",
+      "task": "circular-dependency-refactor",
+      "run": 1,
+      "success": true,
+      "reason": "Circular dependency resolved, all classes and methods preserved",
+      "tokensUsed": 18483,
+      "providerCalls": 15,
+      "durationMs": 118932,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: module-a.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport interface IWrappable {\n     2\t  getName(): string;\n     3\t  getValue(): number;\n     4\t}\n     5\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/module-a.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\timport { IWrappable } from './interfaces';\n     3\t\n     4\texport class A implements IWrappable {\n     5\t  private b: B;\n     6\t\n     7\t  constructor(b: B) {\n     8\t    this.b = b;\n     9\t  }\n    10\t\n    11\t  getValue(): number {\n    12\t    return this.b.compute();\n    13\t  }\n    14\t\n    15\t  getName(): string {\n    16\t    return 'A';\n    17\t  }\n    18\t}\n    19\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { IWrappable } from './interfaces';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: IWrappable): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { A } from './module-a';\n     2\texport { B } from './module-b';\n     3\texport { C } from './module-c';\n     4\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/test.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 4,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 163,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 117
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 28
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 184,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 138
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 63
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 9,
+          "estimatedTokens": 282,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 236
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 170
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 300,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 254
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 209
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 11,
+          "estimatedTokens": 379,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 333
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 299
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 12,
+          "estimatedTokens": 479,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 433
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 410
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 517,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 446
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 464
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 15,
+          "estimatedTokens": 552,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 481
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 515
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 16,
+          "estimatedTokens": 575,
+          "pinnedEntries": 0,
+          "observerEntries": 5,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 474
+            },
+            "task": {
+              "entries": 4,
+              "tokens": 101
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 567
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 17,
+          "estimatedTokens": 584,
+          "pinnedEntries": 0,
+          "observerEntries": 4,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 449
+            },
+            "task": {
+              "entries": 5,
+              "tokens": 135
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 655
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 17,
+          "estimatedTokens": 633,
+          "pinnedEntries": 0,
+          "observerEntries": 3,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 498
+            },
+            "task": {
+              "entries": 5,
+              "tokens": 135
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 638
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 17,
+          "estimatedTokens": 735,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 600
+            },
+            "task": {
+              "entries": 5,
+              "tokens": 135
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 724
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 17,
+          "estimatedTokens": 824,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 689
+            },
+            "task": {
+              "entries": 5,
+              "tokens": 135
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 750
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 17,
+          "estimatedTokens": 841,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 706
+            },
+            "task": {
+              "entries": 5,
+              "tokens": 135
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 692
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "circular-dependency-refactor",
+      "run": 2,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 5813,
+      "providerCalls": 15,
+      "durationMs": 43779,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: module-a.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 11,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 163,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 117
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 28
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 184,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 138
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 63
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 9,
+          "estimatedTokens": 282,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 236
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 170
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 297,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 251
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 213
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 11,
+          "estimatedTokens": 376,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 330
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 303
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 12,
+          "estimatedTokens": 476,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 430
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 414
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 14,
+          "estimatedTokens": 514,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 443
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 71
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 466
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "circular-dependency-refactor",
+      "run": 3,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 2166,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 6,
+          "estimatedTokens": 147,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 101
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 46
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 144
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 1,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1972,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 2,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 2072,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 3,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1616,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 132,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 18
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 75
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 39
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "config-migration-env-interpolation",
+      "run": 1,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1641,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "config-migration-env-interpolation",
+      "run": 2,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1844,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "config-migration-env-interpolation",
+      "run": 3,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1678,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 9,
+          "estimatedTokens": 203,
+          "pinnedEntries": 0,
+          "observerEntries": 9,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 180
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 23
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "api-versioning-side-effect-trap",
+      "run": 1,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 2318,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "api-versioning-side-effect-trap",
+      "run": 2,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1539,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "api-versioning-side-effect-trap",
+      "run": 3,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1706,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 10,
+          "estimatedTokens": 233,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 3,
+              "tokens": 65
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 1,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1948,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 2,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1901,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 3,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1781,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 7,
+          "estimatedTokens": 120,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 85
+            },
+            "task": {
+              "entries": 2,
+              "tokens": 35
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 118
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 1,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 2048,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 2,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1834,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 3,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 15,
+      "durationMs": 1898,
+      "toolCalls": [],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-smart": {
+        "total": 18,
+        "passes": 4,
+        "avgTokens": 1350,
+        "avgDurationMs": 10704,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

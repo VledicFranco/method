@@ -160,8 +160,8 @@ export interface PartitionSystem {
   /** Get a read port for a specific partition. */
   getPartition(id: PartitionId): PartitionReadPort;
 
-  /** Route and write an entry to the appropriate partition. */
-  write(entry: WorkspaceEntry, source: ModuleId): void;
+  /** Route and write an entry to the appropriate partition. Returns the partition it was written to. */
+  write(entry: WorkspaceEntry, source: ModuleId): PartitionId;
 
   /** Build typed context for a module based on its selector. */
   buildContext(selector: ContextSelector): WorkspaceEntry[];

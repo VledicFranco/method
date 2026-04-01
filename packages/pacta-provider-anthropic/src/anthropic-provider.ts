@@ -48,6 +48,9 @@ export interface AnthropicProviderOptions {
 
   /** Provide a pre-configured Anthropic client (overrides apiKey/baseUrl) */
   client?: Anthropic;
+
+  /** Enable Claude extended thinking. budget_tokens must be < max_tokens. */
+  thinking?: { budgetTokens: number };
 }
 
 // ── Provider Type ────────────────────────────────────────────────
@@ -97,6 +100,7 @@ export function anthropicProvider(
     maxOutputTokens = 8192,
     toolProvider,
     maxTurns = 25,
+    thinking,
   } = options;
 
   // Create or use provided Anthropic client
@@ -163,6 +167,14 @@ export function anthropicProvider(
       }
       if (tools) {
         params.tools = tools;
+      }
+      if (thinking) {
+        const budget = thinking.budgetTokens;
+        // Enforce max_tokens > budget_tokens (API requirement)
+        if (params.max_tokens <= budget) {
+          params.max_tokens = budget + 1024;
+        }
+        (params as any).thinking = { type: 'enabled', budget_tokens: budget };
       }
 
       const response = await client.messages.create(params);
@@ -276,6 +288,7 @@ export function anthropicProvider(
       if (tools) {
         params.tools = tools;
       }
+      // Note: extended thinking is not supported with streaming — skip it silently.
 
       const stream = client.messages.stream(params);
 

@@ -1,0 +1,2363 @@
+{
+  "timestamp": "2026-04-01T04:14:46.894Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-smart"
+  ],
+  "tasks": [
+    "multi-module-extract"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 1,
+      "success": false,
+      "reason": "EventBus in src/event-bus.ts is missing public method: emit()",
+      "tokensUsed": 24051,
+      "providerCalls": 15,
+      "durationMs": 135980,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/event-system.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces/event-bus.interface.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/event-bus.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/event-system.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventBus, EventStore, EventRouter } from './event-system';\n     2\timport { EventConfig } from './config';\n     3\t\n     4\texport interface SystemComponents {\n     5\t  bus: EventBus;\n     6\t  store: EventStore;\n     7\t  router: EventRouter;\n     8\t}\n     9\t\n    10\t/**\n    11\t * Factory for creating pre-configured event system instances.\n    12\t */\n    13\texport function createEventSystem(config?: Partial<EventConfig>): SystemComponents {\n    14\t  const bus = new EventBus(config);\n    15\t  const store = new EventStore(bus);\n    16\t  const router = new EventRouter(bus);\n    17\t  return { bus, store, router };\n    18\t}\n    19\t\n    20\t/**\n    21\t * Create a minimal EventBus for testing.\n    22\t */\n    23\texport function createTestBus(): EventBus {\n    24\t  return new EventBus({ maxListenersPerEvent: 10, throwOnHandlerError: true, defaultTimeoutMs: 1000, enableDebugLogging: true });\n    25\t}\n    26\t\n    27\t/**\n    28\t * Create a pair of buses with a router connecting them.\n    29\t */\n    30\texport function createLinkedBuses(config?: Partial<EventConfig>): { primary: EventBus; secondary: EventBus; router: EventRouter } {\n    31\t  const primary = new EventBus(config);\n    32\t  const secondary = new EventBus(config);\n    33\t  const router = new EventRouter(primary);\n    34\t  router.addRule('.*', secondary);\n    35\t  return { primary, secondary, router };\n    36\t}\n    37\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventBus } from './event-system';\n     2\t\n     3\texport interface HealthStatus {\n     4\t  healthy: boolean;\n     5\t  listenerCount: number;\n     6\t  eventNames: string[];\n     7\t  uptime: number;\n     8\t}\n     9\t\n    10\t/**\n    11\t * Monitors EventBus health for operational dashboards.\n    12\t */\n    13\texport class HealthCheck {\n    14\t  private startTime: number;\n    15\t\n    16\t  constructor(private bus: EventBus) {\n    17\t    this.startTime = Date.now();\n    18\t  }\n    19\t\n    20\t  /** Get current health status */\n    21\t  getStatus(): HealthStatus {\n    22\t    const eventNames = this.bus.getEventNames();\n    23\t    let totalListeners = 0;\n    24\t    for (const name of eventNames) {\n    25\t      totalListeners += this.bus.getListenerCount(name);\n    26\t    }\n    27\t    return {\n    28\t      healthy: true,\n    29\t      listenerCount: totalListeners,\n    30\t      eventNames,\n    31\t      uptime: Date.now() - this.startTime,\n    32\t    };\n    33\t  }\n    34\t\n    35\t  /** Emit a health check event through the bus */\n    36\t  ping(): void {\n    37\t    this.bus.emit('system.health.ping', { timestamp: Date.now() });\n    38\t  }\n    39\t}\n    40\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/factory.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/health.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\timport { EventBus } from './event-bus';\n     5\t\n     6\t// Re-export EventBus to maintain backward compatibility\n     7\texport { EventBus };\n     8\t\n     9\t/**\n    10\t * [EventBus moved to ./event-bus.ts]\n    11\t */\n    12\t// export class EventBus {\n    13\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    14\t  private config: EventConfig;\n    15\t\n    16\t  constructor(config: Partial<EventConfig> = {}) {\n    17\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    18\t  }\n    19\t\n    20\t  /** Subscribe to an event */\n    21\t  on(eventName: string, handler: EventHandler): void {\n    22\t    validateEventName(eventName);\n    23\t    if (!this.handlers.has(eventName)) {\n    24\t      this.handlers.set(eventName, new Set());\n    25\t    }\n    26\t    const handlers = this.handlers.get(eventName)!;\n    27\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    28\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    29\t    }\n    30\t    handlers.add(handler);\n    31\t  }\n    32\t\n    33\t  /** Unsubscribe from an event */\n    34\t  off(eventName: string, handler: EventHandler): void {\n    35\t    const handlers = this.handlers.get(eventName);\n    36\t    if (handlers) {\n    37\t      handlers.delete(handler);\n    38\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    39\t    }\n    40\t  }\n    41\t\n    42\t  /** Emit an event to all subscribers */\n    43\t  emit(eventName: string, payload: EventPayload): void {\n    44\t    validateEventName(eventName);\n    45\t    const handlers = this.handlers.get(eventName);\n    46\t    if (!handlers) return;\n    47\t    const eventId = generateEventId();\n    48\t    const enrichedPayload: EventPayload = {\n    49\t      ...payload,\n    50\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    51\t    };\n    52\t    for (const handler of handlers) {\n    53\t      try {\n    54\t        handler(enrichedPayload);\n    55\t      } catch (err) {\n    56\t        if (this.config.throwOnHandlerError) throw err;\n    57\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    58\t      }\n    59\t    }\n    60\t  }\n    61\t\n    62\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    63\t  once(eventName: string, handler: EventHandler): void {\n    64\t    const wrapper: EventHandler = (payload) => {\n    65\t      this.off(eventName, wrapper);\n    66\t      handler(payload);\n    67\t    };\n    68\t    this.on(eventName, wrapper);\n    69\t  }\n    70\t\n    71\t  /** Get the count of listeners for a specific event */\n    72\t  getListenerCount(eventName: string): number {\n    73\t    return this.handlers.get(eventName)?.size ?? 0;\n    74\t  }\n    75\t\n    76\t  /** Get all event names that have active listeners */\n    77\t  getEventNames(): string[] {\n    78\t    return [...this.handlers.keys()];\n    79\t  }\n    80\t\n    81\t  /** Remove all listeners, optionally for a specific event */\n    82\t  removeAllListeners(eventName?: string): void {\n    83\t    if (eventName) {\n    84\t      this.handlers.delete(eventName);\n    85\t    } else {\n    86\t      this.handlers.clear();\n    87\t    }\n    88\t  }\n    89\t\n    90\t  /** Wait for an event to be emitted (promise-based) */\n    91\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    92\t    return new Promise((resolve, reject) => {\n    93\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    94\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    95\t\n    96\t      if (timeout > 0) {\n    97\t        timer = setTimeout(() => {\n    98\t          this.off(eventName, handler);\n    99\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n   100\t        }, timeout);\n   101\t      }\n   102\t\n   103\t      const handler: EventHandler = (payload) => {\n   104\t        if (timer) clearTimeout(timer);\n   105\t        this.off(eventName, handler);\n   106\t        resolve(payload);\n   107\t      };\n   108\t      this.on(eventName, handler);\n   109\t    });\n   110\t  }\n   111\t}\n   112\t\n   113\t/**\n   114\t * Persists events to an in-memory store with replay capability.\n   115\t * Depends on EventBus for subscription.\n   116\t */\n   117\texport class EventStore {\n   118\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   119\t  private maxSize: number;\n   120\t\n   121\t  constructor(private bus: EventBus, maxSize = 1000) {\n   122\t    this.maxSize = maxSize;\n   123\t  }\n   124\t\n   125\t  /** Start recording events matching the filter */\n   126\t  record(eventNames: string[]): void {\n   127\t    for (const name of eventNames) {\n   128\t      this.bus.on(name, (payload) => {\n   129\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   130\t        if (this.events.length > this.maxSize) {\n   131\t          this.events.shift();\n   132\t        }\n   133\t      });\n   134\t    }\n   135\t  }\n   136\t\n   137\t  /** Replay stored events through the bus */\n   138\t  replay(filter?: EventFilter): void {\n   139\t    const toReplay = filter\n   140\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   141\t      : this.events;\n   142\t    for (const event of toReplay) {\n   143\t      this.bus.emit(event.eventName, event.payload);\n   144\t    }\n   145\t  }\n   146\t\n   147\t  /** Get stored event count */\n   148\t  getCount(): number {\n   149\t    return this.events.length;\n   150\t  }\n   151\t\n   152\t  /** Clear all stored events */\n   153\t  clear(): void {\n   154\t    this.events = [];\n   155\t  }\n   156\t}\n   157\t\n   158\t/**\n   159\t * Routes events between buses based on configurable rules.\n   160\t * Depends on EventBus for both source and target subscriptions.\n   161\t */\n   162\texport class EventRouter {\n   163\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   164\t\n   165\t  constructor(private source: EventBus) {}\n   166\t\n   167\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   168\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   169\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   170\t    this.rules.push({ pattern: regex, target, transform });\n   171\t  }\n   172\t\n   173\t  /** Start routing — subscribe to all current event names on source */\n   174\t  start(): void {\n   175\t    const names = this.source.getEventNames();\n   176\t    for (const name of names) {\n   177\t      this.source.on(name, (payload) => {\n   178\t        for (const rule of this.rules) {\n   179\t          if (rule.pattern.test(name)) {\n   180\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   181\t            rule.target.emit(name, transformed);\n   182\t          }\n   183\t        }\n   184\t      });\n   185\t    }\n   186\t  }\n   187\t\n   188\t  /** Get the number of active routing rules */\n   189\t  getRuleCount(): number {\n   190\t    return this.rules.length;\n   191\t  }\n   192\t}\n   193\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\timport { EventBus } from './event-bus';\n     5\t\n     6\t// Re-export EventBus to maintain backward compatibility\n     7\texport { EventBus };\n     8\t\n     9\t/**\n    10\t * [EventBus moved to ./event-bus.ts]\n    11\t */\n    12\t// export class EventBus {\n    13\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    14\t  private config: EventConfig;\n    15\t\n    16\t  constructor(config: Partial<EventConfig> = {}) {\n    17\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    18\t  }\n    19\t\n    20\t  /** Subscribe to an event */\n    21\t  on(eventName: string, handler: EventHandler): void {\n    22\t    validateEventName(eventName);\n    23\t    if (!this.handlers.has(eventName)) {\n    24\t      this.handlers.set(eventName, new Set());\n    25\t    }\n    26\t    const handlers = this.handlers.get(eventName)!;\n    27\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    28\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    29\t    }\n    30\t    handlers.add(handler);\n    31\t  }\n    32\t\n    33\t  /** Unsubscribe from an event */\n    34\t  off(eventName: string, handler: EventHandler): void {\n    35\t    const handlers = this.handlers.get(eventName);\n    36\t    if (handlers) {\n    37\t      handlers.delete(handler);\n    38\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    39\t    }\n    40\t  }\n    41\t\n    42\t  /** Emit an event to all subscribers */\n    43\t  emit(eventName: string, payload: EventPayload): void {\n    44\t    validateEventName(eventName);\n    45\t    const handlers = this.handlers.get(eventName);\n    46\t    if (!handlers) return;\n    47\t    const eventId = generateEventId();\n    48\t    const enrichedPayload: EventPayload = {\n    49\t      ...payload,\n    50\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    51\t    };\n    52\t    for (const handler of handlers) {\n    53\t      try {\n    54\t        handler(enrichedPayload);\n    55\t      } catch (err) {\n    56\t        if (this.config.throwOnHandlerError) throw err;\n    57\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    58\t      }\n    59\t    }\n    60\t  }\n    61\t\n    62\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    63\t  once(eventName: string, handler: EventHandler): void {\n    64\t    const wrapper: EventHandler = (payload) => {\n    65\t      this.off(eventName, wrapper);\n    66\t      handler(payload);\n    67\t    };\n    68\t    this.on(eventName, wrapper);\n    69\t  }\n    70\t\n    71\t  /** Get the count of listeners for a specific event */\n    72\t  getListenerCount(eventName: string): number {\n    73\t    return this.handlers.get(eventName)?.size ?? 0;\n    74\t  }\n    75\t\n    76\t  /** Get all event names that have active listeners */\n    77\t  getEventNames(): string[] {\n    78\t    return [...this.handlers.keys()];\n    79\t  }\n    80\t\n    81\t  /** Remove all listeners, optionally for a specific event */\n    82\t  removeAllListeners(eventName?: string): void {\n    83\t    if (eventName) {\n    84\t      this.handlers.delete(eventName);\n    85\t    } else {\n    86\t      this.handlers.clear();\n    87\t    }\n    88\t  }\n    89\t\n    90\t  /** Wait for an event to be emitted (promise-based) */\n    91\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    92\t    return new Promise((resolve, reject) => {\n    93\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    94\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    95\t\n    96\t      if (timeout > 0) {\n    97\t        timer = setTimeout(() => {\n    98\t          this.off(eventName, handler);\n    99\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n   100\t        }, timeout);\n   101\t      }\n   102\t\n   103\t      const handler: EventHandler = (payload) => {\n   104\t        if (timer) clearTimeout(timer);\n   105\t        this.off(eventName, handler);\n   106\t        resolve(payload);\n   107\t      };\n   108\t      this.on(eventName, handler);\n   109\t    });\n   110\t  }\n   111\t}\n   112\t\n   113\t/**\n   114\t * Persists events to an in-memory store with replay capability.\n   115\t * Depends on EventBus for subscription.\n   116\t */\n   117\texport class EventStore {\n   118\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   119\t  private maxSize: number;\n   120\t\n   121\t  constructor(private bus: EventBus, maxSize = 1000) {\n   122\t    this.maxSize = maxSize;\n   123\t  }\n   124\t\n   125\t  /** Start recording events matching the filter */\n   126\t  record(eventNames: string[]): void {\n   127\t    for (const name of eventNames) {\n   128\t      this.bus.on(name, (payload) => {\n   129\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   130\t        if (this.events.length > this.maxSize) {\n   131\t          this.events.shift();\n   132\t        }\n   133\t      });\n   134\t    }\n   135\t  }\n   136\t\n   137\t  /** Replay stored events through the bus */\n   138\t  replay(filter?: EventFilter): void {\n   139\t    const toReplay = filter\n   140\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   141\t      : this.events;\n   142\t    for (const event of toReplay) {\n   143\t      this.bus.emit(event.eventName, event.payload);\n   144\t    }\n   145\t  }\n   146\t\n   147\t  /** Get stored event count */\n   148\t  getCount(): number {\n   149\t    return this.events.length;\n   150\t  }\n   151\t\n   152\t  /** Clear all stored events */\n   153\t  clear(): void {\n   154\t    this.events = [];\n   155\t  }\n   156\t}\n   157\t\n   158\t/**\n   159\t * Routes events between buses based on configurable rules.\n   160\t * Depends on EventBus for both source and target subscriptions.\n   161\t */\n   162\texport class EventRouter {\n   163\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   164\t\n   165\t  constructor(private source: EventBus) {}\n   166\t\n   167\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   168\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   169\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   170\t    this.rules.push({ pattern: regex, target, transform });\n   171\t  }\n   172\t\n   173\t  /** Start routing — subscribe to all current event names on source */\n   174\t  start(): void {\n   175\t    const names = this.source.getEventNames();\n   176\t    for (const name of names) {\n   177\t      this.source.on(name, (payload) => {\n   178\t        for (const rule of this.rules) {\n   179\t          if (rule.pattern.test(name)) {\n   180\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   181\t            rule.target.emit(name, transformed);\n   182\t          }\n   183\t        }\n   184\t      });\n   185\t    }\n   186\t  }\n   187\t\n   188\t  /** Get the number of active routing rules */\n   189\t  getRuleCount(): number {\n   190\t    return this.rules.length;\n   191\t  }\n   192\t}\n   193\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 5,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 281
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 774
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 16,
+          "estimatedTokens": 580,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 408
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 1548
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 17,
+          "estimatedTokens": 609,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 437
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 1598
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 18,
+          "estimatedTokens": 736,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 564
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 2372
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 20,
+          "estimatedTokens": 807,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 574
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 2431
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 20,
+          "estimatedTokens": 807,
+          "pinnedEntries": 0,
+          "observerEntries": 12,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 574
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 2754
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 20,
+          "estimatedTokens": 801,
+          "pinnedEntries": 0,
+          "observerEntries": 10,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 560
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 155
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 3904
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 20,
+          "estimatedTokens": 799,
+          "pinnedEntries": 0,
+          "observerEntries": 8,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 553
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 160
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 4136
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 20,
+          "estimatedTokens": 906,
+          "pinnedEntries": 0,
+          "observerEntries": 7,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 660
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 160
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 4458
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 20,
+          "estimatedTokens": 1002,
+          "pinnedEntries": 0,
+          "observerEntries": 6,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 756
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 160
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 4714
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 20,
+          "estimatedTokens": 1017,
+          "pinnedEntries": 0,
+          "observerEntries": 4,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 745
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 186
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 4011
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 20,
+          "estimatedTokens": 1031,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 742
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 203
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 3294
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 20,
+          "estimatedTokens": 1031,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 742
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 203
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 3294
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 20,
+          "estimatedTokens": 1031,
+          "pinnedEntries": 0,
+          "observerEntries": 2,
+          "perPartition": {
+            "constraint": {
+              "entries": 2,
+              "tokens": 86
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 742
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 203
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 3752
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 2,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 4087,
+      "providerCalls": 30,
+      "durationMs": 27830,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/event-system.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 26,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 281
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 774
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 16,
+          "estimatedTokens": 580,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 408
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 1548
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 17,
+          "estimatedTokens": 609,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 437
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 1601
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 15,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 16,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 17,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 18,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 19,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 20,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 21,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 22,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 23,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 24,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 25,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 26,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 27,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 28,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        },
+        {
+          "cycle": 29,
+          "totalEntries": 18,
+          "estimatedTokens": 619,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 447
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 1635
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-smart",
+      "task": "multi-module-extract",
+      "run": 3,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 30,
+      "durationMs": 4085,
+      "toolCalls": [],
+      "monitorInterventions": 29,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 15,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 16,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 17,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 18,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 19,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 20,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 21,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 22,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 23,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 24,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 25,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 26,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 27,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 28,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        },
+        {
+          "cycle": 29,
+          "totalEntries": 14,
+          "estimatedTokens": 326,
+          "pinnedEntries": 0,
+          "observerEntries": 14,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 25
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 154
+            },
+            "task": {
+              "entries": 6,
+              "tokens": 147
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 323
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-smart": {
+        "total": 3,
+        "passes": 0,
+        "avgTokens": 9379,
+        "avgDurationMs": 55965,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}
