@@ -951,8 +951,11 @@ async function runPartitionedSmart(
       });
 
       // ── REMEMBER phase (zero LLM cost) ─────────────────────────
-      // ACT-R activation search: surfaces relevant past episodes from episodic store.
-      // Retrieved memories are written to operational partition as high-salience entries.
+      // ACT-R activation retrieval via MemoryV3 module, with age gating.
+      // Only retrieve episodes older than 20s — recent reads are still in workspace.
+      // This prevents redundant context (T01 regression) while surfacing evicted
+      // content on long tasks (T06 first pass) and providing import-chain salience
+      // amplification after the initial reading phase (T02 100%).
       if (memoryModule && memoryState) {
         const memResult = await memoryModule.step(
           { snapshot: partSnapshot },
@@ -963,11 +966,6 @@ async function runPartitionedSmart(
         const retrieved = memResult.output.count;
         if (retrieved > 0) {
           console.log(`    [memory c${cycle + 1}] retrieved ${retrieved} entries via ACT-R activation`);
-          for (const r of memResult.output.retrieved) {
-            const preview = ('content' in r ? String(r.content) : String((r as any).pattern)).slice(0, 60);
-            console.log(`      ← ${preview}`);
-          }
-          // Re-snapshot since memory wrote to operational partition
           partSnapshot = partitions.snapshot() as any[];
         }
       }
@@ -992,6 +990,36 @@ async function runPartitionedSmart(
         consecutiveReadOnlyCycles = 0;
         totalWriteActionsThisRun++;
         writeEnforcerFired = false; // Reset so next enforcement event can inject fresh directive
+
+        // ── Stale memory invalidation ─────────────────────────────────
+        // After editing a file, episodic entries containing OLD file contents
+        // become stale and would confuse the agent about current file state.
+        // Check VFS for which files have been modified, expire matching episodes.
+        if (memoryStore) {
+          const modifiedPaths: string[] = [];
+          for (const [path] of vfs.files) {
+            if (!(path in task.initialFiles) || vfs.files.get(path) !== task.initialFiles[path]) {
+              modifiedPaths.push(path);
+            }
+          }
+          if (modifiedPaths.length > 0) {
+            const allEpisodes = await memoryStore.allEpisodic();
+            let expired = 0;
+            for (const ep of allEpisodes) {
+              const matchesModified = modifiedPaths.some(p =>
+                ep.content.includes(p) || ep.context.some(t => t.includes(p)),
+              );
+              if (matchesModified) {
+                await memoryStore.expireEpisodic(ep.id);
+                expired++;
+              }
+            }
+            if (expired > 0) {
+              console.log(`    [memory-invalidate c${cycle + 1}] expired ${expired} stale entries for modified files`);
+            }
+          }
+        }
+
         // Clear write restriction after agent writes
         if (raControl.restrictedActions?.includes('Read')) {
           raControl.restrictedActions = [];
