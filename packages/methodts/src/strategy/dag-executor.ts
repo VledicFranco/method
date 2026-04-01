@@ -20,6 +20,11 @@ import type {
   StrategyNode,
   MethodologyNodeConfig,
   ScriptNodeConfig,
+  StrategyNodeConfig,
+  SubStrategySource,
+  SubStrategyResult,
+  HumanApprovalResolver,
+  HumanApprovalContext,
   OversightRule,
   DagGateContext,
   DagGateResult,
@@ -94,11 +99,20 @@ interface ExecutionState {
 export class DagStrategyExecutor {
   private state: ExecutionState | null = null;
   private currentSessionId: string = "";
+  /** Tracks strategy IDs currently in the execution chain to detect cycles.
+   *  Shared (by reference) across all child executors created for sub-strategies. */
+  private executionChain: string[];
 
   constructor(
     private nodeExecutor: DagNodeExecutor,
     private config: StrategyExecutorConfig,
-  ) {}
+    private subStrategySource?: SubStrategySource | null,
+    private humanApprovalResolver?: HumanApprovalResolver | null,
+    /** Internal: shared chain reference for cycle detection across nested executors. */
+    sharedChain?: string[],
+  ) {
+    this.executionChain = sharedChain ?? [];
+  }
 
   /**
    * Execute a Strategy DAG end-to-end.
@@ -124,6 +138,14 @@ export class DagStrategyExecutor {
         `Invalid Strategy DAG: ${validation.errors.join("; ")}`,
       );
     }
+
+    // Cycle detection: check if this strategy is already executing in the chain
+    if (this.executionChain.includes(dag.id)) {
+      throw new Error(
+        `Strategy cycle detected: "${dag.id}" is already in the execution chain [${this.executionChain.join(" -> ")}]`,
+      );
+    }
+    this.executionChain.push(dag.id);
 
     // 2. Initialize state and session
     const artifacts = createArtifactStore();
@@ -256,6 +278,9 @@ export class DagStrategyExecutor {
     const durationMs =
       new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
+    // Pop the execution chain so this executor can be reused
+    this.executionChain.pop();
+
     return {
       strategy_id: dag.id,
       status: finalStatus,
@@ -326,18 +351,42 @@ export class DagStrategyExecutor {
         let responseDurationMs: number;
 
         if (node.config.type === "methodology") {
+          const methConfig = node.config as MethodologyNodeConfig;
+          // PRD-044: if config.prompt is set, prepend it to retryFeedback (or standalone)
+          let effectiveFeedback = retryFeedback;
+          if (methConfig.prompt) {
+            effectiveFeedback = retryFeedback
+              ? `${methConfig.prompt}\n\n${retryFeedback}`
+              : methConfig.prompt;
+          }
           const result = await this.nodeExecutor.executeMethodologyNode(
             dag,
             node,
-            node.config as MethodologyNodeConfig,
+            methConfig,
             inputBundle,
             this.currentSessionId,
-            retryFeedback,
+            effectiveFeedback,
           );
           nodeOutput = result.output;
           responseCost = result.cost_usd;
           responseTurns = result.num_turns;
           responseDurationMs = result.duration_ms;
+        } else if (node.config.type === "strategy") {
+          const stratResult = await this.executeStrategyNode(
+            dag,
+            node,
+            node.config as StrategyNodeConfig,
+            inputBundle,
+          );
+          nodeOutput = { ...stratResult.artifacts };
+          responseCost = stratResult.cost_usd;
+          responseTurns = 0;
+          responseDurationMs = stratResult.duration_ms;
+          if (stratResult.status === "failed") {
+            throw new Error(
+              `Sub-strategy "${stratResult.strategy_id}" failed`,
+            );
+          }
         } else {
           const result = this.executeScriptNode(
             node.config as ScriptNodeConfig,
@@ -372,10 +421,20 @@ export class DagStrategyExecutor {
 
           for (let gi = 0; gi < node.gates.length; gi++) {
             const gate = node.gates[gi];
+            const gateId = `${node.id}:gate[${gi}]`;
+            const approvalCtx: HumanApprovalContext = {
+              strategy_id: dag.id,
+              execution_id: this.currentSessionId,
+              gate_id: gateId,
+              node_id: node.id,
+              timeout_ms: gate.timeout_ms,
+            };
             const gateResult = await evaluateGate(
               gate,
-              `${node.id}:gate[${gi}]`,
+              gateId,
               gateContext,
+              this.humanApprovalResolver,
+              approvalCtx,
             );
             lastGateResults.push(gateResult);
 
@@ -518,6 +577,87 @@ ${config.script}`,
     }
   }
 
+  /**
+   * Execute a strategy sub-invocation node.
+   *
+   * Looks up the sub-strategy by ID from the injected SubStrategySource,
+   * executes it recursively using the same executor (sharing the execution
+   * chain for cycle detection), and returns a SubStrategyResult whose
+   * artifacts become this node's output.
+   *
+   * Throws if SubStrategySource is not injected or the strategy is not found.
+   */
+  private async executeStrategyNode(
+    _parentDag: StrategyDAG,
+    node: StrategyNode,
+    config: StrategyNodeConfig,
+    inputBundle: Record<string, unknown>,
+  ): Promise<SubStrategyResult> {
+    if (this.subStrategySource == null) {
+      throw new Error(
+        `Node "${node.id}": strategy node requires a SubStrategySource to be injected but none was provided`,
+      );
+    }
+
+    const subDag = await this.subStrategySource.getStrategy(config.strategy_id);
+    if (subDag == null) {
+      throw new Error(
+        `Node "${node.id}": sub-strategy "${config.strategy_id}" not found in SubStrategySource`,
+      );
+    }
+
+    // Build context inputs for the sub-strategy using input_map if provided
+    const subContextInputs: Record<string, unknown> = {};
+    if (config.input_map) {
+      for (const [inputName, subContextName] of Object.entries(config.input_map)) {
+        if (inputBundle[inputName] !== undefined) {
+          subContextInputs[subContextName] = inputBundle[inputName];
+        }
+      }
+    } else {
+      // Pass all inputs through directly
+      Object.assign(subContextInputs, inputBundle);
+    }
+
+    // Create a child executor that shares our execution chain (for cycle detection)
+    // but has its own isolated state. This prevents the recursive call from
+    // clobbering this executor's this.state.
+    const childExecutor = new DagStrategyExecutor(
+      this.nodeExecutor,
+      this.config,
+      this.subStrategySource,
+      this.humanApprovalResolver,
+      this.executionChain, // shared by reference — cycle detection works across levels
+    );
+
+    const startMs = Date.now();
+    let subResult: StrategyExecutionResult;
+    try {
+      subResult = await childExecutor.execute(subDag, subContextInputs);
+    } catch (err) {
+      // Re-throw cycle errors so executeNode propagates the message correctly
+      if (err instanceof Error && err.message.includes("cycle detected")) {
+        throw err;
+      }
+      const durationMs = Date.now() - startMs;
+      return {
+        strategy_id: config.strategy_id,
+        status: "failed",
+        artifacts: {},
+        cost_usd: 0,
+        duration_ms: durationMs,
+      };
+    }
+
+    return {
+      strategy_id: config.strategy_id,
+      status: subResult.status === "completed" ? "completed" : "failed",
+      artifacts: subResult.artifacts,
+      cost_usd: subResult.cost_usd,
+      duration_ms: subResult.duration_ms,
+    };
+  }
+
   // ── Private: Artifact Helpers ─────────────────────────────────
 
   /**
@@ -649,10 +789,20 @@ ${config.script}`,
         },
       };
 
+      const stratGateId = `strategy:${sg.id}`;
+      const approvalCtx: HumanApprovalContext = {
+        strategy_id: dag.id,
+        execution_id: this.currentSessionId,
+        gate_id: stratGateId,
+        node_id: sg.id,
+        timeout_ms: sg.gate.timeout_ms,
+      };
       const result = await evaluateGate(
         sg.gate,
-        `strategy:${sg.id}`,
+        stratGateId,
         gateContext,
+        this.humanApprovalResolver,
+        approvalCtx,
       );
       this.state!.gate_results.push(result);
     }
