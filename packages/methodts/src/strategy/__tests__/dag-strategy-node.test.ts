@@ -16,7 +16,6 @@ import { DagStrategyExecutor, type DagNodeExecutor } from "../dag-executor.js";
 import type {
   StrategyDAG,
   SubStrategySource,
-  ArtifactVersion,
 } from "../dag-types.js";
 
 // ── Helpers ─────────────────────────────────────────────────────

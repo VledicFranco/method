@@ -25,7 +25,6 @@ import type {
   SubStrategyResult,
   HumanApprovalResolver,
   HumanApprovalContext,
-  OversightRule,
   DagGateContext,
   DagGateResult,
   NodeStatus,
@@ -540,7 +539,7 @@ export class DagStrategyExecutor {
   private executeScriptNode(
     config: ScriptNodeConfig,
     inputBundle: Record<string, unknown>,
-    nodeId: string,
+    _nodeId: string,
   ): Record<string, unknown> {
     try {
       // eslint-disable-next-line no-new-func
