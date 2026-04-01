@@ -834,6 +834,43 @@ async function runPartitionedSmart(
           lastWriteCycle.set(pid, cycle);
         }
 
+        // ── Memory gating (MetaComposer-inspired task modality) ──────
+        // Memory helps: recall-dependent tasks (preserve, ensure, verify),
+        //   diagnostic tasks ("fix" without editing method), long tasks (≥5 goals or >20 cycles)
+        // Memory hurts: edit-heavy tasks (refactor + create + extract in goals)
+        //
+        // Key insight: "fix" is ambiguous — "fix by extracting" (T01) is editing,
+        // "fix the bug" (T02) is diagnostic. Disambiguate by checking for editing method.
+        if (useMemory) {
+          const goalTexts = decomposed.goals.map(g => String(g.content).toLowerCase());
+          const goalJoined = goalTexts.join(' ');
+
+          // Recall verbs that directly benefit from memory
+          const RECALL_VERBS = /\b(preserve|ensure|verify|identify)\b/;
+          const needsRecall = goalTexts.some(g => RECALL_VERBS.test(g));
+
+          // "fix" is diagnostic UNLESS accompanied by editing methods
+          const hasFix = /\bfix\b/.test(goalJoined);
+          const hasEditingMethod = goalTexts.some(g =>
+            /\b(extract\w*|creat\w*|refactor\w*|restructur\w*|rewrit\w*|split\w*|mov\w*|migrat\w*)\b/.test(g),
+          );
+          const isDiagnosticFix = hasFix && !hasEditingMethod;
+
+          const isLongTask = MAX_CYCLES > 20 || decomposed.goals.length >= 5;
+          const memoryEnabled = needsRecall || isDiagnosticFix || isLongTask;
+
+          if (!memoryEnabled) {
+            memoryState = null;
+            console.log(`    [memory-gate] DISABLED — edit-heavy task (${decomposed.goals.length} goals, ${MAX_CYCLES} cycles)`);
+          } else {
+            const reasons = [];
+            if (needsRecall) reasons.push('recall verbs (preserve/ensure/verify)');
+            if (isDiagnosticFix) reasons.push('diagnostic fix (no editing method)');
+            if (isLongTask) reasons.push(`long task (${decomposed.goals.length} goals, ${MAX_CYCLES} cycles)`);
+            console.log(`    [memory-gate] ENABLED — ${reasons.join(' + ')}`);
+          }
+        }
+
         // Activate write-phase enforcer only for complex multi-file tasks (≥4 goals).
         // Short tasks solve naturally; enforcer would push writes before full understanding.
         if (decomposed.goals.length >= 4) {
