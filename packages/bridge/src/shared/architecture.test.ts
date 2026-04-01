@@ -271,28 +271,47 @@ describe('PRD-044: FCD Automation Pipeline structural invariants', () => {
     );
   });
 
-  it('G-PRD044-GLYPHREPORT: frontend/strategies does not import @glyphjs/* directly', () => {
-    const strategiesFrontendDir = join(
-      BRIDGE_SRC, '..', 'frontend', 'src', 'domains', 'strategies'
+  it('G-PRD044-GLYPHREPORT: frontend domains (except reports/) do not import @glyphjs/* directly', () => {
+    const frontendDomainsDir = join(
+      BRIDGE_SRC, '..', 'frontend', 'src', 'domains'
     );
-    let files: string[];
+
+    let domainDirs: string[];
     try {
-      files = collectTsFiles(strategiesFrontendDir).filter(f => !isTestFile(f));
+      domainDirs = readdirSync(frontendDomainsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
     } catch {
       return; // frontend may not be present in all environments
     }
+
     const violations: string[] = [];
-    for (const file of files) {
-      const rel = relative(strategiesFrontendDir, file).replace(/\\/g, '/');
-      for (const imp of extractImports(file)) {
-        if (imp.specifier.startsWith('@glyphjs/')) {
-          violations.push(`${rel}:${imp.line} — imports '${imp.specifier}' directly (use reports/ domain)`);
+
+    for (const domainName of domainDirs) {
+      // reports/ is the one domain allowed to import @glyphjs directly
+      if (domainName === 'reports') continue;
+
+      const domainDir = join(frontendDomainsDir, domainName);
+      let files: string[];
+      try {
+        files = collectTsFiles(domainDir).filter(f => !isTestFile(f));
+      } catch {
+        continue;
+      }
+
+      for (const file of files) {
+        const rel = relative(frontendDomainsDir, file).replace(/\\/g, '/');
+        for (const imp of extractImports(file)) {
+          if (imp.specifier.startsWith('@glyphjs/')) {
+            violations.push(`${rel}:${imp.line} — imports '${imp.specifier}' directly (use reports/ domain)`);
+          }
         }
       }
     }
+
     assert.deepStrictEqual(violations, [], [
-      'PRD-044 violation: frontend/strategies must import GlyphReport from reports/ domain.',
-      'Never import @glyphjs/* directly outside of reports/.',
+      'PRD-044 violation: frontend domains (except reports/) must not import @glyphjs/* directly.',
+      'Import GlyphReport and related components from the reports/ domain instead.',
       '',
       ...violations,
     ].join('\n'));

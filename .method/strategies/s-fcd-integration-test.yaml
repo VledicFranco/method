@@ -88,10 +88,9 @@ strategy:
         type: strategy
         strategy_id: s-fcd-plan
         input_map:
-          prd_path: prd_path
-          project_context: context
+          prd_path: design_result
         depends_on: [validate_prd]
-        inputs: [prd_validation, setup_result]
+        inputs: [prd_validation, setup_result, design_result]
         outputs: [plan_result]
         gates:
           - type: algorithmic
@@ -125,10 +124,9 @@ strategy:
         type: strategy
         strategy_id: s-fcd-commission-solo
         input_map:
-          commission_card_path: commission_card_path
-          project_context: context
+          commission_card_path: plan_result
         depends_on: [validate_plan]
-        inputs: [plan_validation, setup_result]
+        inputs: [plan_validation, setup_result, plan_result]
         outputs: [commission_result]
         gates:
           - type: algorithmic
@@ -162,10 +160,9 @@ strategy:
         type: strategy
         strategy_id: s-fcd-review
         input_map:
-          branch_name: branch
-          project_context: context
+          branch_name: commission_result
         depends_on: [validate_commission]
-        inputs: [commission_validation, setup_result]
+        inputs: [commission_validation, setup_result, commission_result]
         outputs: [review_result]
         gates:
           - type: algorithmic
