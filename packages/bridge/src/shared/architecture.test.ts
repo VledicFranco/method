@@ -34,7 +34,7 @@ function collectTsFiles(dir: string): string[] {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...collectTsFiles(full));
-    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+    } else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.d.ts')) {
       results.push(full);
     }
   }
@@ -269,6 +269,33 @@ describe('PRD-044: FCD Automation Pipeline structural invariants', () => {
       content.includes('StrategyGateApprovalResponsePayload'),
       'PRD-044: StrategyGateApprovalResponsePayload must be in event-bus.ts (Wave 0 not applied)'
     );
+  });
+
+  it('G-PRD044-GLYPHREPORT: frontend/strategies does not import @glyphjs/* directly', () => {
+    const strategiesFrontendDir = join(
+      BRIDGE_SRC, '..', 'frontend', 'src', 'domains', 'strategies'
+    );
+    let files: string[];
+    try {
+      files = collectTsFiles(strategiesFrontendDir).filter(f => !isTestFile(f));
+    } catch {
+      return; // frontend may not be present in all environments
+    }
+    const violations: string[] = [];
+    for (const file of files) {
+      const rel = relative(strategiesFrontendDir, file).replace(/\\/g, '/');
+      for (const imp of extractImports(file)) {
+        if (imp.specifier.startsWith('@glyphjs/')) {
+          violations.push(`${rel}:${imp.line} — imports '${imp.specifier}' directly (use reports/ domain)`);
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'PRD-044 violation: frontend/strategies must import GlyphReport from reports/ domain.',
+      'Never import @glyphjs/* directly outside of reports/.',
+      '',
+      ...violations,
+    ].join('\n'));
   });
 });
 

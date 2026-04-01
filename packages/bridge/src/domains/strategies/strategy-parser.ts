@@ -9,14 +9,12 @@
  * YAML loader injection (PRD 024 MG-2), but parsing itself delegates to methodts.
  */
 
-import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 import {
   parseStrategyYaml as methodtsParseYaml,
   parseStrategyObject as methodtsParseObject,
   validateStrategyDAG as methodtsValidateDAG,
   topologicalSort as methodtsTopoSort,
-  getDefaultRetries as methodtsGetDefaultRetries,
-  getDefaultTimeout as methodtsGetDefaultTimeout,
 } from '@method/methodts/strategy/dag-parser.js';
 
 // Re-export types from methodts dag-types (preserving bridge's type surface)
@@ -34,12 +32,21 @@ export type {
 // Re-export StrategyGateDecl as StrategyGate for backward compat
 export type { StrategyGateDecl as StrategyGate } from '@method/methodts/strategy/dag-types.js';
 
-// PRD 024 MG-2: Module-level yaml port (retained for bridge composition root)
-let _yaml: YamlLoader | null = null;
+// PRD-044: new node type + port interfaces
+export type {
+  StrategyNodeConfig,
+  SubStrategyResult,
+  SubStrategySource,
+  HumanApprovalResolver,
+  HumanApprovalContext,
+  HumanApprovalDecision,
+} from '@method/methodts/strategy/dag-types.js';
 
-/** PRD 024: Configure YamlLoader for strategy-parser. Called from composition root. */
-export function setStrategyParserYaml(yaml: YamlLoader): void {
-  _yaml = yaml;
+/** PRD 024: Configure YamlLoader for strategy-parser. Called from composition root.
+ * Retained for API compatibility — parsing is fully delegated to @method/methodts.
+ */
+export function setStrategyParserYaml(_yaml: YamlLoader): void {
+  // no-op: methodts manages its own YAML loader internally
 }
 
 // ── Delegated Functions ─────────────────────────────────────────
