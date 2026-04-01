@@ -1,0 +1,29 @@
+experiment: exp-fcd-automation
+run_id: integration-run-1
+date: 2026-03-31
+agent: "Claude Sonnet 4.6, Commission C-6 (PRD-044 Wave 4)"
+config:
+  bridge_port: 3457
+  bridge_instance: test
+  strategies_dir: .method/strategies
+  fcd_yaml_count: 8
+  arch_test_file: packages/bridge/src/shared/architecture.test.ts
+metrics:
+  yaml_parse_pass: 8
+  yaml_parse_fail: 0
+  arch_gate_tests_pass: 8
+  arch_gate_tests_fail: 0
+  arch_gate_suites_pass: 5
+  bridge_total_strategies_loaded: 12
+  bridge_fcd_strategies_loaded: 8
+  bridge_started: true
+  bridge_stopped_gracefully: true
+verdict: pass
+gate: "AC-1 through AC-5 — PRD-044 Wave 4 Integration"
+notes: >
+  All 8 FCD strategy YAMLs parse. Architecture gates 8/8 including PRD-044-specific
+  invariants (G-PRD044-SUBSTRATEGY, G-PRD044-EVENTBUS). Bridge:test loaded all 8
+  FCD strategies via /api/strategies/definitions. 1Password CLI present but not
+  authenticated — bridge started via direct env injection (functionally equivalent
+  to .env fallback). Full pipeline not executed by design: human_approval gates
+  require human-in-the-loop.
