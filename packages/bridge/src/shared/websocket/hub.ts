@@ -10,7 +10,8 @@ import type { WebSocket } from 'ws';
 export type ClientMessage =
   | { type: 'subscribe'; topic: string; filter?: Record<string, string>; cursor?: string }
   | { type: 'unsubscribe'; topic: string }
-  | { type: 'ping' };
+  | { type: 'ping' }
+  | { type: 'event'; domain: string; event_type: string; payload: Record<string, unknown> };
 
 export type ServerMessage =
   | { type: 'subscribed'; topic: string; cursor: string }
