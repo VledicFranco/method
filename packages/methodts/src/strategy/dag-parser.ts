@@ -24,6 +24,7 @@ import type {
   DagGateType,
   MethodologyNodeConfig,
   ScriptNodeConfig,
+  StrategyNodeConfig,
   StrategyValidationResult,
 } from "./dag-types.js";
 
@@ -74,14 +75,22 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
       timeout_ms: g.timeout_ms ?? getDefaultTimeout(g.type),
     }));
 
-    let config: MethodologyNodeConfig | ScriptNodeConfig;
+    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig;
 
     if (rawNode.type === "methodology") {
       config = {
         type: "methodology",
         methodology: rawNode.methodology ?? "",
         method_hint: rawNode.method_hint,
+        prompt: rawNode.prompt,
         capabilities: rawNode.capabilities ?? [],
+      };
+    } else if (rawNode.type === "strategy") {
+      config = {
+        type: "strategy",
+        strategy_id: rawNode.strategy_id ?? "",
+        input_map: rawNode.input_map,
+        await: rawNode.await,
       };
     } else {
       config = {
@@ -168,6 +177,18 @@ export function validateStrategyDAG(dag: StrategyDAG): StrategyValidationResult 
       if (!methConfig.methodology || methConfig.methodology.trim() === "") {
         errors.push(
           `Node "${node.id}": methodology node must have a non-empty "methodology" field`,
+        );
+      }
+    }
+  }
+
+  // Check strategy nodes have a non-empty strategy_id field
+  for (const node of dag.nodes) {
+    if (node.config.type === "strategy") {
+      const stratConfig = node.config as StrategyNodeConfig;
+      if (!stratConfig.strategy_id || stratConfig.strategy_id.trim() === "") {
+        errors.push(
+          `Node "${node.id}": strategy node must have a non-empty "strategy_id" field`,
         );
       }
     }
