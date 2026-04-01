@@ -1,0 +1,245 @@
+strategy:
+  id: s-fcd-commission-orch
+  name: "FCD Commission — Orchestrated Multi-Commission"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths:
+        - ".method/sessions/fcd-plan-*/realize-plan.md"
+      events: [create]
+      debounce_ms: 2000
+      debounce_strategy: trailing
+      max_batch_size: 1
+      max_concurrent: 1
+
+  context:
+    inputs:
+      - name: plan_path
+        type: string
+        default: ""
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+      - name: trigger_event
+        type: object
+        default: {}
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    impl_agent: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Load and parse the realize plan
+      - id: load_plan
+        type: script
+        script: |
+          const event = inputs.trigger_event || {};
+          const changedFiles = event.changed_files || [];
+          const explicitPath = inputs.plan_path || '';
+          const planPath = explicitPath || (changedFiles.length > 0 ? changedFiles[0] : '');
+          return {
+            plan_path: planPath,
+            trigger_type: planPath ? 'file_watch' : 'manual',
+            context: inputs.project_context,
+            commission_1_task: null,
+            commission_2_task: null,
+            commission_3_task: null,
+            commission_4_task: null,
+            commission_5_task: null
+          };
+        inputs: [trigger_event, plan_path, project_context]
+        outputs: [plan_load_result]
+
+      # Phase 2: Apply Wave 0 — surface contract changes
+      - id: wave_0_apply
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Apply Wave 0 of the realize plan: implement all surface contract changes. These are port interface definitions only — no implementation logic. Read the plan from the provided path and execute only Wave 0 tasks."
+        capabilities: [impl_agent]
+        inputs: [plan_load_result]
+        outputs: [wave_0_result]
+        depends_on: [load_plan]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 2
+            timeout_ms: 600000
+
+      # Phase 3: Validate Wave 0 — build must pass before parallel commissions
+      - id: wave_0_validate
+        type: script
+        script: |
+          const wave0 = inputs.wave_0_result;
+          const content = typeof wave0 === 'string' ? wave0 : (wave0.result || JSON.stringify(wave0));
+          const buildOk = content.includes('build') || content.includes('compiled') || content.includes('success') || content.length > 50;
+          return {
+            wave_0_passed: buildOk,
+            validation: buildOk ? 'Wave 0 PASSED' : 'Wave 0 FAILED — build or type errors detected',
+            ready_for_commissions: buildOk
+          };
+        inputs: [wave_0_result]
+        outputs: [wave_0_validation]
+        depends_on: [wave_0_apply]
+
+      # Phase 4: Parse commission tasks from the plan
+      - id: parse_commissions
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Read the realize plan and extract the Wave 1+ commission tasks. For each commission slot (up to 5), extract: commission card path, domain, wave number, and dependencies. Return as structured data with commission_1 through commission_5 keys."
+        capabilities: [read_only]
+        inputs: [plan_load_result, wave_0_validation]
+        outputs: [commission_tasks]
+        depends_on: [wave_0_validate]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Commission slot 1 — skipped if no task assigned
+      - id: commission_1
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_1_task
+          project_context: context
+        depends_on: [parse_commissions]
+        inputs: [commission_tasks]
+        outputs: [commission_1_result]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var tasks = inputs.commission_tasks;
+                var content = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+                if (content.indexOf('commission_1') === -1) { return true; }
+                return output !== undefined;
+              })()
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Commission slot 2 — skipped if no task assigned
+      - id: commission_2
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_2_task
+          project_context: context
+        depends_on: [parse_commissions]
+        inputs: [commission_tasks]
+        outputs: [commission_2_result]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var tasks = inputs.commission_tasks;
+                var content = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+                if (content.indexOf('commission_2') === -1) { return true; }
+                return output !== undefined;
+              })()
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Commission slot 3 — skipped if no task assigned
+      - id: commission_3
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_3_task
+          project_context: context
+        depends_on: [parse_commissions]
+        inputs: [commission_tasks]
+        outputs: [commission_3_result]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var tasks = inputs.commission_tasks;
+                var content = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+                if (content.indexOf('commission_3') === -1) { return true; }
+                return output !== undefined;
+              })()
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Commission slot 4 — skipped if no task assigned
+      - id: commission_4
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_4_task
+          project_context: context
+        depends_on: [parse_commissions]
+        inputs: [commission_tasks]
+        outputs: [commission_4_result]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var tasks = inputs.commission_tasks;
+                var content = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+                if (content.indexOf('commission_4') === -1) { return true; }
+                return output !== undefined;
+              })()
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Commission slot 5 — skipped if no task assigned
+      - id: commission_5
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_5_task
+          project_context: context
+        depends_on: [parse_commissions]
+        inputs: [commission_tasks]
+        outputs: [commission_5_result]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var tasks = inputs.commission_tasks;
+                var content = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+                if (content.indexOf('commission_5') === -1) { return true; }
+                return output !== undefined;
+              })()
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Phase 5: Write the execution retrospective
+      - id: write_retro
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Generate the execution retrospective for this orchestrated run. Document: which commissions ran, which passed/failed, total cost, total duration, key decisions, lessons learned, and recommended follow-up actions."
+        capabilities: [impl_agent]
+        inputs: [commission_1_result, commission_2_result, commission_3_result, commission_4_result, commission_5_result, wave_0_validation]
+        outputs: [retro]
+        depends_on: [commission_1, commission_2, commission_3, commission_4, commission_5]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 1
+            timeout_ms: 180000
+
+    strategy_gates:
+      - id: orch_complete
+        depends_on: [write_retro]
+        type: algorithmic
+        check: "artifacts.retro !== undefined && artifacts.wave_0_validation && artifacts.wave_0_validation.wave_0_passed === true"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 100.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 3600000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

@@ -1,0 +1,142 @@
+strategy:
+  id: s-fcd-commission-solo
+  name: "FCD Commission — Solo Implementation"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: commission_card_path
+        type: string
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+      - name: wave
+        type: string
+        default: "1"
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    impl_agent: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Load and parse the commission card
+      - id: load_commission_card
+        type: script
+        script: |
+          const cardPath = inputs.commission_card_path || '';
+          const wave = inputs.wave || '1';
+          return {
+            card_path: cardPath,
+            wave: wave,
+            project_context: inputs.project_context,
+            loaded: cardPath.length > 0
+          };
+        inputs: [commission_card_path, project_context, wave]
+        outputs: [commission_context]
+
+      # Phase 2: Analyze the scope of the commission
+      - id: analyze_scope
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Read the commission card at the provided path. Analyze: what files must be created or modified, what interfaces must be implemented, what existing code is affected, and what tests must be written. Produce a concrete scope with file list."
+        capabilities: [read_only]
+        inputs: [commission_context]
+        outputs: [scope_analysis]
+        depends_on: [load_commission_card]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 3: Implement the commission
+      - id: implement
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Implement the commission according to the scope analysis. Follow FCA principles: co-locate tests with domain code, use port interfaces for cross-domain calls, no circular imports, TypeScript strict mode. Do not exceed the declared file scope."
+        capabilities: [impl_agent]
+        inputs: [scope_analysis, commission_context]
+        outputs: [implementation]
+        depends_on: [analyze_scope]
+        gates:
+          - type: algorithmic
+            check: |
+              (function() {
+                var result = output.result || '';
+                var content = typeof result === 'string' ? result : JSON.stringify(result);
+                var hasTodo = /\bTODO\b|\bFIXME\b|\bSTUB\b/.test(content);
+                return output.result !== undefined && content.length > 50 && !hasTodo;
+              })()
+            max_retries: 3
+            timeout_ms: 600000
+
+      # Phase 4: Self-review the implementation
+      - id: self_review
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review your own implementation. Check: FCA compliance, type correctness, test coverage, no TODO/FIXME/STUB markers, adherence to commission scope, and that all acceptance criteria from the commission card are met."
+        capabilities: [read_only]
+        inputs: [implementation, scope_analysis]
+        outputs: [self_review_result]
+        depends_on: [implement]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Phase 5: Run tests to verify the implementation
+      - id: run_tests
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Run the tests for the implemented domain. Execute: npm test for the relevant package. Report: pass/fail count, any failures with file and line numbers, and overall test health."
+        capabilities: [impl_agent]
+        inputs: [implementation, self_review_result]
+        outputs: [test_results]
+        depends_on: [self_review]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && (output.result.includes('passing') || output.result.includes('PASS') || output.result.includes('passed'))"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Phase 6: Commit the changes
+      - id: commit_changes
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Commit the implemented changes. Use a descriptive commit message following the project convention: 'feat(<domain>): <description>'. Stage only the files within the declared commission scope. Do not stage unrelated files."
+        capabilities: [impl_agent]
+        inputs: [test_results, implementation]
+        outputs: [commit_result]
+        depends_on: [run_tests]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && (output.result.includes('commit') || output.result.includes('Commit') || output.result.includes('committed'))"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: commission_complete
+        depends_on: [commit_changes]
+        type: algorithmic
+        check: "artifacts.test_results !== undefined && artifacts.commit_result !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 25.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 1200000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

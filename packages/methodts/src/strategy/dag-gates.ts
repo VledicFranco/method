@@ -21,6 +21,8 @@ import type {
   DagGateConfig,
   DagGateContext,
   DagGateResult,
+  HumanApprovalResolver,
+  HumanApprovalContext,
 } from "./dag-types.js";
 
 // ── Expression Evaluator (sandboxed) ───────────────────────────
@@ -122,14 +124,37 @@ return (${expression});`,
  * - algorithmic: evaluates the check expression against output/artifacts
  * - observation: evaluates the check expression against execution_metadata
  *   (same mechanism, semantically different — checks patterns like cost, turns)
- * - human_approval: always returns not passed (Phase 1 stub — no suspension mechanism)
+ * - human_approval: calls the injected HumanApprovalResolver if provided;
+ *   falls back to backward-compat stub (passed:false) when resolver is null.
  */
 export async function evaluateGate(
   gate: DagGateConfig,
   gateId: string,
   context: DagGateContext,
+  humanApprovalResolver?: HumanApprovalResolver | null,
+  humanApprovalContext?: HumanApprovalContext,
 ): Promise<DagGateResult> {
   if (gate.type === "human_approval") {
+    if (humanApprovalResolver != null && humanApprovalContext != null) {
+      const decision = await humanApprovalResolver.requestApproval(humanApprovalContext);
+      if (decision.approved) {
+        return {
+          gate_id: gateId,
+          type: "human_approval",
+          passed: true,
+          reason: "Human approved",
+        };
+      } else {
+        return {
+          gate_id: gateId,
+          type: "human_approval",
+          passed: false,
+          reason: "Human rejected",
+          feedback: decision.feedback,
+        };
+      }
+    }
+    // Backward-compat: no resolver — immediately return not-passed
     return {
       gate_id: gateId,
       type: "human_approval",

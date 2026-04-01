@@ -34,7 +34,7 @@ function collectTsFiles(dir: string): string[] {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...collectTsFiles(full));
-    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+    } else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.d.ts')) {
       results.push(full);
     }
   }
@@ -217,6 +217,82 @@ describe('G-BOUNDARY: Domains do not import sibling domain internals at runtime'
       'FCA Principle 7 violation: domains must not import sibling internals at runtime.',
       'Fix: use port interfaces or composition-root injection.',
       'Type-only imports (import type) are acceptable.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+});
+
+// ── PRD-044 Gates ────────────────────────────────────────────────
+
+describe('PRD-044: FCD Automation Pipeline structural invariants', () => {
+  it('G-PRD044-SUBSTRATEGY: StrategyNodeConfig and SubStrategySource are exported from dag-types', () => {
+    // Verifies Wave 0 type additions compiled correctly.
+    // The actual type shapes are validated in methodts unit tests (C-1).
+    // This gate checks that the bridge's re-export surface is intact.
+    const strategyParserPath = join(
+      BRIDGE_SRC, '..', '..', 'methodts', 'src', 'strategy', 'dag-types.ts'
+    );
+    let content: string;
+    try {
+      content = readFileSync(strategyParserPath, 'utf-8');
+    } catch {
+      // methodts may not be built — skip rather than fail
+      return;
+    }
+    assert.ok(
+      content.includes('StrategyNodeConfig'),
+      'PRD-044: StrategyNodeConfig must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('SubStrategySource'),
+      'PRD-044: SubStrategySource must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('HumanApprovalResolver'),
+      'PRD-044: HumanApprovalResolver must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes("prompt?: string"),
+      'PRD-044: prompt? field must be in MethodologyNodeConfig (Wave 0 not applied)'
+    );
+  });
+
+  it('G-PRD044-EVENTBUS: Strategy gate payload types are exported from event-bus.ts', () => {
+    const eventBusPath = join(BRIDGE_SRC, 'ports', 'event-bus.ts');
+    const content = readFileSync(eventBusPath, 'utf-8');
+    assert.ok(
+      content.includes('StrategyGateAwaitingApprovalPayload'),
+      'PRD-044: StrategyGateAwaitingApprovalPayload must be in event-bus.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('StrategyGateApprovalResponsePayload'),
+      'PRD-044: StrategyGateApprovalResponsePayload must be in event-bus.ts (Wave 0 not applied)'
+    );
+  });
+
+  it('G-PRD044-GLYPHREPORT: frontend/strategies does not import @glyphjs/* directly', () => {
+    const strategiesFrontendDir = join(
+      BRIDGE_SRC, '..', 'frontend', 'src', 'domains', 'strategies'
+    );
+    let files: string[];
+    try {
+      files = collectTsFiles(strategiesFrontendDir).filter(f => !isTestFile(f));
+    } catch {
+      return; // frontend may not be present in all environments
+    }
+    const violations: string[] = [];
+    for (const file of files) {
+      const rel = relative(strategiesFrontendDir, file).replace(/\\/g, '/');
+      for (const imp of extractImports(file)) {
+        if (imp.specifier.startsWith('@glyphjs/')) {
+          violations.push(`${rel}:${imp.line} — imports '${imp.specifier}' directly (use reports/ domain)`);
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'PRD-044 violation: frontend/strategies must import GlyphReport from reports/ domain.',
+      'Never import @glyphjs/* directly outside of reports/.',
       '',
       ...violations,
     ].join('\n'));

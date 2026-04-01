@@ -1,0 +1,168 @@
+strategy:
+  id: s-fcd-plan
+  name: "FCD Plan Creation"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+    - type: file_watch
+      paths:
+        - ".method/sessions/fcd-design-*/prd.md"
+      events: [create]
+      debounce_ms: 2000
+      debounce_strategy: trailing
+      max_batch_size: 1
+      max_concurrent: 1
+
+  context:
+    inputs:
+      - name: prd_path
+        type: string
+        default: ""
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+      - name: trigger_event
+        type: object
+        default: {}
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Load and parse the PRD
+      - id: load_prd
+        type: script
+        script: |
+          const event = inputs.trigger_event || {};
+          const changedFiles = event.changed_files || [];
+          const explicitPath = inputs.prd_path || '';
+          const prdPath = explicitPath || (changedFiles.length > 0 ? changedFiles[0] : '');
+          return {
+            prd_path: prdPath,
+            trigger_type: prdPath ? 'file_watch' : 'manual',
+            context: inputs.project_context
+          };
+        inputs: [trigger_event, prd_path, project_context]
+        outputs: [prd_load_result]
+
+      # Phase 2: Analyze domains impacted by the PRD
+      - id: analyze_domains
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Read the PRD at the path provided. Analyze all domains impacted by its requirements. For each domain: identify what must change, what new capabilities are needed, and what existing code is affected."
+        capabilities: [read_only]
+        inputs: [prd_load_result]
+        outputs: [domain_analysis]
+        depends_on: [load_prd]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 3: Enumerate all surfaces that must be created or modified
+      - id: enumerate_surfaces
+        type: methodology
+        methodology: P2-SD
+        method_hint: M6-ARFN
+        prompt: "Enumerate all interface surfaces required by the PRD. For each surface: identify the producer domain, consumer domains, port type, and whether it is new or modified. Cross-reference with existing ports."
+        capabilities: [read_only]
+        inputs: [domain_analysis]
+        outputs: [surface_enumeration]
+        depends_on: [analyze_domains]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 150000
+
+      # Phase 4: Build the implementation DAG (waves and commissions)
+      - id: build_dag
+        type: methodology
+        methodology: P2-SD
+        method_hint: M5-PLAN
+        prompt: "Build the implementation DAG for this PRD. Decompose into waves: Wave 0 (surface contracts), Wave 1 (core implementations), Wave 2+ (integrations). For each wave, define commissions with: scope, domain, inputs, outputs, and dependencies. Ensure no cross-domain file conflicts within a wave."
+        capabilities: [read_only]
+        inputs: [domain_analysis, surface_enumeration]
+        outputs: [implementation_dag]
+        depends_on: [enumerate_surfaces]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 150"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Phase 5: Write the realize plan
+      - id: write_plan
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Write the realize-plan.md file to .method/sessions/. Include: PRD summary, wave structure, commission cards (one per commission), dependency graph, and validation gates per wave. This file drives s-fcd-commission-orch."
+        capabilities: [write]
+        inputs: [implementation_dag, domain_analysis, surface_enumeration]
+        outputs: [plan_document]
+        depends_on: [build_dag]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 300"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Phase 6: Validate the plan
+      - id: validate_plan
+        type: script
+        script: |
+          const plan = inputs.plan_document;
+          const content = typeof plan === 'string' ? plan : (plan.result || JSON.stringify(plan));
+          const errors = [];
+          if (!content.includes('Wave') && !content.includes('wave')) errors.push('Missing wave structure');
+          if (!content.includes('commission') && !content.includes('Commission')) errors.push('Missing commission definitions');
+          if (!content.includes('surface') && !content.includes('Surface') && !content.includes('port') && !content.includes('Port')) errors.push('Missing surface/port definitions');
+          if (content.length < 500) errors.push('Plan too short (< 500 chars) — likely incomplete');
+          const valid = errors.length === 0;
+          return {
+            valid,
+            errors,
+            plan_length: content.length,
+            validation: valid ? 'PASSED' : 'FAILED: ' + errors.join(', ')
+          };
+        inputs: [plan_document]
+        outputs: [plan_validation]
+        depends_on: [write_plan]
+
+      # Phase 7: Write commission cards for each identified commission
+      - id: write_commission_cards
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Write individual commission card files for each commission identified in the plan. Each card: commission ID, wave, domain scope, task description, inputs, expected outputs, acceptance criteria, and file scope list. Place cards in .method/sessions/ alongside the plan."
+        capabilities: [write]
+        inputs: [plan_document, plan_validation]
+        outputs: [commission_cards]
+        depends_on: [validate_plan]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 1
+            timeout_ms: 300000
+
+    strategy_gates:
+      - id: plan_complete
+        depends_on: [write_commission_cards]
+        type: algorithmic
+        check: "artifacts.plan_validation && artifacts.plan_validation.valid === true && artifacts.commission_cards !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 20.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 900000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

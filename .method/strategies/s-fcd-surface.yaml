@@ -1,0 +1,149 @@
+strategy:
+  id: s-fcd-surface
+  name: "FCD Surface Co-Design"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: problem_description
+        type: string
+      - name: domain_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Analyze all relevant domains and their responsibilities
+      - id: analyze_domains
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Analyze the relevant domains for this surface co-design task. Identify domain responsibilities, existing port contracts, and cross-domain dependencies."
+        capabilities: [read_only]
+        inputs: [problem_description, domain_context]
+        outputs: [domain_analysis]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 120000
+
+      # Phase 2: Map boundaries between domains
+      - id: map_boundaries
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Map the boundaries between domains. Identify what each domain exposes, what it consumes, and where the interface boundaries must be drawn."
+        capabilities: [read_only]
+        inputs: [domain_analysis]
+        outputs: [boundary_map]
+        depends_on: [analyze_domains]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 120000
+
+      # Phase 3: Draft the interface surface contract
+      - id: draft_interface
+        type: methodology
+        methodology: P2-SD
+        method_hint: M6-ARFN
+        prompt: "Draft the interface surface contract in FCA port style. Each port must have: typed inputs, typed outputs, no transport dependencies, and clear ownership."
+        capabilities: [read_only]
+        inputs: [domain_analysis, boundary_map]
+        outputs: [interface_draft]
+        depends_on: [map_boundaries]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 200"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 4: Review the interface for correctness and completeness
+      - id: review_interface
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the interface draft for: FCA compliance, type completeness, missing edge cases, and protocol correctness. Produce a structured review with actionable findings."
+        capabilities: [read_only]
+        inputs: [interface_draft, domain_analysis]
+        outputs: [interface_review]
+        depends_on: [draft_interface]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 5: Validate type correctness of the surface
+      - id: validate_types
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Validate the type correctness of the proposed interface. Check: no circular imports, no transport leakage, all generics properly constrained, all error states modeled."
+        capabilities: [read_only]
+        inputs: [interface_draft, interface_review]
+        outputs: [type_validation]
+        depends_on: [review_interface]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 2
+            timeout_ms: 120000
+
+      # Phase 6: Write the surface record — requires human approval before freezing
+      - id: write_record
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Write the surface record document: a GlyphJS markdown file documenting the finalized interface contract, rationale, and affected domains. This will be presented for human approval before freezing."
+        capabilities: [write]
+        inputs: [interface_draft, interface_review, type_validation]
+        outputs: [surface_record]
+        depends_on: [validate_types]
+        gates:
+          - type: human_approval
+            check: "output.result !== undefined && output.result.length > 200"
+            max_retries: 1
+            timeout_ms: 3600000
+
+      # Phase 7: Freeze the surface contract
+      - id: confirm_freeze
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Confirm the surface freeze: verify the surface record is complete, update the relevant port definitions to their frozen state, and produce a freeze confirmation summary."
+        capabilities: [write]
+        inputs: [surface_record]
+        outputs: [freeze_confirmation]
+        depends_on: [write_record]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: surface_complete
+        depends_on: [confirm_freeze]
+        type: algorithmic
+        check: "artifacts.freeze_confirmation && artifacts.freeze_confirmation.result && artifacts.freeze_confirmation.result.length > 0"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 15.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 600000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

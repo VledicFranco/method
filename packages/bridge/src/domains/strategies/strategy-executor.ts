@@ -19,7 +19,7 @@ import {
   DagStrategyExecutor,
   type DagNodeExecutor,
 } from '@method/methodts/strategy/dag-executor.js';
-import type { StrategyExecutorConfig } from '@method/methodts/strategy/dag-types.js';
+import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
 
 // Re-export types from methodts (preserving bridge's type surface)
 export type {
@@ -29,6 +29,8 @@ export type {
   ExecutionStateSnapshot,
   StrategyExecutionResult,
   StrategyExecutorConfig,
+  SubStrategySource,
+  HumanApprovalResolver,
 } from '@method/methodts/strategy/dag-types.js';
 
 // Re-export ExecutionState as an opaque type (callers use getState() snapshot)
@@ -201,6 +203,9 @@ function parseNodeOutput(result: string): Record<string, unknown> {
  *
  * Wires Pacta's AgentProvider into the methodts DagNodeExecutor port,
  * then delegates all execution orchestration to methodts.
+ *
+ * PRD-044: Accepts optional SubStrategySource and HumanApprovalResolver ports
+ * injected from the composition root. Both default to null for backward compat.
  */
 export class StrategyExecutor {
   private inner: DagStrategyExecutor;
@@ -208,6 +213,8 @@ export class StrategyExecutor {
   constructor(
     provider: AgentProvider,
     config: StrategyExecutorConfig,
+    subStrategySource?: SubStrategySource | null,
+    humanApprovalResolver?: HumanApprovalResolver | null,
   ) {
     const nodeExecutor = new PactaNodeExecutor(
       provider,
@@ -215,13 +222,18 @@ export class StrategyExecutor {
       config.defaultBudgetUsd,
     );
 
-    this.inner = new DagStrategyExecutor(nodeExecutor, {
-      maxParallel: config.maxParallel,
-      defaultGateRetries: config.defaultGateRetries,
-      defaultTimeoutMs: config.defaultTimeoutMs,
-      defaultBudgetUsd: config.defaultBudgetUsd,
-      retroDir: config.retroDir,
-    });
+    this.inner = new DagStrategyExecutor(
+      nodeExecutor,
+      {
+        maxParallel: config.maxParallel,
+        defaultGateRetries: config.defaultGateRetries,
+        defaultTimeoutMs: config.defaultTimeoutMs,
+        defaultBudgetUsd: config.defaultBudgetUsd,
+        retroDir: config.retroDir,
+      },
+      subStrategySource ?? null,
+      humanApprovalResolver ?? null,
+    );
   }
 
   /** Execute a Strategy DAG end-to-end. Delegates to methodts. */

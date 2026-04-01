@@ -5,6 +5,8 @@
  * - Header: mini-DAG, strategy info, metrics, execute button
  * - Tabs: Overview (structured fields), YAML (syntax highlighted), History (filtered executions)
  * - Execute confirmation dialog with context inputs form
+ * - PRD-044 C-4: GateApprovalPanel when a human_approval gate is awaiting decision
+ * - PRD-044 C-4: ArtifactViewer for artifacts from completed nodes
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -19,14 +21,18 @@ import { MetricCard } from '@/shared/data/MetricCard';
 import { StrategyDefinitionPanel } from '@/domains/strategies/StrategyDefinitionPanel';
 import { ExecuteDialog } from '@/domains/strategies/ExecuteDialog';
 import { MiniDag } from '@/domains/strategies/MiniDag';
+import { GateApprovalPanel } from '@/domains/strategies/GateApprovalPanel';
+import { ArtifactViewer } from '@/domains/strategies/ArtifactViewer';
 import { cn } from '@/shared/lib/cn';
 import {
   useStrategyDefinitions,
   useStrategyExecutions,
   useExecuteStrategy,
 } from '@/domains/strategies/useStrategies';
+import { useBridgeEvents } from '@/shared/websocket/useBridgeEvents';
 import { formatCost, formatDuration, formatRelativeTime } from '@/shared/lib/formatters';
 import type { StrategyExecution } from '@/domains/strategies/types';
+import type { GateAwaitingApprovalData } from '@/domains/strategies/GateApprovalPanel';
 import { ArrowLeft, Play, GitCompare, ExternalLink } from 'lucide-react';
 
 // ── Toast notification ──
@@ -215,6 +221,21 @@ export default function StrategyDetail() {
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  // PRD-044 C-4: Subscribe to gate.awaiting_approval events for this strategy
+  const gateEvents = useBridgeEvents({ domain: 'strategy', type: 'gate.awaiting_approval' });
+  const pendingGate = useMemo<GateAwaitingApprovalData | null>(() => {
+    if (!id) return null;
+    // Most recent awaiting_approval event for this strategy — last one wins
+    for (let i = gateEvents.length - 1; i >= 0; i--) {
+      const ev = gateEvents[i];
+      const p = ev.payload as Partial<GateAwaitingApprovalData>;
+      if (p.strategy_id === id) {
+        return p as GateAwaitingApprovalData;
+      }
+    }
+    return null;
+  }, [gateEvents, id]);
 
   const definition = useMemo(
     () => defData?.definitions.find((d) => d.id === id) ?? null,
@@ -406,6 +427,16 @@ export default function StrategyDetail() {
         )}
       </div>
 
+      {/* PRD-044 C-4: Gate approval panel — shown when a human_approval gate is awaiting */}
+      {pendingGate && (
+        <div className="mb-sp-6">
+          <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+            Gate Awaiting Approval
+          </h3>
+          <GateApprovalPanel gate={pendingGate} />
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs
         tabs={TABS.map((t) => ({
@@ -419,7 +450,40 @@ export default function StrategyDetail() {
 
       {/* Tab content */}
       {activeTab === 'overview' && (
-        <StrategyDefinitionPanel definition={definition} />
+        <>
+          <StrategyDefinitionPanel definition={definition} />
+
+          {/* PRD-044 C-4: Artifacts from the last execution */}
+          {strategyExecutions.length > 0 &&
+            (() => {
+              const lastExec = strategyExecutions[0] as StrategyExecution & {
+                artifacts?: Record<string, unknown>;
+              };
+              const artifacts = lastExec.artifacts;
+              if (!artifacts || Object.keys(artifacts).length === 0) return null;
+              return (
+                <div className="mt-sp-6">
+                  <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+                    Last Execution Artifacts
+                  </h3>
+                  <div className="space-y-sp-3">
+                    {Object.entries(artifacts).map(([key, value]) => {
+                      const content =
+                        typeof value === 'string'
+                          ? value
+                          : JSON.stringify(value, null, 2);
+                      return (
+                        <div key={key}>
+                          <p className="text-[0.65rem] text-txt-muted font-mono mb-1">{key}</p>
+                          <ArtifactViewer artifactId={key} content={content} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+        </>
       )}
 
       {activeTab === 'yaml' && (

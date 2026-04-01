@@ -83,9 +83,11 @@ const clusterConfig = loadClusterConfig({
 
 // Strategies domain
 import { setRetroWriterFs } from './domains/strategies/retro-writer.js';
-import { setStrategyRoutesPorts } from './domains/strategies/strategy-routes.js';
+import { setStrategyRoutesPorts, setStrategyRoutesHumanApprovalResolver, setStrategyRoutesSubStrategySource } from './domains/strategies/strategy-routes.js';
 import { setStrategyParserYaml } from './domains/strategies/strategy-parser.js';
 import { setRetroGeneratorYaml } from './domains/strategies/retro-generator.js';
+import { BridgeHumanApprovalResolver } from './domains/strategies/human-approval-resolver.js';
+import { BridgeSubStrategySource } from './domains/strategies/sub-strategy-source.js';
 setRetroWriterFs(fsProvider);
 setStrategyRoutesPorts(fsProvider, yamlLoader);
 setStrategyParserYaml(yamlLoader);
@@ -159,6 +161,16 @@ const channelSink = new ChannelSink({
 // PRD 026 Phase 2: Inject EventBus into all producing domains
 setStrategyRoutesEventBus(eventBus);
 setProjectRoutesEventBus(eventBus);
+
+// PRD-044: Wire HumanApprovalResolver and SubStrategySource into the strategies domain.
+// Created once at startup and reused across all executions (singleton lifecycle).
+const humanApprovalResolver = new BridgeHumanApprovalResolver(eventBus);
+const subStrategySource = new BridgeSubStrategySource(
+  process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies',
+  fsProvider,
+);
+setStrategyRoutesHumanApprovalResolver(humanApprovalResolver);
+setStrategyRoutesSubStrategySource(subStrategySource);
 
 // PRD 041: CognitiveSink — adapts algebra-level CognitiveEvents to BridgeEvent bus
 const cognitiveSink = new CognitiveSink(eventBus);
