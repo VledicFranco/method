@@ -1,6 +1,7 @@
 /**
  * PRD 019.3 Phase 3c/3d: Live execution view at /strategies/:id/exec/:eid.
  * Shows xyflow DAG with real-time status (2s polling), cost overlay, Gantt timeline.
+ * PRD-044 C-4: GateApprovalPanel for active awaiting gates; live artifact display.
  */
 
 import { useState, useMemo, useCallback } from "react";
@@ -13,13 +14,17 @@ import { Badge } from "@/shared/components/Badge";
 import { StatusBadge, type Status } from "@/shared/data/StatusBadge";
 import { StrategyDag } from "@/domains/strategies/StrategyDag";
 import { CostOverlay } from "@/domains/strategies/CostOverlay";
+import { GateApprovalPanel } from "@/domains/strategies/GateApprovalPanel";
+import { ArtifactViewer } from "@/domains/strategies/ArtifactViewer";
 import {
   useExecutionStatus,
   useStrategyDag,
 } from "@/domains/strategies/hooks/useExecutionStatus";
+import { useBridgeEvents } from "@/shared/websocket/useBridgeEvents";
 import { cn } from "@/shared/lib/cn";
 import { formatCost, formatDuration } from "@/shared/lib/formatters";
 import type { NodeResult } from "@/domains/strategies/lib/types";
+import type { GateAwaitingApprovalData } from "@/domains/strategies/GateApprovalPanel";
 import { ArrowLeft } from "lucide-react";
 
 // ---- Gantt Timeline ----
@@ -178,6 +183,20 @@ export default function ExecutionView() {
   const { data: execution, error: execError } = useExecutionStatus(executionId ?? null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // PRD-044 C-4: Subscribe to gate.awaiting_approval events for this execution
+  const gateEvents = useBridgeEvents({ domain: 'strategy', type: 'gate.awaiting_approval' });
+  const pendingGate = useMemo<GateAwaitingApprovalData | null>(() => {
+    if (!executionId) return null;
+    for (let i = gateEvents.length - 1; i >= 0; i--) {
+      const ev = gateEvents[i];
+      const p = ev.payload as Partial<GateAwaitingApprovalData>;
+      if (p.execution_id === executionId) {
+        return p as GateAwaitingApprovalData;
+      }
+    }
+    return null;
+  }, [gateEvents, executionId]);
+
   const stats = useMemo(() => {
     if (!dag || !execution) return null;
     const nodeStatuses = execution.node_statuses ?? {};
@@ -288,6 +307,37 @@ export default function ExecutionView() {
                 <Badge variant={gate.passed ? "cyan" : "error"} label={gate.passed ? "PASS" : "FAIL"} size="sm" />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* PRD-044 C-4: Gate approval panel for awaiting human_approval gates */}
+      {pendingGate && (
+        <div className="mt-sp-6">
+          <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+            Gate Awaiting Approval
+          </h3>
+          <GateApprovalPanel gate={pendingGate} />
+        </div>
+      )}
+
+      {/* PRD-044 C-4: Live artifact display for running methodology nodes */}
+      {execution?.artifacts && Object.keys(execution.artifacts).length > 0 && (
+        <div className="mt-sp-6">
+          <h3 className="text-xs text-txt-muted uppercase tracking-wider font-medium mb-sp-3">
+            Artifacts
+          </h3>
+          <div className="space-y-sp-3">
+            {Object.entries(execution.artifacts).map(([key, value]) => {
+              const content =
+                typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+              return (
+                <div key={key}>
+                  <p className="text-[0.65rem] text-txt-muted font-mono mb-1">{key}</p>
+                  <ArtifactViewer artifactId={key} content={content} />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

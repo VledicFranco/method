@@ -85,6 +85,16 @@ class WsManager {
     };
   }
 
+  /**
+   * Send a raw message to the server over the WebSocket connection.
+   * Returns false if the connection is not open.
+   */
+  send(message: Record<string, unknown>): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(JSON.stringify(message));
+    return true;
+  }
+
   /** Disconnect and stop reconnecting. */
   disconnect(): void {
     this.destroyed = true;
