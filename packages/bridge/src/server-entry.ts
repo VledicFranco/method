@@ -230,7 +230,7 @@ const app = Fastify({ logger: true });
 
 // ---------- WebSocket (real-time push) ----------
 
-const wsHub = new WsHub();
+const wsHub = new WsHub(30_000, eventBus);
 app.register(async function wsPlugin(fastify) {
   await fastify.register(websocket);
   registerWsRoute(fastify, wsHub);
