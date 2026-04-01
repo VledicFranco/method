@@ -38,6 +38,24 @@ let _pool: SessionPool | null = null;
 export function setStrategyRoutesPool(pool: SessionPool): void {
   _pool = pool;
 }
+
+// PRD-044: HumanApprovalResolver + BridgeSubStrategySource ports
+import type { SubStrategySource, HumanApprovalResolver } from './strategy-executor.js';
+import { BridgeSubStrategySource } from './sub-strategy-source.js';
+
+let _humanApprovalResolver: HumanApprovalResolver | null = null;
+let _subStrategySource: SubStrategySource | null = null;
+
+/** PRD-044: Configure HumanApprovalResolver for human_approval gates. Called from composition root. */
+export function setStrategyRoutesHumanApprovalResolver(resolver: HumanApprovalResolver): void {
+  _humanApprovalResolver = resolver;
+}
+
+/** PRD-044: Configure SubStrategySource for strategy sub-invocation nodes. Called from composition root. */
+export function setStrategyRoutesSubStrategySource(source: SubStrategySource): void {
+  _subStrategySource = source;
+}
+
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
 import type { StrategyYaml } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
@@ -247,8 +265,18 @@ export function registerStrategyRoutes(
       });
     }
 
-    // Create executor with claudeCliProvider (LlmProvider param is deprecated and ignored)
-    const executor = new StrategyExecutor(claudeCliProvider(), executorConfig);
+    // PRD-044: Resolve sub-strategy source (default: scan .method/strategies/ in cwd)
+    const subStrategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
+    const subStrategySource = _subStrategySource
+      ?? new BridgeSubStrategySource(subStrategyDir, _fs ?? new NodeFileSystemProvider());
+
+    // Create executor with claudeCliProvider, wiring PRD-044 ports
+    const executor = new StrategyExecutor(
+      claudeCliProvider(),
+      executorConfig,
+      subStrategySource,
+      _humanApprovalResolver,
+    );
     const executionId = `exec-${dag.id}-${Date.now()}`;
     const startedAt = new Date().toISOString();
 
