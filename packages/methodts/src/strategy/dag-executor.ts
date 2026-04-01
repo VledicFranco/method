@@ -352,6 +352,8 @@ export class DagStrategyExecutor {
         if (node.config.type === "methodology") {
           const methConfig = node.config as MethodologyNodeConfig;
           // PRD-044: if config.prompt is set, prepend it to retryFeedback (or standalone)
+          // Security: prompt field is trusted input authored by strategy YAML maintainers.
+          // .method/strategies/ write access controls who can inject prompts.
           let effectiveFeedback = retryFeedback;
           if (methConfig.prompt) {
             effectiveFeedback = retryFeedback
@@ -382,8 +384,11 @@ export class DagStrategyExecutor {
           responseTurns = 0;
           responseDurationMs = stratResult.duration_ms;
           if (stratResult.status === "failed") {
+            const detail = stratResult.error_message
+              ? `: ${stratResult.error_message}`
+              : "";
             throw new Error(
-              `Sub-strategy "${stratResult.strategy_id}" failed`,
+              `Sub-strategy "${stratResult.strategy_id}" failed${detail}`,
             );
           }
         } else {
@@ -418,6 +423,13 @@ export class DagStrategyExecutor {
           lastGateResults = [];
           allGatesPassed = true;
 
+          // Build a markdown summary of artifacts for human review (F-D-2)
+          const artifactSnapshot = this.state!.artifacts.snapshot();
+          const artifactEntries = Object.entries(artifactSnapshot);
+          const nodeArtifactMarkdown = artifactEntries.length > 0
+            ? artifactEntries.map(([id, val]) => `## ${id}\n\`\`\`json\n${JSON.stringify(val, null, 2)}\n\`\`\``).join('\n\n')
+            : '_No artifacts produced yet._';
+
           for (let gi = 0; gi < node.gates.length; gi++) {
             const gate = node.gates[gi];
             const gateId = `${node.id}:gate[${gi}]`;
@@ -426,6 +438,7 @@ export class DagStrategyExecutor {
               execution_id: this.currentSessionId,
               gate_id: gateId,
               node_id: node.id,
+              artifact_markdown: nodeArtifactMarkdown,
               timeout_ms: gate.timeout_ms,
             };
             const gateResult = await evaluateGate(
@@ -638,6 +651,7 @@ ${config.script}`,
       if (err instanceof Error && err.message.includes("cycle detected")) {
         throw err;
       }
+      const errorMsg = err instanceof Error ? err.message : String(err);
       const durationMs = Date.now() - startMs;
       return {
         strategy_id: config.strategy_id,
@@ -645,7 +659,17 @@ ${config.script}`,
         artifacts: {},
         cost_usd: 0,
         duration_ms: durationMs,
+        error_message: errorMsg,
       };
+    }
+
+    // Extract error details from the sub-strategy's failed nodes (F-D-5)
+    let subErrorMessage: string | undefined;
+    if (subResult.status !== "completed") {
+      const failedNode = Object.values(subResult.node_results).find(nr => nr.error);
+      if (failedNode?.error) {
+        subErrorMessage = failedNode.error;
+      }
     }
 
     return {
@@ -654,6 +678,7 @@ ${config.script}`,
       artifacts: subResult.artifacts,
       cost_usd: subResult.cost_usd,
       duration_ms: subResult.duration_ms,
+      error_message: subErrorMessage,
     };
   }
 
@@ -772,9 +797,14 @@ ${config.script}`,
    * Evaluate strategy-level gates after all nodes complete.
    */
   private async evaluateStrategyGates(dag: StrategyDAG): Promise<void> {
-    const artifactContents = this.flattenBundle(
-      this.state!.artifacts.snapshot(),
-    );
+    const stratArtifactSnapshot = this.state!.artifacts.snapshot();
+    const artifactContents = this.flattenBundle(stratArtifactSnapshot);
+
+    // Build a markdown summary of artifacts for strategy-level human review (F-D-2)
+    const stratArtifactEntries = Object.entries(stratArtifactSnapshot);
+    const stratArtifactMarkdown = stratArtifactEntries.length > 0
+      ? stratArtifactEntries.map(([id, val]) => `## ${id}\n\`\`\`json\n${JSON.stringify(val, null, 2)}\n\`\`\``).join('\n\n')
+      : '_No artifacts produced yet._';
 
     for (const sg of dag.strategy_gates) {
       const gateContext: DagGateContext = {
@@ -794,6 +824,7 @@ ${config.script}`,
         execution_id: this.currentSessionId,
         gate_id: stratGateId,
         node_id: sg.id,
+        artifact_markdown: stratArtifactMarkdown,
         timeout_ms: sg.gate.timeout_ms,
       };
       const result = await evaluateGate(

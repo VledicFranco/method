@@ -92,6 +92,7 @@ export interface SubStrategyResult {
   readonly artifacts: ArtifactBundle;
   readonly cost_usd: number;
   readonly duration_ms: number;
+  /** Error message captured when the sub-strategy fails (F-D-5). */
   readonly error_message?: string;
 }
 

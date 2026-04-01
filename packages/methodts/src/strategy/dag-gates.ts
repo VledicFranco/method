@@ -23,6 +23,7 @@ import type {
   DagGateResult,
   HumanApprovalResolver,
   HumanApprovalContext,
+  HumanApprovalDecision,
 } from "./dag-types.js";
 
 // ── Expression Evaluator (sandboxed) ───────────────────────────
@@ -136,7 +137,21 @@ export async function evaluateGate(
 ): Promise<DagGateResult> {
   if (gate.type === "human_approval") {
     if (humanApprovalResolver != null && humanApprovalContext != null) {
-      const decision = await humanApprovalResolver.requestApproval(humanApprovalContext);
+      // F-D-3: Enforce timeout on human approval to prevent indefinite hangs
+      const timeoutMs = humanApprovalContext.timeout_ms || 300_000; // 5 min default
+      const timeoutPromise = new Promise<HumanApprovalDecision>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve({ approved: false, feedback: `Human approval timed out after ${Math.round(timeoutMs / 1000)}s` });
+        }, timeoutMs);
+        if (timer && typeof timer === 'object' && 'unref' in timer) {
+          (timer as NodeJS.Timeout).unref();
+        }
+      });
+
+      const decision = await Promise.race([
+        humanApprovalResolver.requestApproval(humanApprovalContext),
+        timeoutPromise,
+      ]);
       if (decision.approved) {
         return {
           gate_id: gateId,
