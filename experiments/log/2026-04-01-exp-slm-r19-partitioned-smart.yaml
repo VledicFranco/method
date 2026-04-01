@@ -1,0 +1,138 @@
+run_id: R-19
+date: 2026-04-01
+experiment: exp-slm
+phase: phase-5-cycle
+condition: partitioned-smart
+hypothesis: >
+  A write-phase enforcer (complexity-aware: fires when ≥4 goals detected) combined with
+  smart task decomposition, progress injection, and fixed partition signal handling
+  (strategy='plan' not 'think') materially improves pass rate on multi-write tasks
+  (T01, T04, T06) while not regressing on single-write tasks (T02, T03, T05).
+setup:
+  tasks: [T01, T02, T03, T04, T05, T06]
+  runs_per: 3
+  max_cycles: 15  # T01-T05; T06 used 30 in separate runs
+  observer_mode: cycle0
+  new_components:
+    - task-decompose.ts: sentence-level decomposition into typed partition entries
+    - write_phase_enforcer: fires after N consecutive read-only cycles (threshold=5)
+    - complexity_activation: enforcer only activates when decomposed.goals.length >= 4
+    - progress_injection: after each Write/Edit, injects PROGRESS note to operational partition
+    - partition_capacities: constraint=12, operational=14, task=12 (up from 6/8/6)
+
+gate: partitioned-smart >= 75% on T01-T05, T06 shows ≥1/3 writes (first time)
+
+status: BLOCKED — API credits exhausted mid-run
+
+results:
+  # NOTE: All tok=0 entries are invalid (credit exhaustion). Only tok>0 entries are real data.
+  # Credits ran out between T03 and T04 in the 04:14:59 batch.
+
+  valid_data:
+    T01_circular_dependency_refactor:
+      - { run: 1, success: false, writes: 8, tokens: 15573, reason: "wrap() removed during refactoring" }
+      - { run: 2, success: true,  writes: 7, tokens: 17000 }
+      - { run: 3, success: true,  writes: 8, tokens: 16284 }
+      - { run: 4, success: true,  writes: 4, tokens: 18483 }  # from 04:15:11
+      - { run: 5, success: false, writes: 1, tokens: 5813,  reason: "circular dep still exists" }
+      pass_rate: "3/5 = 60%"
+
+    T02_test_first_bug_misdirection:
+      - { run: 1, success: false, writes: 4, tokens: 18797, reason: "pricing.ts modified — calculateTotal not broken" }
+      - { run: 2, success: false, writes: 4, tokens: 19974, reason: "applyDiscount formula wrong" }
+      - { run: 3, success: false, writes: 2, tokens: 11523, reason: "pricing.ts modified — calculateTotal not broken" }
+      pass_rate: "0/3 = 0%"
+      diagnosis: >
+        Agent still takes the misdirection. Partition system improves memory but not
+        reasoning quality. Agent modifies calculateTotal/pricing.ts instead of tracing
+        into discount.ts to find the root bug. Partition system cannot fix this —
+        requires either chain-of-thought reasoning improvements or explicit "trace all
+        call dependencies" constraint in the task prompt.
+
+    T03_config_migration_env_interpolation:
+      - { run: 1, success: false, writes: 2, tokens: 19236, reason: "AppConfig not exported from any TS file" }
+      - { run: 2, success: false, writes: 1, tokens: 9526,  reason: "AppConfig not exported from any TS file" }
+      pass_rate: "0/2 = 0% (run3 invalid)"
+      diagnosis: >
+        Agent creates a new config module but forgets to export the AppConfig interface.
+        The task requires both: create process.env-based config AND export AppConfig type.
+        Agent is completing one goal but missing the other.
+
+    T04_api_versioning_side_effect_trap:
+      pass_rate: "0/3 = INVALID (credit exhaustion)"
+
+    T05_dead_code_removal_dynamic_trap:
+      pass_rate: "3/3 = TRIVIAL (0 writes = correct answer; passes even with credits exhausted)"
+
+    T06_multi_module_extract:
+      # bachmpq2a task (result file overwritten by concurrent runs — raw data from task output)
+      - { run: 1, success: false, writes: 8, tokens: 24051,  duration_s: 135, reason: "emit() missing from event-bus.ts" }
+      - { run: 2, success: false, writes: 8, tokens: 49194,  duration_s: 259, reason: "event-system.ts does not import EventBus from event-bus.ts" }
+      # bpaddd7ur / bme6b44w3 tasks (ran after credits exhausted)
+      - { run: 3, success: false, writes: 6, tokens: 59220, reason: "emit() missing from event-bus.ts" }
+      - { run: 4, success: false, writes: 6, tokens: 38774, reason: "event-system.ts not importing EventBus" }
+      pass_rate: "0/4 = 0% but NEW RECORD: 8 writes in 30 cycles"
+      context_efficiency:
+        - "cycle 2: 59% reduction vs monolithic (1097tok → 453tok)"
+        - "cycle 10: 76% reduction (4295tok → 1042tok)"
+        - "cycle 27: 81% reduction (5886tok → 1089tok)"
+        - "peak partition context: 20 entries — stable across all cycles"
+      diagnosis: >
+        Write-phase enforcer is working: agents now making 8 writes in 30 cycles vs 0 in prior conditions.
+        Context efficiency validates RFC 003 partition hypothesis: 75-81% token reduction by cycle 10+,
+        enabling much larger task contexts without exceeding LLM context window.
+        Specific failures:
+        1. emit() method missing (run 1, 3): agent extracts class skeleton but drops emit() from public API
+        2. event-system.ts import not updated (run 2, 4): agent creates event-bus.ts but forgets to update
+           import in event-system.ts from inline class to imported module.
+        Both are "last mile" completion failures — addressed by improved goal patterns (see code_fixes_ready).
+      concurrent_run_collision: >
+        bachmpq2a, bpaddd7ur, and bme6b44w3 all started at ~04:14:46 and wrote to the same
+        result file. The last writer overwrote prior results. Raw data recovered from task output files.
+
+code_fixes_ready:
+  - description: "strategy='plan' not 'think' in runPartitionedSmart monitor handler (line 846)"
+    file: experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts
+    status: APPLIED
+    impact: >
+      Was causing all provider calls to fail with conf=0.00 tok=0 on first monitor intervention.
+      Explains T04 0-tool failures in pre-credit data. With this fix, T04 should run properly.
+
+  - description: "Error message logging for API failures"
+    file: experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts
+    status: APPLIED
+    impact: Diagnostic only — surfaces API error messages (was how we found credit exhaustion)
+
+next_runs_when_credits_restored:
+  - cmd: "npx tsx experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts --condition=partitioned-smart --task=all --runs=3 --max-cycles=15"
+    priority: HIGH
+    rationale: >
+      Re-run full T01-T05 suite with strategy='plan' fix applied. T04 should now
+      properly execute. Expect T01 ~60%, T04 unknown, T05 3/3.
+  - cmd: "npx tsx experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts --condition=partitioned-smart --task=6 --runs=3 --max-cycles=30"
+    priority: HIGH
+    rationale: >
+      T06 with full fix set. With 5-6 writes already attempted before credit exhaustion,
+      and with the monitor fix applied, a complete T06 pass is plausible.
+
+hypotheses_for_improvement:
+  T02_misdirection:
+    problem: "Agent modifies calling code instead of tracing into root cause"
+    intervention: >
+      Inject task-level constraint: "CONSTRAINT: Before fixing, trace all functions that
+      calculateTotal calls. The bug may be in a dependency, not calculateTotal itself."
+    risk: This is task-prompt engineering, not architecture. May not generalize.
+
+  T03_incomplete_export:
+    problem: "Agent creates config module but forgets AppConfig interface export"
+    intervention: >
+      Improve goal decomposition to extract specific artifact requirements:
+      "GOAL: Export AppConfig interface from the new config module"
+      Currently task-decompose.ts catches the migration goal but not the interface requirement.
+
+  T06_last_mile:
+    problem: "emit() missing; import not updated in consumer file"
+    intervention: >
+      After each Write, inject checklist of public methods that MUST exist in the extracted file
+      (derived from reading original file before extraction). Force a verification cycle
+      that reads the created file and checks all exported members are present.

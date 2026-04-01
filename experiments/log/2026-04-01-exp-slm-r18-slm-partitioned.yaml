@@ -1,0 +1,25 @@
+run_id: R-18
+date: 2026-04-01
+experiment: exp-slm
+phase: phase-5-cycle
+condition: slm-partitioned
+hypothesis: >
+  slm-partitioned (SLM modules + partitioned workspace combined) matches or exceeds
+  slm-cognitive baseline (73%) on T01-T05, and T04 restores to 3/3 (pin-flag now
+  reads from constraint partition, not monolithic workspace).
+setup:
+  tasks: [T01, T02, T03, T04, T05]
+  runs_per: 3
+  max_cycles: 15
+  observer_mode: cycle0
+  slm_servers:
+    monitor: http://localhost:8100
+    observer: http://localhost:8101
+    evaluator: http://localhost:8102
+gate: slm-partitioned >= 73% on T01-T05 AND T04 = 100%
+status: abandoned
+results: >
+  Invalidated by API credit exhaustion during the same session that ran R-19.
+  The slm-partitioned condition requires SLM servers at localhost:8100-8102 which
+  were not running at the time. All runs show conf=0.00 tok=0 (credit exhaustion).
+  No valid data collected. Superseded by R-19 (partitioned-smart).
