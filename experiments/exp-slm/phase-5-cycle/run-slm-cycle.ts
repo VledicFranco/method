@@ -737,9 +737,12 @@ async function runPartitionedSmart(
   // Larger task capacity than base partitioned-cognitive (6→12) to ensure all goal
   // entries from smart decomposition fit without eviction. T06 has 6 goals + progress
   // notes; 12 gives headroom without hurting short tasks (T01-T05 have ≤4 goals).
+  // Memory entries (5/cycle) go to operational partition — need extra capacity so they
+  // don't evict fresh tool results. Without memory: 14 is fine. With memory: 20.
+  const operationalCap = useMemory ? 20 : 14;
   const partitions = createPartitionSystem({
     constraintCapacity: 12,
-    operationalCapacity: 14,
+    operationalCapacity: operationalCap,
     taskCapacity: 12,
   });
 
