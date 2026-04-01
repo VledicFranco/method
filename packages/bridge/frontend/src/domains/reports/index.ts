@@ -5,12 +5,11 @@
  * markdown to IR and renders it in the bridge dashboard. All bridge frontend
  * consumers of @glyphjs/* must import through this domain — never directly.
  *
- * Wave 0 stub: GlyphReport is defined here as an interface so downstream
- * consumers (strategies/, etc.) can type-check against it before C-3 ships
- * the real implementation.
+ * C-3 implementation: GlyphReport is the real implementation extracted from
+ * sessions/ChatView.tsx. The Wave 0 stub has been replaced.
  */
 
-import type { ReactNode, ReactElement } from 'react';
+import type { ReactNode } from 'react';
 
 export interface GlyphReportProps {
   /** Raw GlyphJS markdown content to compile and render. */
@@ -23,17 +22,4 @@ export interface GlyphReportProps {
   fallback?: ReactNode;
 }
 
-/**
- * Lazy-compiled GlyphJS document renderer.
- *
- * Compiles markdown → GlyphIR client-side using @glyphjs/compiler,
- * then renders via @glyphjs/runtime GlyphDocument.
- *
- * Wave 0 stub — C-3 (feat/prd-044-c3-frontend-reports) replaces this
- * with the real implementation extracted from sessions/ChatView.tsx.
- */
-export function GlyphReport(_props: GlyphReportProps): ReactElement {
-  throw new Error(
-    'GlyphReport: Wave 0 stub — merge feat/prd-044-c3-frontend-reports before using this component.'
-  );
-}
+export { GlyphReport } from './GlyphReport.js';
