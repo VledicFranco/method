@@ -846,7 +846,7 @@ async function runPartitionedSmart(
           const goalJoined = goalTexts.join(' ');
 
           // Recall verbs that directly benefit from memory
-          const RECALL_VERBS = /\b(preserve|ensure|verify|identify)\b/;
+          const RECALL_VERBS = /\b(preserv\w*|ensur\w*|verif\w*|identif\w*)\b/;
           const needsRecall = goalTexts.some(g => RECALL_VERBS.test(g));
 
           // "fix" is diagnostic UNLESS accompanied by editing methods
