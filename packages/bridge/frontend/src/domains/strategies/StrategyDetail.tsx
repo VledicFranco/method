@@ -224,18 +224,29 @@ export default function StrategyDetail() {
 
   // PRD-044 C-4: Subscribe to gate.awaiting_approval events for this strategy
   const gateEvents = useBridgeEvents({ domain: 'strategy', type: 'gate.awaiting_approval' });
+  const approvalResponses = useBridgeEvents({ domain: 'strategy', type: 'gate.approval_response' });
   const pendingGate = useMemo<GateAwaitingApprovalData | null>(() => {
     if (!id) return null;
-    // Most recent awaiting_approval event for this strategy — last one wins
+    // Find the most recent awaiting_approval for this strategy
+    let latestGate: GateAwaitingApprovalData | null = null;
     for (let i = gateEvents.length - 1; i >= 0; i--) {
       const ev = gateEvents[i];
       const p = ev.payload as Partial<GateAwaitingApprovalData>;
       if (p.strategy_id === id) {
-        return p as GateAwaitingApprovalData;
+        latestGate = p as GateAwaitingApprovalData;
+        break;
       }
     }
-    return null;
-  }, [gateEvents, id]);
+    if (!latestGate) return null;
+    // Check if this gate has been resolved
+    for (const resp of approvalResponses) {
+      const rp = resp.payload as Record<string, unknown>;
+      if (rp.execution_id === latestGate.execution_id && rp.gate_id === latestGate.gate_id) {
+        return null; // Gate resolved
+      }
+    }
+    return latestGate;
+  }, [gateEvents, approvalResponses, id]);
 
   const definition = useMemo(
     () => defData?.definitions.find((d) => d.id === id) ?? null,

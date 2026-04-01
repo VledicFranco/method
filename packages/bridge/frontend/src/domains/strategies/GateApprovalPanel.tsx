@@ -20,6 +20,7 @@ import { cn } from '@/shared/lib/cn';
 
 // ── Payload types (mirrors packages/bridge/src/ports/event-bus.ts) ──
 
+// SYNC: StrategyGateAwaitingApprovalPayload @ packages/bridge/src/ports/event-bus.ts
 export interface GateAwaitingApprovalData {
   strategy_id: string;
   execution_id: string;
@@ -42,10 +43,7 @@ function useCountdown(timeoutMs: number): number | null {
 
     const interval = setInterval(() => {
       setRemaining((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
+        if (prev === null || prev <= 1) return 0;
         return prev - 1;
       });
     }, 1000);
@@ -113,7 +111,7 @@ export interface GateApprovalPanelProps {
   className?: string;
 }
 
-type ActionState = 'idle' | 'rejecting' | 'requesting_changes' | 'submitted';
+type ActionState = 'idle' | 'rejecting' | 'requesting_changes' | 'submitted' | 'error';
 
 export function GateApprovalPanel({ gate, className }: GateApprovalPanelProps) {
   const [actionState, setActionState] = useState<ActionState>('idle');
@@ -134,7 +132,11 @@ export function GateApprovalPanel({ gate, className }: GateApprovalPanelProps) {
           ...(feedback ? { feedback } : {}),
         },
       };
-      wsManager.send(payload);
+      const sent = wsManager.send(payload);
+      if (!sent) {
+        setActionState('error');
+        return;
+      }
       setSubmittedDecision(decision);
       setActionState('submitted');
     },
@@ -241,6 +243,14 @@ export function GateApprovalPanel({ gate, className }: GateApprovalPanelProps) {
           <span className="font-mono">
             {submittedDecision?.replace('_', ' ')}
           </span>
+        </div>
+      ) : actionState === 'error' ? (
+        <div className="flex items-center gap-2 px-sp-3 py-sp-2 rounded-lg text-sm font-medium bg-error/10 text-error border border-error/20">
+          <XCircle className="h-4 w-4" />
+          Connection lost — decision not sent.
+          <Button variant="ghost" size="sm" onClick={() => setActionState('idle')} className="ml-auto">
+            Retry
+          </Button>
         </div>
       ) : actionState === 'rejecting' ? (
         <FeedbackForm

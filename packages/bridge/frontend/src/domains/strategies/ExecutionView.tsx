@@ -185,17 +185,29 @@ export default function ExecutionView() {
 
   // PRD-044 C-4: Subscribe to gate.awaiting_approval events for this execution
   const gateEvents = useBridgeEvents({ domain: 'strategy', type: 'gate.awaiting_approval' });
+  const approvalResponses = useBridgeEvents({ domain: 'strategy', type: 'gate.approval_response' });
   const pendingGate = useMemo<GateAwaitingApprovalData | null>(() => {
     if (!executionId) return null;
+    // Find the most recent awaiting_approval for this execution
+    let latestGate: GateAwaitingApprovalData | null = null;
     for (let i = gateEvents.length - 1; i >= 0; i--) {
       const ev = gateEvents[i];
       const p = ev.payload as Partial<GateAwaitingApprovalData>;
       if (p.execution_id === executionId) {
-        return p as GateAwaitingApprovalData;
+        latestGate = p as GateAwaitingApprovalData;
+        break;
       }
     }
-    return null;
-  }, [gateEvents, executionId]);
+    if (!latestGate) return null;
+    // Check if this gate has been resolved
+    for (const resp of approvalResponses) {
+      const rp = resp.payload as Record<string, unknown>;
+      if (rp.execution_id === latestGate.execution_id && rp.gate_id === latestGate.gate_id) {
+        return null; // Gate resolved
+      }
+    }
+    return latestGate;
+  }, [gateEvents, approvalResponses, executionId]);
 
   const stats = useMemo(() => {
     if (!dag || !execution) return null;
