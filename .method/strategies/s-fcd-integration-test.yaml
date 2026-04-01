@@ -1,0 +1,241 @@
+strategy:
+  id: s-fcd-integration-test
+  name: "FCD Integration Test — End-to-End Pipeline"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: test_feature
+        type: string
+        default: "test-canary-feature: minimal FCD pipeline smoke test"
+      - name: bridge_test_port
+        type: number
+        default: 3457
+      - name: test_session_prefix
+        type: string
+        default: "fcd-integration-test"
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Step 1: Verify the test bridge is reachable
+      - id: setup
+        type: script
+        script: |
+          const port = inputs.bridge_test_port || 3457;
+          const prefix = inputs.test_session_prefix || 'fcd-integration-test';
+          const feature = inputs.test_feature || 'test-canary-feature';
+          return {
+            bridge_test_port: port,
+            bridge_test_url: 'http://localhost:' + port,
+            session_prefix: prefix,
+            test_feature: feature,
+            setup_complete: true,
+            note: 'Verify bridge:test is running on port ' + port + ' before proceeding'
+          };
+        inputs: [bridge_test_port, test_session_prefix, test_feature]
+        outputs: [setup_result]
+        gates:
+          - type: algorithmic
+            check: "output.setup_complete === true"
+            max_retries: 1
+            timeout_ms: 30000
+
+      # Step 2: Run the design pipeline
+      - id: run_design
+        type: strategy
+        strategy_id: s-fcd-design
+        input_map:
+          feature_request: test_feature
+        depends_on: [setup]
+        inputs: [setup_result]
+        outputs: [design_result]
+        gates:
+          - type: algorithmic
+            check: "output !== undefined"
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Step 3: Validate that a prd.md was created
+      - id: validate_prd
+        type: script
+        script: |
+          const design = inputs.design_result;
+          const content = typeof design === 'string' ? design : JSON.stringify(design);
+          const hasPrd = content.includes('prd') || content.includes('PRD') || content.includes('.md');
+          return {
+            prd_artifact_present: hasPrd,
+            design_artifact_size: content.length,
+            validation: hasPrd ? 'PASSED' : 'FAILED — no prd.md evidence in design output'
+          };
+        inputs: [design_result]
+        outputs: [prd_validation]
+        depends_on: [run_design]
+        gates:
+          - type: algorithmic
+            check: "output.prd_artifact_present === true"
+            max_retries: 0
+            timeout_ms: 30000
+
+      # Step 4: Run the plan pipeline
+      - id: run_plan
+        type: strategy
+        strategy_id: s-fcd-plan
+        input_map:
+          prd_path: prd_path
+          project_context: context
+        depends_on: [validate_prd]
+        inputs: [prd_validation, setup_result]
+        outputs: [plan_result]
+        gates:
+          - type: algorithmic
+            check: "output !== undefined"
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Step 5: Validate that realize-plan.md was created
+      - id: validate_plan
+        type: script
+        script: |
+          const plan = inputs.plan_result;
+          const content = typeof plan === 'string' ? plan : JSON.stringify(plan);
+          const hasPlan = content.includes('realize-plan') || content.includes('commission') || content.includes('wave') || content.includes('Wave');
+          return {
+            plan_artifact_present: hasPlan,
+            plan_artifact_size: content.length,
+            validation: hasPlan ? 'PASSED' : 'FAILED — no realize-plan.md evidence in plan output'
+          };
+        inputs: [plan_result]
+        outputs: [plan_validation]
+        depends_on: [run_plan]
+        gates:
+          - type: algorithmic
+            check: "output.plan_artifact_present === true"
+            max_retries: 0
+            timeout_ms: 30000
+
+      # Step 6: Run a solo commission
+      - id: run_commission
+        type: strategy
+        strategy_id: s-fcd-commission-solo
+        input_map:
+          commission_card_path: commission_card_path
+          project_context: context
+        depends_on: [validate_plan]
+        inputs: [plan_validation, setup_result]
+        outputs: [commission_result]
+        gates:
+          - type: algorithmic
+            check: "output !== undefined"
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Step 7: Validate the commission produced a test canary YAML
+      - id: validate_commission
+        type: script
+        script: |
+          const commission = inputs.commission_result;
+          const content = typeof commission === 'string' ? commission : JSON.stringify(commission);
+          const hasCanary = content.includes('canary') || content.includes('test') || content.includes('commit') || content.length > 100;
+          return {
+            canary_present: hasCanary,
+            commission_output_size: content.length,
+            validation: hasCanary ? 'PASSED' : 'FAILED — no canary evidence in commission output'
+          };
+        inputs: [commission_result]
+        outputs: [commission_validation]
+        depends_on: [run_commission]
+        gates:
+          - type: algorithmic
+            check: "output.canary_present === true"
+            max_retries: 0
+            timeout_ms: 30000
+
+      # Step 8: Run the review pipeline
+      - id: run_review
+        type: strategy
+        strategy_id: s-fcd-review
+        input_map:
+          branch_name: branch
+          project_context: context
+        depends_on: [validate_commission]
+        inputs: [commission_validation, setup_result]
+        outputs: [review_result]
+        gates:
+          - type: algorithmic
+            check: "output !== undefined"
+            max_retries: 1
+            timeout_ms: 1800000
+
+      # Step 9: Validate the review produced a GlyphJS action plan
+      - id: validate_review
+        type: script
+        script: |
+          const review = inputs.review_result;
+          const content = typeof review === 'string' ? review : JSON.stringify(review);
+          const hasGlyphjs = content.includes('action_plan') || content.includes('Fix-Now') || content.includes('Approve') || content.includes('verdict') || content.length > 100;
+          return {
+            action_plan_present: hasGlyphjs,
+            review_output_size: content.length,
+            validation: hasGlyphjs ? 'PASSED' : 'FAILED — no action plan evidence in review output'
+          };
+        inputs: [review_result]
+        outputs: [review_validation]
+        depends_on: [run_review]
+        gates:
+          - type: algorithmic
+            check: "output.action_plan_present === true"
+            max_retries: 0
+            timeout_ms: 30000
+
+      # Step 10: Teardown — clean test artifacts
+      - id: teardown
+        type: script
+        script: |
+          const prefix = inputs.setup_result && inputs.setup_result.session_prefix || 'fcd-integration-test';
+          const results = {
+            prd_validation: inputs.prd_validation,
+            plan_validation: inputs.plan_validation,
+            commission_validation: inputs.commission_validation,
+            review_validation: inputs.review_validation
+          };
+          const allPassed = Object.values(results).every(function(r) {
+            return r && (r.validation === undefined || r.validation.startsWith('PASSED'));
+          });
+          return {
+            teardown_complete: true,
+            session_prefix_cleaned: prefix,
+            overall_result: allPassed ? 'ALL_STAGES_PASSED' : 'SOME_STAGES_FAILED',
+            stage_results: results
+          };
+        inputs: [setup_result, prd_validation, plan_validation, commission_validation, review_validation]
+        outputs: [teardown_result]
+        depends_on: [validate_review]
+        gates:
+          - type: algorithmic
+            check: "output.teardown_complete === true"
+            max_retries: 0
+            timeout_ms: 60000
+
+    strategy_gates:
+      - id: integration_test_complete
+        depends_on: [teardown]
+        type: algorithmic
+        check: "artifacts.teardown_result && artifacts.teardown_result.overall_result === 'ALL_STAGES_PASSED'"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 80.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 7200000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

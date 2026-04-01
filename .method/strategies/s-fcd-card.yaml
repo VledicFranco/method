@@ -1,0 +1,126 @@
+strategy:
+  id: s-fcd-card
+  name: "FCD Card Creation"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: component_description
+        type: string
+      - name: domain_name
+        type: string
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep]
+
+  dag:
+    nodes:
+      # Phase 1: Analyze the component and its responsibilities
+      - id: analyze_component
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Analyze the component to create an FCD card for. Identify: its domain, responsibilities, dependencies, consumers, and any existing related cards or ports."
+        capabilities: [read_only]
+        inputs: [component_description, domain_name, project_context]
+        outputs: [component_analysis]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 120000
+
+      # Phase 2: Design the interface for the component
+      - id: design_interface
+        type: methodology
+        methodology: P2-SD
+        method_hint: M6-ARFN
+        prompt: "Design the interface for this component: define input/output ports, type contracts, error states, and cross-domain boundaries. Follow FCA port discipline: no transport deps, typed interfaces only."
+        capabilities: [read_only]
+        inputs: [component_analysis]
+        outputs: [interface_design]
+        depends_on: [analyze_component]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 150"
+            max_retries: 2
+            timeout_ms: 150000
+
+      # Phase 3: Write the FCD card document
+      - id: write_card
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Write the FCD card document. Required sections: component identity, domain, responsibilities, ports (inputs and outputs with types), consumers, dependencies, and freeze status."
+        capabilities: [write]
+        inputs: [component_analysis, interface_design]
+        outputs: [card_draft]
+        depends_on: [design_interface]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 200"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 4: Validate the card for completeness
+      - id: validate_card
+        type: script
+        script: |
+          const card = inputs.card_draft;
+          const content = typeof card === 'string' ? card : (card.result || JSON.stringify(card));
+          const errors = [];
+          if (!content.includes('component') && !content.includes('Component')) errors.push('Missing component identity');
+          if (!content.includes('domain') && !content.includes('Domain')) errors.push('Missing domain field');
+          if (!content.includes('port') && !content.includes('Port') && !content.includes('input') && !content.includes('output')) errors.push('Missing port definitions');
+          if (!content.includes('responsibilit')) errors.push('Missing responsibilities section');
+          const valid = errors.length === 0;
+          const word_count = content.split(/\s+/).length;
+          return {
+            valid,
+            errors,
+            word_count,
+            completeness_check: valid ? 'PASSED' : 'FAILED: ' + errors.join(', ')
+          };
+        inputs: [card_draft]
+        outputs: [validation_result]
+        depends_on: [write_card]
+
+      # Phase 5: Commit the card to the registry
+      - id: commit_card
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Commit the validated FCD card. Place it in the appropriate location, update any relevant index files, and produce a commit summary with file path and card identity."
+        capabilities: [write]
+        inputs: [card_draft, validation_result]
+        outputs: [commit_result]
+        depends_on: [validate_card]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: card_committed
+        depends_on: [commit_card]
+        type: algorithmic
+        check: "artifacts.validation_result && artifacts.validation_result.valid === true && artifacts.commit_result !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 8.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 300000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

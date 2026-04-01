@@ -1,0 +1,232 @@
+strategy:
+  id: s-fcd-review
+  name: "FCD Review Pipeline"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+    - type: git_commit
+      branch_pattern: "feat/*"
+
+  context:
+    inputs:
+      - name: pr_reference
+        type: string
+        default: ""
+      - name: branch_name
+        type: string
+        default: ""
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+      - name: trigger_event
+        type: object
+        default: {}
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep]
+
+  dag:
+    nodes:
+      # Phase 0: Load the PR / branch diff context
+      - id: load_pr
+        type: script
+        script: |
+          const event = inputs.trigger_event || {};
+          const branch = inputs.branch_name || event.branch || '';
+          const prRef = inputs.pr_reference || '';
+          return {
+            branch: branch,
+            pr_reference: prRef,
+            context: inputs.project_context,
+            trigger_type: branch ? 'git_commit' : 'manual'
+          };
+        inputs: [trigger_event, pr_reference, branch_name, project_context]
+        outputs: [pr_context]
+
+      # --- PARALLEL ADVISOR LAYER (all depend on load_pr only) ---
+
+      # Advisor 1: Architecture compliance
+      - id: advisor_architecture
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for architecture compliance. Check: FCA layer violations, domain boundary crossings, import direction violations, and architectural drift from the project's stated design. Produce a structured findings report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_architecture]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Advisor 2: Security review
+      - id: advisor_security
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for security concerns. Check: input validation, authentication/authorization changes, secret handling, injection risks, and unsafe deserialization. Produce a structured security findings report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_security]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Advisor 3: Testing adequacy
+      - id: advisor_testing
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for testing adequacy. Check: test coverage for new code, edge cases not tested, missing error path tests, and co-location compliance (tests must live with domain code). Produce a structured testing report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_testing]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Advisor 4: Performance analysis
+      - id: advisor_performance
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for performance concerns. Check: algorithmic complexity regressions, unnecessary synchronous blocking, memory leaks, N+1 query patterns, and hot path changes. Produce a structured performance report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_performance]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Advisor 5: Correctness analysis
+      - id: advisor_correctness
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for correctness. Check: logic errors, type unsoundness, null/undefined handling, error propagation correctness, and contract violations against declared interfaces. Produce a structured correctness report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_correctness]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # Advisor 6: FCA compliance
+      - id: advisor_fca_compliance
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PR/branch changes for Fractal Component Architecture compliance. Check: domain co-location (tests, config, types live with domain), port discipline (no direct cross-domain imports, interfaces through ports), and boundary enforcement. Produce a structured FCA compliance report."
+        capabilities: [read_only]
+        inputs: [pr_context]
+        outputs: [report_fca_compliance]
+        depends_on: [load_pr]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 300000
+
+      # --- SYNTHESIZER LAYER (all depend on all 6 advisors) ---
+
+      # Synthesizer 1: Synthesize all findings into a unified list
+      - id: synthesize_findings
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Synthesize all 6 advisor reports into a unified findings list. Deduplicate overlapping findings, group by domain, and assign a preliminary severity (Fix-Now, Fix-Soon, Suggestion) to each finding."
+        capabilities: [read_only]
+        inputs: [report_architecture, report_security, report_testing, report_performance, report_correctness, report_fca_compliance]
+        outputs: [unified_findings]
+        depends_on: [advisor_architecture, advisor_security, advisor_testing, advisor_performance, advisor_correctness, advisor_fca_compliance]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Synthesizer 2: Rank issues by severity and impact
+      - id: rank_issues
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Rank all findings by severity and business impact. Produce an ordered list: Fix-Now items first (blocking), Fix-Soon second (important but non-blocking), Suggestions last. Include rationale for each severity classification."
+        capabilities: [read_only]
+        inputs: [unified_findings]
+        outputs: [ranked_issues]
+        depends_on: [synthesize_findings]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 50"
+            max_retries: 1
+            timeout_ms: 120000
+
+      # Synthesizer 3: Write the action plan
+      - id: write_action_plan
+        type: methodology
+        methodology: P2-SD
+        method_hint: M1-IMPL
+        prompt: "Write the review action plan as a GlyphJS markdown document. Structure: Executive Summary, Fix-Now items (with specific file/line references), Fix-Soon items, Suggestions, and overall review verdict (Approve / Request Changes). Save to review output."
+        capabilities: [write]
+        inputs: [ranked_issues, unified_findings]
+        outputs: [action_plan]
+        depends_on: [rank_issues]
+        gates:
+          - type: human_approval
+            check: "output.result !== undefined && output.result.length > 200"
+            max_retries: 1
+            timeout_ms: 7200000
+
+      # Synthesizer 4: Classify severity distribution
+      - id: classify_severity
+        type: script
+        script: |
+          const plan = inputs.action_plan;
+          const content = typeof plan === 'string' ? plan : (plan.result || JSON.stringify(plan));
+          const fixNowCount = (content.match(/Fix-Now/gi) || []).length;
+          const fixSoonCount = (content.match(/Fix-Soon/gi) || []).length;
+          const suggestionCount = (content.match(/Suggestion/gi) || []).length;
+          const verdict = fixNowCount > 0 ? 'REQUEST_CHANGES' : (fixSoonCount > 0 ? 'APPROVE_WITH_COMMENTS' : 'APPROVE');
+          return {
+            fix_now_count: fixNowCount,
+            fix_soon_count: fixSoonCount,
+            suggestion_count: suggestionCount,
+            verdict: verdict,
+            has_blockers: fixNowCount > 0
+          };
+        inputs: [action_plan]
+        outputs: [severity_classification]
+        depends_on: [write_action_plan]
+
+    strategy_gates:
+      - id: review_complete
+        depends_on: [classify_severity]
+        type: algorithmic
+        check: "artifacts.action_plan !== undefined && artifacts.severity_classification !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 30.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 900000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

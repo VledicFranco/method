@@ -1,0 +1,159 @@
+strategy:
+  id: s-fcd-design
+  name: "FCD PRD Design"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: feature_request
+        type: string
+      - name: project_context
+        type: string
+        default: "pv-method: TypeScript monorepo, methodology runtime, bridge agent server"
+      - name: session_id
+        type: string
+        default: ""
+
+  capabilities:
+    read_only: [Read, Glob, Grep]
+    write: [Read, Write, Edit, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Phase 1: Gather requirements from the feature request
+      - id: gather_requirements
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Gather and clarify requirements from the feature request. Extract: functional requirements, non-functional requirements, constraints, out-of-scope items, and success criteria."
+        capabilities: [read_only]
+        inputs: [feature_request, project_context]
+        outputs: [requirements]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 120000
+
+      # Phase 2: Analyze stakeholders and impacted domains
+      - id: analyze_stakeholders
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-COUNCIL
+        prompt: "Analyze stakeholders and impacted domains. Identify: who benefits from this feature, which domains are affected, what existing contracts may change, and potential conflicts between stakeholder needs."
+        capabilities: [read_only]
+        inputs: [requirements, project_context]
+        outputs: [stakeholder_analysis]
+        depends_on: [gather_requirements]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 3: Design the surfaces required by this feature
+      - id: design_surfaces
+        type: methodology
+        methodology: P2-SD
+        method_hint: M6-ARFN
+        prompt: "Design the interface surfaces required for this feature. For each domain boundary identified, specify: port contracts, type definitions, and dependencies. Ensure FCA layer compliance."
+        capabilities: [read_only]
+        inputs: [requirements, stakeholder_analysis]
+        outputs: [surface_designs]
+        depends_on: [analyze_stakeholders]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 150"
+            max_retries: 2
+            timeout_ms: 180000
+
+      # Phase 4: Write the PRD — requires human approval
+      - id: write_prd
+        type: methodology
+        methodology: P2-SD
+        method_hint: M7-PRDS
+        prompt: "Write the full PRD document. Required sections: Summary, Motivation, Requirements (functional + non-functional), Surface Contracts, Implementation Approach, Out of Scope, Acceptance Criteria. Write to .method/sessions/ as prd.md."
+        capabilities: [write]
+        inputs: [requirements, stakeholder_analysis, surface_designs, session_id]
+        outputs: [prd_document]
+        depends_on: [design_surfaces]
+        gates:
+          - type: human_approval
+            check: "output.result !== undefined && output.result.length > 300"
+            max_retries: 2
+            timeout_ms: 7200000
+
+      # Phase 5: Review the PRD for quality
+      - id: review_prd
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: "Review the PRD for: completeness, internal consistency, feasibility, alignment with project architecture, and gap analysis. Produce a structured review with any required changes."
+        capabilities: [read_only]
+        inputs: [prd_document]
+        outputs: [prd_review]
+        depends_on: [write_prd]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Phase 6: Validate the PRD against acceptance criteria
+      - id: validate_prd
+        type: script
+        script: |
+          const prd = inputs.prd_document;
+          const review = inputs.prd_review;
+          const content = typeof prd === 'string' ? prd : (prd.result || JSON.stringify(prd));
+          const errors = [];
+          if (!content.includes('Requirements') && !content.includes('requirements')) errors.push('Missing requirements section');
+          if (!content.includes('Acceptance') && !content.includes('acceptance')) errors.push('Missing acceptance criteria');
+          if (!content.includes('Motivation') && !content.includes('motivation') && !content.includes('Summary') && !content.includes('summary')) errors.push('Missing motivation or summary');
+          if (content.length < 500) errors.push('PRD too short (< 500 chars) — likely incomplete');
+          const valid = errors.length === 0;
+          return {
+            valid,
+            errors,
+            prd_length: content.length,
+            validation: valid ? 'PASSED' : 'FAILED: ' + errors.join(', ')
+          };
+        inputs: [prd_document, prd_review]
+        outputs: [prd_validation]
+        depends_on: [review_prd]
+
+      # Phase 7: Write the decision record
+      - id: write_decision_record
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "Write the decision record for this PRD design session. Document: key design decisions made, alternatives considered and rejected, rationale for chosen approach, and risks accepted."
+        capabilities: [write]
+        inputs: [prd_document, prd_review, prd_validation]
+        outputs: [decision_record]
+        depends_on: [validate_prd]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined && output.result.length > 100"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: design_complete
+        depends_on: [write_decision_record]
+        type: algorithmic
+        check: "artifacts.prd_validation && artifacts.prd_validation.valid === true && artifacts.decision_record !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 20.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 900000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge
