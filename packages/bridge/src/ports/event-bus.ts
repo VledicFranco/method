@@ -129,6 +129,37 @@ export interface EventConnector extends EventSink {
   health(): ConnectorHealth;
 }
 
+// ── PRD-044: Strategy gate event payload types ──────────────────
+
+/**
+ * Payload shape for domain='strategy', type='gate.awaiting_approval'.
+ * Emitted by bridge/strategies when a human_approval gate fires and the
+ * executor suspends waiting for a human decision.
+ */
+export interface StrategyGateAwaitingApprovalPayload {
+  strategy_id: string;
+  execution_id: string;
+  gate_id: string;
+  node_id: string;
+  /** GlyphJS markdown to display in the dashboard (surface contract, PRD excerpt, etc.) */
+  artifact_markdown: string;
+  artifact_type: 'surface_record' | 'prd' | 'plan' | 'review_report' | 'custom';
+  /** Milliseconds before oversight escalation fires. */
+  timeout_ms: number;
+}
+
+/**
+ * Payload shape for domain='strategy', type='gate.approval_response'.
+ * Sent by the frontend dashboard to resume a suspended human_approval gate.
+ */
+export interface StrategyGateApprovalResponsePayload {
+  execution_id: string;
+  gate_id: string;
+  decision: 'approved' | 'rejected' | 'changes_requested';
+  /** Passed as retry context when decision is rejected or changes_requested. */
+  feedback?: string;
+}
+
 // ── Port interface ──────────────────────────────────────────────
 
 /**

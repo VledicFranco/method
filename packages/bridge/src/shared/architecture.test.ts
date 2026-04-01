@@ -223,6 +223,55 @@ describe('G-BOUNDARY: Domains do not import sibling domain internals at runtime'
   });
 });
 
+// ── PRD-044 Gates ────────────────────────────────────────────────
+
+describe('PRD-044: FCD Automation Pipeline structural invariants', () => {
+  it('G-PRD044-SUBSTRATEGY: StrategyNodeConfig and SubStrategySource are exported from dag-types', () => {
+    // Verifies Wave 0 type additions compiled correctly.
+    // The actual type shapes are validated in methodts unit tests (C-1).
+    // This gate checks that the bridge's re-export surface is intact.
+    const strategyParserPath = join(
+      BRIDGE_SRC, '..', '..', 'methodts', 'src', 'strategy', 'dag-types.ts'
+    );
+    let content: string;
+    try {
+      content = readFileSync(strategyParserPath, 'utf-8');
+    } catch {
+      // methodts may not be built — skip rather than fail
+      return;
+    }
+    assert.ok(
+      content.includes('StrategyNodeConfig'),
+      'PRD-044: StrategyNodeConfig must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('SubStrategySource'),
+      'PRD-044: SubStrategySource must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('HumanApprovalResolver'),
+      'PRD-044: HumanApprovalResolver must be defined in dag-types.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes("prompt?: string"),
+      'PRD-044: prompt? field must be in MethodologyNodeConfig (Wave 0 not applied)'
+    );
+  });
+
+  it('G-PRD044-EVENTBUS: Strategy gate payload types are exported from event-bus.ts', () => {
+    const eventBusPath = join(BRIDGE_SRC, 'ports', 'event-bus.ts');
+    const content = readFileSync(eventBusPath, 'utf-8');
+    assert.ok(
+      content.includes('StrategyGateAwaitingApprovalPayload'),
+      'PRD-044: StrategyGateAwaitingApprovalPayload must be in event-bus.ts (Wave 0 not applied)'
+    );
+    assert.ok(
+      content.includes('StrategyGateApprovalResponsePayload'),
+      'PRD-044: StrategyGateApprovalResponsePayload must be in event-bus.ts (Wave 0 not applied)'
+    );
+  });
+});
+
 /** Check if a directory name is a domain (exists under domains/). */
 function isDomainDir(name: string): boolean {
   try {

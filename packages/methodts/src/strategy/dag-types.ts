@@ -58,6 +58,9 @@ export interface MethodologyNodeConfig {
   readonly type: "methodology";
   readonly methodology: string;
   readonly method_hint?: string;
+  /** PRD-044: Optional prompt injected verbatim before the methodology context in the
+   *  agent's prompt. Used by fcd-* strategies to encode phase-level instructions. */
+  readonly prompt?: string;
   readonly capabilities: readonly string[];
 }
 
@@ -67,15 +70,81 @@ export interface ScriptNodeConfig {
   readonly script: string;
 }
 
+/** PRD-044: Configuration for a strategy sub-invocation node.
+ *  Invokes another strategy by ID as a synchronous sub-process and passes its
+ *  final artifacts to dependent nodes as this node's output. */
+export interface StrategyNodeConfig {
+  readonly type: "strategy";
+  /** ID of the strategy to invoke (must exist in the strategy source). */
+  readonly strategy_id: string;
+  /** Maps this node's declared input names to sub-strategy context_input names.
+   *  Key: input name as declared in this node's `inputs:` list.
+   *  Value: context_input name in the sub-strategy's context.inputs. */
+  readonly input_map?: Record<string, string>;
+  /** Wait for sub-strategy completion before continuing. Default: true. */
+  readonly await?: boolean;
+}
+
+/** PRD-044: Result returned by a completed strategy sub-invocation node. */
+export interface SubStrategyResult {
+  readonly strategy_id: string;
+  readonly status: "completed" | "failed";
+  readonly artifacts: ArtifactBundle;
+  readonly cost_usd: number;
+  readonly duration_ms: number;
+}
+
+/** PRD-044: Port for looking up a sub-strategy DAG by ID.
+ *  Injected into DagStrategyExecutor at construction time.
+ *  The bridge wires this with its .method/strategies/ YAML directory loader. */
+export interface SubStrategySource {
+  getStrategy(id: string): Promise<StrategyDAG | null>;
+}
+
+/** PRD-044: Context provided to a HumanApprovalResolver when a human_approval gate fires. */
+export interface HumanApprovalContext {
+  readonly strategy_id: string;
+  readonly execution_id: string;
+  readonly gate_id: string;
+  readonly node_id: string;
+  /** GlyphJS markdown content to display to the human (surface contract, PRD excerpt, etc.). */
+  readonly artifact_markdown?: string;
+  readonly artifact_type?: 'surface_record' | 'prd' | 'plan' | 'review_report' | 'custom';
+  /** Milliseconds to wait before triggering oversight escalation. */
+  readonly timeout_ms: number;
+}
+
+/** PRD-044: Decision returned by a HumanApprovalResolver. */
+export interface HumanApprovalDecision {
+  readonly approved: boolean;
+  /** Provided when approved:false — passed as retry context to the node. */
+  readonly feedback?: string;
+}
+
+/** PRD-044: Port for resolving human_approval gates.
+ *  Injected into DagStrategyExecutor at construction time.
+ *  If null, human_approval gates immediately return passed:false (backward-compat stub).
+ *  The bridge wires a concrete BridgeHumanApprovalResolver that emits events and
+ *  awaits WebSocket approval_response events. methodts never knows about transport. */
+export interface HumanApprovalResolver {
+  requestApproval(ctx: HumanApprovalContext): Promise<HumanApprovalDecision>;
+}
+
+/** Union of all node configuration types. */
+export type NodeConfig =
+  | MethodologyNodeConfig
+  | ScriptNodeConfig
+  | StrategyNodeConfig;
+
 /** A node in the strategy DAG. */
 export interface StrategyNode {
   readonly id: string;
-  readonly type: "methodology" | "script";
+  readonly type: "methodology" | "script" | "strategy";
   readonly depends_on: readonly string[];
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
   readonly gates: readonly DagGateConfig[];
-  readonly config: MethodologyNodeConfig | ScriptNodeConfig;
+  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig;
   readonly refresh_context?: boolean;
 }
 
@@ -130,10 +199,19 @@ export interface StrategyYaml {
     dag: {
       nodes: Array<{
         id: string;
-        type: "methodology" | "script";
+        type: "methodology" | "script" | "strategy";
+        // methodology node fields
         methodology?: string;
         method_hint?: string;
+        prompt?: string;
         capabilities?: string[];
+        // script node fields
+        script?: string;
+        // strategy node fields (PRD-044)
+        strategy_id?: string;
+        input_map?: Record<string, string>;
+        await?: boolean;
+        // common fields
         inputs?: string[];
         outputs?: string[];
         depends_on?: string[];
@@ -144,7 +222,6 @@ export interface StrategyYaml {
           max_retries?: number;
           timeout_ms?: number;
         }>;
-        script?: string;
       }>;
       strategy_gates?: Array<{
         id: string;
