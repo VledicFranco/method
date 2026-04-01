@@ -4,6 +4,7 @@
 // subscriptions. Replaces HTTP polling for live operational data.
 
 import type { WebSocket } from 'ws';
+import type { EventBus, BridgeEventInput } from '../../ports/event-bus.js';
 
 // ── Wire protocol types ──────────────────────────────────────
 
@@ -18,7 +19,8 @@ export type ServerMessage =
   | { type: 'unsubscribed'; topic: string }
   | { type: 'data'; topic: string; payload: unknown; cursor: string }
   | { type: 'error'; topic: string; message: string; code: string }
-  | { type: 'pong' };
+  | { type: 'pong' }
+  | { type: 'event_ack' };
 
 // ── Valid topics ─────────────────────────────────────────────
 
@@ -68,7 +70,10 @@ export class WsHub {
   private replayProviders = new Map<string, ReplayProvider>();
   private nextClientId = 1;
 
-  constructor(private heartbeatMs: number = 30_000) {
+  constructor(
+    private heartbeatMs: number = 30_000,
+    private eventBus?: EventBus | null,
+  ) {
     this.startHeartbeat();
   }
 
@@ -214,6 +219,48 @@ export class WsHub {
         {
           const client = this.clients.get(clientId);
           if (client) this.send(client, { type: 'pong' });
+        }
+        break;
+      case 'event':
+        {
+          const client = this.clients.get(clientId);
+          if (!client) break;
+
+          if (!this.eventBus) {
+            this.send(client, { type: 'error', topic: '', message: 'EventBus not available', code: 'NO_EVENT_BUS' });
+            break;
+          }
+
+          if (typeof msg.domain !== 'string' || msg.domain.length === 0) {
+            this.send(client, { type: 'error', topic: '', message: 'Missing or empty domain', code: 'INVALID_EVENT' });
+            break;
+          }
+
+          if (typeof msg.event_type !== 'string' || msg.event_type.length === 0) {
+            this.send(client, { type: 'error', topic: '', message: 'Missing or empty event_type', code: 'INVALID_EVENT' });
+            break;
+          }
+
+          try {
+            const eventInput: BridgeEventInput = {
+              version: 1,
+              domain: msg.domain,
+              type: msg.event_type,
+              severity: 'info',
+              payload: msg.payload,
+              source: `ws-client/${clientId}`,
+              correlationId: msg.payload.execution_id as string | undefined,
+            };
+            this.eventBus.emit(eventInput);
+            this.send(client, { type: 'event_ack' });
+          } catch (err) {
+            this.send(client, {
+              type: 'error',
+              topic: '',
+              message: `Event emit failed: ${(err as Error).message}`,
+              code: 'EVENT_EMIT_FAILED',
+            });
+          }
         }
         break;
       default:
