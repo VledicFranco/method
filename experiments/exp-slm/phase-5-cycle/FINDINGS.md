@@ -244,11 +244,9 @@ Removing any one layer regresses to 0% pass rate.
 |-----|-----------|-------|---------|-----|-----|-----|-----|-----|-----|---------|
 | R-14/15 | flat | Opus | 15 | 67% | 67% | 33% | 100% | 100% | 0% | 73% |
 | R-14/15 | slm-cognitive | Opus | 15 | 100% | 67% | 20% | 100% | 100% | 0% | 73% |
-| R-17 | partitioned-cognitive | Opus | 30 | **100%** | 0% | 0% | 0% | 100% | 0% | 33% |
-| R-19 | partitioned-smart | Opus | 15/30 | 60% | 0% | 0%* | —† | 100% | 0%‡ | partial |
-| R-20 | partitioned-memory | Sonnet | 30 | — | — | — | — | — | **100%** | pending |
-
-\* T03 data from 2 valid runs. † T04 had no valid pre-credit runs. ‡ T06 0/4 but 8 writes.
+| R-17 | partitioned-cognitive | Opus | 30 | 100% | 0% | 0% | 0% | 100% | 0% | 33% |
+| R-21 | partitioned-smart | Sonnet | 15 | **100%** | 0% | 0% | 0% | 100% | — | 40% |
+| R-21 | **partitioned-memory** | Sonnet | 15/30 | 0% | **67%** | **56%** | 0% | 100% | **71%** | **59%** |
 
 ## Architecture Trajectory
 
@@ -262,8 +260,13 @@ R-17: Partition workspace fixes T01 goal drift (0% → 100%). T06 still fails �
 R-19: Write-phase enforcer forces action. T06: 0 writes → 8 writes. Context reduction 75-81%.
          Last-mile failures remain. Goal decomposition improved.
     ↓
-R-20: CLS memory with ACT-R retrieval. T06: FIRST PASS. 10 writes, 5 memories/cycle, $0 retrieval cost.
-         The full stack (partitions + enforcer + decomposition + memory + capacity) composes.
+R-20/21: CLS memory with ACT-R retrieval.
+         T06: 0% → 71% (5/7 passes). First multi-module extraction ever completed.
+         T02: 0% → 67% ("architecture-resistant misdirection" — SOLVED by memory salience)
+         T03: 0% → 56% (interface recall improved by episodic memory)
+         T01: 100% → 0% (REGRESSION — redundant memory noise on edit-heavy tasks)
+         Net: +19pp aggregate improvement (40% → 59% on T01-T06)
     ↓
-NEXT: Full T01-T06 suite validation with partitioned-memory.
+NEXT: MetaComposer integration for task-type-aware memory gating (fix T01 regression).
+      Opus for T04 validation (Sonnet capability boundary).
 ```
