@@ -27,8 +27,8 @@ training:
   seed: 42
 
 data:
-  train_path: "../exp-slm-composition/phase-1-schema-grammar/corpus/train.jsonl"
-  holdout_path: "../exp-slm-composition/phase-1-schema-grammar/corpus/holdout.jsonl"
+  train_path: "../../exp-slm-composition/phase-1-schema-grammar/corpus/train.jsonl"
+  holdout_path: "../../exp-slm-composition/phase-1-schema-grammar/corpus/holdout.jsonl"
 
 output:
-  dir: "../exp-slm-composition/phase-1-schema-grammar/models/schema-grammar-qwen25-05b-lora"
+  dir: "../../exp-slm-composition/phase-1-schema-grammar/models/schema-grammar-qwen25-05b-lora"
