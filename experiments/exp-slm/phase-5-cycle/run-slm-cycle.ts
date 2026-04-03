@@ -1302,16 +1302,25 @@ async function runPartitionedCognitiveGoal(
     confidenceThreshold: 0.3,
     stagnationThreshold: config.monitor.stagnationThreshold,
   });
-  // PRD 045: Evaluator with goal-state monitoring enabled
+  // PRD 045: Evaluator with LLM-based goal-state monitoring
+  const evalProvider = anthropicProvider({
+    model: LLM_MODEL,
+    maxOutputTokens: 256,
+  });
+  const evalAdapter = createProviderAdapter(evalProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 256 } },
+  });
   const evaluator = createEvaluator({
     goalRepresentation,
     maxCycles: MAX_CYCLES,
+    provider: evalAdapter,
   });
   const reasonerActor = createReasonerActor(
     adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
   );
 
   let totalTokens = 0;
+  let evaluatorTokensTotal = 0;
   let providerCalls = 0;
   let monitorInterventions = 0;
   const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
@@ -1407,11 +1416,16 @@ async function runPartitionedCognitiveGoal(
         { target: moduleId('evaluator'), timestamp: Date.now(), evaluationHorizon: 'trajectory' },
       );
       evaluatorState = evalResult.state;
+      evaluatorTokensTotal += evalResult.output.evaluatorTokens ?? 0;
 
       // Log goal-state discrepancy
       if (evalResult.output.discrepancy) {
         const d = evalResult.output.discrepancy;
-        console.log(`    [goal-state c${cycle + 1}] discrepancy=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} satisfied=${d.satisfied}`);
+        const llmTag = d.basis.startsWith('llm-') ? ' [LLM]' : ' [rule]';
+        console.log(`    [goal-state c${cycle + 1}]${llmTag} discrepancy=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} satisfied=${d.satisfied}`);
+        if (d.basis.startsWith('llm-')) {
+          console.log(`      ${d.basis}`);
+        }
       }
 
       // PRD 045: Check TerminateSignal — break cycle loop if present
@@ -1616,6 +1630,7 @@ async function runPartitionedCognitiveGoal(
       if (actionName === 'done') break;
     }
 
+    console.log(`    [evaluator tokens] ${evaluatorTokensTotal}`);
     const validation = task.validate(vfs.files);
     return {
       condition: 'partitioned-cognitive-goal',
@@ -1623,7 +1638,7 @@ async function runPartitionedCognitiveGoal(
       run: runNumber,
       success: validation.success,
       reason: validation.reason,
-      tokensUsed: totalTokens,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
       providerCalls,
       durationMs: Date.now() - startTime,
       toolCalls: allToolCalls,
@@ -1639,7 +1654,7 @@ async function runPartitionedCognitiveGoal(
       run: runNumber,
       success: false,
       reason: `Error: ${err instanceof Error ? err.message : String(err)}`,
-      tokensUsed: totalTokens,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
       providerCalls,
       durationMs: Date.now() - startTime,
       toolCalls: allToolCalls,

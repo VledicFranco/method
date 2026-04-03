@@ -53,6 +53,8 @@ export {
   ASPIRATION_CEILING,
 } from './discrepancy-function.js';
 
+export { buildLLMGoalDiscrepancy } from './llm-discrepancy.js';
+
 // ── Workspace types ──────────────────────────────────────────────
 
 export type {

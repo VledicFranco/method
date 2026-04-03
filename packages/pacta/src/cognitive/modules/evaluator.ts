@@ -83,6 +83,7 @@ import {
   updateAspiration,
   DEFAULT_ASPIRATION,
 } from '../algebra/discrepancy-function.js';
+import { buildLLMGoalDiscrepancy } from '../algebra/llm-discrepancy.js';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -97,6 +98,10 @@ export interface EvaluatorConfig {
   goalRepresentation?: import('../algebra/goal-types.js').GoalRepresentation;
   /** PRD 045: Maximum cycles for budget-exhausted detection. */
   maxCycles?: number;
+  /** PRD 045+: Optional LLM provider for frontier-model discrepancy assessment.
+   *  When present, replaces rule-based heuristic with LLM-based goal-state comparison.
+   *  Falls back to rule-based on LLM error. */
+  provider?: import('../algebra/provider-adapter.js').ProviderAdapter;
 }
 
 /** Combined input: workspace snapshot + monitoring signals. */
@@ -115,6 +120,8 @@ export interface EvaluatorOutput {
   discrepancy?: import('../algebra/goal-types.js').GoalDiscrepancy;
   /** PRD 045: Termination signal (present when termination conditions met). */
   terminateSignal?: import('../algebra/goal-types.js').TerminateSignal;
+  /** Tokens used by LLM evaluator this step (0 when using rule-based). */
+  evaluatorTokens?: number;
 }
 
 /** State: progress history and diminishing returns detection. */
@@ -155,6 +162,7 @@ export function createEvaluator(
   const id = moduleId(config?.id ?? 'evaluator');
   const goalConfig = config?.goalRepresentation;
   const maxCycles = config?.maxCycles ?? 15;
+  const provider = config?.provider;
 
   return {
     id,
@@ -186,21 +194,42 @@ export function createEvaluator(
       let terminateResult: import('../algebra/goal-types.js').TerminateSignal | undefined;
       let newAspirationLevel = state.aspirationLevel;
       let newDiscrepancyHistory = state.discrepancyHistory ?? [];
+      let evaluatorTokens = 0;
 
       if (state.goal) {
         const previousDiscrepancy = newDiscrepancyHistory.length > 0
           ? newDiscrepancyHistory[newDiscrepancyHistory.length - 1]
           : undefined;
         const aspiration = state.aspirationLevel ?? DEFAULT_ASPIRATION;
+        const cycleNum = state.cycleCount + 1;
 
-        // Compute goal-state discrepancy
-        discrepancyResult = buildGoalDiscrepancy(
-          input.workspace,
-          state.goal,
-          previousDiscrepancy,
-          aspiration,
-          id,
-        );
+        // Try LLM-based discrepancy first, fall back to rule-based
+        if (provider) {
+          const llmResult = await buildLLMGoalDiscrepancy(
+            provider,
+            input.workspace,
+            state.goal,
+            cycleNum,
+            maxCycles,
+            previousDiscrepancy,
+            id,
+          );
+          if (llmResult) {
+            discrepancyResult = llmResult.discrepancy;
+            evaluatorTokens = llmResult.tokensUsed;
+          }
+        }
+
+        // Fallback: rule-based heuristic
+        if (!discrepancyResult) {
+          discrepancyResult = buildGoalDiscrepancy(
+            input.workspace,
+            state.goal,
+            previousDiscrepancy,
+            aspiration,
+            id,
+          );
+        }
 
         // Update satisficing dynamics
         newAspirationLevel = updateAspiration(aspiration, discrepancyResult.rate);
@@ -208,7 +237,6 @@ export function createEvaluator(
 
         // Check termination conditions
         const confidenceGate = newAspirationLevel < 0.80 ? 0.85 : 0.70;
-        const cycleNum = state.cycleCount + 1;
 
         if (discrepancyResult.satisfied && discrepancyResult.confidence > confidenceGate) {
           terminateResult = {
@@ -257,6 +285,7 @@ export function createEvaluator(
           diminishingReturns,
           discrepancy: discrepancyResult,
           terminateSignal: terminateResult,
+          evaluatorTokens,
         },
         state: newState,
         monitoring,
