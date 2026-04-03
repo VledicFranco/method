@@ -106,7 +106,13 @@ export type ModuleMonitoringSignal =
   | MonitorMonitoring
   | EvaluatorMonitoring
   | PlannerMonitoring
-  | ReflectorMonitoring;
+  | ReflectorMonitoring
+  | GoalDiscrepancy
+  | TerminateSignal;
+
+// Re-export goal-state types into the monitoring signal namespace (PRD 045)
+import type { GoalDiscrepancy, TerminateSignal } from './goal-types.js';
+export type { GoalDiscrepancy, TerminateSignal };
 
 /** Aggregated monitoring signals from all modules in a cycle. */
 export type AggregatedSignals = Map<ModuleId, MonitoringSignal>;

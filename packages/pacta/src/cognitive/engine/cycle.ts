@@ -131,6 +131,8 @@ export interface CycleResult {
   cycleNumber: number;
   phasesExecuted: string[];
   aborted?: { phase: string; reason: string };
+  /** PRD 045: Set when Evaluator emits TerminateSignal (goal-satisfied, goal-unreachable, or budget-exhausted). */
+  terminated?: import('../algebra/goal-types.js').TerminateSignal;
 }
 
 // ── Cycle Runner ─────────────────────────────────────────────────
@@ -506,21 +508,8 @@ export function createCognitiveCycle(
         // Capture monitor output for Actor wiring
         monitorOutput = monitorResult?.output as { restrictedActions?: string[]; forceReplan?: boolean } | undefined;
 
-        // Also run evaluator as part of monitoring
-        const evalSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-          ? buildModuleContext('evaluator', modules.evaluator, config.partitionSystem, config.moduleSelectors)
-          : workspace.snapshot();
-        const evaluatorInput = { workspace: evalSnapshot, signals };
-        const evaluatorControl = {
-          target: modules.evaluator.id,
-          timestamp: Date.now(),
-          evaluationHorizon: 'trajectory' as const,
-        };
-        await runModuleStep(
-          'evaluator', modules.evaluator, evaluatorInput,
-          evaluatorControl, 'MONITOR',
-        );
-        if (aborted) return { output: undefined, traces, signals, cycleNumber, phasesExecuted, aborted };
+        // NOTE: Evaluator now runs unconditionally in Phase 6a (EVALUATE).
+        // Previously it ran here only when Monitor intervened. PRD 045 changes this.
 
         // ── Phase 6: CONTROL ──────────────────────────────────────
         emitPhase('CONTROL');
@@ -567,6 +556,51 @@ export function createCognitiveCycle(
         if (!interventionNeeded) {
           consecutiveInterventions = 0;
         }
+      }
+
+      // ── Phase 6a: EVALUATE (UNCONDITIONAL — PRD 045) ──────────
+      // Runs every cycle, not gated by shouldIntervene. Computes goal-state
+      // discrepancy and may emit TerminateSignal. If terminated, skip ACT/LEARN.
+      let terminateSignal: import('../algebra/goal-types.js').TerminateSignal | undefined;
+
+      {
+        emitPhase('EVALUATE');
+        phasesExecuted.push('EVALUATE');
+
+        const evalSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
+          ? buildModuleContext('evaluator', modules.evaluator, config.partitionSystem, config.moduleSelectors)
+          : workspace.snapshot();
+        const evaluatorInput = { workspace: evalSnapshot, signals };
+        const evaluatorControl = {
+          target: modules.evaluator.id,
+          timestamp: Date.now(),
+          evaluationHorizon: 'trajectory' as const,
+        };
+        const evalResult = await runModuleStep(
+          'evaluator', modules.evaluator, evaluatorInput,
+          evaluatorControl, 'EVALUATE',
+        );
+        if (aborted) return { output: undefined, traces, signals, cycleNumber, phasesExecuted, aborted };
+
+        // Check for TerminateSignal in evaluator output
+        const evalOutput = evalResult?.output as { terminateSignal?: import('../algebra/goal-types.js').TerminateSignal } | undefined;
+        if (evalOutput?.terminateSignal) {
+          terminateSignal = evalOutput.terminateSignal;
+        }
+      }
+
+      // If Evaluator emitted TerminateSignal, skip ACT/LEARN and return
+      if (terminateSignal) {
+        const output = reasonResult?.output ?? observeResult?.output;
+        return {
+          output,
+          traces,
+          signals,
+          cycleNumber,
+          phasesExecuted,
+          aborted,
+          terminated: terminateSignal,
+        };
       }
 
       // ── Check cycle budget ────────────────────────────────────
