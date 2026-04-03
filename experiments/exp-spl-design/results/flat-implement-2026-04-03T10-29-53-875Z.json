@@ -1,0 +1,108 @@
+{
+  "condition": "flat-implement",
+  "designTokens": 2720,
+  "implTokens": 26183,
+  "totalTokens": 28903,
+  "cost_usd": 0.2009407,
+  "duration_ms": 133258,
+  "files": 18,
+  "filesByKind": [
+    {
+      "path": "hatch/src/types/index.ts",
+      "kind": "implementation"
+    },
+    {
+      "path": "hatch/src/ports/project-lookup.port.ts",
+      "kind": "port"
+    },
+    {
+      "path": "hatch/src/ports/notification.port.ts",
+      "kind": "port"
+    },
+    {
+      "path": "hatch/src/ports/storage/project-storage.port.ts",
+      "kind": "port"
+    },
+    {
+      "path": "hatch/src/ports/storage/task-storage.port.ts",
+      "kind": "port"
+    },
+    {
+      "path": "hatch/src/ports/storage/notification-storage.port.ts",
+      "kind": "port"
+    },
+    {
+      "path": "hatch/src/ports/index.ts",
+      "kind": "index"
+    },
+    {
+      "path": "hatch/src/domains/projects/project.service.ts",
+      "kind": "implementation"
+    },
+    {
+      "path": "hatch/src/domains/projects/project.service.test.ts",
+      "kind": "test"
+    },
+    {
+      "path": "hatch/src/domains/projects/index.ts",
+      "kind": "index"
+    },
+    {
+      "path": "hatch/src/domains/tasks/task.service.ts",
+      "kind": "implementation"
+    },
+    {
+      "path": "hatch/src/domains/tasks/task.service.test.ts",
+      "kind": "test"
+    },
+    {
+      "path": "hatch/src/domains/tasks/index.ts",
+      "kind": "index"
+    },
+    {
+      "path": "hatch/src/domains/notifications/notification.service.ts",
+      "kind": "implementation"
+    },
+    {
+      "path": "hatch/src/domains/notifications/notification.service.test.ts",
+      "kind": "test"
+    },
+    {
+      "path": "hatch/src/domains/notifications/index.ts",
+      "kind": "index"
+    },
+    {
+      "path": "hatch/src/domains/index.ts",
+      "kind": "index"
+    },
+    {
+      "path": "hatch/src/index.ts",
+      "kind": "implementation"
+    }
+  ],
+  "gateResults": [
+    {
+      "gate": "no-any-types",
+      "passed": true,
+      "detail": "10 files checked, no `any` types found"
+    },
+    {
+      "gate": "no-todos",
+      "passed": true,
+      "detail": "18 files checked, no TODOs/stubs found"
+    },
+    {
+      "gate": "port-substance",
+      "passed": true,
+      "detail": "5 port files have typed members"
+    },
+    {
+      "gate": "structure-complete",
+      "passed": true,
+      "detail": "All expected artifacts present: implementation"
+    }
+  ],
+  "gatePassRate": 1,
+  "allGatesPass": true,
+  "compositeScore": 0.94
+}

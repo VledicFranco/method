@@ -1,0 +1,35 @@
+experiment: exp-spl-design
+run_id: run5
+date: 2026-04-03
+agent: "Claude Opus 4.6 (1M context), method-3 session"
+config:
+  model: haiku (via claude --print)
+  provider: ClaudeHeadlessProvider
+  task: "Bridge — 10-domain implement (T-Large)"
+  conditions: [flat-implement-bridge, recursive-implement-bridge]
+  budget_usd: 5.0
+metrics:
+  flat_implement_bridge:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    tokens: 25288
+    cost_usd: 0.35
+    files: 10
+    files_by_kind: { implementation: 10 }
+  recursive_implement_bridge:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    tokens: 26838
+    cost_usd: 0.17
+    files: 28
+    files_by_kind: { port: 1, implementation: 16, index: 11 }
+    child_implementations: 0
+    note: "no child designs to recurse — flat design input has childDesigns=[]"
+verdict: inconclusive
+notes: >
+  Both conditions effectively ran flat — the implement algorithm's recursion depends on
+  design.childDesigns, which is only populated by recursive design. Since both used flat
+  design output (childDesigns=[]), the recursive implement had nothing to decompose into.
+  Despite this, recursive produced better structure (28 files with port/index separation
+  vs 10 raw implementation files). To truly test recursive implement, must feed it a
+  recursive design output with populated childDesigns.

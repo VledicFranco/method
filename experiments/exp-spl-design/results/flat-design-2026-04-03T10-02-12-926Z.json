@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1047,
+  "cost_usd": 0.010363399999999998,
+  "duration_ms": 9842,
+  "ports": 2,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 3,
+    "surfaceFirst": 3,
+    "overall": 3.7,
+    "rationale": "The design correctly identifies all three domains and cross-domain contracts, matching the reference structure exactly. However, the generated port specifications are incomplete—TaskStoragePort and ProjectStoragePort are mentioned in the requirement but missing from \"GENERATED PORT INTERFACES,\" and ProjectLookupPort is over-engineered with both `projectExists()` and `getProject()` instead of the minimal `exists(id)` in the reference. Documentation covers ProjectLookupPort and NotificationPort but leaves storage ports underdocumented, weakening clarity for implementers."
+  },
+  "compositeScore": 0.87
+}

@@ -1,0 +1,20 @@
+{
+  "condition": "flat-design-bridge",
+  "task": "bridge",
+  "tokens": 1912,
+  "cost_usd": 0.0266895,
+  "duration_ms": 15940,
+  "ports": 6,
+  "subComponents": 10,
+  "childDesigns": 0,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 5,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 5,
+    "rationale": "The design correctly identifies all 10 domains with accurate file counts and ownership semantics, defines six precisely-typed port interfaces that fully cover cross-domain coordination, and documents ownership/consumer relationships explicitly. The composition root is clearly described as the single wiring point, and the SURFACE_FIRST principle is enforced throughout via FCA rules prohibiting direct domain-to-domain imports."
+  },
+  "compositeScore": 1
+}

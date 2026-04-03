@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 2645,
+  "cost_usd": 0.0367106,
+  "duration_ms": 21994,
+  "ports": 5,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.4,
+    "rationale": "The design correctly identifies the three domains (projects, tasks, notifications) with proper cross-domain ports (ProjectLookupPort for lookup, NotificationPort for events) and abstracted storage ports. Documentation explicitly states owner/consumer relationships and purpose for each port. However, PORT_QUALITY is lowered because ProjectLookupPort includes redundant methods—`getProject()` and `projectExists()` both serve lookup, but callers can check null on the former, making the latter unnecessary. Additionally, ProjectStoragePort lacks the `delete()` operation present in the reference, creating inconsistent CRUD coverage across storage port interfaces. Ports are clearly the primary deliverable, driving composition."
+  },
+  "compositeScore": 0.9400000000000001
+}

@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1690,
+  "cost_usd": 0.03173685,
+  "duration_ms": 14256,
+  "ports": 2,
+  "subComponents": 0,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 4,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 5,
+    "overall": 3.8499999999999996,
+    "rationale": "The design correctly identifies three co-located domains with clear ownership and consumer relationships. However, ProjectLookupPort violates FCD minimalism by defining both `projectExists()` and `getProject()` when the reference uses a single `exists()` method—over-specification increases coupling. Storage port CRUD interfaces (TaskStoragePort, ProjectStoragePort) are underspecified relative to the reference. The use of branded types (ProjectId, TaskId) exceeds the reference in type safety, and JSDoc ownership notation (\"Owner: X | Consumer: Y\") is clear and well-documented. Ports are unambiguously the primary deliverable and drive architecture as intended."
+  },
+  "compositeScore": 0.885
+}

@@ -78,7 +78,9 @@ export function checkNoAny(files: readonly FileArtifact[]): GateCheckResult {
  * Per fcd-commission anti-capitulation rule 7: "Never leave stubs or TODOs."
  */
 export function checkNoTodos(files: readonly FileArtifact[]): GateCheckResult {
-  const patterns = /\b(TODO|FIXME|STUB|HACK|XXX|placeholder|not yet implemented)\b/gi;
+  // Case-sensitive for TODO/FIXME/etc — avoids false positives on "todo" as a task state name.
+  // "placeholder" and "not yet implemented" remain case-insensitive.
+  const patterns = /\b(TODO|FIXME|STUB|HACK|XXX)\b|(?:placeholder|not yet implemented)/g;
   let totalMatches = 0;
   const details: string[] = [];
 

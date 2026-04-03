@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1879,
+  "cost_usd": 0.02527585,
+  "duration_ms": 13391,
+  "ports": 4,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 2,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.1,
+    "rationale": "Decomposition is spot-on — three domains, four port types, internal storage abstraction, state machine, all matching reference structure. Documentation is exceptional (ownership annotations, purpose statements, event flow clarity). However, port interfaces are incomplete: TaskStoragePort and ProjectStoragePort omit `list()` and `delete()` methods needed for realistic project/task queries; ProjectLookupPort is over-engineered with both `projectExists()` and `getProject()` when reference requires only `exists()`. Method naming also diverges (getById vs get). Surface-first approach is correct; ports drive architecture — but the surface itself has gaps before implementation can begin."
+  },
+  "compositeScore": 0.9099999999999999
+}

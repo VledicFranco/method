@@ -1,0 +1,20 @@
+{
+  "condition": "recursive-design",
+  "tokens": 2591,
+  "cost_usd": 0.05541965,
+  "duration_ms": 28391,
+  "ports": 2,
+  "subComponents": 0,
+  "childDesigns": 0,
+  "childPorts": [],
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 4,
+    "overall": 4.05,
+    "rationale": "All three domains are correctly identified with matching structure (7/7/6 files). ProjectLookupPort is over-engineered with both `getProject()` and `verifyProjectExists()` when reference specifies minimal `exists(id)`. TaskStoragePort and ProjectStoragePort are mentioned in expected structure but absent from the generated port interfaces section—a documentation gap. The design positions ports as primary and wires them in a composition root, but doesn't freeze them explicitly or document internal storage ports formally."
+  },
+  "compositeScore": 0.905
+}

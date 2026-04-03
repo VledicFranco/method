@@ -1,0 +1,46 @@
+experiment: exp-spl-design
+run_id: run2
+date: 2026-04-03
+agent: "Claude Opus 4.6 (1M context), method-3 session"
+config:
+  model: haiku (via claude --print)
+  provider: ClaudeHeadlessProvider
+  task: "Hatch API — 3-domain project incubator"
+  conditions: [flat-design, recursive-design, flat-implement, pipeline-implement]
+  budget_usd: 5.0
+  timeout_per_call_ms: 300000
+metrics:
+  flat_design:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    judge_overall: 4.40
+    tokens: 2645
+    cost_usd: 0.04
+    ports_found: 5
+    sub_components: 3
+  recursive_design:
+    composite: 0.905
+    gate_pass_rate: 1.0
+    judge_overall: 4.05
+    tokens: 26233
+    cost_usd: 0.42
+    ports_found: 10
+    child_designs: 3
+  flat_implement:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    tokens: 26183
+    cost_usd: 0.16
+    files_generated: 18
+  pipeline_implement:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    tokens: 33061
+    cost_usd: 0.20
+    files_generated: 24
+verdict: partial
+notes: >
+  H1-Design rejected (flat 94% > recursive 90.5%). H1-Implement confirmed (both 100% gates).
+  Recursive over-specifies ports (10x tokens, lower judge score). Task may be too shallow
+  for recursion to help — fits in single context window. Parser robustness was the main
+  engineering challenge (3 iterations to handle haiku's formatting variance).
