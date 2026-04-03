@@ -1,8 +1,8 @@
-# exp-slm-composition: SLM Composition and Bootstrapping
+# exp-slm-composition: Autonomous Cognitive Skill Compilation
 
-**Hypothesis:** Specialized SLMs can be composed into pipelines (CLMs) that perform
-complex tasks currently requiring frontier LLMs, and meta-SLMs can bootstrap the
-creation of new SLMs to make composition experiments practical.
+**Hypothesis:** Cognitive agents can autonomously abstract DSLs from their own
+experience, compile them to SLMs, and compose them into new capabilities — closing
+the System 1/2 compilation loop that RFC 002 left manual.
 
 **RFC:** `docs/rfcs/005-slm-composition.md`
 **Depends on:** `exp-slm` (Phase 3 Gate 3 PASS, Phase 5 R-14 through R-22)
@@ -13,74 +13,82 @@ creation of new SLMs to make composition experiments practical.
 
 ## Research Questions
 
-1. Can an SLM learn to translate TypeScript interfaces → PEG grammars? (B-1)
-2. Can an SLM classify training pair causal consistency? (B-2)
-3. Does the bootstrap flywheel actually reduce SLM creation time? (B-G4)
-4. Can a 2-stage CLM with validation gates achieve >= 85% accuracy? (C-G1)
-5. Where is the composition depth ceiling? (Q3 from RFC 004)
+1. Can an SLM learn to translate structured type descriptions → PEG grammars,
+   across languages? (Level 1 abstraction, Gate A-G1)
+2. Can the Reflector extract structural invariants from typed traces? (Level 2, A-G3)
+3. Does the bootstrap flywheel reduce SLM creation time below 2 days? (Gate B-G2)
+4. Can composed SLM pipelines with validation gates achieve >= 85%? (Gate C-G1)
+5. Can an agent autonomously compile a skill without human intervention? (Gate D-G1)
 
 ## Phases
 
-### Phase 0 — Infrastructure & Seed Data (current)
+### Phase 0 — Corpus Sourcing & Infrastructure (current)
 
-- [ ] Inventory existing type→grammar pairs as seed data
-- [ ] Design grammar corpus augmentation strategy
-- [ ] Set up composition runtime scaffold (stage routing, validation gates)
-- [ ] Define evaluation harness for meta-SLMs
+- [ ] Inventory TypeScript interfaces across 137+ workspace repos (`../`)
+- [ ] Scrape GitHub for projects pairing PEG/Peggy grammars with typed languages
+- [ ] Harvest JSON Schema, Protobuf, and other typed schema → grammar pairs
+- [ ] Build Peggy-in-the-loop validator (compile + parse test for grammar quality)
+- [ ] Design corpus augmentation strategy on top of real pairs
 
-### Phase 1 — B-1: Type→Grammar SLM
+### Phase 1 — B-1: Schema→Grammar SLM (Level 1 Abstraction)
 
-- [ ] Build corpus generator: TS interface → PEG grammar pairs
-- [ ] Augment seed data (3 existing pairs) with synthetic type variations
-- [ ] Train Qwen2.5-Coder-0.5B LoRA r=16 on Type→Grammar task
-- [ ] Validate: grammar compilability rate (target >= 90%)
-- [ ] Validate: downstream SLM quality from generated grammars (target >= 85%)
-- [ ] Gate B-G1 / B-G2 decision
+- [ ] Build multi-language corpus generator (TS, JSON Schema, Protobuf → PEG)
+- [ ] Train Qwen2.5-Coder-0.5B LoRA r=16 on Schema→Grammar
+- [ ] Validate: grammar compilability >= 90% (Gate A-G1)
+- [ ] Validate: downstream SLM quality >= 85% (Gate A-G2)
+- [ ] Test language generalization (train on TS, test on JSON Schema)
 
-### Phase 2 — B-2: Causal Validator SLM
+### Phase 2 — Bootstrap Pipeline
 
-- [ ] Design causal rule DSL (or determine if NL rules are necessary)
-- [ ] Build corpus: (input, output, rules) → valid/invalid pairs
-- [ ] Source negative examples from Phase 3's diagnostic runs (Run 1-2 random data)
-- [ ] Train classifier SLM
-- [ ] Validate: precision >= 90% on known-bad pairs (Gate B-G3)
-
-### Phase 3 — Bootstrap Integration
-
-- [ ] Wire B-1 + B-2 into automated pipeline
-- [ ] Measure end-to-end SLM creation time (Gate B-G4: target < 2 days)
-- [ ] Create at least 2 new SLMs using the bootstrap pipeline
+- [ ] B-2: Causal Validator SLM (precision >= 90% on known-bad pairs)
+- [ ] B-3: Trace Distiller SLM
+- [ ] Wire B-1 + B-2 + B-3 into automated pipeline
+- [ ] Measure SLM creation time (Gate B-G2: target < 2 days)
+- [ ] Create >= 2 new SLMs using the bootstrap pipeline
 - [ ] Compare bootstrapped SLMs to hand-crafted baseline
 
-### Phase 4 — Composition Runtime
+### Phase 3 — Composition Runtime
 
-- [ ] Build CLM execution engine (sequential composition + validation gates)
-- [ ] Implement gate escalation (retry → frontier fallback)
+- [ ] Build CLM execution engine (sequential + validation gates)
+- [ ] Gate escalation: retry → frontier fallback
 - [ ] Per-stage metrics: accuracy, latency, error propagation
-- [ ] Test 2-stage CLM on DSL pipeline task (Gate C-G1)
+- [ ] Test 2-stage CLM (Gate C-G1: >= 85% end-to-end)
+- [ ] Ablation: gated vs ungated error compounding (Gate C-G2)
 
-### Phase 5 — Composition Experiments
+### Phase 4 — Autonomous Compilation Loop
 
-- [ ] Target 1: DSL Pipeline CLM (self-improving SLM factory)
-- [ ] Target 2: Domain-scoped code CLM (FCA scaffolding)
-- [ ] Error compounding analysis: gated vs ungated, varying N
-- [ ] Cost comparison vs frontier LLM (Gate C-G3)
+- [ ] Compilation trigger: ACT-R activation threshold in Memory module
+- [ ] Reflector extension: extract structural invariants from traces
+- [ ] DSL Inducer module: Level 2 trace→grammar (initially frontier LLM)
+- [ ] MetaComposer routing: dynamically wire compiled SLMs
+- [ ] Gate D-G1: agent compiles >= 1 pattern autonomously
+- [ ] Gate D-G3: compiled SLM improves with additional traces
+
+### Phase 5 — Application Domain Experiments
+
+- [ ] EXP-A: Coding expertise — does compiled coding SLM beat fresh agent?
+- [ ] EXP-B: Scientific formalization — induce scaling law from exp-slm runs
+- [ ] EXP-C: Coordination — induce dependency algebra from multi-agent traces
 
 ## Seed Data Inventory
 
-Existing type→grammar pairs from `exp-slm`:
+### Existing type→grammar pairs (from exp-slm)
 
-| TypeScript Interface | PEG Grammar | Codec | Location |
-|---------------------|-------------|-------|----------|
-| `MonitorReport` | `monitor-v2.peggy` | `dsl-codec.ts` | `exp-slm/phase-2-dsl/grammars/` |
-| `ObserverReport` (signals) | (inline in codec) | `observer-dsl-codec.ts` | `exp-slm/phase-4-integration/src/` |
-| `EvaluatorReport` (signals) | (inline in codec) | `evaluator-dsl-codec.ts` | `exp-slm/phase-4-integration/src/` |
+| Type Definition | PEG Grammar | Codec | Location |
+|----------------|-------------|-------|----------|
+| `MonitorReport` (TS) | `monitor-v2.peggy` | `dsl-codec.ts` | `exp-slm/phase-2-dsl/` |
+| `ObserverReport` (TS) | (inline) | `observer-dsl-codec.ts` | `exp-slm/phase-4-integration/` |
+| `EvaluatorReport` (TS) | (inline) | `evaluator-dsl-codec.ts` | `exp-slm/phase-4-integration/` |
 
-Existing generative proof point:
+### Corpus sourcing targets
 
-| Task | Input | Output | Accuracy | Location |
-|------|-------|--------|----------|----------|
-| JSON Schema → TypeScript | JSON Schema | TS type definition | 99.6% exact match | Phase 3 Run 10 |
+| Source | Expected yield | Type |
+|--------|---------------|------|
+| Workspace repos (`../`) | 50-100 TS interfaces | Real pairs (need grammar creation) |
+| GitHub (Peggy + TS projects) | 100-500 pairs | Real pairs (existing grammars) |
+| JSON Schema ecosystem | 200+ schemas | Real pairs (schema → grammar is mechanical) |
+| Protobuf/gRPC projects | 100+ message types | Real pairs |
+| Synthetic augmentation | 5-10x multiplier | Augmented pairs |
 
 ## Hardware
 
@@ -90,8 +98,12 @@ Existing generative proof point:
 
 ## Key Risks
 
-1. **Seed data scarcity:** Only 3 type→grammar pairs. Augmentation strategy is critical.
-2. **Grammar design is creative:** May exceed SLM capability at 0.5B. Abandonment
-   condition: < 80% compilable grammars after 3 training iterations.
-3. **Error compounding:** Composition may not beat single frontier LLM call until
-   gate classifiers reach 99%+ accuracy.
+1. **Level 1 feasibility:** Schema→Grammar may exceed 0.5B capability. Abandonment:
+   < 80% compilable after 3 iterations → fall back to frontier for grammar design.
+2. **Corpus scarcity solved by multi-language:** GitHub scraping + JSON Schema +
+   Protobuf should provide hundreds of real pairs. Risk shifts from "not enough data"
+   to "distribution mismatch between scraped and target domains."
+3. **Error compounding in composition:** Gate classifier accuracy is the binding
+   constraint. If gates < 95%, composition ceiling is N ≈ 3-4 stages.
+4. **Level 2 Reflector extension:** Extracting structural invariants from traces is
+   the hardest research question. May require new cognitive module design.
