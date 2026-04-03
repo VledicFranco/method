@@ -157,3 +157,7 @@ export { StdlibStrategySource } from "./strategy/stdlib-strategy-source.js";
 // Wave 14: TLA+ compiler
 export * from "./tla/ast.js";
 export * from "./tla/compile.js";
+
+// ── SPL: Semantic Programming Language (incubating — not yet public API) ──
+// Uncomment when SPL stabilizes after experiment validation.
+// export * from "./semantic/index.js";

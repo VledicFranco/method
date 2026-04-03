@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 2136,
+  "cost_usd": 0.027218,
+  "duration_ms": 15772,
+  "ports": 2,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.4,
+    "rationale": "The design correctly identifies all three domains (projects, tasks, notifications) matching the reference decomposition and responsibilities. Documentation is excellent with clear owner/consumer marking. However, ProjectLookupPort violates minimalism—it returns `Project | null` when the consumer only needs existence verification (compare: reference uses `exists(): Promise<boolean>`). Additionally, the internal storage ports (TaskStoragePort, ProjectStoragePort) are mentioned narratively but lack formal interface definitions, leaving abstraction boundaries implicit rather than explicit."
+  },
+  "compositeScore": 0.9400000000000001
+}
