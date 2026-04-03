@@ -33,8 +33,16 @@ bounded rationality.
 
 ## Theoretical Grounding
 
-Five lines of research converge on the same mechanism: **task completion is detected
-by the disappearance of a discrepancy signal, not by the appearance of a success signal.**
+> **Epistemological note:** This RFC uses cognitive science as *design inspiration*,
+> not as biological validation — consistent with RFC 001's stated approach. The
+> engineering proposal (add goal-state comparison to the cycle) stands on its own
+> merits. The cognitive science provides design vocabulary, decomposition rationale,
+> and named mechanisms that inform the architecture. Where the analogy breaks, the
+> RFC should stand on engineering merit alone.
+
+The following research lines inform the design. The strongest grounding is
+Carver-Scheier's cybernetic control model; the others provide supporting
+perspectives with varying degrees of directness:
 
 ### 1. Carver-Scheier Cybernetic Control (1998, 2000)
 
@@ -53,25 +61,43 @@ Three outcomes:
 > Carver, C. S., & Scheier, M. F. (2000). On the structure of behavioral
 > self-regulation. In M. Boekaerts et al. (Eds.), *Handbook of Self-Regulation*.
 
-### 2. Nelson-Narens Judgment of Performance (1990)
+### 2. Koriat's Monitoring for Control (2007); Nelson-Narens (1990)
 
-The metacognitive monitoring taxonomy defines **Judgment of Performance (JOP)** as a
-post-action evaluation: "how well did I just do?" This is distinct from Feeling of
-Knowing (pre-retrieval) and Judgment of Learning (during study). JOP feeds the
-**control** decision to continue, terminate, or change strategy.
+> **FCD review correction:** An earlier draft attributed the general concept of
+> post-action outcome evaluation to Nelson & Narens' Judgment of Performance (JOP).
+> However, JOP in Nelson & Narens (1990) is specifically about *metamemory* — judging
+> memory retrieval performance. The general framework of metacognitive monitoring
+> driving control decisions is better attributed to Koriat (2007) and Flavell (1979).
 
-Task completion requires JOP exceeding a threshold the meta-level holds as "sufficient."
-RFC 001 implements Feeling of Knowing (confidence) and ease-of-learning (effort) but
-not JOP. The Evaluator estimates progress from signal quality, not from outcome assessment.
+Koriat's "monitoring for control" framework establishes that metacognitive judgments
+(confidence, feeling of knowing, ease of learning) serve a functional purpose: they
+are **inputs to control decisions** about whether to continue, terminate, or change
+strategy. The monitoring signal is not merely informational — it drives action.
 
+Task completion requires a monitoring signal exceeding a threshold the meta-level
+holds as "sufficient." RFC 001 implements Feeling of Knowing (confidence) and
+ease-of-learning (effort) but not outcome evaluation. The Evaluator estimates
+progress from signal quality, not from goal-state comparison.
+
+> Koriat, A. (2007). Metacognition and consciousness. In P. D. Zelazo, M. Moscovitch,
+> & E. Thompson (Eds.), *The Cambridge Handbook of Consciousness*. Cambridge UP.
+>
 > Nelson, T. O., & Narens, L. (1990). Metamemory: A theoretical framework and new
 > findings. In G. Bower (Ed.), *The Psychology of Learning and Motivation* (Vol. 26).
+>
+> Flavell, J. H. (1979). Metacognition and cognitive monitoring: A new area of
+> cognitive-developmental inquiry. *American Psychologist*, 34(10), 906-911.
 
-### 3. Simon's Satisficing (1956)
+### 3. Satisficing and Aspiration Adaptation (Simon, 1956; Selten, 1998)
 
 Agents maintain a dynamic **aspiration level** — a "good enough" threshold. Search
-terminates when the first option meeting the threshold is found. The aspiration level
-rises when progress is easy and drops when search is costly.
+terminates when the first option meeting the threshold is found (Simon, 1956).
+
+> **FCD review correction:** The directional dynamics of aspiration adaptation
+> (raise when succeeding, lower when failing) are more precisely attributed to
+> Selten's (1998) aspiration adaptation theory and Lewin's (1944) level-of-aspiration
+> work than to Simon (1956), who describes satisficing as a search termination rule
+> without specifying the adaptation mechanism.
 
 The key insight: termination is not optimization. The agent doesn't need to know it
 found the *best* solution — only that the solution meets the aspiration level. This
@@ -79,29 +105,50 @@ is computationally cheaper than verification and sufficient for bounded agents.
 
 > Simon, H. A. (1956). Rational choice and the structure of the environment.
 > *Psychological Review*, 63(2), 129-138.
+>
+> Selten, R. (1998). Aspiration adaptation theory.
+> *Journal of Mathematical Psychology*, 42(2-3), 191-214.
 
-### 4. ACC Conflict Drop (Botvinick et al., 2001, 2004)
+### 4. ACC Conflict Monitoring (Botvinick et al., 2001, 2004)
 
 The dorsal anterior cingulate cortex (dACC) monitors response conflict — co-activation
 of incompatible action representations. RFC 001's Monitor implements conflict *presence*
-detection (Botvinick's model). What's missing: **conflict *absence* detection.**
+detection (Botvinick's model).
 
-When goal-state and current-state representations stop conflicting (discrepancy = 0),
-the ACC signal drops, releasing the dorsolateral PFC from compensatory control. Task
-completion is neurally "quiet" — the signal *stops*, it doesn't fire.
+> **Caveat:** Botvinick's conflict monitoring operates at the *response* level (competing
+> motor plans), not the *goal* level (goal-state discrepancy). Absence of response
+> conflict means no competing actions — it does not directly signal goal satisfaction.
+> An agent can be confidently wrong with zero conflict, and a completed task can still
+> have response conflict (e.g., choosing output format). The design inspiration here
+> is the *structural pattern* — a monitoring system that detects signal absence as
+> meaningful — not a direct functional mapping.
+
+The engineering takeaway: the Monitor already detects conflict *presence*. A
+complementary mechanism that tracks the *reduction* of monitoring signals over time
+(decreasing anomalies, increasing confidence) provides indirect evidence of
+convergence toward a stable solution.
 
 > Botvinick, M. M., Braver, T. S., Barch, D. M., Carter, C. S., & Cohen, J. D. (2001).
 > Conflict monitoring and cognitive control. *Psychological Review*, 108(3), 624-652.
 
-### 5. Reward Prediction Error Absence (Schultz, 1997)
+### 5. Reward Prediction Error (Schultz, 1997)
 
 Dopamine neurons fire on **unexpected** reward (positive RPE) and depress on
 **unexpected** omission (negative RPE). **Expected** reward produces baseline activity
-— no signal. Task completion that matches expectation is neurochemically silent.
+— no signal.
 
-The implication: a well-calibrated agent should detect completion by the *absence*
-of surprise, not by a reward burst. The monitoring system should notice that
-predictions are consistently met and nothing is triggering alarm.
+> **Caveat:** RPE baseline activity during expected outcomes is the *absence* of a
+> learning signal, not a *detection mechanism* for task completion. The brain does not
+> "detect" completion via RPE silence; it uses other mechanisms (prefrontal working
+> memory, goal representations). RPE silence means the system has nothing new to
+> learn, not that the task is done. The causal arrow matters: RPE absence is a
+> *consequence* of accurate prediction, not the *cause* of completion detection.
+
+The engineering takeaway: when the Monitor's prediction error signals (Friston's
+model, already implemented in MonitorV2) consistently stay low — predictions match
+observations — this is indirect evidence that the system has converged to a stable
+state. Combined with positive discrepancy evidence from the Evaluator, low prediction
+error strengthens the confidence in a TerminateSignal.
 
 > Schultz, W. (1997). Dopamine neurons and their role in reward mechanisms.
 > *Current Opinion in Neurobiology*, 7(2), 191-197.
@@ -144,7 +191,8 @@ goal evaluation.
 A new signal type carrying the result of comparing current state to goal state:
 
 ```
-GoalDiscrepancy = {
+GoalDiscrepancy extends MonitoringSignal = {
+  type:         'goal-discrepancy',  // discriminant tag for ModuleMonitoringSignal union
   source:       ModuleId,
   timestamp:    number,
   discrepancy:  number,       // [0, 1] — 0 = goal satisfied, 1 = no progress
@@ -157,14 +205,20 @@ GoalDiscrepancy = {
 
 **Design notes:**
 
+- GoalDiscrepancy carries a `type: 'goal-discrepancy'` discriminant to join the
+  existing `ModuleMonitoringSignal` union (which discriminates on literal `type` tags).
+  It extends `MonitoringSignal`, not `ControlDirective` — goal satisfaction is a
+  monitoring signal emitted upward, not a control directive issued downward.
 - `discrepancy` is the Carver-Scheier comparator output. It measures how far
   the current state is from the goal, not how confident the agent is.
 - `rate` is the metamonitor — the derivative. Positive rate = making progress.
   Zero rate = stuck. Negative rate = regressing.
-- `satisfied` applies Simon's satisficing: the goal doesn't need to be perfectly
-  achieved, just "good enough" relative to a dynamic aspiration level.
+- `satisfied` applies satisficing semantics (Selten, 1998): the goal doesn't need
+  to be perfectly achieved, just "good enough" relative to a dynamic aspiration level.
 - `confidence` is the meta-meta signal: how much should the cycle trust this
   assessment? A low-confidence satisfaction signal should not terminate the cycle.
+  When aspiration has been lowered (below initial 0.80), the confidence gate
+  tightens to > 0.85 to prevent premature termination on degraded criteria.
 - `basis` provides observability — what did the evaluator actually compare?
 
 ### 2. Evaluator Redesign: From Signal Aggregator to Goal Comparator
@@ -179,20 +233,30 @@ it correlates with progress but doesn't measure it.
 
 The redesigned Evaluator:
 ```
-step(workspace, signals, goalState) → { discrepancy, jop }
+step(input: { workspace, signals }, state: { goal, history, aspirationLevel }, control) →
+  { discrepancy, jop }
 
 where:
-  goalState:    GoalRepresentation     // persistent, never evicted
+  state.goal:   GoalRepresentation     // persistent in S, never evicted
   discrepancy:  GoalDiscrepancy        // Carver-Scheier comparator output
-  jop:          JudgmentOfPerformance  // Nelson-Narens post-action evaluation
+  jop:          JudgmentOfPerformance  // Koriat monitoring-for-control
 ```
 
-**GoalRepresentation** is a first-class input to the Evaluator, not a workspace
-entry that competes for attention. The goal is extracted at cycle 0 by the Observer
-and maintained as module state — immune to workspace pressure.
+> **FCD review correction:** GoalRepresentation lives in the Evaluator's internal
+> state (S), not as a third step argument. The `CognitiveModule.step` contract is
+> `(I, S, κ) → (O, S', μ)` — adding a third argument would break the contract and
+> the composition operators. State is the correct location: it's opaque to other
+> modules and persists across cycles, which is exactly what we need for an
+> immune-to-eviction goal representation.
 
-**JudgmentOfPerformance** extends the Nelson-Narens taxonomy beyond the existing
-EOL/JOL/FOK/RC:
+**GoalRepresentation** is extracted at cycle 0 by the Observer and injected into
+the Evaluator's initial state. It persists across cycles as module state — immune
+to workspace pressure. The existing `EvaluatorInput` (`{ workspace, signals }`)
+remains unchanged; the goal enters through state, not input.
+
+**JudgmentOfPerformance** extends the metacognitive monitoring taxonomy. This is
+closer to Koriat's (2007) "monitoring for control" framework than Nelson-Narens'
+(1990) metamemory-specific JOP:
 
 ```
 JudgmentOfPerformance = {
@@ -203,21 +267,55 @@ JudgmentOfPerformance = {
 ```
 
 **The Evaluator runs unconditionally** — not gated by the Monitor's anomaly
-threshold. This is the critical change. Completion detection is the *opposite*
-of anomaly detection: it fires when things are going well, not when they're
-going wrong. Gating the Evaluator behind the Monitor means it can never detect
-success.
+threshold. This is the critical architectural change. Completion detection cannot
+be gated by anomaly detection: anomalies fire when things go *wrong*, but
+completion needs to be checked when things go *right*. Gating the Evaluator behind
+the Monitor means it can never detect success during normal operation.
 
-### 3. Termination Control Directive
+> **Note on cognitive plausibility:** Human metacognitive monitoring is not truly
+> continuous — it is triggered by cues (output production, environmental change,
+> time pressure; see Ackerman & Thompson, 2017). However, the engineering cost of
+> unconditional evaluation is negligible (< 1ms for rule-based heuristics), and
+> the alternative (cue-triggered evaluation) requires a cue-detection mechanism
+> that is itself a new module. Unconditional evaluation is the simpler engineering
+> choice. If profiling shows overhead, a lightweight cue gate (e.g., "evaluate only
+> after Write actions") can be added without changing the architecture.
 
-A new control directive that the cycle orchestrator understands:
+This does not create a new composition operator — it constrains the cycle
+orchestrator. The existing algebra operators (▷, >>, |, <|>) are unchanged.
+The default-interventionist pattern still applies to MONITOR/CONTROL; EVALUATE
+is simply exempt from that gating.
+
+### 3. Termination Signal (Monitoring Channel, Not Control)
+
+> **FCD review correction:** An earlier draft proposed `TerminateDirective` as a
+> `ControlDirective`. This is a type error: `ControlDirective` requires `target: ModuleId`
+> and flows *downward* (meta → object). Termination targets the cycle orchestrator
+> *above* the meta-level — it must flow *upward* as a monitoring signal (μ), not
+> downward as control (κ). The orchestrator reads the signal and decides to halt.
+
+A new monitoring signal that the cycle orchestrator reads from `CycleResult`:
 
 ```
-TerminateDirective extends ControlDirective = {
-  target:     'cycle',
+TerminateSignal extends MonitoringSignal = {
+  type:       'terminate',
+  source:     ModuleId,        // the Evaluator that issued it
   reason:     'goal-satisfied' | 'goal-unreachable' | 'budget-exhausted',
   confidence: number,
   evidence:   GoalDiscrepancy,
+}
+```
+
+**Propagation path:** The Evaluator emits `TerminateSignal` as its monitoring
+output (μ). The cycle orchestrator checks for this signal after the EVALUATE
+phase. If present, `CycleResult` gains a `terminated: TerminateSignal` field,
+and the external loop (experiment runner or `CognitiveAgent.invoke()`) breaks.
+
+```
+CycleResult = {
+  output:     ActorOutput,
+  signals:    AggregatedSignals,
+  terminated: TerminateSignal | undefined,   // NEW — orchestrator reads this
 }
 ```
 
@@ -232,8 +330,8 @@ TerminateDirective extends ControlDirective = {
 **The termination decision is meta-level, not object-level.** Currently, the
 LLM decides "done" (object-level), which is asking the task-executor to judge
 its own output. In the extended model, the Evaluator (meta-level) assesses
-goal satisfaction and issues a TerminateDirective. The object-level can suggest
-completion, but the meta-level validates it.
+goal satisfaction and emits a TerminateSignal. The orchestrator reads it. The
+object-level can suggest completion, but the meta-level validates it.
 
 ### 4. Adaptive Context Selection
 
@@ -261,6 +359,16 @@ where:
 This connects the Evaluator to the workspace attention mechanism. Currently,
 salience is computed at write time (static). With goal-state monitoring,
 salience can be *reweighted* based on where the agent is in the task lifecycle.
+
+> **Scope limitation:** Adaptive context selection addresses the partition regression
+> for tasks where the agent fails due to *lost context* (T04: constraint not visible).
+> It does NOT address tasks where the agent fails due to *reasoning limitations*
+> (T02: agent reads the buggy code but cannot identify the arithmetic error). T02's
+> failure is a reasoning ceiling, not a context selection problem. Adaptive context
+> allocation will not fix it — the agent has the right information and can't act on it.
+> This RFC acknowledges this boundary: goal-state monitoring improves *metacognitive*
+> capability (knowing when you're done, stuck, or lost), not *reasoning* capability
+> (solving hard problems).
 
 ## Composition with Existing Operators
 
@@ -292,15 +400,16 @@ The 8-phase cycle extends to include unconditional evaluation:
 4. REASON    — Reasoner produces reasoning trace
 5. MONITOR   — Meta-level reads monitoring signals (conditional on threshold)
 6. EVALUATE  — Evaluator compares workspace state to goal state (unconditional)
-7. CONTROL   — Meta-level issues control directives (including TerminateDirective)
+7. CONTROL   — Meta-level issues control directives
 8. ACT       — Actor selects and executes action
 9. LEARN     — Reflector distills cycle into memory (async)
 ```
 
 **Phase 6 (EVALUATE) is new and unconditional.** It runs every cycle, producing
-a GoalDiscrepancy signal. Phase 7 (CONTROL) now has both Monitor and Evaluator
-signals to act on. The TerminateDirective, if issued, prevents Phase 8 (ACT)
-from executing and exits the cycle.
+a GoalDiscrepancy signal (monitoring channel, μ). The cycle orchestrator checks
+for a TerminateSignal in the Evaluator's monitoring output after Phase 6. If
+present, Phases 7-9 are skipped and the cycle returns with `terminated` set in
+`CycleResult`.
 
 ### Cost Model
 
@@ -340,12 +449,25 @@ internal state — not a workspace entry. It is immune to eviction.
 
 ```
 Evaluator = (
-  I:  { workspace: ReadonlyWorkspaceSnapshot, signals: AggregatedSignals },
-  O:  { discrepancy: GoalDiscrepancy, jop: JudgmentOfPerformance },
-  S:  { goal: GoalRepresentation, history: GoalDiscrepancy[], aspirationLevel: number },
-  mu: EvaluatorMonitoring & { discrepancy: GoalDiscrepancy },
+  I:     { workspace: ReadonlyWorkspaceSnapshot, signals: AggregatedSignals },
+  O:     { discrepancy: GoalDiscrepancy, jop: JudgmentOfPerformance },
+  S:     { goal: GoalRepresentation, history: GoalDiscrepancy[], aspirationLevel: number },
+  mu:    GoalDiscrepancy,      // type: 'goal-discrepancy' — joins ModuleMonitoringSignal union
   kappa: { evaluationHorizon: 'immediate' | 'trajectory' }
 )
+```
+
+Note: `I` is unchanged from the current Evaluator (`{ workspace, signals }`).
+`GoalRepresentation` lives in `S` (internal state), not `I`. This preserves the
+`CognitiveModule.step(I, S, κ) → (O, S', μ)` contract and backward compatibility
+with composition operators. The existing `EvaluatorMonitoring` fields
+(`estimatedProgress`, `diminishingReturns`) are subsumed by `GoalDiscrepancy`.
+
+Backward compatibility: if `goal` in state is `undefined` (no goal extracted),
+the Evaluator falls back to the current signal-aggregation behavior. All existing
+tests pass without modification.
+
+```
 ```
 
 ### Discrepancy Computation
@@ -378,32 +500,54 @@ compiled SLM call at negligible cost.
 
 ### Satisficing Dynamics
 
-The aspiration level is dynamic (Simon's model):
+The aspiration level is dynamic (Selten's aspiration adaptation model):
 
 ```
 aspirationLevel(cycle) =
   if rate > 0:    min(aspiration + 0.05, 0.95)   // progress → raise bar
-  if rate == 0:   max(aspiration - 0.10, 0.50)   // stuck → lower bar
-  if rate < 0:    max(aspiration - 0.15, 0.40)   // regressing → lower faster
+  if rate == 0:   max(aspiration - 0.05, 0.60)   // stuck → lower bar cautiously
+  if rate < 0:    max(aspiration - 0.10, 0.60)   // regressing → lower faster
 ```
 
+> **FCD review correction:** An earlier draft used a floor of 0.40 with aggressive
+> lowering (-0.10, -0.15). Combined with crude keyword-overlap discrepancy, this
+> risked premature termination: an agent could declare "good enough" with 60%
+> discrepancy remaining if it wrote *something* to the target file. The floor is
+> raised to 0.60, and the lowering rate is halved. Additionally, when aspiration
+> has been lowered below initial (0.80), the confidence gate for TerminateSignal
+> tightens from > 0.70 to > 0.85 (see Termination Decision below).
+
 The agent starts with high aspirations and lowers them when stuck. This prevents
-both premature termination (aspiration too low) and infinite cycling (aspiration
-too high). The floor (0.40) ensures the agent eventually accepts "good enough."
+both premature termination (aspiration too high relative to discrepancy resolution)
+and infinite cycling (aspiration too high to ever satisfy). The floor (0.60)
+ensures the agent cannot accept clearly incomplete work.
+
+> **Note on formal termination:** These satisficing dynamics are NOT a termination
+> certificate in the F1-FTH sense. The aspiration level can both rise and fall,
+> so the pair `(aspiration, discrepancy)` is not monotonically decreasing. The
+> `budget-exhausted` fallback provides pragmatic termination but not a formal
+> guarantee. A formal certificate would require proving that discrepancy is bounded
+> and that the aspiration floor ensures eventual satisfaction — this is an open
+> obligation, not a proven property.
 
 ### Termination Decision
 
 ```
 terminate(discrepancy, aspirationLevel, confidence, cycle, maxCycles) =
-  if discrepancy.satisfied && confidence > 0.7:
-    TerminateDirective('goal-satisfied')
+  let confidenceGate = aspirationLevel < 0.80 ? 0.85 : 0.70  // tighten when lowered
+  if discrepancy.satisfied && confidence > confidenceGate:
+    TerminateSignal('goal-satisfied')
   elif cycle > maxCycles * 0.6 && rate <= 0 && diminishingReturns:
-    TerminateDirective('goal-unreachable')
+    TerminateSignal('goal-unreachable')
   elif cycle >= maxCycles:
-    TerminateDirective('budget-exhausted')
+    TerminateSignal('budget-exhausted')
   else:
     continue
 ```
+
+When the aspiration level has been lowered (agent is stuck), the confidence gate
+tightens from 0.70 to 0.85. This prevents the failure mode where a crude discrepancy
+function combined with lowered aspirations declares "good enough" on incomplete work.
 
 ## Relationship to Other RFCs
 
@@ -429,16 +573,24 @@ phase drives which partitions receive priority.
 
 ### F1-FTH (Formal Theory)
 
-This RFC operationalizes F1-FTH's `O: Mod(D) → Bool` within the cognitive cycle.
-The GoalRepresentation is the cycle's view of O; the discrepancy function is the
-cycle's approximation of `O(current_state)`. The satisficing threshold replaces
-exact satisfaction with bounded-rationality semantics.
+> **FCD review correction:** An earlier draft claimed this RFC "operationalizes"
+> F1-FTH's `O: Mod(D) → Bool`. This is formally imprecise. F1-FTH's O is a
+> predicate on model-theoretic structures (full world states with carrier sets
+> and interpretations). The RFC's discrepancy function operates on keyword overlap
+> and workspace entry counts. No embedding from workspace snapshots into `Mod(D)`
+> is defined. The relationship is *analogical*, not *formal*.
+
+This RFC is *inspired by* F1-FTH's objective predicate `O: Mod(D) → Bool`.
+The GoalRepresentation is the cycle's informal view of O; the discrepancy function
+is a heuristic proxy for `O(current_state)`. The satisficing threshold replaces
+exact satisfaction with bounded-rationality semantics. Formalizing the embedding
+from workspace snapshots into `Mod(D)` is an open obligation — not attempted here.
 
 ## Validation Criteria
 
 1. **Completion detection:** The Evaluator detects goal satisfaction before
    MAX_CYCLES on tasks where the agent currently exhausts all cycles (T02, T05).
-   Measured: cycle number at which TerminateDirective fires vs MAX_CYCLES.
+   Measured: cycle number at which TerminateSignal fires vs MAX_CYCLES.
 
 2. **False positive rate:** The Evaluator does not prematurely terminate on tasks
    that require extended search (T01, T06). Measured: success rate does not
