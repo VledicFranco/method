@@ -72,6 +72,16 @@ export { testRunner } from "./runners/test-runner.js";
 export { httpChecker } from "./runners/http-checker.js";
 export { checklistGate, renderChecklistInstructions, parseAttestations, evaluateChecklist } from "./runners/checklist-gate.js";
 
+// ── PRD 046: Consolidated gate infrastructure ──
+
+export type { RuntimeObserver, GateEvaluatedEvent, NodeStartedEvent, NodeCompletedEvent, RetryAttemptEvent } from "./runtime-observer.js";
+export { nullObserver } from "./runtime-observer.js";
+
+export type { DagGateEvaluator, DagGateConfig, DagGateContext, DagGateResult, HumanApprovalResolver, HumanApprovalContext } from "./dag-gate-evaluator.js";
+
+export type { FileArtifact, AlgorithmicGateResult } from "./algorithmic-checks.js";
+export { checkNoAny, checkNoTodos, checkStructure, checkPortFreeze, checkPortSubstance, checkDocumentationSections, runAlgorithmicGates } from "./algorithmic-checks.js";
+
 // ── Composition helpers ──
 
 /**
