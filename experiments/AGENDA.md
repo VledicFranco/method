@@ -19,9 +19,14 @@ Does the 8-module cognitive cycle with default-interventionist monitoring outper
 Does typed workspace partitioning enable complex cognition beyond single-workspace limits?
 **Status:** Phase 1 IMPLEMENTED (PRD 044, commit bc2cca0). Goal drift confirmed (R-16). Partitioned workspace fixes T01 (0/3→3/3 at 30 cycles), 30-67% token reduction. T06 still fails (reasoning-bound). T02/T04 regressed at 30 cycles — needs 15-cycle retest and pin flag integration.
 
-### Line 4: ARC-AGI Integration (NEW)
+### Line 4: ARC-AGI Integration
 Can our cognitive architecture (modules + SLMs + partitions) improve abstract reasoning on ARC-AGI-3?
 **Status:** Planning. SDK identified (`pip install arc-agi`). Architecture maps to ARC-AGI-3 requirements.
+
+### Line 5: Anticipatory Monitoring (RFC 005)
+Does pre-task assessment + phase-aware evaluation prevent premature termination and enable goal-state monitoring?
+**Status:** RFC 005 drafted. R-20/R-21 proved the termination logic gap. Diagnostic experiment R-22 next.
+**Key finding:** Better monitoring signal → worse performance (R-21). The problem is structural: no phase expectations, no solvability estimation, no Planner module. Evaluator can answer "how far from goal?" but not "are we on track?"
 
 ---
 
@@ -29,15 +34,16 @@ Can our cognitive architecture (modules + SLMs + partitions) improve abstract re
 
 | ID | Experiment | Question | Priority | Dependencies |
 |----|-----------|----------|----------|-------------|
-| R-18 | exp-slm phase-5 | Partitioned workspace at MAX_CYCLES=15 for T01-T05 — isolate regression cause | P0 | None (production partition code exists) |
-| R-19 | exp-slm phase-5 | T04 with pin flag + partitioned workspace — does combining both fixes work? | P0 | R-18 results |
+| R-22 | exp-slm phase-5 | **Diagnostic: phase-aware evaluator prompt** — inject TaskAssessment into LLM evaluator, gate termination on solvability instead of rate. Does it prevent premature termination? | **P0** | RFC 005 (done) |
+| R-23 | exp-slm phase-5 | **Full module validation** — Planner module + phase-aware Evaluator as proper cognitive modules. T01-T06 N=5 at 15 and 30 cycles. | P0 | R-22 validates |
+| R-19 | exp-slm phase-5 | T04 with pin flag + partitioned workspace — does combining both fixes work? | P1 | R-18 results |
 | — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
 | — | GPU ONNX re-export | Re-export ONNX models on 2080 Ti for local GPU inference | P2 | Chobits or re-export script |
 
 ## Backlog — In Progress
 
-*None currently. Next: compositional gap analysis before further experiments.*
+*R-22 diagnostic experiment is next. Blocked on: nothing — ready to run.*
 
 ---
 
@@ -45,6 +51,8 @@ Can our cognitive architecture (modules + SLMs + partitions) improve abstract re
 
 | ID | Experiment | Result | Date |
 |----|-----------|--------|------|
+| R-21 | exp-slm phase-5 | **LLM frontier evaluator 3/18 (17%).** Accurate assessments but high confidence makes termination worse. Better signal → worse outcome. Proves termination logic is the bottleneck, not evaluator quality. Motivates RFC 005. | 2026-04-03 |
+| R-20 | exp-slm phase-5 | **Rule-based goal-state 4/18 (22%).** Universal premature termination at cycle 10. Discrepancy flatlines at 0.300. Rule-based function can't measure progress. | 2026-04-03 |
 | R-18 | exp-slm phase-5 | Partitioned 15cyc: 4/15 (27%) vs flat 11/15 (73%). **Regression is NOT from over-cycling — partitions cause T02/T04 failure at both 15 and 30 cycles.** Compositional gap identified: no goal satisfaction detection. | 2026-04-03 |
 | R-17 | exp-slm phase-5 | Partitioned workspace (PRD 044): T01 0/3→3/3 at 30 cycles. 30-67% token reduction. T06 still 0/3 (reasoning-bound). T02/T04 regressed at 30 cycles (over-exploration). | 2026-03-31 |
 | R-16 | exp-slm phase-5 | **Goal drift confirmed.** T06 0/3 at 30 cycles. Workspace saturated with file contents (3-5K tokens). RFC 003 Trigger 1 FIRED. | 2026-03-31 |

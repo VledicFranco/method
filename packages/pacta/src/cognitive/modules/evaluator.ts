@@ -43,15 +43,39 @@
  * - Signal-based progress estimation: avg(confidence + success)
  * - Diminishing returns detection: progress flat/declining over N cycles
  * - Two evaluation horizons: immediate (single cycle) and trajectory (trend)
+ * - PRD 045: Goal-state comparison via discrepancy function (rule-based or LLM)
+ * - PRD 045: Satisficing dynamics (aspiration level, Selten adaptation)
+ * - PRD 045: TerminateSignal emission (goal-satisfied, goal-unreachable)
+ * - PRD 045: Unconditional evaluation (runs every cycle, not gated by Monitor)
  *
- * **What this module does NOT capture (known gaps — RFC 004):**
- * - Goal-state comparison: no access to goal representation, no discrepancy computation
- * - Judgment of Performance: estimates from process signals, not outcome quality
- * - Satisficing threshold: no concept of "good enough" or termination
- * - Termination control: produces signals but cannot issue TerminateDirective
- * - The Evaluator only runs when the Monitor flags an anomaly (default-interventionist
- *   gating), which means it cannot detect success during normal operation.
- *   RFC 004 proposes making evaluation unconditional.
+ * **What this module does NOT capture (known gaps — RFC 005):**
+ *
+ * R-20/R-21 empirically validated that goal-state comparison alone is insufficient.
+ * The Evaluator can answer "how far from goal?" but not "are we on track?" — it lacks
+ * a reference trajectory. Three missing cognitive functions (RFC 005):
+ *
+ * - **Phase-aware progress (Carver-Scheier multi-level control):** The Evaluator
+ *   treats all cycles identically. Reading code in cycle 3 (expected exploration) and
+ *   cycle 12 (alarming stagnation) produce the same discrepancy signal. The Evaluator
+ *   needs phase expectations from a Planner module to evaluate progress relative to
+ *   the current execution phase, not just the final goal.
+ *
+ * - **Solvability estimation (Metcalfe-Wiebe warmth signal):** P(solvable) is distinct
+ *   from P(solved). An agent reading code with growing understanding has rate=0
+ *   discrepancy but rising solvability. The current unreachable heuristic (rate<=0 past
+ *   60% of cycles) conflates these, causing premature termination when the agent is
+ *   building a mental model. Solvability should gate termination, not discrepancy rate.
+ *
+ * - **Pre-task difficulty assessment (Koriat's EOL judgment):** No difficulty estimate
+ *   parameterizes monitoring. A complex multi-file refactoring and a trivial dead-code
+ *   check use identical thresholds. The Planner module should produce a TaskAssessment
+ *   at cycle 0 that sets phase budgets, expected trajectory, and initial solvability.
+ *
+ * - **Planner module dependency:** The Planner (RFC 001, never implemented) is the
+ *   missing upstream module. It produces the TaskAssessment that parameterizes this
+ *   Evaluator. Without it, the Evaluator operates as a comparator without a reference
+ *   trajectory — which is why R-21's accurate LLM assessments still caused worse
+ *   outcomes than no metacognitive monitoring at all.
  *
  * **References:**
  * - Rolls, E. T. (2000). The orbitofrontal cortex and reward. Cerebral Cortex, 10(3), 284-294.
@@ -60,10 +84,13 @@
  * - Carver, C. S., & Scheier, M. F. (1998). On the Self-Regulation of Behavior. Cambridge UP.
  * - Nelson, T. O., & Narens, L. (1990). Metamemory: A theoretical framework and new findings.
  * - Simon, H. A. (1956). Rational choice and the structure of the environment.
+ * - Koriat, A. (2007). Metacognition and consciousness. Cambridge Handbook of Consciousness.
+ * - Metcalfe, J., & Wiebe, D. (1987). Intuition in insight and noninsight problem solving.
  *   Psychological Review, 63(2), 129-138.
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Evaluator definition
- * @see docs/rfcs/004-goal-state-monitoring.md — redesign proposal for goal-state evaluation
+ * @see docs/rfcs/004-goal-state-monitoring.md — goal-state comparison (implemented PRD 045)
+ * @see docs/rfcs/005-anticipatory-monitoring.md — phase awareness + solvability (next)
  */
 
 import type {

@@ -1,0 +1,131 @@
+experiment: exp-slm
+run_id: r21-goal-state-llm-frontier
+date: 2026-04-03
+agent: "Claude Opus 4.6"
+config:
+  task: "PRD 045 — goal-state monitoring with LLM frontier evaluator (replacing rule-based discrepancy)"
+  conditions: ["partitioned-cognitive-goal"]
+  baseline_comparison: "R-20 (rule-based discrepancy, 22%), R-15 (flat, 73%), R-18 (partitioned, 27%)"
+  n_per_task: 3
+  max_cycles: 15
+  workspace:
+    constraint_capacity: 12
+    operational_capacity: 14
+    task_capacity: 12
+  modules:
+    observer: "rule-based, cycle 0 only"
+    monitor: "rule-based"
+    evaluator: "LLM frontier (Claude Sonnet 4, 256 tok budget) with rule-based fallback"
+    reasoner_actor: "Claude Sonnet 4 (frontier)"
+  goal_state:
+    extraction: "extractGoalFromTask() — same as R-20"
+    discrepancy: "LLM-based (algebra/llm-discrepancy.ts) — structured XML assessment"
+    aspiration_initial: 0.80
+    terminate_satisfied_gate: 0.70
+    terminate_unreachable_threshold: "60% of maxCycles with rate <= 0 + diminishingReturns"
+    evaluator_prompt: "Goal + workspace state + cycle context → <assessment> XML"
+    evaluator_budget: "256 output tokens per cycle"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01_circular_dep:
+      llm_eval_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Terminated c10-c12 (goal-unreachable). LLM correctly identifies agent is stuck reading files."
+    t02_bug_fix:
+      llm_eval_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Terminated c10. LLM accurately reports no code changes made."
+    t03_config_migration:
+      llm_eval_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Terminated c10."
+    t04_api_versioning:
+      llm_eval_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Terminated c10."
+    t05_dead_code:
+      llm_eval_15cyc: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Agent completes via 'done' action before termination triggers."
+    t06_multi_module:
+      llm_eval_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Terminated c10. LLM reports no required files created."
+
+  overall:
+    llm_eval_15cyc: { pass: 3, fail: 15, rate: 0.17 }
+    r20_rule_based: { pass: 4, fail: 14, rate: 0.22 }
+    r15_flat_15cyc: { pass: 11, fail: 4, rate: 0.73 }
+
+  termination_analysis:
+    total_runs: 18
+    terminated_goal_unreachable: 15
+    terminated_goal_satisfied: 0
+    terminated_done_action: 3
+    mean_termination_cycle: 10.3
+    evaluator_tokens_mean: 11000
+    evaluator_confidence_range: "0.85-0.95 (much higher than rule-based 0.50)"
+
+  token_overhead:
+    evaluator_tokens_per_run: "~11K (15 cycles × ~730 tokens/eval call)"
+    total_tokens_per_run: "~19.5K (vs R-20 ~9.2K — evaluator doubles cost)"
+
+findings:
+  - id: F1
+    title: "LLM evaluator produces accurate, differentiated assessments — but makes termination WORSE"
+    detail: >
+      The LLM evaluator correctly identifies when the agent is reading files vs writing code,
+      gives accurate discrepancy scores (1.0 when nothing done, 0.85 when partial progress,
+      0.3-0.5 when substantial work completed), and provides insightful summaries. However,
+      the HIGH confidence (0.85-0.95) makes the goal-unreachable heuristic fire more reliably.
+      Rule-based had 0.50 confidence which let some runs escape termination. Better signal
+      quality paradoxically worsened outcomes because the termination logic is flawed.
+
+  - id: F2
+    title: "The termination logic is the bottleneck, not the discrepancy signal"
+    detail: >
+      R-20 proved the signal was bad. R-21 proved that fixing the signal didn't fix the
+      problem. The issue is structural: the unreachable check (rate<=0 past 60% of cycles)
+      doesn't account for EXPECTED task phases. An agent reading files in cycles 1-6 is in
+      an exploration phase, not stuck. The evaluator correctly reports "no progress" because
+      no files have been written — but the correct interpretation is "exploration in progress"
+      not "goal unreachable." The termination logic lacks PHASE AWARENESS.
+
+  - id: F3
+    title: "Missing cognitive functions identified — anticipatory monitoring gap"
+    detail: >
+      The architecture lacks three cognitive processes that humans use for progress monitoring:
+      (1) Pre-task difficulty estimation (Koriat's EOL judgment) — parameterizes expected
+      timeline and effort.
+      (2) Phase-aware progress evaluation — reading code in cycle 3 is expected; reading code
+      in cycle 12 is alarming. The current evaluator treats all cycles identically.
+      (3) Solvability estimation (Metcalfe-Wiebe warmth signal) — a running P(solvable) that's
+      separate from P(solved). "I haven't done it yet but I know how" prevents premature
+      abandonment.
+      These map to the Planner module (RFC 001, never implemented) and extensions to the
+      Evaluator's metamonitor.
+
+  - id: F4
+    title: "The Planner module (RFC 001) was always the missing piece"
+    detail: >
+      RFC 001 defines 8 modules. The Planner (goal decomposition, strategy selection, anterior
+      prefrontal abstract planning) was listed but never elaborated or implemented. RFC 004
+      addressed the Evaluator's goal-state gap but assumed the discrepancy function was the
+      fix. R-20/R-21 show the real gap is upstream: without a Planner that sets phase
+      expectations, decomposes the goal into subgoals, and estimates difficulty, the Evaluator
+      has no reference trajectory to evaluate against. It can only compare "now vs goal" —
+      not "now vs where we should be."
+
+  - id: F5
+    title: "LLM evaluator validates the frontier-then-SLM pattern — the LLM CAN evaluate"
+    detail: >
+      Despite the termination problem, the LLM evaluator demonstrated that frontier models
+      CAN assess goal-state discrepancy accurately. The assessments were insightful, correctly
+      tracked which files were created, and identified when agents were stuck vs making progress.
+      This validates the first step of the RFC 002 pipeline: the capability exists at the
+      frontier level. When the termination logic is fixed, the LLM evaluator signal will be
+      valuable. SLM compilation can follow once the full system (Planner + phase-aware Evaluator)
+      is validated.
+
+next_steps:
+  - "RFC 005: Anticipatory Monitoring — formalize the missing cognitive functions"
+  - "Diagnostic experiment (R-22): inject phase awareness into evaluator prompt, test if premature termination is prevented"
+  - "If validated: implement Planner module + phase-aware Evaluator as proper cognitive modules"
+  - "Defer SLM compilation until the full Planner→Evaluator pipeline is validated at frontier"
