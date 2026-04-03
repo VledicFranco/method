@@ -36,6 +36,9 @@ export type {
   SubGoal,
   GoalDiscrepancy,
   TerminateSignal,
+  TaskAssessment,
+  TaskPhase,
+  SolvabilityEstimate,
 } from './goal-types.js';
 
 export {
@@ -53,7 +56,9 @@ export {
   ASPIRATION_CEILING,
 } from './discrepancy-function.js';
 
-export { buildLLMGoalDiscrepancy } from './llm-discrepancy.js';
+export { buildLLMGoalDiscrepancy, buildPhaseAwareDiscrepancy } from './llm-discrepancy.js';
+export type { PhaseAwareResult } from './llm-discrepancy.js';
+export { assessTaskWithLLM, defaultAssessment } from './llm-task-assessment.js';
 
 // ── Workspace types ──────────────────────────────────────────────
 

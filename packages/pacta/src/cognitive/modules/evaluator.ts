@@ -110,7 +110,7 @@ import {
   updateAspiration,
   DEFAULT_ASPIRATION,
 } from '../algebra/discrepancy-function.js';
-import { buildLLMGoalDiscrepancy } from '../algebra/llm-discrepancy.js';
+import { buildLLMGoalDiscrepancy, buildPhaseAwareDiscrepancy } from '../algebra/llm-discrepancy.js';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -129,6 +129,9 @@ export interface EvaluatorConfig {
    *  When present, replaces rule-based heuristic with LLM-based goal-state comparison.
    *  Falls back to rule-based on LLM error. */
   provider?: import('../algebra/provider-adapter.js').ProviderAdapter;
+  /** RFC 005: Pre-task assessment for phase-aware evaluation. When present with provider,
+   *  uses phase-aware discrepancy with solvability-gated termination. */
+  taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
 }
 
 /** Combined input: workspace snapshot + monitoring signals. */
@@ -149,6 +152,10 @@ export interface EvaluatorOutput {
   terminateSignal?: import('../algebra/goal-types.js').TerminateSignal;
   /** Tokens used by LLM evaluator this step (0 when using rule-based). */
   evaluatorTokens?: number;
+  /** RFC 005: Solvability estimate (present when taskAssessment is provided). */
+  solvability?: import('../algebra/goal-types.js').SolvabilityEstimate;
+  /** RFC 005: Current execution phase (present when taskAssessment is provided). */
+  currentPhase?: string;
 }
 
 /** State: progress history and diminishing returns detection. */
@@ -163,6 +170,10 @@ export interface EvaluatorState {
   discrepancyHistory?: number[];
   /** PRD 045: Current satisficing aspiration level. */
   aspirationLevel?: number;
+  /** RFC 005: Task assessment (persistent, set at cycle 0). */
+  taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
+  /** RFC 005: History of solvability estimates. */
+  solvabilityHistory?: number[];
 }
 
 /** Control directive: evaluation horizon. */
@@ -190,6 +201,7 @@ export function createEvaluator(
   const goalConfig = config?.goalRepresentation;
   const maxCycles = config?.maxCycles ?? 15;
   const provider = config?.provider;
+  const taskAssessment = config?.taskAssessment;
 
   return {
     id,
@@ -216,30 +228,51 @@ export function createEvaluator(
         diminishingReturns = detectDiminishingReturns(history, drWindow);
       }
 
-      // ── PRD 045: Goal-state comparison path ──────────────────
+      // ── PRD 045 + RFC 005: Goal-state comparison path ─────────
       let discrepancyResult: import('../algebra/goal-types.js').GoalDiscrepancy | undefined;
       let terminateResult: import('../algebra/goal-types.js').TerminateSignal | undefined;
+      let solvabilityResult: import('../algebra/goal-types.js').SolvabilityEstimate | undefined;
+      let currentPhaseResult: string | undefined;
       let newAspirationLevel = state.aspirationLevel;
       let newDiscrepancyHistory = state.discrepancyHistory ?? [];
+      let newSolvabilityHistory = state.solvabilityHistory ?? [];
       let evaluatorTokens = 0;
 
       if (state.goal) {
         const previousDiscrepancy = newDiscrepancyHistory.length > 0
           ? newDiscrepancyHistory[newDiscrepancyHistory.length - 1]
           : undefined;
+        const previousSolvability = newSolvabilityHistory.length > 0
+          ? newSolvabilityHistory[newSolvabilityHistory.length - 1]
+          : undefined;
         const aspiration = state.aspirationLevel ?? DEFAULT_ASPIRATION;
         const cycleNum = state.cycleCount + 1;
 
-        // Try LLM-based discrepancy first, fall back to rule-based
-        if (provider) {
-          const llmResult = await buildLLMGoalDiscrepancy(
+        // RFC 005: Phase-aware path (provider + taskAssessment)
+        if (provider && state.taskAssessment) {
+          const paResult = await buildPhaseAwareDiscrepancy(
             provider,
             input.workspace,
             state.goal,
             cycleNum,
             maxCycles,
+            state.taskAssessment,
             previousDiscrepancy,
+            previousSolvability,
             id,
+          );
+          if (paResult) {
+            discrepancyResult = paResult.discrepancy;
+            solvabilityResult = paResult.solvability;
+            currentPhaseResult = paResult.currentPhase;
+            evaluatorTokens = paResult.tokensUsed;
+          }
+        }
+
+        // Fallback: LLM without phase awareness
+        if (!discrepancyResult && provider) {
+          const llmResult = await buildLLMGoalDiscrepancy(
+            provider, input.workspace, state.goal, cycleNum, maxCycles, previousDiscrepancy, id,
           );
           if (llmResult) {
             discrepancyResult = llmResult.discrepancy;
@@ -250,21 +283,21 @@ export function createEvaluator(
         // Fallback: rule-based heuristic
         if (!discrepancyResult) {
           discrepancyResult = buildGoalDiscrepancy(
-            input.workspace,
-            state.goal,
-            previousDiscrepancy,
-            aspiration,
-            id,
+            input.workspace, state.goal, previousDiscrepancy, aspiration, id,
           );
         }
 
         // Update satisficing dynamics
         newAspirationLevel = updateAspiration(aspiration, discrepancyResult.rate);
         newDiscrepancyHistory = [...newDiscrepancyHistory, discrepancyResult.discrepancy];
+        if (solvabilityResult) {
+          newSolvabilityHistory = [...newSolvabilityHistory, solvabilityResult.probability];
+        }
 
-        // Check termination conditions
+        // ── Termination logic ──────────────────────────────────
         const confidenceGate = newAspirationLevel < 0.80 ? 0.85 : 0.70;
 
+        // Goal-satisfied: discrepancy below aspiration with high confidence
         if (discrepancyResult.satisfied && discrepancyResult.confidence > confidenceGate) {
           terminateResult = {
             type: 'terminate',
@@ -274,19 +307,40 @@ export function createEvaluator(
             confidence: discrepancyResult.confidence,
             evidence: discrepancyResult,
           };
-        } else if (
-          cycleNum > maxCycles * 0.6 &&
-          discrepancyResult.rate <= 0 &&
-          diminishingReturns
-        ) {
-          terminateResult = {
-            type: 'terminate',
-            source: id,
-            timestamp: Date.now(),
-            reason: 'goal-unreachable',
-            confidence: discrepancyResult.confidence,
-            evidence: discrepancyResult,
-          };
+        }
+        // Goal-unreachable: RFC 005 solvability-gated OR legacy rate-based
+        else if (solvabilityResult) {
+          // RFC 005 path: terminate when solvability drops below 0.3 past halfway
+          const estimatedCycles = state.taskAssessment?.estimatedCycles ?? maxCycles;
+          if (
+            solvabilityResult.probability < 0.3 &&
+            cycleNum > estimatedCycles * 0.5
+          ) {
+            terminateResult = {
+              type: 'terminate',
+              source: id,
+              timestamp: Date.now(),
+              reason: 'goal-unreachable',
+              confidence: discrepancyResult.confidence,
+              evidence: discrepancyResult,
+            };
+          }
+        } else {
+          // Legacy path (no solvability): rate-based termination
+          if (
+            cycleNum > maxCycles * 0.6 &&
+            discrepancyResult.rate <= 0 &&
+            diminishingReturns
+          ) {
+            terminateResult = {
+              type: 'terminate',
+              source: id,
+              timestamp: Date.now(),
+              reason: 'goal-unreachable',
+              confidence: discrepancyResult.confidence,
+              evidence: discrepancyResult,
+            };
+          }
         }
       }
 
@@ -296,6 +350,8 @@ export function createEvaluator(
         goal: state.goal,
         discrepancyHistory: newDiscrepancyHistory,
         aspirationLevel: newAspirationLevel,
+        taskAssessment: state.taskAssessment,
+        solvabilityHistory: newSolvabilityHistory,
       };
 
       const monitoring: EvaluatorMonitoring = {
@@ -313,6 +369,8 @@ export function createEvaluator(
           discrepancy: discrepancyResult,
           terminateSignal: terminateResult,
           evaluatorTokens,
+          solvability: solvabilityResult,
+          currentPhase: currentPhaseResult,
         },
         state: newState,
         monitoring,
@@ -326,6 +384,8 @@ export function createEvaluator(
         goal: goalConfig,
         discrepancyHistory: [],
         aspirationLevel: goalConfig ? DEFAULT_ASPIRATION : undefined,
+        taskAssessment,
+        solvabilityHistory: [],
       };
     },
 

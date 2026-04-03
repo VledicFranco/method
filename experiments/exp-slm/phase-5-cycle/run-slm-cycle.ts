@@ -75,7 +75,8 @@ import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/mon
 import { createEvaluator, type EvaluatorInput } from '../../../packages/pacta/src/cognitive/modules/evaluator.js';
 import { checkConstraintViolations } from '../../../packages/pacta/src/cognitive/modules/constraint-classifier.js';
 import { extractProhibitions } from '../../../packages/pacta/src/cognitive/algebra/constraint-utils.js';
-import type { GoalRepresentation, TerminateSignal } from '../../../packages/pacta/src/cognitive/algebra/goal-types.js';
+import type { GoalRepresentation, TerminateSignal, TaskAssessment } from '../../../packages/pacta/src/cognitive/algebra/goal-types.js';
+import { assessTaskWithLLM } from '../../../packages/pacta/src/cognitive/algebra/llm-task-assessment.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
 import type { ContextSelector, PartitionId, PartitionMonitorContext } from '../../../packages/pacta/src/cognitive/algebra/index.js';
@@ -1302,18 +1303,27 @@ async function runPartitionedCognitiveGoal(
     confidenceThreshold: 0.3,
     stagnationThreshold: config.monitor.stagnationThreshold,
   });
-  // PRD 045: Evaluator with LLM-based goal-state monitoring
+  // RFC 005: Evaluator with phase-aware LLM assessment + solvability gating
   const evalProvider = anthropicProvider({
     model: LLM_MODEL,
-    maxOutputTokens: 256,
+    maxOutputTokens: 512,
   });
   const evalAdapter = createProviderAdapter(evalProvider, {
-    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 256 } },
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 512 } },
   });
+  // Pre-task assessment (Koriat's EOL judgment) — parameterizes evaluator
+  const assessResult = await assessTaskWithLLM(evalAdapter, goalRepresentation, MAX_CYCLES, moduleId('evaluator'));
+  const taskAssessment = assessResult.assessment;
+  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)}`);
+  console.log(`    [task-assessment] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+  if (taskAssessment.kpis.length > 0) {
+    console.log(`    [task-assessment] kpis: ${taskAssessment.kpis.join(', ')}`);
+  }
   const evaluator = createEvaluator({
     goalRepresentation,
     maxCycles: MAX_CYCLES,
     provider: evalAdapter,
+    taskAssessment,
   });
   const reasonerActor = createReasonerActor(
     adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
@@ -1418,11 +1428,15 @@ async function runPartitionedCognitiveGoal(
       evaluatorState = evalResult.state;
       evaluatorTokensTotal += evalResult.output.evaluatorTokens ?? 0;
 
-      // Log goal-state discrepancy
+      // Log goal-state discrepancy + solvability
       if (evalResult.output.discrepancy) {
         const d = evalResult.output.discrepancy;
-        const llmTag = d.basis.startsWith('llm-') ? ' [LLM]' : ' [rule]';
-        console.log(`    [goal-state c${cycle + 1}]${llmTag} discrepancy=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} satisfied=${d.satisfied}`);
+        const s = evalResult.output.solvability;
+        const phase = evalResult.output.currentPhase ?? '';
+        const llmTag = d.basis.startsWith('llm-phase-aware') ? ' [PA]' : d.basis.startsWith('llm-') ? ' [LLM]' : ' [rule]';
+        const solvTag = s ? ` solv=${s.probability.toFixed(2)}` : '';
+        const phaseTag = phase ? ` phase=${phase}` : '';
+        console.log(`    [goal-state c${cycle + 1}]${llmTag} disc=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} sat=${d.satisfied}${solvTag}${phaseTag}`);
         if (d.basis.startsWith('llm-')) {
           console.log(`      ${d.basis}`);
         }
