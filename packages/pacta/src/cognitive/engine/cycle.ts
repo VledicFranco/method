@@ -35,9 +35,11 @@ import type {
   PartitionSignal,
   PartitionId,
   WorkspaceEntry,
+  PartitionWriteAdapter,
 } from '../algebra/index.js';
 
 import { moduleId as createModuleId } from '../algebra/module.js';
+import { createTypeResolver } from '../partitions/type-resolver.js';
 import { checkConstraintViolations } from '../modules/constraint-classifier.js';
 
 // ── Cycle Configuration ──────────────────────────────────────────
@@ -83,6 +85,18 @@ export interface CycleConfig {
    * DEFAULT_MODULE_SELECTORS for modules without an explicit selector.
    */
   moduleSelectors?: Map<ModuleId, ContextSelector>;
+
+  /**
+   * PRD 045 — partition write adapters for write-path tracking.
+   *
+   * Map from module key (e.g., 'observer', 'reasoner') to the PartitionWriteAdapter
+   * that was injected as that module's write port. The cycle reads tracking data after
+   * each module step to update partitionLastWriteCycle for partition monitors.
+   *
+   * The composition root creates one adapter per module and passes it both to the module
+   * factory (as its write port) and here (for cycle-level tracking).
+   */
+  partitionWriteAdapters?: Map<string, PartitionWriteAdapter>;
 }
 
 // ── Cycle Modules ────────────────────────────────────────────────
@@ -230,16 +244,34 @@ const DEFAULT_MODULE_SELECTORS: Record<string, ContextSelector> = {
 
 /**
  * Build typed context for a module from the partition system.
- * Falls back to partition snapshot if no selector is found.
+ *
+ * Resolution order (PRD 045):
+ * 1. Module's own contextBinding (type-driven → TypeResolver → ContextSelector)
+ * 2. Custom selectors from CycleConfig.moduleSelectors
+ * 3. DEFAULT_MODULE_SELECTORS (hardcoded fallback)
+ * 4. Full partition snapshot (last resort)
  */
 function buildModuleContext(
   moduleKey: string,
+  mod: AnyModule,
   partitions: PartitionSystem,
   customSelectors?: Map<ModuleId, ContextSelector>,
-  moduleId?: ModuleId,
 ): ReadonlyWorkspaceSnapshot {
-  // Check custom selectors first (by ModuleId), then defaults (by key)
-  const selector = (moduleId && customSelectors?.get(moduleId))
+  // PRD 045: prefer module's contextBinding (type-driven pull)
+  if (mod.contextBinding) {
+    const resolver = createTypeResolver();
+    const sources = resolver.resolve(mod.contextBinding.types);
+    const selector: ContextSelector = {
+      sources,
+      types: mod.contextBinding.types,
+      budget: mod.contextBinding.budget,
+      strategy: mod.contextBinding.strategy,
+    };
+    return partitions.buildContext(selector);
+  }
+
+  // Fallback: custom selectors (by ModuleId), then defaults (by key)
+  const selector = customSelectors?.get(mod.id)
     ?? DEFAULT_MODULE_SELECTORS[moduleKey];
 
   if (!selector) {
@@ -418,7 +450,7 @@ export function createCognitiveCycle(
       phasesExecuted.push('REMEMBER');
 
       const snapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-        ? buildModuleContext('memory', config.partitionSystem, config.moduleSelectors, modules.memory.id)
+        ? buildModuleContext('memory', modules.memory, config.partitionSystem, config.moduleSelectors)
         : workspace.snapshot();
       const memoryInput = { snapshot };
       const memoryControl = {
@@ -437,7 +469,7 @@ export function createCognitiveCycle(
       phasesExecuted.push('REASON');
 
       const reasonSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-        ? buildModuleContext('reasoner', config.partitionSystem, config.moduleSelectors, modules.reasoner.id)
+        ? buildModuleContext('reasoner', modules.reasoner, config.partitionSystem, config.moduleSelectors)
         : workspace.snapshot();
       const reasonerInput = { snapshot: reasonSnapshot };
       const reasonerControl = {
@@ -476,7 +508,7 @@ export function createCognitiveCycle(
 
         // Also run evaluator as part of monitoring
         const evalSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-          ? buildModuleContext('evaluator', config.partitionSystem, config.moduleSelectors, modules.evaluator.id)
+          ? buildModuleContext('evaluator', modules.evaluator, config.partitionSystem, config.moduleSelectors)
           : workspace.snapshot();
         const evaluatorInput = { workspace: evalSnapshot, signals };
         const evaluatorControl = {
@@ -495,7 +527,7 @@ export function createCognitiveCycle(
         phasesExecuted.push('CONTROL');
 
         const plannerSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-          ? buildModuleContext('planner', config.partitionSystem, config.moduleSelectors, modules.planner.id)
+          ? buildModuleContext('planner', modules.planner, config.partitionSystem, config.moduleSelectors)
           : workspace.snapshot();
         const plannerInput = { workspace: plannerSnapshot };
         const plannerControl = {
@@ -576,7 +608,7 @@ export function createCognitiveCycle(
       phasesExecuted.push('ACT');
 
       const actSnapshot: ReadonlyWorkspaceSnapshot = config.partitionSystem
-        ? buildModuleContext('actor', config.partitionSystem, config.moduleSelectors, modules.actor.id)
+        ? buildModuleContext('actor', modules.actor, config.partitionSystem, config.moduleSelectors)
         : workspace.snapshot();
       const actorInput = { snapshot: actSnapshot };
 
@@ -626,6 +658,18 @@ export function createCognitiveCycle(
             };
             emitEvent(violationEvent);
           }
+        }
+      }
+
+      // ── Post-ACT Partition Write Tracking (PRD 045) ────────────────
+      // Update partitionLastWriteCycle from write adapters so partition
+      // monitors can detect stagnation accurately.
+      if (config.partitionWriteAdapters) {
+        for (const [_key, adapter] of config.partitionWriteAdapters) {
+          for (const [partId] of adapter.getWrittenPartitions()) {
+            partitionLastWriteCycle.set(partId, cycleNumber);
+          }
+          adapter.resetCycleTracking();
         }
       }
 

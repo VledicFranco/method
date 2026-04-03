@@ -27,6 +27,10 @@ export type {
   CognitiveAgent,
 } from './create-cognitive-agent.js';
 
+// ── Partition write adapter (PRD 045) ───────────────────────────
+
+export { createPartitionWriteAdapter } from './partition-write-adapter.js';
+
 // ── Flat agent adapter ──────────────────────────────────────────
 
 export { asFlatAgent } from './as-flat-agent.js';

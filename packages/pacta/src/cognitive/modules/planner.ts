@@ -32,6 +32,7 @@ export interface PlannerConfig {
   systemPrompt?: string;
   /** Module ID override. Default: 'planner'. */
   id?: string;
+  contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
 }
 
 /** Input to the Planner: workspace snapshot for context. */
@@ -82,6 +83,7 @@ export function createPlanner(
 
   return {
     id,
+    contextBinding: config?.contextBinding ?? { types: ['goal', 'constraint'], budget: 4096, strategy: 'salience' as const },
 
     async step(
       input: PlannerInput,

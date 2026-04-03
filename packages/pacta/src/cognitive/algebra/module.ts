@@ -160,6 +160,16 @@ export interface CognitiveModule<
   Kappa extends ControlDirective,
 > {
   readonly id: ModuleId;
+
+  /**
+   * PRD 045 — type-driven context binding.
+   *
+   * When present, the cycle orchestrator uses TypeResolver to map the declared
+   * entry types to partitions and builds context from those partitions only.
+   * When absent, falls back to DEFAULT_MODULE_SELECTORS (backward compatible).
+   */
+  contextBinding?: import('./partition-types.js').ModuleContextBinding;
+
   step(input: I, state: S, control: Kappa): Promise<StepResult<O, S, Mu>>;
   initialState(): S;
   stateInvariant?(state: S): boolean;

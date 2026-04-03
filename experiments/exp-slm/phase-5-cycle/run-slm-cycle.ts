@@ -77,6 +77,12 @@ import { checkConstraintViolations } from '../../../packages/pacta/src/cognitive
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
 import type { ContextSelector, PartitionId, PartitionMonitorContext } from '../../../packages/pacta/src/cognitive/algebra/index.js';
 
+// Memory modules (PRD 045 — CLS dual-store retrieval)
+import { createMemoryV3 } from '../../../packages/pacta/src/cognitive/modules/memory-module-v3.js';
+import { createInMemoryDualStore } from '../../../packages/pacta/src/cognitive/modules/in-memory-dual-store.js';
+import { defaultActivationConfig } from '../../../packages/pacta/src/cognitive/modules/activation.js';
+import type { EpisodicEntry } from '../../../packages/pacta/src/ports/memory-port.js';
+
 // CJS/ESM interop: exp-cognitive-baseline has no package.json "type":"module",
 // so its exports need default-import destructuring under Node16 resolution.
 import strategiesModule from '../../exp-cognitive-baseline/strategies.js';
@@ -120,7 +126,7 @@ interface TaskDefinition {
 
 const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05, TASK_06];
 
-type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart';
+type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory';
 
 interface ContextProfile {
   cycle: number;
@@ -152,6 +158,7 @@ interface RunResult {
 
 let MAX_CYCLES = 15; // overridable via --max-cycles=N
 let extendedThinkingBudget = 0; // overridable via --extended-thinking=N
+let LLM_MODEL = 'claude-sonnet-4-20250514'; // overridable via --model=NAME (default: sonnet for cost efficiency)
 
 // ── Condition A: Flat Agent ─────────────────────────────────────
 
@@ -160,7 +167,7 @@ async function runFlat(task: TaskDefinition, runNumber: number): Promise<RunResu
   const vfs = new VirtualToolProvider(task.initialFiles);
 
   const provider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 4096,
     toolProvider: vfs,
     maxTurns: 15,
@@ -229,7 +236,7 @@ async function runRuleCognitive(
   const vfs = new VirtualToolProvider(task.initialFiles);
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -411,7 +418,7 @@ async function runPartitionedCognitive(
   const vfs = new VirtualToolProvider(task.initialFiles);
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -701,12 +708,14 @@ async function runPartitionedSmart(
   task: TaskDefinition,
   runNumber: number,
   config: CognitiveConfig,
+  options?: { withMemory?: boolean },
 ): Promise<RunResult> {
   const startTime = Date.now();
   const vfs = new VirtualToolProvider(task.initialFiles);
+  const useMemory = options?.withMemory ?? false;
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -728,9 +737,12 @@ async function runPartitionedSmart(
   // Larger task capacity than base partitioned-cognitive (6→12) to ensure all goal
   // entries from smart decomposition fit without eviction. T06 has 6 goals + progress
   // notes; 12 gives headroom without hurting short tasks (T01-T05 have ≤4 goals).
+  // Memory entries (5/cycle) go to operational partition — need extra capacity so they
+  // don't evict fresh tool results. Without memory: 14 is fine. With memory: 20.
+  const operationalCap = useMemory ? 20 : 14;
   const partitions = createPartitionSystem({
     constraintCapacity: 12,
-    operationalCapacity: 14,
+    operationalCapacity: operationalCap,
     taskCapacity: 12,
   });
 
@@ -742,6 +754,30 @@ async function runPartitionedSmart(
   const reasonerActor = createReasonerActor(
     adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
   );
+
+  // ── Memory layer (PRD 045 — CLS dual-store, zero LLM cost) ────
+  // When enabled, adds REMEMBER + STORE phases to the cycle:
+  //   REMEMBER: ACT-R activation search → write retrieved memories to operational partition
+  //   STORE:    after each action, store tool result as episodic entry
+  const activationCfg = defaultActivationConfig();
+  const memoryStore = useMemory
+    ? createInMemoryDualStore(
+        { episodic: { capacity: 100, encoding: 'verbatim' as const }, semantic: { capacity: 200, encoding: 'extracted' as const, updateRate: 'slow' as const }, consolidation: { replayBatchSize: 5, interleaveRatio: 0.6, schemaConsistencyThreshold: 0.8 } },
+        activationCfg,
+      )
+    : null;
+  // MemoryV3 writes retrieved entries to operational partition via a write adapter
+  const memoryWritePort = useMemory
+    ? {
+        write(entry: import('../../../packages/pacta/src/cognitive/algebra/workspace-types.js').WorkspaceEntry): void {
+          partitions.write(entry, moduleId('memory-v3'));
+        },
+      }
+    : null;
+  const memoryModule = useMemory && memoryStore && memoryWritePort
+    ? createMemoryV3(memoryStore, memoryWritePort, activationCfg)
+    : null;
+  let memoryState = memoryModule?.initialState() ?? null;
 
   let totalTokens = 0;
   let providerCalls = 0;
@@ -796,6 +832,43 @@ async function runPartitionedSmart(
         for (const entry of [...decomposed.constraints, ...decomposed.goals, ...decomposed.context]) {
           const pid = partitions.write(entry, moduleId('observer'));
           lastWriteCycle.set(pid, cycle);
+        }
+
+        // ── Memory gating (MetaComposer-inspired task modality) ──────
+        // Memory helps: recall-dependent tasks (preserve, ensure, verify),
+        //   diagnostic tasks ("fix" without editing method), long tasks (≥5 goals or >20 cycles)
+        // Memory hurts: edit-heavy tasks (refactor + create + extract in goals)
+        //
+        // Key insight: "fix" is ambiguous — "fix by extracting" (T01) is editing,
+        // "fix the bug" (T02) is diagnostic. Disambiguate by checking for editing method.
+        if (useMemory) {
+          const goalTexts = decomposed.goals.map(g => String(g.content).toLowerCase());
+          const goalJoined = goalTexts.join(' ');
+
+          // Recall verbs that directly benefit from memory
+          const RECALL_VERBS = /\b(preserv\w*|ensur\w*|verif\w*|identif\w*)\b/;
+          const needsRecall = goalTexts.some(g => RECALL_VERBS.test(g));
+
+          // "fix" is diagnostic UNLESS accompanied by editing methods
+          const hasFix = /\bfix\b/.test(goalJoined);
+          const hasEditingMethod = goalTexts.some(g =>
+            /\b(extract\w*|creat\w*|refactor\w*|restructur\w*|rewrit\w*|split\w*|mov\w*|migrat\w*)\b/.test(g),
+          );
+          const isDiagnosticFix = hasFix && !hasEditingMethod;
+
+          const isLongTask = MAX_CYCLES > 20 || decomposed.goals.length >= 5;
+          const memoryEnabled = needsRecall || isDiagnosticFix || isLongTask;
+
+          if (!memoryEnabled) {
+            memoryState = null;
+            console.log(`    [memory-gate] DISABLED — edit-heavy task (${decomposed.goals.length} goals, ${MAX_CYCLES} cycles)`);
+          } else {
+            const reasons = [];
+            if (needsRecall) reasons.push('recall verbs (preserve/ensure/verify)');
+            if (isDiagnosticFix) reasons.push('diagnostic fix (no editing method)');
+            if (isLongTask) reasons.push(`long task (${decomposed.goals.length} goals, ${MAX_CYCLES} cycles)`);
+            console.log(`    [memory-gate] ENABLED — ${reasons.join(' + ')}`);
+          }
         }
 
         // Activate write-phase enforcer only for complex multi-file tasks (≥4 goals).
@@ -881,7 +954,7 @@ async function runPartitionedSmart(
       const monoSnapshot = workspace.getReadPort(moduleId('reasoner-actor')).read();
       const monoTokens = monoSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
 
-      const partSnapshot = partitions.buildContext(reasonerSelector);
+      let partSnapshot = partitions.buildContext(reasonerSelector);
       const partTokens = partSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
 
       const reduction = monoTokens > 0 ? Math.round((1 - partTokens / monoTokens) * 100) : 0;
@@ -914,6 +987,26 @@ async function runPartitionedSmart(
         perModule,
       });
 
+      // ── REMEMBER phase (zero LLM cost) ─────────────────────────
+      // ACT-R activation retrieval via MemoryV3 module, with age gating.
+      // Only retrieve episodes older than 20s — recent reads are still in workspace.
+      // This prevents redundant context (T01 regression) while surfacing evicted
+      // content on long tasks (T06 first pass) and providing import-chain salience
+      // amplification after the initial reading phase (T02 100%).
+      if (memoryModule && memoryState) {
+        const memResult = await memoryModule.step(
+          { snapshot: partSnapshot },
+          memoryState,
+          { target: moduleId('memory-v3'), timestamp: Date.now() },
+        );
+        memoryState = memResult.state;
+        const retrieved = memResult.output.count;
+        if (retrieved > 0) {
+          console.log(`    [memory c${cycle + 1}] retrieved ${retrieved} entries via ACT-R activation`);
+          partSnapshot = partitions.snapshot() as any[];
+        }
+      }
+
       const snapshot: ReadonlyWorkspaceSnapshot = partSnapshot;
       const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
       raState = raResult.state;
@@ -934,6 +1027,36 @@ async function runPartitionedSmart(
         consecutiveReadOnlyCycles = 0;
         totalWriteActionsThisRun++;
         writeEnforcerFired = false; // Reset so next enforcement event can inject fresh directive
+
+        // ── Stale memory invalidation ─────────────────────────────────
+        // After editing a file, episodic entries containing OLD file contents
+        // become stale and would confuse the agent about current file state.
+        // Check VFS for which files have been modified, expire matching episodes.
+        if (memoryStore) {
+          const modifiedPaths: string[] = [];
+          for (const [path] of vfs.files) {
+            if (!(path in task.initialFiles) || vfs.files.get(path) !== task.initialFiles[path]) {
+              modifiedPaths.push(path);
+            }
+          }
+          if (modifiedPaths.length > 0) {
+            const allEpisodes = await memoryStore.allEpisodic();
+            let expired = 0;
+            for (const ep of allEpisodes) {
+              const matchesModified = modifiedPaths.some(p =>
+                ep.content.includes(p) || ep.context.some(t => t.includes(p)),
+              );
+              if (matchesModified) {
+                await memoryStore.expireEpisodic(ep.id);
+                expired++;
+              }
+            }
+            if (expired > 0) {
+              console.log(`    [memory-invalidate c${cycle + 1}] expired ${expired} stale entries for modified files`);
+            }
+          }
+        }
+
         // Clear write restriction after agent writes
         if (raControl.restrictedActions?.includes('Read')) {
           raControl.restrictedActions = [];
@@ -989,6 +1112,24 @@ async function runPartitionedSmart(
           moduleId('reasoner-actor'),
         );
         lastWriteCycle.set('operational', cycle);
+
+        // ── STORE phase (zero LLM cost) ────────────────────────────
+        // Store tool result as episodic entry for ACT-R retrieval in future cycles.
+        // Context tags derived from action name + file paths in content for spreading activation.
+        if (memoryStore) {
+          const contextTags = [actionName.toLowerCase()];
+          // Extract file paths as context tags for spreading activation matching
+          const pathMatch = toolContent.match(/[\w/.-]+\.\w{1,4}/g);
+          if (pathMatch) contextTags.push(...pathMatch.slice(0, 3));
+          await memoryStore.storeEpisodic({
+            id: `ep-c${cycle}-${actionName}-${Date.now()}`,
+            content: `[${actionName}] ${toolContent.slice(0, 1000)}`,
+            context: contextTags,
+            timestamp: Date.now(),
+            accessCount: 1, // Initial access (stored = accessed once). Without this, base-level activation = -Infinity
+            lastAccessed: Date.now(),
+          });
+        }
       }
 
       const conf = (raResult.monitoring as any).confidence ?? 0;
@@ -1048,8 +1189,9 @@ async function runPartitionedSmart(
     }
 
     const validation = task.validate(vfs.files);
+    const conditionLabel = useMemory ? 'partitioned-memory' : 'partitioned-smart';
     return {
-      condition: 'partitioned-smart' as Condition,
+      condition: conditionLabel as Condition,
       task: task.name,
       run: runNumber,
       success: validation.success,
@@ -1062,8 +1204,9 @@ async function runPartitionedSmart(
       contextProfiles,
     };
   } catch (err) {
+    const conditionLabel = useMemory ? 'partitioned-memory' : 'partitioned-smart';
     return {
-      condition: 'partitioned-smart' as Condition,
+      condition: conditionLabel as Condition,
       task: task.name,
       run: runNumber,
       success: false,
@@ -1091,7 +1234,7 @@ async function runMonitorOnly(
   const metrics = createMetricsCollector();
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -1287,7 +1430,7 @@ async function runSlmCognitive(
   const metrics = createMetricsCollector();
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -1553,7 +1696,7 @@ async function runSlmPartitioned(
   const metrics = createMetricsCollector();
 
   const llmProvider = anthropicProvider({
-    model: 'claude-opus-4-20250514',
+    model: LLM_MODEL,
     maxOutputTokens: 2048,
     ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
   });
@@ -1998,6 +2141,10 @@ async function main() {
   // Parse observer mode — cycle0 is default (R-15 ablation showed every-cycle hurts search tasks)
   const observerMode: ObserverMode = (args.find(a => a.startsWith('--observer-mode='))?.split('=')[1] ?? 'cycle0') as ObserverMode;
 
+  // Parse model
+  LLM_MODEL = args.find(a => a.startsWith('--model='))?.split('=')[1] ?? 'claude-sonnet-4-20250514';
+  console.log(`Model: ${LLM_MODEL}`);
+
   // Parse extended thinking budget
   extendedThinkingBudget = parseInt(
     args.find(a => a.startsWith('--extended-thinking='))?.split('=')[1] ?? '0', 10,
@@ -2139,6 +2286,15 @@ async function main() {
       console.log('\nCondition: partitioned-smart');
       for (let i = 1; i <= numRuns; i++) {
         const r = await runPartitionedSmart(task, i, cognitiveConfig);
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runConditions.has('partitioned-memory')) {
+      console.log('\nCondition: partitioned-memory (CLS dual-store + ACT-R retrieval)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runPartitionedSmart(task, i, cognitiveConfig, { withMemory: true });
         printResult(r);
         results.push(r);
       }
