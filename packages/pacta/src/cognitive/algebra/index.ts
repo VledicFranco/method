@@ -29,6 +29,30 @@ export type {
 
 export { moduleId, CompositionError } from './module.js';
 
+// ── Goal-state types (PRD 045 — RFC 004) ────────────────────────
+
+export type {
+  GoalRepresentation,
+  SubGoal,
+  GoalDiscrepancy,
+  TerminateSignal,
+} from './goal-types.js';
+
+export {
+  computeDiscrepancy,
+  buildGoalDiscrepancy,
+  estimateConfidence,
+  extractKeyTerms,
+  computeTermOverlap,
+  checkConstraintSatisfaction,
+  detectWriteActivity,
+  computeSubgoalScore,
+  updateAspiration,
+  DEFAULT_ASPIRATION,
+  ASPIRATION_FLOOR,
+  ASPIRATION_CEILING,
+} from './discrepancy-function.js';
+
 // ── Workspace types ──────────────────────────────────────────────
 
 export type {
