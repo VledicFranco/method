@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""
-Generate predictions from the trained Schema→Grammar SLM on the holdout set.
+r"""
+Generate predictions from the trained Schema->Grammar SLM on the holdout set.
 Outputs a JSONL file with {input, expected, predicted} for each entry.
 
 Usage (on chobits):
     cd C:\Users\atfm0\pv-method\experiments\exp-slm
     set CUDA_VISIBLE_DEVICES=0
-    C:\Users\atfm0\miniconda3\envs\slm\python.exe \
-      ../exp-slm-composition/phase-1-schema-grammar/scripts/generate-predictions.py
+    C:\Users\atfm0\miniconda3\envs\slm\python.exe ^
+      ..\exp-slm-composition\phase-1-schema-grammar\scripts\generate-predictions.py
 
 Usage (local):
     CUDA_VISIBLE_DEVICES=0 python experiments/exp-slm-composition/phase-1-schema-grammar/scripts/generate-predictions.py
