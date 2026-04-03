@@ -6,7 +6,8 @@
  * type filtering.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { PartitionWorkspace } from '../partition-workspace.js';
 import {
   NoEvictionPolicy,
@@ -47,8 +48,8 @@ describe('PartitionWorkspace', () => {
     ws.write(entry);
 
     const result = ws.select();
-    expect(result).toHaveLength(1);
-    expect(result[0]).toBe(entry);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0], entry);
   });
 
   // ── Capacity + Eviction ────────────────────────────────────
@@ -63,15 +64,15 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(100));
     ws.write(makeEntry(200));
     ws.write(makeEntry(300));
-    expect(ws.count()).toBe(3);
+    assert.strictEqual(ws.count(), 3);
 
     // Writing a 4th entry should evict the oldest (ts=100).
     ws.write(makeEntry(400));
-    expect(ws.count()).toBe(3);
+    assert.strictEqual(ws.count(), 3);
 
     const entries = ws.snapshot();
     const timestamps = entries.map((e) => e.timestamp);
-    expect(timestamps).toEqual([200, 300, 400]);
+    assert.deepStrictEqual(timestamps, [200, 300, 400]);
   });
 
   it('NoEviction with safety valve at capacity evicts oldest', () => {
@@ -86,9 +87,9 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200));
     ws.write(makeEntry(300)); // safety valve kicks in → evicts ts=100
 
-    expect(ws.count()).toBe(2);
+    assert.strictEqual(ws.count(), 2);
     const timestamps = ws.snapshot().map((e) => e.timestamp);
-    expect(timestamps).toEqual([200, 300]);
+    assert.deepStrictEqual(timestamps, [200, 300]);
   });
 
   it('NoEviction without safety valve rejects write at capacity', () => {
@@ -103,9 +104,9 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200));
     ws.write(makeEntry(300)); // rejected — no eviction, no safety valve
 
-    expect(ws.count()).toBe(2);
+    assert.strictEqual(ws.count(), 2);
     const timestamps = ws.snapshot().map((e) => e.timestamp);
-    expect(timestamps).toEqual([100, 200]);
+    assert.deepStrictEqual(timestamps, [100, 200]);
   });
 
   it('GoalSalience preserves goals over operational entries', () => {
@@ -122,11 +123,11 @@ describe('PartitionWorkspace', () => {
     // At capacity. Writing another entry should evict the operational entry (index 1).
     ws.write(makeEntry(400, { contentType: 'goal' }));
 
-    expect(ws.count()).toBe(3);
+    assert.strictEqual(ws.count(), 3);
     const entries = ws.snapshot();
-    expect(entries.every((e) => e.contentType === 'goal')).toBe(true);
+    assert.strictEqual(entries.every((e) => e.contentType === 'goal'), true);
     const timestamps = entries.map((e) => e.timestamp);
-    expect(timestamps).toEqual([100, 300, 400]);
+    assert.deepStrictEqual(timestamps, [100, 300, 400]);
   });
 
   // ── Selection Strategies ───────────────────────────────────
@@ -143,9 +144,9 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200, { salience: 0.5 }));
 
     const result = ws.select({ strategy: 'all' });
-    expect(result).toHaveLength(3);
+    assert.strictEqual(result.length, 3);
     // Insertion order preserved.
-    expect(result.map((e) => e.timestamp)).toEqual([300, 100, 200]);
+    assert.deepStrictEqual(result.map((e) => e.timestamp), [300, 100, 200]);
   });
 
   it('select() with strategy recency returns newest first', () => {
@@ -160,7 +161,7 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200));
 
     const result = ws.select({ strategy: 'recency' });
-    expect(result.map((e) => e.timestamp)).toEqual([300, 200, 100]);
+    assert.deepStrictEqual(result.map((e) => e.timestamp), [300, 200, 100]);
   });
 
   it('select() with strategy salience returns highest salience first', () => {
@@ -175,7 +176,7 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(300, { salience: 0.6 }));
 
     const result = ws.select({ strategy: 'salience' });
-    expect(result.map((e) => e.salience)).toEqual([0.9, 0.6, 0.3]);
+    assert.deepStrictEqual(result.map((e) => e.salience), [0.9, 0.6, 0.3]);
   });
 
   // ── Budget Truncation ──────────────────────────────────────
@@ -195,11 +196,11 @@ describe('PartitionWorkspace', () => {
     // Budget of 5 tokens: fits entry 1 (3 tokens), fits entry 2 (3+3=6 > 5 → stop).
     // But the first entry is always included, so we get at least 1.
     const result = ws.select({ budget: 5 });
-    expect(result).toHaveLength(1);
+    assert.strictEqual(result.length, 1);
 
     // Budget of 6: fits 2 entries (3+3=6).
     const result2 = ws.select({ budget: 6 });
-    expect(result2).toHaveLength(2);
+    assert.strictEqual(result2.length, 2);
   });
 
   // ── Type Filtering ─────────────────────────────────────────
@@ -217,11 +218,11 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(400, { contentType: 'goal' }));
 
     const goals = ws.select({ types: ['goal'] });
-    expect(goals).toHaveLength(2);
-    expect(goals.every((e) => e.contentType === 'goal')).toBe(true);
+    assert.strictEqual(goals.length, 2);
+    assert.strictEqual(goals.every((e) => e.contentType === 'goal'), true);
 
     const mixed = ws.select({ types: ['goal', 'constraint'] });
-    expect(mixed).toHaveLength(3);
+    assert.strictEqual(mixed.length, 3);
   });
 
   it('select() with types filter excludes entries without contentType', () => {
@@ -235,8 +236,8 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200, { contentType: 'goal' }));
 
     const goals = ws.select({ types: ['goal'] });
-    expect(goals).toHaveLength(1);
-    expect(goals[0].contentType).toBe('goal');
+    assert.strictEqual(goals.length, 1);
+    assert.strictEqual(goals[0].contentType, 'goal');
   });
 
   // ── count() and snapshot() ─────────────────────────────────
@@ -248,11 +249,11 @@ describe('PartitionWorkspace', () => {
       policy: new RecencyEvictionPolicy(),
     });
 
-    expect(ws.count()).toBe(0);
+    assert.strictEqual(ws.count(), 0);
     ws.write(makeEntry(100));
-    expect(ws.count()).toBe(1);
+    assert.strictEqual(ws.count(), 1);
     ws.write(makeEntry(200));
-    expect(ws.count()).toBe(2);
+    assert.strictEqual(ws.count(), 2);
   });
 
   it('snapshot() returns a copy of entries', () => {
@@ -266,11 +267,11 @@ describe('PartitionWorkspace', () => {
     ws.write(makeEntry(200));
 
     const snap = ws.snapshot();
-    expect(snap).toHaveLength(2);
+    assert.strictEqual(snap.length, 2);
 
     // Snapshot is a copy — mutating it does not affect the workspace.
     (snap as WorkspaceEntry[]).length = 0;
-    expect(ws.count()).toBe(2);
+    assert.strictEqual(ws.count(), 2);
   });
 
   // ── resetCycleQuotas ───────────────────────────────────────
@@ -282,6 +283,6 @@ describe('PartitionWorkspace', () => {
       policy: new RecencyEvictionPolicy(),
     });
 
-    expect(() => ws.resetCycleQuotas()).not.toThrow();
+    assert.doesNotThrow(() => ws.resetCycleQuotas());
   });
 });

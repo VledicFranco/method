@@ -5,7 +5,8 @@
  * operational stagnation detection, and task goal staleness detection.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { ConstraintPartitionMonitor } from '../constraint/monitor.js';
 import { OperationalPartitionMonitor } from '../operational/monitor.js';
 import { TaskPartitionMonitor } from '../task/monitor.js';
@@ -56,12 +57,12 @@ describe('ConstraintPartitionMonitor', () => {
     const context = makeContext({ actorOutput: 'I will import lodash to handle arrays.' });
 
     const signals = monitor.check(entries, context);
-    expect(signals.length).toBeGreaterThanOrEqual(1);
+    assert.ok(signals.length >= 1);
 
     const violation = signals.find((s) => s.type === 'constraint-violation');
-    expect(violation).toBeDefined();
-    expect(violation!.severity).toBe('critical');
-    expect(violation!.partition).toBe('constraint');
+    assert.notStrictEqual(violation, undefined);
+    assert.strictEqual(violation!.severity, 'critical');
+    assert.strictEqual(violation!.partition, 'constraint');
   });
 
   it('returns empty when no violations', () => {
@@ -72,7 +73,7 @@ describe('ConstraintPartitionMonitor', () => {
 
     const signals = monitor.check(entries, context);
     const violations = signals.filter((s) => s.type === 'constraint-violation');
-    expect(violations).toHaveLength(0);
+    assert.strictEqual(violations.length, 0);
   });
 
   it('returns empty when no actorOutput', () => {
@@ -83,7 +84,7 @@ describe('ConstraintPartitionMonitor', () => {
 
     const signals = monitor.check(entries, context);
     const violations = signals.filter((s) => s.type === 'constraint-violation');
-    expect(violations).toHaveLength(0);
+    assert.strictEqual(violations.length, 0);
   });
 
   it('emits capacity warning at >= 80%', () => {
@@ -95,8 +96,8 @@ describe('ConstraintPartitionMonitor', () => {
 
     const signals = monitor.check(entries, context);
     const capacityWarning = signals.find((s) => s.type === 'capacity-warning');
-    expect(capacityWarning).toBeDefined();
-    expect(capacityWarning!.severity).toBe('low');
+    assert.notStrictEqual(capacityWarning, undefined);
+    assert.strictEqual(capacityWarning!.severity, 'low');
   });
 
   it('does not emit capacity warning below 80%', () => {
@@ -108,7 +109,7 @@ describe('ConstraintPartitionMonitor', () => {
 
     const signals = monitor.check(entries, context);
     const capacityWarning = signals.find((s) => s.type === 'capacity-warning');
-    expect(capacityWarning).toBeUndefined();
+    assert.strictEqual(capacityWarning, undefined);
   });
 });
 
@@ -129,10 +130,10 @@ describe('OperationalPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(1);
-    expect(signals[0].type).toBe('stagnation');
-    expect(signals[0].severity).toBe('high');
-    expect(signals[0].partition).toBe('operational');
+    assert.strictEqual(signals.length, 1);
+    assert.strictEqual(signals[0].type, 'stagnation');
+    assert.strictEqual(signals[0].severity, 'high');
+    assert.strictEqual(signals[0].partition, 'operational');
   });
 
   it('returns empty when recent write', () => {
@@ -147,7 +148,7 @@ describe('OperationalPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(0);
+    assert.strictEqual(signals.length, 0);
   });
 
   it('detects stagnation at exactly threshold boundary', () => {
@@ -162,8 +163,8 @@ describe('OperationalPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(1);
-    expect(signals[0].type).toBe('stagnation');
+    assert.strictEqual(signals.length, 1);
+    assert.strictEqual(signals[0].type, 'stagnation');
   });
 
   it('returns empty when operational partition has no lastWriteCycle entry', () => {
@@ -178,7 +179,7 @@ describe('OperationalPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(0);
+    assert.strictEqual(signals.length, 0);
   });
 });
 
@@ -199,10 +200,10 @@ describe('TaskPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(1);
-    expect(signals[0].type).toBe('goal-stale');
-    expect(signals[0].severity).toBe('medium');
-    expect(signals[0].partition).toBe('task');
+    assert.strictEqual(signals.length, 1);
+    assert.strictEqual(signals[0].type, 'goal-stale');
+    assert.strictEqual(signals[0].severity, 'medium');
+    assert.strictEqual(signals[0].partition, 'task');
   });
 
   it('returns empty when recent write', () => {
@@ -217,7 +218,7 @@ describe('TaskPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(0);
+    assert.strictEqual(signals.length, 0);
   });
 
   it('detects staleness at exactly threshold boundary', () => {
@@ -232,8 +233,8 @@ describe('TaskPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(1);
-    expect(signals[0].type).toBe('goal-stale');
+    assert.strictEqual(signals.length, 1);
+    assert.strictEqual(signals[0].type, 'goal-stale');
   });
 
   it('returns empty when task partition has no lastWriteCycle entry', () => {
@@ -248,6 +249,6 @@ describe('TaskPartitionMonitor', () => {
     });
 
     const signals = monitor.check(entries, context);
-    expect(signals).toHaveLength(0);
+    assert.strictEqual(signals.length, 0);
   });
 });

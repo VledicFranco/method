@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { createTypeResolver } from '../type-resolver.js';
 import type { EntryContentType } from '../../algebra/workspace-types.js';
 
@@ -6,38 +7,38 @@ describe('TypeResolver', () => {
   const resolver = createTypeResolver();
 
   it('resolves constraint → constraint partition', () => {
-    expect(resolver.resolve(['constraint'])).toEqual(['constraint']);
+    assert.deepStrictEqual(resolver.resolve(['constraint']), ['constraint']);
   });
 
   it('resolves goal → task partition', () => {
-    expect(resolver.resolve(['goal'])).toEqual(['task']);
+    assert.deepStrictEqual(resolver.resolve(['goal']), ['task']);
   });
 
   it('resolves operational → operational partition', () => {
-    expect(resolver.resolve(['operational'])).toEqual(['operational']);
+    assert.deepStrictEqual(resolver.resolve(['operational']), ['operational']);
   });
 
   it('resolves multiple types to multiple partitions (deduped)', () => {
     const result = resolver.resolve(['goal', 'constraint']);
-    expect(result).toHaveLength(2);
-    expect(result).toContain('task');
-    expect(result).toContain('constraint');
+    assert.strictEqual(result.length, 2);
+    assert.ok(result.includes('task'));
+    assert.ok(result.includes('constraint'));
   });
 
   it('resolves all three types to all three partitions', () => {
     const result = resolver.resolve(['constraint', 'goal', 'operational']);
-    expect(result).toHaveLength(3);
-    expect(result).toContain('constraint');
-    expect(result).toContain('task');
-    expect(result).toContain('operational');
+    assert.strictEqual(result.length, 3);
+    assert.ok(result.includes('constraint'));
+    assert.ok(result.includes('task'));
+    assert.ok(result.includes('operational'));
   });
 
   it('returns empty array for empty types', () => {
-    expect(resolver.resolve([])).toEqual([]);
+    assert.deepStrictEqual(resolver.resolve([]), []);
   });
 
   it('deduplicates when same type repeated', () => {
     const result = resolver.resolve(['goal', 'goal'] as EntryContentType[]);
-    expect(result).toEqual(['task']);
+    assert.deepStrictEqual(result, ['task']);
   });
 });

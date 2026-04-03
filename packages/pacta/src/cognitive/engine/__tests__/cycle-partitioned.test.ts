@@ -5,7 +5,8 @@
  * The legacy path (no partitionSystem) is tested in cycle.test.ts.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { createCognitiveCycle } from '../cycle.js';
 import type { CycleConfig, CycleModules } from '../cycle.js';
 import type {
@@ -101,10 +102,10 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
 
     const result = await cycle.run('test input', workspace, [noopSink]);
 
-    expect(result.aborted).toBeUndefined();
-    expect(result.phasesExecuted).toContain('OBSERVE');
-    expect(result.phasesExecuted).toContain('ACT');
-    expect(result.phasesExecuted).toContain('LEARN');
+    assert.strictEqual(result.aborted, undefined);
+    assert.ok(result.phasesExecuted.includes('OBSERVE'));
+    assert.ok(result.phasesExecuted.includes('ACT'));
+    assert.ok(result.phasesExecuted.includes('LEARN'));
   });
 
   it('legacy path still works when partitionSystem is not provided', async () => {
@@ -115,9 +116,9 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
 
     const result = await cycle.run('test input', workspace, [noopSink]);
 
-    expect(result.aborted).toBeUndefined();
-    expect(result.phasesExecuted).toContain('OBSERVE');
-    expect(result.phasesExecuted).toContain('ACT');
+    assert.strictEqual(result.aborted, undefined);
+    assert.ok(result.phasesExecuted.includes('OBSERVE'));
+    assert.ok(result.phasesExecuted.includes('ACT'));
   });
 
   it('emits constraint violation event when partition monitor detects violation', async () => {
@@ -149,7 +150,7 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
     await cycle.run('test input', workspace, [noopSink], (e) => events.push(e));
 
     const violations = events.filter(e => e.type === 'cognitive:constraint_violation');
-    expect(violations.length).toBeGreaterThan(0);
+    assert.ok(violations.length > 0);
   });
 
   it('no constraint violation event when actor output is clean', async () => {
@@ -179,7 +180,7 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
     await cycle.run('test input', workspace, [noopSink], (e) => events.push(e));
 
     const violations = events.filter(e => e.type === 'cognitive:constraint_violation');
-    expect(violations.length).toBe(0);
+    assert.strictEqual(violations.length, 0);
   });
 
   it('injects partition-monitor signal into aggregated signals on critical violation', async () => {
@@ -209,7 +210,7 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
 
     // The partition monitor should have injected a signal
     const pmSignal = result.signals.get(moduleId('partition-monitor') as any);
-    expect(pmSignal).toBeDefined();
+    assert.notStrictEqual(pmSignal, undefined);
   });
 
   it('CycleConfig accepts optional partitionSystem and moduleSelectors', () => {
@@ -226,13 +227,18 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
       moduleSelectors: selectors,
     });
 
-    expect(config.partitionSystem).toBe(partitions);
-    expect(config.moduleSelectors).toBe(selectors);
+    assert.strictEqual(config.partitionSystem, partitions);
+    assert.strictEqual(config.moduleSelectors, selectors);
   });
 
   it('resetCycleQuotas is called on partition system', async () => {
     const partitions = createPartitionSystem();
-    const resetSpy = vi.spyOn(partitions, 'resetCycleQuotas');
+    const originalReset = partitions.resetCycleQuotas.bind(partitions);
+    let resetCallCount = 0;
+    partitions.resetCycleQuotas = () => {
+      resetCallCount++;
+      return originalReset();
+    };
 
     const modules = createStubModules();
     const config = defaultConfig({ partitionSystem: partitions });
@@ -241,6 +247,6 @@ describe('Cognitive Cycle — Partitioned Path (PRD 044)', () => {
 
     await cycle.run('test input', workspace, [noopSink]);
 
-    expect(resetSpy).toHaveBeenCalled();
+    assert.ok(resetCallCount > 0, 'resetCycleQuotas should have been called');
   });
 });
