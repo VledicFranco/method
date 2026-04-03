@@ -8,7 +8,59 @@
  * Directives are NOT validated here — the cycle orchestrator validates them
  * against ControlPolicy.
  *
- * Grounded in: SOAR deliberate planning, ACT-R goal buffer management.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Anterior Prefrontal Cortex (aPFC) — abstract planning,
+ * goal management, and prospective memory.**
+ *
+ * - **SOAR (Laird, 2012) — Deliberate Planning:** When SOAR reaches an impasse
+ *   (no applicable operator), it creates a subgoal and enters a deliberate
+ *   planning phase. Our Planner is invoked by the CONTROL phase when the
+ *   Monitor detects an anomaly — functionally equivalent to SOAR's impasse-
+ *   triggered subgoaling. The Planner produces strategy directives (analogous
+ *   to SOAR operator proposals for the subgoal space).
+ *
+ * - **ACT-R (Anderson, 2007) — Goal Buffer Management:** ACT-R's goal buffer
+ *   holds the current goal chunk. Goal changes (push, pop, modify) are driven
+ *   by production rules. Our Planner generates `subgoals[]` and may revise
+ *   the plan, functioning as the goal management system. However, unlike
+ *   ACT-R's strict one-goal-at-a-time constraint, our Planner can maintain
+ *   multiple subgoals simultaneously.
+ *
+ * - **Hierarchical Task Network (HTN) Planning (Erol et al., 1994):** The
+ *   Planner's decomposition of goals into subgoals mirrors HTN's recursive
+ *   task decomposition. Each subgoal is a primitive or compound task that
+ *   can be further decomposed.
+ *
+ * - **Prospective Memory (Burgess et al., 2011):** The aPFC maintains
+ *   intentions for future action — "after X, do Y." Our Planner's directives
+ *   serve this function: they encode future-oriented control instructions
+ *   that persist across cycles.
+ *
+ * **What this module captures:**
+ * - LLM-based plan generation from workspace context
+ * - Goal decomposition into subgoals with status tracking
+ * - Control directive production for downstream modules
+ * - Plan revision detection (planRevised monitoring signal)
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - No plan evaluation: the Planner generates plans but doesn't evaluate whether
+ *   they're progressing toward the goal. Plan quality assessment requires the
+ *   Evaluator to have goal-state access (RFC 004).
+ * - No plan library: each invocation generates from scratch. SOAR's chunking
+ *   compiles successful plans into reusable productions — we don't.
+ * - Subgoal tracking is count-based, not completion-based: the Planner tracks
+ *   how many subgoals exist, not whether they've been achieved.
+ *
+ * **References:**
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Erol, K., Hendler, J., & Nau, D. S. (1994). HTN planning: Complexity and expressivity.
+ *   AAAI-94 Proceedings.
+ * - Burgess, P. W., Gonen-Yaacovi, G., & Volle, E. (2011). Functional neuroimaging studies
+ *   of prospective memory. Annals of the New York Academy of Sciences, 1224, 36-52.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 6 (CONTROL)
  */
 
 import type {

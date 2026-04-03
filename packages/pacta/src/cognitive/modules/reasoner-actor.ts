@@ -6,8 +6,65 @@
  * reasoning trace, and action instruction, then immediately executes the action
  * and writes the result back to the workspace.
  *
- * Grounded in: ACT-R procedural + motor unification, SOAR propose-apply in a
- * single decision cycle, CLARION integrated explicit reasoning + action.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Prefrontal Cortex (PFC) executive function + Basal Ganglia
+ * action selection — deliberate reasoning fused with motor execution.**
+ *
+ * This module merges two conceptually distinct cognitive functions (reasoning
+ * and acting) into a single LLM invocation for practical efficiency. The
+ * theoretical separation remains valid; the merge is an implementation choice.
+ *
+ * - **ACT-R (Anderson, 2007) — Procedural + Motor Unification:** In ACT-R,
+ *   the procedural module fires a production rule which may simultaneously
+ *   direct the motor module to act. Our ReasonerActor mirrors this: a single
+ *   LLM call produces both a reasoning trace (procedural) and an action
+ *   instruction (motor). The merge avoids the latency of two sequential LLM
+ *   calls while preserving the plan→reason→act structure in the output format.
+ *
+ * - **SOAR (Laird, 2012) — Propose-Apply Decision Cycle:** SOAR's decision
+ *   cycle has an elaborate phase (propose operators) followed by an apply
+ *   phase (execute the selected operator). Our ReasonerActor combines both:
+ *   the <plan> + <reasoning> sections are the elaboration/proposal, and the
+ *   <action> section is the apply. Impasse detection (SOAR's subgoaling
+ *   trigger) is handled by ReasonerActorV2 via action entropy monitoring.
+ *
+ * - **CLARION (Sun, 2002) — Dual-Process Integration:** CLARION maintains
+ *   both explicit (rule-based) and implicit (subsymbolic) processing levels,
+ *   integrated at the action level. Our ReasonerActor's structured output
+ *   format (<plan> = explicit strategy, <reasoning> = deliberate chain-of-thought,
+ *   <action> = integrated decision) mirrors this dual-level integration.
+ *
+ * - **Dual-Process Theory (Kahneman, 2011):** The ReasonerActor operates as
+ *   System 2 — slow, deliberate, effortful reasoning. The confidence signal
+ *   (computed from action entropy) provides a rough proxy for System 1/2
+ *   transition: high entropy = uncertain = System 2 engagement, low entropy =
+ *   habitual = potential System 1 compilation target (see RFC 001 Part V).
+ *
+ * **What this module captures:**
+ * - Deliberate reasoning with structured output (plan → reasoning → action)
+ * - Tool execution and workspace writing in a single step
+ * - Confidence estimation via action entropy (Shannon entropy over recent actions)
+ * - Strategy control via κ (restricted actions, force replan, strategy override)
+ * - The "done" action: object-level self-termination signal
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - The "done" action is an unvalidated LLM guess. No metacognitive verification
+ *   confirms that the goal is actually satisfied. See RFC 004 (Goal-State Monitoring).
+ * - No goal-state awareness: the reasoner doesn't know what "done" looks like beyond
+ *   what's in the workspace prompt. It can't compare its output to the goal.
+ * - Working memory limits: ACT-R enforces one-chunk-per-buffer. Our workspace capacity
+ *   is coarser — the reasoner sees the full workspace snapshot, not a constrained view.
+ *   Partitioned workspace (RFC 003) partially addresses this with per-module selectors.
+ *
+ * **References:**
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ * - Sun, R. (2002). Duality of the Mind: A Bottom-Up Approach Toward Cognition. Lawrence Erlbaum.
+ * - Kahneman, D. (2011). Thinking, Fast and Slow. Farrar, Straus and Giroux.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phases 4+7 (REASON, ACT)
+ * @see docs/rfcs/001-cognitive-composition.md — Part V (System 1/2 Transition)
  */
 
 import type {

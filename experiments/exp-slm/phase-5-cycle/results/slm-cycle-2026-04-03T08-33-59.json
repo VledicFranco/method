@@ -1,0 +1,1771 @@
+{
+  "timestamp": "2026-04-03T08:33:59.652Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-cognitive"
+  ],
+  "tasks": [
+    "api-versioning-side-effect-trap"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "partitioned-cognitive",
+      "task": "api-versioning-side-effect-trap",
+      "run": 1,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 16742,
+      "providerCalls": 15,
+      "durationMs": 77141,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 1,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 227,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 354,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 264
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 481,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 254
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 528
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 512,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 285
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 572
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 522,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 295
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 602
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 532,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 305
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 632
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 542,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 315
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 662
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 552,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 325
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 692
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 583,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 356
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 693
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 593,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 366
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 459
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 603,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 376
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 459
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 613,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 386
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 225
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 623,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 396
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 225
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 506,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 279
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 225
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 389,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 162
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 225
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "api-versioning-side-effect-trap",
+      "run": 2,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 18561,
+      "providerCalls": 15,
+      "durationMs": 72051,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 3,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 227,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 258,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 31
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 44
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 385,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 158
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 308
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 416,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 189
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 353
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 447,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 220
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 397
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 478,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 251
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 443
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 488,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 261
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 473
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 519,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 292
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 517
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 535,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 308
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 727
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 662,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 435
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 946
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 789,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 562
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1166
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 916,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 689
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1166
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 1043,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 816
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1384
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 1022,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 795
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1384
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 905,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 678
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1370
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "api-versioning-side-effect-trap",
+      "run": 3,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 23090,
+      "providerCalls": 15,
+      "durationMs": 72058,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 10,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 227,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 354,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 264
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 481,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 254
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 528
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 512,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 285
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 572
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 639,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 412
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 836
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 655,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 428
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 1090
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 782,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 555
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 1354
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 798,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 571
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1607
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 925,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 698
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1827
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 1052,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 825
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1827
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 1068,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 841
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1817
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 1195,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 968
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1817
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 1322,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 1095
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1827
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 1205,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 978
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1593
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 1205,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 978
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 227
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1604
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-cognitive": {
+        "total": 3,
+        "passes": 0,
+        "avgTokens": 19464,
+        "avgDurationMs": 73750,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

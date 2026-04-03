@@ -5,8 +5,55 @@
  * prompt (chain-of-thought, think, or plan), invokes the ProviderAdapter,
  * and writes the reasoning trace back to the workspace.
  *
- * Grounded in: ACT-R procedural module, SOAR problem-space reasoning,
- * CLARION explicit reasoning level.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Prefrontal Cortex (PFC) — executive function, working
+ * memory maintenance, and deliberate reasoning (System 2).**
+ *
+ * - **ACT-R (Anderson, 2007) — Procedural Module:** ACT-R's procedural module
+ *   matches conditions against buffer contents and fires production rules.
+ *   Our Reasoner reads the workspace (buffer analog) and produces structured
+ *   reasoning traces. Unlike ACT-R's rigid condition-action productions, our
+ *   Reasoner uses an LLM for flexible, context-dependent reasoning.
+ *
+ * - **SOAR (Laird, 2012) — Problem-Space Reasoning:** SOAR reasons by
+ *   searching through problem spaces — proposing operators, evaluating them,
+ *   and selecting one. Our Reasoner's strategy-appropriate prompting (CoT,
+ *   think, plan) maps to different search strategies in SOAR's problem space.
+ *
+ * - **CLARION (Sun, 2002) — Explicit Reasoning Level:** CLARION's top level
+ *   (action-centered explicit subsystem) performs rule-based reasoning with
+ *   conscious access. Our Reasoner operates at this explicit level: all
+ *   reasoning is articulated in the trace, available for inspection by
+ *   meta-level modules.
+ *
+ * - **Dual-Process Theory (Kahneman, 2011):** The Reasoner is System 2 —
+ *   slow, effortful, deliberate processing. It engages when the task requires
+ *   novel reasoning beyond cached patterns. The confidence signal estimates
+ *   reasoning quality.
+ *
+ * **What this module captures:**
+ * - Strategy-appropriate reasoning (CoT, think, plan modes via κ)
+ * - Structured output: action instructions for the Actor
+ * - Confidence tracking: keyword-based estimation from LLM output
+ * - Conflict detection: flagged when reasoning output contains contradictions
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - No bounded rationality: the Reasoner doesn't manage its own effort or
+ *   know when to stop reasoning. It produces one complete trace per step.
+ * - No meta-reasoning: the Reasoner can't reason about its own reasoning
+ *   process. That's the Monitor's job via the hierarchical operator (▷).
+ * - No analogy or transfer: each reasoning step is context-independent.
+ *   The Memory module provides past knowledge, but the Reasoner doesn't
+ *   explicitly reason by analogy.
+ *
+ * **References:**
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ * - Sun, R. (2002). Duality of the Mind: A Bottom-Up Approach Toward Cognition.
+ * - Kahneman, D. (2011). Thinking, Fast and Slow. Farrar, Straus and Giroux.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 4 (REASON)
  */
 
 import type {

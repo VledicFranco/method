@@ -17,7 +17,7 @@ Does the 8-module cognitive cycle with default-interventionist monitoring outper
 
 ### Line 3: Workspace Partitions (RFC 003)
 Does typed workspace partitioning enable complex cognition beyond single-workspace limits?
-**Status:** Phase 0 (pin flag) validated. Phase 1 recommended for research optionality. See `docs/rfcs/003-strategic-evaluation.md`.
+**Status:** Phase 1 IMPLEMENTED (PRD 044, commit bc2cca0). Goal drift confirmed (R-16). Partitioned workspace fixes T01 (0/3→3/3 at 30 cycles), 30-67% token reduction. T06 still fails (reasoning-bound). T02/T04 regressed at 30 cycles — needs 15-cycle retest and pin flag integration.
 
 ### Line 4: ARC-AGI Integration (NEW)
 Can our cognitive architecture (modules + SLMs + partitions) improve abstract reasoning on ARC-AGI-3?
@@ -29,17 +29,15 @@ Can our cognitive architecture (modules + SLMs + partitions) improve abstract re
 
 | ID | Experiment | Question | Priority | Dependencies |
 |----|-----------|----------|----------|-------------|
+| R-18 | exp-slm phase-5 | Partitioned workspace at MAX_CYCLES=15 for T01-T05 — isolate regression cause | P0 | None (production partition code exists) |
+| R-19 | exp-slm phase-5 | T04 with pin flag + partitioned workspace — does combining both fixes work? | P0 | R-18 results |
 | — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
-| — | exp-slm T06 extended | Goal drift on 30-cycle tasks? | P0 | Running now (2026-03-31) |
-| — | RFC 003 Phase 1 impl | Partitioned workspace implementation + T01-T06 validation | P1 | T06 results, strategic decision |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
 | — | GPU ONNX re-export | Re-export ONNX models on 2080 Ti for local GPU inference | P2 | Chobits or re-export script |
 
 ## Backlog — In Progress
 
-| ID | Experiment | Question | Status | Claimed By | Updated |
-|----|-----------|----------|--------|------------|---------|
-| R-16 | exp-slm phase-5 | T06 multi-module-extract at MAX_CYCLES=30 × N=3 — goal drift test | running | session 2026-03-31 | 2026-03-31 |
+*None currently. Next: compositional gap analysis before further experiments.*
 
 ---
 
@@ -47,6 +45,9 @@ Can our cognitive architecture (modules + SLMs + partitions) improve abstract re
 
 | ID | Experiment | Result | Date |
 |----|-----------|--------|------|
+| R-18 | exp-slm phase-5 | Partitioned 15cyc: 4/15 (27%) vs flat 11/15 (73%). **Regression is NOT from over-cycling — partitions cause T02/T04 failure at both 15 and 30 cycles.** Compositional gap identified: no goal satisfaction detection. | 2026-04-03 |
+| R-17 | exp-slm phase-5 | Partitioned workspace (PRD 044): T01 0/3→3/3 at 30 cycles. 30-67% token reduction. T06 still 0/3 (reasoning-bound). T02/T04 regressed at 30 cycles (over-exploration). | 2026-03-31 |
+| R-16 | exp-slm phase-5 | **Goal drift confirmed.** T06 0/3 at 30 cycles. Workspace saturated with file contents (3-5K tokens). RFC 003 Trigger 1 FIRED. | 2026-03-31 |
 | R-15 | exp-slm phase-5 | Observer ablation: cycle0 fixes T01 (33%→100%). T03 task-inherent (20%). Flat baseline 73%, 28K tokens. Benchmark fix: 9/10 ALL GATES PASS. | 2026-03-31 |
 | R-14 | exp-slm phase-5 | **Gate 5 PASS.** 3-module SLM cognitive cycle 73% vs 72% baseline. 0.15% fallback. T02/T04 +28pp. 22% token reduction vs flat. | 2026-03-31 |
 | R-13 | exp-cognitive-baseline | Phase 0 pin flag validated. T04: 0%→100%. Overall: 60%→72% (+12pp). No causal regression. | 2026-03-31 |

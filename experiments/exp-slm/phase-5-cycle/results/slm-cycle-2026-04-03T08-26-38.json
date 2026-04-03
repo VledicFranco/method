@@ -1,0 +1,1774 @@
+{
+  "timestamp": "2026-04-03T08:26:38.880Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-cognitive"
+  ],
+  "tasks": [
+    "test-first-bug-fix-misdirection"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "partitioned-cognitive",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 1,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 20316,
+      "providerCalls": 15,
+      "durationMs": 82119,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 10,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 127,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 254,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 226
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 381,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 254
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 452
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 406,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 279
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 491
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 533,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 406
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 717
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 548,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 421
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 870
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 675,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 548
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 1096
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 700,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 573
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1135
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 716,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 589
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1062
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 728,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 601
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 868
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 855,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 728
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1055
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 880,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 753
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 868
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 895,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 768
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 795
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 895,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 768
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 982
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 895,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 768
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 1055
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 2,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 18129,
+      "providerCalls": 15,
+      "durationMs": 69879,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 7,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 127,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 254,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 226
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 270,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 143
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 379
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 295,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 168
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 418
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 422,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 295
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 644
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 434,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 307
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 676
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 561,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 434
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 902
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 573,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 446
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 934
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 584,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 457
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 740
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 595,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 468
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 733
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 606,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 479
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 539
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 733,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 606
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 612
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 860,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 733
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 806
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 860,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 733
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 806
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 860,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 733
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 927
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 3,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 17198,
+      "providerCalls": 15,
+      "durationMs": 69030,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/pricing.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "tests/pricing.test.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 5,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 127,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 254,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 226
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 381,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 254
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 452
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 396,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 269
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 482
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 523,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 396
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 708
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 535,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 408
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 740
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 551,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 424
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 893
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 576,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 449
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 932
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 587,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 460
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 737
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 612,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 485
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 550
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 623,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 496
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 552
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 634,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 507
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 358
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 645,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 518
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 358
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 529,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 402
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 351
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 411,
+          "pinnedEntries": 1,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 284
+            },
+            "task": {
+              "entries": 0,
+              "tokens": 0
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 127
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 348
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-cognitive": {
+        "total": 3,
+        "passes": 0,
+        "avgTokens": 18548,
+        "avgDurationMs": 73676,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

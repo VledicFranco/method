@@ -5,7 +5,61 @@
  * key from its contents, queries the MemoryPort, and writes retrieved entries
  * back to the workspace for downstream modules to consume.
  *
- * Grounded in: ACT-R declarative memory, SOAR long-term memory retrieval.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Hippocampal formation — episodic binding, contextual
+ * retrieval, and long-term memory access.**
+ *
+ * - **ACT-R (Anderson, 2007) — Declarative Memory:** ACT-R's declarative
+ *   module stores and retrieves chunks based on activation levels. Activation
+ *   is a function of base-level learning (frequency + recency) and spreading
+ *   activation (contextual match). Our Memory module derives a retrieval key
+ *   from workspace contents (spreading activation analog) and queries the
+ *   MemoryPort for relevant entries.
+ *
+ * - **SOAR (Laird, 2012) — Long-Term Memory:** SOAR has three LTM systems:
+ *   procedural (production rules), semantic (general knowledge), and episodic
+ *   (specific experiences). Our MemoryPort interface supports semantic (search)
+ *   and procedural (retrieve) queries, corresponding to SOAR's semantic and
+ *   procedural memories. Episodic memory (specific past experiences with
+ *   temporal context) is partially supported through the Reflector's lesson
+ *   storage.
+ *
+ * - **Hippocampal Binding (Eichenbaum, 2000; Squire, 2004):** The hippocampus
+ *   binds disparate cortical representations into coherent episodic memories
+ *   and supports context-dependent retrieval. Our Memory module writes
+ *   retrieved entries to the workspace with high salience, placing them in
+ *   the shared context for all modules — analogous to hippocampal replay
+ *   injecting memories into cortical processing.
+ *
+ * - **Encoding Specificity (Tulving, 1973):** Memory retrieval is most
+ *   effective when retrieval cues match encoding context. Our retrieval key
+ *   derivation (concatenating workspace contents) is a crude approximation
+ *   of encoding specificity — the current context drives what gets retrieved.
+ *
+ * **What this module captures:**
+ * - Context-driven retrieval: workspace contents → retrieval key → MemoryPort query
+ * - Workspace injection: retrieved memories written as high-salience entries
+ * - Retrieval monitoring: count and relevance signals reported upward
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - No activation-based retrieval: ACT-R's base-level learning equation
+ *   (frequency × recency) is not implemented. All memories are equally accessible.
+ * - No retrieval interference: competing memories don't suppress each other.
+ * - No goal-directed retrieval: the retrieval key is workspace-derived, not
+ *   goal-derived. The Memory module doesn't know what the agent is trying to
+ *   achieve, so it can't preferentially retrieve goal-relevant memories.
+ * - No forgetting: stored memories persist indefinitely.
+ *
+ * **References:**
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ * - Eichenbaum, H. (2000). A cortical-hippocampal system for declarative memory.
+ *   Nature Reviews Neuroscience, 1(1), 41-50.
+ * - Tulving, E. (1973). Encoding specificity and retrieval processes in episodic memory.
+ *   Psychological Review, 80(5), 352-373.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 3 (REMEMBER)
  */
 
 import type {

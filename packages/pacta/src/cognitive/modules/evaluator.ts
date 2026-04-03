@@ -5,8 +5,65 @@
  * and detect diminishing returns. Supports two evaluation horizons: 'immediate'
  * (current cycle only) and 'trajectory' (trend over time).
  *
- * Grounded in: Nelson & Narens metacognitive monitoring — evaluating whether
- * current cognitive strategy is making progress toward the goal.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Orbitofrontal Cortex (OFC) — value computation and
+ * outcome evaluation.**
+ *
+ * - **Orbitofrontal Value Computation (Rolls, 2000; Padoa-Schioppa, 2011):**
+ *   The OFC computes the subjective value of outcomes and expected rewards,
+ *   enabling comparison between current state and desired state. Our Evaluator
+ *   estimates progress and detects diminishing returns — a coarse value signal
+ *   that tracks whether the cognitive investment is paying off.
+ *
+ * - **Carver & Scheier (1998, 2000) — Cybernetic Control Theory:** Goal-directed
+ *   behavior is governed by a negative feedback loop comparing current state
+ *   to a reference value (the goal). A second-order loop — the metamonitor —
+ *   tracks the *rate* of discrepancy reduction. The Evaluator's
+ *   `diminishingReturns` is a coarse version of the metamonitor: it detects
+ *   when the rate of progress has stalled. However, the current implementation
+ *   estimates progress from *signal quality* (avg of confidence + action success),
+ *   not from *goal-state comparison*. This is the critical gap addressed by
+ *   RFC 004 (Goal-State Monitoring).
+ *
+ * - **Nelson & Narens (1990) — Judgment of Performance (JOP):** Post-action
+ *   evaluation of outcome quality. JOP answers "how well did I just do?" and
+ *   feeds the control decision to continue, terminate, or change strategy.
+ *   The current Evaluator provides a form of JOP through `estimatedProgress`,
+ *   but it's proxy-based (derived from module signals) rather than outcome-based
+ *   (derived from comparing output to goal). True JOP requires goal-state access.
+ *
+ * - **Simon (1956) — Satisficing:** Agents maintain a dynamic aspiration level
+ *   and terminate search when the first option meeting the threshold is found.
+ *   The Evaluator does not currently implement satisficing — it has no concept
+ *   of "good enough" or a termination threshold. RFC 004 proposes adding
+ *   dynamic aspiration levels to the Evaluator.
+ *
+ * **What this module captures:**
+ * - Signal-based progress estimation: avg(confidence + success)
+ * - Diminishing returns detection: progress flat/declining over N cycles
+ * - Two evaluation horizons: immediate (single cycle) and trajectory (trend)
+ *
+ * **What this module does NOT capture (known gaps — RFC 004):**
+ * - Goal-state comparison: no access to goal representation, no discrepancy computation
+ * - Judgment of Performance: estimates from process signals, not outcome quality
+ * - Satisficing threshold: no concept of "good enough" or termination
+ * - Termination control: produces signals but cannot issue TerminateDirective
+ * - The Evaluator only runs when the Monitor flags an anomaly (default-interventionist
+ *   gating), which means it cannot detect success during normal operation.
+ *   RFC 004 proposes making evaluation unconditional.
+ *
+ * **References:**
+ * - Rolls, E. T. (2000). The orbitofrontal cortex and reward. Cerebral Cortex, 10(3), 284-294.
+ * - Padoa-Schioppa, C. (2011). Neurobiology of economic choice: a good-based model.
+ *   Annual Review of Neuroscience, 34, 333-359.
+ * - Carver, C. S., & Scheier, M. F. (1998). On the Self-Regulation of Behavior. Cambridge UP.
+ * - Nelson, T. O., & Narens, L. (1990). Metamemory: A theoretical framework and new findings.
+ * - Simon, H. A. (1956). Rational choice and the structure of the environment.
+ *   Psychological Review, 63(2), 129-138.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Evaluator definition
+ * @see docs/rfcs/004-goal-state-monitoring.md — redesign proposal for goal-state evaluation
  */
 
 import type {

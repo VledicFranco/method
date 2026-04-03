@@ -8,7 +8,62 @@
  * never on error. An error path emits monitoring with lessonsExtracted: 0
  * and returns the pre-step state unchanged.
  *
- * Grounded in: SOAR chunking, ACT-R declarative memory consolidation.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Default Mode Network (DMN) — offline consolidation,
+ * self-referential processing, and experience distillation.**
+ *
+ * - **SOAR (Laird, 2012) — Chunking:** When SOAR resolves a subgoal, the
+ *   results are "chunked" — compiled into a new production rule that fires
+ *   directly if the same situation recurs, bypassing deliberate reasoning.
+ *   Our Reflector extracts lessons from traces (what happened, what worked),
+ *   which is the first stage of chunking: experience distillation. The second
+ *   stage (compiling into fast-path productions) is not yet implemented
+ *   (see RFC 001 Part V, System 1/2 Transition).
+ *
+ * - **ACT-R (Anderson, 2007) — Declarative Memory Consolidation:** ACT-R's
+ *   declarative module strengthens memory traces through rehearsal and
+ *   retrieval. Our Reflector writes distilled lessons to the MemoryPort,
+ *   strengthening the agent's long-term knowledge base for future retrieval
+ *   by the Memory module.
+ *
+ * - **Default Mode Network (Raichle, 2015; Buckner et al., 2008):** The DMN
+ *   activates during rest and self-referential processing — consolidating
+ *   experiences, simulating future scenarios, and maintaining the self-model.
+ *   Our Reflector operates asynchronously (fire-and-forget), processing
+ *   traces offline without blocking the main cognitive cycle. This mirrors
+ *   the DMN's background operation during cognitive "downtime."
+ *
+ * - **Sleep Consolidation (Walker, 2017):** Memory consolidation during sleep
+ *   involves replaying experiences and extracting statistical regularities.
+ *   The Reflector's deep mode (pattern analysis across traces) approximates
+ *   this: identifying performance patterns, slow modules, and phase coverage.
+ *
+ * **What this module captures:**
+ * - Lesson extraction from cycle traces (shallow: per-trace summaries)
+ * - Pattern analysis (deep: performance trends, error patterns, phase coverage)
+ * - Memory consolidation via MemoryPort writes
+ * - Fire-and-forget semantics: errors don't corrupt state
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - No production compilation: lessons are descriptive, not executable. SOAR
+ *   chunks become production rules; our lessons become memory entries.
+ * - No causal attribution: which actions led to progress? The Reflector
+ *   summarizes what happened, not why it worked.
+ * - No goal-relevant filtering: all traces are processed equally, regardless
+ *   of whether they contributed to goal achievement.
+ *
+ * **References:**
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Raichle, M. E. (2015). The brain's default mode network. Annual Review of Neuroscience,
+ *   38, 433-447.
+ * - Buckner, R. L., Andrews-Hanna, J. R., & Schacter, D. L. (2008). The brain's default
+ *   network. Annals of the New York Academy of Sciences, 1124(1), 1-38.
+ * - Walker, M. P. (2017). Why We Sleep: Unlocking the Power of Sleep and Dreams. Scribner.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 8 (LEARN)
+ * @see docs/rfcs/001-cognitive-composition.md — Part V (System 1/2 Transition)
  */
 
 import type {

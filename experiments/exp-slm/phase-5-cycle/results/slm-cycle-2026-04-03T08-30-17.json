@@ -1,0 +1,1697 @@
+{
+  "timestamp": "2026-04-03T08:30:17.029Z",
+  "config": "baseline",
+  "conditions": [
+    "partitioned-cognitive"
+  ],
+  "tasks": [
+    "config-migration-env-interpolation"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "partitioned-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 1,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 17084,
+      "providerCalls": 15,
+      "durationMs": 71175,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 14,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 202,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 218,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 16
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 229
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 240,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 38
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 264
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 338,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 136
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 371
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 348,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 146
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 404
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 475,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 273
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 618
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 485,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 283
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 649
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 612,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 410
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 863
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 622,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 420
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 894
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 638,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 436
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1088
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 648,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 446
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1012
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 664,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 462
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1208
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 674,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 472
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1010
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 785,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 583
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1010
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 778,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 576
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1207
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 2,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 17143,
+      "providerCalls": 15,
+      "durationMs": 72906,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "config/app.yaml"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 13,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 202,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 211,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 9
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 24
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 309,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 107
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 131
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 327,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 125
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 163
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 454,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 252
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 377
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 472,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 270
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 409
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 488,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 286
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 638
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 506,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 304
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 671
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 633,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 431
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 885
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 655,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 453
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 901
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 671,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 469
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1023
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 693,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 491
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1026
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 709,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 507
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1041
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 710,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 508
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1040
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 628,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 426
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1236
+            }
+          }
+        }
+      ]
+    },
+    {
+      "condition": "partitioned-cognitive",
+      "task": "config-migration-env-interpolation",
+      "run": 3,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 18115,
+      "providerCalls": 15,
+      "durationMs": 72703,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 13,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 1,
+          "estimatedTokens": 202,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            }
+          }
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 2,
+          "estimatedTokens": 224,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 1,
+              "tokens": 22
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 1,
+              "tokens": 40
+            }
+          }
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 3,
+          "estimatedTokens": 322,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 2,
+              "tokens": 120
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 2,
+              "tokens": 147
+            }
+          }
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 4,
+          "estimatedTokens": 337,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 3,
+              "tokens": 135
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 3,
+              "tokens": 375
+            }
+          }
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 5,
+          "estimatedTokens": 464,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 4,
+              "tokens": 262
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 4,
+              "tokens": 589
+            }
+          }
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 6,
+          "estimatedTokens": 474,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 5,
+              "tokens": 272
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 5,
+              "tokens": 620
+            }
+          }
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 601,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 6,
+              "tokens": 399
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 6,
+              "tokens": 834
+            }
+          }
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 611,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 7,
+              "tokens": 409
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "observer": {
+              "entries": 1,
+              "tokens": 202
+            },
+            "reasoner-actor": {
+              "entries": 7,
+              "tokens": 864
+            }
+          }
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 9,
+          "estimatedTokens": 627,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 8,
+              "tokens": 425
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1093
+            }
+          }
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 10,
+          "estimatedTokens": 642,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 9,
+              "tokens": 440
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1281
+            }
+          }
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 11,
+          "estimatedTokens": 769,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 10,
+              "tokens": 567
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1388
+            }
+          }
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 12,
+          "estimatedTokens": 784,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 11,
+              "tokens": 582
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1402
+            }
+          }
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 13,
+          "estimatedTokens": 800,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 598
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1600
+            }
+          }
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 13,
+          "estimatedTokens": 796,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 594
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1418
+            }
+          }
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 13,
+          "estimatedTokens": 825,
+          "pinnedEntries": 0,
+          "observerEntries": 1,
+          "perPartition": {
+            "constraint": {
+              "entries": 0,
+              "tokens": 0
+            },
+            "operational": {
+              "entries": 12,
+              "tokens": 623
+            },
+            "task": {
+              "entries": 1,
+              "tokens": 202
+            }
+          },
+          "perModule": {
+            "reasoner-actor": {
+              "entries": 8,
+              "tokens": 1404
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "partitioned-cognitive": {
+        "total": 3,
+        "passes": 0,
+        "avgTokens": 17447,
+        "avgDurationMs": 72261,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

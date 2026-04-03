@@ -21,7 +21,7 @@ Layer 0: Formal Theory (F1-FTH, F4-PHI)          ← compositional foundations
 
 Each layer builds on the one below. RFC 001 defines the cycle. RFC 002 compiles the modules. RFC 003 gives them typed memory. ARC-AGI validates that the composition produces intelligence.
 
-## Current State (2026-03-31)
+## Current State (2026-04-03)
 
 ### What's Proven
 
@@ -32,36 +32,33 @@ Each layer builds on the one below. RFC 001 defines the cycle. RFC 002 compiles 
 | Observer firing frequency matters | R-15: T01 33%→100% with cycle0 mode | **Validated** |
 | SLM Evaluator helps constraint tasks | R-14: T02/T04 both 100% with SLM Evaluator | **Validated** |
 | 22% frontier token reduction vs flat | R-15: flat 28K avg vs SLM cognitive 22K avg | **Validated** |
+| Goal drift on long tasks | R-16: T06 0/3 at 30 cycles. Workspace saturated (3-5K tokens), goal evicted | **Validated** |
+| Partitioned workspace preserves goals | R-17: T01 0/3→3/3 at 30 cycles. 30-67% token reduction per module call | **Validated** |
+| T06 is reasoning-bound, not workspace-bound | R-17: T06 still 0/3 with partitioned workspace — agent loops despite having correct context | **Validated** |
 
 ### What's Open
 
 | Question | Experiment Needed | Priority |
 |----------|------------------|----------|
-| Does workspace lose goals on long tasks? | T06 × N=3 at MAX_CYCLES=30 (running now) | **P0** — blocks RFC 003 urgency decision |
-| Is RFC 003 worth building for research optionality? | Strategic evaluation done (recommends yes) | **P0** — see `docs/rfcs/003-strategic-evaluation.md` |
+| Does partitioned workspace regress T02-T05 at 15 cycles? | R-18: Partitioned at MAX_CYCLES=15 for T01-T05 | **P0** — isolate regression cause from R-17 |
+| Does pin flag + partitions fix T04? | R-19: Combined condition | **P0** — two fixes may be complementary |
 | Can our cognitive architecture solve ARC-AGI-3 tasks? | exp-arc-agi baseline | **P1** — the north star experiment |
-| Does per-module context selection reduce token waste meaningfully? | Context profiling done (T01-T05: 500-900 tok avg, marginal gains) | **Answered: NO for small tasks, OPEN for T06+** |
 | GPU inference on mission-control? | ONNX re-export on 2080 Ti architecture | **P2** — latency optimization |
 | Observer v3 trained on tool results? | New training on chobits | **P3** — only if every-cycle mode wanted |
 
 ## Research Program — Phased Plan
 
-### Phase A: Close the RFC 003 Question (this week)
+### Phase A: Close the RFC 003 Question — COMPLETE
 
-1. **T06 30-cycle results** — running now. Determines if goal drift is real.
-2. **Decision:** Implement RFC 003 Phase 1 or defer.
-   - If goal drift confirmed → implement urgently (T06 is the evidence)
-   - If no drift → implement for research optionality (strategic evaluation recommends it)
-   - Either way, likely implement — the question is urgency, not direction.
+1. ~~**T06 30-cycle results**~~ — R-16: goal drift confirmed (0/3).
+2. ~~**Decision:** Implement RFC 003 Phase 1~~ — **DONE.** PRD 044 implemented (commit bc2cca0).
+3. ~~**Validation:** R-17~~ — T01 fixed, T06 reasoning-bound, T02/T04 regressed at 30 cycles.
 
-### Phase B: RFC 003 Phase 1 Implementation (~2 weeks)
+### Phase A.1: Partition Tuning (current)
 
-1. Split workspace into 3 partitions (Constraint, Operational, Task)
-2. PartitionReadPort per partition
-3. Per-module context selectors in cycle orchestrator
-4. Rule-based entry router (classifyEntry already exists)
-5. Per-partition deterministic monitors
-6. Validate: T01-T06 performance with partitioned workspace
+1. **R-18:** Run partitioned workspace at MAX_CYCLES=15 for T01-T05 — isolate whether regressions are from partitions or from over-cycling.
+2. **R-19:** Combine pin flag + partitioned workspace for T04 — the two mechanisms address different failure modes.
+3. **Adaptive MAX_CYCLES policy** — short tasks at 15, long tasks at 30+.
 
 ### Phase C: ARC-AGI-3 Integration (~2-3 weeks)
 

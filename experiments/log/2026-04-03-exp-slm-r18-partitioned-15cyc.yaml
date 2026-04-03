@@ -1,0 +1,104 @@
+experiment: exp-slm
+run_id: r18-partitioned-15cyc
+date: 2026-04-03
+agent: "Claude Opus 4.6"
+config:
+  task: "Partitioned workspace at MAX_CYCLES=15 for T01-T05 — isolate regression cause from R-17"
+  conditions: ["partitioned-cognitive"]
+  baseline_comparison: "R-15 (flat, 15 cycles), R-17 (partitioned, 30 cycles)"
+  n_per_task: 3
+  max_cycles: 15
+  workspace:
+    constraint_capacity: 10
+    operational_capacity: 12
+    task_capacity: 6
+    total_capacity: 28
+  modules:
+    observer: "rule-based, cycle 0 only"
+    monitor: "rule-based"
+    evaluator: "rule-based"
+    reasoner_actor: "Claude Sonnet 4 (frontier)"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01_circular_dep:
+      partitioned_15cyc: { pass: 1, fail: 2, rate: 0.33 }
+      r15_flat_15cyc: { pass: 2, fail: 1, rate: 0.67 }
+      r17_partitioned_30cyc: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Partitions help T01 only with more cycles (30). At 15 cycles, worse than flat."
+      avg_tokens: 16646
+      avg_duration_s: 90.4
+
+    t02_bug_fix:
+      partitioned_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      r15_flat_15cyc: { pass: 2, fail: 1, rate: 0.67 }
+      r17_partitioned_30cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Regression persists at 15 and 30 cycles. Partitioned context itself is the cause."
+      failure_mode: "applyDiscount still has the buggy formula: price * percent / 100"
+      avg_tokens: 18548
+      avg_duration_s: 73.7
+
+    t03_config_migration:
+      partitioned_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      r15_flat_15cyc: { pass: 1, fail: 2, rate: 0.33 }
+      r17_partitioned_30cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "Task-inherent failure (same across all conditions). Missing process.env reference."
+      failure_mode: "Missing process.env reference for SERVER_HOST"
+      avg_tokens: 17447
+      avg_duration_s: 72.3
+
+    t04_api_versioning:
+      partitioned_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      r15_flat_15cyc: { pass: 3, fail: 0, rate: 1.00 }
+      r17_partitioned_30cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "100% → 0% regression. Partitioned context prevents agent from creating v2 handler. Needs investigation."
+      failure_mode: "No file contains handleOrderV2 — v2 handler not found"
+      avg_tokens: 19464
+      avg_duration_s: 73.8
+
+    t05_dead_code:
+      partitioned_15cyc: { pass: 3, fail: 0, rate: 1.00 }
+      r15_flat_15cyc: { pass: 3, fail: 0, rate: 1.00 }
+      r17_partitioned_30cyc: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Trivial task. Preserved across all conditions."
+      avg_tokens: 13616
+      avg_duration_s: 77.9
+
+  overall:
+    partitioned_15cyc: { pass: 4, fail: 11, rate: 0.27 }
+    r15_flat_15cyc: { pass: 11, fail: 4, rate: 0.73 }
+    r17_partitioned_30cyc: { pass: 6, fail: 12, rate: 0.33 }
+
+findings:
+  - id: F1
+    title: "Regressions are NOT from over-cycling — partitioned context itself causes T02/T04 failure"
+    detail: >
+      R-18 falsifies the hypothesis that R-17 regressions were caused by 30-cycle over-exploration.
+      T02 (0/3) and T04 (0/3) fail identically at both 15 and 30 cycles with partitioned workspace.
+      The flat baseline passes these at 67% and 100% respectively at 15 cycles. The partition
+      system is filtering out context the agent needs, or the partitioned view is changing the
+      agent's reasoning in a way that prevents task completion.
+
+  - id: F2
+    title: "Partitions trade breadth for depth — helps long-horizon, hurts short-horizon"
+    detail: >
+      T01 shows the tradeoff clearly: partitions + 30 cycles = 100% (goals preserved through
+      extended search), but partitions + 15 cycles = 33% (worse than flat 67%). The partition
+      architecture assumes the agent needs goal preservation more than it needs broad context.
+      For short tasks, that assumption is wrong.
+
+  - id: F3
+    title: "Compositional gap — the cognitive architecture lacks goal satisfaction detection"
+    detail: >
+      The agent never signals completion, never detects success, and never self-terminates.
+      Combined with the partition regression, this points to a deeper issue: the 8-module
+      cycle monitors for problems (stagnation, constraint violation) but has no mechanism
+      for detecting that the task is done. This is a missing cognitive process, not an
+      engineering oversight.
+
+next_steps:
+  - "Deep analysis of compositional gaps in the 8-module cognitive architecture"
+  - "Design goal satisfaction detection as a first-class cognitive process"
+  - "Investigate what context T02/T04 lose under partitioned view that flat provides"

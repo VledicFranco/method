@@ -5,8 +5,67 @@
  * maintains an abstracted model of object-level behavior (running averages,
  * conflict counts), and produces anomaly reports with escalation recommendations.
  *
- * Grounded in: Nelson & Narens monitor/control metacognition — the Monitor
- * observes but does not directly intervene; it reports upward.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Anterior Cingulate Cortex (dACC) — conflict monitoring
+ * and error detection.**
+ *
+ * - **Botvinick et al. (2001, 2004) — Conflict Monitoring Theory:** The dACC
+ *   detects co-activation of incompatible response representations. When conflict
+ *   is high, dACC signals the dorsolateral PFC (DLPFC) to increase cognitive
+ *   control. Our Monitor implements this: it reads confidence and action signals,
+ *   detects anomalies (low confidence = response uncertainty = conflict), and
+ *   escalates to the Planner/Control phase.
+ *
+ * - **Nelson & Narens (1990) — Metacognitive Monitoring:** The foundational
+ *   two-level framework: an object level produces behavior, a meta level
+ *   monitors it. Information flows upward as monitoring signals, downward as
+ *   control directives. Our Monitor is the meta-level monitoring component.
+ *   It reads μ (monitoring signals) from all object-level modules and reports
+ *   upward — it does not directly intervene (that's the Planner's job).
+ *
+ * - **Gratton Effect (Gratton et al., 1992):** Post-conflict threshold
+ *   adjustment — after a conflict trial, the next trial's conflict threshold
+ *   is lower (more sensitive). MonitorV2 implements this as adaptive threshold
+ *   dynamics: the confidence threshold shifts based on whether the previous
+ *   cycle triggered an intervention.
+ *
+ * - **Friston (2009) — Prediction Error Minimization:** MonitorV2 maintains
+ *   per-module expectation models and computes prediction errors (observed vs
+ *   expected confidence). Large prediction errors trigger intervention. This
+ *   maps to the free energy principle: the meta-level maintains a generative
+ *   model of object-level behavior and intervenes when predictions fail.
+ *
+ * **What this module captures:**
+ * - Conflict/anomaly detection (Botvinick): low confidence, stagnation, action failure
+ * - Adaptive thresholds (Gratton): sensitivity adjusts based on intervention history
+ * - Prediction error (Friston): unexpected module behavior triggers escalation
+ * - Stagnation detection: repeated read-only actions flagged as impasse
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - Goal-state monitoring: the Monitor detects process anomalies (how the system
+ *   is running), not outcome quality (whether the goal is being met). Conflict
+ *   *absence* detection — the signal that says "everything is fine, the goal is
+ *   satisfied" — is missing. See RFC 004 (Goal-State Monitoring).
+ * - Error likelihood (Brown & Braver, 2005): predicting errors before they occur
+ *   based on task context, rather than detecting them after they happen.
+ * - Reward-based learning: ACC conflict signals should update through experience.
+ *   Currently thresholds are heuristic, not learned.
+ *
+ * **References:**
+ * - Botvinick, M. M., et al. (2001). Conflict monitoring and cognitive control.
+ *   Psychological Review, 108(3), 624-652.
+ * - Botvinick, M. M., et al. (2004). Conflict monitoring and anterior cingulate cortex:
+ *   an update. Trends in Cognitive Sciences, 8(12), 539-546.
+ * - Nelson, T. O., & Narens, L. (1990). Metamemory: A theoretical framework and new findings.
+ *   In G. Bower (Ed.), The Psychology of Learning and Motivation (Vol. 26).
+ * - Gratton, G., Coles, M. G. H., & Donchin, E. (1992). Optimizing the use of information:
+ *   Strategic control of activation of responses. JEP: General, 121(4), 480-506.
+ * - Friston, K. (2009). The free-energy principle: a rough guide to the brain?
+ *   Trends in Cognitive Sciences, 13(7), 293-301.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 5 (MONITOR)
+ * @see docs/rfcs/004-goal-state-monitoring.md — the gap this module doesn't cover
  */
 
 import type {

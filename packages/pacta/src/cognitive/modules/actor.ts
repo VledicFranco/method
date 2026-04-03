@@ -5,8 +5,43 @@
  * selects an appropriate tool from the ToolProvider, executes it,
  * and writes the result back to the workspace.
  *
- * Grounded in: ACT-R motor module, SOAR operator application,
- * GWT action selection through workspace broadcasting.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Basal Ganglia — action selection and gating.**
+ *
+ * - **Basal Ganglia Gating (Frank, 2006; Redgrave et al., 1999):** The basal
+ *   ganglia implement a competitive selection mechanism that disinhibits one
+ *   action representation while suppressing alternatives. Our Actor selects
+ *   from available tools based on workspace context or explicit Reasoner
+ *   instructions, mirroring this gating function.
+ *
+ * - **ACT-R (Anderson, 2007) — Motor Module:** ACT-R's motor module executes
+ *   the physical action selected by the procedural module. Our Actor is the
+ *   execution arm: receives an action instruction, executes via ToolProvider,
+ *   and writes results back to the workspace.
+ *
+ * - **SOAR (Laird, 2012) — Operator Application:** After SOAR's decision cycle
+ *   selects an operator, the apply phase executes it against working memory.
+ *   Our Actor's step is the apply phase.
+ *
+ * **What this module captures:**
+ * - Action execution with success/failure tracking
+ * - Workspace-driven action selection (keyword fallback when no Reasoner instruction)
+ * - The "done" signal: special action that terminates the cycle
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - No "done" validation: passes through without verifying goal satisfaction (RFC 004)
+ * - No habit formation: repeated actions aren't compiled to fast-path (RFC 001 Part V)
+ * - No forward model: doesn't predict action outcomes before execution
+ *   (Wolpert & Ghahramani, 2000)
+ *
+ * **References:**
+ * - Frank, M. J. (2006). Hold your horses: A dynamic computational role for the
+ *   subthalamic nucleus in decision making. Neural Networks, 19(8), 1120-1136.
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 7 (ACT)
  */
 
 import type {

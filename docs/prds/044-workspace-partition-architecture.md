@@ -2,7 +2,7 @@
 type: prd
 title: "PRD 044: Workspace Partition Architecture"
 date: "2026-03-31"
-status: draft
+status: implemented
 tier: heavyweight
 depends_on: [30, 43]
 enables: []

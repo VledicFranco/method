@@ -6,7 +6,50 @@
  * computes a novelty score, and writes processed observations to the
  * workspace via WorkspaceWritePort.
  *
- * Grounded in: ACT-R perceptual module, GWT sensory processors.
+ * ## Cognitive Science Grounding
+ *
+ * **Primary analog: Sensory cortex — feature extraction and gating.**
+ *
+ * The Observer implements the input processing stage found in every major
+ * cognitive architecture:
+ *
+ * - **ACT-R (Anderson, 2007):** The visual and aural modules that encode
+ *   external stimuli into chunk representations for the buffers. Our Observer
+ *   mirrors this: raw text → structured WorkspaceEntry with computed salience.
+ *   ACT-R's perceptual modules are modality-specific; ours is modality-agnostic
+ *   (all input is text), which is a simplification.
+ *
+ * - **Global Workspace Theory (Baars, 1988):** Sensory processors that compete
+ *   to place content into the global workspace. Our Observer writes to the
+ *   workspace with a novelty-based salience score, implementing the first stage
+ *   of GWT's competitive access mechanism. Novel inputs get higher salience and
+ *   are more likely to persist in the workspace.
+ *
+ * - **LIDA (Franklin et al., 2016):** The Sensory Memory → Perceptual Associative
+ *   Memory pathway. Raw input is matched against learned patterns to produce
+ *   structured percepts. Our novelty computation is a simplified version of
+ *   LIDA's feature detection — character-level differencing rather than learned
+ *   pattern matching.
+ *
+ * **What this module captures:**
+ * - Input gating: not all inputs reach the workspace (filtered flag)
+ * - Novelty detection: repeated inputs get lower salience
+ * - Content classification: inputs tagged as constraint/goal/operational
+ *
+ * **What this module does NOT capture (known gaps):**
+ * - Perceptual binding (Treisman, 1998): combining features into objects
+ * - Attention-modulated perception: top-down goals don't bias what gets observed
+ * - Multi-modal integration: all input is flat text, no structural parsing
+ * - Goal-relevant filtering: the Observer classifies by keyword pattern, not
+ *   by relevance to the current goal (see RFC 004, §Adaptive Context Selection)
+ *
+ * **References:**
+ * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
+ * - Baars, B. J. (1988). A Cognitive Theory of Consciousness. Cambridge UP.
+ * - Franklin, S., et al. (2016). LIDA: A Systems-level Architecture for Cognition, Emotion,
+ *   and Learning. IEEE Trans. Autonomous Mental Development, 6(1), 19-41.
+ *
+ * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 1 (OBSERVE)
  */
 
 import type {
