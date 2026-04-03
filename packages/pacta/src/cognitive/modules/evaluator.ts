@@ -297,8 +297,15 @@ export function createEvaluator(
         // ── Termination logic ──────────────────────────────────
         const confidenceGate = newAspirationLevel < 0.80 ? 0.85 : 0.70;
 
-        // Goal-satisfied: discrepancy below aspiration with high confidence
-        if (discrepancyResult.satisfied && discrepancyResult.confidence > confidenceGate) {
+        // Goal-satisfied: require sustained satisfaction (2+ consecutive satisfied cycles)
+        // R-22 finding F3: single-cycle satisfied=true produced false positives.
+        const prevSatisfied = newDiscrepancyHistory.length >= 2 &&
+          newDiscrepancyHistory[newDiscrepancyHistory.length - 2] < (1.0 - aspiration);
+        if (
+          discrepancyResult.satisfied &&
+          discrepancyResult.confidence > confidenceGate &&
+          (prevSatisfied || cycleNum <= 2) // allow early termination for trivial tasks
+        ) {
           terminateResult = {
             type: 'terminate',
             source: id,
@@ -310,10 +317,17 @@ export function createEvaluator(
         }
         // Goal-unreachable: RFC 005 solvability-gated OR legacy rate-based
         else if (solvabilityResult) {
-          // RFC 005 path: terminate when solvability drops below 0.3 past halfway
+          // RFC 005 path: smoothed solvability over last 3 cycles
+          // R-22 finding F2: raw single-cycle solvability is too volatile.
+          const recentSolvability = newSolvabilityHistory.slice(-3);
+          const smoothedSolvability = recentSolvability.length >= 2
+            ? recentSolvability.reduce((a, b) => a + b, 0) / recentSolvability.length
+            : solvabilityResult.probability;
+
           const estimatedCycles = state.taskAssessment?.estimatedCycles ?? maxCycles;
           if (
-            solvabilityResult.probability < 0.3 &&
+            smoothedSolvability < 0.3 &&
+            recentSolvability.length >= 2 && // require at least 2 data points
             cycleNum > estimatedCycles * 0.5
           ) {
             terminateResult = {

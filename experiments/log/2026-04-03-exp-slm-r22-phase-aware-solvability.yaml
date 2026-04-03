@@ -1,0 +1,79 @@
+experiment: exp-slm
+run_id: r22-phase-aware-solvability
+date: 2026-04-03
+agent: "Claude Opus 4.6"
+config:
+  task: "RFC 005 diagnostic — phase-aware evaluator with solvability-gated termination"
+  conditions: ["partitioned-cognitive-goal"]
+  baseline_comparison: "R-21 (LLM eval, 17%), R-20 (rule-based, 22%), R-15 (flat, 73%)"
+  n_per_task: 3
+  max_cycles: 15
+  modules:
+    observer: "rule-based, cycle 0 only"
+    monitor: "rule-based"
+    evaluator: "LLM phase-aware (buildPhaseAwareDiscrepancy) + solvability gating"
+    reasoner_actor: "Claude Sonnet 4 (frontier)"
+  rfc005_features:
+    task_assessment: "assessTaskWithLLM() at cycle 0 — difficulty, phases, KPIs"
+    phase_aware_prompt: "evaluator receives TaskAssessment with phase context"
+    solvability_gating: "terminate unreachable when solvability < 0.3 past 50% of estimatedCycles"
+    signals_returned: "discrepancy + solvability + currentPhase (separate)"
+
+status: closed-partial
+
+outcomes:
+  per_task:
+    t01_circular_dep: { pass: 2, fail: 1, rate: 0.67 }
+    t02_bug_fix: { pass: 0, fail: 3, rate: 0.00 }
+    t03_config_migration: { pass: 0, fail: 3, rate: 0.00 }
+    t04_api_versioning: { pass: 0, fail: 3, rate: 0.00 }
+    t05_dead_code: { pass: 3, fail: 0, rate: 1.00 }
+    t06_multi_module: { pass: 0, fail: 3, rate: 0.00 }
+  overall: { pass: 5, fail: 13, rate: 0.28 }
+
+  termination_analysis:
+    terminated_goal_unreachable: 12
+    terminated_goal_satisfied: 2
+    terminated_done_action: 4
+    ran_full_15_cycles: 2
+    false_positive_satisfied: 2
+    correct_unreachable: 8
+    premature_unreachable: 4
+
+findings:
+  - id: F1
+    title: "Phase awareness produces meaningful, differentiated signals — hypothesis partially validated"
+    detail: >
+      The phase-aware evaluator correctly identifies explore→execute→verify transitions,
+      gives task-specific KPIs, and reports solvability as a separate dimension. T01 improved
+      from 0/3 (R-21) to 2/3 — the two passing runs used all 15 cycles because solvability
+      stayed high enough to prevent premature termination. This is the RFC 005 mechanism
+      working as designed.
+
+  - id: F2
+    title: "Solvability signal is too volatile — single-cycle drops cause false unreachable"
+    detail: >
+      Solvability swings wildly: 0.85→0.20 in a single cycle when the agent makes an error
+      or gets a connection timeout. The termination check fires on the raw single-cycle value,
+      not a smoothed trend. Several runs where the agent was making genuine progress (discrepancy
+      decreasing, previous solvability 0.75+) got killed because one bad cycle tanked solvability.
+      Fix: rolling average or require sustained low solvability (2+ cycles below threshold).
+
+  - id: F3
+    title: "False-positive goal-satisfied is a new failure mode"
+    detail: >
+      Two runs (T02 run 3, T04 run 3) received goal-satisfied termination with discrepancy=0.0
+      and confidence=0.95, but actual validation failed. The LLM evaluator thought the agent
+      had completed the task when it hadn't — the writes were syntactically present but
+      semantically wrong. Fix: require satisfied=true for 2+ consecutive cycles.
+
+  - id: F4
+    title: "Connection errors cause evaluator fallback to rule-based"
+    detail: >
+      T06 run 3 had connection errors on every evaluator call, falling back to rule-based
+      (disc=0.600, conf=0.70). The old rate-based termination then fired at cycle 10.
+      This is expected degradation but worth noting.
+
+next_steps:
+  - "R-22b: Smooth solvability (rolling 3-cycle avg), require sustained low solvability, require sustained satisfied"
+  - "If R-22b reaches flat baseline parity (73%), proceed to R-23 module implementation"
