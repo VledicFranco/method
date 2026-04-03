@@ -78,6 +78,11 @@ import type {
   ReadonlyWorkspaceSnapshot,
 } from '../algebra/index.js';
 import { moduleId } from '../algebra/index.js';
+import {
+  buildGoalDiscrepancy,
+  updateAspiration,
+  DEFAULT_ASPIRATION,
+} from '../algebra/discrepancy-function.js';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -88,6 +93,10 @@ export interface EvaluatorConfig {
   /** Module ID override. Default: 'evaluator'. */
   id?: string;
   contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
+  /** PRD 045: Goal representation injected into initial state. When present, enables goal-state comparison. */
+  goalRepresentation?: import('../algebra/goal-types.js').GoalRepresentation;
+  /** PRD 045: Maximum cycles for budget-exhausted detection. */
+  maxCycles?: number;
 }
 
 /** Combined input: workspace snapshot + monitoring signals. */
@@ -102,6 +111,10 @@ export interface EvaluatorOutput {
   estimatedProgress: number;
   /** Whether diminishing returns have been detected. */
   diminishingReturns: boolean;
+  /** PRD 045: Goal-state discrepancy (present when goal is defined). */
+  discrepancy?: import('../algebra/goal-types.js').GoalDiscrepancy;
+  /** PRD 045: Termination signal (present when termination conditions met). */
+  terminateSignal?: import('../algebra/goal-types.js').TerminateSignal;
 }
 
 /** State: progress history and diminishing returns detection. */
@@ -110,6 +123,12 @@ export interface EvaluatorState {
   progressHistory: number[];
   /** Current cycle count. */
   cycleCount: number;
+  /** PRD 045: Persistent goal representation (immune to workspace eviction). */
+  goal?: import('../algebra/goal-types.js').GoalRepresentation;
+  /** PRD 045: History of discrepancy values for rate computation. */
+  discrepancyHistory?: number[];
+  /** PRD 045: Current satisficing aspiration level. */
+  aspirationLevel?: number;
 }
 
 /** Control directive: evaluation horizon. */
@@ -122,14 +141,20 @@ export interface EvaluatorControl extends ControlDirective {
 /**
  * Create an Evaluator cognitive module.
  *
- * Estimates progress from monitoring signal quality (high confidence + successful
- * actions = progress). Detects diminishing returns when progress plateaus.
+ * Two modes:
+ * - **Legacy (no goal):** Estimates progress from monitoring signal quality.
+ *   Backward-compatible with all existing tests and configurations.
+ * - **Goal-state (PRD 045):** When goalRepresentation is provided, computes
+ *   goal-state discrepancy via rule-based heuristics, tracks satisficing
+ *   dynamics, and emits TerminateSignal when termination conditions are met.
  */
 export function createEvaluator(
   config?: EvaluatorConfig,
 ): CognitiveModule<EvaluatorInput, EvaluatorOutput, EvaluatorState, EvaluatorMonitoring, EvaluatorControl> {
   const drWindow = config?.diminishingReturnsWindow ?? 3;
   const id = moduleId(config?.id ?? 'evaluator');
+  const goalConfig = config?.goalRepresentation;
+  const maxCycles = config?.maxCycles ?? 15;
 
   return {
     id,
@@ -140,31 +165,82 @@ export function createEvaluator(
       state: EvaluatorState,
       control: EvaluatorControl,
     ): Promise<StepResult<EvaluatorOutput, EvaluatorState, EvaluatorMonitoring>> {
-      // Compute current-cycle progress from monitoring signals
+      // Compute current-cycle progress from monitoring signals (always — legacy path)
       const currentProgress = computeProgressFromSignals(input.signals);
-
-      // Decide whether to use immediate or trajectory evaluation
       const horizon = control.evaluationHorizon;
 
       let estimatedProgress: number;
       let diminishingReturns: boolean;
 
       if (horizon === 'immediate') {
-        // Immediate: only look at current cycle
         estimatedProgress = currentProgress;
         diminishingReturns = false;
       } else {
-        // Trajectory: look at trend over progressHistory
         const history = [...state.progressHistory, currentProgress];
         estimatedProgress = currentProgress;
-
-        // Check for diminishing returns: progress flat or declining for drWindow cycles
         diminishingReturns = detectDiminishingReturns(history, drWindow);
+      }
+
+      // ── PRD 045: Goal-state comparison path ──────────────────
+      let discrepancyResult: import('../algebra/goal-types.js').GoalDiscrepancy | undefined;
+      let terminateResult: import('../algebra/goal-types.js').TerminateSignal | undefined;
+      let newAspirationLevel = state.aspirationLevel;
+      let newDiscrepancyHistory = state.discrepancyHistory ?? [];
+
+      if (state.goal) {
+        const previousDiscrepancy = newDiscrepancyHistory.length > 0
+          ? newDiscrepancyHistory[newDiscrepancyHistory.length - 1]
+          : undefined;
+        const aspiration = state.aspirationLevel ?? DEFAULT_ASPIRATION;
+
+        // Compute goal-state discrepancy
+        discrepancyResult = buildGoalDiscrepancy(
+          input.workspace,
+          state.goal,
+          previousDiscrepancy,
+          aspiration,
+          id,
+        );
+
+        // Update satisficing dynamics
+        newAspirationLevel = updateAspiration(aspiration, discrepancyResult.rate);
+        newDiscrepancyHistory = [...newDiscrepancyHistory, discrepancyResult.discrepancy];
+
+        // Check termination conditions
+        const confidenceGate = newAspirationLevel < 0.80 ? 0.85 : 0.70;
+        const cycleNum = state.cycleCount + 1;
+
+        if (discrepancyResult.satisfied && discrepancyResult.confidence > confidenceGate) {
+          terminateResult = {
+            type: 'terminate',
+            source: id,
+            timestamp: Date.now(),
+            reason: 'goal-satisfied',
+            confidence: discrepancyResult.confidence,
+            evidence: discrepancyResult,
+          };
+        } else if (
+          cycleNum > maxCycles * 0.6 &&
+          discrepancyResult.rate <= 0 &&
+          diminishingReturns
+        ) {
+          terminateResult = {
+            type: 'terminate',
+            source: id,
+            timestamp: Date.now(),
+            reason: 'goal-unreachable',
+            confidence: discrepancyResult.confidence,
+            evidence: discrepancyResult,
+          };
+        }
       }
 
       const newState: EvaluatorState = {
         progressHistory: [...state.progressHistory, currentProgress],
         cycleCount: state.cycleCount + 1,
+        goal: state.goal,
+        discrepancyHistory: newDiscrepancyHistory,
+        aspirationLevel: newAspirationLevel,
       };
 
       const monitoring: EvaluatorMonitoring = {
@@ -176,7 +252,12 @@ export function createEvaluator(
       };
 
       return {
-        output: { estimatedProgress, diminishingReturns },
+        output: {
+          estimatedProgress,
+          diminishingReturns,
+          discrepancy: discrepancyResult,
+          terminateSignal: terminateResult,
+        },
         state: newState,
         monitoring,
       };
@@ -186,6 +267,9 @@ export function createEvaluator(
       return {
         progressHistory: [],
         cycleCount: 0,
+        goal: goalConfig,
+        discrepancyHistory: [],
+        aspirationLevel: goalConfig ? DEFAULT_ASPIRATION : undefined,
       };
     },
 
