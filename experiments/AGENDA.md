@@ -13,7 +13,7 @@ Can small models trained on typed DSLs replace frontier LLM calls in cognitive m
 
 ### Line 2: Cognitive Architecture Validation (RFC 001)
 Does the 8-module cognitive cycle with default-interventionist monitoring outperform flat ReAct agents?
-**Status:** Parity at 73% (SLM cognitive = flat). Advantage on constraint tasks (T02/T04). Needs longer tasks.
+**Status:** Parity at 73% (SLM cognitive = flat, monolithic workspace). Partitioned workspace + full cognitive stack at 44% (R-23). Gap closing: T02 recovered to parity, T04 first pass. Next: partition tuning (R-25) to close remaining 29pp.
 
 ### Line 3: Workspace Partitions (RFC 003)
 Does typed workspace partitioning enable complex cognition beyond single-workspace limits?
@@ -34,9 +34,11 @@ Does pre-task assessment + phase-aware evaluation + per-module working memory cl
 
 | ID | Experiment | Question | Priority | Dependencies |
 |----|-----------|----------|----------|-------------|
-| R-24 | exp-slm phase-5 | **Statistical confidence** — R-23 full stack at N=5 for T01-T05. Determine if 44% is stable or noise. | P0 | None |
-| R-25 | exp-slm phase-5 | **Partition tuning** — investigate capacity/eviction for T01/T04 remaining gap vs flat. | P1 | R-24 results |
-| R-19 | exp-slm phase-5 | T04 with pin flag + partitioned workspace — does combining both fixes work? | P1 | R-18 results |
+| R-24 | exp-slm phase-5 | **Statistical confidence** — R-23 full stack at N=5 for T01-T05. Determine if 44% is stable or noise. | **P0** | None |
+| R-25 | exp-slm phase-5 | **Partition tuning** — investigate capacity/eviction for T01/T04 remaining gap vs flat (29pp). | P0 | R-24 results |
+| — | Planner module | **Formal Planner implementation** (RFC 006 §Planner Module) — typed algebra surfaces, composable with Evaluator. Replace prompt-level assessTaskWithLLM with proper CognitiveModule. | P1 | R-24/R-25 close the gap |
+| — | SLM compilation | **Evaluator + assessment SLM targets** — distill phase-aware evaluator and task assessor from frontier traces. Eliminates ~11K tokens/run overhead. RFC 002 pipeline. | P1 | Planner module stable |
+| — | Closed algebra | **Per-module working memory for all modules** — extend Monitor, Evaluator, Observer with ModuleWorkingMemory. Complete the algebraic closure from RFC 006. | P2 | R-25 validates architecture |
 | — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
 | — | GPU ONNX re-export | Re-export ONNX models on 2080 Ti for local GPU inference | P2 | Chobits or re-export script |
