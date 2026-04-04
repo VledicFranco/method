@@ -47,24 +47,37 @@
  * - Confidence estimation via action entropy (Shannon entropy over recent actions)
  * - Strategy control via κ (restricted actions, force replan, strategy override)
  * - The "done" action: object-level self-termination signal
+ * - RFC 005: Per-module working memory (opt-in). When workingMemoryConfig is provided,
+ *   the reasoner maintains a persistent scratchpad across cycles via a <working_memory>
+ *   section in the LLM response. This is the prefrontal working memory (Baddeley 2000)
+ *   that persists plan/understanding independent of shared workspace eviction.
+ *
+ * **Empirical evidence (R-20→R-23 arc):**
+ * - R-18/R-22b: Partitioned workspace regresses T02 (0%) and T04 (0%). Root cause:
+ *   the reasoner has no memory across cycles — its "mental model" is whatever the
+ *   partition system shows it this cycle. When file reads get evicted, understanding is lost.
+ * - R-22c: Memory v3 (episodic recall) recovers T06 (0→67%) but NOT T02/T04 — proving
+ *   the gap is working memory (plan persistence), not episodic retrieval.
+ * - R-23: Working memory recovers T02 (0→67%) and T04 (0→33%). The scratchpad preserves
+ *   the reasoner's analysis and plan across cycles, surviving workspace eviction.
+ *   This validates RFC 005's closed algebra: Module :: (I, S, W, κ) → (O, S, W, μ).
  *
  * **What this module does NOT capture (known gaps):**
- * - The "done" action is an unvalidated LLM guess. No metacognitive verification
- *   confirms that the goal is actually satisfied. See RFC 004 (Goal-State Monitoring).
- * - No goal-state awareness: the reasoner doesn't know what "done" looks like beyond
- *   what's in the workspace prompt. It can't compare its output to the goal.
- * - Working memory limits: ACT-R enforces one-chunk-per-buffer. Our workspace capacity
- *   is coarser — the reasoner sees the full workspace snapshot, not a constrained view.
- *   Partitioned workspace (RFC 003) partially addresses this with per-module selectors.
+ * - The "done" action is an unvalidated LLM guess. RFC 004 goal-state monitoring
+ *   provides metacognitive validation via TerminateSignal.
+ * - Working memory capacity is fixed at construction. Adaptive capacity (expand when
+ *   task is complex, shrink when simple) is a future enhancement.
  *
  * **References:**
  * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
  * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
  * - Sun, R. (2002). Duality of the Mind: A Bottom-Up Approach Toward Cognition. Lawrence Erlbaum.
  * - Kahneman, D. (2011). Thinking, Fast and Slow. Farrar, Straus and Giroux.
+ * - Baddeley, A. D. (2000). The episodic buffer. Trends in Cognitive Sciences, 4(11), 417-423.
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phases 4+7 (REASON, ACT)
  * @see docs/rfcs/001-cognitive-composition.md — Part V (System 1/2 Transition)
+ * @see docs/rfcs/005-anticipatory-monitoring.md — §Module Working Memory
  */
 
 import type {

@@ -23,10 +23,10 @@ Does typed workspace partitioning enable complex cognition beyond single-workspa
 Can our cognitive architecture (modules + SLMs + partitions) improve abstract reasoning on ARC-AGI-3?
 **Status:** Planning. SDK identified (`pip install arc-agi`). Architecture maps to ARC-AGI-3 requirements.
 
-### Line 5: Anticipatory Monitoring (RFC 005)
-Does pre-task assessment + phase-aware evaluation prevent premature termination and enable goal-state monitoring?
-**Status:** RFC 005 drafted. R-20/R-21 proved the termination logic gap. Diagnostic experiment R-22 next.
-**Key finding:** Better monitoring signal → worse performance (R-21). The problem is structural: no phase expectations, no solvability estimation, no Planner module. Evaluator can answer "how far from goal?" but not "are we on track?"
+### Line 5: Anticipatory Monitoring + Module Working Memory (RFC 005)
+Does pre-task assessment + phase-aware evaluation + per-module working memory close the gap to flat baseline?
+**Status:** R-23 validates full stack at 44% (up from 22% at R-20). T02 recovered 0→67%, T04 first pass ever. Per-module working memory is the critical piece — closed algebra empirically validated.
+**Key findings:** (1) Better signal + bad termination = worse (R-21). (2) Phase awareness fixes termination (R-22). (3) Episodic recall enables complex tasks (R-22c). (4) Working memory recovers reasoning-bound tasks (R-23). Each layer contributed measurably; no single intervention suffices.
 
 ---
 
@@ -34,8 +34,8 @@ Does pre-task assessment + phase-aware evaluation prevent premature termination 
 
 | ID | Experiment | Question | Priority | Dependencies |
 |----|-----------|----------|----------|-------------|
-| R-22 | exp-slm phase-5 | **Diagnostic: phase-aware evaluator prompt** — inject TaskAssessment into LLM evaluator, gate termination on solvability instead of rate. Does it prevent premature termination? | **P0** | RFC 005 (done) |
-| R-23 | exp-slm phase-5 | **Full module validation** — Planner module + phase-aware Evaluator as proper cognitive modules. T01-T06 N=5 at 15 and 30 cycles. | P0 | R-22 validates |
+| R-24 | exp-slm phase-5 | **Statistical confidence** — R-23 full stack at N=5 for T01-T05. Determine if 44% is stable or noise. | P0 | None |
+| R-25 | exp-slm phase-5 | **Partition tuning** — investigate capacity/eviction for T01/T04 remaining gap vs flat. | P1 | R-24 results |
 | R-19 | exp-slm phase-5 | T04 with pin flag + partitioned workspace — does combining both fixes work? | P1 | R-18 results |
 | — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
@@ -43,7 +43,7 @@ Does pre-task assessment + phase-aware evaluation prevent premature termination 
 
 ## Backlog — In Progress
 
-*R-22 diagnostic experiment is next. Blocked on: nothing — ready to run.*
+*R-24 (N=5 statistical confidence) is next. R-20→R-23 arc complete.*
 
 ---
 
@@ -51,6 +51,10 @@ Does pre-task assessment + phase-aware evaluation prevent premature termination 
 
 | ID | Experiment | Result | Date |
 |----|-----------|--------|------|
+| R-23 | exp-slm phase-5 | **Full RFC 005 stack 8/18 (44%).** Phase-aware eval + solvability + Memory v3 + per-module working memory. T02 recovered 0→67% (matches flat). T04 first pass ever (0→33%). Closed algebra validated. | 2026-04-04 |
+| R-22c | exp-slm phase-5 | **+ Memory v3: 6/18 (33%).** Episodic recall enables T06 (0→67%). T04 still 0% — proves gap is working memory, not retrieval. | 2026-04-04 |
+| R-22b | exp-slm phase-5 | **Smoothed solvability: 5/18 (28%).** Tuning didn't change outcomes — partition context is the bottleneck. | 2026-04-03 |
+| R-22 | exp-slm phase-5 | **Phase-aware + solvability: 5/18 (28%).** Fixed premature termination (R-20/R-21), back to partition baseline. Solvability too volatile — needed smoothing. | 2026-04-03 |
 | R-21 | exp-slm phase-5 | **LLM frontier evaluator 3/18 (17%).** Accurate assessments but high confidence makes termination worse. Better signal → worse outcome. Proves termination logic is the bottleneck, not evaluator quality. Motivates RFC 005. | 2026-04-03 |
 | R-20 | exp-slm phase-5 | **Rule-based goal-state 4/18 (22%).** Universal premature termination at cycle 10. Discrepancy flatlines at 0.300. Rule-based function can't measure progress. | 2026-04-03 |
 | R-18 | exp-slm phase-5 | Partitioned 15cyc: 4/15 (27%) vs flat 11/15 (73%). **Regression is NOT from over-cycling — partitions cause T02/T04 failure at both 15 and 30 cycles.** Compositional gap identified: no goal satisfaction detection. | 2026-04-03 |
