@@ -15,6 +15,7 @@
  * @see DR-03 — Core has zero transport dependencies
  */
 
+import { Effect } from "effect";
 import type {
   StrategyDAG,
   StrategyNode,
@@ -25,6 +26,7 @@ import type {
   SubStrategyResult,
   HumanApprovalResolver,
   HumanApprovalContext,
+  DagGateConfig,
   DagGateContext,
   DagGateResult,
   NodeStatus,
@@ -39,6 +41,7 @@ import type {
 import { createArtifactStore } from "./dag-artifact-store.js";
 import { evaluateGate, buildRetryFeedback } from "./dag-gates.js";
 import { validateStrategyDAG, topologicalSort } from "./dag-parser.js";
+import { executeWithRetry, type RetryExhausted } from "../gate/gate.js";
 
 // ── Node Executor Port ──────────────────────────────────────────
 
@@ -311,6 +314,12 @@ export class DagStrategyExecutor {
 
   /**
    * Execute a single node with gate evaluation and retry logic.
+   *
+   * PRD 046: Uses executeWithRetry() from gate/gate.ts for the retry loop.
+   * The execute callback runs the node and evaluates gates. The check callback
+   * inspects the pre-computed gate results. The buildFeedback callback produces
+   * retry prompts from the first failing gate.
+   *
    * Returns the NodeResult — callers accumulate costs and gate results after Promise.allSettled.
    */
   private async executeNode(
@@ -322,10 +331,8 @@ export class DagStrategyExecutor {
     const startTime = Date.now();
     let totalCost = 0;
     let totalTurns = 0;
-    let retries = 0;
     let lastOutput: Record<string, unknown> = {};
     let lastGateResults: DagGateResult[] = [];
-    let lastError: string | undefined;
 
     // Build input artifact bundle (filtered to declared inputs)
     const inputBundle = this.buildInputBundle(node);
@@ -336,150 +343,237 @@ export class DagStrategyExecutor {
         ? Math.max(...node.gates.map((g) => g.max_retries))
         : 0;
 
-    let attempt = 0;
-    let allGatesPassed = false;
-    let retryFeedback: string | undefined;
+    // ── No gates: single execution, no retry loop ──
 
-    // Retry loop: within-node retries maintain session continuity for coherence.
-    // Context refresh only happens between nodes, not within retries.
-    while (attempt <= maxRetries) {
+    if (node.gates.length === 0) {
       try {
-        let nodeOutput: Record<string, unknown>;
-        let responseCost: number;
-        let responseTurns: number;
-        let responseDurationMs: number;
-
-        if (node.config.type === "methodology") {
-          const methConfig = node.config as MethodologyNodeConfig;
-          // PRD-044: if config.prompt is set, prepend it to retryFeedback (or standalone)
-          let effectiveFeedback = retryFeedback;
-          if (methConfig.prompt) {
-            effectiveFeedback = retryFeedback
-              ? `${methConfig.prompt}\n\n${retryFeedback}`
-              : methConfig.prompt;
-          }
-          const result = await this.nodeExecutor.executeMethodologyNode(
-            dag,
-            node,
-            methConfig,
-            inputBundle,
-            this.currentSessionId,
-            effectiveFeedback,
-          );
-          nodeOutput = result.output;
-          responseCost = result.cost_usd;
-          responseTurns = result.num_turns;
-          responseDurationMs = result.duration_ms;
-        } else if (node.config.type === "strategy") {
-          const stratResult = await this.executeStrategyNode(
-            dag,
-            node,
-            node.config as StrategyNodeConfig,
-            inputBundle,
-          );
-          nodeOutput = { ...stratResult.artifacts };
-          responseCost = stratResult.cost_usd;
-          responseTurns = 0;
-          responseDurationMs = stratResult.duration_ms;
-          if (stratResult.status === "failed") {
-            throw new Error(
-              `Sub-strategy "${stratResult.strategy_id}" failed`,
-            );
-          }
-        } else {
-          const result = this.executeScriptNode(
-            node.config as ScriptNodeConfig,
-            inputBundle,
-            node.id,
-          );
-          nodeOutput = result;
-          responseCost = 0;
-          responseTurns = 0;
-          responseDurationMs = 0;
-        }
-
-        totalCost += responseCost;
-        totalTurns += responseTurns;
-        lastOutput = nodeOutput;
-
-        // Run gates
-        if (node.gates.length > 0) {
-          const gateContext: DagGateContext = {
-            output: nodeOutput,
-            artifacts: this.flattenBundle(this.state!.artifacts.snapshot()),
-            execution_metadata: {
-              num_turns: responseTurns,
-              cost_usd: responseCost,
-              tool_call_count: 0,
-              duration_ms: responseDurationMs,
-            },
-          };
-
-          lastGateResults = [];
-          allGatesPassed = true;
-
-          for (let gi = 0; gi < node.gates.length; gi++) {
-            const gate = node.gates[gi];
-            const gateId = `${node.id}:gate[${gi}]`;
-            const approvalCtx: HumanApprovalContext = {
-              strategy_id: dag.id,
-              execution_id: this.currentSessionId,
-              gate_id: gateId,
-              node_id: node.id,
-              timeout_ms: gate.timeout_ms,
-            };
-            const gateResult = await evaluateGate(
-              gate,
-              gateId,
-              gateContext,
-              this.humanApprovalResolver,
-              approvalCtx,
-            );
-            lastGateResults.push(gateResult);
-
-            if (!gateResult.passed) {
-              allGatesPassed = false;
-              // Build retry feedback for the first failing gate
-              if (attempt < maxRetries) {
-                retryFeedback = buildRetryFeedback(
-                  gate,
-                  gateResult,
-                  attempt + 1,
-                  maxRetries,
-                );
-                // If output was a parse fallback (raw text), warn the node to produce JSON
-                if (nodeOutput._parse_fallback) {
-                  retryFeedback =
-                    "Note: node output was not valid JSON and was wrapped as { result: <raw text> }. Ensure the node produces JSON output.\n\n" +
-                    retryFeedback;
-                }
-              }
-              break; // Stop evaluating remaining gates
-            }
-          }
-
-          if (allGatesPassed) break;
-
-          // Increment attempt; retries counts only actual re-executions
-          attempt++;
-          if (attempt <= maxRetries) {
-            retries++;
-          }
-        } else {
-          // No gates — node passes automatically
-          allGatesPassed = true;
-          break;
-        }
+        const execResult = await this.runNodeOnce(dag, node, inputBundle, undefined);
+        totalCost += execResult.cost_usd;
+        totalTurns += execResult.num_turns;
+        lastOutput = execResult.output;
       } catch (err) {
-        lastError = err instanceof Error ? err.message : String(err);
-        // On execution error, don't retry — mark as failed
-        break;
+        const durationMs = Date.now() - startTime;
+        const nodeResult: NodeResult = {
+          node_id: node.id,
+          status: "failed",
+          output: lastOutput,
+          cost_usd: totalCost,
+          duration_ms: durationMs,
+          num_turns: totalTurns,
+          gate_results: [],
+          retries: 0,
+          error: err instanceof Error ? err.message : String(err),
+        };
+        this.state!.node_status.set(node.id, "failed");
+        this.state!.node_results.set(node.id, nodeResult);
+        return nodeResult;
       }
+
+      const durationMs = Date.now() - startTime;
+      const nodeResult: NodeResult = {
+        node_id: node.id,
+        status: "completed",
+        output: lastOutput,
+        cost_usd: totalCost,
+        duration_ms: durationMs,
+        num_turns: totalTurns,
+        gate_results: [],
+        retries: 0,
+      };
+      this.state!.node_status.set(node.id, "completed");
+      this.state!.node_results.set(node.id, nodeResult);
+
+      // Store outputs in artifact store
+      for (const outputName of node.outputs) {
+        const value = lastOutput[outputName as string] ?? lastOutput;
+        this.state!.artifacts.put(outputName as string, value, node.id);
+      }
+      if (node.refresh_context) {
+        this.currentSessionId = crypto.randomUUID();
+      }
+
+      return nodeResult;
     }
 
-    const durationMs = Date.now() - startTime;
+    // ── With gates: use executeWithRetry from gate/gate.ts ──
 
-    if (lastError) {
+    // Capture mutable state for closures
+    const self = this;
+    let attemptCounter = 0;
+
+    type AttemptOutput = {
+      output: Record<string, unknown>;
+      cost_usd: number;
+      num_turns: number;
+      duration_ms: number;
+      gateResults: DagGateResult[];
+      allGatesPassed: boolean;
+      firstFailingGate?: { gate: DagGateConfig; result: DagGateResult };
+    };
+
+    try {
+      const retryResult = await Effect.runPromise(
+        executeWithRetry<Record<string, unknown>, AttemptOutput, Error, never>({
+          name: node.id,
+          maxRetries,
+          input: inputBundle,
+
+          execute: (_input, attempt, feedback) =>
+            Effect.tryPromise({
+              try: async () => {
+                attemptCounter = attempt;
+                // Run the node
+                const execResult = await self.runNodeOnce(dag, node, inputBundle, feedback);
+                totalCost += execResult.cost_usd;
+                totalTurns += execResult.num_turns;
+                lastOutput = execResult.output;
+
+                // Evaluate gates
+                const gateContext: DagGateContext = {
+                  output: execResult.output,
+                  artifacts: self.flattenBundle(self.state!.artifacts.snapshot()),
+                  execution_metadata: {
+                    num_turns: execResult.num_turns,
+                    cost_usd: execResult.cost_usd,
+                    tool_call_count: 0,
+                    duration_ms: execResult.duration_ms,
+                  },
+                };
+
+                const gateResults: DagGateResult[] = [];
+                let allGatesPassed = true;
+                let firstFailingGate: { gate: DagGateConfig; result: DagGateResult } | undefined;
+
+                for (let gi = 0; gi < node.gates.length; gi++) {
+                  const gate = node.gates[gi];
+                  const gateId = `${node.id}:gate[${gi}]`;
+                  const approvalCtx: HumanApprovalContext = {
+                    strategy_id: dag.id,
+                    execution_id: self.currentSessionId,
+                    gate_id: gateId,
+                    node_id: node.id,
+                    timeout_ms: gate.timeout_ms,
+                  };
+                  const gateResult = await evaluateGate(
+                    gate,
+                    gateId,
+                    gateContext,
+                    self.humanApprovalResolver,
+                    approvalCtx,
+                  );
+                  gateResults.push(gateResult);
+
+                  if (!gateResult.passed) {
+                    allGatesPassed = false;
+                    firstFailingGate = { gate, result: gateResult };
+                    break; // Stop evaluating remaining gates
+                  }
+                }
+
+                lastGateResults = gateResults;
+
+                return {
+                  output: execResult.output,
+                  cost_usd: execResult.cost_usd,
+                  num_turns: execResult.num_turns,
+                  duration_ms: execResult.duration_ms,
+                  gateResults,
+                  allGatesPassed,
+                  firstFailingGate,
+                };
+              },
+              catch: (err) => err instanceof Error ? err : new Error(String(err)),
+            }),
+
+          check: (attemptOutput) => {
+            if (attemptOutput.allGatesPassed) {
+              return { passed: true, failures: [] };
+            }
+            const failures = attemptOutput.gateResults
+              .filter((gr) => !gr.passed)
+              .map((gr) => `${gr.gate_id}: ${gr.reason}`);
+            return { passed: false, failures };
+          },
+
+          buildFeedback: (attemptOutput, _failures) => {
+            if (!attemptOutput.firstFailingGate) {
+              return "Gate evaluation failed";
+            }
+            const { gate, result } = attemptOutput.firstFailingGate;
+            // buildRetryFeedback expects 1-indexed attempt and maxRetries
+            let feedback = buildRetryFeedback(
+              gate,
+              result,
+              attemptCounter + 1,
+              maxRetries,
+            );
+            // If output was a parse fallback (raw text), warn the node to produce JSON
+            if (attemptOutput.output._parse_fallback) {
+              feedback =
+                "Note: node output was not valid JSON and was wrapped as { result: <raw text> }. Ensure the node produces JSON output.\n\n" +
+                feedback;
+            }
+            return feedback;
+          },
+        }),
+      );
+
+      // Success path — all gates passed after retryResult.attempts attempts
+      const durationMs = Date.now() - startTime;
+      const retries = retryResult.attempts - 1; // attempts includes the initial try
+
+      const nodeResult: NodeResult = {
+        node_id: node.id,
+        status: "completed",
+        output: lastOutput,
+        cost_usd: totalCost,
+        duration_ms: durationMs,
+        num_turns: totalTurns,
+        gate_results: lastGateResults,
+        retries,
+      };
+      this.state!.node_status.set(node.id, "completed");
+      this.state!.node_results.set(node.id, nodeResult);
+
+      // Store outputs in artifact store
+      for (const outputName of node.outputs) {
+        const value = lastOutput[outputName as string] ?? lastOutput;
+        this.state!.artifacts.put(outputName as string, value, node.id);
+      }
+      if (node.refresh_context) {
+        this.currentSessionId = crypto.randomUUID();
+      }
+
+      return nodeResult;
+    } catch (err) {
+      const durationMs = Date.now() - startTime;
+
+      // RetryExhausted: all attempts failed gate checks
+      if (
+        err != null &&
+        typeof err === "object" &&
+        "_tag" in err &&
+        (err as RetryExhausted)._tag === "RetryExhausted"
+      ) {
+        const exhausted = err as RetryExhausted;
+        const retries = exhausted.attempts - 1;
+
+        const nodeResult: NodeResult = {
+          node_id: node.id,
+          status: "gate_failed",
+          output: lastOutput,
+          cost_usd: totalCost,
+          duration_ms: durationMs,
+          num_turns: totalTurns,
+          gate_results: lastGateResults,
+          retries,
+        };
+        this.state!.node_status.set(node.id, "gate_failed");
+        this.state!.node_results.set(node.id, nodeResult);
+        return nodeResult;
+      }
+
+      // Execution error (node threw, not a gate failure)
       const nodeResult: NodeResult = {
         node_id: node.id,
         status: "failed",
@@ -488,46 +582,77 @@ export class DagStrategyExecutor {
         duration_ms: durationMs,
         num_turns: totalTurns,
         gate_results: lastGateResults,
-        retries,
-        error: lastError,
+        retries: 0,
+        error: err instanceof Error ? err.message : String(err),
       };
       this.state!.node_status.set(node.id, "failed");
       this.state!.node_results.set(node.id, nodeResult);
       return nodeResult;
     }
+  }
 
-    const finalStatus: NodeStatus = allGatesPassed
-      ? "completed"
-      : "gate_failed";
-
-    const nodeResult: NodeResult = {
-      node_id: node.id,
-      status: finalStatus,
-      output: lastOutput,
-      cost_usd: totalCost,
-      duration_ms: durationMs,
-      num_turns: totalTurns,
-      gate_results: lastGateResults,
-      retries,
-    };
-
-    this.state!.node_status.set(node.id, finalStatus);
-    this.state!.node_results.set(node.id, nodeResult);
-
-    // Store outputs in artifact store
-    if (finalStatus === "completed") {
-      for (const outputName of node.outputs) {
-        const value = lastOutput[outputName as string] ?? lastOutput;
-        this.state!.artifacts.put(outputName as string, value, node.id);
+  /**
+   * Run a node once (no retry logic). Factored out for use by executeWithRetry.
+   */
+  private async runNodeOnce(
+    dag: StrategyDAG,
+    node: StrategyNode,
+    inputBundle: Record<string, unknown>,
+    feedback?: string,
+  ): Promise<{
+    output: Record<string, unknown>;
+    cost_usd: number;
+    num_turns: number;
+    duration_ms: number;
+  }> {
+    if (node.config.type === "methodology") {
+      const methConfig = node.config as MethodologyNodeConfig;
+      // PRD-044: if config.prompt is set, prepend it to feedback (or standalone)
+      let effectiveFeedback = feedback;
+      if (methConfig.prompt) {
+        effectiveFeedback = feedback
+          ? `${methConfig.prompt}\n\n${feedback}`
+          : methConfig.prompt;
       }
-
-      // If this node has refresh_context, generate a new session ID for subsequent nodes
-      if (node.refresh_context) {
-        this.currentSessionId = crypto.randomUUID();
+      return this.nodeExecutor.executeMethodologyNode(
+        dag,
+        node,
+        methConfig,
+        inputBundle,
+        this.currentSessionId,
+        effectiveFeedback,
+      );
+    } else if (node.config.type === "strategy") {
+      const stratResult = await this.executeStrategyNode(
+        dag,
+        node,
+        node.config as StrategyNodeConfig,
+        inputBundle,
+      );
+      if (stratResult.status === "failed") {
+        throw new Error(
+          `Sub-strategy "${stratResult.strategy_id}" failed`,
+        );
       }
+      return {
+        output: { ...stratResult.artifacts },
+        cost_usd: stratResult.cost_usd,
+        num_turns: 0,
+        duration_ms: stratResult.duration_ms,
+      };
+    } else {
+      const result = this.executeScriptNode(
+        node.config as ScriptNodeConfig,
+        inputBundle,
+        node.id,
+      );
+      return {
+        output: result,
+        cost_usd: 0,
+        num_turns: 0,
+        duration_ms: 0,
+      };
     }
-
-    return nodeResult;
   }
 
   /**
