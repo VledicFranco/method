@@ -59,6 +59,9 @@ export {
 } from './discrepancy-function.js';
 
 export { buildLLMGoalDiscrepancy, buildPhaseAwareDiscrepancy } from './llm-discrepancy.js';
+
+export { createCognitiveMemoryStore } from './cognitive-memory-store.js';
+export type { CognitiveMemoryStore, CognitiveMemoryStoreConfig, MemoryStoreEntry, RetrievalQuery, PartitionRole } from './cognitive-memory-store.js';
 export type { PhaseAwareResult } from './llm-discrepancy.js';
 export { assessTaskWithLLM, defaultAssessment } from './llm-task-assessment.js';
 

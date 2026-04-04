@@ -77,6 +77,8 @@ import { checkConstraintViolations } from '../../../packages/pacta/src/cognitive
 import { extractProhibitions } from '../../../packages/pacta/src/cognitive/algebra/constraint-utils.js';
 import type { GoalRepresentation, TerminateSignal, TaskAssessment } from '../../../packages/pacta/src/cognitive/algebra/goal-types.js';
 import { assessTaskWithLLM } from '../../../packages/pacta/src/cognitive/algebra/llm-task-assessment.js';
+import { createCognitiveMemoryStore } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
+import type { PartitionRole } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
 import type { ContextSelector, PartitionId, PartitionMonitorContext } from '../../../packages/pacta/src/cognitive/algebra/index.js';
@@ -130,7 +132,7 @@ interface TaskDefinition {
 
 const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05, TASK_06];
 
-type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory' | 'partitioned-cognitive-goal';
+type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory' | 'partitioned-cognitive-goal' | 'unified-memory';
 
 interface ContextProfile {
   cycle: number;
@@ -1753,6 +1755,320 @@ async function runPartitionedCognitiveGoal(
   }
 }
 
+// ── Condition H: Unified Memory (RFC 006 Part III) ──────────────
+//
+// Replaces partitioned workspace + Memory v3 bolt-on with a single
+// CognitiveMemoryStore. Every write is a store, every read is an
+// activation-based retrieval query. Nothing is destructively evicted.
+// Working memory cues drive spreading activation for context assembly.
+
+async function runUnifiedMemory(
+  task: TaskDefinition,
+  runNumber: number,
+  config: CognitiveConfig,
+): Promise<RunResult> {
+  const startTime = Date.now();
+  const vfs = new VirtualToolProvider(task.initialFiles);
+
+  const llmProvider = anthropicProvider({
+    model: LLM_MODEL,
+    maxOutputTokens: 2048,
+    ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
+  });
+  const adapter = createProviderAdapter(llmProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
+  });
+
+  // Monolithic workspace kept for backward compat (evaluator reads, write port)
+  const salienceContext: SalienceContext = {
+    now: Date.now(),
+    goals: ['complete the coding task', 'preserve functionality'],
+    sourcePriorities: new Map([
+      [moduleId('reasoner-actor'), 0.9],
+      [moduleId('observer'), 0.6],
+    ]),
+  };
+  const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
+
+  // ── Unified Memory Store (RFC 006 Part III) ──────────────────
+  const store = createCognitiveMemoryStore({
+    contentSpreadingWeight: 0.15,
+    tagSpreadingWeight: 0.3,
+    decayRate: 0.5,
+    noiseAmplitude: 0.05,
+  });
+
+  // Goal extraction
+  const goalRepresentation = extractGoalFromTask(task);
+
+  const monitor = createMonitor({
+    confidenceThreshold: 0.3,
+    stagnationThreshold: config.monitor.stagnationThreshold,
+  });
+
+  // Phase-aware evaluator
+  const evalProvider = anthropicProvider({ model: LLM_MODEL, maxOutputTokens: 512 });
+  const evalAdapter = createProviderAdapter(evalProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 512 } },
+  });
+  const assessResult = await assessTaskWithLLM(evalAdapter, goalRepresentation, MAX_CYCLES, moduleId('evaluator'));
+  const taskAssessment = assessResult.assessment;
+  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)}`);
+  console.log(`    [task-assessment] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+
+  const evaluator = createEvaluator({
+    goalRepresentation,
+    maxCycles: MAX_CYCLES,
+    provider: evalAdapter,
+    taskAssessment,
+  });
+
+  // Reasoner with working memory
+  const reasonerActor = createReasonerActor(
+    adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
+    { workingMemoryConfig: { capacity: 3, includeInContext: true } },
+  );
+
+  let totalTokens = 0;
+  let evaluatorTokensTotal = 0;
+  let providerCalls = 0;
+  let monitorInterventions = 0;
+  const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
+  const contextProfiles: ContextProfile[] = [];
+
+  let monitorState = monitor.initialState();
+  let evaluatorState = evaluator.initialState();
+  let raState = reasonerActor.initialState();
+  let prevRAMonitoring: MonitoringSignal | null = null;
+
+  const raControl: ReasonerActorControl = {
+    target: moduleId('reasoner-actor'),
+    timestamp: Date.now(),
+    strategy: 'plan',
+    effort: 'medium',
+  };
+
+  let terminatedAt: number | undefined;
+  let terminateReason: TerminateSignal['reason'] | undefined;
+
+  try {
+    for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+      // 1. OBSERVE (cycle 0 only) — decompose task and store entries
+      if (cycle === 0) {
+        const decomposed = decomposeTaskToEntries(task.description);
+        logDecomposition(decomposed);
+
+        for (const entry of decomposed.constraints) {
+          store.store(entry, 'constraint', moduleId('observer'), ['constraint']);
+        }
+        for (const entry of decomposed.goals) {
+          store.store(entry, 'task', moduleId('observer'), ['goal']);
+        }
+        for (const entry of decomposed.context) {
+          store.store(entry, 'task', moduleId('observer'), ['context']);
+        }
+
+        // Also write to monolithic workspace for evaluator
+        workspace.getWritePort(moduleId('observer')).write({
+          source: moduleId('observer'),
+          content: task.description,
+          salience: 0.9,
+          timestamp: Date.now(),
+        } as any);
+
+        console.log(`    [unified-store] ${store.size()} entries after observe`);
+        console.log(`    [goal-state] objective=${goalRepresentation.objective.slice(0, 80)}...`);
+      }
+
+      // 2. MONITOR
+      const monitorSignals: AggregatedSignals = new Map();
+      if (prevRAMonitoring) {
+        monitorSignals.set(moduleId('reasoner-actor'), prevRAMonitoring);
+      }
+      const monResult = await monitor.step(
+        monitorSignals, monitorState,
+        { target: moduleId('monitor'), timestamp: Date.now() } as any,
+      );
+      monitorState = monResult.state;
+
+      // 3. EVALUATE (phase-aware + solvability)
+      const evalInput: EvaluatorInput = {
+        workspace: workspace.getReadPort(moduleId('evaluator')).read(),
+        signals: monitorSignals,
+      };
+      const evalResult = await evaluator.step(
+        evalInput, evaluatorState,
+        { target: moduleId('evaluator'), timestamp: Date.now(), evaluationHorizon: 'trajectory' },
+      );
+      evaluatorState = evalResult.state;
+      evaluatorTokensTotal += evalResult.output.evaluatorTokens ?? 0;
+
+      if (evalResult.output.discrepancy) {
+        const d = evalResult.output.discrepancy;
+        const s = evalResult.output.solvability;
+        const phase = evalResult.output.currentPhase ?? '';
+        const tag = d.basis.startsWith('llm-phase-aware') ? ' [PA]' : d.basis.startsWith('llm-') ? ' [LLM]' : ' [rule]';
+        const solvTag = s ? ` solv=${s.probability.toFixed(2)}` : '';
+        console.log(`    [goal-state c${cycle + 1}]${tag} disc=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} sat=${d.satisfied}${solvTag} phase=${phase}`);
+      }
+
+      if (evalResult.output.terminateSignal) {
+        terminatedAt = cycle + 1;
+        terminateReason = evalResult.output.terminateSignal.reason;
+        console.log(`    [TERMINATE c${cycle + 1}] reason=${terminateReason} confidence=${evalResult.output.terminateSignal.confidence.toFixed(2)}`);
+        break;
+      }
+
+      if (monResult.monitoring.anomalyDetected) {
+        monitorInterventions++;
+        raControl.restrictedActions = monResult.output.restrictedActions;
+        raControl.forceReplan = monResult.output.forceReplan;
+        if (monResult.output.forceReplan) raControl.strategy = 'plan';
+      }
+
+      // 4. RETRIEVE — build context via activation-based retrieval
+      // Working memory content becomes spreading activation cues
+      const wmContent = raState.workingMemory?.entries
+        .map(e => typeof e.content === 'string' ? e.content : '')
+        .join(' ') ?? '';
+      const goalCue = goalRepresentation.objective;
+      const lastActionCue = raState.lastActionName ?? '';
+      const cues = [wmContent, goalCue, lastActionCue].filter(c => c.length > 0);
+
+      const snapshot = store.retrieve({
+        module: moduleId('reasoner-actor'),
+        roles: ['constraint', 'operational', 'task'],
+        budget: 8192,
+        cues,
+      });
+
+      const snapshotTokens = snapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
+      console.log(`    [c${cycle + 1}] unified-retrieve: ${snapshot.length}e/${snapshotTokens}tok from ${store.size()} stored (cues: ${cues.length})`);
+
+      contextProfiles.push({
+        cycle,
+        totalEntries: snapshot.length,
+        estimatedTokens: snapshotTokens,
+        pinnedEntries: 0,
+        observerEntries: snapshot.filter((e: any) => String(e.source) === 'observer').length,
+      });
+
+      // 5. REASON+ACT
+      const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
+      raState = raResult.state;
+      prevRAMonitoring = raResult.monitoring;
+      providerCalls++;
+      totalTokens += (raResult.monitoring as any).tokensThisStep ?? 0;
+
+      if ((raResult as any).error) {
+        console.log(`    [c${cycle + 1}] ERROR: ${(raResult as any).error?.message}`);
+      }
+
+      const actionName = raResult.output.actionName;
+      const isWriteAction = actionName === 'Write' || actionName === 'Edit';
+
+      // Stale invalidation on writes
+      if (isWriteAction) {
+        const modifiedPaths: string[] = [];
+        for (const [path] of vfs.files) {
+          if (!(path in task.initialFiles) || vfs.files.get(path) !== task.initialFiles[path]) {
+            modifiedPaths.push(path);
+          }
+        }
+        if (modifiedPaths.length > 0) {
+          const expired = store.expire(e => {
+            const content = typeof e.entry.content === 'string' ? e.entry.content : '';
+            return modifiedPaths.some(p => content.includes(p) || e.tags.some(t => t.includes(p)));
+          });
+          if (expired > 0) {
+            console.log(`    [stale-invalidation c${cycle + 1}] expired ${expired} entries`);
+          }
+        }
+      }
+
+      // 6. STORE — tool result goes to unified store
+      if (raResult.output.toolResult) {
+        allToolCalls.push({
+          tool: actionName,
+          input: raResult.output.toolResult,
+          success: (raResult.monitoring as any).success ?? true,
+        });
+
+        const toolContent = typeof raResult.output.toolResult === 'object'
+          ? JSON.stringify(raResult.output.toolResult)
+          : String(raResult.output.toolResult);
+
+        // Store in unified memory (replaces partition write + episodic store)
+        const tags = [actionName.toLowerCase()];
+        const pathMatch = toolContent.match(/[\w/.-]+\.\w{1,4}/g);
+        if (pathMatch) tags.push(...pathMatch.slice(0, 5));
+        store.store(
+          {
+            content: `[${actionName}] ${toolContent.slice(0, 1000)}`,
+            timestamp: Date.now(),
+            source: moduleId('reasoner-actor'),
+            salience: isWriteAction ? 0.9 : 0.6,
+          } as any,
+          'operational',
+          moduleId('reasoner-actor'),
+          tags,
+        );
+
+        // Also write to monolithic workspace for evaluator
+        workspace.getWritePort(moduleId('reasoner-actor')).write({
+          source: moduleId('reasoner-actor'),
+          content: `[${actionName}] ${toolContent.slice(0, 500)}`,
+          salience: isWriteAction ? 0.9 : 0.6,
+          timestamp: Date.now(),
+        } as any);
+      }
+
+      const conf = (raResult.monitoring as any).confidence ?? 0;
+      const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
+      const stag = monResult.monitoring.anomalyDetected ? ' stag' : '';
+      const writeTag = isWriteAction ? ' ✎WRITE' : '';
+      console.log(`    [c${cycle + 1}] ${actionName}  conf=${conf.toFixed(2)}  tok=${tok}${stag}${writeTag}  store=${store.size()}`);
+
+      if (actionName === 'done') break;
+    }
+
+    console.log(`    [evaluator tokens] ${evaluatorTokensTotal}`);
+    console.log(`    [final store size] ${store.size()}`);
+    const validation = task.validate(vfs.files);
+    return {
+      condition: 'unified-memory',
+      task: task.name,
+      run: runNumber,
+      success: validation.success,
+      reason: validation.reason,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+      terminatedAt,
+      terminateReason,
+    };
+  } catch (err) {
+    return {
+      condition: 'unified-memory',
+      task: task.name,
+      run: runNumber,
+      success: false,
+      reason: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+      terminatedAt,
+      terminateReason,
+    };
+  }
+}
+
 // ── Condition C: Monitor-Only SLM ──────────────────────────────
 
 async function runMonitorOnly(
@@ -2596,7 +2912,7 @@ function printResult(r: RunResult) {
 }
 
 function printComparison(results: RunResult[]) {
-  const conditions: Condition[] = ['flat', 'rule-cognitive', 'partitioned-cognitive', 'partitioned-smart', 'partitioned-cognitive-goal', 'monitor-only', 'slm-cognitive'];
+  const conditions: Condition[] = ['flat', 'rule-cognitive', 'partitioned-cognitive', 'partitioned-smart', 'partitioned-cognitive-goal', 'unified-memory', 'monitor-only', 'slm-cognitive'];
 
   console.log('\n--- Comparison ---');
   console.log(`${'Condition'.padEnd(20)} ${'Pass'.padEnd(8)} ${'Avg Tok'.padEnd(10)} ${'Avg Dur'.padEnd(10)} ${'Fallback%'.padEnd(10)}`);
@@ -2839,6 +3155,15 @@ async function main() {
       console.log('\nCondition: partitioned-cognitive-goal (PRD 045 goal-state monitoring)');
       for (let i = 1; i <= numRuns; i++) {
         const r = await runPartitionedCognitiveGoal(task, i, cognitiveConfig);
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runConditions.has('unified-memory')) {
+      console.log('\nCondition: unified-memory (RFC 006 Part III — Cowan model)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runUnifiedMemory(task, i, cognitiveConfig);
         printResult(r);
         results.push(r);
       }
