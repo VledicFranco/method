@@ -1,0 +1,198 @@
+experiment: exp-slm
+run_id: r24-statistical-confidence
+date: 2026-04-04
+agent: "Claude Opus 4.6"
+config:
+  task: "R-23 replication at N=5 for statistical confidence"
+  conditions: ["partitioned-cognitive-goal"]
+  baseline_comparison: "R-23 (partitioned-cognitive-goal, 44% at N=3), R-15 (flat, 73% at N=3)"
+  n_per_task: 5
+  max_cycles: 15
+  modules:
+    observer: "rule-based, cycle 0 only"
+    monitor: "rule-based"
+    evaluator: "LLM phase-aware (buildPhaseAwareDiscrepancy) + solvability gating (smoothed, 3-cycle)"
+    reasoner_actor: "Claude Sonnet 4 (frontier) + working memory (capacity=3, includeInContext=true)"
+    memory: "Memory v3 (ACT-R activation, episodic capacity=100, stale invalidation)"
+  rfc005_features:
+    task_assessment: "assessTaskWithLLM() at cycle 0"
+    phase_aware_prompt: "evaluator receives TaskAssessment with phase context"
+    solvability_gating: "smoothed 3-cycle avg, terminate when < 0.3 past 50% estimated cycles"
+    working_memory: "ReasonerActor scratchpad (capacity=3), persists plan/understanding, <working_memory> section in LLM response"
+    episodic_recall: "Memory v3 REMEMBER + STORE phases, stale invalidation on writes"
+  workspace:
+    constraint_capacity: 12
+    operational_capacity: 20
+    task_capacity: 12
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01_circular_dep:
+      r24: { pass: 2, fail: 3, rate: 0.40 }
+      r23: { pass: 1, fail: 2, rate: 0.33 }
+      r15_flat: { pass: 2, fail: 1, rate: 0.67 }
+      note: "Stable at ~40%. Runs 1,5 passed; 2,3,4 failed — all failures: 'Circular dependency still exists in import graph'. Agent reads all files but fails to restructure imports correctly in 60% of runs."
+    t02_bug_fix:
+      r24: { pass: 1, fail: 4, rate: 0.20 }
+      r23: { pass: 2, fail: 1, rate: 0.67 }
+      r15_flat: { pass: 2, fail: 1, rate: 0.67 }
+      note: "REGRESSION from R-23 (67% -> 20%). Only run 5 passed. All 4 failures: 'applyDiscount still has the buggy formula'. Working memory was the R-23 breakthrough for this task, but at N=5 the effect is unstable. R-23's 2/3 was likely lucky."
+    t03_config_migration:
+      r24: { pass: 1, fail: 4, rate: 0.20 }
+      r23: { pass: 0, fail: 3, rate: 0.00 }
+      r15_flat: { pass: 1, fail: 2, rate: 0.33 }
+      note: "Marginal improvement over R-23 (0% -> 20%). Run 3 passed; run 4 got close (failed on SERVER_HOST env ref). The AppConfig export requirement trips the agent in 3/5 runs."
+    t04_api_versioning:
+      r24: { pass: 2, fail: 3, rate: 0.40 }
+      r23: { pass: 1, fail: 2, rate: 0.33 }
+      r15_flat: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Consistent with R-23. Runs 3,4 passed; 1,2,5 failed. Run 5 was close — handler created but missing itemCount. The multi-file coordination required (handler + router + response shape) is where partitions hurt."
+    t05_dead_code:
+      r24: { pass: 5, fail: 0, rate: 1.00 }
+      r23: { pass: 3, fail: 0, rate: 1.00 }
+      r15_flat: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Perfect 5/5. Ceiling effect — this task is reliably solved by all conditions. Validates that the cognitive architecture doesn't break easy tasks."
+    t06_multi_module:
+      r24: { pass: 0, fail: 5, rate: 0.00 }
+      r23: { pass: 1, fail: 2, rate: 0.33 }
+      r15_flat: null
+      note: "REGRESSION from R-23 (33% -> 0%). Five distinct failure modes: IEventBus interface not created (runs 1,4,5), EventBus not extracted (run 2), IEventBus not exported from index (run 3). The multi-file extraction task requires sustained multi-step plans that partitions cannot maintain."
+
+  overall:
+    r24: { pass: 11, fail: 19, rate: 0.37 }
+    r23: { pass: 8, fail: 10, rate: 0.44 }
+    r22c: { pass: 6, fail: 12, rate: 0.33 }
+    r22b: { pass: 5, fail: 13, rate: 0.28 }
+    r22: { pass: 5, fail: 13, rate: 0.28 }
+    r21: { pass: 3, fail: 15, rate: 0.17 }
+    r20: { pass: 4, fail: 14, rate: 0.22 }
+    r15_flat: { pass: 11, fail: 4, rate: 0.73 }
+
+  token_overhead:
+    avg_tokens_per_run: 44868
+    avg_duration_s: 132
+    per_task_avg_tokens:
+      t01: 44299
+      t02: 28028
+      t03: 45775
+      t04: 53976
+      t05: 38552
+      t06: 58580
+    note: "2.4x flat baseline tokens (19K), 3.3x flat baseline duration (40s). Consistent with R-23 overhead (2.5x/3.4x)."
+
+findings:
+  - id: F1
+    title: "R-23's 44% was optimistic — true partitioned-cognitive-goal rate is closer to 37%"
+    detail: >
+      At N=5, the overall rate dropped from 44% (R-23, N=3) to 37% (R-24, N=5).
+      The 7pp drop is driven by two tasks (T02 and T06) where R-23's results were
+      likely sampling noise at small N. T02 went from 67% to 20%, and T06 from 33%
+      to 0%. Both are tasks requiring sustained multi-step reasoning that partitioned
+      context makes unreliable. This validates the concern expressed in R-23 finding F4
+      about noise at N=3.
+
+  - id: F2
+    title: "T02 working memory effect is fragile — 1/5 vs R-23's 2/3"
+    detail: >
+      R-23 finding F1 claimed working memory was 'the critical missing piece' for T02,
+      based on a 0% -> 67% jump. At N=5, T02 is 20% (1/5). The working memory mechanism
+      works — run 5 demonstrates this — but the agent only successfully identifies and
+      fixes the arithmetic bug in ~20% of attempts. The R-23 result (2/3) was within the
+      confidence interval of a 20% true rate (binomial p=0.20, P(>=2 in 3) = 10.4%).
+      Working memory is necessary but not sufficient: the agent also needs to correctly
+      reason about the discount formula, which it fails to do in most runs.
+
+  - id: F3
+    title: "T06 multi-module extraction is effectively impossible for partitioned context"
+    detail: >
+      T06 went from 1/3 (33%) in R-23 to 0/5 (0%) in R-24. The task requires creating
+      a new interface file, extracting a class to a new module, updating imports across
+      7 files, and re-exporting from index.ts. Each run failed at a different point in
+      this multi-file sequence, suggesting the agent understands what to do but cannot
+      execute all steps within the partitioned workspace capacity. R-23's 1/3 was likely
+      the single lucky run where all steps happened to succeed.
+
+  - id: F4
+    title: "T05 is a perfect ceiling — cognitive overhead doesn't harm easy tasks"
+    detail: >
+      T05 (dead code removal, dynamic trap) achieved 5/5, matching the 3/3 from R-23
+      and R-22c. This is a recognition task that doesn't require writes, and the
+      cognitive architecture handles it cleanly every time. The added overhead of
+      partitioning, evaluation, and memory doesn't degrade performance on tasks
+      within the architecture's capability envelope.
+
+  - id: F5
+    title: "The gap to flat baseline is 36pp (37% vs 73%) — wider than R-23 estimated"
+    detail: >
+      R-23 estimated a 29pp gap (44% vs 73%). At N=5, the true gap is 36pp.
+      The widened gap is almost entirely from T02 (20% vs 67%) and T06 (0% vs n/a).
+      T01 (40% vs 67%) and T04 (40% vs 100%) are stable but still substantially
+      behind flat. T03 (20% vs 33%) is weak in both conditions. T05 (100% vs 100%)
+      is a wash. The partitioned architecture's tax is most severe on tasks requiring
+      (a) arithmetic/formula reasoning (T02) and (b) multi-file coordinated writes (T04, T06).
+
+  - id: F6
+    title: "Statistical stability analysis — confidence intervals per task"
+    detail: >
+      Using exact binomial 95% CIs for the N=5 rates:
+      - T01: 40% [5.3%, 85.3%] — wide, still uncertain
+      - T02: 20% [0.5%, 71.6%] — very wide, could be 0% or 70%
+      - T03: 20% [0.5%, 71.6%] — very wide
+      - T04: 40% [5.3%, 85.3%] — wide
+      - T05: 100% [47.8%, 100%] — lower bound still high
+      - T06: 0% [0%, 52.2%] — could be up to 50% with bad luck
+      N=5 is better than N=3 but still insufficient for precise per-task estimates.
+      The overall 37% (11/30) has a tighter CI: [19.4%, 56.1%]. The true rate is
+      unlikely to be as high as R-23's 44% and is probably in the 25-45% range.
+
+  - id: F7
+    title: "R-23 finding F6 (closed algebra) stands — but the effect size is smaller than claimed"
+    detail: >
+      The progression from R-22c (33%) to R-24 (37%) is only +4pp, not the +11pp
+      claimed by comparing R-22c to R-23. Working memory (the closed algebra addition)
+      does help — T02 and T04 both show non-zero rates where they were 0% in R-22c —
+      but the magnitude is modest. The closed algebra is theoretically sound and
+      empirically supported, but it provides a ~4pp lift, not an ~11pp lift.
+
+experimental_arc:
+  description: >
+    R-24 extends the R-20-R-23 research arc with N=5 statistical replication,
+    revealing that R-23's 44% was inflated by small-N sampling noise.
+  progression:
+    - run: R-20
+      intervention: "Rule-based goal-state discrepancy (PRD 045)"
+      result: "22% — discrepancy function can't measure progress"
+      insight: "Comparator is the bottleneck, not the architecture"
+    - run: R-21
+      intervention: "LLM frontier evaluator (accurate discrepancy)"
+      result: "17% — better signal makes termination WORSE"
+      insight: "Termination logic lacks phase expectations"
+    - run: R-22
+      intervention: "Phase-aware evaluator + solvability gating"
+      result: "28% — fixed premature termination"
+      insight: "Monitoring is neutral; partition context is the real bottleneck"
+    - run: R-22b
+      intervention: "Smoothed solvability (tuning)"
+      result: "28% — same; tuning noise"
+      insight: "Need to fix what the agent SEES"
+    - run: R-22c
+      intervention: "+ Memory v3 episodic recall"
+      result: "33% — T06 recovered (0->67%); T04 still 0%"
+      insight: "Recall helps retrieval; doesn't fix reasoning-path divergence"
+    - run: R-23
+      intervention: "+ Per-module working memory"
+      result: "44% (N=3) — T02 recovered (0->67%); T04 first pass (0->33%)"
+      insight: "Working memory helps but 44% was inflated by N=3 noise"
+    - run: R-24
+      intervention: "R-23 replication at N=5"
+      result: "37% (N=5) — T02 regressed to 20%; T06 regressed to 0%"
+      insight: "True partitioned-cognitive-goal rate is ~37%, not 44%. Gap to flat is 36pp."
+
+next_steps:
+  - "N=5 replication of flat baseline (R-15) for fair comparison — R-15 was also N=3"
+  - "Investigate partition capacity/eviction for T01/T04 — these are closest to tipping"
+  - "T02 deep dive: why does formula reasoning fail 80% of the time with working memory?"
+  - "T06: consider whether multi-file extraction is inherently beyond partition capacity"
+  - "SLM compilation: evaluator + assessment as compilation targets (zero-cost monitoring)"
