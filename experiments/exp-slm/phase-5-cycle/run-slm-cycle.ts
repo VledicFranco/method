@@ -1328,6 +1328,10 @@ async function runPartitionedCognitiveGoal(
   });
   const reasonerActor = createReasonerActor(
     adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
+    {
+      // RFC 005: Per-module working memory — reasoner maintains plan/understanding
+      workingMemoryConfig: { capacity: 3, includeInContext: true },
+    },
   );
 
   // ── Memory layer (ACT-R activation retrieval, zero LLM cost) ──

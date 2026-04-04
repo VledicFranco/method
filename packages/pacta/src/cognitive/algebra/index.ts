@@ -27,7 +27,9 @@ export type {
   CognitiveModule,
 } from './module.js';
 
-export { moduleId, CompositionError } from './module.js';
+export { moduleId, CompositionError, createWorkingMemory, updateWorkingMemory } from './module.js';
+
+export type { WorkingMemoryConfig, ModuleWorkingMemory } from './module.js';
 
 // ── Goal-state types (PRD 045 — RFC 004) ────────────────────────
 

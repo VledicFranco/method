@@ -78,8 +78,10 @@ import type {
   ReadonlyWorkspaceSnapshot,
   ProviderAdapter,
   AdapterConfig,
+  ModuleWorkingMemory,
+  WorkingMemoryConfig,
 } from '../algebra/index.js';
-import { moduleId } from '../algebra/index.js';
+import { moduleId, createWorkingMemory, updateWorkingMemory } from '../algebra/index.js';
 import type { ToolProvider, ToolDefinition, ToolResult } from '../../ports/tool-provider.js';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -105,6 +107,8 @@ export interface ReasonerActorState {
   lastActionName: string | null;
   successRate: number;
   recentActions: string[];  // sliding window of last 6 action names for entropy computation
+  /** RFC 005: Per-module working memory — persistent plan/understanding across cycles. */
+  workingMemory?: ModuleWorkingMemory;
 }
 
 /** Control directive for the reasoner-actor. */
@@ -121,6 +125,9 @@ export interface ReasonerActorConfig {
   pactTemplate?: AdapterConfig['pactTemplate'];
   /** PRD 045: type-driven context binding. Declares what entry types this module needs. */
   contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
+  /** RFC 005: Working memory configuration. When present, the reasoner maintains
+   *  a persistent scratchpad across cycles for plan/understanding persistence. */
+  workingMemoryConfig?: WorkingMemoryConfig;
 }
 
 // ── Monitoring Signal ────────────────────────────────────────────
@@ -177,6 +184,22 @@ If the task is complete and no further action is needed, output:
 <action>
 {"tool": "done", "input": {}}
 </action>
+`;
+
+/** RFC 005: Additional format instruction when working memory is enabled. */
+const WORKING_MEMORY_INSTRUCTION = `
+
+IMPORTANT: You have a persistent WORKING MEMORY that carries forward between cycles.
+After your <action> block, include a <working_memory> block with your updated notes.
+Use it to maintain your plan, track what you've learned, and remember key decisions.
+
+<working_memory>
+Your updated notes here. Include:
+- Your current plan and what step you're on
+- Key facts you've learned (file paths, function signatures, bug locations)
+- What you've done so far and what remains
+Keep it concise (under 500 chars). This will be shown to you next cycle.
+</working_memory>
 `;
 
 const FORCE_REPLAN_PREFIX =
@@ -325,6 +348,7 @@ export function createReasonerActor(
 ): CognitiveModule<ReasonerActorInput, ReasonerActorOutput, ReasonerActorState, ReasonerActorMonitoring, ReasonerActorControl> {
   const id = moduleId(config?.id ?? 'reasoner-actor');
   const pactTemplate = config?.pactTemplate ?? {};
+  const wmConfig = config?.workingMemoryConfig;
 
   return {
     id,
@@ -337,6 +361,7 @@ export function createReasonerActor(
         lastActionName: null,
         successRate: 1,
         recentActions: [],
+        workingMemory: wmConfig ? createWorkingMemory(wmConfig) : undefined,
       };
     },
 
@@ -368,18 +393,36 @@ export function createReasonerActor(
 
         systemPrompt += `${effortPrefix}${strategyPrompt}${FORMAT_INSTRUCTION}`;
 
+        // RFC 005: Add working memory format instruction when enabled
+        if (state.workingMemory && state.workingMemory.config.includeInContext) {
+          systemPrompt += WORKING_MEMORY_INSTRUCTION;
+        }
+
         // Include restricted actions warning if applicable
         if (control.restrictedActions && control.restrictedActions.length > 0) {
           systemPrompt += `\nThe following action types are BLOCKED and cannot be used: ${control.restrictedActions.join(', ')}. Choose a different action.\n`;
         }
 
         // 3. Invoke ProviderAdapter with workspace snapshot
+        // RFC 005: Prepend working memory entries to snapshot
+        let effectiveSnapshot = input.snapshot;
+        if (state.workingMemory && state.workingMemory.entries.length > 0 && state.workingMemory.config.includeInContext) {
+          const wmHeader: WorkspaceEntry = {
+            source: id,
+            content: '[YOUR WORKING MEMORY — your persistent notes from previous cycles]\n' +
+              state.workingMemory.entries.map(e => typeof e.content === 'string' ? e.content : JSON.stringify(e.content)).join('\n'),
+            salience: 1.0,
+            timestamp: Date.now(),
+          };
+          effectiveSnapshot = [wmHeader, ...input.snapshot];
+        }
+
         const adapterConfig: AdapterConfig = {
           pactTemplate,
           systemPrompt,
         };
 
-        const result = await adapter.invoke(input.snapshot, adapterConfig);
+        const result = await adapter.invoke(effectiveSnapshot, adapterConfig);
         const responseText = result.output;
         const realTokens = result.usage.totalTokens;
 
@@ -387,6 +430,17 @@ export function createReasonerActor(
         const plan = parseSection(responseText, 'plan');
         const reasoning = parseSection(responseText, 'reasoning');
         const parsedAction = parseActionBlock(responseText);
+
+        // RFC 005: Parse working memory update from response
+        const wmUpdate = parseSection(responseText, 'working_memory');
+        const updatedWM = state.workingMemory && wmUpdate
+          ? updateWorkingMemory(state.workingMemory, [{
+              source: id,
+              content: wmUpdate,
+              salience: 1.0,
+              timestamp: Date.now(),
+            }])
+          : state.workingMemory;
 
         // Determine tool name and input
         let toolName: string;
@@ -422,6 +476,7 @@ export function createReasonerActor(
             lastActionName: 'done',
             successRate: state.successRate,
             recentActions: updatedRecentActions,
+            workingMemory: updatedWM,
           };
 
           const monitoring: ReasonerActorMonitoring = {
@@ -482,6 +537,7 @@ export function createReasonerActor(
             lastActionName: 'none',
             successRate: state.successRate,
             recentActions: updatedRecentActions,
+            workingMemory: updatedWM,
           };
 
           const monitoring: ReasonerActorMonitoring = {
@@ -565,6 +621,7 @@ export function createReasonerActor(
           lastActionName: toolName,
           successRate: newSuccessRate,
           recentActions: updatedRecentActions,
+          workingMemory: updatedWM,
         };
 
         // 10. Return StepResult with output, updated state, monitoring signal
