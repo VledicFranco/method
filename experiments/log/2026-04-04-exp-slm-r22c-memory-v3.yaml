@@ -37,7 +37,7 @@ findings:
       T06 (multi-module extraction) went from 0/3 in every prior partitioned condition
       to 2/3. The memory module recalled evicted file contents (5 entries/cycle by
       cycle 6+) that the agent needed for the extraction. This is the exact mechanism
-      predicted by RFC 005: hippocampal-style episodic recall compensates for
+      predicted by RFC 006: hippocampal-style episodic recall compensates for
       workspace eviction.
 
   - id: F2
@@ -54,7 +54,7 @@ findings:
       reasoning. The agent under partitioned context doesn't form the right plan for
       creating the v2 handler. This is the working memory gap: the agent has no
       persistent plan/understanding across cycles. Memory v3 provides episodic recall
-      (hippocampal) but not working memory (prefrontal). RFC 005 §Module Working Memory
+      (hippocampal) but not working memory (prefrontal). RFC 006 §Module Working Memory
       identifies this as the next intervention.
 
   - id: F4
@@ -66,14 +66,14 @@ findings:
       memory gating (from partitioned-smart) was not ported — worth adding.
 
   - id: F5
-    title: "Validation of the two-layer memory architecture (RFC 005)"
+    title: "Validation of the two-layer memory architecture (RFC 006)"
     detail: >
       R-22c confirms the CLS analogy: episodic recall (Memory v3) helps with information
       retrieval but doesn't substitute for working memory. The agent can remember what it
-      read but can't maintain a persistent plan. This validates RFC 005's distinction:
+      read but can't maintain a persistent plan. This validates RFC 006's distinction:
       module working memory = fast/local/persistent plan, episodic store = slow/global/
       recalled-on-demand facts. Both layers are needed.
 
 next_steps:
-  - "Implement per-module WorkingMemory in the algebra (RFC 005 §Module Working Memory)"
+  - "Implement per-module WorkingMemory in the algebra (RFC 006 §Module Working Memory)"
   - "R-23: ReasonerActor with persistent scratchpad — target T04 recovery"

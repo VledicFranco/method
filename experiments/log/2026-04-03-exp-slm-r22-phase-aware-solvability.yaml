@@ -3,7 +3,7 @@ run_id: r22-phase-aware-solvability
 date: 2026-04-03
 agent: "Claude Opus 4.6"
 config:
-  task: "RFC 005 diagnostic — phase-aware evaluator with solvability-gated termination"
+  task: "RFC 006 diagnostic — phase-aware evaluator with solvability-gated termination"
   conditions: ["partitioned-cognitive-goal"]
   baseline_comparison: "R-21 (LLM eval, 17%), R-20 (rule-based, 22%), R-15 (flat, 73%)"
   n_per_task: 3
@@ -47,7 +47,7 @@ findings:
       The phase-aware evaluator correctly identifies explore→execute→verify transitions,
       gives task-specific KPIs, and reports solvability as a separate dimension. T01 improved
       from 0/3 (R-21) to 2/3 — the two passing runs used all 15 cycles because solvability
-      stayed high enough to prevent premature termination. This is the RFC 005 mechanism
+      stayed high enough to prevent premature termination. This is the RFC 006 mechanism
       working as designed.
 
   - id: F2

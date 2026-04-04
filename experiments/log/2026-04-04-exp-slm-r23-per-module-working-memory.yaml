@@ -3,7 +3,7 @@ run_id: r23-per-module-working-memory
 date: 2026-04-04
 agent: "Claude Opus 4.6"
 config:
-  task: "RFC 005 full stack — phase-aware evaluator + solvability + Memory v3 + per-module working memory"
+  task: "RFC 006 full stack — phase-aware evaluator + solvability + Memory v3 + per-module working memory"
   conditions: ["partitioned-cognitive-goal"]
   baseline_comparison: "R-22c (memory only, 33%), R-15 (flat, 73%)"
   n_per_task: 3
@@ -92,7 +92,7 @@ findings:
       mechanism is validated.
 
   - id: F3
-    title: "Each RFC 005 intervention contributed measurably"
+    title: "Each RFC 006 intervention contributed measurably"
     detail: >
       The progression from R-20 (22%) to R-23 (44%) shows each layer adding value:
       - Phase awareness + solvability (R-22): fixed premature termination (+6pp, 22→28%)
@@ -124,9 +124,9 @@ findings:
       prompt. For SLM compilation targets, the evaluator cost drops to near-zero.
 
   - id: F6
-    title: "The closed algebra hypothesis (RFC 005) is empirically supported"
+    title: "The closed algebra hypothesis (RFC 006) is empirically supported"
     detail: >
-      RFC 005 proposed that Module :: (I, S, W, κ) → (O, S, W, μ) — every module needs its
+      RFC 006 proposed that Module :: (I, S, W, κ) → (O, S, W, μ) — every module needs its
       own workspace for algebraic closure. R-23 validates this for the ReasonerActor: adding
       W (working memory) to S recovered tasks that no other intervention could fix. The
       algebra is not just theoretical elegance — it has measurable empirical consequences.
@@ -134,7 +134,7 @@ findings:
 experimental_arc:
   description: >
     Full R-20→R-23 research arc documenting the discovery and validation of
-    RFC 005 Anticipatory Monitoring + Module Working Memory.
+    RFC 006 Anticipatory Monitoring + Module Working Memory.
   progression:
     - run: R-20
       intervention: "Rule-based goal-state discrepancy (PRD 045)"
@@ -143,7 +143,7 @@ experimental_arc:
     - run: R-21
       intervention: "LLM frontier evaluator (accurate discrepancy)"
       result: "17% — better signal makes termination WORSE"
-      insight: "Termination logic lacks phase expectations → RFC 005 born"
+      insight: "Termination logic lacks phase expectations → RFC 006 born"
     - run: R-22
       intervention: "Phase-aware evaluator + solvability gating"
       result: "28% — fixed premature termination, back to partition baseline"
@@ -165,5 +165,5 @@ next_steps:
   - "Increase N to 5 for statistical confidence on T01/T03/T04"
   - "Investigate partition capacity/eviction for T01/T04 remaining gap"
   - "SLM compilation: evaluator + assessment as compilation targets (zero-cost monitoring)"
-  - "Formal Planner module implementation (RFC 005 §Planner Module)"
+  - "Formal Planner module implementation (RFC 006 §Planner Module)"
   - "Per-module working memory for all modules (complete the closed algebra)"

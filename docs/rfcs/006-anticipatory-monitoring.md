@@ -1,4 +1,4 @@
-# RFC 005: Anticipatory Monitoring — Phase-Aware Goal Pursuit
+# RFC 006: Anticipatory Monitoring — Phase-Aware Goal Pursuit
 
 **Status:** Draft — theory extension
 **Author:** PO + Lysica
@@ -455,7 +455,7 @@ the proposed architecture, and each finding informed the next intervention.
 | Run | Intervention | Result | Finding |
 |-----|-------------|--------|---------|
 | R-20 | Rule-based discrepancy (PRD 045) | 22% | Comparator can't measure progress. Constant 0.300 output. |
-| R-21 | LLM frontier evaluator | 17% | Better signal + bad termination = **worse** outcomes. RFC 005 born. |
+| R-21 | LLM frontier evaluator | 17% | Better signal + bad termination = **worse** outcomes. RFC 006 born. |
 | R-22 | Phase-aware eval + solvability gating | 28% | Fixed premature termination. Back to partition baseline. |
 | R-22b | Smoothed solvability (tuning) | 28% | Tuning noise. Partition context is the bottleneck, not monitoring. |
 | R-22c | + Memory v3 episodic recall | 33% | T06 recovered (0→67%). T04 still 0% — gap is working memory, not retrieval. |

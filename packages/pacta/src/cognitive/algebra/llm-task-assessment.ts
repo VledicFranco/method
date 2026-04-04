@@ -1,12 +1,12 @@
 /**
  * LLM Task Assessment — pre-task difficulty estimation and phase planning.
  *
- * RFC 005: Anticipatory Monitoring. Runs at cycle 0 to produce a TaskAssessment
+ * RFC 006: Anticipatory Monitoring. Runs at cycle 0 to produce a TaskAssessment
  * that parameterizes the Evaluator's metamonitor. Implements Koriat's
  * Ease-of-Learning judgment: estimate difficulty, decompose into phases,
  * set solvability prior and KPIs.
  *
- * @see docs/rfcs/005-anticipatory-monitoring.md
+ * @see docs/rfcs/006-anticipatory-monitoring.md
  */
 
 import type { GoalRepresentation, TaskAssessment, TaskPhase } from './goal-types.js';

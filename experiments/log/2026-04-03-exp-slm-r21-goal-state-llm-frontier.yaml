@@ -125,7 +125,7 @@ findings:
       is validated.
 
 next_steps:
-  - "RFC 005: Anticipatory Monitoring — formalize the missing cognitive functions"
+  - "RFC 006: Anticipatory Monitoring — formalize the missing cognitive functions"
   - "Diagnostic experiment (R-22): inject phase awareness into evaluator prompt, test if premature termination is prevented"
   - "If validated: implement Planner module + phase-aware Evaluator as proper cognitive modules"
   - "Defer SLM compilation until the full Planner→Evaluator pipeline is validated at frontier"

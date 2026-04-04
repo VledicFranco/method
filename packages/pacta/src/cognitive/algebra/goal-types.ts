@@ -94,7 +94,7 @@ export interface TerminateSignal extends MonitoringSignal {
   evidence: GoalDiscrepancy;
 }
 
-// ── Task Assessment (RFC 005 — Anticipatory Monitoring) ───────
+// ── Task Assessment (RFC 006 — Anticipatory Monitoring) ───────
 
 /**
  * Pre-task assessment produced by the Planner (or LLM call) at cycle 0.

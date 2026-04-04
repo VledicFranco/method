@@ -13,12 +13,12 @@
  *
  * **Current role:** Fallback when no LLM provider is available. The LLM-based
  * evaluator (llm-discrepancy.ts) is the primary path for frontier validation.
- * Both will be superseded when the Planner module (RFC 005) provides phase-aware
+ * Both will be superseded when the Planner module (RFC 006) provides phase-aware
  * evaluation and solvability tracking.
  *
  * @see algebra/llm-discrepancy.ts — LLM-based replacement (R-21)
  * @see docs/rfcs/004-goal-state-monitoring.md — §Discrepancy Computation
- * @see docs/rfcs/005-anticipatory-monitoring.md — phase-aware evaluation (next)
+ * @see docs/rfcs/006-anticipatory-monitoring.md — phase-aware evaluation (next)
  */
 
 import type { ReadonlyWorkspaceSnapshot } from './workspace-types.js';

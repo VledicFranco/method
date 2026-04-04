@@ -178,7 +178,7 @@ export async function buildLLMGoalDiscrepancy(
   }
 }
 
-// ── Phase-Aware Discrepancy (RFC 005) ─────────────────────────
+// ── Phase-Aware Discrepancy (RFC 006) ─────────────────────────
 
 /** Result from phase-aware assessment — discrepancy + solvability. */
 export interface PhaseAwareResult {
@@ -306,7 +306,7 @@ function parsePhaseAwareResponse(text: string): {
 /**
  * Phase-aware LLM discrepancy — includes TaskAssessment context and returns solvability.
  *
- * RFC 005 diagnostic experiment (R-22): enriches the evaluator prompt with phase
+ * RFC 006 diagnostic experiment (R-22): enriches the evaluator prompt with phase
  * expectations and asks for solvability as a separate signal.
  */
 export async function buildPhaseAwareDiscrepancy(

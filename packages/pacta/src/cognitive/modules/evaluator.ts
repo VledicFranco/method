@@ -48,11 +48,11 @@
  * - PRD 045: TerminateSignal emission (goal-satisfied, goal-unreachable)
  * - PRD 045: Unconditional evaluation (runs every cycle, not gated by Monitor)
  *
- * **What this module does NOT capture (known gaps — RFC 005):**
+ * **What this module does NOT capture (known gaps — RFC 006):**
  *
  * R-20/R-21 empirically validated that goal-state comparison alone is insufficient.
  * The Evaluator can answer "how far from goal?" but not "are we on track?" — it lacks
- * a reference trajectory. Three missing cognitive functions (RFC 005):
+ * a reference trajectory. Three missing cognitive functions (RFC 006):
  *
  * - **Phase-aware progress (Carver-Scheier multi-level control):** The Evaluator
  *   treats all cycles identically. Reading code in cycle 3 (expected exploration) and
@@ -90,7 +90,7 @@
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Evaluator definition
  * @see docs/rfcs/004-goal-state-monitoring.md — goal-state comparison (implemented PRD 045)
- * @see docs/rfcs/005-anticipatory-monitoring.md — phase awareness + solvability (next)
+ * @see docs/rfcs/006-anticipatory-monitoring.md — phase awareness + solvability (next)
  */
 
 import type {
@@ -129,7 +129,7 @@ export interface EvaluatorConfig {
    *  When present, replaces rule-based heuristic with LLM-based goal-state comparison.
    *  Falls back to rule-based on LLM error. */
   provider?: import('../algebra/provider-adapter.js').ProviderAdapter;
-  /** RFC 005: Pre-task assessment for phase-aware evaluation. When present with provider,
+  /** RFC 006: Pre-task assessment for phase-aware evaluation. When present with provider,
    *  uses phase-aware discrepancy with solvability-gated termination. */
   taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
 }
@@ -152,9 +152,9 @@ export interface EvaluatorOutput {
   terminateSignal?: import('../algebra/goal-types.js').TerminateSignal;
   /** Tokens used by LLM evaluator this step (0 when using rule-based). */
   evaluatorTokens?: number;
-  /** RFC 005: Solvability estimate (present when taskAssessment is provided). */
+  /** RFC 006: Solvability estimate (present when taskAssessment is provided). */
   solvability?: import('../algebra/goal-types.js').SolvabilityEstimate;
-  /** RFC 005: Current execution phase (present when taskAssessment is provided). */
+  /** RFC 006: Current execution phase (present when taskAssessment is provided). */
   currentPhase?: string;
 }
 
@@ -170,9 +170,9 @@ export interface EvaluatorState {
   discrepancyHistory?: number[];
   /** PRD 045: Current satisficing aspiration level. */
   aspirationLevel?: number;
-  /** RFC 005: Task assessment (persistent, set at cycle 0). */
+  /** RFC 006: Task assessment (persistent, set at cycle 0). */
   taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
-  /** RFC 005: History of solvability estimates. */
+  /** RFC 006: History of solvability estimates. */
   solvabilityHistory?: number[];
 }
 
@@ -228,7 +228,7 @@ export function createEvaluator(
         diminishingReturns = detectDiminishingReturns(history, drWindow);
       }
 
-      // ── PRD 045 + RFC 005: Goal-state comparison path ─────────
+      // ── PRD 045 + RFC 006: Goal-state comparison path ─────────
       let discrepancyResult: import('../algebra/goal-types.js').GoalDiscrepancy | undefined;
       let terminateResult: import('../algebra/goal-types.js').TerminateSignal | undefined;
       let solvabilityResult: import('../algebra/goal-types.js').SolvabilityEstimate | undefined;
@@ -248,7 +248,7 @@ export function createEvaluator(
         const aspiration = state.aspirationLevel ?? DEFAULT_ASPIRATION;
         const cycleNum = state.cycleCount + 1;
 
-        // RFC 005: Phase-aware path (provider + taskAssessment)
+        // RFC 006: Phase-aware path (provider + taskAssessment)
         if (provider && state.taskAssessment) {
           const paResult = await buildPhaseAwareDiscrepancy(
             provider,
@@ -315,9 +315,9 @@ export function createEvaluator(
             evidence: discrepancyResult,
           };
         }
-        // Goal-unreachable: RFC 005 solvability-gated OR legacy rate-based
+        // Goal-unreachable: RFC 006 solvability-gated OR legacy rate-based
         else if (solvabilityResult) {
-          // RFC 005 path: smoothed solvability over last 3 cycles
+          // RFC 006 path: smoothed solvability over last 3 cycles
           // R-22 finding F2: raw single-cycle solvability is too volatile.
           const recentSolvability = newSolvabilityHistory.slice(-3);
           const smoothedSolvability = recentSolvability.length >= 2

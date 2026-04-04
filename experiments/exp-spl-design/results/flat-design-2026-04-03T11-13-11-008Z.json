@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 5300,
+  "cost_usd": 0.37718399999999996,
+  "duration_ms": 150567,
+  "ports": 0,
+  "subComponents": 1,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 4,
+    "overall": 4.05,
+    "rationale": "The design correctly identifies all three FCA domains (projects, tasks, notifications) with proper cross-domain port separation (ProjectLookupPort, NotificationPort, TaskStoragePort, ProjectStoragePort) matching the reference. The narrative is clear and port-centric in principle, emphasizing composition root injection and independent testability. However, the critical gap is the empty \"GENERATED PORT INTERFACES\" section — in FCD, port interfaces ARE the primary deliverable, yet none are shown; they should be typed, minimal, and explicit (e.g., `ProjectLookupPort { exists(projectId: string): Promise<boolean> }`), not inferred from prose."
+  },
+  "compositeScore": 0.905
+}

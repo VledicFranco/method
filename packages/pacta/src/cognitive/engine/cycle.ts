@@ -12,14 +12,14 @@
  * Grounded in: ACT-R production cycle, GWT broadcast-then-compete,
  * Nelson & Narens monitor/control metacognition, Carver-Scheier cybernetic control.
  *
- * **Known limitation (RFC 005 — Anticipatory Monitoring):**
+ * **Known limitation (RFC 006 — Anticipatory Monitoring):**
  * The cycle has no PLAN phase. RFC 001 defines a Planner module but it was never
  * implemented. Without it, the Evaluator operates without phase expectations or a
  * reference trajectory. R-20/R-21 showed that goal-state monitoring with accurate
  * discrepancy signals WORSENS performance because the termination logic can't
  * distinguish "exploring" from "stuck." The Planner would run at cycle 0 to produce
  * a TaskAssessment (phases, difficulty, KPIs, solvability) that parameterizes the
- * Evaluator's metamonitor. See RFC 005 for the full gap analysis and experiment plan.
+ * Evaluator's metamonitor. See RFC 006 for the full gap analysis and experiment plan.
  */
 
 import type {

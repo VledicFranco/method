@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1840,
+  "cost_usd": 0.024407850000000002,
+  "duration_ms": 12830,
+  "ports": 4,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.4,
+    "rationale": "Design correctly identifies the 3 domains (projects, tasks, notifications) and file structure matching the reference. Documentation explicitly states ownership and consumer relationships, excellent for onboarding. However, ProjectLookupPort violates minimalism—it includes `getById()` when the reference intentionally exposes only `exists()`, exposing unnecessary implementation details to the consumer (tasks). TaskStoragePort similarly uses `listByProject(projectId)` instead of the reference's more compositional `list(filter?: {projectId})`, making the interface less flexible and harder to extend."
+  },
+  "compositeScore": 0.9400000000000001
+}

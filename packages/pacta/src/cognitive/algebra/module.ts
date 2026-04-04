@@ -181,7 +181,7 @@ export interface CognitiveModule<
   stateInvariant?(state: S): boolean;
 }
 
-// ── Module Working Memory (RFC 005) ─────────────────────────────
+// ── Module Working Memory (RFC 006) ─────────────────────────────
 
 /**
  * Per-module working memory — the W in Module :: (I, S, W, κ) → (O, S, W, μ).
@@ -198,7 +198,7 @@ export interface CognitiveModule<
  * The module includes workingMemory entries in its state, and the orchestrator
  * injects them into the module's input alongside the shared workspace snapshot.
  *
- * @see docs/rfcs/005-anticipatory-monitoring.md — §Module Working Memory
+ * @see docs/rfcs/006-anticipatory-monitoring.md — §Module Working Memory
  */
 
 import type { WorkspaceEntry } from './workspace-types.js';

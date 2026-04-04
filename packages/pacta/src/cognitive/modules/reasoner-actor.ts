@@ -47,7 +47,7 @@
  * - Confidence estimation via action entropy (Shannon entropy over recent actions)
  * - Strategy control via κ (restricted actions, force replan, strategy override)
  * - The "done" action: object-level self-termination signal
- * - RFC 005: Per-module working memory (opt-in). When workingMemoryConfig is provided,
+ * - RFC 006: Per-module working memory (opt-in). When workingMemoryConfig is provided,
  *   the reasoner maintains a persistent scratchpad across cycles via a <working_memory>
  *   section in the LLM response. This is the prefrontal working memory (Baddeley 2000)
  *   that persists plan/understanding independent of shared workspace eviction.
@@ -60,7 +60,7 @@
  *   the gap is working memory (plan persistence), not episodic retrieval.
  * - R-23: Working memory recovers T02 (0→67%) and T04 (0→33%). The scratchpad preserves
  *   the reasoner's analysis and plan across cycles, surviving workspace eviction.
- *   This validates RFC 005's closed algebra: Module :: (I, S, W, κ) → (O, S, W, μ).
+ *   This validates RFC 006's closed algebra: Module :: (I, S, W, κ) → (O, S, W, μ).
  *
  * **What this module does NOT capture (known gaps):**
  * - The "done" action is an unvalidated LLM guess. RFC 004 goal-state monitoring
@@ -77,7 +77,7 @@
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phases 4+7 (REASON, ACT)
  * @see docs/rfcs/001-cognitive-composition.md — Part V (System 1/2 Transition)
- * @see docs/rfcs/005-anticipatory-monitoring.md — §Module Working Memory
+ * @see docs/rfcs/006-anticipatory-monitoring.md — §Module Working Memory
  */
 
 import type {
@@ -120,7 +120,7 @@ export interface ReasonerActorState {
   lastActionName: string | null;
   successRate: number;
   recentActions: string[];  // sliding window of last 6 action names for entropy computation
-  /** RFC 005: Per-module working memory — persistent plan/understanding across cycles. */
+  /** RFC 006: Per-module working memory — persistent plan/understanding across cycles. */
   workingMemory?: ModuleWorkingMemory;
 }
 
@@ -138,7 +138,7 @@ export interface ReasonerActorConfig {
   pactTemplate?: AdapterConfig['pactTemplate'];
   /** PRD 045: type-driven context binding. Declares what entry types this module needs. */
   contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
-  /** RFC 005: Working memory configuration. When present, the reasoner maintains
+  /** RFC 006: Working memory configuration. When present, the reasoner maintains
    *  a persistent scratchpad across cycles for plan/understanding persistence. */
   workingMemoryConfig?: WorkingMemoryConfig;
 }
@@ -199,7 +199,7 @@ If the task is complete and no further action is needed, output:
 </action>
 `;
 
-/** RFC 005: Additional format instruction when working memory is enabled. */
+/** RFC 006: Additional format instruction when working memory is enabled. */
 const WORKING_MEMORY_INSTRUCTION = `
 
 IMPORTANT: You have a persistent WORKING MEMORY that carries forward between cycles.
@@ -406,7 +406,7 @@ export function createReasonerActor(
 
         systemPrompt += `${effortPrefix}${strategyPrompt}${FORMAT_INSTRUCTION}`;
 
-        // RFC 005: Add working memory format instruction when enabled
+        // RFC 006: Add working memory format instruction when enabled
         if (state.workingMemory && state.workingMemory.config.includeInContext) {
           systemPrompt += WORKING_MEMORY_INSTRUCTION;
         }
@@ -417,7 +417,7 @@ export function createReasonerActor(
         }
 
         // 3. Invoke ProviderAdapter with workspace snapshot
-        // RFC 005: Prepend working memory entries to snapshot
+        // RFC 006: Prepend working memory entries to snapshot
         let effectiveSnapshot = input.snapshot;
         if (state.workingMemory && state.workingMemory.entries.length > 0 && state.workingMemory.config.includeInContext) {
           const wmHeader: WorkspaceEntry = {
@@ -444,7 +444,7 @@ export function createReasonerActor(
         const reasoning = parseSection(responseText, 'reasoning');
         const parsedAction = parseActionBlock(responseText);
 
-        // RFC 005: Parse working memory update from response
+        // RFC 006: Parse working memory update from response
         const wmUpdate = parseSection(responseText, 'working_memory');
         const updatedWM = state.workingMemory && wmUpdate
           ? updateWorkingMemory(state.workingMemory, [{
