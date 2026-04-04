@@ -1,17 +1,24 @@
 /**
- * Planner — meta-level cognitive module for plan generation and control directive production.
+ * Planner — meta-level cognitive module for goal decomposition, difficulty assessment,
+ * phase planning, and control directive production.
  *
- * Reads workspace snapshots, invokes a ProviderAdapter for LLM-based plan generation,
- * and produces ControlDirective[] as output — directives for object-level modules
- * (Reasoner strategy changes, Actor allowed actions, etc.).
- *
- * Directives are NOT validated here — the cycle orchestrator validates them
- * against ControlPolicy.
+ * Runs at cycle 0 to produce a TaskAssessment (difficulty, phases, KPIs, solvability
+ * prior) that parameterizes the Evaluator's metamonitor. Can re-plan on demand when
+ * the Monitor signals an impasse. Uses ModuleWorkingMemory to persist its plan across
+ * cycles, immune to shared workspace eviction.
  *
  * ## Cognitive Science Grounding
  *
  * **Primary analog: Anterior Prefrontal Cortex (aPFC) — abstract planning,
  * goal management, and prospective memory.**
+ *
+ * - **Koriat (2007) — Ease-of-Learning Judgment (EOL):** Before engaging with a task,
+ *   the metacognitive system forms an initial assessment of difficulty and expected effort.
+ *   The EOL judgment parameterizes the subsequent monitoring process. A task judged as
+ *   "hard" sets different monitoring thresholds than a task judged as "easy." The Planner's
+ *   TaskAssessment at cycle 0 implements this: difficulty estimate, phase budgets, and
+ *   solvability prior calibrate the Evaluator so it can distinguish "expected exploration"
+ *   from "alarming stagnation."
  *
  * - **SOAR (Laird, 2012) — Deliberate Planning:** When SOAR reaches an impasse
  *   (no applicable operator), it creates a subgoal and enters a deliberate
@@ -22,45 +29,49 @@
  *
  * - **ACT-R (Anderson, 2007) — Goal Buffer Management:** ACT-R's goal buffer
  *   holds the current goal chunk. Goal changes (push, pop, modify) are driven
- *   by production rules. Our Planner generates `subgoals[]` and may revise
- *   the plan, functioning as the goal management system. However, unlike
- *   ACT-R's strict one-goal-at-a-time constraint, our Planner can maintain
- *   multiple subgoals simultaneously.
+ *   by production rules. Our Planner generates subgoals and may revise the plan,
+ *   functioning as the goal management system.
  *
  * - **Hierarchical Task Network (HTN) Planning (Erol et al., 1994):** The
  *   Planner's decomposition of goals into subgoals mirrors HTN's recursive
- *   task decomposition. Each subgoal is a primitive or compound task that
- *   can be further decomposed.
+ *   task decomposition.
  *
- * - **Prospective Memory (Burgess et al., 2011):** The aPFC maintains
- *   intentions for future action — "after X, do Y." Our Planner's directives
- *   serve this function: they encode future-oriented control instructions
- *   that persist across cycles.
+ * - **Carver & Scheier (1998) — Multi-Level Control:** The Planner provides
+ *   the reference trajectory (phase structure) that the Evaluator's metamonitor
+ *   needs to evaluate "is current behavior appropriate for the current phase?"
+ *   rather than just "is discrepancy decreasing?"
+ *
+ * - **Baddeley (2000) — Working Memory:** The Planner uses per-module working
+ *   memory (ModuleWorkingMemory) to persist its plan and assessment across cycles,
+ *   immune to shared workspace eviction. This is the prefrontal working memory
+ *   that maintains task-relevant representations independent of the sensory stream.
  *
  * **What this module captures:**
- * - LLM-based plan generation from workspace context
- * - Goal decomposition into subgoals with status tracking
+ * - Pre-task difficulty assessment (Koriat's EOL) via LLM at cycle 0
+ * - Phase decomposition with cycle budgets and progress indicators
+ * - Solvability prior estimation
+ * - Observable KPI definition for progress tracking
+ * - Plan revision on demand (impasse-triggered re-planning)
+ * - Working memory for plan persistence across cycles
  * - Control directive production for downstream modules
- * - Plan revision detection (planRevised monitoring signal)
  *
  * **What this module does NOT capture (known gaps):**
- * - No plan evaluation: the Planner generates plans but doesn't evaluate whether
- *   they're progressing toward the goal. Plan quality assessment requires the
- *   Evaluator to have goal-state access (RFC 004).
  * - No plan library: each invocation generates from scratch. SOAR's chunking
  *   compiles successful plans into reusable productions — we don't.
- * - Subgoal tracking is count-based, not completion-based: the Planner tracks
- *   how many subgoals exist, not whether they've been achieved.
+ * - No adaptive re-assessment: the Planner produces one TaskAssessment at cycle 0
+ *   and optionally revises on impasse. Continuous difficulty re-estimation is
+ *   deferred to a future iteration.
  *
  * **References:**
+ * - Koriat, A. (2007). Metacognition and consciousness. Cambridge Handbook of Consciousness.
  * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
  * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
  * - Erol, K., Hendler, J., & Nau, D. S. (1994). HTN planning: Complexity and expressivity.
- *   AAAI-94 Proceedings.
- * - Burgess, P. W., Gonen-Yaacovi, G., & Volle, E. (2011). Functional neuroimaging studies
- *   of prospective memory. Annals of the New York Academy of Sciences, 1224, 36-52.
+ * - Carver, C. S., & Scheier, M. F. (1998). On the Self-Regulation of Behavior. Cambridge UP.
+ * - Baddeley, A. D. (2000). The episodic buffer. Trends in Cognitive Sciences, 4(11), 417-423.
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phase 6 (CONTROL)
+ * @see docs/rfcs/006-anticipatory-monitoring.md — Planner module + Module Working Memory
  */
 
 import type {
@@ -73,23 +84,42 @@ import type {
   ReadonlyWorkspaceSnapshot,
   ProviderAdapter,
   AdapterConfig,
+  ModuleWorkingMemory,
+  WorkingMemoryConfig,
+  WorkspaceEntry,
+  TaskAssessment,
+  GoalRepresentation,
 } from '../algebra/index.js';
-import { moduleId } from '../algebra/index.js';
+import {
+  moduleId,
+  createWorkingMemory,
+  updateWorkingMemory,
+  assessTaskWithLLM,
+  defaultAssessment,
+} from '../algebra/index.js';
 
 // ── Types ──────────────────────────────────────────────────────────
 
 /** Configuration for the Planner module. */
 export interface PlannerConfig {
-  /** System prompt for LLM plan generation. */
-  systemPrompt?: string;
   /** Module ID override. Default: 'planner'. */
   id?: string;
+  /** PRD 045: type-driven context binding. */
   contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
+  /** Working memory configuration for plan persistence across cycles. */
+  workingMemoryConfig?: WorkingMemoryConfig;
+  /** Maximum cycles available for the task (used in assessment). Default: 15. */
+  maxCycles?: number;
+  /** System prompt override for re-planning LLM calls. */
+  systemPrompt?: string;
 }
 
-/** Input to the Planner: workspace snapshot for context. */
+/** Input to the Planner: goal representation + workspace snapshot. */
 export interface PlannerInput {
+  /** Current workspace snapshot for context. */
   workspace: ReadonlyWorkspaceSnapshot;
+  /** Goal representation — the task the agent is working on. */
+  goal?: GoalRepresentation;
 }
 
 /** A subgoal within the current plan. */
@@ -98,70 +128,166 @@ export interface Subgoal {
   status: 'pending' | 'active' | 'completed';
 }
 
-/** Output: control directives for object-level modules. */
+/** Output: TaskAssessment + plan + control directives. */
 export interface PlannerOutput {
-  directives: ControlDirective[];
+  /** Pre-task assessment (produced at cycle 0, revised on replan). */
+  assessment: TaskAssessment | null;
+  /** Natural language plan description. */
   plan: string;
+  /** Decomposed subgoals. */
   subgoals: Subgoal[];
+  /** Control directives for downstream modules. */
+  directives: ControlDirective[];
+  /** Whether the plan was revised this step. */
+  planRevised: boolean;
+  /** Tokens consumed by LLM invocations this step. */
+  tokensUsed: number;
 }
 
-/** State: current plan, subgoal list, revision count. */
+/** State: current plan, assessment, working memory, revision tracking. */
 export interface PlannerState {
+  /** Current natural language plan. */
   currentPlan: string;
+  /** Active subgoals. */
   subgoals: Subgoal[];
+  /** Number of plan revisions so far. */
   revisionCount: number;
+  /** Cycle counter. */
+  cycleCount: number;
+  /** TaskAssessment produced at cycle 0 (persistent, immune to workspace eviction). */
+  assessment: TaskAssessment | null;
+  /** Goal representation (persistent, set from input at cycle 0). */
+  goal: GoalRepresentation | null;
+  /** Per-module working memory — persists plan context across cycles. */
+  workingMemory?: ModuleWorkingMemory;
 }
 
-/** Control directive: replan trigger. */
+/** Control directive: replan trigger from Monitor. */
 export interface PlannerControl extends ControlDirective {
+  /** When set, triggers re-planning. Value describes why (e.g., 'anomaly detected'). */
   replanTrigger?: string;
 }
+
+// ── Prompt for Re-Planning ──────────────────────────────────────────
+
+const DEFAULT_REPLAN_SYSTEM_PROMPT =
+  `You are a planning module for a coding agent. Given the current workspace context and previous plan, produce a revised plan as JSON.
+
+Respond with a JSON object containing:
+- plan: (string) natural language description of the revised plan
+- subgoals: (array of {description: string, status: 'pending'|'active'|'completed'}) decomposed sub-tasks
+- directives: (array of {target: string, directiveType: string, payload?: object}) control directives for other modules
+
+Example directives:
+- {target: "reasoner-1", directiveType: "strategy_shift", payload: {strategy: "cot"}}
+- {target: "actor-1", directiveType: "action_whitelist", payload: {actions: ["read_file"]}}`;
 
 // ── Factory ────────────────────────────────────────────────────────
 
 /**
  * Create a Planner cognitive module.
  *
- * Invokes a ProviderAdapter for LLM-based plan generation. Produces
- * ControlDirective[] targeting object-level modules.
+ * At cycle 0: invokes assessTaskWithLLM() to produce a TaskAssessment from the
+ * goal representation. On subsequent cycles: passes through unless replanTrigger
+ * is set, in which case it re-invokes the LLM for a revised plan and directives.
+ *
+ * Uses ModuleWorkingMemory (when configured) to persist its plan context across
+ * cycles, immune to shared workspace eviction.
+ *
+ * @param adapter - The ProviderAdapter for LLM invocation.
+ * @param config - Optional configuration (id, working memory, maxCycles).
  */
 export function createPlanner(
   adapter: ProviderAdapter,
   config?: PlannerConfig,
 ): CognitiveModule<PlannerInput, PlannerOutput, PlannerState, PlannerMonitoring, PlannerControl> {
   const id = moduleId(config?.id ?? 'planner');
-  const systemPrompt = config?.systemPrompt ??
-    'You are a planning module. Given the current workspace context, produce a plan as JSON with fields: plan (string), subgoals (array of {description, status}), directives (array of {target, directiveType, payload}).';
+  const maxCycles = config?.maxCycles ?? 15;
+  const wmConfig = config?.workingMemoryConfig;
+  const systemPrompt = config?.systemPrompt ?? DEFAULT_REPLAN_SYSTEM_PROMPT;
 
   return {
     id,
-    contextBinding: config?.contextBinding ?? { types: ['goal', 'constraint'], budget: 4096, strategy: 'salience' as const },
+    contextBinding: config?.contextBinding ?? {
+      types: ['goal', 'constraint'],
+      budget: 4096,
+      strategy: 'salience' as const,
+    },
 
     async step(
       input: PlannerInput,
       state: PlannerState,
       control: PlannerControl,
     ): Promise<StepResult<PlannerOutput, PlannerState, PlannerMonitoring>> {
+      const isCycle0 = state.cycleCount === 0;
       const shouldReplan = control.replanTrigger !== undefined;
 
+      // Capture goal from input at cycle 0 (persists in state thereafter)
+      const goal = state.goal ?? input.goal ?? null;
+
       try {
-        const adapterConfig: AdapterConfig = {
-          pactTemplate: { mode: { type: 'oneshot' } },
-          systemPrompt,
-        };
+        let assessment = state.assessment;
+        let plan = state.currentPlan;
+        let subgoals = state.subgoals;
+        let directives: ControlDirective[] = [];
+        let planRevised = false;
+        let tokensUsed = 0;
 
-        const result = await adapter.invoke(input.workspace, adapterConfig);
+        // ── Cycle 0: produce TaskAssessment via assessTaskWithLLM() ──
+        if (isCycle0 && goal) {
+          const assessResult = await assessTaskWithLLM(adapter, goal, maxCycles, id);
+          assessment = assessResult.assessment;
+          tokensUsed += assessResult.tokensUsed;
 
-        // Parse the LLM output into structured plan
-        const parsed = parsePlanOutput(result.output, id);
+          // Derive initial plan and subgoals from the assessment
+          plan = buildPlanFromAssessment(assessment, goal);
+          subgoals = buildSubgoalsFromAssessment(assessment, goal);
+          planRevised = true;
+        } else if (isCycle0 && !goal) {
+          // No goal provided — produce a default assessment
+          assessment = defaultAssessment(maxCycles);
+          plan = 'No goal provided — using default assessment.';
+          subgoals = [];
+          planRevised = true;
+        }
 
-        const newSubgoals = parsed.subgoals.length > 0 ? parsed.subgoals : state.subgoals;
-        const planRevised = shouldReplan || parsed.plan !== state.currentPlan;
+        // ── Re-planning: triggered by Monitor impasse signal ──
+        if (shouldReplan && !isCycle0) {
+          const replanResult = await replan(
+            adapter,
+            input.workspace,
+            state,
+            control.replanTrigger!,
+            systemPrompt,
+            id,
+          );
+          plan = replanResult.plan;
+          subgoals = replanResult.subgoals;
+          directives = replanResult.directives;
+          tokensUsed += replanResult.tokensUsed;
+          planRevised = true;
+
+          // Optionally revise the assessment if the replan changes phase expectations
+          // (future enhancement — for now we keep the original assessment)
+        }
+
+        // ── Update working memory with current plan context ──
+        const updatedWM = updatePlannerWorkingMemory(
+          state.workingMemory,
+          plan,
+          assessment,
+          subgoals,
+          id,
+        );
 
         const newState: PlannerState = {
-          currentPlan: parsed.plan,
-          subgoals: newSubgoals,
+          currentPlan: plan,
+          subgoals,
           revisionCount: planRevised ? state.revisionCount + 1 : state.revisionCount,
+          cycleCount: state.cycleCount + 1,
+          assessment,
+          goal,
+          workingMemory: updatedWM,
         };
 
         const monitoring: PlannerMonitoring = {
@@ -169,19 +295,25 @@ export function createPlanner(
           source: id,
           timestamp: Date.now(),
           planRevised,
-          subgoalCount: newSubgoals.length,
+          subgoalCount: subgoals.length,
         };
 
         return {
           output: {
-            directives: parsed.directives,
-            plan: parsed.plan,
-            subgoals: newSubgoals,
+            assessment,
+            plan,
+            subgoals,
+            directives,
+            planRevised,
+            tokensUsed,
           },
           state: newState,
           monitoring,
         };
       } catch (err: unknown) {
+        // On failure: return current state with error, fallback to default assessment
+        const fallbackAssessment = state.assessment ?? defaultAssessment(maxCycles);
+
         const error: StepError = {
           message: err instanceof Error ? err.message : String(err),
           recoverable: true,
@@ -199,11 +331,19 @@ export function createPlanner(
 
         return {
           output: {
-            directives: [],
+            assessment: fallbackAssessment,
             plan: state.currentPlan,
             subgoals: state.subgoals,
+            directives: [],
+            planRevised: false,
+            tokensUsed: 0,
           },
-          state,
+          state: {
+            ...state,
+            cycleCount: state.cycleCount + 1,
+            assessment: fallbackAssessment,
+            goal,
+          },
           monitoring,
           error,
         };
@@ -215,16 +355,133 @@ export function createPlanner(
         currentPlan: '',
         subgoals: [],
         revisionCount: 0,
+        cycleCount: 0,
+        assessment: null,
+        goal: null,
+        workingMemory: wmConfig ? createWorkingMemory(wmConfig) : undefined,
       };
     },
 
     stateInvariant(state: PlannerState): boolean {
-      return state.revisionCount >= 0;
+      return (
+        state.revisionCount >= 0 &&
+        state.cycleCount >= 0
+      );
     },
   };
 }
 
 // ── Internals ──────────────────────────────────────────────────────
+
+/**
+ * Build a natural language plan description from the TaskAssessment.
+ */
+function buildPlanFromAssessment(assessment: TaskAssessment, goal: GoalRepresentation): string {
+  const phaseDescriptions = assessment.phases
+    .map(p => `${p.name} (cycles ${p.expectedCycles[0]}-${p.expectedCycles[1]}): ${p.progressIndicator}`)
+    .join('; ');
+
+  return `Goal: ${goal.objective}. ` +
+    `Difficulty: ${assessment.difficulty}. ` +
+    `Estimated ${assessment.estimatedCycles} cycles. ` +
+    `Phases: ${phaseDescriptions}.`;
+}
+
+/**
+ * Derive subgoals from the goal's subgoals + assessment KPIs.
+ */
+function buildSubgoalsFromAssessment(
+  assessment: TaskAssessment,
+  goal: GoalRepresentation,
+): Subgoal[] {
+  const subgoals: Subgoal[] = [];
+
+  // Include goal's decomposed subgoals if any
+  for (const sg of goal.subgoals) {
+    subgoals.push({
+      description: sg.description,
+      status: sg.satisfied ? 'completed' : 'pending',
+    });
+  }
+
+  // Add KPIs as pending subgoals (observable progress indicators)
+  for (const kpi of assessment.kpis) {
+    subgoals.push({
+      description: kpi,
+      status: 'pending',
+    });
+  }
+
+  return subgoals;
+}
+
+// ── Re-Planning ──────────────────────────────────────────────────
+
+interface ReplanResult {
+  plan: string;
+  subgoals: Subgoal[];
+  directives: ControlDirective[];
+  tokensUsed: number;
+}
+
+/**
+ * Re-plan by invoking the LLM with current workspace context + replan trigger.
+ */
+async function replan(
+  adapter: ProviderAdapter,
+  workspace: ReadonlyWorkspaceSnapshot,
+  state: PlannerState,
+  trigger: string,
+  systemPrompt: string,
+  plannerId: ModuleId,
+): Promise<ReplanResult> {
+  // Build context: include previous plan + trigger reason
+  const contextEntry: WorkspaceEntry = {
+    source: plannerId,
+    content: `[REPLAN CONTEXT]\nPrevious plan: ${state.currentPlan}\nReplan trigger: ${trigger}\nRevision #${state.revisionCount + 1}`,
+    salience: 1.0,
+    timestamp: Date.now(),
+  };
+
+  // Prepend working memory entries if available
+  const wmEntries: WorkspaceEntry[] = [];
+  if (state.workingMemory && state.workingMemory.entries.length > 0) {
+    const wmHeader: WorkspaceEntry = {
+      source: plannerId,
+      content: '[PLANNER WORKING MEMORY]\n' +
+        state.workingMemory.entries
+          .map(e => typeof e.content === 'string' ? e.content : JSON.stringify(e.content))
+          .join('\n'),
+      salience: 1.0,
+      timestamp: Date.now(),
+    };
+    wmEntries.push(wmHeader);
+  }
+
+  const effectiveSnapshot: ReadonlyWorkspaceSnapshot = [
+    ...wmEntries,
+    contextEntry,
+    ...workspace,
+  ];
+
+  const adapterConfig: AdapterConfig = {
+    pactTemplate: { mode: { type: 'oneshot' } },
+    systemPrompt,
+    timeoutMs: 20_000,
+  };
+
+  const result = await adapter.invoke(effectiveSnapshot, adapterConfig);
+  const parsed = parsePlanOutput(result.output, plannerId);
+
+  return {
+    plan: parsed.plan,
+    subgoals: parsed.subgoals.length > 0 ? parsed.subgoals : state.subgoals,
+    directives: parsed.directives,
+    tokensUsed: result.usage.totalTokens,
+  };
+}
+
+// ── Plan Output Parsing ──────────────────────────────────────────
 
 interface ParsedPlan {
   plan: string;
@@ -269,4 +526,41 @@ function parsePlanOutput(output: string, plannerId: ModuleId): ParsedPlan {
       directives: [],
     };
   }
+}
+
+// ── Working Memory Updates ──────────────────────────────────────
+
+/**
+ * Update the Planner's working memory with current plan context.
+ * Stores a summary of the assessment and plan for persistence across cycles.
+ */
+function updatePlannerWorkingMemory(
+  wm: ModuleWorkingMemory | undefined,
+  plan: string,
+  assessment: TaskAssessment | null,
+  subgoals: Subgoal[],
+  plannerId: ModuleId,
+): ModuleWorkingMemory | undefined {
+  if (!wm) return undefined;
+
+  const completedCount = subgoals.filter(s => s.status === 'completed').length;
+  const pendingCount = subgoals.filter(s => s.status === 'pending').length;
+
+  let content = `[PLANNER STATE]\nPlan: ${plan}`;
+  if (assessment) {
+    content += `\nDifficulty: ${assessment.difficulty}`;
+    content += `\nEstimated cycles: ${assessment.estimatedCycles}`;
+    content += `\nSolvability: ${assessment.solvabilityPrior}`;
+    content += `\nPhases: ${assessment.phases.map(p => p.name).join(' → ')}`;
+  }
+  content += `\nSubgoals: ${completedCount} completed, ${pendingCount} pending`;
+
+  const entry: WorkspaceEntry = {
+    source: plannerId,
+    content,
+    salience: 1.0,
+    timestamp: Date.now(),
+  };
+
+  return updateWorkingMemory(wm, [entry]);
 }

@@ -1,8 +1,9 @@
 /**
- * Unit tests for Planner meta-level cognitive module.
+ * Unit tests for Planner cognitive module.
  *
- * Tests: ProviderAdapter invocation, replan trigger handling,
- * strategy-change directive production, directive structure validation.
+ * Tests: TaskAssessment production at cycle 0, re-plan trigger handling,
+ * working memory persistence, directive production, fallback on LLM failure,
+ * state invariant validation.
  */
 
 import { describe, it } from 'node:test';
@@ -13,14 +14,42 @@ import type {
   AdapterConfig,
   ProviderAdapterResult,
   ReadonlyWorkspaceSnapshot,
+  GoalRepresentation,
   ControlDirective,
 } from '../../algebra/index.js';
 import { createPlanner } from '../planner.js';
-import type { PlannerControl, PlannerInput } from '../planner.js';
+import type { PlannerControl, PlannerInput, PlannerState } from '../planner.js';
 
 // ── Stub ProviderAdapter ─────────────────────────────────────────────
 
-function makeStubAdapter(output: string): ProviderAdapter {
+/**
+ * Creates a stub adapter that returns a predictable assessment XML response.
+ * Mirrors the format expected by assessTaskWithLLM()'s parser.
+ */
+function makeAssessmentAdapter(overrides?: {
+  difficulty?: string;
+  estimatedCycles?: number;
+  solvability?: number;
+}): ProviderAdapter {
+  const difficulty = overrides?.difficulty ?? 'medium';
+  const cycles = overrides?.estimatedCycles ?? 8;
+  const solvability = overrides?.solvability ?? 0.75;
+
+  const output = `<assessment>
+<difficulty>${difficulty}</difficulty>
+<estimated_cycles>${cycles}</estimated_cycles>
+<solvability>${solvability}</solvability>
+<phases>
+<phase name="explore" start="1" end="3">reading files to understand the problem</phase>
+<phase name="execute" start="4" end="6">creating and modifying files</phase>
+<phase name="verify" start="7" end="${cycles}">checking work</phase>
+</phases>
+<kpis>
+<kpi>target file created</kpi>
+<kpi>tests pass</kpi>
+</kpis>
+</assessment>`;
+
   return {
     async invoke(
       _snapshot: ReadonlyWorkspaceSnapshot,
@@ -29,16 +58,70 @@ function makeStubAdapter(output: string): ProviderAdapter {
       return {
         output,
         usage: {
-          inputTokens: 100,
-          outputTokens: 50,
+          inputTokens: 200,
+          outputTokens: 100,
           cacheReadTokens: 0,
           cacheWriteTokens: 0,
-          totalTokens: 150,
+          totalTokens: 300,
         },
-        cost: {
-          totalUsd: 0.001,
-          perModel: {},
+        cost: { totalUsd: 0.002, perModel: {} },
+      };
+    },
+  };
+}
+
+/**
+ * Creates a stub adapter that returns a JSON replan response.
+ */
+function makeReplanAdapter(planOutput: {
+  plan: string;
+  subgoals?: Array<{ description: string; status?: string }>;
+  directives?: Array<{ target: string; directiveType: string; payload?: unknown }>;
+}): ProviderAdapter {
+  let callCount = 0;
+  return {
+    async invoke(
+      _snapshot: ReadonlyWorkspaceSnapshot,
+      _config: AdapterConfig,
+    ): Promise<ProviderAdapterResult> {
+      callCount++;
+      // First call is for cycle 0 assessment — return assessment XML
+      if (callCount === 1) {
+        return {
+          output: `<assessment>
+<difficulty>medium</difficulty>
+<estimated_cycles>10</estimated_cycles>
+<solvability>0.70</solvability>
+<phases>
+<phase name="explore" start="1" end="4">reading files</phase>
+<phase name="execute" start="5" end="8">writing code</phase>
+<phase name="verify" start="9" end="10">checking</phase>
+</phases>
+<kpis>
+<kpi>code written</kpi>
+</kpis>
+</assessment>`,
+          usage: {
+            inputTokens: 200,
+            outputTokens: 100,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            totalTokens: 300,
+          },
+          cost: { totalUsd: 0.002, perModel: {} },
+        };
+      }
+      // Subsequent calls are replan requests — return JSON
+      return {
+        output: JSON.stringify(planOutput),
+        usage: {
+          inputTokens: 150,
+          outputTokens: 80,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          totalTokens: 230,
         },
+        cost: { totalUsd: 0.001, perModel: {} },
       };
     },
   };
@@ -54,6 +137,19 @@ function makeFailingAdapter(errorMessage: string): ProviderAdapter {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+function makeGoal(overrides?: Partial<GoalRepresentation>): GoalRepresentation {
+  return {
+    objective: 'Implement the Planner module with typed algebra surfaces',
+    constraints: ['Do not modify existing files', 'Use node:test for testing'],
+    subgoals: [
+      { description: 'Create planner.ts', satisfied: false },
+      { description: 'Create planner.test.ts', satisfied: false },
+    ],
+    aspiration: 0.80,
+    ...overrides,
+  };
+}
+
 function makeControl(replanTrigger?: string): PlannerControl {
   return {
     target: moduleId('planner'),
@@ -62,146 +158,416 @@ function makeControl(replanTrigger?: string): PlannerControl {
   };
 }
 
-function makeInput(): PlannerInput {
+function makeInput(goal?: GoalRepresentation): PlannerInput {
   return {
     workspace: [
       {
         source: moduleId('observer-1'),
-        content: 'User wants to analyze a file',
+        content: 'User wants to implement a new cognitive module',
         salience: 0.8,
         timestamp: Date.now(),
       },
     ],
+    goal,
   };
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
 
 describe('Planner module', () => {
-  it('invokes ProviderAdapter and produces control directives', async () => {
-    const planOutput = JSON.stringify({
-      plan: 'Read the file, analyze contents, produce summary',
-      subgoals: [
-        { description: 'Read file', status: 'pending' },
-        { description: 'Analyze contents', status: 'pending' },
-      ],
-      directives: [
-        { target: 'reasoner-1', directiveType: 'strategy_shift', payload: { strategy: 'cot' } },
-        { target: 'actor-1', directiveType: 'action_whitelist', payload: { actions: ['read_file'] } },
-      ],
+
+  describe('cycle 0 — TaskAssessment production', () => {
+
+    it('produces a TaskAssessment at cycle 0 from goal representation', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
+      const state = planner.initialState();
+      const goal = makeGoal();
+
+      const result = await planner.step(makeInput(goal), state, makeControl());
+
+      // Assessment should be present
+      assert.ok(result.output.assessment, 'assessment should be produced');
+      assert.equal(result.output.assessment!.difficulty, 'medium');
+      assert.equal(result.output.assessment!.estimatedCycles, 8);
+      assert.equal(result.output.assessment!.solvabilityPrior, 0.75);
+      assert.equal(result.output.assessment!.phases.length, 3);
+      assert.equal(result.output.assessment!.kpis.length, 2);
+
+      // Plan should be derived from assessment
+      assert.ok(result.output.plan.length > 0, 'plan should be non-empty');
+      assert.ok(result.output.plan.includes('medium'), 'plan should mention difficulty');
+
+      // Monitoring signal
+      assert.equal(result.monitoring.type, 'planner');
+      assert.equal(result.monitoring.planRevised, true);
+      assert.ok(result.monitoring.subgoalCount > 0);
+
+      // Tokens consumed
+      assert.ok(result.output.tokensUsed > 0, 'should report tokens used');
+
+      // State updated
+      assert.ok(result.state.assessment, 'assessment persisted in state');
+      assert.equal(result.state.cycleCount, 1);
+      assert.equal(result.state.revisionCount, 1);
+      assert.ok(result.state.goal, 'goal persisted in state');
     });
 
-    const adapter = makeStubAdapter(planOutput);
-    const planner = createPlanner(adapter);
-    const state = planner.initialState();
+    it('produces default assessment when no goal is provided', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter, { maxCycles: 12 });
+      const state = planner.initialState();
 
-    const result = await planner.step(makeInput(), state, makeControl());
+      const result = await planner.step(makeInput(), state, makeControl());
 
-    assert.equal(result.output.plan, 'Read the file, analyze contents, produce summary');
-    assert.equal(result.output.subgoals.length, 2);
-    assert.equal(result.output.directives.length, 2);
-    assert.equal(result.monitoring.type, 'planner');
-    assert.equal(result.monitoring.subgoalCount, 2);
+      assert.ok(result.output.assessment, 'should fall back to default assessment');
+      assert.equal(result.output.assessment!.difficulty, 'medium');
+      assert.equal(result.output.assessment!.estimatedCycles, 12);
+      assert.equal(result.output.planRevised, true);
+    });
 
-    // Verify directive structure
-    const directive = result.output.directives[0] as ControlDirective & { directiveType: string };
-    assert.equal(directive.target, moduleId('reasoner-1'));
-    assert.ok(directive.timestamp > 0);
-    assert.equal(directive.directiveType, 'strategy_shift');
+    it('uses assessment phases to derive subgoals from goal + KPIs', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
+      const state = planner.initialState();
+      const goal = makeGoal({
+        subgoals: [
+          { description: 'Create planner.ts', satisfied: false },
+          { description: 'Write tests', satisfied: true },
+        ],
+      });
+
+      const result = await planner.step(makeInput(goal), state, makeControl());
+
+      // Subgoals = goal's subgoals + assessment KPIs
+      const subgoals = result.output.subgoals;
+      assert.ok(subgoals.length >= 3, `expected >= 3 subgoals, got ${subgoals.length}`);
+
+      // Goal subgoal statuses should be preserved
+      const createPlanner_sg = subgoals.find(s => s.description === 'Create planner.ts');
+      assert.ok(createPlanner_sg, 'should include goal subgoal');
+      assert.equal(createPlanner_sg!.status, 'pending');
+
+      const writeTests_sg = subgoals.find(s => s.description === 'Write tests');
+      assert.ok(writeTests_sg, 'should include completed goal subgoal');
+      assert.equal(writeTests_sg!.status, 'completed');
+
+      // KPI subgoals should be pending
+      const kpiSubgoal = subgoals.find(s => s.description === 'target file created');
+      assert.ok(kpiSubgoal, 'should include KPI as subgoal');
+      assert.equal(kpiSubgoal!.status, 'pending');
+    });
   });
 
-  it('triggers replan when replanTrigger control is set', async () => {
-    const adapter = makeStubAdapter(JSON.stringify({
-      plan: 'New plan after replan trigger',
-      subgoals: [{ description: 'New goal', status: 'pending' }],
-      directives: [],
-    }));
+  describe('re-planning', () => {
 
-    const planner = createPlanner(adapter);
+    it('triggers replan when replanTrigger control is set', async () => {
+      const adapter = makeReplanAdapter({
+        plan: 'Revised plan due to anomaly',
+        subgoals: [{ description: 'Address anomaly', status: 'active' }],
+        directives: [{ target: 'reasoner-1', directiveType: 'effort_change' }],
+      });
 
-    // First step: establish initial plan
-    const state1 = planner.initialState();
-    const r1 = await planner.step(
-      makeInput(),
-      state1,
-      makeControl(),
-    );
+      const planner = createPlanner(adapter);
 
-    // Second step: same adapter output but with replanTrigger
-    const adapter2 = makeStubAdapter(JSON.stringify({
-      plan: 'Revised plan due to anomaly',
-      subgoals: [{ description: 'Address anomaly', status: 'active' }],
-      directives: [{ target: 'reasoner-1', directiveType: 'effort_change' }],
-    }));
+      // Cycle 0: establish initial plan
+      const state0 = planner.initialState();
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+      assert.equal(r0.monitoring.planRevised, true);
+      assert.ok(r0.state.assessment, 'cycle 0 should produce assessment');
 
-    const planner2 = createPlanner(adapter2);
-    const r2 = await planner2.step(
-      makeInput(),
-      r1.state,
-      makeControl('anomaly detected — low confidence'),
-    );
+      // Cycle 1: replan triggered
+      const r1 = await planner.step(
+        makeInput(makeGoal()),
+        r0.state,
+        makeControl('anomaly detected — low confidence'),
+      );
 
-    assert.equal(r2.monitoring.planRevised, true);
-    assert.equal(r2.output.plan, 'Revised plan due to anomaly');
-    assert.ok(r2.state.revisionCount > r1.state.revisionCount);
+      assert.equal(r1.monitoring.planRevised, true);
+      assert.equal(r1.output.plan, 'Revised plan due to anomaly');
+      assert.equal(r1.output.directives.length, 1);
+      assert.ok(r1.state.revisionCount > r0.state.revisionCount);
+    });
+
+    it('preserves assessment during replan (assessment is stable)', async () => {
+      const adapter = makeReplanAdapter({
+        plan: 'New plan',
+        subgoals: [],
+        directives: [],
+      });
+
+      const planner = createPlanner(adapter);
+      const state0 = planner.initialState();
+
+      // Cycle 0
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+      const originalAssessment = r0.state.assessment;
+      assert.ok(originalAssessment);
+
+      // Cycle 1 with replan
+      const r1 = await planner.step(
+        makeInput(makeGoal()),
+        r0.state,
+        makeControl('stagnation detected'),
+      );
+
+      // Assessment should remain unchanged — re-planning changes the plan, not the assessment
+      assert.deepStrictEqual(r1.state.assessment, originalAssessment);
+    });
   });
 
-  it('issues strategy-change directive targeting reasoner', async () => {
-    const planOutput = JSON.stringify({
-      plan: 'Switch reasoner to chain-of-thought',
-      subgoals: [],
-      directives: [
-        {
-          target: 'reasoner-1',
-          directiveType: 'strategy_shift',
-          payload: { strategy: 'chain-of-thought' },
+  describe('control directives', () => {
+
+    it('produces control directives targeting downstream modules', async () => {
+      const adapter = makeReplanAdapter({
+        plan: 'Switch reasoner strategy',
+        subgoals: [],
+        directives: [
+          {
+            target: 'reasoner-1',
+            directiveType: 'strategy_shift',
+            payload: { strategy: 'chain-of-thought' },
+          },
+          {
+            target: 'actor-1',
+            directiveType: 'action_whitelist',
+            payload: { actions: ['read_file'] },
+          },
+        ],
+      });
+
+      const planner = createPlanner(adapter);
+
+      // Cycle 0
+      const r0 = await planner.step(makeInput(makeGoal()), planner.initialState(), makeControl());
+
+      // Cycle 1 with replan to get directives
+      const r1 = await planner.step(makeInput(makeGoal()), r0.state, makeControl('impasse'));
+
+      assert.equal(r1.output.directives.length, 2);
+
+      const d0 = r1.output.directives[0] as ControlDirective & { directiveType: string; payload: unknown };
+      assert.equal(d0.target, moduleId('reasoner-1'));
+      assert.ok(d0.timestamp > 0);
+      assert.equal(d0.directiveType, 'strategy_shift');
+
+      const d1 = r1.output.directives[1] as ControlDirective & { directiveType: string };
+      assert.equal(d1.target, moduleId('actor-1'));
+      assert.equal(d1.directiveType, 'action_whitelist');
+    });
+  });
+
+  describe('working memory', () => {
+
+    it('persists plan context in working memory across cycles', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter, {
+        workingMemoryConfig: { capacity: 3, includeInContext: true },
+      });
+
+      const state0 = planner.initialState();
+      assert.ok(state0.workingMemory, 'initial state should have working memory');
+      assert.equal(state0.workingMemory!.entries.length, 0, 'working memory starts empty');
+
+      // Cycle 0: should populate working memory
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+      assert.ok(r0.state.workingMemory, 'state should retain working memory');
+      assert.ok(r0.state.workingMemory!.entries.length > 0, 'working memory should be populated');
+
+      // Working memory entry should contain plan context
+      const wmContent = r0.state.workingMemory!.entries[0].content as string;
+      assert.ok(wmContent.includes('PLANNER STATE'), 'WM should contain planner state header');
+      assert.ok(wmContent.includes('medium'), 'WM should mention difficulty');
+    });
+
+    it('working memory respects capacity limits', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter, {
+        workingMemoryConfig: { capacity: 1, includeInContext: true },
+      });
+
+      const state0 = planner.initialState();
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+
+      // Only 1 entry should be kept (capacity = 1)
+      assert.equal(r0.state.workingMemory!.entries.length, 1);
+    });
+
+    it('does not create working memory when config is absent', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter); // no workingMemoryConfig
+
+      const state0 = planner.initialState();
+      assert.equal(state0.workingMemory, undefined);
+
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+      assert.equal(r0.state.workingMemory, undefined);
+    });
+  });
+
+  describe('error handling', () => {
+
+    it('falls back to default assessment when LLM fails at cycle 0', async () => {
+      const adapter = makeFailingAdapter('LLM timeout');
+      const planner = createPlanner(adapter, { maxCycles: 10 });
+      const state = planner.initialState();
+
+      // assessTaskWithLLM catches errors and returns defaultAssessment,
+      // so the planner should still produce an assessment
+      const result = await planner.step(makeInput(makeGoal()), state, makeControl());
+
+      // Should have an assessment (either from assessTaskWithLLM fallback or planner error path)
+      assert.ok(result.output.assessment, 'should produce fallback assessment');
+      assert.equal(result.output.assessment!.difficulty, 'medium');
+    });
+
+    it('returns current state plan when replan fails', async () => {
+      // Use a counter to let cycle 0 succeed but cycle 1 fail
+      let callCount = 0;
+      const adapter: ProviderAdapter = {
+        async invoke(
+          _snapshot: ReadonlyWorkspaceSnapshot,
+          _config: AdapterConfig,
+        ): Promise<ProviderAdapterResult> {
+          callCount++;
+          if (callCount === 1) {
+            // Cycle 0 assessment — return valid XML
+            return {
+              output: `<assessment><difficulty>low</difficulty><estimated_cycles>5</estimated_cycles><solvability>0.90</solvability><phases><phase name="execute" start="1" end="5">writing code</phase></phases><kpis><kpi>done</kpi></kpis></assessment>`,
+              usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150 },
+              cost: { totalUsd: 0.001, perModel: {} },
+            };
+          }
+          // Replan fails
+          throw new Error('Replan LLM failure');
         },
-      ],
+      };
+
+      const planner = createPlanner(adapter);
+      const state0 = planner.initialState();
+
+      // Cycle 0 succeeds
+      const r0 = await planner.step(makeInput(makeGoal()), state0, makeControl());
+      assert.ok(r0.state.assessment);
+      const plan0 = r0.output.plan;
+
+      // Cycle 1 replan fails — should return previous plan
+      const r1 = await planner.step(
+        makeInput(makeGoal()),
+        r0.state,
+        makeControl('anomaly'),
+      );
+
+      assert.ok(r1.error, 'should have error');
+      assert.equal(r1.error!.recoverable, true);
+      assert.equal(r1.output.plan, plan0, 'should preserve previous plan');
+      assert.equal(r1.monitoring.planRevised, false);
     });
-
-    const adapter = makeStubAdapter(planOutput);
-    const planner = createPlanner(adapter);
-    const state = planner.initialState();
-
-    const result = await planner.step(makeInput(), state, makeControl());
-
-    assert.equal(result.output.directives.length, 1);
-    const directive = result.output.directives[0] as ControlDirective & {
-      directiveType: string;
-      payload: { strategy: string };
-    };
-    assert.equal(directive.target, moduleId('reasoner-1'));
-    assert.equal(directive.directiveType, 'strategy_shift');
-    assert.equal(directive.payload.strategy, 'chain-of-thought');
   });
 
-  it('directive structure has target and timestamp (policy validation is the cycle orchestrator job)', async () => {
-    const planOutput = JSON.stringify({
-      plan: 'Produce directives',
-      subgoals: [],
-      directives: [
-        { target: 'actor-1', directiveType: 'spawn_subagent' },
-      ],
+  describe('state management', () => {
+
+    it('persists goal in state across cycles', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
+      const goal = makeGoal();
+
+      // Cycle 0: goal provided in input
+      const r0 = await planner.step(makeInput(goal), planner.initialState(), makeControl());
+      assert.deepStrictEqual(r0.state.goal, goal);
+
+      // Cycle 1: no goal in input — should use persisted goal
+      const r1 = await planner.step(makeInput(), r0.state, makeControl());
+      assert.deepStrictEqual(r1.state.goal, goal);
     });
 
-    const adapter = makeStubAdapter(planOutput);
-    const planner = createPlanner(adapter);
-    const state = planner.initialState();
+    it('increments cycleCount and tracks revisionCount correctly', async () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
 
-    const result = await planner.step(makeInput(), state, makeControl());
+      const r0 = await planner.step(makeInput(makeGoal()), planner.initialState(), makeControl());
+      assert.equal(r0.state.cycleCount, 1);
+      assert.equal(r0.state.revisionCount, 1); // plan revised at cycle 0
 
-    // Planner produces the directive without validating against policy
-    // (that's the cycle orchestrator's job)
-    assert.equal(result.output.directives.length, 1);
-    const directive = result.output.directives[0];
+      // Cycle 1: no replan — revision count should not change
+      const r1 = await planner.step(makeInput(), r0.state, makeControl());
+      assert.equal(r1.state.cycleCount, 2);
+      assert.equal(r1.state.revisionCount, 1); // no revision
+    });
 
-    // Every ControlDirective has target and timestamp
-    assert.ok(directive.target);
-    assert.ok(directive.timestamp > 0);
+    it('state invariant holds for valid states', () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
 
-    // The directive type 'spawn_subagent' would be rejected by a policy that
-    // doesn't allow it, but Planner doesn't validate — it just produces
-    const typed = directive as ControlDirective & { directiveType: string };
-    assert.equal(typed.directiveType, 'spawn_subagent');
+      const state = planner.initialState();
+      assert.ok(planner.stateInvariant!(state));
+
+      const advancedState: PlannerState = {
+        currentPlan: 'some plan',
+        subgoals: [{ description: 'test', status: 'pending' }],
+        revisionCount: 3,
+        cycleCount: 5,
+        assessment: null,
+        goal: null,
+      };
+      assert.ok(planner.stateInvariant!(advancedState));
+    });
+  });
+
+  describe('module identity', () => {
+
+    it('uses default module ID "planner"', () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
+      assert.equal(planner.id, moduleId('planner'));
+    });
+
+    it('respects custom module ID', () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter, { id: 'planner-v2' });
+      assert.equal(planner.id, moduleId('planner-v2'));
+    });
+
+    it('has default context binding for goal + constraint types', () => {
+      const adapter = makeAssessmentAdapter();
+      const planner = createPlanner(adapter);
+      assert.ok(planner.contextBinding);
+      assert.deepStrictEqual(planner.contextBinding!.types, ['goal', 'constraint']);
+    });
+  });
+
+  describe('pass-through on non-cycle-0 without replan', () => {
+
+    it('does not invoke LLM on non-cycle-0 steps without replanTrigger', async () => {
+      let invocationCount = 0;
+      const adapter: ProviderAdapter = {
+        async invoke(
+          _snapshot: ReadonlyWorkspaceSnapshot,
+          _config: AdapterConfig,
+        ): Promise<ProviderAdapterResult> {
+          invocationCount++;
+          return {
+            output: `<assessment><difficulty>low</difficulty><estimated_cycles>5</estimated_cycles><solvability>0.90</solvability><phases><phase name="execute" start="1" end="5">work</phase></phases><kpis><kpi>done</kpi></kpis></assessment>`,
+            usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150 },
+            cost: { totalUsd: 0.001, perModel: {} },
+          };
+        },
+      };
+
+      const planner = createPlanner(adapter);
+
+      // Cycle 0: should invoke
+      const r0 = await planner.step(makeInput(makeGoal()), planner.initialState(), makeControl());
+      assert.equal(invocationCount, 1, 'should invoke LLM at cycle 0');
+
+      // Cycle 1: no replanTrigger — should NOT invoke
+      const r1 = await planner.step(makeInput(), r0.state, makeControl());
+      assert.equal(invocationCount, 1, 'should NOT invoke LLM on cycle 1 without replan');
+
+      // Output should carry forward the assessment
+      assert.ok(r1.output.assessment, 'assessment should be carried forward');
+      assert.equal(r1.output.planRevised, false);
+      assert.equal(r1.output.tokensUsed, 0);
+    });
   });
 });
