@@ -20,6 +20,7 @@ import {
   type DagNodeExecutor,
 } from '@method/methodts/strategy/dag-executor.js';
 import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
+import type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
 
 // Re-export types from methodts (preserving bridge's type surface)
 export type {
@@ -32,6 +33,9 @@ export type {
   SubStrategySource,
   HumanApprovalResolver,
 } from '@method/methodts/strategy/dag-types.js';
+
+// Re-export SemanticNodeExecutor port type for bridge composition root
+export type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
 
 // Re-export ExecutionState as an opaque type (callers use getState() snapshot)
 export type { ExecutionStateSnapshot as ExecutionState } from '@method/methodts/strategy/dag-types.js';
@@ -206,6 +210,8 @@ function parseNodeOutput(result: string): Record<string, unknown> {
  *
  * PRD-044: Accepts optional SubStrategySource and HumanApprovalResolver ports
  * injected from the composition root. Both default to null for backward compat.
+ *
+ * PRD-046 C-2c: Accepts optional SemanticNodeExecutor for SPL algorithm nodes.
  */
 export class StrategyExecutor {
   private inner: DagStrategyExecutor;
@@ -215,6 +221,7 @@ export class StrategyExecutor {
     config: StrategyExecutorConfig,
     subStrategySource?: SubStrategySource | null,
     humanApprovalResolver?: HumanApprovalResolver | null,
+    semanticNodeExecutor?: SemanticNodeExecutor | null,
   ) {
     const nodeExecutor = new PactaNodeExecutor(
       provider,
@@ -233,6 +240,8 @@ export class StrategyExecutor {
       },
       subStrategySource ?? null,
       humanApprovalResolver ?? null,
+      undefined, // sharedChain — not used at top level
+      semanticNodeExecutor ?? null,
     );
   }
 

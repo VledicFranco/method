@@ -14,7 +14,8 @@
     "./strategy/dag-executor.js": "./dist/strategy/dag-executor.js",
     "./strategy/dag-retro.js": "./dist/strategy/dag-retro.js",
     "./strategy/strategy-source.js": "./dist/strategy/strategy-source.js",
-    "./strategy/stdlib-strategy-source.js": "./dist/strategy/stdlib-strategy-source.js"
+    "./strategy/stdlib-strategy-source.js": "./dist/strategy/stdlib-strategy-source.js",
+    "./semantic/node-executor.js": "./dist/semantic/node-executor.js"
   },
   "scripts": {
     "build": "tsc -b",

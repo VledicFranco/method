@@ -85,6 +85,23 @@ export interface StrategyNodeConfig {
   readonly await?: boolean;
 }
 
+/** PRD-046 C-2c: Valid SPL algorithm names for semantic nodes. */
+export type SemanticAlgorithm = "explore" | "design" | "implement" | "review";
+
+/** PRD-046 C-2c: Configuration for a semantic node — invokes an SPL algorithm.
+ *  Maps context fields to the algorithm's typed input and stores the result
+ *  in the strategy context under `output_key`. */
+export interface SemanticNodeConfig {
+  readonly type: "semantic";
+  /** Which SPL algorithm to execute. */
+  readonly algorithm: SemanticAlgorithm;
+  /** Maps strategy context artifact names to algorithm input field names.
+   *  Key: algorithm input field name. Value: artifact name in the strategy context. */
+  readonly input_mapping: Record<string, string>;
+  /** Artifact key where the algorithm result is stored in the strategy context. */
+  readonly output_key: string;
+}
+
 /** PRD-044: Result returned by a completed strategy sub-invocation node. */
 export interface SubStrategyResult {
   readonly strategy_id: string;
@@ -134,17 +151,18 @@ export interface HumanApprovalResolver {
 export type NodeConfig =
   | MethodologyNodeConfig
   | ScriptNodeConfig
-  | StrategyNodeConfig;
+  | StrategyNodeConfig
+  | SemanticNodeConfig;
 
 /** A node in the strategy DAG. */
 export interface StrategyNode {
   readonly id: string;
-  readonly type: "methodology" | "script" | "strategy";
+  readonly type: "methodology" | "script" | "strategy" | "semantic";
   readonly depends_on: readonly string[];
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
   readonly gates: readonly DagGateConfig[];
-  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig;
+  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig;
   readonly refresh_context?: boolean;
 }
 
@@ -199,7 +217,7 @@ export interface StrategyYaml {
     dag: {
       nodes: Array<{
         id: string;
-        type: "methodology" | "script" | "strategy";
+        type: "methodology" | "script" | "strategy" | "semantic";
         // methodology node fields
         methodology?: string;
         method_hint?: string;
@@ -211,6 +229,10 @@ export interface StrategyYaml {
         strategy_id?: string;
         input_map?: Record<string, string>;
         await?: boolean;
+        // semantic node fields (PRD-046 C-2c)
+        algorithm?: SemanticAlgorithm;
+        input_mapping?: Record<string, string>;
+        output_key?: string;
         // common fields
         inputs?: string[];
         outputs?: string[];
