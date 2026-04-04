@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { createPartitionWriteAdapter } from '../partition-write-adapter.js';
 import { createPartitionSystem } from '../../partitions/partition-system.js';
 import { moduleId } from '../../algebra/module.js';
@@ -24,8 +25,8 @@ describe('PartitionWriteAdapter', () => {
 
     // Verify it landed in the constraint partition
     const constraintEntries = ps.getPartition('constraint').snapshot();
-    expect(constraintEntries.length).toBeGreaterThanOrEqual(1);
-    expect(String(constraintEntries[0].content)).toContain('must not import');
+    assert.ok(constraintEntries.length >= 1);
+    assert.ok(String(constraintEntries[0].content).includes('must not import'));
   });
 
   it('routes goal entries to task partition', () => {
@@ -35,7 +36,7 @@ describe('PartitionWriteAdapter', () => {
     adapter.write(makeEntry('GOAL: implement the v2 handler'));
 
     const taskEntries = ps.getPartition('task').snapshot();
-    expect(taskEntries.length).toBeGreaterThanOrEqual(1);
+    assert.ok(taskEntries.length >= 1);
   });
 
   it('routes tool results to operational partition (D3 rule)', () => {
@@ -46,7 +47,7 @@ describe('PartitionWriteAdapter', () => {
 
     // D3 rule: actor sources always route to operational
     const opEntries = ps.getPartition('operational').snapshot();
-    expect(opEntries.length).toBeGreaterThanOrEqual(1);
+    assert.ok(opEntries.length >= 1);
   });
 
   it('tracks which partitions received writes', () => {
@@ -56,7 +57,7 @@ describe('PartitionWriteAdapter', () => {
     adapter.write(makeEntry('CONSTRAINT: no side effects'));
 
     const written = adapter.getWrittenPartitions();
-    expect(written.has('constraint')).toBe(true);
+    assert.strictEqual(written.has('constraint'), true);
   });
 
   it('resets tracking between cycles', () => {
@@ -64,10 +65,10 @@ describe('PartitionWriteAdapter', () => {
     const adapter = createPartitionWriteAdapter(ps, moduleId('observer'));
 
     adapter.write(makeEntry('CONSTRAINT: no imports'));
-    expect(adapter.getWrittenPartitions().size).toBeGreaterThan(0);
+    assert.ok(adapter.getWrittenPartitions().size > 0);
 
     adapter.resetCycleTracking();
-    expect(adapter.getWrittenPartitions().size).toBe(0);
+    assert.strictEqual(adapter.getWrittenPartitions().size, 0);
   });
 
   it('accumulates writes to multiple partitions', () => {
@@ -78,7 +79,7 @@ describe('PartitionWriteAdapter', () => {
     adapter.write(makeEntry('GOAL: create v2 endpoint'));
 
     const written = adapter.getWrittenPartitions();
-    expect(written.has('constraint')).toBe(true);
-    expect(written.has('task')).toBe(true);
+    assert.strictEqual(written.has('constraint'), true);
+    assert.strictEqual(written.has('task'), true);
   });
 });

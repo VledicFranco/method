@@ -11,8 +11,11 @@
  *   4. Validate postcondition on new state
  *   5. On agent postcondition/parse failure: retry with feedback up to maxRetries
  *
+ * Agent retry uses executeWithRetry from gate/ (PRD 046 Gate Unification).
+ *
  * @see F1-FTH Definition 4.1 — σ = (pre, post, guidance, tools)
  * @see PRD 021 §12.4 — Step execution and retry
+ * @see PRD 046 §Wave 2b — Gate unification, methodology runtime path
  */
 
 import { Effect } from "effect";
@@ -25,6 +28,7 @@ import { evaluate } from "../predicate/evaluate.js";
 import { validateAxioms } from "../domain/domain-theory.js";
 import { assembleContext } from "./context.js";
 import { AgentProvider } from "../provider/agent-provider.js";
+import { executeWithRetry, type RetryExhausted } from "../gate/gate.js";
 
 /** Configuration for running a step. */
 export type RunStepConfig<S> = {
@@ -45,11 +49,26 @@ export type RunStepError = {
 };
 
 /**
+ * Internal output from a single agent execution attempt.
+ * Captures either a successful parse result or a parse failure,
+ * so the retry loop can treat parse failures as check failures.
+ */
+type AgentAttemptOutput<S> = {
+  readonly parsed: boolean;
+  readonly newValue?: S;
+  readonly parseError?: string;
+  readonly rawOutput?: string;
+  readonly cost: { tokens: number; usd: number; duration_ms: number };
+  readonly sessionId?: string;
+};
+
+/**
  * Execute a single step (script or agent). Validates pre/postconditions,
  * runs the step, and handles retries for agent steps.
  *
  * Returns the new WorldState on success, or a RunStepError on failure.
- * Agent steps are retried on postcondition or parse failure up to maxRetries.
+ * Agent steps are retried on postcondition or parse failure up to maxRetries
+ * via executeWithRetry from gate/ (PRD 046).
  * Script steps are never retried — failures are immediate.
  */
 export function runStep<S>(
@@ -68,171 +87,266 @@ export function runStep<S>(
       });
     }
 
+    if (step.execution.tag === "script") {
+      // Script execution — never retried, no executeWithRetry.
+      return yield* runScriptStep(step, state, config);
+    }
+
+    // Agent execution — uses executeWithRetry for retry semantics.
     const maxRetries = Math.max(0, config.maxRetries ?? 3);
-    let lastError: RunStepError | undefined;
-    let stepSessionId: string | undefined; // Track session across retries for agent resume
+    const agentExec = step.execution;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const feedback =
-        attempt > 0 ? lastError?.message : config.retryFeedback;
+    // Mutable session tracking: first attempt creates sessionId, retries resume it.
+    let stepSessionId: string | undefined;
 
-      // 2. Execute based on step type
-      let newValue: S;
-      let cost = { tokens: 0, usd: 0, duration_ms: 0 };
+    const retryResult = yield* executeWithRetry<
+      WorldState<S>,
+      AgentAttemptOutput<S>,
+      RunStepError,
+      AgentProvider
+    >({
+      name: `step:${step.id}`,
+      maxRetries,
+      input: state,
 
-      if (step.execution.tag === "script") {
-        // Script execution — never retried.
-        // WorldServices is Record<string, never> (Phase 1b placeholder),
-        // so we safely cast the R channel to never.
-        const scriptEffect = step.execution.execute(state.value) as Effect.Effect<
-          S,
-          { readonly _tag: "StepError"; readonly stepId: string; readonly message: string; readonly cause?: unknown },
-          never
-        >;
-        const result = yield* scriptEffect.pipe(
-          Effect.mapError(
-            (e): RunStepError => ({
-              _tag: "RunStepError",
-              stepId: step.id,
-              message: `Script error: ${e.message}`,
-              retryable: false,
-              cause: e,
-            }),
-          ),
-        );
-        newValue = result;
-      } else {
-        // Agent execution
-        const agentProvider = yield* AgentProvider;
+      execute: (inputState, attempt, feedback) =>
+        Effect.gen(function* () {
+          const agentProvider = yield* AgentProvider;
 
-        // Assemble context from the step's context spec
-        const worldFragments: Record<string, string> = {};
-        const stepContext = yield* assembleContext(
-          step.execution.context,
-          state.value,
-          worldFragments,
-          config.insightStore,
-          config.domain,
-          config.role,
-        ).pipe(
-          Effect.mapError(
-            (e): RunStepError => ({
-              _tag: "RunStepError",
-              stepId: step.id,
-              message: `Context assembly failed: ${e.message}`,
-              retryable: false,
-            }),
-          ),
-        );
-
-        // Render prompt from context
-        let promptText = step.execution.prompt.run(stepContext);
-
-        // Append insight production instruction if declared
-        if (step.execution.context.produceInsight) {
-          promptText += `\n\n${step.execution.context.produceInsight.instruction}`;
-        }
-
-        // Append retry feedback if this is a retry attempt
-        if (feedback) {
-          promptText += `\n\n## Retry Feedback\n${feedback}`;
-        }
-
-        // Build commission with session tracking.
-        // First attempt: create a new session. Retries: resume the same session
-        // so the agent retains conversation context across retry attempts.
-        const commission = attempt === 0
-          ? { prompt: promptText, sessionId: `step_${step.id}_${Date.now().toString(36)}` }
-          : { prompt: promptText, resumeSessionId: stepSessionId };
-
-        // Execute via agent provider
-        const agentResult = yield* agentProvider
-          .execute(commission)
-          .pipe(
+          // Assemble context from the step's context spec
+          const worldFragments: Record<string, string> = {};
+          const stepContext = yield* assembleContext(
+            agentExec.context,
+            inputState.value,
+            worldFragments,
+            config.insightStore,
+            config.domain,
+            config.role,
+          ).pipe(
             Effect.mapError(
               (e): RunStepError => ({
                 _tag: "RunStepError",
                 stepId: step.id,
-                message: `Agent error: ${e._tag}`,
-                retryable: true,
-                cause: e,
+                message: `Context assembly failed: ${e.message}`,
+                retryable: false,
               }),
             ),
           );
 
-        // Capture sessionId from first attempt for reuse on retries
-        if (attempt === 0) {
-          stepSessionId = agentResult.sessionId ?? commission.sessionId;
-        }
+          // Render prompt from context
+          let promptText = agentExec.prompt.run(stepContext);
 
-        cost = agentResult.cost;
+          // Append insight production instruction if declared
+          if (agentExec.context.produceInsight) {
+            promptText += `\n\n${agentExec.context.produceInsight.instruction}`;
+          }
 
-        // Parse agent output into new state
-        const parseResult = step.execution.parse(
-          agentResult.raw,
-          state.value,
-        ).pipe(
-          Effect.mapError(
-            (e): RunStepError => ({
+          // Determine feedback text: on retry use gate feedback, on first attempt use config feedback
+          const feedbackText = attempt > 0 ? feedback : config.retryFeedback;
+          if (feedbackText) {
+            promptText += `\n\n## Retry Feedback\n${feedbackText}`;
+          }
+
+          // Build commission with session tracking.
+          // First attempt: create a new session. Retries: resume the same session
+          // so the agent retains conversation context across retry attempts.
+          const commission = attempt === 0
+            ? { prompt: promptText, sessionId: `step_${step.id}_${Date.now().toString(36)}` }
+            : { prompt: promptText, resumeSessionId: stepSessionId };
+
+          // Execute via agent provider
+          const agentResult = yield* agentProvider
+            .execute(commission)
+            .pipe(
+              Effect.mapError(
+                (e): RunStepError => ({
+                  _tag: "RunStepError",
+                  stepId: step.id,
+                  message: `Agent error: ${e._tag}`,
+                  retryable: true,
+                  cause: e,
+                }),
+              ),
+            );
+
+          // Capture sessionId from first attempt for reuse on retries
+          if (attempt === 0) {
+            stepSessionId = agentResult.sessionId ?? commission.sessionId;
+          }
+
+          // Parse agent output into new state — catch failures for retry
+          const parseExit = yield* Effect.either(
+            agentExec.parse(agentResult.raw, inputState.value).pipe(
+              Effect.mapError(
+                (e): RunStepError => ({
+                  _tag: "RunStepError",
+                  stepId: step.id,
+                  message: `Parse error: ${e.message}`,
+                  retryable: true,
+                  cause: e,
+                }),
+              ),
+            ),
+          );
+
+          if (parseExit._tag === "Left") {
+            // Parse failed — return as output so check() can report it
+            return {
+              parsed: false,
+              parseError: parseExit.left.message,
+              rawOutput: agentResult.raw,
+              cost: agentResult.cost,
+              sessionId: agentResult.sessionId,
+            } as AgentAttemptOutput<S>;
+          }
+
+          const newValue = parseExit.right;
+
+          // Extract insight if declared (do this before axiom check)
+          if (agentExec.parseInsight) {
+            const insightKey =
+              agentExec.context.produceInsight?.key ?? step.id;
+            const insight = agentExec.parseInsight(agentResult.raw);
+            yield* config.insightStore.set(insightKey, insight);
+          }
+
+          // Validate axioms — axiom violations are non-retryable, fail immediately
+          const axiomResult = validateAxioms(config.domain, newValue);
+          if (!axiomResult.valid) {
+            return yield* Effect.fail<RunStepError>({
               _tag: "RunStepError",
               stepId: step.id,
-              message: `Parse error: ${e.message}`,
+              message: `Axiom violations: ${axiomResult.violations.join(", ")}`,
+              retryable: false,
+            });
+          }
+
+          return {
+            parsed: true,
+            newValue,
+            cost: agentResult.cost,
+            sessionId: agentResult.sessionId,
+          } as AgentAttemptOutput<S>;
+        }),
+
+      check: (output) => {
+        // Parse failure — retryable
+        if (!output.parsed) {
+          return {
+            passed: false,
+            failures: [output.parseError ?? "Parse failed"],
+          };
+        }
+
+        // Validate postcondition
+        if (!evaluate(step.postcondition, output.newValue!)) {
+          return {
+            passed: false,
+            failures: [`Postcondition failed`],
+          };
+        }
+
+        return { passed: true, failures: [] };
+      },
+
+      buildFeedback: (output, failures) => {
+        if (!output.parsed) {
+          return output.parseError ?? "Parse failed";
+        }
+        return `Postcondition failed (${failures.join(", ")})`;
+      },
+    }).pipe(
+      Effect.mapError(
+        (e): RunStepError => {
+          if ((e as { _tag: string })._tag === "RetryExhausted") {
+            const exhausted = e as unknown as RetryExhausted;
+            // Determine retryable and message based on what kind of failure it was
+            const lastOutput = exhausted.lastOutput as AgentAttemptOutput<S> | undefined;
+            if (lastOutput && !lastOutput.parsed) {
+              return {
+                _tag: "RunStepError",
+                stepId: step.id,
+                message: lastOutput.parseError ?? "Parse error",
+                retryable: true,
+              };
+            }
+            return {
+              _tag: "RunStepError",
+              stepId: step.id,
+              message: `Postcondition failed (attempt ${exhausted.attempts})`,
               retryable: true,
-              cause: e,
-            }),
-          ),
-        );
+            };
+          }
+          // Non-RetryExhausted errors (RunStepError from execute) pass through
+          return e as RunStepError;
+        },
+      ),
+    );
 
-        // Parse may fail — on failure, record error and retry if possible
-        const parseExit = yield* Effect.either(parseResult);
-        if (parseExit._tag === "Left") {
-          lastError = parseExit.left;
-          if (attempt < maxRetries) continue;
-          return yield* Effect.fail(lastError);
-        }
-        newValue = parseExit.right;
+    // Build final WorldState from successful retry result
+    const axiomResult = validateAxioms(config.domain, retryResult.data.newValue!);
+    return {
+      value: retryResult.data.newValue!,
+      axiomStatus: axiomResult,
+    };
+  });
+}
 
-        // Extract insight if declared
-        if (step.execution.parseInsight) {
-          const insightKey =
-            step.execution.context.produceInsight?.key ?? step.id;
-          const insight = step.execution.parseInsight(agentResult.raw);
-          yield* config.insightStore.set(insightKey, insight);
-        }
-      }
+/**
+ * Execute a script step — no retries, immediate failure on postcondition or axiom violation.
+ */
+function runScriptStep<S>(
+  step: Step<S>,
+  state: WorldState<S>,
+  config: RunStepConfig<S>,
+): Effect.Effect<WorldState<S>, RunStepError, AgentProvider> {
+  return Effect.gen(function* () {
+    // WorldServices is Record<string, never> (Phase 1b placeholder),
+    // so we safely cast the R channel to never.
+    const scriptEffect = step.execution.tag === "script"
+      ? step.execution.execute(state.value) as Effect.Effect<
+          S,
+          { readonly _tag: "StepError"; readonly stepId: string; readonly message: string; readonly cause?: unknown },
+          never
+        >
+      : Effect.fail({ _tag: "StepError" as const, stepId: step.id, message: "Not a script step" });
 
-      // 3. Validate axioms
-      const axiomResult = validateAxioms(config.domain, newValue);
-      if (!axiomResult.valid) {
-        return yield* Effect.fail<RunStepError>({
+    const newValue = yield* scriptEffect.pipe(
+      Effect.mapError(
+        (e): RunStepError => ({
           _tag: "RunStepError",
           stepId: step.id,
-          message: `Axiom violations: ${axiomResult.violations.join(", ")}`,
+          message: `Script error: ${e.message}`,
           retryable: false,
-        });
-      }
+          cause: e,
+        }),
+      ),
+    );
 
-      // 4. Validate postcondition
-      if (!evaluate(step.postcondition, newValue)) {
-        lastError = {
-          _tag: "RunStepError",
-          stepId: step.id,
-          message: `Postcondition failed (attempt ${attempt + 1})`,
-          retryable: true,
-        };
-        // Only retry agent steps
-        if (attempt < maxRetries && step.execution.tag === "agent") continue;
-        return yield* Effect.fail(lastError);
-      }
-
-      // 5. Return new WorldState
-      return {
-        value: newValue,
-        axiomStatus: axiomResult,
-      };
+    // Validate axioms
+    const axiomResult = validateAxioms(config.domain, newValue);
+    if (!axiomResult.valid) {
+      return yield* Effect.fail<RunStepError>({
+        _tag: "RunStepError",
+        stepId: step.id,
+        message: `Axiom violations: ${axiomResult.violations.join(", ")}`,
+        retryable: false,
+      });
     }
 
-    // Unreachable in practice — loop always returns or fails
-    return yield* Effect.fail<RunStepError>(lastError!);
+    // Validate postcondition
+    if (!evaluate(step.postcondition, newValue)) {
+      return yield* Effect.fail<RunStepError>({
+        _tag: "RunStepError",
+        stepId: step.id,
+        message: `Postcondition failed (attempt 1)`,
+        retryable: true,
+      });
+    }
+
+    return {
+      value: newValue,
+      axiomStatus: axiomResult,
+    };
   });
 }

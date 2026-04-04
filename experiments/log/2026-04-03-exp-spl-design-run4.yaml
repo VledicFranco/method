@@ -1,0 +1,36 @@
+experiment: exp-spl-design
+run_id: run4
+date: 2026-04-03
+agent: "Claude Opus 4.6 (1M context), method-3 session"
+config:
+  model: haiku (via claude --print)
+  provider: ClaudeHeadlessProvider
+  task: "Bridge — 10-domain agent orchestration server (T-Large)"
+  conditions: [flat-design-bridge, recursive-design-bridge]
+  budget_usd: 5.0
+metrics:
+  flat_design_bridge:
+    composite: 1.0
+    gate_pass_rate: 1.0
+    judge_overall: 5.0
+    judge_decomposition: 5
+    judge_port_quality: 5
+    judge_documentation: 5
+    judge_surface_first: 5
+    tokens: 1912
+    cost_usd: 0.027
+    ports_found: 6
+    sub_components: 10
+  recursive_design_bridge:
+    status: DNF
+    reason: "child L2 design calls failed to parse (Parallel FiberFailure)"
+    root_call_succeeded: true
+    root_sub_components: 10
+verdict: partial
+notes: >
+  Crossover hypothesis NOT confirmed at 10 domains. Flat design scored 100% in 1.9K tokens —
+  fewer tokens than the 3-domain Hatch task. Design is structural (naming + interfaces), not
+  informational (reading code). Context saturation doesn't apply when the LLM doesn't need to
+  hold existing code. Recursive failed due to parser reliability at scale (10 concurrent child
+  calls × format variation probability). Next: test T-Large implementation where context
+  saturation should actually matter.

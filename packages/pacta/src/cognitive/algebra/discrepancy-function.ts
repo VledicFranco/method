@@ -5,10 +5,20 @@
  * and a GoalRepresentation. No LLM calls — heuristic keyword overlap,
  * constraint satisfaction, and write activity detection.
  *
- * Deliberately simple. A future SLM compilation target (RFC 002) can replace
- * this with a trained evaluator at negligible cost.
+ * **Empirical status (R-20):** This function produces constant output (0.300
+ * discrepancy, 0.50 confidence) regardless of actual task progress. It cannot
+ * distinguish an agent that has read 5 files from one that has written 3.
+ * The keyword overlap approach fails because workspace entries contain tool
+ * outputs, not goal-matching prose.
  *
+ * **Current role:** Fallback when no LLM provider is available. The LLM-based
+ * evaluator (llm-discrepancy.ts) is the primary path for frontier validation.
+ * Both will be superseded when the Planner module (RFC 006) provides phase-aware
+ * evaluation and solvability tracking.
+ *
+ * @see algebra/llm-discrepancy.ts — LLM-based replacement (R-21)
  * @see docs/rfcs/004-goal-state-monitoring.md — §Discrepancy Computation
+ * @see docs/rfcs/006-anticipatory-monitoring.md — phase-aware evaluation (next)
  */
 
 import type { ReadonlyWorkspaceSnapshot } from './workspace-types.js';

@@ -47,24 +47,37 @@
  * - Confidence estimation via action entropy (Shannon entropy over recent actions)
  * - Strategy control via κ (restricted actions, force replan, strategy override)
  * - The "done" action: object-level self-termination signal
+ * - RFC 006: Per-module working memory (opt-in). When workingMemoryConfig is provided,
+ *   the reasoner maintains a persistent scratchpad across cycles via a <working_memory>
+ *   section in the LLM response. This is the prefrontal working memory (Baddeley 2000)
+ *   that persists plan/understanding independent of shared workspace eviction.
+ *
+ * **Empirical evidence (R-20→R-23 arc):**
+ * - R-18/R-22b: Partitioned workspace regresses T02 (0%) and T04 (0%). Root cause:
+ *   the reasoner has no memory across cycles — its "mental model" is whatever the
+ *   partition system shows it this cycle. When file reads get evicted, understanding is lost.
+ * - R-22c: Memory v3 (episodic recall) recovers T06 (0→67%) but NOT T02/T04 — proving
+ *   the gap is working memory (plan persistence), not episodic retrieval.
+ * - R-23: Working memory recovers T02 (0→67%) and T04 (0→33%). The scratchpad preserves
+ *   the reasoner's analysis and plan across cycles, surviving workspace eviction.
+ *   This validates RFC 006's closed algebra: Module :: (I, S, W, κ) → (O, S, W, μ).
  *
  * **What this module does NOT capture (known gaps):**
- * - The "done" action is an unvalidated LLM guess. No metacognitive verification
- *   confirms that the goal is actually satisfied. See RFC 004 (Goal-State Monitoring).
- * - No goal-state awareness: the reasoner doesn't know what "done" looks like beyond
- *   what's in the workspace prompt. It can't compare its output to the goal.
- * - Working memory limits: ACT-R enforces one-chunk-per-buffer. Our workspace capacity
- *   is coarser — the reasoner sees the full workspace snapshot, not a constrained view.
- *   Partitioned workspace (RFC 003) partially addresses this with per-module selectors.
+ * - The "done" action is an unvalidated LLM guess. RFC 004 goal-state monitoring
+ *   provides metacognitive validation via TerminateSignal.
+ * - Working memory capacity is fixed at construction. Adaptive capacity (expand when
+ *   task is complex, shrink when simple) is a future enhancement.
  *
  * **References:**
  * - Anderson, J. R. (2007). How Can the Human Mind Occur in the Physical Universe? Oxford UP.
  * - Laird, J. E. (2012). The Soar Cognitive Architecture. MIT Press.
  * - Sun, R. (2002). Duality of the Mind: A Bottom-Up Approach Toward Cognition. Lawrence Erlbaum.
  * - Kahneman, D. (2011). Thinking, Fast and Slow. Farrar, Straus and Giroux.
+ * - Baddeley, A. D. (2000). The episodic buffer. Trends in Cognitive Sciences, 4(11), 417-423.
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Phases 4+7 (REASON, ACT)
  * @see docs/rfcs/001-cognitive-composition.md — Part V (System 1/2 Transition)
+ * @see docs/rfcs/006-anticipatory-monitoring.md — §Module Working Memory
  */
 
 import type {
@@ -78,8 +91,10 @@ import type {
   ReadonlyWorkspaceSnapshot,
   ProviderAdapter,
   AdapterConfig,
+  ModuleWorkingMemory,
+  WorkingMemoryConfig,
 } from '../algebra/index.js';
-import { moduleId } from '../algebra/index.js';
+import { moduleId, createWorkingMemory, updateWorkingMemory } from '../algebra/index.js';
 import type { ToolProvider, ToolDefinition, ToolResult } from '../../ports/tool-provider.js';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -105,6 +120,8 @@ export interface ReasonerActorState {
   lastActionName: string | null;
   successRate: number;
   recentActions: string[];  // sliding window of last 6 action names for entropy computation
+  /** RFC 006: Per-module working memory — persistent plan/understanding across cycles. */
+  workingMemory?: ModuleWorkingMemory;
 }
 
 /** Control directive for the reasoner-actor. */
@@ -121,6 +138,9 @@ export interface ReasonerActorConfig {
   pactTemplate?: AdapterConfig['pactTemplate'];
   /** PRD 045: type-driven context binding. Declares what entry types this module needs. */
   contextBinding?: import('../algebra/partition-types.js').ModuleContextBinding;
+  /** RFC 006: Working memory configuration. When present, the reasoner maintains
+   *  a persistent scratchpad across cycles for plan/understanding persistence. */
+  workingMemoryConfig?: WorkingMemoryConfig;
 }
 
 // ── Monitoring Signal ────────────────────────────────────────────
@@ -177,6 +197,22 @@ If the task is complete and no further action is needed, output:
 <action>
 {"tool": "done", "input": {}}
 </action>
+`;
+
+/** RFC 006: Additional format instruction when working memory is enabled. */
+const WORKING_MEMORY_INSTRUCTION = `
+
+IMPORTANT: You have a persistent WORKING MEMORY that carries forward between cycles.
+After your <action> block, include a <working_memory> block with your updated notes.
+Use it to maintain your plan, track what you've learned, and remember key decisions.
+
+<working_memory>
+Your updated notes here. Include:
+- Your current plan and what step you're on
+- Key facts you've learned (file paths, function signatures, bug locations)
+- What you've done so far and what remains
+Keep it concise (under 500 chars). This will be shown to you next cycle.
+</working_memory>
 `;
 
 const FORCE_REPLAN_PREFIX =
@@ -325,6 +361,7 @@ export function createReasonerActor(
 ): CognitiveModule<ReasonerActorInput, ReasonerActorOutput, ReasonerActorState, ReasonerActorMonitoring, ReasonerActorControl> {
   const id = moduleId(config?.id ?? 'reasoner-actor');
   const pactTemplate = config?.pactTemplate ?? {};
+  const wmConfig = config?.workingMemoryConfig;
 
   return {
     id,
@@ -337,6 +374,7 @@ export function createReasonerActor(
         lastActionName: null,
         successRate: 1,
         recentActions: [],
+        workingMemory: wmConfig ? createWorkingMemory(wmConfig) : undefined,
       };
     },
 
@@ -368,18 +406,36 @@ export function createReasonerActor(
 
         systemPrompt += `${effortPrefix}${strategyPrompt}${FORMAT_INSTRUCTION}`;
 
+        // RFC 006: Add working memory format instruction when enabled
+        if (state.workingMemory && state.workingMemory.config.includeInContext) {
+          systemPrompt += WORKING_MEMORY_INSTRUCTION;
+        }
+
         // Include restricted actions warning if applicable
         if (control.restrictedActions && control.restrictedActions.length > 0) {
           systemPrompt += `\nThe following action types are BLOCKED and cannot be used: ${control.restrictedActions.join(', ')}. Choose a different action.\n`;
         }
 
         // 3. Invoke ProviderAdapter with workspace snapshot
+        // RFC 006: Prepend working memory entries to snapshot
+        let effectiveSnapshot = input.snapshot;
+        if (state.workingMemory && state.workingMemory.entries.length > 0 && state.workingMemory.config.includeInContext) {
+          const wmHeader: WorkspaceEntry = {
+            source: id,
+            content: '[YOUR WORKING MEMORY — your persistent notes from previous cycles]\n' +
+              state.workingMemory.entries.map(e => typeof e.content === 'string' ? e.content : JSON.stringify(e.content)).join('\n'),
+            salience: 1.0,
+            timestamp: Date.now(),
+          };
+          effectiveSnapshot = [wmHeader, ...input.snapshot];
+        }
+
         const adapterConfig: AdapterConfig = {
           pactTemplate,
           systemPrompt,
         };
 
-        const result = await adapter.invoke(input.snapshot, adapterConfig);
+        const result = await adapter.invoke(effectiveSnapshot, adapterConfig);
         const responseText = result.output;
         const realTokens = result.usage.totalTokens;
 
@@ -387,6 +443,17 @@ export function createReasonerActor(
         const plan = parseSection(responseText, 'plan');
         const reasoning = parseSection(responseText, 'reasoning');
         const parsedAction = parseActionBlock(responseText);
+
+        // RFC 006: Parse working memory update from response
+        const wmUpdate = parseSection(responseText, 'working_memory');
+        const updatedWM = state.workingMemory && wmUpdate
+          ? updateWorkingMemory(state.workingMemory, [{
+              source: id,
+              content: wmUpdate,
+              salience: 1.0,
+              timestamp: Date.now(),
+            }])
+          : state.workingMemory;
 
         // Determine tool name and input
         let toolName: string;
@@ -422,6 +489,7 @@ export function createReasonerActor(
             lastActionName: 'done',
             successRate: state.successRate,
             recentActions: updatedRecentActions,
+            workingMemory: updatedWM,
           };
 
           const monitoring: ReasonerActorMonitoring = {
@@ -482,6 +550,7 @@ export function createReasonerActor(
             lastActionName: 'none',
             successRate: state.successRate,
             recentActions: updatedRecentActions,
+            workingMemory: updatedWM,
           };
 
           const monitoring: ReasonerActorMonitoring = {
@@ -565,6 +634,7 @@ export function createReasonerActor(
           lastActionName: toolName,
           successRate: newSuccessRate,
           recentActions: updatedRecentActions,
+          workingMemory: updatedWM,
         };
 
         // 10. Return StepResult with output, updated state, monitoring signal

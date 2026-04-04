@@ -27,7 +27,9 @@ export type {
   CognitiveModule,
 } from './module.js';
 
-export { moduleId, CompositionError } from './module.js';
+export { moduleId, CompositionError, createWorkingMemory, updateWorkingMemory } from './module.js';
+
+export type { WorkingMemoryConfig, ModuleWorkingMemory } from './module.js';
 
 // ── Goal-state types (PRD 045 — RFC 004) ────────────────────────
 
@@ -36,6 +38,9 @@ export type {
   SubGoal,
   GoalDiscrepancy,
   TerminateSignal,
+  TaskAssessment,
+  TaskPhase,
+  SolvabilityEstimate,
 } from './goal-types.js';
 
 export {
@@ -52,6 +57,10 @@ export {
   ASPIRATION_FLOOR,
   ASPIRATION_CEILING,
 } from './discrepancy-function.js';
+
+export { buildLLMGoalDiscrepancy, buildPhaseAwareDiscrepancy } from './llm-discrepancy.js';
+export type { PhaseAwareResult } from './llm-discrepancy.js';
+export { assessTaskWithLLM, defaultAssessment } from './llm-task-assessment.js';
 
 // ── Workspace types ──────────────────────────────────────────────
 

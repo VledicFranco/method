@@ -181,6 +181,72 @@ export interface CognitiveModule<
   stateInvariant?(state: S): boolean;
 }
 
+// ── Module Working Memory (RFC 006) ─────────────────────────────
+
+/**
+ * Per-module working memory — the W in Module :: (I, S, W, κ) → (O, S, W, μ).
+ *
+ * Each cognitive module may maintain a bounded private workspace that persists
+ * across cycles, independent of shared workspace eviction. This creates algebraic
+ * closure: every module has the same structure, and composition operators can
+ * reason about working memory uniformly.
+ *
+ * Grounded in Baddeley's working memory model (2000): the central executive
+ * maintains task-relevant representations independent of the sensory input stream.
+ *
+ * **Design:** W is embedded in S (the state is already opaque and generic).
+ * The module includes workingMemory entries in its state, and the orchestrator
+ * injects them into the module's input alongside the shared workspace snapshot.
+ *
+ * @see docs/rfcs/006-anticipatory-monitoring.md — §Module Working Memory
+ */
+
+import type { WorkspaceEntry } from './workspace-types.js';
+
+/** Configuration for a module's working memory. */
+export interface WorkingMemoryConfig {
+  /** Maximum entries the module can hold in working memory. */
+  capacity: number;
+  /** Whether this module's working memory should be included in its prompt context. */
+  includeInContext: boolean;
+}
+
+/**
+ * Working memory state — included in a module's S type.
+ *
+ * The module reads from `entries` at the start of each step and may
+ * return updated entries in its new state. The orchestrator is responsible
+ * for injecting these into the module's input (typically prepended to
+ * the shared workspace snapshot).
+ */
+export interface ModuleWorkingMemory {
+  /** The module's private working memory entries. */
+  entries: WorkspaceEntry[];
+  /** Configuration (capacity, context inclusion). */
+  config: WorkingMemoryConfig;
+}
+
+/**
+ * Create an initial empty working memory with the given config.
+ */
+export function createWorkingMemory(config: WorkingMemoryConfig): ModuleWorkingMemory {
+  return { entries: [], config };
+}
+
+/**
+ * Update working memory: replace entries, enforcing capacity limit.
+ * Newest entries are kept (FIFO eviction from front).
+ */
+export function updateWorkingMemory(
+  wm: ModuleWorkingMemory,
+  newEntries: WorkspaceEntry[],
+): ModuleWorkingMemory {
+  const entries = newEntries.length > wm.config.capacity
+    ? newEntries.slice(-wm.config.capacity)
+    : newEntries;
+  return { ...wm, entries };
+}
+
 // ── Composition Error ────────────────────────────────────────────
 
 /** Error thrown when composition operators detect invalid configurations at runtime. */

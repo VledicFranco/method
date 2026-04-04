@@ -13,6 +13,7 @@ import { moduleId } from '../../algebra/module.js';
 import type { MonitoringSignal, ReasonerMonitoring, ActorMonitoring } from '../../algebra/module.js';
 import type { WorkspaceEntry } from '../../algebra/workspace-types.js';
 import type { GoalRepresentation } from '../../algebra/goal-types.js';
+import type { ProviderAdapter, ProviderAdapterResult } from '../../algebra/provider-adapter.js';
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -266,5 +267,109 @@ describe('Evaluator goal-state: TerminateSignal', () => {
       assert.ok(result.output.terminateSignal.evidence);
       assert.equal(result.output.terminateSignal.evidence.type, 'goal-discrepancy');
     }
+  });
+});
+
+// ── LLM Evaluator Path ───────────────────────────────────────
+
+function mockProvider(output: string): ProviderAdapter {
+  return {
+    async invoke(): Promise<ProviderAdapterResult> {
+      return {
+        output,
+        usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150 },
+        cost: { totalUsd: 0, perModel: {} },
+      };
+    },
+  };
+}
+
+describe('Evaluator goal-state: LLM provider path', () => {
+  it('uses LLM discrepancy when provider is given', async () => {
+    const provider = mockProvider(`<assessment>
+<discrepancy>0.25</discrepancy>
+<confidence>0.90</confidence>
+<satisfied>false</satisfied>
+<summary>Good progress but not done yet</summary>
+</assessment>`);
+
+    const evaluator = createEvaluator({
+      goalRepresentation: TEST_GOAL,
+      provider,
+    });
+    const state = evaluator.initialState();
+    const result = await evaluator.step(input([entry('some work')]), state, control);
+
+    assert.ok(result.output.discrepancy);
+    assert.equal(result.output.discrepancy.discrepancy, 0.25);
+    assert.equal(result.output.discrepancy.confidence, 0.90);
+    assert.ok(result.output.discrepancy.basis.startsWith('llm-assessment:'));
+    assert.equal(result.output.evaluatorTokens, 150);
+  });
+
+  it('falls back to rule-based when LLM fails', async () => {
+    const failProvider: ProviderAdapter = {
+      async invoke(): Promise<ProviderAdapterResult> {
+        throw new Error('provider down');
+      },
+    };
+
+    const evaluator = createEvaluator({
+      goalRepresentation: TEST_GOAL,
+      provider: failProvider,
+    });
+    const state = evaluator.initialState();
+    const result = await evaluator.step(input([entry('some work')]), state, control);
+
+    // Should still produce a discrepancy via rule-based fallback
+    assert.ok(result.output.discrepancy);
+    assert.ok(!result.output.discrepancy.basis.startsWith('llm-'));
+    assert.equal(result.output.evaluatorTokens, 0);
+  });
+
+  it('falls back to rule-based when LLM output is unparseable', async () => {
+    const provider = mockProvider('I cannot evaluate this properly.');
+
+    const evaluator = createEvaluator({
+      goalRepresentation: TEST_GOAL,
+      provider,
+    });
+    const state = evaluator.initialState();
+    const result = await evaluator.step(input([entry('some work')]), state, control);
+
+    assert.ok(result.output.discrepancy);
+    assert.ok(!result.output.discrepancy.basis.startsWith('llm-'));
+    assert.equal(result.output.evaluatorTokens, 0);
+  });
+
+  it('LLM goal-satisfied triggers TerminateSignal', async () => {
+    const provider = mockProvider(`<assessment>
+<discrepancy>0.05</discrepancy>
+<confidence>0.95</confidence>
+<satisfied>true</satisfied>
+<summary>Task fully completed</summary>
+</assessment>`);
+
+    const evaluator = createEvaluator({
+      goalRepresentation: TEST_GOAL,
+      provider,
+    });
+    const state = evaluator.initialState();
+    const result = await evaluator.step(input([entry('all done')]), state, control);
+
+    assert.ok(result.output.discrepancy);
+    assert.equal(result.output.discrepancy.satisfied, true);
+    // With confidence 0.95 > 0.70 gate and satisfied=true, should emit terminate
+    assert.ok(result.output.terminateSignal, 'Expected terminateSignal for satisfied goal with high confidence');
+    assert.equal(result.output.terminateSignal!.reason, 'goal-satisfied');
+  });
+
+  it('without provider, uses rule-based (no evaluatorTokens)', async () => {
+    const evaluator = createEvaluator({ goalRepresentation: TEST_GOAL });
+    const state = evaluator.initialState();
+    const result = await evaluator.step(input([entry('some work')]), state, control);
+
+    assert.ok(result.output.discrepancy);
+    assert.equal(result.output.evaluatorTokens, 0);
   });
 });

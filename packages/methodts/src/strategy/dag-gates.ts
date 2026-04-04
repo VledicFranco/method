@@ -14,7 +14,12 @@
  * Known escape vectors: dynamic import(), constructor chain traversal,
  * uncontrolled `this` binding. OS-level sandboxing is deferred (PRD 017 S7).
  *
+ * PRD 046: Implements the DagGateEvaluator port interface. The port is
+ * defined in gate/dag-gate-evaluator.ts, and the implementation lives here
+ * in the strategy module (port owner: gate, implementation owner: strategy).
+ *
  * @see PRD 017 — Strategy Pipelines (gate framework)
+ * @see PRD 046 — Runtime Consolidation (DagGateEvaluator port)
  */
 
 import type {
@@ -24,6 +29,14 @@ import type {
   HumanApprovalResolver,
   HumanApprovalContext,
 } from "./dag-types.js";
+import type {
+  DagGateEvaluator,
+  DagGateConfig as PortDagGateConfig,
+  DagGateContext as PortDagGateContext,
+  DagGateResult as PortDagGateResult,
+  HumanApprovalResolver as PortHumanApprovalResolver,
+  HumanApprovalContext as PortHumanApprovalContext,
+} from "../gate/dag-gate-evaluator.js";
 
 // ── Expression Evaluator (sandboxed) ───────────────────────────
 
@@ -207,6 +220,86 @@ export function buildRetryFeedback(
     `Previous attempt feedback: ${result.feedback ?? "none"}`,
     "Please address the gate failure and try again.",
   ].join("\n");
+}
+
+// ── DagGateEvaluator Implementation (PRD 046) ────────────────
+
+/**
+ * Strategy-side implementation of the DagGateEvaluator port.
+ *
+ * Adapts the existing evaluateGate() function to satisfy the port interface
+ * defined in gate/dag-gate-evaluator.ts. The port uses simplified types
+ * (DagGateResult without gate_id/type fields); this adapter maps between
+ * the strategy's richer types and the port's minimal contract.
+ *
+ * @see gate/dag-gate-evaluator.ts — port interface (frozen, owned by gate/)
+ */
+export function createStrategyGateEvaluator(): DagGateEvaluator {
+  return {
+    async evaluate(
+      gate: PortDagGateConfig,
+      gateId: string,
+      context: PortDagGateContext,
+      resolver?: PortHumanApprovalResolver,
+      approvalCtx?: PortHumanApprovalContext,
+    ): Promise<PortDagGateResult> {
+      // Map port types to strategy types (structurally compatible)
+      const strategyGate: DagGateConfig = {
+        type: gate.type,
+        check: gate.check,
+        max_retries: gate.max_retries,
+        timeout_ms: gate.timeout_ms,
+      };
+
+      const strategyContext: DagGateContext = {
+        output: context.output,
+        artifacts: context.artifacts,
+        execution_metadata: context.execution_metadata,
+      };
+
+      // Map resolver if present — the port's resolver is a subset of strategy's
+      const strategyResolver: HumanApprovalResolver | undefined = resolver
+        ? {
+            requestApproval: async (ctx: HumanApprovalContext) => {
+              const portCtx: PortHumanApprovalContext = {
+                execution_id: ctx.execution_id,
+                gate_id: ctx.gate_id,
+                artifact_markdown: ctx.artifact_markdown,
+                timeout_ms: ctx.timeout_ms,
+              };
+              return resolver.requestApproval(portCtx);
+            },
+          }
+        : undefined;
+
+      // Map approval context if present
+      const strategyApprovalCtx: HumanApprovalContext | undefined = approvalCtx
+        ? {
+            strategy_id: "",
+            execution_id: approvalCtx.execution_id,
+            gate_id: approvalCtx.gate_id,
+            node_id: "",
+            artifact_markdown: approvalCtx.artifact_markdown,
+            timeout_ms: approvalCtx.timeout_ms,
+          }
+        : undefined;
+
+      const strategyResult = await evaluateGate(
+        strategyGate,
+        gateId,
+        strategyContext,
+        strategyResolver,
+        strategyApprovalCtx,
+      );
+
+      // Map strategy result to port result (simplified shape)
+      return {
+        passed: strategyResult.passed,
+        detail: strategyResult.reason,
+        expression_result: strategyResult.feedback,
+      };
+    },
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────

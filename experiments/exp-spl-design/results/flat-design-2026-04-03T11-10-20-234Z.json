@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1676,
+  "cost_usd": 0.0135214,
+  "duration_ms": 12591,
+  "ports": 4,
+  "subComponents": 3,
+  "gatePassRate": 0.75,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 5,
+    "overall": 4.2,
+    "rationale": "The design correctly identifies all three domains (projects, tasks, notifications) and four port boundaries matching the reference specification. Ports are explicitly positioned as the primary deliverable, with architecture described as deriving from frozen surfaces. However, port interfaces are incomplete—TaskStoragePort lacks explicit `create()`/`update()` methods (only ambiguous `save()`), ProjectStoragePort lacks `delete()`, and ProjectLookupPort over-engineers by returning `Project | null` instead of the reference's minimal `exists(): boolean`. Documentation is clear with ownership notation and helps developer understanding, but port method signatures diverge from the reference's minimal, precise CRUD interfaces."
+  },
+  "compositeScore": 0.795
+}

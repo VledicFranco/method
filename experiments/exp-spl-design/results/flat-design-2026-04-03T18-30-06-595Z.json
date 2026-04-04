@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 2131,
+  "cost_usd": 0.02675935,
+  "duration_ms": 16432,
+  "ports": 4,
+  "subComponents": 0,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 4,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.7,
+    "rationale": "** The design nails decomposition, documentation, and FCD methodology adherence. Ports are typed and intentional, but method naming (save vs. create/update, getProject vs. exists) deviates from reference patterns in ways that suggest slightly less disciplined port thinking—conflating concerns or over-specifying return types rather than staying minimal."
+  },
+  "compositeScore": 0.97
+}

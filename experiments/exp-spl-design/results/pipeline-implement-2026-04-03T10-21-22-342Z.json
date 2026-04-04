@@ -1,0 +1,33 @@
+{
+  "condition": "pipeline-implement",
+  "tokens": 28446,
+  "cost_usd": 0.1740978,
+  "duration_ms": 125161,
+  "rootFiles": 20,
+  "childImplementations": [],
+  "gateResults": [
+    {
+      "gate": "no-any-types",
+      "passed": true,
+      "detail": "13 files checked, no `any` types found"
+    },
+    {
+      "gate": "no-todos",
+      "passed": false,
+      "detail": "29 markers found: src/domains/tasks/types.ts: todo, todo; src/domains/tasks/routes.ts: todo, todo, todo; src/domains/tasks/tasks.test.ts: todo, todo, todo, todo, todo, todo, todo, todo, todo, todo, todo, todo, todo, todo, todo; src/domains/notifications/notifications.test.ts: todo, todo, todo, todo, todo, todo, todo, todo, todo"
+    },
+    {
+      "gate": "port-substance",
+      "passed": true,
+      "detail": "3 port files have typed members"
+    },
+    {
+      "gate": "structure-complete",
+      "passed": true,
+      "detail": "All expected artifacts present: implementation"
+    }
+  ],
+  "gatePassRate": 0.75,
+  "allGatesPass": false,
+  "compositeScore": 0.7274999999999999
+}

@@ -1,0 +1,33 @@
+experiment: exp-spl-design
+run_id: run6
+date: 2026-04-03
+agent: "Claude Opus 4.6 (1M context), method-3 session"
+config:
+  model: haiku (via claude --print)
+  provider: ClaudeHeadlessProvider
+  task: "Bridge — synthetic design with 5 childDesigns (T-Large v2)"
+  conditions: [flat-implement-synthetic, recursive-implement-synthetic]
+  budget_usd: 5.0
+metrics:
+  flat_implement_synthetic:
+    composite: 0.94
+    gate_pass_rate: 1.0
+    tokens: 20029
+    cost_usd: 0.16
+    files: 29
+    files_by_kind: { port: 4, index: 8, implementation: 17 }
+    duration_s: 104
+  recursive_implement_synthetic:
+    status: DNF
+    reason: "child implement calls failed to parse (Parallel FiberFailure, ParseFailed)"
+    root_call_succeeded: true
+    child_designs_input: 5
+    duration_s: 792
+verdict: partial
+notes: >
+  Flat implement produced 29 files with proper FCA structure (ports, indexes, implementations)
+  in a single 20K-token call — 100% gate pass rate. Recursive failed because child implement
+  calls (with thinner context) produced output the parser couldn't extract. This confirms the
+  pattern from design experiments: recursive reliability = P(parse_success)^N_children. With
+  N=5 and imperfect parse compliance, recursive can't reliably complete. The bottleneck is
+  structured output reliability, not reasoning quality or context saturation.

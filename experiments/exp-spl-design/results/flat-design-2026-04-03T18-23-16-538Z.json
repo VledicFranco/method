@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1195,
+  "cost_usd": 0.0111371,
+  "duration_ms": 10324,
+  "ports": 4,
+  "subComponents": 0,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 4,
+    "overall": 4.05,
+    "rationale": "The design correctly identifies all three domains and maps the same port boundaries as the reference (ProjectLookupPort, NotificationPort, TaskStoragePort, ProjectStoragePort). However, port signatures diverge in ways that matter: ProjectLookupPort includes an extra `getProject()` method beyond the reference's minimal `exists()`, and TaskStoragePort uses `updateState(id, state)` semantics instead of the reference's `update(task: Task)` pattern—a meaningful architectural difference in how state mutations are modeled. Documentation clearly explains ownership and consumption, but presentation leads with domain narrative before port definitions rather than treating surfaces as the primary deliverable."
+  },
+  "compositeScore": 0.905
+}

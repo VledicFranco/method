@@ -84,7 +84,9 @@ CONSTRAINTS:
 ${input.constraints.length > 0 ? input.constraints.map((c) => `- ${c}`).join("\n") : "(none)"}
 
 INSTRUCTIONS:
-Generate complete, working TypeScript code. For each file, output:
+Generate complete, working TypeScript code NOW. Do NOT ask for permission, describe a plan, or explain what you would do. Output the actual code immediately.
+
+For EACH file, use this EXACT format (no variations):
 
 FILE: <relative-path>
 KIND: <port|implementation|test|readme|index>
@@ -100,7 +102,7 @@ Rules:
 - Exports: re-export public surface through index.ts
 - Keep files focused — one concern per file
 
-Generate ALL files needed for this component.`;
+You MUST output at least one FILE block with code. Generate ALL files needed for this component.`;
 });
 
 // ── Parser ──
@@ -108,16 +110,29 @@ Generate ALL files needed for this component.`;
 function parseImplementOutput(raw: string, input: ImplementInput): ImplementOutput | null {
   const files: FileArtifact[] = [];
   // Match FILE: <path>\nKIND: <kind>\n```typescript\n<content>\n```
-  const fileRegex = /FILE:\s*(.+)\nKIND:\s*(\w+)\n```(?:typescript|ts)?\n([\s\S]*?)```/g;
+  // Allow optional whitespace, markdown bold, and flexible newlines between fields
+  const fileRegex = /FILE:\s*(.+)\n\s*KIND:\s*(\w+)\s*\n\s*```(?:typescript|ts)?\s*\n([\s\S]*?)```/g;
   let match;
   while ((match = fileRegex.exec(raw)) !== null) {
-    const path = match[1].trim();
+    const path = match[1].trim().replace(/\*\*/g, ""); // strip bold markers
     const kindRaw = match[2].trim().toLowerCase();
     const content = match[3].trim();
     const kind = (["port", "implementation", "test", "readme", "index", "config"].includes(kindRaw)
       ? kindRaw
       : "implementation") as FileArtifact["kind"];
     files.push({ path, content, kind });
+  }
+
+  // Fallback: try to find any fenced code blocks with filename hints if strict parsing fails
+  if (files.length === 0) {
+    const fallbackRegex = /(?:^|\n)\s*(?:###?\s*)?(?:`([^`]+\.ts)`|(\S+\.ts))\s*\n\s*```(?:typescript|ts)?\s*\n([\s\S]*?)```/g;
+    let fb;
+    while ((fb = fallbackRegex.exec(raw)) !== null) {
+      const path = (fb[1] || fb[2]).trim();
+      const content = fb[3].trim();
+      const kind = inferKind(path);
+      files.push({ path, content, kind });
+    }
   }
 
   if (files.length === 0) return null;
@@ -228,4 +243,14 @@ export function createImplementWithFs(fs: FsLoader): SemanticFn<ImplementInput, 
     }),
     (input: ImplementInput) => input.design.childDesigns.length === 0,
   );
+}
+
+// ── Helpers ──
+
+function inferKind(path: string): FileArtifact["kind"] {
+  if (path.includes("port") || path.includes("Port")) return "port";
+  if (path.endsWith(".test.ts") || path.endsWith(".spec.ts")) return "test";
+  if (path === "index.ts" || path.endsWith("/index.ts")) return "index";
+  if (path.endsWith(".md")) return "readme";
+  return "implementation";
 }

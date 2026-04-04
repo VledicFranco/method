@@ -10,7 +10,8 @@
  * 6. Custom PrecisionAdapterConfig overrides defaults
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import {
   precisionToConfig,
   createPrecisionAdapter,
@@ -64,7 +65,7 @@ describe('precisionToConfig', () => {
   it('maps 0.0 to minimal config (AC-09)', () => {
     const result = precisionToConfig(0.0);
 
-    expect(result).toEqual({
+    assert.deepStrictEqual(result, {
       maxOutputTokens: 1024,
       temperature: 1.0,
       promptDepth: 'minimal',
@@ -74,20 +75,20 @@ describe('precisionToConfig', () => {
   it('maps 1.0 to thorough config (AC-09)', () => {
     const result = precisionToConfig(1.0);
 
-    expect(result.maxOutputTokens).toBe(8192);
-    expect(result.temperature).toBeCloseTo(0.3, 5);
-    expect(result.promptDepth).toBe('thorough');
+    assert.strictEqual(result.maxOutputTokens, 8192);
+    assert.ok(Math.abs(result.temperature - 0.3) < 1e-5);
+    assert.strictEqual(result.promptDepth, 'thorough');
   });
 
   it('maps 0.5 to standard config', () => {
     const result = precisionToConfig(0.5);
 
     // Tokens: 1024 + 0.5 * (8192 - 1024) = 1024 + 3584 = 4608
-    expect(result.maxOutputTokens).toBe(4608);
+    assert.strictEqual(result.maxOutputTokens, 4608);
     // Temperature: 1.0 - 0.5 * (1.0 - 0.3) = 1.0 - 0.35 = 0.65
-    expect(result.temperature).toBeCloseTo(0.65, 5);
+    assert.ok(Math.abs(result.temperature - 0.65) < 1e-5);
     // Prompt depth: 0.5 >= 0.3 and 0.5 < 0.7 → standard
-    expect(result.promptDepth).toBe('standard');
+    assert.strictEqual(result.promptDepth, 'standard');
   });
 
   it('custom PrecisionAdapterConfig overrides defaults', () => {
@@ -101,7 +102,7 @@ describe('precisionToConfig', () => {
 
     // At precision 0.0 with custom config
     const minResult = precisionToConfig(0.0, customConfig);
-    expect(minResult).toEqual({
+    assert.deepStrictEqual(minResult, {
       maxOutputTokens: 512,
       temperature: 0.8,
       promptDepth: 'minimal',
@@ -109,22 +110,22 @@ describe('precisionToConfig', () => {
 
     // At precision 1.0 with custom config
     const maxResult = precisionToConfig(1.0, customConfig);
-    expect(maxResult.maxOutputTokens).toBe(4096);
-    expect(maxResult.temperature).toBeCloseTo(0.1, 5);
-    expect(maxResult.promptDepth).toBe('thorough');
+    assert.strictEqual(maxResult.maxOutputTokens, 4096);
+    assert.ok(Math.abs(maxResult.temperature - 0.1) < 1e-5);
+    assert.strictEqual(maxResult.promptDepth, 'thorough');
 
     // At precision 0.5 with custom config: 0.4 <= 0.5 < 0.8 → standard
     const midResult = precisionToConfig(0.5, customConfig);
-    expect(midResult.promptDepth).toBe('standard');
+    assert.strictEqual(midResult.promptDepth, 'standard');
 
     // At precision 0.35 with custom config: 0.35 < 0.4 → minimal
     const lowResult = precisionToConfig(0.35, customConfig);
-    expect(lowResult.promptDepth).toBe('minimal');
+    assert.strictEqual(lowResult.promptDepth, 'minimal');
   });
 
   it('clamps precision below 0 to 0', () => {
     const result = precisionToConfig(-0.5);
-    expect(result).toEqual({
+    assert.deepStrictEqual(result, {
       maxOutputTokens: 1024,
       temperature: 1.0,
       promptDepth: 'minimal',
@@ -133,9 +134,9 @@ describe('precisionToConfig', () => {
 
   it('clamps precision above 1 to 1', () => {
     const result = precisionToConfig(1.5);
-    expect(result.maxOutputTokens).toBe(8192);
-    expect(result.temperature).toBeCloseTo(0.3, 5);
-    expect(result.promptDepth).toBe('thorough');
+    assert.strictEqual(result.maxOutputTokens, 8192);
+    assert.ok(Math.abs(result.temperature - 0.3) < 1e-5);
+    assert.strictEqual(result.promptDepth, 'thorough');
   });
 });
 
@@ -147,9 +148,9 @@ describe('createPrecisionAdapter', () => {
     const result = await precisionAdapter.invoke(EMPTY_SNAPSHOT, BASE_CONFIG);
 
     // Verify delegation happened
-    expect(mockAdapter.calls).toHaveLength(1);
-    expect(result.output).toBe('mock response');
-    expect(result.usage.totalTokens).toBe(150);
+    assert.strictEqual(mockAdapter.calls.length, 1);
+    assert.strictEqual(result.output, 'mock response');
+    assert.strictEqual(result.usage.totalTokens, 150);
   });
 
   it('adjusts pact template based on precision value', async () => {
@@ -159,24 +160,24 @@ describe('createPrecisionAdapter', () => {
     // Invoke with high precision (1.0)
     await precisionAdapter.invokeWithPrecision(EMPTY_SNAPSHOT, BASE_CONFIG, 1.0);
 
-    expect(mockAdapter.calls).toHaveLength(1);
+    assert.strictEqual(mockAdapter.calls.length, 1);
     const passedConfig = mockAdapter.calls[0].config;
 
     // Should have maxOutputTokens set in budget
-    expect(passedConfig.pactTemplate.budget).toBeDefined();
-    expect((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens).toBe(8192);
+    assert.notStrictEqual(passedConfig.pactTemplate.budget, undefined);
+    assert.strictEqual((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens, 8192);
 
     // Should have thorough prefix in system prompt
-    expect(passedConfig.systemPrompt).toContain('Thoroughly and comprehensively: ');
-    expect(passedConfig.systemPrompt).toContain('test prompt');
+    assert.ok(passedConfig.systemPrompt!.includes('Thoroughly and comprehensively: '));
+    assert.ok(passedConfig.systemPrompt!.includes('test prompt'));
 
     // Now invoke with low precision (0.0)
     await precisionAdapter.invokeWithPrecision(EMPTY_SNAPSHOT, BASE_CONFIG, 0.0);
 
     const lowConfig = mockAdapter.calls[1].config;
-    expect((lowConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens).toBe(1024);
-    expect(lowConfig.systemPrompt).toContain('Briefly: ');
-    expect(lowConfig.systemPrompt).toContain('test prompt');
+    assert.strictEqual((lowConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens, 1024);
+    assert.ok(lowConfig.systemPrompt!.includes('Briefly: '));
+    assert.ok(lowConfig.systemPrompt!.includes('test prompt'));
   });
 
   it('standard invoke() uses default precision of 0.5', async () => {
@@ -187,9 +188,9 @@ describe('createPrecisionAdapter', () => {
 
     const passedConfig = mockAdapter.calls[0].config;
     // At precision 0.5: tokens = 4608, depth = standard (empty prefix)
-    expect((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens).toBe(4608);
+    assert.strictEqual((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens, 4608);
     // Standard depth has empty prefix, so systemPrompt should just be the original
-    expect(passedConfig.systemPrompt).toBe('test prompt');
+    assert.strictEqual(passedConfig.systemPrompt, 'test prompt');
   });
 
   it('preserves original pact template fields', async () => {
@@ -208,11 +209,11 @@ describe('createPrecisionAdapter', () => {
 
     const passedConfig = mockAdapter.calls[0].config;
     // Original mode preserved
-    expect(passedConfig.pactTemplate.mode).toEqual({ type: 'oneshot' });
+    assert.deepStrictEqual(passedConfig.pactTemplate.mode, { type: 'oneshot' });
     // Original streaming preserved
-    expect(passedConfig.pactTemplate.streaming).toBe(true);
+    assert.strictEqual(passedConfig.pactTemplate.streaming, true);
     // Budget added
-    expect(passedConfig.pactTemplate.budget).toBeDefined();
+    assert.notStrictEqual(passedConfig.pactTemplate.budget, undefined);
   });
 
   it('uses custom PrecisionAdapterConfig for mapping', async () => {
@@ -229,7 +230,7 @@ describe('createPrecisionAdapter', () => {
     await precisionAdapter.invokeWithPrecision(EMPTY_SNAPSHOT, BASE_CONFIG, 0.0);
 
     const passedConfig = mockAdapter.calls[0].config;
-    expect((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens).toBe(256);
-    expect(passedConfig.systemPrompt).toContain('Briefly: ');
+    assert.strictEqual((passedConfig.pactTemplate.budget as Record<string, unknown>).maxOutputTokens, 256);
+    assert.ok(passedConfig.systemPrompt!.includes('Briefly: '));
   });
 });

@@ -43,15 +43,39 @@
  * - Signal-based progress estimation: avg(confidence + success)
  * - Diminishing returns detection: progress flat/declining over N cycles
  * - Two evaluation horizons: immediate (single cycle) and trajectory (trend)
+ * - PRD 045: Goal-state comparison via discrepancy function (rule-based or LLM)
+ * - PRD 045: Satisficing dynamics (aspiration level, Selten adaptation)
+ * - PRD 045: TerminateSignal emission (goal-satisfied, goal-unreachable)
+ * - PRD 045: Unconditional evaluation (runs every cycle, not gated by Monitor)
  *
- * **What this module does NOT capture (known gaps — RFC 004):**
- * - Goal-state comparison: no access to goal representation, no discrepancy computation
- * - Judgment of Performance: estimates from process signals, not outcome quality
- * - Satisficing threshold: no concept of "good enough" or termination
- * - Termination control: produces signals but cannot issue TerminateDirective
- * - The Evaluator only runs when the Monitor flags an anomaly (default-interventionist
- *   gating), which means it cannot detect success during normal operation.
- *   RFC 004 proposes making evaluation unconditional.
+ * **What this module does NOT capture (known gaps — RFC 006):**
+ *
+ * R-20/R-21 empirically validated that goal-state comparison alone is insufficient.
+ * The Evaluator can answer "how far from goal?" but not "are we on track?" — it lacks
+ * a reference trajectory. Three missing cognitive functions (RFC 006):
+ *
+ * - **Phase-aware progress (Carver-Scheier multi-level control):** The Evaluator
+ *   treats all cycles identically. Reading code in cycle 3 (expected exploration) and
+ *   cycle 12 (alarming stagnation) produce the same discrepancy signal. The Evaluator
+ *   needs phase expectations from a Planner module to evaluate progress relative to
+ *   the current execution phase, not just the final goal.
+ *
+ * - **Solvability estimation (Metcalfe-Wiebe warmth signal):** P(solvable) is distinct
+ *   from P(solved). An agent reading code with growing understanding has rate=0
+ *   discrepancy but rising solvability. The current unreachable heuristic (rate<=0 past
+ *   60% of cycles) conflates these, causing premature termination when the agent is
+ *   building a mental model. Solvability should gate termination, not discrepancy rate.
+ *
+ * - **Pre-task difficulty assessment (Koriat's EOL judgment):** No difficulty estimate
+ *   parameterizes monitoring. A complex multi-file refactoring and a trivial dead-code
+ *   check use identical thresholds. The Planner module should produce a TaskAssessment
+ *   at cycle 0 that sets phase budgets, expected trajectory, and initial solvability.
+ *
+ * - **Planner module dependency:** The Planner (RFC 001, never implemented) is the
+ *   missing upstream module. It produces the TaskAssessment that parameterizes this
+ *   Evaluator. Without it, the Evaluator operates as a comparator without a reference
+ *   trajectory — which is why R-21's accurate LLM assessments still caused worse
+ *   outcomes than no metacognitive monitoring at all.
  *
  * **References:**
  * - Rolls, E. T. (2000). The orbitofrontal cortex and reward. Cerebral Cortex, 10(3), 284-294.
@@ -60,10 +84,13 @@
  * - Carver, C. S., & Scheier, M. F. (1998). On the Self-Regulation of Behavior. Cambridge UP.
  * - Nelson, T. O., & Narens, L. (1990). Metamemory: A theoretical framework and new findings.
  * - Simon, H. A. (1956). Rational choice and the structure of the environment.
+ * - Koriat, A. (2007). Metacognition and consciousness. Cambridge Handbook of Consciousness.
+ * - Metcalfe, J., & Wiebe, D. (1987). Intuition in insight and noninsight problem solving.
  *   Psychological Review, 63(2), 129-138.
  *
  * @see docs/rfcs/001-cognitive-composition.md — Part IV, Evaluator definition
- * @see docs/rfcs/004-goal-state-monitoring.md — redesign proposal for goal-state evaluation
+ * @see docs/rfcs/004-goal-state-monitoring.md — goal-state comparison (implemented PRD 045)
+ * @see docs/rfcs/006-anticipatory-monitoring.md — phase awareness + solvability (next)
  */
 
 import type {
@@ -83,6 +110,7 @@ import {
   updateAspiration,
   DEFAULT_ASPIRATION,
 } from '../algebra/discrepancy-function.js';
+import { buildLLMGoalDiscrepancy, buildPhaseAwareDiscrepancy } from '../algebra/llm-discrepancy.js';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -97,6 +125,13 @@ export interface EvaluatorConfig {
   goalRepresentation?: import('../algebra/goal-types.js').GoalRepresentation;
   /** PRD 045: Maximum cycles for budget-exhausted detection. */
   maxCycles?: number;
+  /** PRD 045+: Optional LLM provider for frontier-model discrepancy assessment.
+   *  When present, replaces rule-based heuristic with LLM-based goal-state comparison.
+   *  Falls back to rule-based on LLM error. */
+  provider?: import('../algebra/provider-adapter.js').ProviderAdapter;
+  /** RFC 006: Pre-task assessment for phase-aware evaluation. When present with provider,
+   *  uses phase-aware discrepancy with solvability-gated termination. */
+  taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
 }
 
 /** Combined input: workspace snapshot + monitoring signals. */
@@ -115,6 +150,12 @@ export interface EvaluatorOutput {
   discrepancy?: import('../algebra/goal-types.js').GoalDiscrepancy;
   /** PRD 045: Termination signal (present when termination conditions met). */
   terminateSignal?: import('../algebra/goal-types.js').TerminateSignal;
+  /** Tokens used by LLM evaluator this step (0 when using rule-based). */
+  evaluatorTokens?: number;
+  /** RFC 006: Solvability estimate (present when taskAssessment is provided). */
+  solvability?: import('../algebra/goal-types.js').SolvabilityEstimate;
+  /** RFC 006: Current execution phase (present when taskAssessment is provided). */
+  currentPhase?: string;
 }
 
 /** State: progress history and diminishing returns detection. */
@@ -129,6 +170,10 @@ export interface EvaluatorState {
   discrepancyHistory?: number[];
   /** PRD 045: Current satisficing aspiration level. */
   aspirationLevel?: number;
+  /** RFC 006: Task assessment (persistent, set at cycle 0). */
+  taskAssessment?: import('../algebra/goal-types.js').TaskAssessment;
+  /** RFC 006: History of solvability estimates. */
+  solvabilityHistory?: number[];
 }
 
 /** Control directive: evaluation horizon. */
@@ -155,6 +200,8 @@ export function createEvaluator(
   const id = moduleId(config?.id ?? 'evaluator');
   const goalConfig = config?.goalRepresentation;
   const maxCycles = config?.maxCycles ?? 15;
+  const provider = config?.provider;
+  const taskAssessment = config?.taskAssessment;
 
   return {
     id,
@@ -181,36 +228,84 @@ export function createEvaluator(
         diminishingReturns = detectDiminishingReturns(history, drWindow);
       }
 
-      // ── PRD 045: Goal-state comparison path ──────────────────
+      // ── PRD 045 + RFC 006: Goal-state comparison path ─────────
       let discrepancyResult: import('../algebra/goal-types.js').GoalDiscrepancy | undefined;
       let terminateResult: import('../algebra/goal-types.js').TerminateSignal | undefined;
+      let solvabilityResult: import('../algebra/goal-types.js').SolvabilityEstimate | undefined;
+      let currentPhaseResult: string | undefined;
       let newAspirationLevel = state.aspirationLevel;
       let newDiscrepancyHistory = state.discrepancyHistory ?? [];
+      let newSolvabilityHistory = state.solvabilityHistory ?? [];
+      let evaluatorTokens = 0;
 
       if (state.goal) {
         const previousDiscrepancy = newDiscrepancyHistory.length > 0
           ? newDiscrepancyHistory[newDiscrepancyHistory.length - 1]
           : undefined;
+        const previousSolvability = newSolvabilityHistory.length > 0
+          ? newSolvabilityHistory[newSolvabilityHistory.length - 1]
+          : undefined;
         const aspiration = state.aspirationLevel ?? DEFAULT_ASPIRATION;
+        const cycleNum = state.cycleCount + 1;
 
-        // Compute goal-state discrepancy
-        discrepancyResult = buildGoalDiscrepancy(
-          input.workspace,
-          state.goal,
-          previousDiscrepancy,
-          aspiration,
-          id,
-        );
+        // RFC 006: Phase-aware path (provider + taskAssessment)
+        if (provider && state.taskAssessment) {
+          const paResult = await buildPhaseAwareDiscrepancy(
+            provider,
+            input.workspace,
+            state.goal,
+            cycleNum,
+            maxCycles,
+            state.taskAssessment,
+            previousDiscrepancy,
+            previousSolvability,
+            id,
+          );
+          if (paResult) {
+            discrepancyResult = paResult.discrepancy;
+            solvabilityResult = paResult.solvability;
+            currentPhaseResult = paResult.currentPhase;
+            evaluatorTokens = paResult.tokensUsed;
+          }
+        }
+
+        // Fallback: LLM without phase awareness
+        if (!discrepancyResult && provider) {
+          const llmResult = await buildLLMGoalDiscrepancy(
+            provider, input.workspace, state.goal, cycleNum, maxCycles, previousDiscrepancy, id,
+          );
+          if (llmResult) {
+            discrepancyResult = llmResult.discrepancy;
+            evaluatorTokens = llmResult.tokensUsed;
+          }
+        }
+
+        // Fallback: rule-based heuristic
+        if (!discrepancyResult) {
+          discrepancyResult = buildGoalDiscrepancy(
+            input.workspace, state.goal, previousDiscrepancy, aspiration, id,
+          );
+        }
 
         // Update satisficing dynamics
         newAspirationLevel = updateAspiration(aspiration, discrepancyResult.rate);
         newDiscrepancyHistory = [...newDiscrepancyHistory, discrepancyResult.discrepancy];
+        if (solvabilityResult) {
+          newSolvabilityHistory = [...newSolvabilityHistory, solvabilityResult.probability];
+        }
 
-        // Check termination conditions
+        // ── Termination logic ──────────────────────────────────
         const confidenceGate = newAspirationLevel < 0.80 ? 0.85 : 0.70;
-        const cycleNum = state.cycleCount + 1;
 
-        if (discrepancyResult.satisfied && discrepancyResult.confidence > confidenceGate) {
+        // Goal-satisfied: require sustained satisfaction (2+ consecutive satisfied cycles)
+        // R-22 finding F3: single-cycle satisfied=true produced false positives.
+        const prevSatisfied = newDiscrepancyHistory.length >= 2 &&
+          newDiscrepancyHistory[newDiscrepancyHistory.length - 2] < (1.0 - aspiration);
+        if (
+          discrepancyResult.satisfied &&
+          discrepancyResult.confidence > confidenceGate &&
+          (prevSatisfied || cycleNum <= 2) // allow early termination for trivial tasks
+        ) {
           terminateResult = {
             type: 'terminate',
             source: id,
@@ -219,19 +314,47 @@ export function createEvaluator(
             confidence: discrepancyResult.confidence,
             evidence: discrepancyResult,
           };
-        } else if (
-          cycleNum > maxCycles * 0.6 &&
-          discrepancyResult.rate <= 0 &&
-          diminishingReturns
-        ) {
-          terminateResult = {
-            type: 'terminate',
-            source: id,
-            timestamp: Date.now(),
-            reason: 'goal-unreachable',
-            confidence: discrepancyResult.confidence,
-            evidence: discrepancyResult,
-          };
+        }
+        // Goal-unreachable: RFC 006 solvability-gated OR legacy rate-based
+        else if (solvabilityResult) {
+          // RFC 006 path: smoothed solvability over last 3 cycles
+          // R-22 finding F2: raw single-cycle solvability is too volatile.
+          const recentSolvability = newSolvabilityHistory.slice(-3);
+          const smoothedSolvability = recentSolvability.length >= 2
+            ? recentSolvability.reduce((a, b) => a + b, 0) / recentSolvability.length
+            : solvabilityResult.probability;
+
+          const estimatedCycles = state.taskAssessment?.estimatedCycles ?? maxCycles;
+          if (
+            smoothedSolvability < 0.3 &&
+            recentSolvability.length >= 2 && // require at least 2 data points
+            cycleNum > estimatedCycles * 0.5
+          ) {
+            terminateResult = {
+              type: 'terminate',
+              source: id,
+              timestamp: Date.now(),
+              reason: 'goal-unreachable',
+              confidence: discrepancyResult.confidence,
+              evidence: discrepancyResult,
+            };
+          }
+        } else {
+          // Legacy path (no solvability): rate-based termination
+          if (
+            cycleNum > maxCycles * 0.6 &&
+            discrepancyResult.rate <= 0 &&
+            diminishingReturns
+          ) {
+            terminateResult = {
+              type: 'terminate',
+              source: id,
+              timestamp: Date.now(),
+              reason: 'goal-unreachable',
+              confidence: discrepancyResult.confidence,
+              evidence: discrepancyResult,
+            };
+          }
         }
       }
 
@@ -241,6 +364,8 @@ export function createEvaluator(
         goal: state.goal,
         discrepancyHistory: newDiscrepancyHistory,
         aspirationLevel: newAspirationLevel,
+        taskAssessment: state.taskAssessment,
+        solvabilityHistory: newSolvabilityHistory,
       };
 
       const monitoring: EvaluatorMonitoring = {
@@ -257,6 +382,9 @@ export function createEvaluator(
           diminishingReturns,
           discrepancy: discrepancyResult,
           terminateSignal: terminateResult,
+          evaluatorTokens,
+          solvability: solvabilityResult,
+          currentPhase: currentPhaseResult,
         },
         state: newState,
         monitoring,
@@ -270,6 +398,8 @@ export function createEvaluator(
         goal: goalConfig,
         discrepancyHistory: [],
         aspirationLevel: goalConfig ? DEFAULT_ASPIRATION : undefined,
+        taskAssessment,
+        solvabilityHistory: [],
       };
     },
 

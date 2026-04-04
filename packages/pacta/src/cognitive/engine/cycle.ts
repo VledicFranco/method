@@ -2,12 +2,24 @@
  * CognitiveCycle — the 8-phase cognitive cycle orchestrator.
  *
  * Runs the cognitive cycle: OBSERVE -> ATTEND -> REMEMBER -> REASON ->
- * MONITOR -> CONTROL -> ACT -> LEARN. Phases 5-6 are default-interventionist
- * (only fire when monitoring signals cross thresholds). Phase 8 (LEARN) is
- * fire-and-forget with state-lock (errors don't corrupt reflector state).
+ * MONITOR -> CONTROL -> EVALUATE -> ACT -> LEARN. EVALUATE runs unconditionally
+ * every cycle (PRD 045 Wave 2). Phases 5-6 (MONITOR/CONTROL) are
+ * default-interventionist. Phase 9 (LEARN) is fire-and-forget with state-lock.
+ *
+ * If the Evaluator emits a TerminateSignal, the ACT and LEARN phases are skipped
+ * and CycleResult.terminated is set (PRD 045 Wave 2).
  *
  * Grounded in: ACT-R production cycle, GWT broadcast-then-compete,
- * Nelson & Narens monitor/control metacognition.
+ * Nelson & Narens monitor/control metacognition, Carver-Scheier cybernetic control.
+ *
+ * **Known limitation (RFC 006 — Anticipatory Monitoring):**
+ * The cycle has no PLAN phase. RFC 001 defines a Planner module but it was never
+ * implemented. Without it, the Evaluator operates without phase expectations or a
+ * reference trajectory. R-20/R-21 showed that goal-state monitoring with accurate
+ * discrepancy signals WORSENS performance because the termination logic can't
+ * distinguish "exploring" from "stuck." The Planner would run at cycle 0 to produce
+ * a TaskAssessment (phases, difficulty, KPIs, solvability) that parameterizes the
+ * Evaluator's metamonitor. See RFC 006 for the full gap analysis and experiment plan.
  */
 
 import type {

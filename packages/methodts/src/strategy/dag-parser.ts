@@ -25,6 +25,8 @@ import type {
   MethodologyNodeConfig,
   ScriptNodeConfig,
   StrategyNodeConfig,
+  SemanticNodeConfig,
+  SemanticAlgorithm,
   StrategyValidationResult,
 } from "./dag-types.js";
 
@@ -75,7 +77,7 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
       timeout_ms: g.timeout_ms ?? getDefaultTimeout(g.type),
     }));
 
-    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig;
+    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig;
 
     if (rawNode.type === "methodology") {
       config = {
@@ -91,6 +93,13 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
         strategy_id: rawNode.strategy_id ?? "",
         input_map: rawNode.input_map,
         await: rawNode.await,
+      };
+    } else if (rawNode.type === "semantic") {
+      config = {
+        type: "semantic",
+        algorithm: (rawNode.algorithm ?? "explore") as SemanticAlgorithm,
+        input_mapping: rawNode.input_mapping ?? {},
+        output_key: rawNode.output_key ?? "",
       };
     } else {
       config = {
@@ -189,6 +198,24 @@ export function validateStrategyDAG(dag: StrategyDAG): StrategyValidationResult 
       if (!stratConfig.strategy_id || stratConfig.strategy_id.trim() === "") {
         errors.push(
           `Node "${node.id}": strategy node must have a non-empty "strategy_id" field`,
+        );
+      }
+    }
+  }
+
+  // Check semantic nodes have valid algorithm and required fields
+  const VALID_ALGORITHMS: readonly string[] = ["explore", "design", "implement", "review"];
+  for (const node of dag.nodes) {
+    if (node.config.type === "semantic") {
+      const semConfig = node.config as SemanticNodeConfig;
+      if (!VALID_ALGORITHMS.includes(semConfig.algorithm)) {
+        errors.push(
+          `Node "${node.id}": semantic node has invalid algorithm "${semConfig.algorithm}" — must be one of: ${VALID_ALGORITHMS.join(", ")}`,
+        );
+      }
+      if (!semConfig.output_key || semConfig.output_key.trim() === "") {
+        errors.push(
+          `Node "${node.id}": semantic node must have a non-empty "output_key" field`,
         );
       }
     }

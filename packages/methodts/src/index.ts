@@ -85,6 +85,7 @@ export * from "./predicate/quantifiers.js";
 // Wave 9: Providers + Bridge integration
 export * from "./provider/bridge-provider.js";
 export * from "./provider/spawn-claude.js";
+export * from "./provider/structured-provider.js";
 export * from "./runtime/bridge-hook.js";
 export * from "./runtime/reconciliation.js";
 

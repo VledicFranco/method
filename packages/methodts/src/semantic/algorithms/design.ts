@@ -108,7 +108,7 @@ INSTRUCTIONS — Surface-First Design (FCD):
    Each sub-component gets: name, purpose, and which ports it participates in.
 4. Brief ARCHITECTURE notes (how sub-components compose — but keep it brief, ports matter more).
 
-FORMAT:
+You MUST use this EXACT format. No markdown headings, no bold, no variations.
 
 DOCUMENTATION:
 <draft docs as if already implemented — 5-15 lines>
@@ -124,46 +124,105 @@ END_PORT
 (repeat for each port, or "PORTS: (none)" if no cross-component surfaces needed)
 
 SUB_COMPONENTS:
-- <name> | <purpose> | ports: <port names it participates in>
+- <name> | <purpose> | ports: <comma-separated port names>
 
-(or "SUB_COMPONENTS: (none)" if this is a leaf)
+(repeat for each sub-component, or "SUB_COMPONENTS: (none)" if this is a leaf)
 
 ARCHITECTURE:
-<1-3 sentences on how sub-components compose>`;
+<1-3 sentences on how sub-components compose>
+
+EXAMPLE (abbreviated):
+
+DOCUMENTATION:
+A session orchestration server managing agent sessions, methodology execution, and strategy pipelines.
+All cross-domain communication through typed port interfaces.
+
+PORTS:
+PORT EventBus
+owner: infrastructure
+consumer: sessions, strategies
+description: Universal event backbone for domain coordination
+interface: export interface EventBus {
+  emit(event: BridgeEventInput): BridgeEvent;
+  subscribe(filter: EventFilter, handler: (event: BridgeEvent) => void): EventSubscription;
+}
+END_PORT
+
+SUB_COMPONENTS:
+- sessions | Agent session lifecycle and pool management | ports: EventBus, SessionPool
+- strategies | Strategy pipeline execution engine | ports: EventBus, SessionPool
+
+ARCHITECTURE:
+Composition root creates port implementations and injects them into domain services.`;
 });
 
 // ── Parser ──
 
 function parseDesignOutput(raw: string, input: DesignInput): DesignOutput | null {
-  const docMatch = raw.match(/DOCUMENTATION:\s*\n([\s\S]*?)(?=\nPORTS:)/);
+  // Normalize markdown formatting variations from LLMs:
+  //   "## DOCUMENTATION" → "DOCUMENTATION:", "**PORT Foo**" → "PORT Foo", etc.
+  const normalized = raw
+    .replace(/^#{1,3}\s*/gm, "")               // strip heading markers
+    .replace(/^\*\*([A-Z_]+(?:\s*[A-Z_]+)*):?\*\*:?\s*$/gm, "$1:") // **SECTION:** → SECTION:
+    .replace(/\*\*(PORT\s+\S+)\*\*/g, "$1")     // **PORT Foo** → PORT Foo
+    .replace(/\*\*(END_PORT)\*\*/g, "$1")        // **END_PORT** → END_PORT
+    .replace(/^-\s+(owner|consumer|description|interface):/gm, "$1:") // - owner: → owner:
+    .replace(/^---+\s*$/gm, "");               // strip horizontal rules
+
+  // Normalize section headers to canonical uppercase form
+  const withSections = normalized
+    .replace(/\bsub[_\s-]?components?\b:?/gi, "SUB_COMPONENTS:")
+    .replace(/\bdocumentation\b:?/gi, "DOCUMENTATION:")
+    .replace(/\bports\b:?/gi, "PORTS:")
+    .replace(/\barchitecture\b:?/gi, "ARCHITECTURE:")
+    // Undo over-normalization inside port blocks (restore "ports:" in sub-component lines and port blocks)
+    .replace(/^([-*]\s*.+\|\s*.+\|\s*)PORTS:\s*/gm, "$1ports: ")
+    .replace(/^([-*]\s*.+[—–-].+?)PORTS:\s*/gm, "$1ports: ");
+
+  const docMatch = withSections.match(/DOCUMENTATION:\s*\n([\s\S]*?)(?=\nPORTS:)/);
   if (!docMatch) return null;
 
   const draftDocumentation = docMatch[1].trim();
 
-  // Parse ports
+  // Parse ports — handle both plain and code-fenced interface blocks
   const ports: PortDefinition[] = [];
   const portRegex = /PORT\s+(\S+)\s*\n\s*owner:\s*(.+)\n\s*consumer:\s*(.+)\n\s*description:\s*(.+)\n\s*interface:\s*([\s\S]*?)END_PORT/g;
   let portMatch;
-  while ((portMatch = portRegex.exec(raw)) !== null) {
+  while ((portMatch = portRegex.exec(withSections)) !== null) {
+    // Strip code fences from interface block if present
+    const methods = portMatch[5].trim()
+      .replace(/^```(?:typescript|ts)?\s*\n?/gm, "")
+      .replace(/^```\s*$/gm, "")
+      .trim();
     ports.push({
       name: portMatch[1].trim(),
       owner: portMatch[2].trim(),
       consumer: portMatch[3].trim(),
       description: portMatch[4].trim(),
-      methods: portMatch[5].trim(),
+      methods,
     });
   }
 
-  // Parse sub-components
+  // Parse sub-components — try strict format first, then fallback patterns
   const subComponents: SubComponentSpec[] = [];
-  const subMatch = raw.match(/SUB_COMPONENTS:\s*\n([\s\S]*?)(?=\nARCHITECTURE:|\n*$)/);
+  const subMatch = withSections.match(/SUB_COMPONENTS:\s*\n([\s\S]*?)(?=\nARCHITECTURE:|\s*$)/);
   if (subMatch && !subMatch[1].includes("(none)")) {
-    const lines = subMatch[1].trim().split("\n");
+    const lines = subMatch[1].trim().split("\n").filter((l) => l.trim().length > 0);
     for (const line of lines) {
-      const match = line.match(/^-\s*(.+?)\s*\|\s*(.+?)\s*\|\s*ports?:\s*(.*)$/);
+      // Pattern 1 (standard): "- name | purpose | ports: ..."
+      const p1 = line.match(/^[-*]\s*\*{0,2}(.+?)\*{0,2}\s*\|\s*(.+?)\s*\|\s*ports?:\s*(.*)$/);
+      // Pattern 2 (dash-separated): "- name — purpose. Ports: ..." or "- name - purpose (ports: ...)"
+      const p2 = !p1 ? line.match(/^[-*]\s*\*{0,2}(.+?)\*{0,2}\s*[—–-]\s*(.+?)(?:\.\s*|\s+)(?:ports?:\s*|PORTS:\s*|\(ports?:\s*)(.+?)\)?\s*$/) : null;
+      // Pattern 3 (numbered): "1. name | purpose | ports: ..."
+      const p3 = !p1 && !p2 ? line.match(/^\d+\.\s*\*{0,2}(.+?)\*{0,2}\s*\|\s*(.+?)\s*\|\s*ports?:\s*(.*)$/) : null;
+      // Pattern 4 (minimal): "- name | purpose" (no ports listed — use empty)
+      const p4 = !p1 && !p2 && !p3 ? line.match(/^[-*]\s*\*{0,2}(.+?)\*{0,2}\s*\|\s*(.+?)$/) : null;
+
+      const match = p1 || p2 || p3;
       if (match) {
         const name = match[1].trim();
-        const componentPorts = match[3].trim().split(",").map((p) => p.trim()).filter(Boolean);
+        const componentPorts = match[3].trim().split(/[,;]/).map((p) => p.trim()).filter(Boolean)
+          .map((p) => p.replace(/\s*\(.*?\)\s*$/, "").trim());
         subComponents.push({
           name,
           path: `${input.path}/${name}`,
@@ -171,12 +230,20 @@ function parseDesignOutput(raw: string, input: DesignInput): DesignOutput | null
           purpose: match[2].trim(),
           ports: ports.filter((p) => componentPorts.includes(p.name)),
         });
+      } else if (p4) {
+        subComponents.push({
+          name: p4[1].trim(),
+          path: `${input.path}/${p4[1].trim()}`,
+          level: input.level - 1,
+          purpose: p4[2].trim(),
+          ports: [],
+        });
       }
     }
   }
 
   // Parse architecture notes
-  const archMatch = raw.match(/ARCHITECTURE:\s*\n([\s\S]*?)$/);
+  const archMatch = withSections.match(/ARCHITECTURE:\s*\n([\s\S]*?)$/);
   const architectureNotes = archMatch ? archMatch[1].trim() : "";
 
   // Generate portFileContent — actual TypeScript for port interfaces

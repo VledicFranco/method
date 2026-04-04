@@ -4,18 +4,19 @@
  * Wires 3 SLM-compiled modules (Monitor, Observer, Evaluator) into the cognitive
  * cycle and measures their impact on T01-T05 tasks.
  *
- * Five conditions:
- *   flat:                   anthropicProvider + VirtualToolProvider (no cycle)
- *   rule-cognitive:          rule-based Observer + Monitor + Evaluator + ReasonerActor
- *   partitioned-cognitive:   rule-based modules + partitioned workspace (PRD 044 C-4)
- *   monitor-only:            SLM Monitor + rule-based Observer (cycle 0 only) + rule-based Evaluator
- *   slm-cognitive:           SLM Monitor + SLM Observer + SLM Evaluator + frontier ReasonerActor
+ * Six conditions:
+ *   flat:                          anthropicProvider + VirtualToolProvider (no cycle)
+ *   rule-cognitive:                rule-based Observer + Monitor + Evaluator + ReasonerActor
+ *   partitioned-cognitive:         rule-based modules + partitioned workspace (PRD 044 C-4)
+ *   partitioned-cognitive-goal:    partitioned + goal-state monitoring (PRD 045 Wave 3)
+ *   monitor-only:                  SLM Monitor + rule-based Observer (cycle 0 only) + rule-based Evaluator
+ *   slm-cognitive:                 SLM Monitor + SLM Observer + SLM Evaluator + frontier ReasonerActor
  *
  * Usage:
  *   npx tsx experiments/exp-slm/phase-5-cycle/run-slm-cycle.ts [options]
  *
  * Options:
- *   --condition  slm-cognitive | monitor-only | rule-cognitive | partitioned-cognitive | flat  (default: all)
+ *   --condition  slm-cognitive | monitor-only | rule-cognitive | partitioned-cognitive | partitioned-cognitive-goal | flat  (default: all)
  *   --task       1-5 or 'all'   (default: all)
  *   --runs       N               (default: 3)
  *   --config     baseline | v2-minimal  (default: baseline)
@@ -73,6 +74,9 @@ import { createObserver } from '../../../packages/pacta/src/cognitive/modules/ob
 import { createMonitor } from '../../../packages/pacta/src/cognitive/modules/monitor.js';
 import { createEvaluator, type EvaluatorInput } from '../../../packages/pacta/src/cognitive/modules/evaluator.js';
 import { checkConstraintViolations } from '../../../packages/pacta/src/cognitive/modules/constraint-classifier.js';
+import { extractProhibitions } from '../../../packages/pacta/src/cognitive/algebra/constraint-utils.js';
+import type { GoalRepresentation, TerminateSignal, TaskAssessment } from '../../../packages/pacta/src/cognitive/algebra/goal-types.js';
+import { assessTaskWithLLM } from '../../../packages/pacta/src/cognitive/algebra/llm-task-assessment.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
 import type { ContextSelector, PartitionId, PartitionMonitorContext } from '../../../packages/pacta/src/cognitive/algebra/index.js';
@@ -126,7 +130,7 @@ interface TaskDefinition {
 
 const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05, TASK_06];
 
-type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory';
+type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory' | 'partitioned-cognitive-goal';
 
 interface ContextProfile {
   cycle: number;
@@ -154,6 +158,8 @@ interface RunResult {
   monitorInterventions?: number;
   slmMetrics?: SLMRunMetrics;
   contextProfiles?: ContextProfile[];
+  terminatedAt?: number;
+  terminateReason?: TerminateSignal['reason'];
 }
 
 let MAX_CYCLES = 15; // overridable via --max-cycles=N
@@ -681,6 +687,33 @@ async function runPartitionedCognitive(
       contextProfiles,
     };
   }
+}
+
+// ── Goal Extraction ───────────────────────────────────────────
+//
+// PRD 045 Wave 3: Extract a GoalRepresentation from a task definition
+// at cycle 0. Uses task description as objective, extractProhibitions
+// for constraint extraction. Subgoals left empty (future enhancement).
+
+function extractGoalFromTask(task: TaskDefinition): GoalRepresentation {
+  const description = task.description;
+
+  // Extract constraints by scanning for prohibition patterns in the description
+  const constraints: string[] = [];
+  const sentences = description.split(/(?<=[.!?\n])\s+/);
+  for (const sentence of sentences) {
+    // Check if sentence contains a prohibition pattern
+    if (/\b(?:must\s+not|do\s+not|never|shall\s+not|cannot|don'?t)\b/i.test(sentence)) {
+      constraints.push(sentence.trim());
+    }
+  }
+
+  return {
+    objective: description,
+    constraints,
+    subgoals: [],
+    aspiration: 0.80,
+  };
 }
 
 // ── Condition E+: Partitioned Smart ────────────────────────────
@@ -1217,6 +1250,505 @@ async function runPartitionedSmart(
       toolCalls: allToolCalls,
       monitorInterventions,
       contextProfiles,
+    };
+  }
+}
+
+// ── Condition G: Partitioned Cognitive + Goal-State Monitoring ──
+//
+// PRD 045 Wave 3: Combines partitioned workspace (from partitioned-smart)
+// with goal-state monitoring. The Evaluator receives a GoalRepresentation
+// extracted from the task at cycle 0 and computes goal-state discrepancy
+// each cycle. TerminateSignal breaks the cycle loop when goal-satisfied
+// or goal-unreachable.
+
+async function runPartitionedCognitiveGoal(
+  task: TaskDefinition,
+  runNumber: number,
+  config: CognitiveConfig,
+): Promise<RunResult> {
+  const startTime = Date.now();
+  const vfs = new VirtualToolProvider(task.initialFiles);
+
+  const llmProvider = anthropicProvider({
+    model: LLM_MODEL,
+    maxOutputTokens: 2048,
+    ...(extendedThinkingBudget > 0 ? { thinking: { budgetTokens: extendedThinkingBudget } } : {}),
+  });
+  const adapter = createProviderAdapter(llmProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 2048 } },
+  });
+
+  const salienceContext: SalienceContext = {
+    now: Date.now(),
+    goals: ['complete the coding task', 'preserve functionality'],
+    sourcePriorities: new Map([
+      [moduleId('reasoner-actor'), 0.9],
+      [moduleId('observer'), 0.6],
+    ]),
+  };
+
+  const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
+
+  // Larger operational capacity to accommodate memory retrieval entries
+  const partitions = createPartitionSystem({
+    constraintCapacity: 12,
+    operationalCapacity: 20,
+    taskCapacity: 12,
+  });
+
+  // Extract goal representation from task at setup time
+  const goalRepresentation = extractGoalFromTask(task);
+
+  const monitor = createMonitor({
+    confidenceThreshold: 0.3,
+    stagnationThreshold: config.monitor.stagnationThreshold,
+  });
+  // RFC 005: Evaluator with phase-aware LLM assessment + solvability gating
+  const evalProvider = anthropicProvider({
+    model: LLM_MODEL,
+    maxOutputTokens: 512,
+  });
+  const evalAdapter = createProviderAdapter(evalProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 512 } },
+  });
+  // Pre-task assessment (Koriat's EOL judgment) — parameterizes evaluator
+  const assessResult = await assessTaskWithLLM(evalAdapter, goalRepresentation, MAX_CYCLES, moduleId('evaluator'));
+  const taskAssessment = assessResult.assessment;
+  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)}`);
+  console.log(`    [task-assessment] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+  if (taskAssessment.kpis.length > 0) {
+    console.log(`    [task-assessment] kpis: ${taskAssessment.kpis.join(', ')}`);
+  }
+  const evaluator = createEvaluator({
+    goalRepresentation,
+    maxCycles: MAX_CYCLES,
+    provider: evalAdapter,
+    taskAssessment,
+  });
+  const reasonerActor = createReasonerActor(
+    adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
+    {
+      // RFC 005: Per-module working memory — reasoner maintains plan/understanding
+      workingMemoryConfig: { capacity: 3, includeInContext: true },
+    },
+  );
+
+  // ── Memory layer (ACT-R activation retrieval, zero LLM cost) ──
+  // Retrieves evicted episodic entries when relevant to current context.
+  // Addresses R-18/R-22b partition regression: T04 fails because file reads
+  // get evicted before the agent needs them for writing.
+  const activationCfg = defaultActivationConfig();
+  const memoryStore = createInMemoryDualStore(
+    { episodic: { capacity: 100, encoding: 'verbatim' as const }, semantic: { capacity: 200, encoding: 'extracted' as const, updateRate: 'slow' as const }, consolidation: { replayBatchSize: 5, interleaveRatio: 0.6, schemaConsistencyThreshold: 0.8 } },
+    activationCfg,
+  );
+  const memoryWritePort = {
+    write(entry: import('../../../packages/pacta/src/cognitive/algebra/workspace-types.js').WorkspaceEntry): void {
+      partitions.write(entry, moduleId('memory-v3'));
+    },
+  };
+  const memoryModule = createMemoryV3(memoryStore, memoryWritePort, activationCfg);
+  let memoryState = memoryModule.initialState();
+
+  let totalTokens = 0;
+  let evaluatorTokensTotal = 0;
+  let providerCalls = 0;
+  let monitorInterventions = 0;
+  const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
+  const contextProfiles: PartitionedContextProfile[] = [];
+
+  const lastWriteCycle = new Map<PartitionId, number>([
+    ['constraint', 0],
+    ['operational', 0],
+    ['task', 0],
+  ]);
+
+  let monitorState = monitor.initialState();
+  let evaluatorState = evaluator.initialState();
+  let raState = reasonerActor.initialState();
+  let prevRAMonitoring: MonitoringSignal | null = null;
+
+  const raControl: ReasonerActorControl = {
+    target: moduleId('reasoner-actor'),
+    timestamp: Date.now(),
+    strategy: 'plan',
+    effort: 'medium',
+  };
+
+  const reasonerSelector: ContextSelector = {
+    sources: ['task', 'constraint', 'operational'] as PartitionId[],
+    budget: 8192,
+    strategy: 'salience',
+  };
+
+  // Write-phase enforcer state (same logic as partitioned-smart)
+  let consecutiveReadOnlyCycles = 0;
+  let totalWriteActionsThisRun = 0;
+  let writeEnforcerFired = false;
+  let effectiveWriteBiasThreshold = MAX_CYCLES + 1;
+
+  // Termination tracking
+  let terminatedAt: number | undefined;
+  let terminateReason: TerminateSignal['reason'] | undefined;
+
+  try {
+    for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+      partitions.resetCycleQuotas();
+
+      // 1. SMART OBSERVE (cycle 0 only) — decompose into typed entries
+      if (cycle === 0) {
+        const decomposed = decomposeTaskToEntries(task.description);
+        logDecomposition(decomposed);
+
+        for (const entry of [...decomposed.constraints, ...decomposed.goals, ...decomposed.context]) {
+          const pid = partitions.write(entry, moduleId('observer'));
+          lastWriteCycle.set(pid, cycle);
+        }
+
+        // Activate write-phase enforcer only for complex multi-file tasks (≥4 goals)
+        if (decomposed.goals.length >= 4) {
+          effectiveWriteBiasThreshold = WRITE_BIAS_THRESHOLD;
+          console.log(`    [write-enforcer] activated (${decomposed.goals.length} goals detected, threshold=${WRITE_BIAS_THRESHOLD})`);
+        } else {
+          console.log(`    [write-enforcer] disabled (${decomposed.goals.length} goals — too few for enforcement)`);
+        }
+
+        // Write full description to monolithic workspace (for backward compat)
+        workspace.getWritePort(moduleId('observer')).write({
+          source: moduleId('observer'),
+          content: task.description,
+          salience: 0.9,
+          timestamp: Date.now(),
+        } as any);
+
+        // Log goal extraction
+        console.log(`    [goal-state] objective=${goalRepresentation.objective.slice(0, 80)}...`);
+        console.log(`    [goal-state] constraints=${goalRepresentation.constraints.length}, aspiration=${goalRepresentation.aspiration}`);
+      }
+
+      // 2. MONITOR
+      const monitorSignals: AggregatedSignals = new Map();
+      if (prevRAMonitoring) {
+        monitorSignals.set(moduleId('reasoner-actor'), prevRAMonitoring);
+      }
+      const monResult = await monitor.step(
+        monitorSignals, monitorState,
+        { target: moduleId('monitor'), timestamp: Date.now() } as any,
+      );
+      monitorState = monResult.state;
+
+      // 3. EVALUATE (goal-state comparison)
+      const evalInput: EvaluatorInput = {
+        workspace: workspace.getReadPort(moduleId('evaluator')).read(),
+        signals: monitorSignals,
+      };
+      const evalResult = await evaluator.step(
+        evalInput, evaluatorState,
+        { target: moduleId('evaluator'), timestamp: Date.now(), evaluationHorizon: 'trajectory' },
+      );
+      evaluatorState = evalResult.state;
+      evaluatorTokensTotal += evalResult.output.evaluatorTokens ?? 0;
+
+      // Log goal-state discrepancy + solvability
+      if (evalResult.output.discrepancy) {
+        const d = evalResult.output.discrepancy;
+        const s = evalResult.output.solvability;
+        const phase = evalResult.output.currentPhase ?? '';
+        const llmTag = d.basis.startsWith('llm-phase-aware') ? ' [PA]' : d.basis.startsWith('llm-') ? ' [LLM]' : ' [rule]';
+        const solvTag = s ? ` solv=${s.probability.toFixed(2)}` : '';
+        const phaseTag = phase ? ` phase=${phase}` : '';
+        console.log(`    [goal-state c${cycle + 1}]${llmTag} disc=${d.discrepancy.toFixed(3)} rate=${d.rate.toFixed(3)} conf=${d.confidence.toFixed(2)} sat=${d.satisfied}${solvTag}${phaseTag}`);
+        if (d.basis.startsWith('llm-')) {
+          console.log(`      ${d.basis}`);
+        }
+      }
+
+      // PRD 045: Check TerminateSignal — break cycle loop if present
+      if (evalResult.output.terminateSignal) {
+        const ts = evalResult.output.terminateSignal;
+        terminatedAt = cycle + 1;
+        terminateReason = ts.reason;
+        console.log(`    [TERMINATE c${cycle + 1}] reason=${ts.reason} confidence=${ts.confidence.toFixed(2)}`);
+        break;
+      }
+
+      // Apply monitor enforcement
+      if (monResult.monitoring.anomalyDetected) {
+        monitorInterventions++;
+        raControl.restrictedActions = monResult.output.restrictedActions;
+        raControl.forceReplan = monResult.output.forceReplan;
+        if (monResult.output.forceReplan) raControl.strategy = 'plan';
+      }
+
+      // Write-phase enforcer
+      const enforcerThreshold = totalWriteActionsThisRun === 0
+        ? effectiveWriteBiasThreshold
+        : effectiveWriteBiasThreshold + 3;
+      if (consecutiveReadOnlyCycles >= enforcerThreshold) {
+        const directive =
+          `[METACOGNITIVE ALERT] You have been reading for ${consecutiveReadOnlyCycles} consecutive cycles. ` +
+          (totalWriteActionsThisRun === 0
+            ? `You have NOT created or modified any files yet. The task requires creating files. `
+            : `You have written ${totalWriteActionsThisRun} file(s) so far, but there are more files to create or update. `) +
+          `Your NEXT action MUST be Write or Edit on a required file. Do not use Read, Grep, or Glob.`;
+        if (!writeEnforcerFired || consecutiveReadOnlyCycles === enforcerThreshold) {
+          partitions.write({
+            source: moduleId('monitor'),
+            content: directive,
+            salience: 1.0,
+            timestamp: Date.now(),
+          } as any, moduleId('monitor'));
+          writeEnforcerFired = true;
+          console.log(`    [write-enforcer c${cycle + 1}] ${consecutiveReadOnlyCycles} read-only cycles (writes so far: ${totalWriteActionsThisRun}) — forcing write`);
+        }
+        raControl.restrictedActions = ['Read', 'Grep', 'Glob', 'List', 'Bash', 'SearchFiles'];
+        raControl.forceReplan = false;
+        raControl.strategy = 'plan';
+      }
+
+      // 4. REASON+ACT — partitioned context
+      const monoSnapshot = workspace.getReadPort(moduleId('reasoner-actor')).read();
+      const monoTokens = monoSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
+
+      const partSnapshot = partitions.buildContext(reasonerSelector);
+      const partTokens = partSnapshot.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0);
+
+      const reduction = monoTokens > 0 ? Math.round((1 - partTokens / monoTokens) * 100) : 0;
+      console.log(`    [c${cycle + 1}] context: mono=${monoSnapshot.length}e/${monoTokens}tok → part=${partSnapshot.length}e/${partTokens}tok (${reduction}% reduction)`);
+
+      const perPartition: Record<string, { entries: number; tokens: number }> = {};
+      for (const pid of ['constraint', 'operational', 'task'] as PartitionId[]) {
+        const pEntries = partitions.getPartition(pid).snapshot();
+        perPartition[pid] = {
+          entries: pEntries.length,
+          tokens: pEntries.reduce((sum, e) => sum + Math.ceil(String(e.content).length / 4), 0),
+        };
+      }
+
+      const perModule: Record<string, { entries: number; tokens: number }> = {};
+      for (const entry of monoSnapshot) {
+        const src = String((entry as any).source ?? 'unknown');
+        if (!perModule[src]) perModule[src] = { entries: 0, tokens: 0 };
+        perModule[src].entries++;
+        perModule[src].tokens += Math.ceil(String(entry.content).length / 4);
+      }
+
+      contextProfiles.push({
+        cycle,
+        totalEntries: partSnapshot.length,
+        estimatedTokens: partTokens,
+        pinnedEntries: partSnapshot.filter((e: any) => e.pinned).length,
+        observerEntries: partSnapshot.filter((e: any) => String(e.source) === 'observer').length,
+        perPartition,
+        perModule,
+      });
+
+      // REMEMBER: ACT-R activation retrieval from episodic memory (zero LLM cost).
+      // Retrieves evicted entries relevant to current context.
+      let enrichedSnapshot = partSnapshot;
+      const memResult = await memoryModule.step(
+        { snapshot: partSnapshot },
+        memoryState,
+        { target: moduleId('memory-v3'), timestamp: Date.now() },
+      );
+      memoryState = memResult.state;
+      if (memResult.output.count > 0) {
+        console.log(`    [memory c${cycle + 1}] retrieved ${memResult.output.count} entries`);
+        enrichedSnapshot = partitions.snapshot() as any[];
+      }
+
+      const snapshot: ReadonlyWorkspaceSnapshot = enrichedSnapshot;
+      const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
+      raState = raResult.state;
+      prevRAMonitoring = raResult.monitoring;
+      providerCalls++;
+      totalTokens += (raResult.monitoring as any).tokensThisStep ?? 0;
+
+      if ((raResult as any).error) {
+        console.log(`    [c${cycle + 1}] ERROR: ${(raResult as any).error?.message}`);
+      }
+
+      const actionName = raResult.output.actionName;
+      const isWriteAction = actionName === 'Write' || actionName === 'Edit';
+
+      // Update write-phase enforcer counters
+      if (isWriteAction) {
+        consecutiveReadOnlyCycles = 0;
+        totalWriteActionsThisRun++;
+        writeEnforcerFired = false;
+
+        // Stale memory invalidation: expire episodes about files that were just modified
+        const modifiedPaths: string[] = [];
+        for (const [path] of vfs.files) {
+          if (!(path in task.initialFiles) || vfs.files.get(path) !== task.initialFiles[path]) {
+            modifiedPaths.push(path);
+          }
+        }
+        if (modifiedPaths.length > 0) {
+          const allEpisodes = await memoryStore.allEpisodic();
+          let expired = 0;
+          for (const ep of allEpisodes) {
+            const matchesModified = modifiedPaths.some(p =>
+              ep.content.includes(p) || ep.context.some(t => t.includes(p)),
+            );
+            if (matchesModified) {
+              await memoryStore.expireEpisodic(ep.id);
+              expired++;
+            }
+          }
+          if (expired > 0) {
+            console.log(`    [memory-invalidate c${cycle + 1}] expired ${expired} stale entries`);
+          }
+        }
+
+        if (raControl.restrictedActions?.includes('Read')) {
+          raControl.restrictedActions = [];
+          raControl.strategy = 'plan';
+        }
+
+        // Progress injection
+        const newFiles: string[] = [];
+        const modifiedFiles: string[] = [];
+        for (const [path] of vfs.files) {
+          if (!(path in task.initialFiles)) {
+            newFiles.push(path.split('/').pop() ?? path);
+          } else if (vfs.files.get(path) !== task.initialFiles[path]) {
+            modifiedFiles.push(path.split('/').pop() ?? path);
+          }
+        }
+        if (newFiles.length > 0 || modifiedFiles.length > 0) {
+          const progressNote =
+            `[PROGRESS c${cycle + 1}] ` +
+            (newFiles.length > 0 ? `Created: ${newFiles.join(', ')}. ` : '') +
+            (modifiedFiles.length > 0 ? `Updated: ${modifiedFiles.join(', ')}. ` : '') +
+            `Continue working through remaining items in your goal list.`;
+          partitions.write({
+            source: moduleId('monitor'),
+            content: progressNote,
+            salience: 0.85,
+            timestamp: Date.now(),
+          } as any, moduleId('monitor'));
+        }
+      } else if (READ_ONLY_ACTION_NAMES.has(actionName)) {
+        consecutiveReadOnlyCycles++;
+      }
+
+      if (raResult.output.toolResult) {
+        allToolCalls.push({
+          tool: actionName,
+          input: raResult.output.toolResult,
+          success: (raResult.monitoring as any).success ?? true,
+        });
+
+        const toolContent = typeof raResult.output.toolResult === 'object'
+          ? JSON.stringify(raResult.output.toolResult)
+          : String(raResult.output.toolResult);
+        partitions.write(
+          {
+            content: `[${actionName}] ${toolContent.slice(0, 500)}`,
+            timestamp: Date.now(),
+            source: moduleId('reasoner-actor'),
+            contentType: 'tool-result',
+          } as any,
+          moduleId('reasoner-actor'),
+        );
+        lastWriteCycle.set('operational', cycle);
+
+        // STORE: save tool result as episodic entry for ACT-R retrieval
+        const contextTags = [actionName.toLowerCase()];
+        const pathMatch = toolContent.match(/[\w/.-]+\.\w{1,4}/g);
+        if (pathMatch) contextTags.push(...pathMatch.slice(0, 3));
+        await memoryStore.storeEpisodic({
+          id: `ep-c${cycle}-${actionName}-${Date.now()}`,
+          content: `[${actionName}] ${toolContent.slice(0, 1000)}`,
+          context: contextTags,
+          timestamp: Date.now(),
+          accessCount: 1,
+          lastAccessed: Date.now(),
+        });
+      }
+
+      const conf = (raResult.monitoring as any).confidence ?? 0;
+      const tok = (raResult.monitoring as any).tokensThisStep ?? 0;
+      const stag = monResult.monitoring.anomalyDetected ? ' stag' : '';
+      const writeTag = isWriteAction ? ' ✎WRITE' : '';
+      console.log(`    [c${cycle + 1}] ${actionName}  conf=${conf.toFixed(2)}  tok=${tok}  readOnly=${consecutiveReadOnlyCycles}${stag}${writeTag}`);
+
+      // Post-ACT partition monitors
+      const actContent = typeof (raResult.output as any).lastOutput === 'string'
+        ? (raResult.output as any).lastOutput : '';
+      const partMonitorCtx: PartitionMonitorContext = {
+        cycleNumber: cycle,
+        lastWriteCycle,
+        actorOutput: actContent || undefined,
+      };
+      const partSignals = partitions.checkPartitions(partMonitorCtx);
+      for (const sig of partSignals.filter(s => s.severity === 'critical' || s.severity === 'high')) {
+        console.log(`    partition signal [${sig.severity}] ${sig.partition}: ${sig.type} — ${sig.detail}`);
+        if (sig.type === 'constraint-violation') {
+          raControl.restrictedActions = ['Write'];
+          raControl.forceReplan = true;
+          raControl.strategy = 'plan';
+        } else if (sig.type === 'stagnation') {
+          raControl.forceReplan = false;
+        }
+      }
+
+      // Constraint check from constraint partition
+      const pinnedEntries = partitions.getPartition('constraint').snapshot().filter((e: any) => e.pinned);
+      if (pinnedEntries.length > 0 && actContent) {
+        const violations = checkConstraintViolations(pinnedEntries, actContent);
+        if (violations.length > 0) {
+          for (const v of violations) {
+            console.log(`    constraint violation: ${v.constraint.slice(0, 80)} | matched: ${v.violation}`);
+          }
+          raControl.restrictedActions = ['Write'];
+          raControl.forceReplan = true;
+          raControl.strategy = 'plan';
+        }
+      }
+
+      if (isWriteAction && raControl.forceReplan) {
+        raControl.forceReplan = false;
+        raControl.strategy = 'plan';
+      }
+
+      if (actionName === 'done') break;
+    }
+
+    console.log(`    [evaluator tokens] ${evaluatorTokensTotal}`);
+    const validation = task.validate(vfs.files);
+    return {
+      condition: 'partitioned-cognitive-goal',
+      task: task.name,
+      run: runNumber,
+      success: validation.success,
+      reason: validation.reason,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+      terminatedAt,
+      terminateReason,
+    };
+  } catch (err) {
+    return {
+      condition: 'partitioned-cognitive-goal',
+      task: task.name,
+      run: runNumber,
+      success: false,
+      reason: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      tokensUsed: totalTokens + evaluatorTokensTotal,
+      providerCalls,
+      durationMs: Date.now() - startTime,
+      toolCalls: allToolCalls,
+      monitorInterventions,
+      contextProfiles,
+      terminatedAt,
+      terminateReason,
     };
   }
 }
@@ -2058,10 +2590,13 @@ function printResult(r: RunResult) {
     const observerPct = totalAll > 0 ? Math.round(totalObserver / totalAll * 100) : 0;
     console.log(`    context: avg=${avgEntries} entries (${avgTokens}tok), peak=${peakEntries} entries (${peakTokens}tok), observer_pct=${observerPct}%`);
   }
+  if (r.terminatedAt !== undefined) {
+    console.log(`    terminated: cycle ${r.terminatedAt}, reason=${r.terminateReason}`);
+  }
 }
 
 function printComparison(results: RunResult[]) {
-  const conditions: Condition[] = ['flat', 'rule-cognitive', 'partitioned-cognitive', 'partitioned-smart', 'monitor-only', 'slm-cognitive'];
+  const conditions: Condition[] = ['flat', 'rule-cognitive', 'partitioned-cognitive', 'partitioned-smart', 'partitioned-cognitive-goal', 'monitor-only', 'slm-cognitive'];
 
   console.log('\n--- Comparison ---');
   console.log(`${'Condition'.padEnd(20)} ${'Pass'.padEnd(8)} ${'Avg Tok'.padEnd(10)} ${'Avg Dur'.padEnd(10)} ${'Fallback%'.padEnd(10)}`);
@@ -2295,6 +2830,15 @@ async function main() {
       console.log('\nCondition: partitioned-memory (CLS dual-store + ACT-R retrieval)');
       for (let i = 1; i <= numRuns; i++) {
         const r = await runPartitionedSmart(task, i, cognitiveConfig, { withMemory: true });
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runConditions.has('partitioned-cognitive-goal')) {
+      console.log('\nCondition: partitioned-cognitive-goal (PRD 045 goal-state monitoring)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runPartitionedCognitiveGoal(task, i, cognitiveConfig);
         printResult(r);
         results.push(r);
       }

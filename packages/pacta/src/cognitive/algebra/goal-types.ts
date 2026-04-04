@@ -93,3 +93,48 @@ export interface TerminateSignal extends MonitoringSignal {
   confidence: number;
   evidence: GoalDiscrepancy;
 }
+
+// ── Task Assessment (RFC 006 — Anticipatory Monitoring) ───────
+
+/**
+ * Pre-task assessment produced by the Planner (or LLM call) at cycle 0.
+ *
+ * Parameterizes the Evaluator's metamonitor with phase expectations,
+ * difficulty estimate, and solvability prior. Without this, the Evaluator
+ * has no reference trajectory (see R-20/R-21 findings).
+ *
+ * Grounded in Koriat's Ease-of-Learning judgment (2007) and Carver-Scheier's
+ * multi-level control hierarchy (1998).
+ */
+export interface TaskAssessment {
+  /** Estimated difficulty level. */
+  difficulty: 'low' | 'medium' | 'high';
+  /** Expected execution phases with cycle budgets. */
+  phases: TaskPhase[];
+  /** Initial solvability estimate [0, 1]. */
+  solvabilityPrior: number;
+  /** Observable indicators for progress tracking. */
+  kpis: string[];
+  /** Estimated total cycles needed. */
+  estimatedCycles: number;
+}
+
+/** A phase in the expected task execution trajectory. */
+export interface TaskPhase {
+  /** Phase name. */
+  name: string;
+  /** Expected cycle range [start, end]. */
+  expectedCycles: [number, number];
+  /** What progress looks like in this phase. */
+  progressIndicator: string;
+}
+
+/** Solvability signal — maintained separately from discrepancy. */
+export interface SolvabilityEstimate {
+  /** Current P(solvable) estimate [0, 1]. */
+  probability: number;
+  /** What's driving the estimate. */
+  evidence: string;
+  /** Rate of change per cycle. */
+  trend: number;
+}

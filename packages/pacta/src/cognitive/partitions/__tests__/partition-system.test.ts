@@ -5,7 +5,8 @@
  * building, budget enforcement, monitor execution, snapshots, and quotas.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { createPartitionSystem } from '../partition-system.js';
 import { moduleId } from '../../algebra/module.js';
 import type { WorkspaceEntry } from '../../algebra/workspace-types.js';
@@ -35,9 +36,9 @@ describe('createPartitionSystem', () => {
   it('creates system with default config', () => {
     const system = createPartitionSystem();
 
-    expect(system.getPartition('constraint')).toBeDefined();
-    expect(system.getPartition('operational')).toBeDefined();
-    expect(system.getPartition('task')).toBeDefined();
+    assert.notStrictEqual(system.getPartition('constraint'), undefined);
+    assert.notStrictEqual(system.getPartition('operational'), undefined);
+    assert.notStrictEqual(system.getPartition('task'), undefined);
   });
 
   it('creates system with custom capacities', () => {
@@ -47,14 +48,14 @@ describe('createPartitionSystem', () => {
       taskCapacity: 3,
     });
 
-    expect(system.getPartition('constraint')).toBeDefined();
-    expect(system.getPartition('operational')).toBeDefined();
-    expect(system.getPartition('task')).toBeDefined();
+    assert.notStrictEqual(system.getPartition('constraint'), undefined);
+    assert.notStrictEqual(system.getPartition('operational'), undefined);
+    assert.notStrictEqual(system.getPartition('task'), undefined);
   });
 
   it('throws for unknown partition id', () => {
     const system = createPartitionSystem();
-    expect(() => system.getPartition('unknown' as any)).toThrow('Unknown partition');
+    assert.throws(() => system.getPartition('unknown' as any), /Unknown partition/);
   });
 });
 
@@ -70,9 +71,9 @@ describe('write()', () => {
 
     system.write(entry, MOD_OBSERVER);
 
-    expect(system.getPartition('constraint').count()).toBe(1);
-    expect(system.getPartition('operational').count()).toBe(0);
-    expect(system.getPartition('task').count()).toBe(0);
+    assert.strictEqual(system.getPartition('constraint').count(), 1);
+    assert.strictEqual(system.getPartition('operational').count(), 0);
+    assert.strictEqual(system.getPartition('task').count(), 0);
   });
 
   it('routes tool result to operational partition', () => {
@@ -83,9 +84,9 @@ describe('write()', () => {
 
     system.write(entry, MOD_ACTOR);
 
-    expect(system.getPartition('operational').count()).toBe(1);
-    expect(system.getPartition('constraint').count()).toBe(0);
-    expect(system.getPartition('task').count()).toBe(0);
+    assert.strictEqual(system.getPartition('operational').count(), 1);
+    assert.strictEqual(system.getPartition('constraint').count(), 0);
+    assert.strictEqual(system.getPartition('task').count(), 0);
   });
 
   it('routes goal text to task partition', () => {
@@ -96,9 +97,9 @@ describe('write()', () => {
 
     system.write(entry, MOD_OBSERVER);
 
-    expect(system.getPartition('task').count()).toBe(1);
-    expect(system.getPartition('constraint').count()).toBe(0);
-    expect(system.getPartition('operational').count()).toBe(0);
+    assert.strictEqual(system.getPartition('task').count(), 1);
+    assert.strictEqual(system.getPartition('constraint').count(), 0);
+    assert.strictEqual(system.getPartition('operational').count(), 0);
   });
 
   it('routes actor source to operational regardless of content', () => {
@@ -110,8 +111,8 @@ describe('write()', () => {
     // Actor source overrides content classification.
     system.write(entry, MOD_ACTOR);
 
-    expect(system.getPartition('operational').count()).toBe(1);
-    expect(system.getPartition('constraint').count()).toBe(0);
+    assert.strictEqual(system.getPartition('operational').count(), 1);
+    assert.strictEqual(system.getPartition('constraint').count(), 0);
   });
 });
 
@@ -131,8 +132,8 @@ describe('buildContext()', () => {
       strategy: 'all',
     });
 
-    expect(context.length).toBe(1);
-    expect(String(context[0].content)).toContain('must not import');
+    assert.strictEqual(context.length, 1);
+    assert.ok(String(context[0].content).includes('must not import'));
   });
 
   it('returns entries from multiple sources', () => {
@@ -148,7 +149,7 @@ describe('buildContext()', () => {
       strategy: 'all',
     });
 
-    expect(context.length).toBe(2);
+    assert.strictEqual(context.length, 2);
   });
 
   it('respects budget', () => {
@@ -168,7 +169,7 @@ describe('buildContext()', () => {
     });
 
     // With budget 5, each entry ~4 tokens (ceil(13/4)=4). Only 1 fits.
-    expect(context.length).toBeLessThan(4);
+    assert.ok(context.length < 4);
   });
 
   it('with all strategy from constraint partition gets everything', () => {
@@ -184,7 +185,7 @@ describe('buildContext()', () => {
       strategy: 'all',
     });
 
-    expect(context.length).toBe(3);
+    assert.strictEqual(context.length, 3);
   });
 
   it('returns empty for empty sources array', () => {
@@ -197,7 +198,7 @@ describe('buildContext()', () => {
       strategy: 'all',
     });
 
-    expect(context).toHaveLength(0);
+    assert.strictEqual(context.length, 0);
   });
 });
 
@@ -212,12 +213,12 @@ describe('snapshot()', () => {
     system.write(makeEntry('Your task is to build tests.'), MOD_OBSERVER);
 
     const snap = system.snapshot();
-    expect(snap.length).toBe(3);
+    assert.strictEqual(snap.length, 3);
   });
 
   it('returns empty when no entries', () => {
     const system = createPartitionSystem();
-    expect(system.snapshot()).toHaveLength(0);
+    assert.strictEqual(system.snapshot().length, 0);
   });
 });
 
@@ -247,9 +248,9 @@ describe('checkPartitions()', () => {
 
     // Should have at least: violation + stagnation + goal-stale.
     const types = signals.map((s) => s.type);
-    expect(types).toContain('constraint-violation');
-    expect(types).toContain('stagnation');
-    expect(types).toContain('goal-stale');
+    assert.ok(types.includes('constraint-violation'));
+    assert.ok(types.includes('stagnation'));
+    assert.ok(types.includes('goal-stale'));
   });
 
   it('returns empty signals when everything is healthy', () => {
@@ -265,7 +266,7 @@ describe('checkPartitions()', () => {
     };
 
     const signals = system.checkPartitions(context);
-    expect(signals).toHaveLength(0);
+    assert.strictEqual(signals.length, 0);
   });
 });
 
@@ -274,6 +275,6 @@ describe('checkPartitions()', () => {
 describe('resetCycleQuotas()', () => {
   it('does not throw', () => {
     const system = createPartitionSystem();
-    expect(() => system.resetCycleQuotas()).not.toThrow();
+    assert.doesNotThrow(() => system.resetCycleQuotas());
   });
 });

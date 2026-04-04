@@ -1,0 +1,102 @@
+experiment: exp-slm
+run_id: r20-goal-state-rule-based
+date: 2026-04-03
+agent: "Claude Opus 4.6"
+config:
+  task: "PRD 045 Wave 3 — goal-state monitoring with rule-based discrepancy (partitioned-cognitive-goal)"
+  conditions: ["partitioned-cognitive-goal"]
+  baseline_comparison: "R-15 (flat, 15 cycles, 73%), R-18 (partitioned, 15 cycles, 27%)"
+  n_per_task: 3
+  max_cycles: 15
+  workspace:
+    constraint_capacity: 12
+    operational_capacity: 14
+    task_capacity: 12
+  modules:
+    observer: "rule-based, cycle 0 only"
+    monitor: "rule-based"
+    evaluator: "rule-based discrepancy (computeDiscrepancy: keyword overlap + constraint satisfaction + write activity)"
+    reasoner_actor: "Claude Sonnet 4 (frontier)"
+  goal_state:
+    extraction: "extractGoalFromTask() — task description as objective, prohibition pattern matching for constraints"
+    discrepancy: "rule-based (algebra/discrepancy-function.ts)"
+    aspiration_initial: 0.80
+    terminate_satisfied_gate: 0.70
+    terminate_unreachable_threshold: "60% of maxCycles with rate <= 0 + diminishingReturns"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01_circular_dep:
+      goal_state_15cyc: { pass: 1, fail: 2, rate: 0.33 }
+      note: "All 3 runs terminated at cycle 10 (goal-unreachable). Discrepancy flatlined at 0.300, confidence 0.50."
+    t02_bug_fix:
+      goal_state_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "All terminated cycle 10. Constant discrepancy 0.300."
+    t03_config_migration:
+      goal_state_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "All terminated cycle 10."
+    t04_api_versioning:
+      goal_state_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "All terminated cycle 10."
+    t05_dead_code:
+      goal_state_15cyc: { pass: 3, fail: 0, rate: 1.00 }
+      note: "Only task passing — requires NO writes. Agent correctly identifies no dead code before termination."
+    t06_multi_module:
+      goal_state_15cyc: { pass: 0, fail: 3, rate: 0.00 }
+      note: "All terminated cycle 10."
+
+  overall:
+    goal_state_15cyc: { pass: 4, fail: 14, rate: 0.22 }
+    r15_flat_15cyc: { pass: 11, fail: 4, rate: 0.73 }
+    r18_partitioned_15cyc: { pass: 4, fail: 11, rate: 0.27 }
+
+  termination_analysis:
+    total_runs: 18
+    terminated_goal_unreachable: 18
+    terminated_goal_satisfied: 0
+    terminated_budget: 0
+    terminated_done_action: 0
+    mean_termination_cycle: 10.0
+    termination_pattern: "Universal termination at cycle 10 (67% of 15 = 60% threshold)"
+
+findings:
+  - id: F1
+    title: "Rule-based discrepancy function cannot measure progress"
+    detail: >
+      computeDiscrepancy() produces constant output (0.300 discrepancy, 0.50 confidence)
+      regardless of actual task progress. The function uses keyword overlap between goal
+      description and workspace content — but the workspace contains tool calls and file
+      contents, not goal-matching keywords. The signal is meaningless.
+
+  - id: F2
+    title: "Universal premature termination — 100% of runs killed at cycle 10"
+    detail: >
+      Every single run terminates at cycle 10 with goal-unreachable. The mechanism:
+      (1) discrepancy flatlines at 0.300 with rate=0.000 from cycle 1-9,
+      (2) at cycle 10 (67% of 15 = past 60% threshold), the unreachable heuristic fires
+      because rate <= 0 and diminishingReturns is true. The heuristic is correct given
+      its inputs — the inputs are wrong.
+
+  - id: F3
+    title: "satisfied=true triggered but blocked by confidence gate"
+    detail: >
+      From cycle 4 onward in many runs, satisfied=true (discrepancy 0.300 < 1-0.80=0.20
+      is FALSE, but aspiration drops below 0.80 via Selten adaptation, eventually making
+      the threshold 0.40 which 0.300 IS below). However, the confidence (0.50) never
+      exceeds the 0.70 gate, so goal-satisfied termination never fires. The rule-based
+      confidence estimator can't reach high confidence without subgoals.
+
+  - id: F4
+    title: "Goal-state monitoring architecture is sound — discrepancy function is the bottleneck"
+    detail: >
+      The cycle integration (Wave 2), TerminateSignal propagation, and experiment runner
+      integration (Wave 3) all work correctly. The architecture faithfully implements the
+      Carver-Scheier cybernetic loop. The problem is purely in the comparator (discrepancy
+      function) — it can't actually compare workspace state to goal state. This motivates
+      upgrading to an LLM-based evaluator (frontier model first, then SLM compilation).
+
+next_steps:
+  - "R-21: Replace rule-based discrepancy with frontier LLM evaluator"
+  - "If R-21 shows LLM can measure progress accurately, investigate termination tuning"
