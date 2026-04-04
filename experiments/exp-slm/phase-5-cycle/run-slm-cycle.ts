@@ -1290,9 +1290,10 @@ async function runPartitionedCognitiveGoal(
 
   const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
 
+  // Larger operational capacity to accommodate memory retrieval entries
   const partitions = createPartitionSystem({
     constraintCapacity: 12,
-    operationalCapacity: 14,
+    operationalCapacity: 20,
     taskCapacity: 12,
   });
 
@@ -1328,6 +1329,23 @@ async function runPartitionedCognitiveGoal(
   const reasonerActor = createReasonerActor(
     adapter, vfs, workspace.getWritePort(moduleId('reasoner-actor')),
   );
+
+  // ── Memory layer (ACT-R activation retrieval, zero LLM cost) ──
+  // Retrieves evicted episodic entries when relevant to current context.
+  // Addresses R-18/R-22b partition regression: T04 fails because file reads
+  // get evicted before the agent needs them for writing.
+  const activationCfg = defaultActivationConfig();
+  const memoryStore = createInMemoryDualStore(
+    { episodic: { capacity: 100, encoding: 'verbatim' as const }, semantic: { capacity: 200, encoding: 'extracted' as const, updateRate: 'slow' as const }, consolidation: { replayBatchSize: 5, interleaveRatio: 0.6, schemaConsistencyThreshold: 0.8 } },
+    activationCfg,
+  );
+  const memoryWritePort = {
+    write(entry: import('../../../packages/pacta/src/cognitive/algebra/workspace-types.js').WorkspaceEntry): void {
+      partitions.write(entry, moduleId('memory-v3'));
+    },
+  };
+  const memoryModule = createMemoryV3(memoryStore, memoryWritePort, activationCfg);
+  let memoryState = memoryModule.initialState();
 
   let totalTokens = 0;
   let evaluatorTokensTotal = 0;
@@ -1522,7 +1540,21 @@ async function runPartitionedCognitiveGoal(
         perModule,
       });
 
-      const snapshot: ReadonlyWorkspaceSnapshot = partSnapshot;
+      // REMEMBER: ACT-R activation retrieval from episodic memory (zero LLM cost).
+      // Retrieves evicted entries relevant to current context.
+      let enrichedSnapshot = partSnapshot;
+      const memResult = await memoryModule.step(
+        { snapshot: partSnapshot },
+        memoryState,
+        { target: moduleId('memory-v3'), timestamp: Date.now() },
+      );
+      memoryState = memResult.state;
+      if (memResult.output.count > 0) {
+        console.log(`    [memory c${cycle + 1}] retrieved ${memResult.output.count} entries`);
+        enrichedSnapshot = partitions.snapshot() as any[];
+      }
+
+      const snapshot: ReadonlyWorkspaceSnapshot = enrichedSnapshot;
       const raResult = await reasonerActor.step({ snapshot }, raState, raControl);
       raState = raResult.state;
       prevRAMonitoring = raResult.monitoring;
@@ -1541,6 +1573,30 @@ async function runPartitionedCognitiveGoal(
         consecutiveReadOnlyCycles = 0;
         totalWriteActionsThisRun++;
         writeEnforcerFired = false;
+
+        // Stale memory invalidation: expire episodes about files that were just modified
+        const modifiedPaths: string[] = [];
+        for (const [path] of vfs.files) {
+          if (!(path in task.initialFiles) || vfs.files.get(path) !== task.initialFiles[path]) {
+            modifiedPaths.push(path);
+          }
+        }
+        if (modifiedPaths.length > 0) {
+          const allEpisodes = await memoryStore.allEpisodic();
+          let expired = 0;
+          for (const ep of allEpisodes) {
+            const matchesModified = modifiedPaths.some(p =>
+              ep.content.includes(p) || ep.context.some(t => t.includes(p)),
+            );
+            if (matchesModified) {
+              await memoryStore.expireEpisodic(ep.id);
+              expired++;
+            }
+          }
+          if (expired > 0) {
+            console.log(`    [memory-invalidate c${cycle + 1}] expired ${expired} stale entries`);
+          }
+        }
 
         if (raControl.restrictedActions?.includes('Read')) {
           raControl.restrictedActions = [];
@@ -1594,6 +1650,19 @@ async function runPartitionedCognitiveGoal(
           moduleId('reasoner-actor'),
         );
         lastWriteCycle.set('operational', cycle);
+
+        // STORE: save tool result as episodic entry for ACT-R retrieval
+        const contextTags = [actionName.toLowerCase()];
+        const pathMatch = toolContent.match(/[\w/.-]+\.\w{1,4}/g);
+        if (pathMatch) contextTags.push(...pathMatch.slice(0, 3));
+        await memoryStore.storeEpisodic({
+          id: `ep-c${cycle}-${actionName}-${Date.now()}`,
+          content: `[${actionName}] ${toolContent.slice(0, 1000)}`,
+          context: contextTags,
+          timestamp: Date.now(),
+          accessCount: 1,
+          lastAccessed: Date.now(),
+        });
       }
 
       const conf = (raResult.monitoring as any).confidence ?? 0;
