@@ -328,6 +328,91 @@ T01-T06 battery with N=5 at 15 and 30 cycles.
   partition eviction policy (prefer constraint entries during explore phase, prefer
   operational entries during execute phase). Interaction to be explored after R-22.
 
+## Module Working Memory — Closing the Algebra
+
+### The Algebraic Gap
+
+RFC 001 defines the module signature as:
+
+```
+Module :: (I, S, κ) → (O, S, μ)
+```
+
+Where S is the module's internal state. But in the current implementation, S contains
+only bookkeeping counters (cycleCount, successRate, recentActions). No module has a
+**workspace** in its state. The actual workspace is external, shared, and subject to
+eviction by other modules' writes.
+
+This breaks algebraic closure. Composing two modules doesn't produce something with
+the same structure, because the workspace — the thing that carries understanding across
+cycles — is a side-channel that isn't part of the module type.
+
+### Empirical Evidence (R-18, R-22b)
+
+R-18 showed that partitioned workspaces regress T04 from 100% (flat) to 0% (partitioned).
+R-22b confirmed the regression persists even with phase-aware evaluation. The root cause:
+
+1. The ReasonerActor's state is `{cycleCount, totalTokensUsed, lastActionName, successRate, recentActions}` — **no working memory**.
+2. Every cycle, the reasoner gets a fresh `snapshot` from the partition system. That's all it knows.
+3. In the flat condition, the workspace accumulates everything — the reasoner "remembers" previous cycles because the workspace contains the full trail.
+4. In the partitioned condition, capacity limits (constraint: 12, operational: 14) cause **eviction**. File reads from cycle 3 get dropped to make room for cycle 7's tool results. The reasoner loses context it needs.
+
+### The Cognitive Science Parallel
+
+In the human brain:
+- **Prefrontal cortex has its own working memory** (Baddeley, 2000) — it actively maintains task-relevant representations that persist across time steps, independent of sensory input.
+- **The hippocampus provides episodic recall** — when something gets evicted from working memory, the hippocampal system can retrieve it on demand.
+- **The central executive** (Baddeley, 2000) maintains a goal stack and mental model separate from the incoming perception stream.
+
+Our ReasonerActor has no equivalent. Its "mental model" is whatever the partition system decides to show it this cycle. It's as if the prefrontal cortex had no working memory and relied entirely on the global workspace broadcast for everything.
+
+### The Closed Form
+
+The correct module signature includes a workspace W:
+
+```
+Module :: (I, S, W, κ) → (O, S, W, μ)
+```
+
+Or equivalently, W is part of S (since S is generic):
+
+```typescript
+interface ModuleState<T> {
+  /** Module-specific bookkeeping. */
+  internal: T;
+  /** Module's private working memory — bounded, typed, immune to shared workspace eviction. */
+  workingMemory: WorkspaceEntry[];
+}
+```
+
+Every module gets:
+- A **private workspace** (W) that it reads from and writes to during `step()`
+- The shared workspace remains the **communication bus** (GWT's global workspace) for inter-module information
+- The private workspace persists across cycles and is immune to shared workspace eviction
+- Composition operators merge private workspaces according to the operator's semantics
+
+This creates algebraic closure: composing modules produces a module with the same type.
+
+### Practical Implementation Path
+
+1. **Immediate (R-22c):** Wire the existing Memory v3 module (ACT-R episodic recall) into the goal-state condition. This gives the reasoner access to evicted entries via activation-based retrieval — a hippocampal proxy.
+
+2. **Next (R-23):** Add `workingMemory: WorkspaceEntry[]` to each module's state type. The ReasonerActor explicitly writes its plan and understanding to working memory each cycle. The Evaluator maintains its assessment history. The Monitor maintains its anomaly context.
+
+3. **Full (post-R-23):** Extend composition operators to handle per-module working memory. Sequential composition chains working memory. Parallel composition merges. Hierarchical composition scopes.
+
+### Relationship to Existing Memory Module
+
+The Memory module (v3, CLS dual-store) currently serves as a **shared episodic store** — it stores tool results and retrieves them via ACT-R activation when relevant. This is analogous to the hippocampal long-term store.
+
+With per-module working memory, the Memory module's role shifts from "compensating for workspace eviction" to "long-term consolidation." Module working memory handles short-term persistence (what I learned this cycle). The Memory module handles long-term retrieval (what I learned 10 cycles ago that's suddenly relevant again). This is the proper CLS separation: working memory = fast, local, capacity-limited; episodic store = slow, global, persistent.
+
+> Baddeley, A. D. (2000). The episodic buffer: a new component of working memory?
+> *Trends in Cognitive Sciences*, 4(11), 417-423.
+>
+> Baddeley, A. D., & Hitch, G. J. (1974). Working memory. In G. H. Bower (Ed.),
+> *Psychology of Learning and Motivation*, Vol. 8. Academic Press.
+
 ## Open Questions
 
 1. **Planner accuracy:** Can an LLM reliably estimate task difficulty and phase
@@ -351,6 +436,15 @@ T01-T06 battery with N=5 at 15 and 30 cycles.
    too long, write something"). If the Planner provides proper phase expectations,
    the write-phase enforcer may become unnecessary or should be subordinated to the
    Planner's phase structure.
+
+6. **Working memory capacity per module:** How many entries should each module's
+   private workspace hold? Too small and it loses context. Too large and it
+   dominates the prompt, crowding out the shared workspace signal.
+
+7. **Composition operator semantics for W:** How does sequential composition handle
+   two modules' private workspaces? Options: concatenate, merge by salience, or
+   scope (each module sees only its own). This needs formal definition before
+   module working memory can be part of the algebra.
 
 ## References
 
