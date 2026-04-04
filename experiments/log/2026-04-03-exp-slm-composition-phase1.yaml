@@ -1,0 +1,75 @@
+run_id: phase-1-b1
+date: 2026-04-03
+experiment: exp-slm-composition
+phase: phase-1-schema-grammar
+condition: schema-grammar-b1
+model: Qwen/Qwen2.5-0.5B-Instruct (LoRA r=16)
+hardware: RTX 4090 (chobits)
+
+hypothesis: >
+  An SLM can learn to translate TypeScript interfaces into PEG grammars
+  that compile correctly (Gate A-G1 >= 90%) and are usable as training
+  targets for downstream SLMs (Gate A-G2 >= 85%).
+
+training:
+  corpus_size: 2000 (1600 train / 400 holdout)
+  seed_pairs: 12 (hand-crafted from workspace repos)
+  augmentation: synthetic (field type variation, count variation, enum swapping)
+  augmentation_pass_rate: 0.55
+  steps: 3000
+  batch_size: 2
+  learning_rate: 2.0e-4
+  max_length: 768
+  training_time_s: 3292
+  peak_vram_mb: 9018
+  final_train_loss: 0.167
+  final_eval_loss: 0.130
+  token_accuracy: 0.961
+
+results:
+  gate_ag1_holdout:
+    compilable: 50
+    total: 50
+    rate: 1.00
+    structural_match_rate: 0.98
+    verdict: PASS
+
+  gate_ag1_generalization:
+    compilable: 5
+    total: 5
+    rate: 1.00
+    interfaces_tested:
+      - TriggerEvent (bridge/triggers)
+      - OllamaModelInfo (pacta-provider-ollama)
+      - RelayableEvent (cluster/federation)
+      - WorktreeInfo (bridge/sessions)
+      - StrategyGate (bridge/strategies)
+    verdict: PASS
+
+  gate_ag2_downstream:
+    downstream_corpus: 1250 (1000 train / 250 holdout)
+    downstream_interface: WorktreeInfo
+    downstream_training_time_s: 1584
+    downstream_peak_vram_mb: 3394
+    downstream_loss: 0.138
+    parse_accuracy: 1.00
+    semantic_match: 1.00
+    verdict: PASS
+
+findings:
+  - "F1: 2K synthetic pairs sufficient for Level 1 abstraction (100% compilability)"
+  - "F2: B-1 generalizes to unseen real interfaces (5/5 compile)"
+  - "F3: Bootstrap flywheel works end-to-end (interface → grammar → corpus → downstream SLM → valid DSL)"
+  - "F4: Training is cheap (B-1: 55min, downstream: 26min, both on consumer RTX 4090)"
+  - "F5: Token accuracy plateaus early at 96.1% — ceiling for this corpus/distribution"
+
+not_yet_validated:
+  - Multi-language input (JSON Schema, Protobuf)
+  - Complex types (nested objects, recursive, generics)
+  - Adversarial accuracy on boundary cases
+  - A-G2 on complex grammars (arrays of objects, nesting)
+
+session_cost_estimate:
+  b1_training: "$0 (local GPU)"
+  downstream_training: "$0 (local GPU)"
+  total: "$0"

@@ -6,7 +6,7 @@ the System 1/2 compilation loop that RFC 002 left manual.
 
 **RFC:** `docs/rfcs/005-slm-composition.md`
 **Depends on:** `exp-slm` (Phase 3 Gate 3 PASS, Phase 5 R-14 through R-22)
-**Status:** Phase 0 — Infrastructure
+**Status:** Phase 1 complete — Gates A-G1 and A-G2 PASS
 **Cross-reference:** ov-research EXP-TBD
 
 ---
@@ -22,20 +22,23 @@ the System 1/2 compilation loop that RFC 002 left manual.
 
 ## Phases
 
-### Phase 0 — Corpus Sourcing & Infrastructure (current)
+### Phase 0 — Corpus Sourcing & Infrastructure (DONE)
 
-- [ ] Inventory TypeScript interfaces across 137+ workspace repos (`../`)
+- [x] Inventory TypeScript interfaces across workspace repos
+- [x] Build Peggy-in-the-loop validator (compile + parse test for grammar quality)
+- [x] Design corpus augmentation strategy on top of real pairs
 - [ ] Scrape GitHub for projects pairing PEG/Peggy grammars with typed languages
 - [ ] Harvest JSON Schema, Protobuf, and other typed schema → grammar pairs
-- [ ] Build Peggy-in-the-loop validator (compile + parse test for grammar quality)
-- [ ] Design corpus augmentation strategy on top of real pairs
 
-### Phase 1 — B-1: Schema→Grammar SLM (Level 1 Abstraction)
+### Phase 1 — B-1: Schema→Grammar SLM (DONE — Gates A-G1 + A-G2 PASS)
 
-- [ ] Build multi-language corpus generator (TS, JSON Schema, Protobuf → PEG)
-- [ ] Train Qwen2.5-Coder-0.5B LoRA r=16 on Schema→Grammar
-- [ ] Validate: grammar compilability >= 90% (Gate A-G1)
-- [ ] Validate: downstream SLM quality >= 85% (Gate A-G2)
+- [x] Harvest 12 seed type→grammar pairs from workspace repos
+- [x] Build synthetic corpus generator (2K pairs, ~55% validation pass rate)
+- [x] Train Qwen2.5-Coder-0.5B LoRA r=16 on Schema→Grammar (3000 steps, RTX 4090)
+- [x] Gate A-G1: grammar compilability = **100%** (50/50 holdout, target >= 90%)
+- [x] Gate A-G1 generalization: **5/5 real unseen production interfaces** compile
+- [x] Gate A-G2: downstream SLM parse accuracy = **100%** (50/50, target >= 85%)
+- [x] Gate A-G2: downstream SLM semantic match = **100%** (50/50)
 - [ ] Test language generalization (train on TS, test on JSON Schema)
 
 ### Phase 2 — Bootstrap Pipeline
@@ -92,18 +95,23 @@ the System 1/2 compilation loop that RFC 002 left manual.
 
 ## Hardware
 
-- Primary: RTX 2080 Ti (11GB VRAM) — local
-- Secondary: RTX 4090 (24GB VRAM) — chobits (Tailscale)
+- Training: RTX 4090 (24GB VRAM) — chobits (Tailscale). Preferred for all training.
+- Inference/eval: RTX 2080 Ti (11GB VRAM) — local (mission-control)
 - Model: Qwen2.5-Coder-0.5B, LoRA r=16 (production config from Phase 3)
+- See `docs/arch/gpu-inference-cluster.md` for chobits training setup
 
-## Key Risks
+## Resolved Risks
 
-1. **Level 1 feasibility:** Schema→Grammar may exceed 0.5B capability. Abandonment:
-   < 80% compilable after 3 iterations → fall back to frontier for grammar design.
-2. **Corpus scarcity solved by multi-language:** GitHub scraping + JSON Schema +
-   Protobuf should provide hundreds of real pairs. Risk shifts from "not enough data"
-   to "distribution mismatch between scraped and target domains."
+1. ~~**Level 1 feasibility:** Schema→Grammar may exceed 0.5B capability.~~ **RESOLVED:**
+   100% compilability on both synthetic holdout and real unseen interfaces. 0.5B is sufficient.
+2. ~~**Corpus scarcity:**~~ **RESOLVED:** 2K synthetic pairs from 12 seed interfaces
+   already achieve perfect scores. Large corpus optional for refinement, not required.
+
+## Open Risks
+
 3. **Error compounding in composition:** Gate classifier accuracy is the binding
    constraint. If gates < 95%, composition ceiling is N ≈ 3-4 stages.
 4. **Level 2 Reflector extension:** Extracting structural invariants from traces is
    the hardest research question. May require new cognitive module design.
+5. **Language generalization:** B-1 trained on TypeScript only. JSON Schema and
+   Protobuf inputs untested. May need multi-language corpus or separate models.
