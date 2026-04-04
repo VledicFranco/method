@@ -10,6 +10,7 @@
 
 import { Layer } from "effect";
 import { AgentProvider, type AgentResult, type AgentError } from "./agent-provider.js";
+import { StructuredAgentProvider, createStructuredProvider } from "./structured-provider.js";
 import { spawnClaude } from "./spawn-claude.js";
 
 /** Configuration for the Claude headless provider. */
@@ -154,4 +155,22 @@ export function ClaudeHeadlessProvider(config: ClaudeHeadlessConfig = {}): Layer
       return spawnClaude(commission.prompt, config, sessionId, commission.resumeSessionId);
     },
   });
+}
+
+/**
+ * Create a ClaudeHeadless StructuredAgentProvider.
+ *
+ * Wraps the regular ClaudeHeadless provider with structured output support.
+ * Schema constraints are injected into the prompt; responses are parsed as JSON.
+ *
+ * @see PRD 046 §Wave 3 — Structured Output
+ */
+export function StructuredClaudeHeadlessProvider(config: ClaudeHeadlessConfig = {}): Layer.Layer<StructuredAgentProvider> {
+  const baseProvider = {
+    execute: (commission: { prompt: string; bridge?: Record<string, unknown>; sessionId?: string; resumeSessionId?: string }) => {
+      const sessionId = commission.sessionId ?? generateSessionId(config.sessionPrefix ?? defaults.sessionPrefix);
+      return spawnClaude(commission.prompt, config, sessionId, commission.resumeSessionId);
+    },
+  };
+  return Layer.succeed(StructuredAgentProvider, createStructuredProvider(baseProvider));
 }

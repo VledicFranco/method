@@ -19,6 +19,7 @@ import type { Truth } from "./truth.js";
 import { evaluate } from "../predicate/evaluate.js";
 import type { Predicate } from "../predicate/predicate.js";
 import { AgentProvider } from "../provider/agent-provider.js";
+import type { StructuredAgentProvider, JsonSchema } from "../provider/structured-provider.js";
 import { executeWithRetry } from "../gate/gate.js";
 
 /** Configuration for semantic execution. */
@@ -26,6 +27,12 @@ export type RunSemanticConfig = {
   readonly maxRetries?: number;
   readonly onTruth?: (truth: Truth) => void;
   readonly onSpawn?: (name: string, input: unknown) => void;
+  /** Optional structured output provider — bypasses text parsing when schema is provided. */
+  readonly structuredProvider?: StructuredAgentProvider;
+  /** JSON schema for structured output. When set with structuredProvider, executeStructured is used. */
+  readonly schema?: JsonSchema;
+  /** Schema name for structured output (required when schema is set). */
+  readonly schemaName?: string;
 };
 
 /**
@@ -110,6 +117,7 @@ function runAtomic<I, O>(
     // 4. Execute via AgentProvider with unified gate-check-retry
     const provider = yield* AgentProvider;
     const maxRetries = fn.maxRetries ?? config?.maxRetries ?? 2;
+    const useStructured = config?.structuredProvider && config?.schema;
 
     type ExecOutput = { parsed: O | null; raw: string; cost: { tokens: number; usd: number; duration_ms: number } };
 
@@ -121,6 +129,26 @@ function runAtomic<I, O>(
             const retryNote = feedback
               ? `\n\n---\n[Retry ${attempt}/${maxRetries}: ${feedback}]`
               : "";
+
+            // PRD 046 §Wave 3: Use structured output when schema + provider available
+            if (useStructured) {
+              const structuredResult = yield* Effect.mapError(
+                config!.structuredProvider!.executeStructured<O>({
+                  prompt: promptText + retryNote,
+                  schema: config!.schema!,
+                  schemaName: config!.schemaName ?? fn.name,
+                }),
+                (err): SemanticError => ({
+                  _tag: "AgentFailed", fn: fn.name, message: err._tag, cause: err,
+                }),
+              );
+              return {
+                parsed: structuredResult.data,
+                raw: structuredResult.raw,
+                cost: structuredResult.cost,
+              } as ExecOutput;
+            }
+
             const agentResult = yield* Effect.mapError(
               provider.execute({ prompt: promptText + retryNote }),
               (err): SemanticError => ({
