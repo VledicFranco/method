@@ -1,0 +1,38 @@
+experiment: exp-slm
+run_id: r22b-smoothed-solvability
+date: 2026-04-03
+agent: "Claude Opus 4.6"
+config:
+  task: "R-22 tuning — smoothed solvability (3-cycle rolling avg) + sustained termination"
+  conditions: ["partitioned-cognitive-goal"]
+  baseline_comparison: "R-22 (raw solvability, 28%), R-15 (flat, 73%)"
+  n_per_task: 3
+  max_cycles: 15
+  changes_from_r22:
+    - "Solvability smoothed over 3-cycle rolling average"
+    - "Require 2+ data points before unreachable termination"
+    - "Sustained satisfied: require previous cycle also below aspiration"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01_circular_dep: { pass: 2, fail: 1, rate: 0.67 }
+    t02_bug_fix: { pass: 0, fail: 3, rate: 0.00 }
+    t03_config_migration: { pass: 0, fail: 3, rate: 0.00 }
+    t04_api_versioning: { pass: 0, fail: 3, rate: 0.00 }
+    t05_dead_code: { pass: 3, fail: 0, rate: 1.00 }
+    t06_multi_module: { pass: 0, fail: 3, rate: 0.00 }
+  overall: { pass: 5, fail: 13, rate: 0.28 }
+
+findings:
+  - id: F1
+    title: "Smoothing didn't change outcomes — same 28% as R-22"
+    detail: >
+      The tuning fixes (rolling average, sustained checks) shifted termination cycles
+      slightly later but the same tasks pass and fail. The bottleneck is not the
+      termination logic — it's the partitioned workspace itself preventing the agent
+      from reasoning correctly on T02/T03/T04/T06.
+
+next_steps:
+  - "R-22c: Wire Memory v3 to recover evicted context"
