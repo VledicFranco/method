@@ -13,6 +13,7 @@
 import { Effect } from "effect";
 import type { Predicate } from "../predicate/predicate.js";
 import type { EvalTrace } from "../predicate/evaluate.js";
+import type { RuntimeObserver } from "./runtime-observer.js";
 
 // ── Error type ──
 
@@ -174,4 +175,80 @@ export function withRetry<S>(gate: Gate<S>, maxRetries: number): Gate<S> {
         return lastResult!;
       }),
   };
+}
+
+// ── PRD 046: Unified gate-check-retry loop ──
+
+/** Error emitted when all retry attempts are exhausted. */
+export type RetryExhausted = {
+  readonly _tag: "RetryExhausted";
+  readonly name: string;
+  readonly attempts: number;
+  readonly lastFailures: string[];
+  readonly lastOutput: unknown;
+};
+
+/**
+ * Unified gate-check-retry loop.
+ *
+ * Extracts the retry pattern from runAtomic (semantic), strategy executor,
+ * and methodology runtime into a single reusable utility.
+ *
+ * On each attempt:
+ * 1. Call execute(input, attempt, feedback?) to produce an output
+ * 2. Run check(output) — if passed, return immediately with degrading confidence
+ * 3. If failed and retries remain: build feedback, notify observer, retry
+ * 4. If all retries exhausted: fail with RetryExhausted
+ *
+ * Confidence degrades: max(0.5, 0.90 - attempt * 0.10)
+ *
+ * @see PRD 046 §Wave 1 — Gate Unification
+ * @see semantic/run.ts — runAtomic (first consumer)
+ */
+export function executeWithRetry<I, O, E, R>(config: {
+  name: string;
+  execute: (input: I, attempt: number, feedback?: string) => Effect.Effect<O, E, R>;
+  check: (output: O) => { passed: boolean; failures: string[] };
+  buildFeedback: (output: O, failures: string[]) => string;
+  maxRetries: number;
+  input: I;
+  observer?: RuntimeObserver;
+}): Effect.Effect<{ data: O; attempts: number; confidence: number }, RetryExhausted | E, R> {
+  return Effect.gen(function* () {
+    const { name, execute, check, buildFeedback, maxRetries, input, observer } = config;
+    let lastFailures: string[] = [];
+    let lastOutput: O | undefined;
+    let feedback: string | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const output = yield* execute(input, attempt, feedback);
+      lastOutput = output;
+      const result = check(output);
+
+      if (result.passed) {
+        const confidence = Math.max(0.5, 0.90 - attempt * 0.10);
+        return { data: output, attempts: attempt + 1, confidence };
+      }
+
+      lastFailures = result.failures;
+
+      if (attempt < maxRetries) {
+        feedback = buildFeedback(output, result.failures);
+        observer?.onRetryAttempt({
+          name,
+          attempt: attempt + 1,
+          maxRetries,
+          feedback,
+        });
+      }
+    }
+
+    return yield* Effect.fail<RetryExhausted>({
+      _tag: "RetryExhausted",
+      name,
+      attempts: maxRetries + 1,
+      lastFailures,
+      lastOutput,
+    });
+  });
 }

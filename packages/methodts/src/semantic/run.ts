@@ -19,6 +19,7 @@ import type { Truth } from "./truth.js";
 import { evaluate } from "../predicate/evaluate.js";
 import type { Predicate } from "../predicate/predicate.js";
 import { AgentProvider } from "../provider/agent-provider.js";
+import { executeWithRetry } from "../gate/gate.js";
 
 /** Configuration for semantic execution. */
 export type RunSemanticConfig = {
@@ -106,65 +107,86 @@ function runAtomic<I, O>(
       };
     }
 
-    // 4. Execute via AgentProvider
+    // 4. Execute via AgentProvider with unified gate-check-retry
     const provider = yield* AgentProvider;
     const maxRetries = fn.maxRetries ?? config?.maxRetries ?? 2;
 
-    let lastRaw = "";
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const retryNote = attempt > 0
-        ? `\n\n---\n[Retry ${attempt}/${maxRetries}: previous output failed validation. Fix the issues and try again.]`
-        : "";
+    type ExecOutput = { parsed: O | null; raw: string; cost: { tokens: number; usd: number; duration_ms: number } };
 
-      const agentResult = yield* Effect.mapError(
-        provider.execute({ prompt: promptText + retryNote }),
-        (err) => ({
-          _tag: "AgentFailed" as const, fn: fn.name, message: err._tag, cause: err,
-        }),
-      );
-      lastRaw = agentResult.raw;
-
-      // 5. Parse
-      const output = fn.parse(agentResult.raw, input);
-      if (output === null) {
-        if (attempt < maxRetries) continue;
-        return yield* Effect.fail<SemanticError>({
-          _tag: "ParseFailed", fn: fn.name, raw: agentResult.raw, retries: maxRetries,
-        });
-      }
-
-      // 6. Validate postconditions (algorithmic gates)
-      let allPostsHold = true;
-      const postTruths: Truth[] = [];
-      for (const post of fn.post) {
-        const holds = evaluate(post, output);
-        const t = algorithmic(`post: ${labelOf(post)}`, holds);
-        postTruths.push(t);
-        if (!holds) allPostsHold = false;
-      }
-
-      if (!allPostsHold && attempt < maxRetries) continue;
-
-      for (const t of postTruths) report(t);
-      // Confidence degrades with retries: 0.90 on first try, -0.10 per retry
-      const retryConfidence = Math.max(0.5, 0.90 - attempt * 0.10);
-      report(semantic(`${fn.name}: agent produced valid output`, output !== null, retryConfidence));
-
-      return {
-        data: output,
-        truths,
-        status: allHold(truths) ? "complete" as const : "needs_revision" as const,
-        cost: {
-          tokens: agentResult.cost.tokens,
-          usd: agentResult.cost.usd,
-          duration_ms: agentResult.cost.duration_ms,
+    const retryResult = yield* Effect.catchTag(
+      executeWithRetry({
+        name: fn.name,
+        execute: (inp: I, attempt: number, feedback?: string) =>
+          Effect.gen(function* () {
+            const retryNote = feedback
+              ? `\n\n---\n[Retry ${attempt}/${maxRetries}: ${feedback}]`
+              : "";
+            const agentResult = yield* Effect.mapError(
+              provider.execute({ prompt: promptText + retryNote }),
+              (err): SemanticError => ({
+                _tag: "AgentFailed", fn: fn.name, message: err._tag, cause: err,
+              }),
+            );
+            return {
+              parsed: fn.parse(agentResult.raw, inp),
+              raw: agentResult.raw,
+              cost: agentResult.cost,
+            } as ExecOutput;
+          }),
+        check: (result: ExecOutput) => {
+          if (result.parsed === null) {
+            return { passed: false, failures: ["parse failed"] };
+          }
+          const failures: string[] = [];
+          for (const post of fn.post) {
+            if (!evaluate(post, result.parsed)) {
+              failures.push(labelOf(post));
+            }
+          }
+          return { passed: failures.length === 0, failures };
         },
-      };
+        buildFeedback: (_result: ExecOutput, _failures: string[]) =>
+          `previous output failed validation. Fix the issues and try again.`,
+        maxRetries,
+        input,
+      }),
+      "RetryExhausted",
+      (err) => {
+        const last = err.lastOutput as ExecOutput | undefined;
+        if (last?.parsed != null) {
+          // Postconditions failed but parse succeeded — return with degraded confidence
+          return Effect.succeed({
+            data: last,
+            attempts: err.attempts,
+            confidence: Math.max(0.5, 0.90 - (err.attempts - 1) * 0.10),
+          });
+        }
+        // Parse truly failed on all attempts
+        return Effect.fail<SemanticError>({
+          _tag: "ParseFailed", fn: fn.name, raw: last?.raw ?? "", retries: maxRetries,
+        });
+      },
+    );
+
+    // 5. Report postcondition truths
+    const { parsed, cost } = retryResult.data;
+    if (parsed === null) {
+      return yield* Effect.fail<SemanticError>({
+        _tag: "ParseFailed", fn: fn.name, raw: retryResult.data.raw, retries: maxRetries,
+      });
     }
 
-    return yield* Effect.fail<SemanticError>({
-      _tag: "ParseFailed", fn: fn.name, raw: lastRaw, retries: maxRetries,
-    });
+    for (const post of fn.post) {
+      report(algorithmic(`post: ${labelOf(post)}`, evaluate(post, parsed)));
+    }
+    report(semantic(`${fn.name}: agent produced valid output`, true, retryResult.confidence));
+
+    return {
+      data: parsed,
+      truths,
+      status: allHold(truths) ? "complete" as const : "needs_revision" as const,
+      cost: { tokens: cost.tokens, usd: cost.usd, duration_ms: cost.duration_ms },
+    };
   });
 }
 
