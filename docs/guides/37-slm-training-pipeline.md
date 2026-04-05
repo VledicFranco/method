@@ -294,6 +294,34 @@ const pipeline = {
 | Observer | Signals→Observer DSL | ~5K | 93.4% | **Production** (exp-slm) |
 | Evaluator | Signals→Evaluator DSL | ~5K | 93.4% | **Production** (exp-slm) |
 
+## Autonomous Compilation Loop (Phase 4)
+
+As of 2026-04-05, the pipeline can run **without human intervention**
+starting from behavioral traces:
+
+```
+Traces → DSL Inducer → Auto-Refiner → Corpus → SLM Training → 99% accuracy
+```
+
+**DSL Inducer** (`experiments/exp-slm-composition/phase-4-autonomous/scripts/dsl-inducer.mjs`)
+sends N traces to a frontier LLM (Ollama qwen3-coder:30b) and gets back a
+PEG grammar. Validated on Monitor (100% match to hand-crafted grammar on
+33K traces) and WorktreeInfo (100% first try).
+
+**Grammar Auto-Refiner** (`scripts/grammar-refiner.mjs`) applies pattern
+fixes for common Peggy errors: duplicate labels, whitespace handling,
+missing quotes, list patterns. Takes induced grammar from "compiles with
+issues" to "parses all traces."
+
+**Autonomous corpus generation** (`scripts/generate-corpus-from-induced-grammar.mjs`)
+validates source traces through the induced grammar. Only parseable traces
+enter the training corpus.
+
+See `phase-4-autonomous/FINDINGS.md` for the full demonstration:
+- 20 seed traces → induced grammar → 99.0% semantic accuracy SLM
+- Matches hand-crafted Monitor baseline
+- Zero human intervention
+
 ## Composition Runtime
 
 SLMs compose into CLM (Composed Language Model) pipelines via the
