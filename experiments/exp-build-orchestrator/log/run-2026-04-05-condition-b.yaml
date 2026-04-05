@@ -1,0 +1,101 @@
+---
+run_id: "exp-build-orchestrator-B-2026-04-05"
+date: "2026-04-05"
+condition: "B"  # /build driven (treatment)
+hypothesis:
+  - "H1: /build covers all 8 phases end-to-end"
+  - "H2: ≤ 4 human interventions for 3-feature experiment"
+  - "H3: ≥ 60% autonomous failure recovery"
+  - "H4: ≤ 15% orchestrator overhead"
+  - "H5: Every run produces machine-evaluated ValidationReport"
+
+features:
+  - id: "F1"
+    name: "Dashboard WebSocket live updates"
+    scope: "Wire build.* events through WebSocket to frontend"
+    domains: 2  # bridge backend events + frontend subscription
+    files_changed: 4
+    commissions_executed: 1  # single commission scope
+    phases_executed: 8  # explore, specify, design, plan, implement, review, validate, measure
+    human_interventions: 1  # spec approval
+    failure_recoveries: { attempted: 0, succeeded: 0 }
+    criteria_defined: 6
+    criteria_passed: 6
+    verdict: "fully_validated"
+    wall_clock_min: 15
+    evidence:
+      - "grep 'builds' hub.ts: 1 match"
+      - "grep 'build.*builds' websocket-sink.ts: 1 match"
+      - "grep 'build.*builds' useBridgeEvents.ts: 1 match"
+      - "grep useWebSocket useBuilds.ts: 2 matches"
+      - "tsc --noEmit build/ errors: 0"
+      - "backend tests: 87 pass"
+
+  - id: "F2"
+    name: "ConversationPanel real-time messages"
+    scope: "Subscribe ConversationPanel to build.* events for live chat"
+    domains: 1  # frontend only (reuses F1 infrastructure)
+    files_changed: 3  # useBuildEvents.ts (new), ConversationPanel.tsx, ChatMessage.tsx
+    commissions_executed: 1
+    phases_executed: 8
+    human_interventions: 1
+    failure_recoveries: { attempted: 0, succeeded: 0 }
+    criteria_defined: 4
+    criteria_passed: 4
+    verdict: "fully_validated"
+    wall_clock_min: 20
+    evidence:
+      - "useBuildEvents.ts exists"
+      - "ConversationPanel imports useBuildEvents + useWebSocket"
+      - "tsc --noEmit build/ errors: 0"
+      - "backend tests: 87 pass"
+
+  - id: "F3"
+    name: "Frontend component tests"
+    scope: "Unit tests for ConversationPanel, BuildDetail, EvidenceReport, StructuredCard"
+    domains: 1  # frontend
+    files_changed: 4  # 4 new test files
+    commissions_executed: 1
+    phases_executed: 8
+    human_interventions: 1
+    failure_recoveries: { attempted: 1, succeeded: 1 }  # missing @testing-library deps → fix + install
+    criteria_defined: 3
+    criteria_passed: 3
+    verdict: "fully_validated"
+    wall_clock_min: 30  # includes recovery
+    evidence:
+      - "4 test files created in __tests__/"
+      - "tsc --noEmit build/ errors: 0"
+      - "backend tests: 87 pass"
+      - "frontend vite build: success"
+      - "recovery: installed @testing-library/react, fixed type augmentation"
+
+totals:
+  features_delivered: 3
+  total_phases: 24  # 3 features × 8 phases
+  total_human_interventions: 3  # 1 per feature (spec approval)
+  total_failures: 1
+  total_recoveries: 1
+  failure_recovery_rate: 1.0  # 100% (1/1)
+  total_wall_clock_min: 65
+  criteria_defined_total: 13
+  criteria_passed_total: 13
+  criteria_pass_rate: 1.0  # 100%
+
+hypotheses_result:
+  H1_full_lifecycle: PASS  # 8/8 phases for all 3 features
+  H2_reduced_interventions: PASS  # 3 ≤ 4 threshold
+  H3_failure_recovery: PASS  # 100% recovery rate (1/1)
+  H4_overhead: DEFERRED  # orchestrator-token-measurement-requires-Pacta-agent-backend
+  H5_validation_report: PASS  # 3/3 features produced machine-evaluated reports
+
+notes:
+  - "This is Condition B only. Condition A (baseline) would require repeating the same 3 features driven manually via /realize + /com + manual verification — deferred as future work."
+  - "Orchestrator-overhead metric (H4) deferred: the skill version drives phases directly, not via Pacta agent, so orchestrator-token-usage is not separately measurable yet."
+  - "F3 hit a real failure mode (missing testing deps) and recovered autonomously — demonstrates the failure routing value prop in practice."
+  - "The experiment validates the /build behavioral contract as a Claude Code skill. Migration to Pacta agent backend (for dashboard-driven execution) is the next phase."
+
+next_steps:
+  - "Run Condition A baseline on F1-F3 for A/B comparison"
+  - "Wire Pacta agent backend for dashboard-driven /build execution"
+  - "Measure orchestrator overhead (H4) once Pacta backend exists"
