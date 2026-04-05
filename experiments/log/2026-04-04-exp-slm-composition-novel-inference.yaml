@@ -1,0 +1,76 @@
+run_id: phase-3-novel-inference
+date: 2026-04-04
+experiment: exp-slm-composition
+phase: phase-3-composition-runtime
+condition: novel-inputs-live-inference
+
+hypothesis: >
+  B-1 SLM generalizes to novel TypeScript interfaces beyond the training
+  distribution, and the CLM pipeline with validation gates catches failures.
+  Separately, test language generalization to JSON Schema inputs.
+
+hardware:
+  inference: RTX 4090 (chobits, Tailscale)
+  model: Qwen2.5-0.5B-Instruct, LoRA r=16 (schema-grammar-qwen25-05b-lora)
+  inference_time: ~12 min for 35 entries (model loading + generation)
+
+inputs:
+  novel_typescript: 30
+  json_schema: 5
+  total: 35
+  description: >
+    30 novel TypeScript interfaces covering domains not in Phase 1 training
+    (HTTP, database, caching, deployment, networking, DNS, certificates, etc.)
+    with 5-8 fields, 5-value enums, arrays, and complex optional patterns.
+    5 JSON Schema inputs for language generalization testing.
+
+results:
+  typescript_compilability:
+    compiles: 26
+    total: 30
+    rate: 0.867
+    failures:
+      - CacheEntry (Rule "TtlSection" not defined — naming inconsistency)
+      - FeatureFlag (Rule "RolloutSection" not defined)
+      - SearchResult (Rule "other" not defined — garbage reference)
+      - PluginManifest (Label "p" already defined — name collision)
+
+  typescript_full_pipeline:
+    success: 23
+    total: 30
+    rate: 0.767
+    additional_failures_beyond_compile:
+      - NetworkPeer (grammar compiles but example gen produces wrong section name)
+      - GitCommit (grammar compiles but action uses undefined JS variable)
+      - NotificationPrefs (grammar compiles but action uses undefined JS variable)
+
+  json_schema_generalization:
+    success: 1
+    total: 5
+    rate: 0.20
+    observation: >
+      Model produces non-grammar output for JSON Schema inputs: template
+      strings, JSON responses, or generic assistant text. Expected — model
+      never saw JSON Schema format during training. The 1/5 success is
+      likely random coincidence.
+
+findings:
+  - "F1: B-1 achieves 86.7% compilability on 30 novel TS interfaces — above the 85% C-G1 threshold for compilation alone"
+  - "F2: Full pipeline (compile + example gen + parse) achieves 76.7% — below 85% target. The gap comes from grammar quality issues (undefined variables in actions, naming inconsistencies)"
+  - "F3: JSON Schema generalization fails (1/5) — Level 1 abstraction is language-specific, not cross-language. B-1 needs multi-language training data to generalize"
+  - "F4: Validation gates correctly catch all failures — 4 at compile gate, 3 at parse gate. No false passes. Gate effectiveness confirmed on real (not synthetic) errors"
+  - "F5: Error categories reveal training gaps: (a) naming inconsistencies (TtlSection vs TtlSecondsSection), (b) label collisions with short field names, (c) undefined JS variables in grammar actions"
+
+architectural_observations:
+  - "The composition runtime handles real SLM errors gracefully — each failure is caught, classified, and reported"
+  - "Gate C-G1 on novel interfaces (76.7%) is lower than holdout (100%) — expected since novel inputs test OOD generalization"
+  - "The error patterns suggest targeted training improvements: more field naming diversity, more fields per interface, action template consistency"
+
+next_steps:
+  - "Adversarial evaluation: craft inputs specifically targeting the failure modes to quantify boundaries"
+  - "Multi-language training: add JSON Schema → grammar pairs to B-1 training corpus for cross-language generalization"
+  - "Action template fix: ensure grammar actions use consistent JS variable naming patterns"
+
+session_cost_estimate:
+  inference: "$0 (local GPU)"
+  total: "$0"

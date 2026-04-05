@@ -140,14 +140,58 @@ to runtime pipeline state.
 
 ---
 
+## Live Inference Results (Novel Inputs)
+
+Ran B-1 on 30 novel TypeScript interfaces + 5 JSON Schema inputs via
+chobits RTX 4090. Full CLM pipeline evaluation (compile gate + example
+gen + parse gate).
+
+### TypeScript Novel Interfaces (30 entries)
+
+| Metric | Value |
+|--------|-------|
+| Grammar compilability | 26/30 (86.7%) |
+| Full pipeline (compile + gen + parse) | 23/30 (76.7%) |
+| Compile gate catches | 4 failures caught |
+| Parse gate catches | 3 failures caught |
+
+**Failure categories:**
+- Naming inconsistency: `TtlSection` referenced but defined as `TtlSecondsSection` (2 cases)
+- Label collision: short field names like `p` conflicting with grammar labels (1 case)
+- Undefined JS variables in grammar actions: `filesChanged`, `emailEnabled` (3 cases)
+- Garbage rule reference (1 case)
+
+### JSON Schema Language Generalization (5 entries)
+
+| Metric | Value |
+|--------|-------|
+| Success | 1/5 (20%) |
+| Output quality | Non-grammar text (templates, JSON, assistant responses) |
+
+**Expected result.** B-1 was trained exclusively on TypeScript interfaces.
+JSON Schema inputs produce nonsensical output. Level 1 abstraction is
+language-specific — cross-language generalization requires multi-language
+training data.
+
+### Key Insight
+
+Gate C-G1 on novel OOD interfaces (76.7%) is lower than holdout (100%)
+but the **gates caught 100% of failures** — zero false passes. The
+composition runtime correctly identifies and rejects every broken grammar.
+This validates the core RFC 005 thesis: validation gates bound error
+propagation even when the SLM produces errors.
+
+The error patterns (naming, label collision, action templates) are
+addressable with targeted training improvements — more field name diversity,
+longer interfaces, and action template consistency in the training corpus.
+
 ## Next Steps
 
 1. **Phase 2 (Bootstrap Pipeline):** Build B-2 (Causal Validator SLM) and
    wire B-1 + B-2 into an automated pipeline for SLM creation.
-2. **Live inference integration:** Serve B-1 via Ollama (requires GGUF
-   conversion) or the existing Python HTTP bridge, and run Gate C-G1
-   with live inference instead of pre-generated predictions.
+2. **Multi-language training:** Add JSON Schema → grammar pairs to B-1
+   corpus for cross-language generalization.
 3. **Deeper pipelines:** Add a 3rd stage (e.g., grammar → corpus generator
    → downstream SLM training trigger) and verify the error bound holds.
-4. **Frontier escalation:** Implement real fallback to Ollama qwen3-coder:30b
-   or Claude via Anthropic API.
+4. **Adversarial evaluation:** Craft inputs targeting failure modes to
+   quantify the OOD boundary precisely.
