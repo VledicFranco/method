@@ -106,19 +106,20 @@ export function ConversationPanel({
       seen.add(msg.id);
       return true;
     });
-  }, [selectedBuild, liveMessages, localMessages]);
+  }, [selectedBuild, apiMessages, liveMessages, localMessages]);
 
   // Builds that have conversation data (for tabs) — includes builds with
-  // mock/API messages, live WebSocket messages, or locally-typed messages.
+  // API messages, mock/embedded messages, live WebSocket messages, or locally-typed messages.
+  // Always includes the selected build even if empty (so the user sees its conversation panel).
   const conversationBuilds = useMemo(
     () => builds.filter((b) => {
+      // Always show the selected build so the user can see its conversation
+      if (b.id === selectedBuildId) return true;
       if (b.conversation && b.conversation.length > 0) return true;
       if (localMessages[b.id] && localMessages[b.id].length > 0) return true;
-      // Include the selected build if it has live messages
-      if (b.id === selectedBuildId && liveMessages.length > 0) return true;
       return false;
     }),
-    [builds, localMessages, selectedBuildId, liveMessages],
+    [builds, localMessages, selectedBuildId],
   );
 
   // Auto-scroll to bottom on new messages

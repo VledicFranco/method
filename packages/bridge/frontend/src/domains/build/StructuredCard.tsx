@@ -15,15 +15,52 @@ import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/shared/lib/cn';
 import type { StructuredCard as StructuredCardType } from './types';
 
+// ── Helpers ──
+
+/** Stringify a value that may be a string, object, or other — handles agent outputs gracefully. */
+function itemToString(item: unknown): string {
+  if (typeof item === 'string') return item;
+  if (item === null || item === undefined) return '';
+  if (typeof item === 'object') {
+    const obj = item as Record<string, unknown>;
+    // Prefer common name-like fields
+    const name = (obj.name ?? obj.id ?? obj.label ?? obj.title) as string | undefined;
+    if (typeof name === 'string') {
+      const desc = obj.description ?? obj.summary;
+      if (typeof desc === 'string' && desc.length > 0) return `${name} — ${desc}`;
+      return name;
+    }
+    // Fall back to short JSON for unknown shapes
+    try {
+      const s = JSON.stringify(item);
+      return s.length > 80 ? s.slice(0, 77) + '...' : s;
+    } catch {
+      return String(item);
+    }
+  }
+  return String(item);
+}
+
 // ── Feature Spec Card ──
 
 function FeatureSpecCard({ data }: { data: Record<string, unknown> }) {
   const problem = data.problem as string | undefined;
   const scope = data.scope as string | undefined;
-  const approach = data.approach as string | undefined;
   const criteria = data.criteria as string[] | undefined;
   const addedIndex = data.addedIndex as number | undefined;
-  const constraints = data.constraints as string[] | undefined;
+
+  // Fallback: exploration wrapper from orchestrator (items may be strings or objects)
+  const exploration = data.exploration as {
+    domains?: unknown[];
+    patterns?: unknown[];
+    constraints?: unknown[];
+    approach?: string;
+  } | undefined;
+
+  const effectiveApproach = (data.approach as string | undefined) ?? exploration?.approach;
+  const effectiveConstraints = (data.constraints as unknown[] | undefined) ?? exploration?.constraints;
+  const effectiveDomains = exploration?.domains;
+  const effectivePatterns = exploration?.patterns;
 
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLSpanElement>(null);
@@ -61,18 +98,30 @@ function FeatureSpecCard({ data }: { data: Record<string, unknown> }) {
           <span className="text-txt">{scope}</span>
         </div>
       )}
-      {approach && (
+      {effectiveApproach && (
         <div>
           <span className="text-[#6d5aed] font-semibold">approach:</span>{' '}
-          <span className="text-txt">{approach}</span>
+          <span className="text-txt">{effectiveApproach}</span>
         </div>
       )}
-      {constraints && constraints.length > 0 && (
+      {effectiveDomains && effectiveDomains.length > 0 && (
+        <div>
+          <span className="text-[#6d5aed] font-semibold">domains:</span>{' '}
+          <span className="text-txt">{effectiveDomains.map(itemToString).join(', ')}</span>
+        </div>
+      )}
+      {effectivePatterns && effectivePatterns.length > 0 && (
+        <div>
+          <span className="text-[#6d5aed] font-semibold">patterns:</span>{' '}
+          <span className="text-txt">{effectivePatterns.map(itemToString).join(', ')}</span>
+        </div>
+      )}
+      {effectiveConstraints && effectiveConstraints.length > 0 && (
         <div>
           <span className="text-[#6d5aed] font-semibold">constraints:</span>
-          {constraints.map((c, i) => (
+          {effectiveConstraints.map((c, i) => (
             <div key={i} className="text-txt-dim pl-3">
-              {i + 1}. {c}
+              {i + 1}. {itemToString(c)}
             </div>
           ))}
         </div>
@@ -129,6 +178,48 @@ function FeatureSpecCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+// ── Generic text content renderer (fallback for unstructured agent output) ──
+
+function RawContentCard({
+  title,
+  content,
+  accent,
+}: {
+  title: string;
+  content: string;
+  accent?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const accentColor = accent ?? '#6d5aed';
+  const preview = content.length > 300 ? content.slice(0, 300) + '...' : content;
+  const canExpand = content.length > 300;
+
+  return (
+    <div className="bg-void border border-bdr rounded-[5px] mt-2 overflow-hidden">
+      <div
+        className="px-3 py-2 flex items-center gap-2 border-b border-bdr"
+        style={{ color: accentColor }}
+      >
+        <span className="text-xs font-semibold">{title}</span>
+        <span className="text-[10px] text-txt-dim ml-auto font-mono">
+          {content.length} chars
+        </span>
+      </div>
+      <div className="px-3 py-2 font-mono text-[11px] leading-[1.7] text-txt-dim whitespace-pre-wrap break-words">
+        {expanded ? content : preview}
+      </div>
+      {canExpand && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full px-3 py-1.5 text-[11px] text-[#6d5aed] hover:bg-[#6d5aed11] cursor-pointer border-t border-bdr transition-colors"
+        >
+          {expanded ? 'Show less' : `Show full (${content.length} chars)`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Commission Plan Card ──
 
 function CommissionPlanCard({ data }: { data: Record<string, unknown> }) {
@@ -138,6 +229,11 @@ function CommissionPlanCard({ data }: { data: Record<string, unknown> }) {
     deps?: string[];
     status?: string;
   }> | undefined;
+
+  // Fallback: raw plan text from orchestrator (data.plan)
+  if (!commissions && typeof data.plan === 'string') {
+    return <RawContentCard title="Commission Plan" content={data.plan} />;
+  }
 
   if (!commissions) return null;
 
@@ -176,6 +272,14 @@ function CommissionPlanCard({ data }: { data: Record<string, unknown> }) {
 function ReviewFindingsCard({ data }: { data: Record<string, unknown> }) {
   type Finding = { severity: string; message: string; file?: string; line?: number };
   const findings = data.findings as Finding[] | undefined;
+
+  // Fallback: raw text from orchestrator (data.design or data.review)
+  if (!findings && typeof data.design === 'string') {
+    return <RawContentCard title="Design Proposal" content={data.design} />;
+  }
+  if (!findings && typeof data.review === 'string') {
+    return <RawContentCard title="Review Findings" content={data.review} accent="#f59e0b" />;
+  }
 
   if (!findings) return null;
 

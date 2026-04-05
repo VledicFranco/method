@@ -26,6 +26,51 @@ import type { Validator } from './validator.js';
 // Re-export for domain consumers that previously imported from this file.
 export type { StrategyExecutionResult } from '../../ports/strategy-executor.js';
 
+// ── Strategy Output Parsers ──────────────────────────────────
+
+/**
+ * Parse ExplorationReport from strategy artifacts produced by explore-codebase.yaml.
+ * The scan_structure node returns structured JSON with domains/patterns/constraints.
+ */
+function parseExplorationFromArtifacts(
+  artifacts: Record<string, string> | undefined,
+  output: string,
+  success: boolean,
+): ExplorationReport {
+  // Try parsing the exploration_report artifact (from scan_structure node)
+  const reportRaw = artifacts?.exploration_report;
+  if (reportRaw && typeof reportRaw === 'string') {
+    try {
+      const parsed = JSON.parse(reportRaw) as {
+        domains?: string[];
+        patterns?: string[];
+        constraints?: string[];
+        approach?: string;
+        key_files?: string[];
+        tech_stack?: string;
+      };
+      if (parsed && typeof parsed === 'object') {
+        return {
+          domains: Array.isArray(parsed.domains) ? parsed.domains : [],
+          patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
+          constraints: Array.isArray(parsed.constraints) ? parsed.constraints : [],
+          approach: parsed.approach ?? output ?? 'Exploration completed',
+        };
+      }
+    } catch {
+      // Fall through to fallback
+    }
+  }
+
+  // Fallback for strategies that return unstructured output or failed
+  return {
+    domains: [],
+    patterns: [],
+    constraints: [],
+    approach: success ? (output || 'Codebase exploration completed') : `Exploration unavailable: ${output}`,
+  };
+}
+
 // ── Phase event callback (§3.3) ──────────────────────────────
 
 export type PhaseEventType =
@@ -34,7 +79,8 @@ export type PhaseEventType =
   | 'checkpoint_saved'
   | 'gate_waiting'
   | 'failure_recovery'
-  | 'validation_result';
+  | 'validation_result'
+  | 'cost_updated';
 
 export interface PhaseEvent {
   type: PhaseEventType;
@@ -150,12 +196,10 @@ export class BuildOrchestrator {
     const strategyId = this.config.strategyIds.explore;
     const result = await this.executeStrategy('explore', strategyId);
 
-    const report: ExplorationReport = {
-      domains: result.success ? ['build'] : [],
-      patterns: result.success ? ['FCA domain structure'] : [],
-      constraints: result.success ? ['G-PORT: use ports'] : [],
-      approach: result.output || 'Codebase exploration completed',
-    };
+    // Parse structured exploration data from strategy artifacts (produced by
+    // the scan_structure node in explore-codebase.yaml). Falls back to minimal
+    // report if the strategy failed or returned unstructured output.
+    const report = parseExplorationFromArtifacts(result.artifacts, result.output, result.success);
 
     const phaseResult = this.buildPhaseResult('explore', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
@@ -620,6 +664,14 @@ export class BuildOrchestrator {
   ): PhaseResult {
     this.costAccumulator.tokens += result.cost.tokens;
     this.costAccumulator.usd += result.cost.usd;
+
+    // Emit cost update for dashboard
+    this.emitPhaseEvent('cost_updated', {
+      totalUsd: this.costAccumulator.usd,
+      totalTokens: this.costAccumulator.tokens,
+      phaseUsd: result.cost.usd,
+      phase,
+    });
 
     return {
       phase,

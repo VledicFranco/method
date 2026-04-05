@@ -23,6 +23,7 @@ interface ApiBuild {
   id: string;
   requirement: string;
   autonomyLevel: AutonomyLevel;
+  projectId?: string;
   status: 'running' | 'completed' | 'failed' | 'aborted';
   startedAt: string;
   completedAt?: string;
@@ -63,6 +64,7 @@ function toBuildSummary(b: ApiBuild): BuildSummary {
     gantt: [],
     autonomy: b.autonomyLevel ?? 'discuss-all',
     refinements: [],
+    projectId: b.projectId,
   };
 }
 

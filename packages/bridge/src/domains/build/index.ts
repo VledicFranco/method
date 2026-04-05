@@ -111,8 +111,10 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
           payload: {
             buildId: event.buildId,
             sender: event.message.sender,
-            contentLength: event.message.content.length,
+            content: event.message.content,
             messageId: event.message.id,
+            ...(event.message.replyTo ? { replyTo: event.message.replyTo } : {}),
+            ...(event.message.card ? { card: event.message.card } : {}),
           },
         });
         break;

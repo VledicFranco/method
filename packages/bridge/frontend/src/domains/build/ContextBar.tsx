@@ -96,6 +96,13 @@ export function ContextBar({
         &#8592;
       </Link>
 
+      {/* Project badge */}
+      {build.projectId && (
+        <span className="font-mono text-[10px] text-[#6d5aed] bg-[#6d5aed22] border border-[#6d5aed33] px-2 py-[3px] rounded shrink-0 whitespace-nowrap">
+          {build.projectId}
+        </span>
+      )}
+
       {/* Requirement text */}
       <span className="font-mono text-xs text-txt-dim flex-1 min-w-0 truncate">
         <strong className="text-txt font-semibold">{build.name}</strong>
@@ -105,6 +112,14 @@ export function ContextBar({
 
       {/* Phase pill */}
       <PhasePill phase={phaseLabel} status={build.status} />
+
+      {/* Activity indicator (currently running node/phase) */}
+      {build.currentActivity && build.status === 'running' && (
+        <span className="font-mono text-[10px] text-[#3b82f6] flex items-center gap-1.5 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] animate-[pulse-dot_1.5s_infinite]" />
+          {build.currentActivity}
+        </span>
+      )}
 
       {/* Cost accumulator */}
       <div className="flex items-center gap-2 shrink-0">
