@@ -100,3 +100,84 @@ export function createSLMInferenceAdapter(slm: SLMInferenceLike): InferencePort 
     },
   };
 }
+
+// ── Ollama Inference Adapter ─────────────────────────────────
+
+export interface OllamaInferenceConfig {
+  /** Ollama base URL, e.g. "http://chobits:11434". */
+  baseUrl: string;
+  /** Model name, e.g. "qwen3-coder:30b". */
+  model: string;
+  /** Max output tokens. Default: 1024. */
+  maxTokens?: number;
+  /** Sampling temperature. Default: 0.1. */
+  temperature?: number;
+  /** Request timeout in ms. Default: 120_000. */
+  timeoutMs?: number;
+  /** System prompt prepended to every request. */
+  systemPrompt?: string;
+}
+
+/**
+ * Live inference via Ollama's OpenAI-compatible API.
+ * Use for frontier escalation or direct model calls.
+ */
+export function createOllamaInference(config: OllamaInferenceConfig): InferencePort {
+  const {
+    baseUrl,
+    model,
+    maxTokens = 1024,
+    temperature = 0.1,
+    timeoutMs = 120_000,
+    systemPrompt,
+  } = config;
+
+  const endpoint = `${baseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
+
+  return {
+    modelId: `ollama:${model}`,
+
+    async generate(input: string): Promise<InferenceResult> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const start = performance.now();
+
+      try {
+        const messages: Array<{ role: string; content: string }> = [];
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt });
+        }
+        messages.push({ role: 'user', content: input });
+
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: maxTokens,
+            temperature,
+            stream: false,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!resp.ok) {
+          const body = await resp.text().catch(() => '');
+          throw new Error(`Ollama HTTP ${resp.status}: ${body.slice(0, 200)}`);
+        }
+
+        const data = await resp.json() as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const output = data.choices?.[0]?.message?.content ?? '';
+        const latencyMs = performance.now() - start;
+
+        return { output, confidence: 0.9, latencyMs };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
+}

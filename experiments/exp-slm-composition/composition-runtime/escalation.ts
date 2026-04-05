@@ -117,18 +117,80 @@ export async function executeWithRetry(
  * Every escalation is a training signal — the frontier output paired with
  * the original input becomes training data for the next SLM fine-tuning run.
  *
- * Currently a stub that throws. Real implementation would call Anthropic API
- * or Ollama with a larger model.
+ * Supports two providers:
+ * - 'ollama': Calls Ollama's OpenAI-compatible endpoint (e.g., qwen3-coder:30b on chobits)
+ * - Others: throws (not yet implemented)
  */
 export async function escalateToFrontier(
   config: NonNullable<FailurePolicy['frontierConfig']>,
-  _originalInput: string,
+  originalInput: string,
   failureReason: string,
 ): Promise<string> {
-  // TODO: Implement real frontier escalation via Ollama or Anthropic API
+  if (config.provider === 'ollama') {
+    return escalateViaOllama(config, originalInput, failureReason);
+  }
+
   throw new Error(
-    `Frontier escalation not yet implemented. ` +
-    `Provider: ${config.provider}, Model: ${config.model}. ` +
+    `Frontier escalation not implemented for provider: ${config.provider}. ` +
     `Failure: ${failureReason}`,
   );
+}
+
+/**
+ * Call Ollama's OpenAI-compatible endpoint with the original input + error context.
+ * The prompt instructs the frontier model to produce the output the SLM couldn't.
+ */
+async function escalateViaOllama(
+  config: NonNullable<FailurePolicy['frontierConfig']>,
+  originalInput: string,
+  failureReason: string,
+): Promise<string> {
+  // config.model format: "host:port/model" or just "model" (defaults to localhost:11434)
+  const parts = config.model.split('/');
+  const modelName = parts.length > 1 ? parts.slice(1).join('/') : config.model;
+  const baseUrl = parts.length > 1
+    ? `http://${parts[0]}`
+    : 'http://localhost:11434';
+  const endpoint = `${baseUrl}/v1/chat/completions`;
+
+  const systemPrompt = config.prompt || `You are a helpful assistant. The previous attempt to process this input failed with: ${failureReason}. Please produce the correct output.`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 120_000);
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: originalInput },
+        ],
+        max_tokens: 1024,
+        temperature: 0.1,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(`Ollama HTTP ${resp.status}: ${body.slice(0, 200)}`);
+    }
+
+    const data = await resp.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const output = data.choices?.[0]?.message?.content ?? '';
+    if (!output) {
+      throw new Error('Ollama returned empty response');
+    }
+
+    return output;
+  } finally {
+    clearTimeout(timer);
+  }
 }
