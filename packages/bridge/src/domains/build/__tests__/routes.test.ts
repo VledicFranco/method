@@ -33,6 +33,20 @@ import { BuildConfigSchema } from '../config.js';
 import type { BuildConfig } from '../config.js';
 import type { AutonomyLevel, EvidenceReport } from '../types.js';
 import type { BridgeEvent, BridgeEventInput, EventBus, EventFilter, EventSink, EventSubscription } from '../../../ports/event-bus.js';
+import type { StrategyExecutorPort, StrategyExecutionResult } from '../../../ports/strategy-executor.js';
+
+// ── Mock StrategyExecutorPort ──────────────────────────────────
+
+const mockStrategyExecutor: StrategyExecutorPort = {
+  async executeStrategy(strategyId: string): Promise<StrategyExecutionResult> {
+    return {
+      success: true,
+      output: `Strategy ${strategyId} completed (routes-test mock)`,
+      cost: { tokens: 100, usd: 0.01 },
+      executionId: `exec-${strategyId}-${Date.now()}`,
+    };
+  },
+};
 
 // ── Mock EventBus ──────────────────────────────────────────────
 
@@ -155,6 +169,7 @@ before(async () => {
         checkpointAdapter,
         conversation,
         config,
+        mockStrategyExecutor,
         undefined,
         sessionId,
       );
@@ -479,6 +494,7 @@ describe('Build Routes', () => {
         checkpointAdapter,
         conversation,
         config,
+        mockStrategyExecutor,
         undefined,
         buildId,
       );

@@ -9,6 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import type { EventBus, BridgeEventInput } from '../../ports/event-bus.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { YamlLoader } from '../../ports/yaml-loader.js';
+import type { StrategyExecutorPort } from '../../ports/strategy-executor.js';
 import type { BuildConfig } from './config.js';
 import { BuildConfigSchema } from './config.js';
 import { BuildOrchestrator } from './orchestrator.js';
@@ -37,6 +38,9 @@ export { buildOrchestratorPact } from './pact.js';
 // C-1: Core orchestrator, validator (adapters are internal — use factory)
 export { BuildOrchestrator } from './orchestrator.js';
 export type { StrategyExecutionResult } from './orchestrator.js';
+export type { StrategyExecutorPort } from '../../ports/strategy-executor.js';
+export { StrategyExecutorAdapter } from './strategy-executor-adapter.js';
+export type { DagExecutor } from './strategy-executor-adapter.js';
 export { Validator } from './validator.js';
 export type { CommandExecutor, CommandExecutorResult } from './validator.js';
 
@@ -51,6 +55,7 @@ export interface CreateBuildDomainOptions {
   eventBus: EventBus;
   fileSystem: FileSystemProvider;
   yamlLoader: YamlLoader;
+  strategyExecutor: StrategyExecutorPort;
   buildConfig?: Partial<BuildConfig>;
 }
 
@@ -144,6 +149,7 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
       checkpointAdapter,
       conversation,
       config,
+      options.strategyExecutor,
       undefined, // Validator — wired separately if needed
       sessionId,
     );
