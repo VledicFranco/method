@@ -249,7 +249,10 @@ Assess TWO things separately:
 1. DISCREPANCY: How far from the goal? (artifact-based: files created, code written)
 2. SOLVABILITY: Can the agent solve this? (understanding-based: is it learning, making relevant progress for the current phase, or stuck in a loop?)
 
-CRITICAL: Reading files during the explore phase IS progress. Only flag stagnation if the agent is repeating actions or in the wrong phase.
+CRITICAL RULES:
+- Reading files during the explore phase IS progress. Only flag stagnation if the agent is repeating actions or in the wrong phase.
+- satisfied=true ONLY when ALL KPIs are met. If even one KPI is not achieved, satisfied MUST be false regardless of how much work has been done.
+- Check EACH KPI individually before setting satisfied=true.
 
 Respond in EXACTLY this format:
 <assessment>

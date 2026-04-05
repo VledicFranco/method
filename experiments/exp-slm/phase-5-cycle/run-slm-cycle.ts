@@ -1792,7 +1792,7 @@ async function runUnifiedMemory(
 
   // ── Unified Memory Store (RFC 006 Part III) ──────────────────
   const store = createCognitiveMemoryStore({
-    contentSpreadingWeight: 0.15,
+    contentSpreadingWeight: 0.25,  // LH3: tuned up from 0.15 for better content matching
     tagSpreadingWeight: 0.3,
     decayRate: 0.5,
     noiseAmplitude: 0.05,
@@ -1813,12 +1813,19 @@ async function runUnifiedMemory(
   });
   const assessResult = await assessTaskWithLLM(evalAdapter, goalRepresentation, MAX_CYCLES, moduleId('evaluator'));
   const taskAssessment = assessResult.assessment;
-  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)}`);
+
+  // LH1: Dynamic cycle budget from difficulty assessment
+  const difficultyBudget = { low: MAX_CYCLES, medium: MAX_CYCLES, high: Math.max(MAX_CYCLES, 25) };
+  const effectiveMaxCycles = difficultyBudget[taskAssessment.difficulty];
+  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)} max_cycles=${effectiveMaxCycles}`);
   console.log(`    [task-assessment] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+  if (taskAssessment.kpis.length > 0) {
+    console.log(`    [task-assessment] kpis: ${taskAssessment.kpis.join(', ')}`);
+  }
 
   const evaluator = createEvaluator({
     goalRepresentation,
-    maxCycles: MAX_CYCLES,
+    maxCycles: effectiveMaxCycles,
     provider: evalAdapter,
     taskAssessment,
   });
@@ -1852,7 +1859,7 @@ async function runUnifiedMemory(
   let terminateReason: TerminateSignal['reason'] | undefined;
 
   try {
-    for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+    for (let cycle = 0; cycle < effectiveMaxCycles; cycle++) {
       // 1. OBSERVE (cycle 0 only) — decompose task and store entries
       if (cycle === 0) {
         const decomposed = decomposeTaskToEntries(task.description);
