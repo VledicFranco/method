@@ -28,20 +28,60 @@ const outDir = resolve(__dirname, '../corpus');
 // ── Primitive building blocks ─────────────────────────────────
 
 const FIELD_NAMES = [
+  // Single-word (existing)
   'id', 'name', 'label', 'title', 'description', 'summary', 'message',
   'status', 'state', 'phase', 'mode', 'kind', 'category', 'level', 'severity',
   'value', 'score', 'weight', 'count', 'total', 'limit', 'threshold', 'ratio',
   'duration', 'timeout', 'interval', 'delay', 'retries', 'attempts',
-  'enabled', 'active', 'visible', 'required', 'optional', 'locked', 'valid',
+  'enabled', 'active', 'visible', 'required', 'locked', 'valid',
   'source', 'target', 'origin', 'destination', 'path', 'url', 'key',
-  'timestamp', 'createdAt', 'updatedAt', 'expiresAt', 'startTime', 'endTime',
-  'priority', 'confidence', 'progress', 'accuracy', 'coverage',
+  'timestamp', 'priority', 'confidence', 'progress', 'accuracy', 'coverage',
   'input', 'output', 'result', 'response', 'payload', 'data',
   'width', 'height', 'size', 'capacity', 'length', 'depth',
   'color', 'format', 'encoding', 'version', 'revision',
   'author', 'owner', 'assignee', 'reviewer', 'creator',
   'tags', 'labels', 'items', 'entries', 'records', 'elements',
-  'note', 'comment', 'reason', 'cause', 'error',
+  'note', 'comment', 'reason', 'cause', 'error', 'port', 'host',
+  'domain', 'scope', 'region', 'zone', 'tier', 'role', 'type',
+  'protocol', 'method', 'action', 'trigger', 'event', 'signal',
+  'query', 'filter', 'cursor', 'offset', 'page', 'batch',
+  'healthy', 'connected', 'verified', 'signed', 'expired', 'proxied',
+  // Compound — camelCase
+  'createdAt', 'updatedAt', 'expiresAt', 'startTime', 'endTime',
+  'statusCode', 'errorMessage', 'contentType', 'bodySize',
+  'fileName', 'filePath', 'fileSize', 'mimeType', 'checksum',
+  'retryCount', 'maxRetries', 'hitCount', 'missCount',
+  'lastModified', 'lastAccessed', 'lastLogin', 'lastCheck',
+  'bytesSent', 'bytesReceived', 'tokenCount', 'pageSize',
+  'displayName', 'userName', 'emailAddress', 'ipAddress',
+  'nodeId', 'peerId', 'sessionId', 'requestId', 'correlationId',
+  'buildNumber', 'patchLevel', 'majorVersion', 'minorVersion',
+  'timeoutMs', 'cooldownMinutes', 'ttlSeconds', 'idleSeconds',
+  'daysRemaining', 'replicaCount', 'consecutiveFailures',
+  'responseTimeMs', 'durationMs', 'latencyMs', 'elapsedMs',
+  'rolloutPercent', 'currentUsage', 'memoryUsed', 'diskFree',
+  'queueName', 'tableName', 'columnName', 'indexName',
+  'ruleName', 'flagName', 'taskName', 'stageName',
+  'primaryKey', 'foreignKey', 'sortOrder', 'groupBy',
+  'cronExpression', 'nextRun', 'lastRun', 'quietHours',
+  // Compound — snake_case (teaches model to handle both conventions)
+  'status_code', 'error_message', 'content_type', 'body_size',
+  'file_name', 'file_path', 'file_size', 'mime_type',
+  'retry_count', 'max_retries', 'hit_count', 'miss_count',
+  'last_modified', 'last_accessed', 'last_login', 'last_check',
+  'bytes_sent', 'bytes_received', 'token_count', 'page_size',
+  'display_name', 'user_name', 'email_address', 'ip_address',
+  'node_id', 'peer_id', 'session_id', 'request_id', 'correlation_id',
+  'build_number', 'patch_level', 'major_version', 'minor_version',
+  'timeout_ms', 'cooldown_minutes', 'ttl_seconds', 'idle_seconds',
+  'days_remaining', 'replica_count', 'consecutive_failures',
+  'response_time_ms', 'duration_ms', 'latency_ms', 'elapsed_ms',
+  'rollout_percent', 'current_usage', 'memory_used', 'disk_free',
+  'queue_name', 'table_name', 'column_name', 'index_name',
+  'rule_name', 'flag_name', 'task_name', 'stage_name',
+  'primary_key', 'foreign_key', 'sort_order', 'group_by',
+  'cron_expression', 'next_run', 'last_run', 'quiet_hours',
+  'dead_letter', 'in_stock', 'is_active', 'has_error',
 ];
 
 const ENUM_SETS = [
@@ -63,6 +103,26 @@ const ENUM_SETS = [
   ['queued', 'running', 'completed', 'failed'],
   ['allow', 'deny', 'prompt'],
   ['input', 'output', 'bidirectional'],
+  // Additional variety for novel domains
+  ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  ['tcp', 'udp', 'quic', 'http', 'websocket'],
+  ['binary', 'docker', 'npm', 'wheel', 'deb'],
+  ['development', 'staging', 'production'],
+  ['bearer', 'basic', 'api_key', 'oauth2'],
+  ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV'],
+  ['ms', 'bytes', 'count', 'percent'],
+  ['full', 'incremental', 'differential'],
+  ['realtime', 'hourly', 'daily', 'weekly'],
+  ['stable', 'beta', 'nightly', 'canary'],
+  ['healthy', 'degraded', 'unhealthy', 'unknown'],
+  ['electronics', 'clothing', 'food', 'books', 'toys'],
+  ['click', 'view', 'purchase', 'signup', 'logout'],
+  ['sunny', 'cloudy', 'rainy', 'snowy', 'windy'],
+  ['second', 'minute', 'hour', 'day', 'week'],
+  ['linear', 'exponential', 'fibonacci'],
+  ['approval', 'quality', 'test', 'manual', 'auto'],
+  ['file', 'git', 'webhook', 'schedule', 'cron'],
+  ['shared', 'worktree', 'isolated', 'sandboxed'],
 ];
 
 // ── Type definitions for generation ───────────────────────────
@@ -178,11 +238,50 @@ function interfaceToTypeScript(iface) {
   return lines.join('\n');
 }
 
+// ── JSON Schema rendering (for multi-language training) ──────
+
+function fieldToJsonSchemaType(field) {
+  switch (field.type) {
+    case 'string': return { type: 'string' };
+    case 'number':
+    case 'float': return { type: 'number' };
+    case 'integer': return { type: 'integer' };
+    case 'boolean': return { type: 'boolean' };
+    case 'enum': return { type: 'string', enum: field.enumValues };
+    case 'string-array': return { type: 'array', items: { type: 'string' } };
+    case 'enum-array': return { type: 'array', items: { type: 'string', enum: field.enumValues } };
+    case 'nullable-string': return { type: ['string', 'null'] };
+    default: return { type: 'string' };
+  }
+}
+
+function interfaceToJsonSchema(iface) {
+  const properties = {};
+  const required = [];
+
+  for (const f of iface.fields) {
+    properties[f.name] = fieldToJsonSchemaType(f);
+    if (!f.optional) {
+      required.push(f.name);
+    }
+  }
+
+  return JSON.stringify({
+    type: 'object',
+    properties,
+    required: required.length > 0 ? required : undefined,
+  }, null, 2);
+}
+
 // ── PEG Grammar rendering ────────────────────────────────────
 
 function fieldToSectionName(fieldName) {
-  // camelCase → PascalCase + "Section" or "Opt"
-  const pascal = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+  // camelCase or snake_case → PascalCase
+  // "statusCode" → "StatusCode"
+  // "status_code" → "StatusCode"
+  const pascal = fieldName
+    .replace(/_([a-z])/g, (_, c) => c.toUpperCase())  // snake_case → camelCase
+    .replace(/^[a-z]/, c => c.toUpperCase());           // capitalize first
   return pascal;
 }
 
@@ -433,13 +532,13 @@ function main() {
   console.log(`Added ${seeds.length} seed pairs directly`);
 
   // 2. Generate synthetic interfaces
-  const TARGET = 2000;
+  const TARGET = 3000;
   const ATTEMPTS = TARGET * 3; // generate more, filter by validation
 
   console.log(`Generating synthetic pairs (target: ${TARGET})...`);
 
   for (let i = 0; i < ATTEMPTS && corpus.length < TARGET; i++) {
-    const fieldCount = randomInt(3, 8);
+    const fieldCount = randomInt(3, 10);
     const iface = generateInterface(fieldCount);
     const tsCode = interfaceToTypeScript(iface);
     const grammar = interfaceToGrammar(iface);
@@ -463,6 +562,13 @@ function main() {
     }
 
     corpus.push({ input: tsCode, output: grammar });
+
+    // Also add JSON Schema version of same interface (20% of the time)
+    if (Math.random() < 0.2) {
+      const jsonSchemaInput = interfaceToJsonSchema(iface);
+      corpus.push({ input: jsonSchemaInput, output: grammar });
+    }
+
     validated++;
 
     if (validated % 200 === 0) {
