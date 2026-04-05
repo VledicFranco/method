@@ -18,6 +18,7 @@ export type EventDomain =
   | 'project'
   | 'methodology'
   | 'system'
+  | 'cost'
   | (string & {});
 
 export type EventSeverity = 'info' | 'warning' | 'error' | 'critical';
