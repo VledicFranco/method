@@ -1,0 +1,13 @@
+{
+  "name": "@method/types",
+  "version": "0.1.0",
+  "description": "Canonical shared types for the Method runtime — L0 package, zero runtime deps",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

@@ -115,6 +115,32 @@ export type { CreateAgentOptions, Agent, AgentState } from './engine/create-agen
 export { budgetEnforcer, BudgetExhaustedError } from './middleware/budget-enforcer.js';
 export type { BudgetState } from './middleware/budget-enforcer.js';
 export { outputValidator } from './middleware/output-validator.js';
+export { throttler } from './middleware/throttler.js';
+export type { ThrottlerOptions } from './middleware/throttler.js';
+
+// Provider error taxonomy (PRD 051 — S9)
+export {
+  ProviderError,
+  TransientError,
+  PermanentError,
+  RateLimitError,
+  NetworkError,
+  TimeoutError,
+  AuthError,
+  InvalidRequestError,
+  CliExecutionError,
+  CliSpawnError,
+  CliAbortError,
+  isProviderError,
+  isTransientError,
+  isPermanentError,
+  redactCredentials,
+} from './errors.js';
+export type { ProviderErrorContext, AnyProviderError } from './errors.js';
+
+// Rate governor port (PRD 051 S2 — base contract for Throttler)
+export type { RateGovernor, DispatchSlot, AcquireOptions, ObserveOutcome } from './ports/rate-governor.js';
+export { SaturationError } from './ports/rate-governor.js';
 
 // Reference agents
 export type { ReferenceAgent, ReferenceAgentConfig, ReferenceAgentPactOverrides } from './agents/reference-agent.js';

@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/types" },
     { "path": "packages/methodts" },
     { "path": "packages/mcp" },
     { "path": "packages/pacta" },

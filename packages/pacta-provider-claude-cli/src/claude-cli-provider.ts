@@ -155,7 +155,11 @@ export function claudeCliProvider(
     const result = await executeCli(cliArgs, execOpts);
 
     if (result.exitCode !== 0) {
-      throw new CliExecutionError(result.exitCode, result.stderr);
+      throw new CliExecutionError({
+        providerClass: 'claude-cli',
+        exitCode: result.exitCode,
+        stderr: result.stderr,
+      });
     }
 
     const durationMs = Date.now() - startTime;

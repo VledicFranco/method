@@ -10,5 +10,8 @@
   "scripts": {
     "build": "tsc -b",
     "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/types": "*"
   }
 }

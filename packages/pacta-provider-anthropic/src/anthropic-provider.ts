@@ -19,6 +19,12 @@ import type {
   ToolProvider,
   ToolDefinition,
 } from '@method/pacta';
+import {
+  RateLimitError,
+  AuthError,
+  InvalidRequestError,
+  NetworkError,
+} from '@method/pacta';
 
 import { calculateCost } from './pricing.js';
 
@@ -177,7 +183,12 @@ export function anthropicProvider(
         (params as any).thinking = { type: 'enabled', budget_tokens: budget };
       }
 
-      const response = await client.messages.create(params);
+      let response: Anthropic.Messages.Message;
+      try {
+        response = await client.messages.create(params);
+      } catch (err) {
+        classifyAnthropicError(err);
+      }
 
       // Accumulate usage
       const turnUsage = mapUsage(response.usage);
@@ -207,7 +218,10 @@ export function anthropicProvider(
 
       // Execute tools and continue the loop
       if (!toolProvider) {
-        throw new Error('Model requested tool use but no ToolProvider is configured.');
+        throw new InvalidRequestError({
+          providerClass: ANTHROPIC_PROVIDER_CLASS,
+          message: 'Model requested tool use but no ToolProvider is configured.',
+        });
       }
 
       // Add assistant message with tool use blocks
@@ -290,7 +304,12 @@ export function anthropicProvider(
       }
       // Note: extended thinking is not supported with streaming — skip it silently.
 
-      const stream = client.messages.stream(params);
+      let stream: ReturnType<typeof client.messages.stream>;
+      try {
+        stream = client.messages.stream(params);
+      } catch (err) {
+        classifyAnthropicError(err);
+      }
 
       // Collect content from streaming
       const contentBlocks: Anthropic.Messages.ContentBlock[] = [];
@@ -374,7 +393,10 @@ export function anthropicProvider(
 
       // Execute tools
       if (!toolProvider) {
-        throw new Error('Model requested tool use but no ToolProvider is configured.');
+        throw new InvalidRequestError({
+          providerClass: ANTHROPIC_PROVIDER_CLASS,
+          message: 'Model requested tool use but no ToolProvider is configured.',
+        });
       }
 
       messages.push({ role: 'assistant', content: contentBlocks as Anthropic.Messages.ContentBlockParam[] });
@@ -486,8 +508,65 @@ function accumulateUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
   };
 }
 
-// ── Errors ───────────────────────────────────────────────────────
+// ── Error Classification (PRD 051 S9) ───────────────────────────
 
+const ANTHROPIC_PROVIDER_CLASS = 'anthropic-api' as const;
+
+/**
+ * Classify an Anthropic SDK error into the ProviderError taxonomy.
+ * Extracts status code and retry-after header when available.
+ */
+function classifyAnthropicError(err: unknown): never {
+  // The Anthropic SDK throws APIError with .status and .headers
+  const status = (err as { status?: number }).status;
+  const headers = (err as { headers?: Record<string, string> }).headers;
+  const message = err instanceof Error ? err.message : String(err);
+
+  const retryAfterRaw = headers?.['retry-after'];
+  const retryAfterMs = retryAfterRaw ? parseFloat(retryAfterRaw) * 1000 : undefined;
+
+  if (status === 429) {
+    throw new RateLimitError({
+      providerClass: ANTHROPIC_PROVIDER_CLASS,
+      message: `Anthropic rate limit (429): ${message}`,
+      retryAfterMs,
+      cause: err,
+    });
+  }
+  if (status === 401 || status === 403) {
+    throw new AuthError({
+      providerClass: ANTHROPIC_PROVIDER_CLASS,
+      message: `Anthropic auth error (${status}): ${message}`,
+      cause: err,
+    });
+  }
+  if (status === 400) {
+    throw new InvalidRequestError({
+      providerClass: ANTHROPIC_PROVIDER_CLASS,
+      message: `Anthropic invalid request (400): ${message}`,
+      cause: err,
+    });
+  }
+  if (status !== undefined && status >= 500) {
+    throw new NetworkError({
+      providerClass: ANTHROPIC_PROVIDER_CLASS,
+      message: `Anthropic server error (${status}): ${message}`,
+      retryAfterMs,
+      cause: err,
+    });
+  }
+  // Unknown error — classify as network (transient) to be conservative
+  throw new NetworkError({
+    providerClass: ANTHROPIC_PROVIDER_CLASS,
+    message: `Anthropic error: ${message}`,
+    cause: err,
+  });
+}
+
+/**
+ * @deprecated Use typed errors from `@method/pacta` instead.
+ * Kept for backward compatibility during migration period.
+ */
 export class AnthropicApiError extends Error {
   readonly statusCode: number;
   readonly responseBody: string;

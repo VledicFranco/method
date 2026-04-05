@@ -6,6 +6,12 @@
  */
 
 import { spawn as nodeSpawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
+import {
+  TimeoutError,
+  CliSpawnError as PactaCliSpawnError,
+  CliExecutionError as PactaCliExecutionError,
+  CliAbortError as PactaCliAbortError,
+} from '@method/pacta';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -165,7 +171,7 @@ export async function executeCli(
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      reject(new CliTimeoutError(timeoutMs));
+      reject(new TimeoutError({ providerClass: CLI_PROVIDER_CLASS, timeoutMs }));
     }, timeoutMs);
 
     // Wire abort signal: kill the child process and reject with AbortError
@@ -176,7 +182,7 @@ export async function executeCli(
         // Already aborted before we even started
         clearTimeout(timer);
         child.kill('SIGTERM');
-        const err = new CliAbortError();
+        const err = new PactaCliAbortError({ providerClass: CLI_PROVIDER_CLASS });
         reject(err);
         aborted = true;
       } else {
@@ -184,7 +190,7 @@ export async function executeCli(
           aborted = true;
           clearTimeout(timer);
           child.kill('SIGTERM');
-          reject(new CliAbortError());
+          reject(new PactaCliAbortError({ providerClass: CLI_PROVIDER_CLASS }));
         };
         signal.addEventListener('abort', onAbort, { once: true });
         // Clean up the listener when the process closes
@@ -197,7 +203,7 @@ export async function executeCli(
     child.on('error', (err) => {
       if (aborted) return;
       clearTimeout(timer);
-      reject(new CliSpawnError(binary, err));
+      reject(new PactaCliSpawnError({ providerClass: CLI_PROVIDER_CLASS, binary, cause: err }));
     });
 
     child.on('close', (code) => {
@@ -308,7 +314,7 @@ export async function executeCliStream(
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      reject(new CliTimeoutError(timeoutMs));
+      reject(new TimeoutError({ providerClass: CLI_PROVIDER_CLASS, timeoutMs }));
     }, timeoutMs);
 
     // Wire abort signal
@@ -318,14 +324,14 @@ export async function executeCliStream(
       if (signal.aborted) {
         clearTimeout(timer);
         child.kill('SIGTERM');
-        reject(new CliAbortError());
+        reject(new PactaCliAbortError({ providerClass: CLI_PROVIDER_CLASS }));
         aborted = true;
       } else {
         const onAbort = () => {
           aborted = true;
           clearTimeout(timer);
           child.kill('SIGTERM');
-          reject(new CliAbortError());
+          reject(new PactaCliAbortError({ providerClass: CLI_PROVIDER_CLASS }));
         };
         signal.addEventListener('abort', onAbort, { once: true });
         child.on('close', () => {
@@ -337,7 +343,7 @@ export async function executeCliStream(
     child.on('error', (err) => {
       if (aborted) return;
       clearTimeout(timer);
-      reject(new CliSpawnError(binary, err));
+      reject(new PactaCliSpawnError({ providerClass: CLI_PROVIDER_CLASS, binary, cause: err }));
     });
 
     child.on('close', (code) => {
@@ -372,37 +378,17 @@ export async function executeCliStream(
 }
 
 // ── Errors ───────────────────────────────────────────────────────
+// Migrated to @method/pacta error taxonomy (PRD 051 S9).
+// Re-exported here for backward compatibility.
 
-export class CliTimeoutError extends Error {
-  constructor(public readonly timeoutMs: number) {
-    super(`Claude CLI timed out after ${timeoutMs}ms`);
-    this.name = 'CliTimeoutError';
-  }
-}
+const CLI_PROVIDER_CLASS = 'claude-cli' as const;
 
-export class CliSpawnError extends Error {
-  constructor(
-    public readonly binary: string,
-    public readonly cause: Error,
-  ) {
-    super(`Failed to spawn "${binary}": ${cause.message}`);
-    this.name = 'CliSpawnError';
-  }
-}
+export { PactaCliSpawnError as CliSpawnError };
+export { PactaCliExecutionError as CliExecutionError };
+export { PactaCliAbortError as CliAbortError };
 
-export class CliExecutionError extends Error {
-  constructor(
-    public readonly exitCode: number,
-    public readonly stderr: string,
-  ) {
-    super(`Claude CLI exited with code ${exitCode}: ${stderr.slice(0, 200)}`);
-    this.name = 'CliExecutionError';
-  }
-}
-
-export class CliAbortError extends Error {
-  constructor() {
-    super('Claude CLI invocation was aborted');
-    this.name = 'CliAbortError';
-  }
-}
+/**
+ * @deprecated Use `TimeoutError` from `@method/pacta` instead.
+ * Kept for backward compatibility — will be removed in a future version.
+ */
+export const CliTimeoutError = TimeoutError;
