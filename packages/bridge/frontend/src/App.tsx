@@ -20,6 +20,7 @@ const ExecutionView = lazy(() => import('./domains/strategies/ExecutionView'));
 const ExperimentList = lazy(() => import('./domains/experiments/ExperimentList'));
 const ExperimentDetail = lazy(() => import('./domains/experiments/ExperimentDetail'));
 const RunDetail = lazy(() => import('./domains/experiments/RunDetail'));
+const BuildsPage = lazy(() => import('./domains/build/BuildsPage'));
 
 // Preload functions for route chunks — trigger on nav hover to eliminate load delay
 export const ROUTE_PRELOADS: Record<string, () => void> = {
@@ -32,6 +33,7 @@ export const ROUTE_PRELOADS: Record<string, () => void> = {
   '/registry': () => { import('./domains/registry/Registry'); },
   '/settings': () => { import('./shared/pages/Settings'); },
   '/lab': () => { import('./domains/experiments/ExperimentList'); },
+  '/builds': () => { import('./domains/build/BuildsPage'); },
 };
 
 // ── Route loading skeleton ──
@@ -129,6 +131,7 @@ export function App() {
             <Route path="/lab" element={<ExperimentList />} />
             <Route path="/lab/:id" element={<ExperimentDetail />} />
             <Route path="/lab/:id/run/:runId" element={<RunDetail />} />
+            <Route path="/builds/:id?" element={<BuildsPage />} />
             {/* Catch-all: redirect to dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
