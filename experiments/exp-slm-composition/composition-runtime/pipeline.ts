@@ -53,6 +53,10 @@ export async function executePipeline(
   // Build a helper to find the preceding stage for any gate step
   const steps = definition.stages;
 
+  // Track the input that each stage index received, for retry purposes.
+  // Without this, retries would pass the failed OUTPUT as input to the stage.
+  const stageInputs = new Map<number, string>();
+
   try {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
@@ -61,6 +65,9 @@ export async function executePipeline(
       const currentContext: PipelineContext = { ...context, state };
 
       if (step.type === 'stage') {
+        // Record the input this stage received (before it transforms currentData)
+        stageInputs.set(i, currentData);
+
         const stageStart = performance.now();
         const output = await step.stage.execute({
           data: currentData,
@@ -85,7 +92,13 @@ export async function executePipeline(
 
       } else if (step.type === 'gate') {
         // Find the preceding stage (walk backward)
-        const precedingStage = findPrecedingStage(steps, i);
+        const precedingStageIdx = findPrecedingStageIndex(steps, i);
+        const precedingStage = precedingStageIdx >= 0
+          ? (steps[precedingStageIdx] as { type: 'stage'; stage: import('./types.js').StagePort }).stage
+          : undefined;
+        const originalStageInput = precedingStageIdx >= 0
+          ? stageInputs.get(precedingStageIdx) ?? currentData
+          : currentData;
 
         const gateInput: GateInput = {
           data: currentData,
@@ -126,12 +139,15 @@ export async function executePipeline(
           };
         }
 
+        // Retries re-execute the stage with its ORIGINAL input, not the failed output.
+        // The gate still validates the stage's current output (currentData).
         const retryResult = await executeWithRetry(
           precedingStage,
           step.gate,
-          { data: currentData, context: currentContext },
+          { data: originalStageInput, context: currentContext },
           step.onFail,
           (data, ctx) => ({ data, context: ctx }),
+          currentData,
         );
 
         collector.recordGate({
@@ -287,14 +303,14 @@ export async function executePipeline(
 }
 
 /**
- * Find the most recent stage step before index i.
+ * Find the index of the most recent stage step before gateIndex.
+ * Returns -1 if no preceding stage exists.
  */
-function findPrecedingStage(steps: readonly PipelineStep[], gateIndex: number) {
+function findPrecedingStageIndex(steps: readonly PipelineStep[], gateIndex: number): number {
   for (let j = gateIndex - 1; j >= 0; j--) {
-    const step = steps[j];
-    if (step.type === 'stage') {
-      return step.stage;
+    if (steps[j].type === 'stage') {
+      return j;
     }
   }
-  return undefined;
+  return -1;
 }

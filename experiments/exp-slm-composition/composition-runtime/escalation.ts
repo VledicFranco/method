@@ -41,20 +41,21 @@ export async function executeWithRetry(
   stageInput: StageInput,
   policy: FailurePolicy,
   buildGateInput: (data: string, context: PipelineContext) => GateInput,
+  /** The data the gate should validate on the FIRST attempt (before retries re-run the stage). */
+  initialGateData: string,
 ): Promise<RetryResult> {
   // For deterministic stages, retry is pointless (same input → same output)
   const maxRetries = stage.type === 'deterministic' ? 0 : policy.maxRetries;
 
-  let lastData = stageInput.data;
+  // Start with the data that already failed validation in the pipeline.
+  // Retries re-execute the stage with stageInput to produce new data.
+  let lastData = initialGateData;
   let lastGateResult: GateResult | undefined;
   let retryCount = 0;
 
-  // The initial execution already happened before this function is called.
-  // This function handles the retry loop starting from the first failure.
-
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      // Re-run the stage to get different output
+      // Re-run the stage with its ORIGINAL input to get different output
       const stageOutput = await stage.execute(stageInput);
       lastData = stageOutput.data;
       retryCount++;
