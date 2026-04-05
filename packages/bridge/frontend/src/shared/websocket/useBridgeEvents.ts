@@ -26,6 +26,7 @@ const DOMAIN_TOPIC_MAP: Record<string, string> = {
   strategy: 'executions',
   trigger: 'triggers',
   session: 'sessions',
+  build: 'builds',
 };
 
 function domainToTopic(domain?: string): string {

@@ -22,6 +22,7 @@ const DOMAIN_TOPIC_MAP: Record<string, Topic> = {
   strategy: 'executions',
   trigger: 'triggers',
   session: 'sessions',
+  build: 'builds',
 };
 
 // ── WebSocketSink ───────────────────────────────────────────────

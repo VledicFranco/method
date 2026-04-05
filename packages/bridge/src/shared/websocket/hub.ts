@@ -21,7 +21,7 @@ export type ServerMessage =
 
 // ── Valid topics ─────────────────────────────────────────────
 
-export const VALID_TOPICS = ['events', 'sessions', 'executions', 'triggers'] as const;
+export const VALID_TOPICS = ['events', 'sessions', 'executions', 'triggers', 'builds'] as const;
 export type Topic = typeof VALID_TOPICS[number];
 
 function isValidTopic(topic: string): topic is Topic {
