@@ -7,7 +7,7 @@
  * @see PRD 047 — Build Orchestrator §Dashboard Architecture
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { BuildList } from './BuildList';
@@ -18,8 +18,24 @@ import { useBuilds } from './useBuilds';
 
 export default function BuildsPage() {
   const { id } = useParams<{ id: string }>();
-  const { builds, selectedBuild, selectedId, selectBuild } = useBuilds(id);
+  const { builds, selectedBuild, selectedId, selectBuild, startBuild, abortBuild, resumeBuild } = useBuilds(id);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+
+  const handleStartBuild = useCallback((requirement: string) => {
+    void startBuild(requirement);
+  }, [startBuild]);
+
+  const handleAbort = useCallback(() => {
+    if (selectedBuild) {
+      void abortBuild(selectedBuild.id);
+    }
+  }, [selectedBuild, abortBuild]);
+
+  const handleResume = useCallback(() => {
+    if (selectedBuild) {
+      void resumeBuild(selectedBuild.id);
+    }
+  }, [selectedBuild, resumeBuild]);
 
   return (
     <div className="flex h-screen w-full bg-void overflow-hidden">
@@ -28,13 +44,18 @@ export default function BuildsPage() {
         builds={builds}
         selectedId={selectedId}
         onSelect={selectBuild}
+        onStartBuild={handleStartBuild}
       />
 
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {selectedBuild ? (
           <>
-            <ContextBar build={selectedBuild} />
+            <ContextBar
+              build={selectedBuild}
+              onAbort={handleAbort}
+              onResume={handleResume}
+            />
             <BuildDetail build={selectedBuild} />
           </>
         ) : (

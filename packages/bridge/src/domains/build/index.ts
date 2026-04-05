@@ -13,9 +13,12 @@ import type { StrategyExecutorPort } from '../../ports/strategy-executor.js';
 import type { BuildConfig } from './config.js';
 import { BuildConfigSchema } from './config.js';
 import { BuildOrchestrator } from './orchestrator.js';
+import type { PhaseEvent } from './orchestrator.js';
 import { FileCheckpointAdapter } from './checkpoint-adapter.js';
 import { ConversationAdapter } from './conversation-adapter.js';
 import type { ConversationEvent } from './conversation-adapter.js';
+import { Validator } from './validator.js';
+import type { CommandExecutor } from './validator.js';
 import { registerBuildRoutes } from './routes.js';
 import type { BuildEntry, BuildRouteContext } from './routes.js';
 
@@ -56,6 +59,8 @@ export interface CreateBuildDomainOptions {
   fileSystem: FileSystemProvider;
   yamlLoader: YamlLoader;
   strategyExecutor: StrategyExecutorPort;
+  /** CommandExecutor for Validator — injected from composition root (G-PORT). */
+  commandExecutor?: CommandExecutor;
   buildConfig?: Partial<BuildConfig>;
 }
 
@@ -134,6 +139,30 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
     }
   }
 
+  // ── Validator (§3.1 — CommandExecutor injected from composition root) ──
+
+  const validator = options.commandExecutor
+    ? new Validator(options.commandExecutor, process.cwd())
+    : undefined;
+
+  // ── Phase event → BridgeEvent mapping (§3.3) ─────────────────
+
+  function onPhaseEvent(event: PhaseEvent): void {
+    const base: Omit<BridgeEventInput, 'type' | 'payload'> = {
+      version: 1,
+      domain: 'build',
+      severity: event.type === 'failure_recovery' ? 'warning' : 'info',
+      source: 'bridge/domains/build/orchestrator',
+      sessionId: event.buildId,
+    };
+
+    options.eventBus.emit({
+      ...base,
+      type: `build.${event.type}`,
+      payload: event.payload,
+    });
+  }
+
   // ── Orchestrator + ConversationAdapter factory ───────────────
 
   function createOrchestrator(sessionId?: string): {
@@ -150,8 +179,9 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
       conversation,
       config,
       options.strategyExecutor,
-      undefined, // Validator — wired separately if needed
+      validator,
       sessionId,
+      onPhaseEvent,
     );
 
     return { orchestrator, conversation };

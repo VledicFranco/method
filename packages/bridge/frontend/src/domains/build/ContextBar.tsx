@@ -8,6 +8,7 @@
  * @see PRD 047 §Dashboard Architecture — Persistent Context Bar
  */
 
+import { Link } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { PHASE_LABELS } from './types';
 import type { BuildSummary, AutonomyLevel, PhaseInfo } from './types';
@@ -81,9 +82,20 @@ export function ContextBar({
   const completedComms = build.commissions.filter((c) => c.status === 'completed').length;
   const isCompleted = build.status === 'completed';
   const isPaused = build.status === 'paused';
+  const isFailed = build.status === 'failed';
+  const canResume = isPaused || isFailed;
 
   return (
     <div className="bg-[#0e0e16] border-b border-bdr px-6 py-2.5 flex items-center gap-4 shrink-0 min-h-[48px]">
+      {/* Back arrow — navigates to dashboard */}
+      <Link
+        to="/"
+        className="text-txt-dim hover:text-txt text-sm shrink-0 transition-colors"
+        aria-label="Back to dashboard"
+      >
+        &#8592;
+      </Link>
+
       {/* Requirement text */}
       <span className="font-mono text-xs text-txt-dim flex-1 min-w-0 truncate">
         <strong className="text-txt font-semibold">{build.name}</strong>
@@ -133,7 +145,7 @@ export function ContextBar({
       {/* Controls */}
       {!isCompleted && (
         <div className="flex gap-2 shrink-0">
-          {isPaused ? (
+          {canResume ? (
             <button
               onClick={onResume}
               className="text-[11px] font-semibold px-3.5 py-[5px] rounded-[5px] border cursor-pointer transition-colors bg-[#10b98122] text-[#10b981] border-[#10b98133] hover:bg-[#10b98133]"
@@ -148,12 +160,14 @@ export function ContextBar({
               Pause
             </button>
           )}
-          <button
-            onClick={onAbort}
-            className="text-[11px] font-semibold px-3.5 py-[5px] rounded-[5px] border cursor-pointer transition-colors bg-[#ef444422] text-[#ef4444] border-[#ef444433] hover:bg-[#ef444433]"
-          >
-            Abort
-          </button>
+          {!isFailed && (
+            <button
+              onClick={onAbort}
+              className="text-[11px] font-semibold px-3.5 py-[5px] rounded-[5px] border cursor-pointer transition-colors bg-[#ef444422] text-[#ef4444] border-[#ef444433] hover:bg-[#ef444433]"
+            >
+              Abort
+            </button>
+          )}
         </div>
       )}
     </div>

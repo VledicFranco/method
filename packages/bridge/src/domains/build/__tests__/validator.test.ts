@@ -171,7 +171,7 @@ describe('Validator', () => {
   });
 
   describe('endpoint assertion', () => {
-    it('returns not-implemented stub', async () => {
+    it('reports fetch error for invalid URL', async () => {
       const executor = new MockCommandExecutor();
       const validator = new Validator(executor, process.cwd());
 
@@ -182,12 +182,12 @@ describe('Validator', () => {
       const report = await validator.evaluateAssertions(assertions);
       expect(report.allPassed).toBe(false);
       expect(report.criteria[0].passed).toBe(false);
-      expect(report.criteria[0].evidence).toContain('not implemented');
+      expect(report.criteria[0].evidence).toContain('Endpoint check error');
     });
   });
 
   describe('custom assertion', () => {
-    it('returns not-implemented stub', async () => {
+    it('uses command executor for custom scripts', async () => {
       const executor = new MockCommandExecutor();
       const validator = new Validator(executor, process.cwd());
 
@@ -196,9 +196,10 @@ describe('Validator', () => {
       ];
 
       const report = await validator.evaluateAssertions(assertions);
+      // Mock executor returns exit 0 with empty stdout, but expect string 'pass' is not in output
       expect(report.allPassed).toBe(false);
       expect(report.criteria[0].passed).toBe(false);
-      expect(report.criteria[0].evidence).toContain('not implemented');
+      expect(report.criteria[0].evidence).toContain('Custom check failed');
     });
   });
 

@@ -151,9 +151,10 @@ export interface BuildListProps {
   builds: BuildSummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onStartBuild: (requirement: string) => void;
 }
 
-export function BuildList({ builds, selectedId, onSelect }: BuildListProps) {
+export function BuildList({ builds, selectedId, onSelect, onStartBuild }: BuildListProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -197,8 +198,7 @@ export function BuildList({ builds, selectedId, onSelect }: BuildListProps) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={(req) => {
-          // TODO: POST to /api/builds when backend is wired
-          console.log('[BuildList] New build requested:', req);
+          onStartBuild(req);
         }}
       />
     </>
