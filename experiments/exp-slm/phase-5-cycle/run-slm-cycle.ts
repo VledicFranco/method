@@ -1909,7 +1909,7 @@ function getHardCodedKPIs(taskName: string): CheckableKPI[] {
           check: fileContains('src/plugin-loader.ts', 'PLUGIN_REGISTRY'),
         },
         { description: 'plugin-loader.ts has dynamic require', met: false, evidence: '',
-          check: fileContains('src/plugin-loader.ts', "require('./plugins/"),
+          check: fileContains('src/plugin-loader.ts', /require\(['"]\.\/plugins\//),
         },
       ];
 
