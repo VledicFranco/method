@@ -550,18 +550,22 @@ export class BuildOrchestrator {
   ): Promise<StrategyExecutionResult> {
     this.completedStrategies.push(strategyId);
 
-    // Merge project context into strategy inputs so strategies know
-    // which codebase to operate on and can read project-card data.
-    const projectInputs: Record<string, unknown> = this.projectContext
-      ? {
-          project_context: `${this.projectContext.name}: ${this.projectContext.description}`,
-          project_root: this.projectContext.path,
-          project_id: this.projectContext.id,
-        }
-      : {};
+    // Base inputs: feature_request + session_id (declared by all FCD strategies)
+    const baseInputs: Record<string, unknown> = {
+      feature_request: this.requirement,
+      session_id: this.sessionId,
+    };
 
+    // Project inputs: strategies use project_context, project_root, project_id
+    if (this.projectContext) {
+      baseInputs.project_context = `${this.projectContext.name}: ${this.projectContext.description}`;
+      baseInputs.project_root = this.projectContext.path;
+      baseInputs.project_id = this.projectContext.id;
+    }
+
+    // Per-call context overrides base inputs (e.g. retry feedback)
     return this.strategyExecutor.executeStrategy(strategyId, {
-      ...projectInputs,
+      ...baseInputs,
       ...context,
     });
   }

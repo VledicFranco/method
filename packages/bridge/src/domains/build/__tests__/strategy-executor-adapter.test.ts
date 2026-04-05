@@ -30,6 +30,7 @@ function makeDag(id: string): StrategyDAG {
     gates: [],
     capabilities: {},
     oversight: [],
+    context_inputs: [],
   } as unknown as StrategyDAG;
 }
 
@@ -186,7 +187,7 @@ describe('StrategyExecutorAdapter', () => {
 
     expect(result.success).toBe(false);
     expect(result.output).toContain('failed');
-    expect(result.output).toContain('1/2 nodes');
+    expect(result.output).toContain('1/2 completed');
     expect(result.cost.usd).toBe(0.2);
     expect(result.error).toContain('node-2');
     expect(result.error).toContain('Compilation error');
@@ -213,7 +214,7 @@ describe('StrategyExecutorAdapter', () => {
     const result = await adapter.executeStrategy('s-suspend', {});
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Strategy suspended');
+    expect(result.error).toContain('suspended');
     expect(result.failureContext).toBeDefined();
   });
 

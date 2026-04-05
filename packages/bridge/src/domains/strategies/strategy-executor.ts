@@ -129,6 +129,22 @@ class PactaNodeExecutor implements DagNodeExecutor {
       }
     });
 
+    // Gap 4: Log node invocation start with context
+    const nodeStart = Date.now();
+    console.log(JSON.stringify({
+      level: 'info',
+      source: 'strategy-executor/node',
+      event: 'node.invoke_start',
+      strategy_id: dag.id,
+      node_id: node.id,
+      methodology: config.methodology,
+      method_hint: config.method_hint ?? null,
+      prompt_length: prompt.length,
+      allowed_tools: allowedTools,
+      input_keys: Object.keys(inputBundle),
+      timeout_ms: timeoutMs,
+    }));
+
     let result: AgentResult;
     try {
       const agent = createAgent({ pact, provider: this.provider });
@@ -136,12 +152,66 @@ class PactaNodeExecutor implements DagNodeExecutor {
         agent.invoke({ prompt, workdir: process.cwd(), abortSignal: abortController.signal }),
         timeoutPromise,
       ]);
+    } catch (err) {
+      // Gap 4: Log node failure
+      console.error(JSON.stringify({
+        level: 'error',
+        source: 'strategy-executor/node',
+        event: 'node.invoke_failed',
+        strategy_id: dag.id,
+        node_id: node.id,
+        duration_ms: Date.now() - nodeStart,
+        error: err instanceof Error ? err.message : String(err),
+      }));
+      throw err;
     } finally {
       if (timeoutTimer !== undefined) clearTimeout(timeoutTimer);
     }
 
     // Parse output from response
-    const output = parseNodeOutput(String(result.output));
+    const outputStr = String(result.output);
+    const output = parseNodeOutput(outputStr);
+    const usedFallback = output._parse_fallback === true;
+
+    // Gap 4: Log node completion + output health
+    console.log(JSON.stringify({
+      level: usedFallback ? 'warn' : 'info',
+      source: 'strategy-executor/node',
+      event: 'node.invoke_complete',
+      strategy_id: dag.id,
+      node_id: node.id,
+      duration_ms: result.durationMs,
+      turns: result.turns,
+      cost_usd: result.cost.totalUsd,
+      output_length: outputStr.length,
+      output_keys: Object.keys(output),
+      parse_fallback: usedFallback,
+      declared_outputs: node.outputs,
+      ...(usedFallback && {
+        warning: `Node "${node.id}" returned unparseable output — downstream nodes may receive undefined`,
+        output_preview: outputStr.slice(0, 200),
+      }),
+    }));
+
+    // Gap 6: Validate declared outputs exist in result
+    if (!usedFallback && node.outputs.length > 0) {
+      const missingOutputs = node.outputs.filter(
+        (name) => !(name in output),
+      );
+      if (missingOutputs.length > 0) {
+        console.warn(JSON.stringify({
+          level: 'warn',
+          source: 'strategy-executor/node',
+          event: 'node.outputs_missing',
+          strategy_id: dag.id,
+          node_id: node.id,
+          declared_outputs: node.outputs,
+          missing_outputs: missingOutputs,
+          actual_output_keys: Object.keys(output),
+          warning: `Node "${node.id}" declared outputs [${missingOutputs.join(', ')}] not present in result — downstream dependencies will receive undefined`,
+        }));
+      }
+    }
 
     return {
       output,

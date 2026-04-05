@@ -1,0 +1,99 @@
+strategy:
+  id: explore-codebase
+  name: "Codebase Exploration"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: feature_request
+        type: string
+      - name: project_context
+        type: string
+        default: ""
+      - name: project_root
+        type: string
+        default: "."
+      - name: project_id
+        type: string
+        default: ""
+
+  capabilities:
+    read_only: [Read, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Scan project structure: directories, key files, package.json, CLAUDE.md
+      - id: scan_structure
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: |
+          You are exploring a codebase to understand its structure before designing a feature.
+
+          Feature request: {{feature_request}}
+          Project: {{project_context}}
+          Project root: {{project_root}}
+
+          Explore the codebase and produce a structured report. Do NOT make any changes.
+
+          Steps:
+          1. Read the project's CLAUDE.md or README.md for high-level context
+          2. List the top-level directory structure (ls, Glob)
+          3. Identify the language, build system, and test framework (package.json, tsconfig, etc.)
+          4. Find the main source directories and their organization pattern
+          5. Search for files related to the feature request (Grep for keywords)
+          6. Identify existing patterns, port interfaces, and domain boundaries
+
+          Output your findings as JSON:
+          ```json
+          {
+            "domains": ["list of identified code domains/modules"],
+            "patterns": ["architectural patterns found (e.g., FCA, ports, DI)"],
+            "constraints": ["technical constraints or rules (e.g., G-PORT, layer ordering)"],
+            "approach": "recommended approach for the feature request",
+            "key_files": ["files most relevant to the feature request"],
+            "tech_stack": "language, framework, build tool summary"
+          }
+          ```
+        outputs: [exploration_report]
+        capabilities: read_only
+        budget:
+          max_turns: 15
+          timeout_ms: 120000
+
+      # Detect if the feature touches multiple domains (complexity signal)
+      - id: assess_complexity
+        type: script
+        script: |
+          const report = inputs.exploration_report;
+          const content = typeof report === 'string' ? report : (report.result || JSON.stringify(report));
+
+          // Parse domains count from the exploration
+          let domainCount = 0;
+          try {
+            const parsed = JSON.parse(content);
+            domainCount = (parsed.domains || []).length;
+          } catch {
+            // Count domain-like mentions
+            domainCount = (content.match(/domain/gi) || []).length;
+          }
+
+          const isComplex = domainCount > 2;
+
+          return {
+            domain_count: domainCount,
+            is_complex: isComplex,
+            complexity_note: isComplex
+              ? `Feature spans ${domainCount} domains — consider surface co-design`
+              : `Feature is contained within ${domainCount || 'unknown number of'} domain(s)`,
+            exploration_summary: content.slice(0, 2000)
+          };
+        inputs: [exploration_report]
+        outputs: [complexity_assessment]
+
+    edges:
+      - from: scan_structure
+        to: assess_complexity
