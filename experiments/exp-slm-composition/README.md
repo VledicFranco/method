@@ -6,7 +6,7 @@ the System 1/2 compilation loop that RFC 002 left manual.
 
 **RFC:** `docs/rfcs/005-slm-composition.md`
 **Depends on:** `exp-slm` (Phase 3 Gate 3 PASS, Phase 5 R-14 through R-22)
-**Status:** Phase 1 complete — Gates A-G1 and A-G2 PASS
+**Status:** Phase 3 complete — Gates A-G1, A-G2, C-G1, C-G2 all PASS
 **Cross-reference:** ov-research EXP-TBD
 
 ---
@@ -50,13 +50,13 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [ ] Create >= 2 new SLMs using the bootstrap pipeline
 - [ ] Compare bootstrapped SLMs to hand-crafted baseline
 
-### Phase 3 — Composition Runtime
+### Phase 3 — Composition Runtime (DONE — Gates C-G1 + C-G2 PASS)
 
-- [ ] Build CLM execution engine (sequential + validation gates)
-- [ ] Gate escalation: retry → frontier fallback
-- [ ] Per-stage metrics: accuracy, latency, error propagation
-- [ ] Test 2-stage CLM (Gate C-G1: >= 85% end-to-end)
-- [ ] Ablation: gated vs ungated error compounding (Gate C-G2)
+- [x] Build CLM execution engine (sequential + validation gates)
+- [x] Gate escalation: retry → frontier fallback (abort/skip implemented, frontier stub)
+- [x] Per-stage metrics: accuracy, latency, error propagation
+- [x] Gate C-G1: 2-stage CLM e2e accuracy = **100%** (50/50 holdout + 5/5 real, target >= 85%)
+- [x] Gate C-G2: gate effectiveness = **100%** (all corrupted grammars caught, target >= 50%)
 
 ### Phase 4 — Autonomous Compilation Loop
 

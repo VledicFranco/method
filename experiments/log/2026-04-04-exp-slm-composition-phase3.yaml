@@ -1,0 +1,91 @@
+run_id: phase-3-composition-runtime
+date: 2026-04-04
+experiment: exp-slm-composition
+phase: phase-3-composition-runtime
+condition: clm-2stage-schema-grammar
+
+hypothesis: >
+  A 2-stage CLM pipeline with validation gates between stages achieves
+  >= 85% end-to-end accuracy (Gate C-G1) and gates reduce errors >= 50%
+  compared to ungated pipelines (Gate C-G2).
+
+implementation:
+  runtime_location: experiments/exp-slm-composition/composition-runtime/
+  files:
+    - types.ts (port interfaces: StagePort, GatePort, InferencePort, PipelineDefinition)
+    - pipeline.ts (sequential execution engine with retry/escalation)
+    - gates.ts (PeggyCompileGate, PeggyParseGate, SchemaGate)
+    - stages.ts (SLMStage, DeterministicStage, ExampleGeneratorStage)
+    - escalation.ts (retry loop, frontier stub)
+    - metrics.ts (per-stage + aggregate metrics collection)
+    - inference-adapters.ts (MockInference, JsonlInference, SLMInferenceAdapter)
+  test_files:
+    - __tests__/pipeline.test.ts (9 tests, mocked stages/gates)
+    - __tests__/gates.test.ts (13 tests, real Peggy)
+    - __tests__/integration.test.ts (3 tests, real B-1 predictions)
+  total_tests: 25
+  all_pass: true
+  language: TypeScript (ESM, Node16)
+
+pipeline:
+  id: schema-to-grammar-clm
+  stages:
+    - stage: B-1 SLM (Schema→Grammar, LoRA r=16 on Qwen2.5-0.5B)
+    - gate: PeggyCompileGate (deterministic, free)
+    - stage: ExampleGenerator (deterministic, grammar→sample DSL)
+    - gate: PeggyParseGate (deterministic, free)
+
+results:
+  gate_cg1_holdout:
+    success: 50
+    total: 50
+    rate: 1.00
+    mean_latency_ms: 3.06
+    verdict: PASS
+
+  gate_cg1_real:
+    success: 5
+    total: 5
+    rate: 1.00
+    interfaces_tested:
+      - TriggerEvent (bridge/triggers)
+      - OllamaModelInfo (pacta-provider-ollama)
+      - RelayableEvent (cluster/federation)
+      - WorktreeInfo (bridge/sessions)
+      - StrategyGate (bridge/strategies)
+    verdict: PASS
+
+  gate_cg2_ablation:
+    corruption_rate: 0.40
+    corrupted_entries: 13
+    ungated_errors: 13
+    gated_correct_rejections: 13
+    gated_unexpected_errors: 0
+    gate_detection_rate: 1.00
+    gate_effectiveness: 1.00
+    verdict: PASS
+
+findings:
+  - "F1: 2-stage CLM achieves 100% e2e accuracy on holdout — exceeds 85% target by 15pp"
+  - "F2: Validation gates catch 100% of corrupted grammars (syntax errors, missing rules, broken actions)"
+  - "F3: Deterministic gates (Peggy compile + parse) provide free error detection — no SLM classifier needed for structural validation"
+  - "F4: Pipeline execution is fast — mean 3ms per run (JSONL inference, deterministic gates)"
+  - "F5: The composition runtime is generic — StagePort/GatePort interfaces work for any SLM pipeline, not just Schema→Grammar"
+
+architectural_observations:
+  - "Port pattern works well — InferencePort abstracts JSONL, mock, Ollama, and ONNX backends"
+  - "Pipeline state (ReadonlyMap) propagates compiled parsers from Gate 1 to Stage 2 and Gate 2 without coupling"
+  - "FCA co-location: all runtime files + tests in one directory, no cross-domain dependencies"
+
+not_yet_validated:
+  - Live SLM inference (currently uses pre-generated predictions from Phase 1)
+  - Frontier escalation (stub throws — needs Ollama or Anthropic API integration)
+  - ClassifierGate (SLM-based semantic validation — awaits B-2 Causal Validator)
+  - Parallel composition operator (A ⊗ B)
+  - Competitive composition operator (A ⊕ B)
+  - CLM pipelines longer than 2 stages
+
+session_cost_estimate:
+  inference: "$0 (pre-generated predictions)"
+  compute: "$0 (local)"
+  total: "$0"

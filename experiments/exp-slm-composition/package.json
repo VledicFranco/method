@@ -1,16 +1,19 @@
 {
   "name": "exp-slm-composition",
   "version": "1.0.0",
-  "description": "**Hypothesis:** Cognitive agents can autonomously abstract DSLs from their own\r experience, compile them to SLMs, and compose them into new capabilities — closing\r the System 1/2 compilation loop that RFC 002 left manual.",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "test": "npx tsx --test \"composition-runtime/__tests__/*.test.ts\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "peggy": "^5.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.7.0"
   }
 }
