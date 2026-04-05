@@ -89,6 +89,9 @@ import type {
   WorkspaceEntry,
   TaskAssessment,
   GoalRepresentation,
+  CheckableKPI,
+  VerificationState,
+  KPICheckResult,
 } from '../algebra/index.js';
 import {
   moduleId,
@@ -96,6 +99,9 @@ import {
   updateWorkingMemory,
   assessTaskWithLLM,
   defaultAssessment,
+  fileExists,
+  fileContains,
+  fileExports,
 } from '../algebra/index.js';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -235,6 +241,7 @@ export function createPlanner(
         let directives: ControlDirective[] = [];
         let planRevised = false;
         let tokensUsed = 0;
+        let checkableKpis: CheckableKPI[] = [];
 
         // ── Cycle 0: produce TaskAssessment via assessTaskWithLLM() ──
         if (isCycle0 && goal) {
@@ -246,6 +253,13 @@ export function createPlanner(
           plan = buildPlanFromAssessment(assessment, goal);
           subgoals = buildSubgoalsFromAssessment(assessment, goal);
           planRevised = true;
+
+          // PRD 048: request checkable KPI predicates from the LLM
+          const checksResult = await requestCheckableKPIs(
+            adapter, goal, assessment.kpis, id,
+          );
+          checkableKpis = checksResult.checkableKpis;
+          tokensUsed += checksResult.tokensUsed;
         } else if (isCycle0 && !goal) {
           // No goal provided — produce a default assessment
           assessment = defaultAssessment(maxCycles);
@@ -309,7 +323,7 @@ export function createPlanner(
             directives,
             planRevised,
             tokensUsed,
-            checkableKpis: [], // PRD 048: populated by Wave 1 (C-4) Planner extension
+            checkableKpis, // PRD 048: populated by CheckableKPI generation (C-4)
           },
           state: newState,
           monitoring,
@@ -374,6 +388,211 @@ export function createPlanner(
       );
     },
   };
+}
+
+// ── CheckableKPI Generation (PRD 048 — C-4) ──────────────────────
+
+/**
+ * System prompt for the checkable KPI generation call.
+ */
+const CHECKS_SYSTEM_PROMPT =
+  `You are a verification assistant for a coding agent. Given the task and KPIs, produce machine-checkable tests. Respond ONLY with the <checks> block.`;
+
+/**
+ * Build the prompt that asks the LLM for checkable KPI predicates.
+ */
+function buildChecksPrompt(goal: GoalRepresentation, kpis: string[]): string {
+  const kpiList = kpis.map((k, i) => `  ${i + 1}. ${k}`).join('\n');
+  return `TASK: ${goal.objective}
+
+KPIs to verify:
+${kpiList}
+
+For each KPI, suggest a machine-checkable test in this format:
+<checks>
+<check kpi="description">file_exists('src/handlers/v2.ts')</check>
+<check kpi="description">file_contains('src/handlers/v2.ts', 'handleOrderV2')</check>
+<check kpi="description">file_exports('src/handlers/v2.ts', 'handleOrderV2')</check>
+</checks>
+
+Available primitives:
+- file_exists('path') — check that a file exists
+- file_contains('path', 'pattern') — check that a file contains a string/pattern
+- file_exports('path', 'name') — check that a file exports a named symbol
+
+Rules:
+- One <check> per KPI
+- The kpi attribute should match the KPI description
+- Use ONLY the primitives listed above
+- Paths should be reasonable guesses based on the task`;
+}
+
+/** A single parsed check from the DSL. */
+export interface ParsedCheck {
+  kpiDescription: string;
+  primitive: string;
+  args: string[];
+}
+
+/**
+ * Parse the `<checks>` block from LLM output.
+ * Returns an array of ParsedCheck. If no `<checks>` block is found, returns [].
+ */
+export function parseChecksBlock(text: string): ParsedCheck[] {
+  const checksMatch = text.match(/<checks>([\s\S]*?)<\/checks>/);
+  if (!checksMatch) return [];
+
+  const block = checksMatch[1];
+  const results: ParsedCheck[] = [];
+
+  const checkRegex = /<check\s+kpi="([^"]*)">(.*?)<\/check>/g;
+  let match: RegExpExecArray | null;
+  while ((match = checkRegex.exec(block)) !== null) {
+    const kpiDescription = match[1].trim();
+    const dslBody = match[2].trim();
+    const parsed = parseDSLPrimitive(dslBody);
+    if (parsed) {
+      results.push({ kpiDescription, ...parsed });
+    } else {
+      // Malformed DSL — include as description-only (no primitive)
+      results.push({ kpiDescription, primitive: '', args: [] });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Parse a single DSL primitive call like `file_exists('path')` or
+ * `file_contains('path', 'pattern')`.
+ * Returns { primitive, args } or null if unparseable.
+ */
+function parseDSLPrimitive(dsl: string): { primitive: string; args: string[] } | null {
+  // Match: primitive_name('arg1') or primitive_name('arg1', 'arg2')
+  const primitiveMatch = dsl.match(/^(file_exists|file_contains|file_exports)\s*\(\s*(.*)\s*\)$/);
+  if (!primitiveMatch) return null;
+
+  const primitive = primitiveMatch[1];
+  const argsRaw = primitiveMatch[2];
+
+  // Parse arguments: single-quoted strings separated by commas
+  const args: string[] = [];
+  const argRegex = /'([^']*)'/g;
+  let argMatch: RegExpExecArray | null;
+  while ((argMatch = argRegex.exec(argsRaw)) !== null) {
+    args.push(argMatch[1]);
+  }
+
+  // Validate arity
+  if (primitive === 'file_exists' && args.length !== 1) return null;
+  if (primitive === 'file_contains' && args.length !== 2) return null;
+  if (primitive === 'file_exports' && args.length !== 2) return null;
+
+  return { primitive, args };
+}
+
+/**
+ * Build a check function from a parsed DSL primitive.
+ * Returns the (state) => KPICheckResult predicate, or undefined if not a known primitive.
+ */
+function buildCheckFunction(parsed: ParsedCheck): ((state: VerificationState) => KPICheckResult) | undefined {
+  if (!parsed.primitive) return undefined;
+
+  switch (parsed.primitive) {
+    case 'file_exists':
+      return fileExists(parsed.args[0]);
+    case 'file_contains':
+      return fileContains(parsed.args[0], parsed.args[1]);
+    case 'file_exports':
+      return fileExports(parsed.args[0], parsed.args[1]);
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Build CheckableKPI[] from parsed checks + assessment KPIs.
+ * If a parsed check has a valid primitive, includes the check function.
+ * Otherwise, produces a description-only KPI (LLM fallback).
+ */
+export function buildCheckableKPIs(
+  assessmentKpis: string[],
+  parsedChecks: ParsedCheck[],
+): CheckableKPI[] {
+  // If we have parsed checks, use them (one CheckableKPI per parsed check)
+  if (parsedChecks.length > 0) {
+    return parsedChecks.map(pc => {
+      const checkFn = buildCheckFunction(pc);
+      const kpi: CheckableKPI = {
+        description: pc.kpiDescription,
+        met: false,
+        evidence: '',
+      };
+      if (checkFn) {
+        kpi.check = checkFn;
+      }
+      return kpi;
+    });
+  }
+
+  // Fallback: produce description-only KPIs from the assessment
+  return assessmentKpis.map(kpi => ({
+    description: kpi,
+    met: false,
+    evidence: '',
+  }));
+}
+
+/**
+ * Request checkable KPI predicates from the LLM.
+ * This is a separate, lightweight call after the assessment.
+ * On any failure, returns [] (graceful degradation).
+ */
+async function requestCheckableKPIs(
+  adapter: ProviderAdapter,
+  goal: GoalRepresentation,
+  kpis: string[],
+  plannerId: ModuleId,
+): Promise<{ checkableKpis: CheckableKPI[]; tokensUsed: number }> {
+  if (kpis.length === 0) {
+    return { checkableKpis: [], tokensUsed: 0 };
+  }
+
+  try {
+    const prompt = buildChecksPrompt(goal, kpis);
+
+    const promptSnapshot = [{
+      source: plannerId,
+      content: prompt,
+      salience: 1.0,
+      timestamp: Date.now(),
+    }];
+
+    const adapterConfig: AdapterConfig = {
+      pactTemplate: {
+        mode: { type: 'oneshot' },
+        budget: { maxOutputTokens: 512 },
+      },
+      systemPrompt: CHECKS_SYSTEM_PROMPT,
+      timeoutMs: 15_000,
+    };
+
+    const result = await adapter.invoke(promptSnapshot, adapterConfig);
+    const parsedChecks = parseChecksBlock(result.output);
+    const checkableKpis = buildCheckableKPIs(kpis, parsedChecks);
+
+    return { checkableKpis, tokensUsed: result.usage.totalTokens };
+  } catch {
+    // On failure, return description-only KPIs from the assessment
+    return {
+      checkableKpis: kpis.map(kpi => ({
+        description: kpi,
+        met: false,
+        evidence: '',
+      })),
+      tokensUsed: 0,
+    };
+  }
 }
 
 // ── Internals ──────────────────────────────────────────────────────

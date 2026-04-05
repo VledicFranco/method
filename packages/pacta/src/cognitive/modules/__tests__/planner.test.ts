@@ -17,8 +17,9 @@ import type {
   GoalRepresentation,
   ControlDirective,
 } from '../../algebra/index.js';
-import { createPlanner } from '../planner.js';
-import type { PlannerControl, PlannerInput, PlannerState } from '../planner.js';
+import { createPlanner, parseChecksBlock, buildCheckableKPIs } from '../planner.js';
+import type { PlannerControl, PlannerInput, PlannerState, ParsedCheck } from '../planner.js';
+import type { VerificationState } from '../../algebra/index.js';
 
 // ── Stub ProviderAdapter ─────────────────────────────────────────────
 
@@ -536,6 +537,326 @@ describe('Planner module', () => {
     });
   });
 
+  describe('CheckableKPI generation (PRD 048)', () => {
+
+    // ── Unit tests for parseChecksBlock ──
+
+    it('parseChecksBlock: parses valid <checks> block with all primitives', () => {
+      const text = `Some preamble text.
+<checks>
+<check kpi="config file exists">file_exists('src/config.ts')</check>
+<check kpi="handler contains function">file_contains('src/handler.ts', 'handleOrder')</check>
+<check kpi="handler exports symbol">file_exports('src/handler.ts', 'handleOrder')</check>
+</checks>
+Some trailing text.`;
+
+      const parsed = parseChecksBlock(text);
+      assert.equal(parsed.length, 3);
+
+      assert.equal(parsed[0].kpiDescription, 'config file exists');
+      assert.equal(parsed[0].primitive, 'file_exists');
+      assert.deepStrictEqual(parsed[0].args, ['src/config.ts']);
+
+      assert.equal(parsed[1].kpiDescription, 'handler contains function');
+      assert.equal(parsed[1].primitive, 'file_contains');
+      assert.deepStrictEqual(parsed[1].args, ['src/handler.ts', 'handleOrder']);
+
+      assert.equal(parsed[2].kpiDescription, 'handler exports symbol');
+      assert.equal(parsed[2].primitive, 'file_exports');
+      assert.deepStrictEqual(parsed[2].args, ['src/handler.ts', 'handleOrder']);
+    });
+
+    it('parseChecksBlock: returns [] when no <checks> block is present', () => {
+      const text = 'Just some text without any checks block.';
+      const parsed = parseChecksBlock(text);
+      assert.equal(parsed.length, 0);
+    });
+
+    it('parseChecksBlock: malformed DSL produces description-only entries', () => {
+      const text = `<checks>
+<check kpi="some kpi">unknown_primitive('foo')</check>
+<check kpi="another kpi">file_exists(no_quotes)</check>
+<check kpi="valid one">file_exists('valid.ts')</check>
+</checks>`;
+
+      const parsed = parseChecksBlock(text);
+      assert.equal(parsed.length, 3);
+
+      // First: unknown primitive → empty primitive
+      assert.equal(parsed[0].kpiDescription, 'some kpi');
+      assert.equal(parsed[0].primitive, '');
+      assert.deepStrictEqual(parsed[0].args, []);
+
+      // Second: no quotes → empty primitive (arity mismatch — no args extracted)
+      assert.equal(parsed[1].kpiDescription, 'another kpi');
+      assert.equal(parsed[1].primitive, '');
+
+      // Third: valid
+      assert.equal(parsed[2].kpiDescription, 'valid one');
+      assert.equal(parsed[2].primitive, 'file_exists');
+      assert.deepStrictEqual(parsed[2].args, ['valid.ts']);
+    });
+
+    it('parseChecksBlock: wrong arity produces description-only entry', () => {
+      const text = `<checks>
+<check kpi="too many args">file_exists('a.ts', 'extra')</check>
+<check kpi="too few args">file_contains('a.ts')</check>
+</checks>`;
+
+      const parsed = parseChecksBlock(text);
+      assert.equal(parsed.length, 2);
+
+      // file_exists with 2 args → malformed
+      assert.equal(parsed[0].primitive, '');
+      // file_contains with 1 arg → malformed
+      assert.equal(parsed[1].primitive, '');
+    });
+
+    // ── Unit tests for buildCheckableKPIs ──
+
+    it('buildCheckableKPIs: builds check functions from valid parsed checks', () => {
+      const parsedChecks: ParsedCheck[] = [
+        { kpiDescription: 'file created', primitive: 'file_exists', args: ['src/foo.ts'] },
+        { kpiDescription: 'has export', primitive: 'file_exports', args: ['src/foo.ts', 'myFunc'] },
+      ];
+
+      const kpis = buildCheckableKPIs(['file created', 'has export'], parsedChecks);
+      assert.equal(kpis.length, 2);
+
+      // Both should have check functions
+      assert.ok(kpis[0].check, 'file_exists check should have a check function');
+      assert.ok(kpis[1].check, 'file_exports check should have a check function');
+      assert.equal(kpis[0].description, 'file created');
+      assert.equal(kpis[1].description, 'has export');
+      assert.equal(kpis[0].met, false);
+      assert.equal(kpis[1].met, false);
+    });
+
+    it('buildCheckableKPIs: description-only when parsed check has empty primitive', () => {
+      const parsedChecks: ParsedCheck[] = [
+        { kpiDescription: 'unknown check', primitive: '', args: [] },
+      ];
+
+      const kpis = buildCheckableKPIs(['unknown check'], parsedChecks);
+      assert.equal(kpis.length, 1);
+      assert.equal(kpis[0].description, 'unknown check');
+      assert.equal(kpis[0].check, undefined, 'should NOT have check function');
+    });
+
+    it('buildCheckableKPIs: falls back to assessment KPIs when no parsed checks', () => {
+      const kpis = buildCheckableKPIs(['target file created', 'tests pass'], []);
+      assert.equal(kpis.length, 2);
+      assert.equal(kpis[0].description, 'target file created');
+      assert.equal(kpis[1].description, 'tests pass');
+      assert.equal(kpis[0].check, undefined);
+      assert.equal(kpis[1].check, undefined);
+    });
+
+    // ── Check function execution tests ──
+
+    it('file_exists check function runs correctly against VerificationState', () => {
+      const parsedChecks: ParsedCheck[] = [
+        { kpiDescription: 'config exists', primitive: 'file_exists', args: ['src/config.ts'] },
+      ];
+
+      const kpis = buildCheckableKPIs(['config exists'], parsedChecks);
+      assert.ok(kpis[0].check);
+
+      const state: VerificationState = {
+        files: new Map([['src/config.ts', 'export const x = 1;']]),
+        lastAction: { tool: 'write_file', input: {}, result: {} },
+        actionHistory: [],
+      };
+
+      const result = kpis[0].check!(state);
+      assert.equal(result.met, true);
+      assert.ok(result.evidence.includes('exists'));
+    });
+
+    it('file_contains check function runs correctly against VerificationState', () => {
+      const parsedChecks: ParsedCheck[] = [
+        { kpiDescription: 'has handler', primitive: 'file_contains', args: ['src/handler.ts', 'handleOrder'] },
+      ];
+
+      const kpis = buildCheckableKPIs(['has handler'], parsedChecks);
+      assert.ok(kpis[0].check);
+
+      // Positive case
+      const stateMatch: VerificationState = {
+        files: new Map([['src/handler.ts', 'export function handleOrder() {}']]),
+        lastAction: { tool: 'write_file', input: {}, result: {} },
+        actionHistory: [],
+      };
+      assert.equal(kpis[0].check!(stateMatch).met, true);
+
+      // Negative case
+      const stateMiss: VerificationState = {
+        files: new Map([['src/handler.ts', 'export function otherFn() {}']]),
+        lastAction: { tool: 'write_file', input: {}, result: {} },
+        actionHistory: [],
+      };
+      assert.equal(kpis[0].check!(stateMiss).met, false);
+    });
+
+    it('file_exports check function runs correctly against VerificationState', () => {
+      const parsedChecks: ParsedCheck[] = [
+        { kpiDescription: 'exports handler', primitive: 'file_exports', args: ['src/handler.ts', 'handleOrder'] },
+      ];
+
+      const kpis = buildCheckableKPIs(['exports handler'], parsedChecks);
+      assert.ok(kpis[0].check);
+
+      const state: VerificationState = {
+        files: new Map([['src/handler.ts', 'export function handleOrder() { return 42; }']]),
+        lastAction: { tool: 'write_file', input: {}, result: {} },
+        actionHistory: [],
+      };
+
+      const result = kpis[0].check!(state);
+      assert.equal(result.met, true);
+      assert.ok(result.evidence.includes('exports'));
+    });
+
+    // ── Integration: checkableKpis in planner output ──
+
+    it('populates checkableKpis in planner output when LLM produces <checks> block', async () => {
+      let callCount = 0;
+      const adapter: ProviderAdapter = {
+        async invoke(
+          _snapshot: ReadonlyWorkspaceSnapshot,
+          _config: AdapterConfig,
+        ): Promise<ProviderAdapterResult> {
+          callCount++;
+          if (callCount === 1) {
+            // Assessment call
+            return {
+              output: `<assessment><difficulty>medium</difficulty><estimated_cycles>8</estimated_cycles><solvability>0.80</solvability><phases><phase name="execute" start="1" end="8">work</phase></phases><kpis><kpi>handler created</kpi><kpi>tests pass</kpi></kpis></assessment>`,
+              usage: { inputTokens: 200, outputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 300 },
+              cost: { totalUsd: 0.002, perModel: {} },
+            };
+          }
+          // Checks call
+          return {
+            output: `<checks>\n<check kpi="handler created">file_exists('src/handler.ts')</check>\n<check kpi="tests pass">file_contains('src/handler.test.ts', 'test')</check>\n</checks>`,
+            usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150 },
+            cost: { totalUsd: 0.001, perModel: {} },
+          };
+        },
+      };
+
+      const planner = createPlanner(adapter);
+      const result = await planner.step(
+        makeInput(makeGoal()),
+        planner.initialState(),
+        makeControl(),
+      );
+
+      assert.equal(result.output.checkableKpis.length, 2);
+      assert.equal(result.output.checkableKpis[0].description, 'handler created');
+      assert.ok(result.output.checkableKpis[0].check, 'should have check function');
+      assert.equal(result.output.checkableKpis[1].description, 'tests pass');
+      assert.ok(result.output.checkableKpis[1].check, 'should have check function');
+    });
+
+    it('returns description-only KPIs when LLM does not produce <checks> block', async () => {
+      let callCount = 0;
+      const adapter: ProviderAdapter = {
+        async invoke(
+          _snapshot: ReadonlyWorkspaceSnapshot,
+          _config: AdapterConfig,
+        ): Promise<ProviderAdapterResult> {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              output: `<assessment><difficulty>low</difficulty><estimated_cycles>5</estimated_cycles><solvability>0.90</solvability><phases><phase name="execute" start="1" end="5">work</phase></phases><kpis><kpi>done</kpi></kpis></assessment>`,
+              usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150 },
+              cost: { totalUsd: 0.001, perModel: {} },
+            };
+          }
+          // Checks call returns no <checks> block
+          return {
+            output: 'I cannot produce checks for this task.',
+            usage: { inputTokens: 50, outputTokens: 20, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 70 },
+            cost: { totalUsd: 0.0005, perModel: {} },
+          };
+        },
+      };
+
+      const planner = createPlanner(adapter);
+      const result = await planner.step(
+        makeInput(makeGoal()),
+        planner.initialState(),
+        makeControl(),
+      );
+
+      // Should fall back to description-only KPIs from the assessment
+      assert.equal(result.output.checkableKpis.length, 1);
+      assert.equal(result.output.checkableKpis[0].description, 'done');
+      assert.equal(result.output.checkableKpis[0].check, undefined, 'should NOT have check function');
+    });
+
+    it('returns description-only KPIs when checks LLM call fails', async () => {
+      let callCount = 0;
+      const adapter: ProviderAdapter = {
+        async invoke(
+          _snapshot: ReadonlyWorkspaceSnapshot,
+          _config: AdapterConfig,
+        ): Promise<ProviderAdapterResult> {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              output: `<assessment><difficulty>high</difficulty><estimated_cycles>12</estimated_cycles><solvability>0.60</solvability><phases><phase name="explore" start="1" end="4">reading</phase><phase name="execute" start="5" end="10">writing</phase><phase name="verify" start="11" end="12">checking</phase></phases><kpis><kpi>API endpoint created</kpi><kpi>tests pass</kpi></kpis></assessment>`,
+              usage: { inputTokens: 200, outputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 300 },
+              cost: { totalUsd: 0.002, perModel: {} },
+            };
+          }
+          // Checks call throws
+          throw new Error('LLM timeout during checks call');
+        },
+      };
+
+      const planner = createPlanner(adapter);
+      const result = await planner.step(
+        makeInput(makeGoal()),
+        planner.initialState(),
+        makeControl(),
+      );
+
+      // Should gracefully degrade to description-only KPIs
+      assert.equal(result.output.checkableKpis.length, 2);
+      assert.equal(result.output.checkableKpis[0].description, 'API endpoint created');
+      assert.equal(result.output.checkableKpis[0].check, undefined);
+      assert.equal(result.output.checkableKpis[1].description, 'tests pass');
+      assert.equal(result.output.checkableKpis[1].check, undefined);
+
+      // Assessment should still be produced (checks failure doesn't crash planner)
+      assert.ok(result.output.assessment);
+      assert.equal(result.output.assessment!.difficulty, 'high');
+    });
+
+    it('returns empty checkableKpis when assessment has no KPIs', async () => {
+      const adapter: ProviderAdapter = {
+        async invoke(): Promise<ProviderAdapterResult> {
+          return {
+            output: `<assessment><difficulty>low</difficulty><estimated_cycles>3</estimated_cycles><solvability>0.95</solvability><phases><phase name="execute" start="1" end="3">work</phase></phases><kpis></kpis></assessment>`,
+            usage: { inputTokens: 50, outputTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 80 },
+            cost: { totalUsd: 0.0005, perModel: {} },
+          };
+        },
+      };
+
+      const planner = createPlanner(adapter);
+      const result = await planner.step(
+        makeInput(makeGoal()),
+        planner.initialState(),
+        makeControl(),
+      );
+
+      // No KPIs → no checks call → empty checkableKpis
+      assert.equal(result.output.checkableKpis.length, 0);
+    });
+  });
+
   describe('pass-through on non-cycle-0 without replan', () => {
 
     it('does not invoke LLM on non-cycle-0 steps without replanTrigger', async () => {
@@ -556,13 +877,13 @@ describe('Planner module', () => {
 
       const planner = createPlanner(adapter);
 
-      // Cycle 0: should invoke
+      // Cycle 0: should invoke (assessment + checks = 2 calls)
       const r0 = await planner.step(makeInput(makeGoal()), planner.initialState(), makeControl());
-      assert.equal(invocationCount, 1, 'should invoke LLM at cycle 0');
+      assert.equal(invocationCount, 2, 'should invoke LLM twice at cycle 0 (assessment + checks)');
 
       // Cycle 1: no replanTrigger — should NOT invoke
       const r1 = await planner.step(makeInput(), r0.state, makeControl());
-      assert.equal(invocationCount, 1, 'should NOT invoke LLM on cycle 1 without replan');
+      assert.equal(invocationCount, 2, 'should NOT invoke LLM on cycle 1 without replan');
 
       // Output should carry forward the assessment
       assert.ok(r1.output.assessment, 'assessment should be carried forward');
