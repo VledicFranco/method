@@ -1,0 +1,43 @@
+retro:
+  strategy_id: s-t1-harvest
+  generated_by: strategy-executor
+  generated_at: '2026-04-05T09:02:28.478Z'
+  timing:
+    started_at: '2026-04-05T09:02:03.396Z'
+    completed_at: '2026-04-05T09:02:28.477Z'
+    duration_minutes: 0.42
+    critical_path:
+      - pull_repos
+      - run_harvest
+      - store_snapshot
+      - detect_drift
+  execution_summary:
+    nodes_total: 7
+    nodes_completed: 0
+    nodes_failed: 7
+    speedup_ratio: 1.71
+  cost:
+    total_usd: 0
+    per_node:
+      - node: pull_repos
+        cost_usd: 0
+      - node: run_harvest
+        cost_usd: 0
+      - node: run_exports
+        cost_usd: 0
+      - node: store_snapshot
+        cost_usd: 0
+      - node: rebuild_atlas
+        cost_usd: 0
+      - node: compute_scores
+        cost_usd: 0
+      - node: detect_drift
+        cost_usd: 0
+  gates:
+    total: 1
+    passed: 0
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events: []
+  artifacts_produced: []

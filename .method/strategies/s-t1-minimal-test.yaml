@@ -1,0 +1,46 @@
+strategy:
+  id: s-t1-minimal-test
+  name: "Minimal methodology test"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: message
+        type: string
+        default: "hello"
+
+  capabilities:
+    read_only: [Read]
+
+  dag:
+    nodes:
+      - id: echo
+        type: methodology
+        methodology: P2-SD
+        method_hint: M3-TMP
+        capabilities: [read_only]
+        inputs: [message]
+        outputs: [echoed]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: done
+        depends_on: [echo]
+        type: algorithmic
+        check: "artifacts.echoed !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 1.00"
+        action: warn_human
+
+  outputs:
+    - type: channel_event
+      target: bridge

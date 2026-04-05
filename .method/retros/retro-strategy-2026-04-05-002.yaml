@@ -1,0 +1,28 @@
+retro:
+  strategy_id: s-t1-minimal-test
+  generated_by: strategy-executor
+  generated_at: '2026-04-05T10:14:46.361Z'
+  timing:
+    started_at: '2026-04-05T10:14:40.930Z'
+    completed_at: '2026-04-05T10:14:46.361Z'
+    duration_minutes: 0.09
+    critical_path:
+      - echo
+  execution_summary:
+    nodes_total: 1
+    nodes_completed: 0
+    nodes_failed: 1
+    speedup_ratio: 1
+  cost:
+    total_usd: 0
+    per_node:
+      - node: echo
+        cost_usd: 0
+  gates:
+    total: 1
+    passed: 0
+    failed_then_passed: 0
+    failed_final: 0
+    retries: []
+  oversight_events: []
+  artifacts_produced: []

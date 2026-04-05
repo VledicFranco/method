@@ -1,0 +1,235 @@
+strategy:
+  id: s-t1-harvest
+  name: "T1 Platform Harvest & Health Scan"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+    - type: schedule
+      cron: "0 6 * * 1"
+      timezone: "America/Mexico_City"
+
+  context:
+    inputs:
+      - name: repos_dir
+        type: string
+        default: "C:/Users/atfm0/Repositories/t1-repos"
+      - name: meta_dir
+        type: string
+        default: "C:/Users/atfm0/Repositories/t1-repos/_meta"
+      - name: vault_dir
+        type: string
+        default: "C:/Users/atfm0/Repositories/ov-t1"
+
+  capabilities:
+    full: [Read, Write, Edit, Glob, Grep, Bash]
+    read_only: [Read, Glob, Grep]
+
+  dag:
+    nodes:
+      # Step 1: Pull latest on all repos
+      - id: pull_repos
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-IMPL
+        prompt: |
+          Pull latest on all repos in ${repos_dir}.
+          Run: cd ${repos_dir} && for d in */; do [ -d "$d/.git" ] && git -C "$d" pull --ff-only 2>/dev/null; done
+          Report: how many updated, how many already current, how many failed.
+        capabilities: [full]
+        inputs: [repos_dir]
+        outputs: [pull_result]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 600000
+
+      # Step 2: Run full harvest
+      - id: run_harvest
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-IMPL
+        prompt: |
+          Run the T1 harvest pipeline.
+          Execute: cd ${meta_dir} && node tools/harvest.mjs
+          Wait for completion. Report: repos scanned, errors, data size, duration.
+        capabilities: [full]
+        inputs: [meta_dir]
+        outputs: [harvest_result]
+        depends_on: [pull_repos]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 2
+            timeout_ms: 600000
+
+      # Step 3: Run exports to update ov-t1 markdown
+      - id: run_exports
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-IMPL
+        prompt: |
+          Run the harvest export pipeline to update engineering docs.
+          Execute: cd ${meta_dir} && node tools/gen-exports.mjs
+          Report which files were generated.
+        capabilities: [full]
+        inputs: [meta_dir]
+        outputs: [export_result]
+        depends_on: [run_harvest]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 120000
+
+      # Step 4: Store snapshot for trend tracking
+      - id: store_snapshot
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-IMPL
+        prompt: |
+          Store a dated snapshot of the harvest data for trend tracking.
+          Execute:
+            DATE=$(date +%Y-%m-%d)
+            mkdir -p ${meta_dir}/data/snapshots/$DATE
+            cp -r ${meta_dir}/data/repos ${meta_dir}/data/snapshots/$DATE/
+            cp ${meta_dir}/data/manifest.json ${meta_dir}/data/snapshots/$DATE/
+          Report the snapshot path and size.
+        capabilities: [full]
+        inputs: [meta_dir]
+        outputs: [snapshot_path]
+        depends_on: [run_harvest]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 60000
+
+      # Step 5: Compute knowledge scores from harvest data
+      - id: compute_scores
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: |
+          Compute objective knowledge scores from harvest data at ${meta_dir}/data/repos/.
+          
+          Read all repo JSON files and compute:
+          - K1 = repos with CLAUDE.md / total repos (check profile.docs)
+          - K3 = endpoints with response_model / total endpoints
+          - K7 = repos with CI tests / repos with CI workflows
+          - K8 = repos with observability != 'none' / total repos
+          - K12 = canonical entities / total drifted entities
+          - K13 = repos scanned by secret-scanner / total repos
+          
+          Also compute aggregate metrics:
+          - Grade distribution (A/B/C/D)
+          - Average risk score
+          - Total test files
+          - CI adoption rate
+          
+          Report all scores as a structured summary.
+        capabilities: [full]
+        inputs: [meta_dir]
+        outputs: [knowledge_scores]
+        depends_on: [run_exports]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 120000
+
+      # Step 6: Detect drift from previous harvest
+      - id: detect_drift
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M4-ADVREV
+        prompt: |
+          Compare current harvest data against the previous snapshot.
+          
+          Look in ${meta_dir}/data/snapshots/ for the two most recent dated directories.
+          For each repo, compare: risk grade, test file count, CI status, observability.
+          
+          Flag:
+          - Repos where risk grade DEGRADED (e.g., B→C or C→D)
+          - Repos where test count DECREASED
+          - New repos not in previous snapshot
+          - Repos removed from previous snapshot
+          
+          Produce a structured drift report with: improved repos, degraded repos, new repos, and unchanged count.
+        capabilities: [full]
+        inputs: [meta_dir]
+        outputs: [drift_report]
+        depends_on: [store_snapshot]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Step 7: Regenerate Atlas website data
+      - id: rebuild_atlas
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M1-IMPL
+        prompt: |
+          Regenerate the Atlas website data from harvest results.
+          
+          Read all repo JSON files in ${meta_dir}/data/repos/ and produce a consolidated
+          JSON file at ${vault_dir}/atlas/atlas-data.json with:
+          - Per-repo: name, grade, risk_score, loc, test files, stack, ci, bus_factor, endpoints, auth
+          - Summary: total repos, grade distribution, test coverage, ci adoption
+          
+          Use this script pattern:
+          cd ${meta_dir} && node -e "
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const reposDir = 'data/repos';
+          const files = fs.readdirSync(reposDir).filter(f => f.endsWith('.json'));
+          const atlas = { generated: new Date().toISOString(), repos: [], summary: { total: 0, grades: {}, testCoverage: { with: 0, without: 0, totalFiles: 0 }, ciAdoption: { with: 0, without: 0 } } };
+          for (const f of files) {
+            const data = JSON.parse(fs.readFileSync(path.join(reposDir, f), 'utf8'));
+            const rs = data['risk-score'] || {};
+            const prof = data.profile || {};
+            const obs = data.observability || {};
+            const ga = data['github-actions'] || {};
+            const auth = data['auth-profile'] || {};
+            const bf = data.contributors?.bus_factor;
+            const repo = { name: data.name || f.replace('.json',''), grade: rs.grade || 'U', risk_score: rs.risk_score || 0, loc: prof.size?.loc || 0, files: { source: prof.files?.source || 0, test: prof.files?.test || 0, total: prof.files?.total || 0 }, stack: { language: prof.stack?.language || null, framework: prof.stack?.framework || null }, observability: obs.score || 'none', auth: auth.auth_providers || ['none'], ci: (ga.workflows?.length || 0) > 0, bus_factor: typeof bf === 'object' ? (bf?.score ?? 0) : (bf || 0), endpoints: data.endpoints?.endpoints?.length || 0 };
+            atlas.repos.push(repo);
+            atlas.summary.total++;
+            atlas.summary.grades[repo.grade] = (atlas.summary.grades[repo.grade] || 0) + 1;
+            if (repo.files.test > 0) { atlas.summary.testCoverage.with++; atlas.summary.testCoverage.totalFiles += repo.files.test; } else atlas.summary.testCoverage.without++;
+            if (repo.ci) atlas.summary.ciAdoption.with++; else atlas.summary.ciAdoption.without++;
+          }
+          atlas.repos.sort((a, b) => b.risk_score - a.risk_score);
+          fs.writeFileSync('../../ov-t1/atlas/atlas-data.json', JSON.stringify(atlas));
+          console.log('Atlas data regenerated: ' + atlas.repos.length + ' repos');
+          "
+          Report success.
+        capabilities: [full]
+        inputs: [meta_dir, vault_dir]
+        outputs: [atlas_result]
+        depends_on: [run_exports]
+        gates:
+          - type: algorithmic
+            check: "output.result !== undefined"
+            max_retries: 1
+            timeout_ms: 120000
+
+    strategy_gates:
+      - id: harvest_complete
+        depends_on: [compute_scores, detect_drift, rebuild_atlas]
+        type: algorithmic
+        check: "artifacts.knowledge_scores !== undefined && artifacts.drift_report !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 10.00"
+        action: warn_human
+      - condition: "step_duration_ms > 900000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge
