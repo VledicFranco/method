@@ -46,8 +46,9 @@ the System 1/2 compilation loop that RFC 002 left manual.
 ### Phase 2 — Bootstrap Pipeline (IN PROGRESS — flywheel validated)
 
 - [x] B-2: Causal Validator corpus generated (8.5K pairs, 47/53 valid/invalid split)
-- [ ] B-2: Training on chobits (5000 steps, running — 93% accuracy at step 3100)
-- [ ] B-2: Gate B-G1 evaluation (precision >= 90% on known-bad pairs)
+- [x] B-2: Training DONE (5000 steps, 189 min on RTX 4090)
+- [x] **B-2 Gate B-G1 PASS: 95.5% precision** on INVALID class (target >= 90%)
+  - 89.6% accuracy, 83.9% recall, 89.3% F1, 0 parse errors
 - [x] **KPI Checker SLM bootstrapped** (PRD 049): corpus 3K pairs, Check DSL grammar, 100% validation
 - [x] **Gate B-G2 (partial): SLM creation time ~2 hours** (45 min human + GPU time, vs ~14 hours manual)
 - [ ] B-3: Trace Distiller SLM
