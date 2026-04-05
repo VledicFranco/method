@@ -7,3 +7,8 @@ export type { EventBus, EventSink, EventFilter, EventSubscription, BridgeEvent, 
 export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session-discovery.js';
 export { createNodeNativeSessionDiscovery } from './native-session-discovery.js';
 export type { SessionPool, SessionStatusInfo, SessionBudget, SessionChainInfo, WorktreeInfo, SessionMode, IsolationMode, WorktreeAction, StreamEvent } from './session-pool.js';
+
+// PRD 047: Build Orchestrator ports
+export type { CheckpointPort, PipelineCheckpoint, PipelineCheckpointSummary, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from './checkpoint.js';
+export type { ConversationPort, AgentMessage, HumanMessage, GateDecision, GateType, SkillRequest, StructuredCard } from './conversation.js';
+export { GATE_ACTIONS } from './conversation.js';
