@@ -15,6 +15,7 @@ import { PhaseTimeline } from './PhaseTimeline';
 import { CommissionProgress } from './CommissionProgress';
 import { CriteriaTracker } from './CriteriaTracker';
 import { EvidenceReport } from './EvidenceReport';
+import { AnalyticsView } from './AnalyticsView';
 import { PHASE_LABELS, PHASES } from './types';
 import type { BuildSummary, BuildEvent } from './types';
 
@@ -329,121 +330,8 @@ function EventsTab({ build }: { build: BuildSummary }) {
   );
 }
 
-// ── Analytics Tab (placeholder with mock sparkline) ──
-
-function AnalyticsTab() {
-  // Mock data for the cost trend sparkline
-  const sparkData = [40, 65, 30, 50, 85, 45, 55, 70, 35, 41];
-  const sparkLabels = ['$2.40', '$6.50', '$1.80', '$3.20', '$8.90', '$2.80', '$3.50', '$5.40', '$2.10', '$6.20'];
-
-  return (
-    <div>
-      {/* Cost Trend Sparkline */}
-      <div className="bg-abyss border border-bdr rounded-xl p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[13px] font-semibold text-txt">Cost Trend</div>
-          <div className="font-mono text-[11px] text-txt-dim">last 10 builds</div>
-        </div>
-        <div className="flex items-end gap-[3px] h-8 mb-2">
-          {sparkData.map((h, i) => (
-            <div
-              key={i}
-              className={cn(
-                'flex-1 bg-[#6d5aed] rounded-t-sm min-w-2 transition-[height] duration-300',
-                i === sparkData.length - 1 ? 'opacity-100' : 'opacity-70',
-              )}
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between font-mono text-[9px] text-[#64748b]">
-          {sparkLabels.map((l, i) => (
-            <span key={i}>{l}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="flex gap-4 mb-4">
-        {[
-          { value: '$4.28', label: 'avg cost / build' },
-          { value: '4.2', label: 'avg criteria / build' },
-          { value: '87%', label: 'pass rate', good: true },
-          { value: '14.5m', label: 'avg duration' },
-        ].map((s, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-void border border-bdr rounded-[5px] p-3.5 text-center"
-          >
-            <div
-              className={cn(
-                'font-mono text-[22px] font-bold',
-                s.good ? 'text-[#10b981]' : 'text-txt',
-              )}
-            >
-              {s.value}
-            </div>
-            <div className="text-[10px] text-txt-dim mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Phase bottleneck chart */}
-      <div className="bg-abyss border border-bdr rounded-xl p-5 mb-4">
-        <div className="text-[13px] font-semibold text-txt mb-4">Phase Bottlenecks</div>
-        <div className="space-y-2">
-          {[
-            { phase: 'Implement', pct: 85, label: '5.2m avg' },
-            { phase: 'Review', pct: 45, label: '2.8m avg' },
-            { phase: 'Specify', pct: 40, label: '2.5m avg' },
-            { phase: 'Design', pct: 30, label: '1.8m avg' },
-            { phase: 'Explore', pct: 20, label: '1.2m avg' },
-            { phase: 'Plan', pct: 18, label: '1.1m avg' },
-            { phase: 'Validate', pct: 12, label: '0.7m avg' },
-            { phase: 'Measure', pct: 8, label: '0.5m avg' },
-          ].map((item) => (
-            <div key={item.phase} className="flex items-center gap-3">
-              <span className="font-mono text-xs text-txt-dim w-[100px] text-right shrink-0">
-                {item.phase}
-              </span>
-              <div className="flex-1 h-5 bg-[#ffffff06] rounded-[4px] overflow-hidden">
-                <div
-                  className="h-full rounded-[4px] flex items-center pl-2 font-mono text-[10px] text-white font-semibold bg-gradient-to-r from-[#6d5aed] to-[#8b7cf7] transition-[width] duration-500"
-                  style={{ width: `${item.pct}%` }}
-                >
-                  {item.label}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Failure patterns */}
-      <div className="bg-abyss border border-bdr rounded-xl p-5">
-        <div className="text-[13px] font-semibold text-txt mb-4">Failure Patterns</div>
-        {[
-          { name: 'G-NO-ANY', desc: 'Untyped parameters in generated code', pct: '30%' },
-          { name: 'G-TSC', desc: 'TypeScript compilation errors', pct: '20%' },
-          { name: 'G-TEST', desc: 'Test failures after implementation', pct: '15%' },
-        ].map((fp) => (
-          <div
-            key={fp.name}
-            className="flex items-center gap-3 mb-2.5 p-2.5 bg-void rounded-[5px] border border-bdr"
-          >
-            <span className="font-mono text-xs text-[#ef4444] w-[140px] shrink-0">
-              {fp.name}
-            </span>
-            <span className="flex-1 text-xs text-txt-dim">{fp.desc}</span>
-            <span className="font-mono text-xs text-txt font-semibold w-10 text-right">
-              {fp.pct}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ── Analytics Tab ──
+// Full implementation in AnalyticsView.tsx (PhaseBottleneckChart, FailurePatterns, RefinementList, CostTrend)
 
 // ── Main export ──
 
@@ -461,7 +349,7 @@ export function BuildDetail({ build }: BuildDetailProps) {
         {activeTab === 'overview' && <OverviewTab build={build} />}
         {activeTab === 'artifacts' && <ArtifactsTab build={build} />}
         {activeTab === 'events' && <EventsTab build={build} />}
-        {activeTab === 'analytics' && <AnalyticsTab />}
+        {activeTab === 'analytics' && <AnalyticsView />}
       </div>
     </div>
   );
