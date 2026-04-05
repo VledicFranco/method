@@ -1,0 +1,1 @@
+{"id": "worktree-info", "input": "interface WorktreeInfo {\n  isolation: 'shared' | 'worktree';\n  worktree_path: string | null;\n  worktree_branch: string | null;\n  metals_available: boolean;\n}", "output": ""}
