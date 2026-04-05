@@ -7,8 +7,9 @@
  * @see PRD 047 §Dashboard Architecture — Build List (sidebar)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { api } from '@/shared/lib/api';
 import { PHASE_LABELS } from './types';
 import type { BuildSummary, PhaseInfo } from './types';
 
@@ -94,6 +95,15 @@ function BuildItem({
   );
 }
 
+// ── Project option type ──
+
+interface ProjectOption {
+  id: string;
+  name: string;
+  path: string;
+  description: string;
+}
+
 // ── New Build Modal ──
 
 function NewBuildModal({
@@ -103,9 +113,24 @@ function NewBuildModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (requirement: string) => void;
+  onSubmit: (requirement: string, projectId?: string) => void;
 }) {
   const [text, setText] = useState('');
+  const [projectId, setProjectId] = useState<string>('');
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  // Fetch projects when modal opens
+  useEffect(() => {
+    if (!open) return;
+    void api.get<{ projects: ProjectOption[] }>('/api/projects').then((res) => {
+      const healthy = (res.projects ?? []).filter((p: ProjectOption & { status?: string }) =>
+        !('status' in p) || p.status === 'healthy',
+      );
+      setProjects(healthy);
+    }).catch(() => {
+      // Projects API unavailable — allow builds without project
+    });
+  }, [open]);
 
   if (!open) return null;
 
@@ -113,6 +138,28 @@ function NewBuildModal({
     <div className="fixed inset-0 z-[900] flex items-center justify-center bg-black/65">
       <div className="w-[520px] bg-abyss border border-bdr rounded-lg p-7 shadow-2xl">
         <h3 className="text-base font-bold text-txt mb-4">New Build</h3>
+
+        {/* Project selector */}
+        <label className="block text-[11px] font-semibold uppercase tracking-wider text-txt-dim mb-1.5">
+          Project
+        </label>
+        <select
+          className="w-full bg-void border border-bdr rounded-[5px] px-3 py-2 text-txt text-[13px] mb-4 outline-none focus:border-[#6d5aed] cursor-pointer"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+        >
+          <option value="">Select a project...</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}{p.description ? ` — ${p.description.slice(0, 60)}` : ''}
+            </option>
+          ))}
+        </select>
+
+        {/* Requirement textarea */}
+        <label className="block text-[11px] font-semibold uppercase tracking-wider text-txt-dim mb-1.5">
+          Requirement
+        </label>
         <textarea
           className="w-full h-[100px] bg-void border border-bdr rounded-[5px] p-3 text-txt text-[13px] resize-y outline-none focus:border-[#6d5aed] placeholder:text-[#ffffff22]"
           placeholder="Describe the feature requirement..."
@@ -130,8 +177,9 @@ function NewBuildModal({
           <button
             onClick={() => {
               if (text.trim()) {
-                onSubmit(text.trim());
+                onSubmit(text.trim(), projectId || undefined);
                 setText('');
+                setProjectId('');
                 onClose();
               }
             }}
@@ -151,7 +199,7 @@ export interface BuildListProps {
   builds: BuildSummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onStartBuild: (requirement: string) => void;
+  onStartBuild: (requirement: string, projectId?: string) => void;
 }
 
 export function BuildList({ builds, selectedId, onSelect, onStartBuild }: BuildListProps) {
@@ -197,8 +245,8 @@ export function BuildList({ builds, selectedId, onSelect, onStartBuild }: BuildL
       <NewBuildModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSubmit={(req) => {
-          onStartBuild(req);
+        onSubmit={(req, projId) => {
+          onStartBuild(req, projId);
         }}
       />
     </>

@@ -21,8 +21,8 @@ export default function BuildsPage() {
   const { builds, selectedBuild, selectedId, selectBuild, startBuild, abortBuild, resumeBuild } = useBuilds(id);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
-  const handleStartBuild = useCallback((requirement: string) => {
-    void startBuild(requirement);
+  const handleStartBuild = useCallback((requirement: string, projectId?: string) => {
+    void startBuild(requirement, undefined, projectId);
   }, [startBuild]);
 
   const handleAbort = useCallback(() => {

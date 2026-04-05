@@ -10,10 +10,11 @@ import type { EventBus, BridgeEventInput } from '../../ports/event-bus.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { YamlLoader } from '../../ports/yaml-loader.js';
 import type { StrategyExecutorPort } from '../../ports/strategy-executor.js';
+import type { ProjectLookup } from '../../ports/project-lookup.js';
 import type { BuildConfig } from './config.js';
 import { BuildConfigSchema } from './config.js';
 import { BuildOrchestrator } from './orchestrator.js';
-import type { PhaseEvent } from './orchestrator.js';
+import type { PhaseEvent, BuildProjectContext } from './orchestrator.js';
 import { FileCheckpointAdapter } from './checkpoint-adapter.js';
 import { ConversationAdapter } from './conversation-adapter.js';
 import type { ConversationEvent } from './conversation-adapter.js';
@@ -61,6 +62,8 @@ export interface CreateBuildDomainOptions {
   strategyExecutor: StrategyExecutorPort;
   /** CommandExecutor for Validator — injected from composition root (G-PORT). */
   commandExecutor?: CommandExecutor;
+  /** Project lookup for resolving projectId → path/name/description. */
+  projectLookup?: ProjectLookup;
   buildConfig?: Partial<BuildConfig>;
 }
 
@@ -139,12 +142,6 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
     }
   }
 
-  // ── Validator (§3.1 — CommandExecutor injected from composition root) ──
-
-  const validator = options.commandExecutor
-    ? new Validator(options.commandExecutor, process.cwd())
-    : undefined;
-
   // ── Phase event → BridgeEvent mapping (§3.3) ─────────────────
 
   function onPhaseEvent(event: PhaseEvent): void {
@@ -165,7 +162,10 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
 
   // ── Orchestrator + ConversationAdapter factory ───────────────
 
-  function createOrchestrator(sessionId?: string): {
+  function createOrchestrator(
+    sessionId?: string,
+    projectContext?: BuildProjectContext,
+  ): {
     orchestrator: BuildOrchestrator;
     conversation: ConversationAdapter;
   } {
@@ -174,14 +174,23 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
       onEvent: onConversationEvent,
     });
 
+    // Create per-build Validator with the project's root path if available
+    const buildValidator = options.commandExecutor
+      ? new Validator(
+          options.commandExecutor,
+          projectContext?.path ?? process.cwd(),
+        )
+      : undefined;
+
     const orchestrator = new BuildOrchestrator(
       checkpointAdapter,
       conversation,
       config,
       options.strategyExecutor,
-      validator,
+      buildValidator,
       sessionId,
       onPhaseEvent,
+      projectContext,
     );
 
     return { orchestrator, conversation };
@@ -195,6 +204,7 @@ export function createBuildDomain(options: CreateBuildDomainOptions): BuildDomai
     createOrchestrator,
     eventBus: options.eventBus,
     config,
+    projectLookup: options.projectLookup,
   };
 
   return {

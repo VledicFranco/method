@@ -10,13 +10,14 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { BuildOrchestrator } from './orchestrator.js';
+import type { BuildOrchestrator, BuildProjectContext } from './orchestrator.js';
 import type { ConversationAdapter } from './conversation-adapter.js';
 import type { FileCheckpointAdapter } from './checkpoint-adapter.js';
 import type { BuildConfig } from './config.js';
 import type { AutonomyLevel, EvidenceReport } from './types.js';
 import type { GateType } from '../../ports/conversation.js';
 import type { EventBus, BridgeEventInput } from '../../ports/event-bus.js';
+import type { ProjectLookup } from '../../ports/project-lookup.js';
 import { aggregateRefinements } from './refinement.js';
 
 // ── Build registry (in-memory, process-scoped) ──────────────────
@@ -26,6 +27,7 @@ export interface BuildEntry {
   conversation: ConversationAdapter;
   requirement: string;
   autonomyLevel: AutonomyLevel;
+  projectId?: string;
   status: 'running' | 'completed' | 'failed' | 'aborted';
   startedAt: string;
   completedAt?: string;
@@ -35,12 +37,13 @@ export interface BuildEntry {
 export interface BuildRouteContext {
   builds: Map<string, BuildEntry>;
   checkpointAdapter: FileCheckpointAdapter;
-  createOrchestrator: (sessionId?: string) => {
+  createOrchestrator: (sessionId?: string, projectContext?: BuildProjectContext) => {
     orchestrator: BuildOrchestrator;
     conversation: ConversationAdapter;
   };
   eventBus: EventBus;
   config: BuildConfig;
+  projectLookup?: ProjectLookup;
 }
 
 // ── Builds Map eviction (F-A-5) ──────────────────────────────
@@ -96,6 +99,7 @@ export function registerBuildRoutes(
         id,
         requirement: entry.requirement,
         autonomyLevel: entry.autonomyLevel,
+        projectId: entry.projectId,
         status: entry.status,
         startedAt: entry.startedAt,
         completedAt: entry.completedAt,
@@ -226,14 +230,14 @@ export function registerBuildRoutes(
   /**
    * POST /api/builds/start — Start a new build.
    */
-  app.post<{ Body: { requirement: string; autonomyLevel?: AutonomyLevel } }>(
+  app.post<{ Body: { requirement: string; autonomyLevel?: AutonomyLevel; projectId?: string } }>(
     '/api/builds/start',
     async (
-      req: FastifyRequest<{ Body: { requirement?: string; autonomyLevel?: AutonomyLevel } }>,
+      req: FastifyRequest<{ Body: { requirement?: string; autonomyLevel?: AutonomyLevel; projectId?: string } }>,
       reply: FastifyReply,
     ) => {
       try {
-        const { requirement, autonomyLevel } = req.body;
+        const { requirement, autonomyLevel, projectId } = req.body;
 
         if (!requirement || typeof requirement !== 'string' || requirement.trim().length === 0) {
           return reply.status(400).send({
@@ -251,9 +255,27 @@ export function registerBuildRoutes(
           });
         }
 
+        // Resolve project context if projectId provided
+        let projectContext: BuildProjectContext | undefined;
+        if (projectId && ctx.projectLookup) {
+          const project = await ctx.projectLookup.getProject(projectId);
+          if (!project) {
+            return reply.status(404).send({
+              error: 'Project not found',
+              message: `No project with id "${projectId}"`,
+            });
+          }
+          projectContext = {
+            id: project.id,
+            name: project.name,
+            path: project.path,
+            description: project.description,
+          };
+        }
+
         const level: AutonomyLevel = autonomyLevel ?? ctx.config.defaultAutonomyLevel as AutonomyLevel;
 
-        const { orchestrator, conversation } = ctx.createOrchestrator();
+        const { orchestrator, conversation } = ctx.createOrchestrator(undefined, projectContext);
         const buildId = orchestrator.id;
 
         const entry: BuildEntry = {
@@ -261,6 +283,7 @@ export function registerBuildRoutes(
           conversation,
           requirement: requirement.trim(),
           autonomyLevel: level,
+          projectId,
           status: 'running',
           startedAt: new Date().toISOString(),
         };
@@ -272,6 +295,7 @@ export function registerBuildRoutes(
           buildId,
           requirement: requirement.trim(),
           autonomyLevel: level,
+          projectId: projectId ?? null,
         }, buildId);
 
         // Start the build in the background (non-blocking) (F-A-7)

@@ -76,7 +76,7 @@ export interface UseBuildsResult {
   isLoading: boolean;
   error: Error | null;
   usingMock: boolean;
-  startBuild: (requirement: string, autonomyLevel?: AutonomyLevel) => Promise<string>;
+  startBuild: (requirement: string, autonomyLevel?: AutonomyLevel, projectId?: string) => Promise<string>;
   abortBuild: (id: string, reason?: string) => Promise<void>;
   resumeBuild: (id: string) => Promise<{ buildId: string; resumedFromPhase: string }>;
 }
@@ -124,8 +124,8 @@ export function useBuilds(initialId?: string): UseBuildsResult {
   // ── Mutations ──
 
   const startMutation = useMutation({
-    mutationFn: async ({ requirement, autonomyLevel }: { requirement: string; autonomyLevel?: AutonomyLevel }) => {
-      const res = await api.post<{ buildId: string }>('/api/builds/start', { requirement, autonomyLevel });
+    mutationFn: async ({ requirement, autonomyLevel, projectId }: { requirement: string; autonomyLevel?: AutonomyLevel; projectId?: string }) => {
+      const res = await api.post<{ buildId: string }>('/api/builds/start', { requirement, autonomyLevel, projectId });
       return res.buildId;
     },
     onSuccess: (buildId) => {
@@ -154,8 +154,8 @@ export function useBuilds(initialId?: string): UseBuildsResult {
   });
 
   const startBuild = useCallback(
-    async (requirement: string, autonomyLevel?: AutonomyLevel) => {
-      return startMutation.mutateAsync({ requirement, autonomyLevel });
+    async (requirement: string, autonomyLevel?: AutonomyLevel, projectId?: string) => {
+      return startMutation.mutateAsync({ requirement, autonomyLevel, projectId });
     },
     [startMutation],
   );
