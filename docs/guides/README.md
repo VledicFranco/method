@@ -40,6 +40,8 @@ Conceptual and operational guides for the method system — what methods and met
 | 32 | [Cognitive Personas](32-cognitive-personas.md) | pacta | Agent operators, contributors | Dynamic reasoning styles, auto-selection, persona module |
 | 33 | [Cognitive Affect & Curiosity](33-cognitive-affect-curiosity.md) | pacta | Agent operators, contributors | Affect signals, curiosity-driven exploration, composition presets |
 | 34 | [Memory: Hybrid Search & Persistence](34-memory-hybrid-search.md) | pacta | Agent operators, contributors | BM25, embedding fusion, JSONL persistence, Markdown export |
+| 35 | [Structured Output](35-structured-output.md) | provider | Developers | Typed JSON from LLM agents via StructuredAgentProvider |
+| 36 | [Build Orchestrator](36-build-orchestrator.md) | build | Developers, delivery teams | Autonomous FCD lifecycle from idea to validated delivery |
 
 ## Guide Frontmatter Spec
 
@@ -82,6 +84,8 @@ touches:                           # Source paths this guide documents (for stal
 | `governance` | Project cards, councils, retros, installation | 6, 9, 12, 13 |
 | `bridge` | Session server, orchestration, dashboard, prompting | 8, 10, 14, 15, 17, 30, 31 |
 | `strategy` | Pipeline execution, triggers, context continuity | 16, 18 |
+| `build` | Build orchestrator, autonomous FCD lifecycle | 36 |
+| `provider` | Agent providers, structured output | 35 |
 | `multi-project` | Genesis, project discovery, resource sharing | 19, 20, 21 |
 | `testkit` | Test framework, assertions, diagnostics | 22, 23, 24, 25 |
 | `pacta` | Modular Agent SDK — pacts, providers, composition, testing | 26, 27, 28, 29, 32, 33, 34 |
@@ -107,6 +111,7 @@ Choose the path that matches your role, then follow guide numbers in order. Each
 - **Designing methods?** 1 → 2 → 3 → 7 → 11 → 22–25
 - **Working with multi-project setups?** 1 → 2 → 10 → 19 → 20 → 21
 - **Building strategy pipelines?** 1 → 2 → 10 → 16 → 18
+- **Using the Build Orchestrator?** 10 → 16 → 36
 - **Contributing to the bridge UI?** 10 → 14 → 17
 - **Building or testing agents with Pacta?** 26 → 27 → 28 → 29 → 32 → 33 → 34
 - **Just curious?** Guide 1 is self-contained — 5 minutes.

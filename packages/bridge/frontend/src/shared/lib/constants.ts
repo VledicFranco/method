@@ -13,6 +13,8 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   REGISTRY: '/registry',
   SETTINGS: '/settings',
+  BUILDS: '/builds',
+  BUILD_DETAIL: '/builds/:id',
 } as const;
 
 /** Status → color token mapping */
@@ -44,6 +46,7 @@ export const EVENT_COLORS = {
 export const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
   { label: 'Sessions', path: '/sessions', icon: 'Terminal' },
+  { label: 'Builds', path: '/builds', icon: 'Zap' },
   { label: 'Pipelines', path: '/strategies', icon: 'GitBranch' },
   { label: 'Governance', path: '/governance', icon: 'Shield' },
   { label: 'Analytics', path: '/analytics', icon: 'BarChart3' },

@@ -53,6 +53,7 @@ import { StdlibSource } from './ports/stdlib-source.js';
 import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink, WebhookConnector } from './shared/event-bus/index.js';
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
+import { createBuildDomain } from './domains/build/index.js';
 import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
@@ -505,6 +506,14 @@ async function start() {
       }
       app.log.info(`Replayed ${replayedEvents.length} events from disk`);
     }
+
+    // PRD 047: Register Build Orchestrator domain
+    const buildDomain = createBuildDomain({
+      eventBus,
+      fileSystem: fsProvider,
+      yamlLoader,
+    });
+    buildDomain.registerRoutes(app);
 
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);
