@@ -1,0 +1,95 @@
+run_id: phase-2-kpi-checker
+date: 2026-04-05
+experiment: exp-slm-composition
+phase: phase-2-bootstrap
+condition: kpi-checker-qwen25-05b-lora
+customer: PRD 049 (KPI Checker SLM)
+
+hypothesis: >
+  An SLM can be bootstrapped entirely using the composition flywheel:
+  - Grammar validates every corpus entry (Peggy gate)
+  - Corpus generator reuses established patterns
+  - Training uses proven RFC 002 pipeline
+  - Total human effort ~45 minutes
+
+corpus:
+  size: 3000 (2400 train / 600 holdout)
+  seeds: 12 (from task suite T01-T06)
+  synthetic_expansion: 2988 pairs
+  grammar: Check DSL (4 primitives + && composition)
+  validation: 100% (every output parses through Peggy grammar)
+  distribution:
+    file_exists: 779 (26%)
+    file_contains: 739 (25%)
+    file_exports: 569 (19%)
+    file_count_changed: 307 (10%)
+    composite: 606 (20%)
+
+training:
+  base_model: Qwen/Qwen2.5-0.5B-Instruct
+  method: LoRA r=16, alpha=32
+  steps: 3000
+  batch_size: 2
+  learning_rate: 2.0e-4
+  max_length: 512
+  training_time_s: 2385
+  training_time_min: 39.8
+  peak_vram_mb: 3209
+  final_train_loss: 0.231
+  eval_loss: 0.152
+  eval_token_accuracy: 0.947
+  hardware: RTX 4090 (chobits)
+
+results:
+  gate_1_parse_rate:
+    target: ">= 98% DSL parse accuracy"
+    result: 1.00
+    correct: 600
+    total: 600
+    verdict: PASS
+
+  gate_2_semantic:
+    target: ">= 90% semantic match (same primitive type)"
+    result: 1.00
+    correct: 600
+    total: 600
+    verdict: PASS
+
+bootstrap_flywheel_metrics:
+  human_effort_breakdown:
+    - "Read PRD 049: ~10 min"
+    - "Write Check DSL grammar: ~10 min"
+    - "Collect seed pairs from task suite: ~10 min"
+    - "Write corpus generator: ~15 min"
+    - "Write eval script: ~5 min"
+    - "Total human effort: ~50 min"
+  gpu_time_breakdown:
+    - "Training: 40 min"
+    - "Prediction generation: ~13 min"
+    - "Total GPU time: ~53 min"
+  total_time: "~1h 45min (vs ~14 hours manual)"
+  speedup: "~8x"
+
+findings:
+  - "F1: KPI Checker achieves 100% parse accuracy AND 100% semantic match on holdout"
+  - "F2: The bootstrap flywheel works end-to-end: grammar → corpus → train → eval, all with automated validation"
+  - "F3: Training fits in 40 minutes (smaller corpus + max_length=512 = fast)"
+  - "F4: Peak VRAM only 3.2 GB (the 0.5B model is cheap to train on RTX 4090)"
+  - "F5: First SLM bootstrapped purely via the flywheel infrastructure — ~8x speedup over manual creation"
+
+comparison_to_rfc_002_phase_3:
+  manual_slm_creation_time: "~14 hours (Monitor, Observer, Evaluator)"
+  bootstrapped_slm_creation_time: "~1h 45min (KPI Checker)"
+  speedup_factor: 8
+  human_effort_reduction: "12h → 50min (14x)"
+
+next_steps:
+  - "Integrate KPI Checker into Planner module (replace requestCheckableKPIs LLM call)"
+  - "Run R-28 experiment: verify programmatic check rate rises from 0% to >= 80%"
+  - "Measure T04 pass rate improvement with KPI-powered verification"
+  - "Optional: use B-2 to re-validate KPI Checker corpus post-hoc"
+
+session_cost_estimate:
+  training: "$0 (local GPU, 40 min)"
+  inference: "$0 (local GPU, ~13 min)"
+  total: "$0"

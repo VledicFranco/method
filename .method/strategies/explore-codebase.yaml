@@ -1,0 +1,82 @@
+strategy:
+  id: explore-codebase
+  name: "Codebase Exploration"
+  version: "1.0.0"
+
+  triggers:
+    - type: manual
+
+  context:
+    inputs:
+      - name: feature_request
+        type: string
+      - name: project_context
+        type: string
+        default: ""
+      - name: project_root
+        type: string
+        default: "."
+      - name: project_id
+        type: string
+        default: ""
+
+  capabilities:
+    read_only: [Read, Glob, Grep, Bash]
+
+  dag:
+    nodes:
+      # Scan project structure: directories, key files, package.json, CLAUDE.md
+      - id: scan_structure
+        type: methodology
+        methodology: P1-EXEC
+        method_hint: M3-TMP
+        prompt: "You are exploring a codebase to understand its structure before designing a feature. Read the project's CLAUDE.md or README.md for high-level context. List the top-level directory structure. Identify the language, build system, and test framework. Search for files related to the feature request. Identify existing patterns, port interfaces, and domain boundaries. Respond with structured findings: domains, patterns, constraints, approach, key_files, tech_stack."
+        capabilities: [read_only]
+        inputs: [feature_request, project_context, project_root]
+        outputs: [exploration_report]
+        gates:
+          - type: algorithmic
+            check: "output !== undefined && (output.domains !== undefined || output.approach !== undefined)"
+            max_retries: 1
+            timeout_ms: 180000
+
+      # Detect if the feature touches multiple domains (complexity signal)
+      - id: assess_complexity
+        type: script
+        script: |
+          const report = inputs.exploration_report;
+          const content = typeof report === 'string' ? report : (report.result || JSON.stringify(report));
+          let domainCount = 0;
+          try {
+            const parsed = JSON.parse(content);
+            domainCount = (parsed.domains || []).length;
+          } catch {
+            domainCount = (content.match(/domain/gi) || []).length;
+          }
+          const isComplex = domainCount > 2;
+          return {
+            domain_count: domainCount,
+            is_complex: isComplex,
+            complexity_note: isComplex ? 'Feature spans ' + domainCount + ' domains' : 'Feature is contained',
+            exploration_summary: content.slice(0, 2000)
+          };
+        inputs: [exploration_report]
+        outputs: [complexity_assessment]
+        depends_on: [scan_structure]
+
+    strategy_gates:
+      - id: exploration_complete
+        depends_on: [assess_complexity]
+        type: algorithmic
+        check: "artifacts.complexity_assessment !== undefined"
+
+  oversight:
+    rules:
+      - condition: "total_cost_usd > 5.00"
+        action: escalate_to_human
+      - condition: "step_duration_ms > 300000"
+        action: kill_and_requeue
+
+  outputs:
+    - type: channel_event
+      target: bridge

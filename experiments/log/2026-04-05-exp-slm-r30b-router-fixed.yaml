@@ -1,0 +1,40 @@
+experiment: exp-slm
+run_id: r30b-router-fixed
+date: 2026-04-05
+agent: "Claude Opus 4.6"
+config:
+  task: "R-30b — meta-cognitive router N=5 with fixed feature extraction"
+  conditions: ["meta-cognitive"]
+  n_per_task: 5
+  max_cycles: 15
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01: { pass: 4, fail: 1, rate: 0.80, routed: "unified-memory", correct: true, note: "BEST EVER. +40pp over flat (40%)" }
+    t02: { pass: 5, fail: 0, rate: 1.00, routed: "flat", correct: true, note: "Matches flat perfectly" }
+    t03: { pass: 1, fail: 4, rate: 0.20, routed: "flat", correct: false, note: "Should be unified-memory (+20pp)" }
+    t04: { pass: 1, fail: 4, rate: 0.20, routed: "unified-memory", correct: false, note: "Should be flat (100%)" }
+    t05: { pass: 5, fail: 0, rate: 1.00, routed: "flat", correct: true, note: "Matches flat" }
+    t06: { pass: 0, fail: 5, rate: 0.00, routed: "unified-memory", correct: true, note: "Both 0% — doesn't matter" }
+  overall: { pass: 16, fail: 14, rate: 0.53 }
+
+routing_accuracy: "4/6 correct (67%). T03 and T04 wrong."
+
+findings:
+  - id: F1
+    title: "Routing lifts T01 to 80% — best ever, +40pp over flat"
+    detail: "Correctly routed to unified-memory. Cognitive architecture shines on structural refactoring."
+  - id: F2
+    title: "T04 mis-routed to unified-memory — costs 80pp"
+    detail: "Rule-based features classify T04 as multi-file + constraints → unified-memory. But Sonnet handles it natively at 100%. Need semantic understanding to distinguish 'multi-file but clear' from 'multi-file and structural'."
+  - id: F3
+    title: "If routing were perfect, composite would be 67%"
+    detail: "T01 80% (cognitive) + T02 100% (flat) + T03 20% (cognitive) + T04 100% (flat) + T05 100% (flat) + T06 0% = 20/30 = 67%. Current 53% loses 14pp to 2 wrong routings."
+  - id: F4
+    title: "Router SLM is the critical next step"
+    detail: "Rule-based features can't distinguish T04 (clear goals despite multiple files) from T01 (genuinely structural). Need frontier LLM traces → SLM pipeline."
+
+next_steps:
+  - "PRD 051: Router SLM — same pipeline as KPI Checker"

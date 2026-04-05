@@ -1,0 +1,35 @@
+experiment: exp-slm
+run_id: r30-router-buggy
+date: 2026-04-05
+agent: "Claude Opus 4.6"
+config:
+  task: "R-30 — meta-cognitive router N=5 (bug in feature extraction, kept for comparison)"
+  conditions: ["meta-cognitive"]
+  n_per_task: 5
+  max_cycles: 15
+  note: "Feature extraction regex required directory prefix (src/foo.ts). Bare filenames (module-a.ts) were missed. T01 routed to flat instead of unified-memory."
+
+status: closed-partial
+
+outcomes:
+  overall: { pass: 14, fail: 16, rate: 0.47 }
+  note: "Router with buggy features performed worse than flat (57%). T01 routed to flat (should be unified-memory) — cognitive would have been +20pp."
+
+routing_decisions:
+  t01_circular_dep: flat     # INCORRECT — bare filenames not matched
+  t02_bug_fix: flat          # correct
+  t03_config_migration: flat # INCORRECT — constraint task
+  t04_api_versioning: unified-memory  # INCORRECT — clear goals, flat better
+  t05_dead_code: flat        # correct (trivial)
+  t06_multi_module: unknown
+
+findings:
+  - id: F1
+    title: "Feature extraction bug caused 3/6 wrong routings"
+    detail: "Regex /[\w-]+\/[\w/.-]+\.ts/ required a slash. Missed bare filenames like 'module-a.ts'. Fixed in commit f687f84 with /[\w/-]+\.ts/."
+  - id: F2
+    title: "Router overhead was 250-350 tokens per task"
+    detail: "LLM difficulty refinement call. Within PRD 050 budget of 1K tokens/task."
+
+next_steps:
+  - "R-30b: rerun with fixed feature extraction"

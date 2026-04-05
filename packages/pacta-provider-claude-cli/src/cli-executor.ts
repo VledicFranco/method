@@ -117,6 +117,10 @@ export function buildCliArgs(args: CliArgs): string[] {
     result.push('--allowedTools', args.allowedTools.join(','));
   }
 
+  // Separator: claude CLI treats args after `--` as positional, preventing
+  // confusion when --allowedTools value is mistakenly captured as the prompt.
+  result.push('--');
+
   // Prompt is the positional argument (last)
   result.push(args.prompt);
 

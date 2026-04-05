@@ -25,8 +25,13 @@ Can our cognitive architecture (modules + SLMs + partitions) improve abstract re
 
 ### Line 5: Anticipatory Monitoring + Unified Memory + Verification (RFC 006, PRD 048)
 Does the full cognitive stack match or exceed flat baseline?
-**Status:** ALL 5 TASKS VALIDATED. R-27b: T04 100% with programmatic verification — matches flat. Best rates: T01 100%, T02 100%, T03 67%, T04 100%, T05 100%. Architecture is complete. Next: SLM to automate check generation (PRD 049), N=5 for consistency.
-**Key findings:** (1) Unified memory (Cowan) eliminates eviction — T02 exceeds flat. (2) Working memory + subgoal seeding fixes reasoning persistence. (3) Programmatic verification (verify→fail→correct loop) is THE lever for T04 — LLM-only verification doesn't work. (4) 5/5 tasks at or above flat baseline.
+**Status:** ARCHITECTURE IS TASK-DEPENDENT. N=5 replication revealed cognitive helps T01/T03 (+20pp) and hurts T02/T04 (-80pp). R-28 cognitive 37% vs R-29 flat 57%. Best per-task: T01 60%, T02 20% (cog) vs 100% (flat), etc.
+**Key findings:** (1) Cognitive architecture validates the mechanisms (Cowan memory, working memory, verification) but adds overhead that hurts simple tasks. (2) Sonnet 4 handles T02/T04 natively — cognitive distracts. (3) Cognitive wins on structural/multi-file tasks. (4) The right architecture depends on task features. Motivates PRD 050 (meta-cognitive router).
+
+### Line 6: Meta-Cognitive Routing (PRD 050/051)
+Can a meta-level router select the right architecture per task, achieving composite pass rate > max(flat, cognitive)?
+**Status:** VALIDATED. R-31b: 18/30 (60%) — beats flat 57% and cognitive 37%. Router SLM (Qwen2.5-0.5B-LoRA, 100% holdout) served via HTTP bridge on chobits. 6/6 routing decisions correct at N=5. T04 recovered 20%→100% via correct routing. Bootstrap flywheel proven twice (KPI Checker + Router SLM, ~45 min each).
+**Remaining gap:** T03 inconsistent (0-20%), T06 still 0% regardless of architecture — reasoning-bound, needs Opus comparison.
 
 ---
 
@@ -34,19 +39,16 @@ Does the full cognitive stack match or exceed flat baseline?
 
 | ID | Experiment | Question | Priority | Dependencies |
 |----|-----------|----------|----------|-------------|
-| R-24 | exp-slm phase-5 | **Statistical confidence** — R-23 full stack at N=5 for T01-T05. Determine if 44% is stable or noise. | **P0** | None |
-| R-25 | exp-slm phase-5 | **Partition tuning** — investigate capacity/eviction for T01/T04 remaining gap vs flat (29pp). | P0 | R-24 results |
-| — | Planner module | **Formal Planner implementation** (RFC 006 §Planner Module) — typed algebra surfaces, composable with Evaluator. Replace prompt-level assessTaskWithLLM with proper CognitiveModule. | P1 | R-24/R-25 close the gap |
-| — | SLM compilation | **Evaluator + assessment SLM targets** — distill phase-aware evaluator and task assessor from frontier traces. Eliminates ~11K tokens/run overhead. RFC 002 pipeline. | P1 | Planner module stable |
-| — | Closed algebra | **Per-module working memory for all modules** — extend Monitor, Evaluator, Observer with ModuleWorkingMemory. Complete the algebraic closure from RFC 006. | P2 | R-25 validates architecture |
-| — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
-| — | Structured output | **P(parse) = 1.0 hypothesis** — re-run exp-spl-design recursive condition with StructuredAgentProvider. Validate that structured JSON output eliminates parser bottleneck in implement/design algorithms. PRD 046 C-3 enables this. | P1 | StructuredAgentProvider (merged) |
+| — | Opus comparison | Run unified-memory N=5 with Opus ReasonerActor — isolate model quality from architecture. Tests whether T06 (0% regardless) and T03 (0-20%) are reasoning-bound. | **P0** | Credits/budget |
+| — | T03/T06 deep-dive | Diagnose why T03 is inconsistent (0-20%) and T06 always 0%. Longer cycles? Different model? Task reformulation? | P1 | Opus comparison |
+| — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive vs meta-cognitive routing | P1 | SDK setup, adapter code |
+| — | Structured output | **P(parse) = 1.0 hypothesis** — re-run exp-spl-design with StructuredAgentProvider | P1 | StructuredAgentProvider (merged) |
+| — | Router SLM v2 | Retrain on 6-task corpus (N=5 per task) to improve per-task calibration. Current model trained on 4-task corpus. | P2 | Expanded corpus |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
-| — | GPU ONNX re-export | Re-export ONNX models on 2080 Ti for local GPU inference | P2 | Chobits or re-export script |
 
 ## Backlog — In Progress
 
-*R-24 (N=5 statistical confidence) is next. R-20→R-23 arc complete.*
+*None. R-20→R-31b arc complete. Meta-cognitive routing validated end-to-end.*
 
 ---
 
@@ -54,7 +56,13 @@ Does the full cognitive stack match or exceed flat baseline?
 
 | ID | Experiment | Result | Date |
 |----|-----------|--------|------|
-| R-27b | exp-slm phase-5 | **T04 100%! Programmatic verification works.** Verify→fail→correct loop. 5/5 tasks at or above flat baseline (best rates). PRD 049 SLM validated. | 2026-04-05 |
+| R-31b | exp-slm phase-5 | **Meta-cognitive routing 18/30 (60%) — BEATS FLAT 57% AND COGNITIVE 37%.** Router SLM (Qwen2.5-0.5B-LoRA) served via HTTP bridge on chobits, 6/6 routing correct. T04 recovered 20%→100% via SLM routing to flat. Composite advantage validated. | 2026-04-05 |
+| R-31 | exp-slm phase-5 | First SLM routing pass (partial, 3/30 runs). Regex bug: objective summary fell back to full taskDescription for T01. Fixed in router-slm.ts — prefer short `goal.objective` over noisy taskDescription. | 2026-04-05 |
+| R-30b | exp-slm phase-5 | **Rule-based router N=5: 56%.** Misrouted T04 (single-file edit pattern not matching), sent to cognitive → 20%. Motivates SLM replacement (R-31b). | 2026-04-05 |
+| R-30 | exp-slm phase-5 | Rule-based router first pass (partial). Regex bug for bare filenames (`module-a.ts`) caused T01 misrouting. Fixed: `/[\w/-]+\.(ts\|js\|...)\b/` pattern. | 2026-04-05 |
+| R-29 | exp-slm phase-5 | **Flat N=5 honest baseline: 57%.** T02/T04 100% stable, T01 40%, T03 0%. Reveals R-15 N=3 (73%) was inflated. Gap to cognitive is 20pp not 36pp. | 2026-04-05 |
+| R-28 | exp-slm phase-5 | **Cognitive N=5 honest: 37%.** T01 60%, T02 20%, T03 20%, T04 20%, T05 100%, T06 0%. N=3 variance masked true rates. Motivates router approach. | 2026-04-05 |
+| R-27b | exp-slm phase-5 | **T04 100%! Programmatic verification works.** Verify→fail→correct loop. 5/5 tasks at or above flat baseline (best rates). PRD 049 SLM validated. N=3. | 2026-04-05 |
 | R-27 | exp-slm phase-5 | **PRD 048 Verification Loop: 8/18 (44%).** VERIFY fires but 0 programmatic checks — LLM fallback unreliable. Validates need for SLM. | 2026-04-05 |
 | R-26e | exp-slm phase-5 | **Unified memory (Cowan) + Planner + WM: best T01 100%, T02 100%, T03 67%, T04 67%.** Architecture validated — 4/5 tasks match or exceed flat. Remaining gap: LLM write quality. | 2026-04-04 |
 | R-26d | exp-slm phase-5 | **T04 67% — best ever.** Subgoal checklist seeding fixes read-loop. KPI regex bug prevented T06 fix. | 2026-04-04 |

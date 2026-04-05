@@ -13,7 +13,23 @@ import type { CheckpointPort, PipelineCheckpoint, PipelineCheckpointSummary } fr
 import type { ConversationPort } from '../../../ports/conversation.js';
 import type { AgentMessage, HumanMessage, GateDecision, GateType, SkillRequest } from '../../../ports/conversation.js';
 import type { ConversationMessage } from '../../../ports/checkpoint.js';
+import type { StrategyExecutorPort, StrategyExecutionResult } from '../../../ports/strategy-executor.js';
 import { BuildConfigSchema } from '../config.js';
+
+// ── Mock StrategyExecutorPort ──
+
+function createMockStrategyExecutor(): StrategyExecutorPort {
+  return {
+    async executeStrategy(strategyId: string): Promise<StrategyExecutionResult> {
+      return {
+        success: true,
+        output: `Strategy ${strategyId} completed (mock)`,
+        cost: { tokens: 100, usd: 0.01 },
+        executionId: `exec-${strategyId}-${Date.now()}`,
+      };
+    },
+  };
+}
 // AutonomyLevel used as string literals in test calls
 
 // ── Mock CheckpointPort ──
@@ -107,12 +123,12 @@ describe('Build Orchestrator Integration', () => {
   });
 
   it('instantiates with ports and config', () => {
-    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config);
+    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config, createMockStrategyExecutor());
     expect(orchestrator).toBeDefined();
   });
 
   it('checkpoint saves accumulate through phases', async () => {
-    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config);
+    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config, createMockStrategyExecutor());
     // Start a build — in full-auto mode, gates are auto-approved
     const report = await orchestrator.start('Add a health endpoint', 'full-auto');
 
@@ -123,7 +139,7 @@ describe('Build Orchestrator Integration', () => {
   });
 
   it('conversation receives system messages during execution', async () => {
-    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config);
+    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config, createMockStrategyExecutor());
     await orchestrator.start('Add health check', 'full-auto');
 
     // Should have system messages for phase transitions
@@ -136,7 +152,7 @@ describe('Build Orchestrator Integration', () => {
       ...config,
       defaultAutonomyLevel: 'discuss-all',
     });
-    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config);
+    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config, createMockStrategyExecutor());
     await orchestrator.start('Add feature', 'discuss-all');
 
     // Should have gate decisions for specify, design, plan, review
@@ -144,7 +160,7 @@ describe('Build Orchestrator Integration', () => {
   });
 
   it('evidence report has required fields', async () => {
-    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config);
+    const orchestrator = new BuildOrchestrator(checkpoint, conversation, config, createMockStrategyExecutor());
     const report = await orchestrator.start('Add endpoint', 'full-auto');
 
     expect(report.requirement).toBe('Add endpoint');

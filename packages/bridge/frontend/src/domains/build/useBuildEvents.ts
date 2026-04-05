@@ -16,9 +16,21 @@
  */
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useBridgeEvents } from '@/shared/websocket/useBridgeEvents';
+import { api } from '@/shared/lib/api';
 import type { BridgeEvent } from '@/shared/stores/event-store';
-import type { ConversationMessage, GateType } from './types';
+import type { ConversationMessage, GateType, Phase } from './types';
+
+interface BuildLiveState {
+  id: string;
+  status: 'running' | 'completed' | 'failed' | 'aborted';
+  currentPhase: Phase | null;
+  costUsd: number;
+  costTokens: number;
+  completedPhases: Phase[];
+  humanInterventions: number;
+}
 
 // ── Event → Message conversion ─────────────────────────────────
 
@@ -47,11 +59,19 @@ function eventToMessage(event: BridgeEvent): ConversationMessage | null {
     case 'build.agent_message':
       return {
         id: `ws-${event.id}`,
-        sender: 'agent',
+        sender: (payload.sender as 'agent' | 'human' | 'system' | undefined) ?? 'agent',
         content: (payload.content as string) ?? (payload.message as string) ?? '',
         timestamp,
         replyTo: (payload.replyTo as string) ?? undefined,
         card: payload.card as ConversationMessage['card'],
+      };
+
+    case 'build.system_message':
+      return {
+        id: `ws-${event.id}`,
+        sender: 'system',
+        content: (payload.content as string) ?? '',
+        timestamp,
       };
 
     case 'build.gate_waiting':
@@ -70,21 +90,32 @@ function eventToMessage(event: BridgeEvent): ConversationMessage | null {
         timestamp,
       };
 
-    case 'build.phase_started':
+    case 'build.phase_started': {
+      const phase = (payload.phase as string) ?? (payload.target as string) ?? 'unknown';
+      const detail = (payload.detail as string) ?? '';
       return {
         id: `ws-${event.id}`,
         sender: 'system',
-        content: `Phase started: ${(payload.phase as string) ?? (payload.target as string) ?? 'unknown'} — ${(payload.detail as string) ?? ''}`.trimEnd(),
+        content: detail ? `Phase started: ${phase} — ${detail}` : `Phase started: ${phase}`,
         timestamp,
       };
+    }
 
-    case 'build.phase_completed':
+    case 'build.phase_completed': {
+      const phase = (payload.phase as string) ?? (payload.target as string) ?? 'unknown';
+      const cost = payload.cost as { usd?: number } | undefined;
+      const durationMs = payload.durationMs as number | undefined;
+      const parts: string[] = [];
+      if (durationMs) parts.push(`${(durationMs / 1000).toFixed(1)}s`);
+      if (cost?.usd) parts.push(`$${cost.usd.toFixed(3)}`);
+      const suffix = parts.length > 0 ? ` (${parts.join(', ')})` : '';
       return {
         id: `ws-${event.id}`,
         sender: 'system',
-        content: `Phase completed: ${(payload.phase as string) ?? (payload.target as string) ?? 'unknown'} — ${(payload.detail as string) ?? ''}`.trimEnd(),
+        content: `Phase completed: ${phase}${suffix}`,
         timestamp,
       };
+    }
 
     default:
       return null;
@@ -98,6 +129,16 @@ export interface UseBuildEventsResult {
   messages: ConversationMessage[];
   /** Active gate type from the most recent gate_waiting event (cleared on gate_resolved). */
   liveGate: GateType | null;
+  /** Current phase from the most recent phase_started event. */
+  currentPhase: Phase | null;
+  /** Whether a phase is currently in flight (started but not completed). */
+  phaseActive: boolean;
+  /** Build status derived from events (running/completed/failed/aborted). */
+  liveStatus: 'running' | 'completed' | 'failed' | 'aborted' | null;
+  /** Accumulated cost in USD from all completed phases. */
+  liveCost: number;
+  /** Phases that have completed (for pipeline progress display). */
+  completedPhases: Set<Phase>;
 }
 
 // ── Hook ───────────────────────────────────────────────────────
@@ -112,27 +153,81 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
   // Subscribe to all build-domain events via useBridgeEvents (PRD 026)
   const events = useBridgeEvents({ domain: 'build' });
 
-  // Filter events for the selected build and convert to messages
-  const { messages, liveGate } = useMemo(() => {
-    if (!buildId) return { messages: [] as ConversationMessage[], liveGate: null as GateType | null };
+  // Fetch initial live state from backend (for restoring state after page reload)
+  const { data: initialState } = useQuery({
+    queryKey: ['build-state', buildId],
+    queryFn: async ({ signal }) => {
+      if (!buildId) return null;
+      return api.get<BuildLiveState>(`/api/builds/${buildId}/state`, signal);
+    },
+    enabled: !!buildId,
+    retry: 1,
+    refetchInterval: 10_000,
+  });
 
+  // Filter events for the selected build and convert to messages
+  const result = useMemo(() => {
+    const empty = {
+      messages: [] as ConversationMessage[],
+      liveGate: null as GateType | null,
+      currentPhase: null as Phase | null,
+      phaseActive: false,
+      liveStatus: null as 'running' | 'completed' | 'failed' | 'aborted' | null,
+      liveCost: 0,
+      completedPhases: new Set<Phase>(),
+    };
+    if (!buildId) return empty;
+
+    // Seed from backend state (restores after reload) — events override these
     const msgs: ConversationMessage[] = [];
     let gate: GateType | null = null;
+    let phase: Phase | null = initialState?.currentPhase ?? null;
+    let phaseActive = initialState?.status === 'running' && !!initialState?.currentPhase;
+    let status: 'running' | 'completed' | 'failed' | 'aborted' | null = initialState?.status ?? null;
+    let cost = initialState?.costUsd ?? 0;
+    const completedPhases = new Set<Phase>(initialState?.completedPhases ?? []);
 
     for (const event of events) {
-      // Filter: only events for this build (check payload.buildId or correlationId)
+      // Filter: match against sessionId (primary) OR payload.buildId (fallback)
       const eventBuildId =
-        (event.payload?.buildId as string) ??
-        (event.correlationId as string) ??
-        undefined;
+        (event.sessionId as string | undefined) ??
+        (event.payload?.buildId as string | undefined) ??
+        (event.correlationId as string | undefined);
 
-      if (eventBuildId && eventBuildId !== buildId) continue;
+      if (eventBuildId !== buildId) continue;
 
       // Track gate state
       if (event.type === 'build.gate_waiting') {
         gate = ((event.payload?.gate as string) ?? null) as GateType | null;
       } else if (event.type === 'build.gate_resolved') {
         gate = null;
+      }
+
+      // Track phase state
+      if (event.type === 'build.phase_started') {
+        phase = (event.payload?.phase as Phase) ?? phase;
+        phaseActive = true;
+      } else if (event.type === 'build.phase_completed') {
+        const completedPhase: Phase | null = (event.payload?.phase as Phase) ?? phase;
+        phase = completedPhase;
+        phaseActive = false;
+        if (completedPhase) completedPhases.add(completedPhase);
+      }
+
+      // Track cost
+      if (event.type === 'build.cost_updated') {
+        cost = (event.payload?.totalUsd as number) ?? cost;
+      }
+
+      // Track build status
+      if (event.type === 'build.started') {
+        status = 'running';
+      } else if (event.type === 'build.completed') {
+        status = 'completed';
+      } else if (event.type === 'build.failure_detected') {
+        status = 'failed';
+      } else if (event.type === 'build.aborted') {
+        status = 'aborted';
       }
 
       // Convert to message
@@ -142,8 +237,8 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
       }
     }
 
-    return { messages: msgs, liveGate: gate };
-  }, [buildId, events]);
+    return { messages: msgs, liveGate: gate, currentPhase: phase, phaseActive, liveStatus: status, liveCost: cost, completedPhases };
+  }, [buildId, events, initialState]);
 
-  return { messages, liveGate };
+  return result;
 }

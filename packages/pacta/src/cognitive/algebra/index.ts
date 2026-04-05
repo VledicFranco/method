@@ -29,7 +29,26 @@ export type {
 
 export { moduleId, CompositionError, createWorkingMemory, updateWorkingMemory } from './module.js';
 
-export type { WorkingMemoryConfig, ModuleWorkingMemory, VerifierMonitoring } from './module.js';
+export type { WorkingMemoryConfig, ModuleWorkingMemory, VerifierMonitoring, RouterMonitoring } from './module.js';
+
+// ── Router types (PRD 050) ───────────────────────────────────
+
+export type {
+  ArchitectureKind,
+  TaskFeatures,
+  RoutingDecision,
+  RouterSLMPort,
+} from './router-types.js';
+
+// ── KPI Checker port (PRD 049) ───────────────────────────────
+
+export { createHttpRouterSLM, createMockRouterSLM } from './router-slm.js';
+export type { HttpRouterSLMConfig } from './router-slm.js';
+
+export type { KPICheckerPort, KPICheckerInput } from './kpi-checker-port.js';
+export { parseDSL, buildCheckableKPIFromDSL } from './kpi-checker-port.js';
+export { createHttpKPIChecker, createMockKPIChecker } from './kpi-checker-slm.js';
+export type { HttpKPICheckerConfig } from './kpi-checker-slm.js';
 
 // ── Verification types (PRD 048) ────────────────────────────
 

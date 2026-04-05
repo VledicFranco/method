@@ -140,6 +140,12 @@ export interface BuildSummary {
   readonly conversation?: ConversationMessage[];
   /** Active gate type (if any) */
   readonly activeGate?: GateType;
+  /** Artifact manifest: artifact_id → content (from orchestrator) */
+  readonly artifacts?: Record<string, string>;
+  /** Project this build targets (if any) */
+  readonly projectId?: string;
+  /** Current node/activity label from WebSocket events */
+  readonly currentActivity?: string;
 }
 
 // ── Conversation Types ──

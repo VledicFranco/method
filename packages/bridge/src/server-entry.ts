@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
+import { exec as nodeExec } from 'node:child_process';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
 import { SessionCheckpointSink } from './shared/event-bus/session-checkpoint-sink.js';
@@ -53,7 +54,10 @@ import { StdlibSource } from './ports/stdlib-source.js';
 import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink, WebhookConnector } from './shared/event-bus/index.js';
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
-import { createBuildDomain } from './domains/build/index.js';
+import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/index.js';
+import { StrategyExecutor } from './domains/strategies/strategy-executor.js';
+import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
+import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import { createCostGovernorDomain, loadCostGovernorConfig } from './domains/cost-governor/index.js';
 import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
@@ -508,11 +512,60 @@ async function start() {
       app.log.info(`Replayed ${replayedEvents.length} events from disk`);
     }
 
+    // PRD 047 / issue #154: Construct the StrategyExecutor adapter so the
+    // BuildOrchestrator can drive real strategy DAGs (Phases 3-6 of the build
+    // lifecycle). Reuses the same SubStrategySource the strategy-routes use,
+    // plus a dedicated executor instance with the shared PRD-044 ports.
+    const buildStrategyExecutor = new StrategyExecutor(
+      claudeCliProvider(),
+      loadExecutorConfig(),
+      subStrategySource,
+      humanApprovalResolver,
+    );
+    const buildStrategyExecutorPort = new StrategyExecutorAdapter(
+      buildStrategyExecutor,
+      subStrategySource,
+    );
+
     // PRD 047: Register Build Orchestrator domain
+    // CommandExecutor — process execution port for Validator (§3.1)
+    const buildCommandExecutor = {
+      exec(command: string, opts?: { cwd?: string; timeout?: number }) {
+        return new Promise<{ exitCode: number; stdout: string; stderr: string }>((resolve) => {
+          nodeExec(command, {
+            cwd: opts?.cwd ?? process.cwd(),
+            timeout: opts?.timeout ?? 60_000,
+            maxBuffer: 1024 * 1024,
+          }, (error: Error & { code?: number } | null, stdout: string, stderr: string) => {
+            resolve({
+              exitCode: error?.code ?? (error ? 1 : 0),
+              stdout: stdout ?? '',
+              stderr: stderr ?? '',
+            });
+          });
+        });
+      },
+    };
+    // ProjectLookup adapter — bridges discovery service to build domain (G-BOUNDARY)
+    const buildProjectLookup = {
+      async getProject(id: string) {
+        const projects = discoveryService.getCachedProjects();
+        const found = projects.find(p => p.id === id);
+        return found ? { id: found.id, name: found.name, path: found.path, description: found.description } : null;
+      },
+      async listProjects() {
+        return discoveryService.getCachedProjects().map(p => ({
+          id: p.id, name: p.name, path: p.path, description: p.description,
+        }));
+      },
+    };
     const buildDomain = createBuildDomain({
       eventBus,
       fileSystem: fsProvider,
       yamlLoader,
+      strategyExecutor: buildStrategyExecutorPort,
+      commandExecutor: buildCommandExecutor,
+      projectLookup: buildProjectLookup,
     });
     buildDomain.registerRoutes(app);
 

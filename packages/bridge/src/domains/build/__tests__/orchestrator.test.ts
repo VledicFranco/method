@@ -10,8 +10,29 @@ import type { StrategyExecutionResult } from '../orchestrator.js';
 import type { CheckpointPort, PipelineCheckpoint, PipelineCheckpointSummary, Phase } from '../../../ports/checkpoint.js';
 import type { ConversationPort, AgentMessage, GateDecision, GateType, HumanMessage, SkillRequest } from '../../../ports/conversation.js';
 import type { ConversationMessage } from '../../../ports/checkpoint.js';
+import type { StrategyExecutorPort } from '../../../ports/strategy-executor.js';
 import type { BuildConfig } from '../config.js';
 import { BuildConfigSchema } from '../config.js';
+
+/** Test-only strategy IDs (stable names for test assertions). */
+const TEST_STRATEGY_IDS = {
+  explore: 'explore-codebase',
+  design: 'design-architecture',
+  plan: 'plan-commissions',
+  implement: 'implement-commissions',
+  review: 'review-code',
+} as const;
+
+/** Placeholder port — TestOrchestrator overrides executeStrategy, so this
+ * is never called. If it is called, the test must be updated to inject a
+ * real mock port (see MockStrategyExecutorPort for an example). */
+const noOpStrategyExecutorPort: StrategyExecutorPort = {
+  async executeStrategy() {
+    throw new Error(
+      'noOpStrategyExecutorPort.executeStrategy called — TestOrchestrator should override executeStrategy',
+    );
+  },
+};
 
 // ── Mock CheckpointPort ───────────────────────────────────────
 
@@ -87,6 +108,14 @@ class MockConversationPort implements ConversationPort {
 
 // ── Test Orchestrator (overridable strategy) ──────────────────
 
+/**
+ * TestOrchestrator captures strategy calls and serves configured results.
+ * It overrides executeStrategy to bypass the injected port — keeping tests
+ * deterministic without needing to stand up real strategy DAGs.
+ *
+ * Retry calls (with `context.retry === true`) are served from the
+ * `{phase}:{strategyId}-retry` key to preserve backward-compatible test keys.
+ */
 class TestOrchestrator extends BuildOrchestrator {
   strategyResults: Map<string, StrategyExecutionResult> = new Map();
   strategyCalls: Array<{ phase: Phase; strategyId: string; context?: Record<string, unknown> }> = [];
@@ -98,7 +127,9 @@ class TestOrchestrator extends BuildOrchestrator {
   ): Promise<StrategyExecutionResult> {
     this.strategyCalls.push({ phase, strategyId, context });
 
-    const key = `${phase}:${strategyId}`;
+    const isRetry = context?.retry === true;
+    const keySuffix = isRetry ? `${strategyId}-retry` : strategyId;
+    const key = `${phase}:${keySuffix}`;
     const result = this.strategyResults.get(key);
     if (result) return result;
 
@@ -128,7 +159,12 @@ function createOrchestrator(opts?: {
 } {
   const checkpoint = new MockCheckpointPort();
   const conversation = new MockConversationPort();
-  const config = BuildConfigSchema.parse(opts?.config ?? {});
+  // Stable test strategy IDs keep assertion keys backwards-compatible
+  // regardless of the FCD defaults baked into BuildConfig.
+  const config = BuildConfigSchema.parse({
+    ...(opts?.config ?? {}),
+    strategyIds: TEST_STRATEGY_IDS,
+  });
 
   if (opts?.gateDecisions) {
     for (const [gate, decision] of opts.gateDecisions) {
@@ -136,7 +172,14 @@ function createOrchestrator(opts?: {
     }
   }
 
-  const orchestrator = new TestOrchestrator(checkpoint, conversation, config, undefined, 'test-build-001');
+  const orchestrator = new TestOrchestrator(
+    checkpoint,
+    conversation,
+    config,
+    noOpStrategyExecutorPort,
+    undefined,
+    'test-build-001',
+  );
   return { orchestrator, checkpoint, conversation };
 }
 
@@ -236,8 +279,8 @@ describe('BuildOrchestrator', () => {
       const implCalls = orchestrator.strategyCalls.filter(c => c.phase === 'implement');
       expect(implCalls.length).toBeGreaterThanOrEqual(2); // original + retry
 
-      // Verify retry had context
-      const retryCalls = implCalls.filter(c => c.strategyId === 'implement-commissions-retry');
+      // Verify retry had context (retries reuse the same strategyId with retry=true context)
+      const retryCalls = implCalls.filter(c => c.context?.retry === true);
       expect(retryCalls.length).toBeGreaterThanOrEqual(1);
       expect(retryCalls[0].context).toBeDefined();
       expect(retryCalls[0].context!.previousError).toBe('Type error in module X');

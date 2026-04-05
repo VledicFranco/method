@@ -7,7 +7,7 @@
  * @see PRD 047 — Build Orchestrator §Dashboard Architecture
  */
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { BuildList } from './BuildList';
@@ -15,11 +15,58 @@ import { BuildDetail } from './BuildDetail';
 import { ContextBar } from './ContextBar';
 import { ConversationPanel } from './ConversationPanel';
 import { useBuilds } from './useBuilds';
+import { useBuildEvents } from './useBuildEvents';
 
 export default function BuildsPage() {
   const { id } = useParams<{ id: string }>();
-  const { builds, selectedBuild, selectedId, selectBuild } = useBuilds(id);
+  const { builds, selectedBuild: rawSelectedBuild, selectedId, selectBuild, startBuild, abortBuild, resumeBuild } = useBuilds(id);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+
+  // Live phase/status from WebSocket events — enriches the selected build
+  const { currentPhase, phaseActive, liveStatus, liveCost, completedPhases } = useBuildEvents(selectedId);
+
+  // Enrich selected build with live phase/status/cost data
+  const selectedBuild = useMemo(() => {
+    if (!rawSelectedBuild) return null;
+    // Map "aborted" to "failed" for BuildStatus compatibility
+    const mappedStatus = liveStatus === 'aborted' ? 'failed' : liveStatus;
+
+    // Build phases array with live status from events
+    const updatedPhases = rawSelectedBuild.phases.map((p) => {
+      if (completedPhases.has(p.phase)) {
+        return { ...p, status: 'completed' as const };
+      }
+      if (phaseActive && currentPhase === p.phase) {
+        return { ...p, status: 'running' as const };
+      }
+      return p;
+    });
+
+    return {
+      ...rawSelectedBuild,
+      currentPhase: currentPhase ?? rawSelectedBuild.currentPhase,
+      status: (mappedStatus ?? rawSelectedBuild.status) as typeof rawSelectedBuild.status,
+      currentActivity: phaseActive && currentPhase ? `${currentPhase} phase running` : undefined,
+      costUsd: liveCost > 0 ? liveCost : rawSelectedBuild.costUsd,
+      phases: updatedPhases,
+    };
+  }, [rawSelectedBuild, currentPhase, phaseActive, liveStatus, liveCost, completedPhases]);
+
+  const handleStartBuild = useCallback((requirement: string, projectId?: string) => {
+    void startBuild(requirement, undefined, projectId);
+  }, [startBuild]);
+
+  const handleAbort = useCallback(() => {
+    if (selectedBuild) {
+      void abortBuild(selectedBuild.id);
+    }
+  }, [selectedBuild, abortBuild]);
+
+  const handleResume = useCallback(() => {
+    if (selectedBuild) {
+      void resumeBuild(selectedBuild.id);
+    }
+  }, [selectedBuild, resumeBuild]);
 
   return (
     <div className="flex h-screen w-full bg-void overflow-hidden">
@@ -28,13 +75,18 @@ export default function BuildsPage() {
         builds={builds}
         selectedId={selectedId}
         onSelect={selectBuild}
+        onStartBuild={handleStartBuild}
       />
 
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {selectedBuild ? (
           <>
-            <ContextBar build={selectedBuild} />
+            <ContextBar
+              build={selectedBuild}
+              onAbort={handleAbort}
+              onResume={handleResume}
+            />
             <BuildDetail build={selectedBuild} />
           </>
         ) : (

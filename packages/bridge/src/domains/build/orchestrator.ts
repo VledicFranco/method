@@ -11,6 +11,7 @@
 
 import type { CheckpointPort, PipelineCheckpoint, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from '../../ports/checkpoint.js';
 import type { ConversationPort, GateDecision } from '../../ports/conversation.js';
+import type { StrategyExecutorPort, StrategyExecutionResult } from '../../ports/strategy-executor.js';
 import type { BuildConfig } from './config.js';
 import type {
   AutonomyLevel,
@@ -22,23 +23,90 @@ import type {
 } from './types.js';
 import type { Validator } from './validator.js';
 
-// ── Strategy Executor (abstract — real wiring in C-3) ──────────
+// Re-export for domain consumers that previously imported from this file.
+export type { StrategyExecutionResult } from '../../ports/strategy-executor.js';
 
-/** Result from a strategy execution. Override or mock in tests. */
-export interface StrategyExecutionResult {
-  readonly success: boolean;
-  readonly output: string;
-  readonly cost: { tokens: number; usd: number };
-  readonly executionId: string;
-  readonly artifacts?: Record<string, string>;
-  readonly error?: string;
+// ── Strategy Output Parsers ──────────────────────────────────
+
+/**
+ * Parse ExplorationReport from strategy artifacts produced by explore-codebase.yaml.
+ * The scan_structure node returns structured JSON with domains/patterns/constraints.
+ */
+function parseExplorationFromArtifacts(
+  artifacts: Record<string, string> | undefined,
+  output: string,
+  success: boolean,
+): ExplorationReport {
+  // Try parsing the exploration_report artifact (from scan_structure node)
+  const reportRaw = artifacts?.exploration_report;
+  if (reportRaw && typeof reportRaw === 'string') {
+    try {
+      const parsed = JSON.parse(reportRaw) as {
+        domains?: string[];
+        patterns?: string[];
+        constraints?: string[];
+        approach?: string;
+        key_files?: string[];
+        tech_stack?: string;
+      };
+      if (parsed && typeof parsed === 'object') {
+        return {
+          domains: Array.isArray(parsed.domains) ? parsed.domains : [],
+          patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
+          constraints: Array.isArray(parsed.constraints) ? parsed.constraints : [],
+          approach: parsed.approach ?? output ?? 'Exploration completed',
+        };
+      }
+    } catch {
+      // Fall through to fallback
+    }
+  }
+
+  // Fallback for strategies that return unstructured output or failed
+  return {
+    domains: [],
+    patterns: [],
+    constraints: [],
+    approach: success ? (output || 'Codebase exploration completed') : `Exploration unavailable: ${output}`,
+  };
 }
+
+// ── Phase event callback (§3.3) ──────────────────────────────
+
+export type PhaseEventType =
+  | 'phase_started'
+  | 'phase_completed'
+  | 'checkpoint_saved'
+  | 'gate_waiting'
+  | 'failure_recovery'
+  | 'validation_result'
+  | 'cost_updated';
+
+export interface PhaseEvent {
+  type: PhaseEventType;
+  buildId: string;
+  payload: Record<string, unknown>;
+}
+
+export type PhaseEventCallback = (event: PhaseEvent) => void;
 
 // ── Orchestrator ───────────────────────────────────────────────
 
 const PHASE_ORDER: readonly Phase[] = [
   'explore', 'specify', 'design', 'plan', 'implement', 'review', 'validate', 'measure',
 ] as const;
+
+/** Project context bound to this build. Null if no project selected. */
+export interface BuildProjectContext {
+  /** Project identifier. */
+  id: string;
+  /** Human-readable project name. */
+  name: string;
+  /** Absolute path to project root. */
+  path: string;
+  /** Short description for strategy prompts. */
+  description: string;
+}
 
 export class BuildOrchestrator {
   private readonly sessionId: string;
@@ -55,21 +123,57 @@ export class BuildOrchestrator {
   private failureRecoveries = { attempted: 0, succeeded: 0 };
   private reviewLoopCount = 0;
   private validateLoopCount = 0;
+  private readonly onPhaseEvent?: PhaseEventCallback;
+  private readonly projectContext?: BuildProjectContext;
 
   constructor(
     private readonly checkpoint: CheckpointPort,
     private readonly conversation: ConversationPort,
     private readonly config: BuildConfig,
+    private readonly strategyExecutor: StrategyExecutorPort,
     private readonly validator?: Validator,
     sessionId?: string,
+    onPhaseEvent?: PhaseEventCallback,
+    projectContext?: BuildProjectContext,
   ) {
     this.sessionId = sessionId ?? `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.autonomyLevel = config.defaultAutonomyLevel as AutonomyLevel;
+    this.onPhaseEvent = onPhaseEvent;
+    this.projectContext = projectContext;
   }
 
   /** Unique session identifier for this build. */
   get id(): string {
     return this.sessionId;
+  }
+
+  /** Live state snapshot for dashboards — current phase, cost, completed phases. */
+  getLiveState(): {
+    currentPhase: Phase | null;
+    costUsd: number;
+    costTokens: number;
+    completedPhases: Phase[];
+    humanInterventions: number;
+  } {
+    // currentPhase: last phase that has a result entry (latest activity)
+    const currentPhase =
+      this.phaseResults.length > 0
+        ? this.phaseResults[this.phaseResults.length - 1].phase
+        : null;
+
+    // completedPhases: unique phases with status 'completed'
+    const completed = new Set<Phase>();
+    for (const p of this.phaseResults) {
+      if (p.status === 'completed') completed.add(p.phase);
+    }
+
+    return {
+      currentPhase,
+      costUsd: this.costAccumulator.usd,
+      costTokens: this.costAccumulator.tokens,
+      completedPhases: Array.from(completed),
+      humanInterventions: this.humanInterventions,
+    };
   }
 
   /**
@@ -81,7 +185,10 @@ export class BuildOrchestrator {
     this.autonomyLevel = autonomyLevel;
     this.startTime = Date.now();
 
-    await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}`);
+    const projectLabel = this.projectContext
+      ? ` [project: ${this.projectContext.name} @ ${this.projectContext.path}]`
+      : '';
+    await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}${projectLabel}`);
 
     // Phase 1: Explore
     const exploration = await this.withTimeout(this.explore(), 'explore');
@@ -111,23 +218,23 @@ export class BuildOrchestrator {
 
   async explore(): Promise<ExplorationReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'explore' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: explore — analyzing codebase');
 
-    // Mock strategy call — real wiring comes in C-3
-    const result = await this.executeStrategy('explore', 'explore-codebase');
+    const strategyId = this.config.strategyIds.explore;
+    const result = await this.executeStrategy('explore', strategyId);
 
-    const report: ExplorationReport = {
-      domains: result.success ? ['build'] : [],
-      patterns: result.success ? ['FCA domain structure'] : [],
-      constraints: result.success ? ['G-PORT: use ports'] : [],
-      approach: result.output || 'Codebase exploration completed',
-    };
+    // Parse structured exploration data from strategy artifacts (produced by
+    // the scan_structure node in explore-codebase.yaml). Falls back to minimal
+    // report if the strategy failed or returned unstructured output.
+    const report = parseExplorationFromArtifacts(result.artifacts, result.output, result.success);
 
-    const phaseResult = this.buildPhaseResult('explore', 'explore-codebase', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('explore', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('specify');
+    this.emitPhaseEvent('phase_completed', { phase: 'explore', cost: result.cost, durationMs: Date.now() - phaseStart });
 
     return report;
   }
@@ -136,6 +243,7 @@ export class BuildOrchestrator {
 
   async specify(exploration: ExplorationReport): Promise<FeatureSpec> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'specify' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: specify — collecting feature spec');
 
@@ -170,6 +278,7 @@ export class BuildOrchestrator {
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('design');
+    this.emitPhaseEvent('phase_completed', { phase: 'specify', durationMs: Date.now() - phaseStart });
 
     return spec;
   }
@@ -178,10 +287,12 @@ export class BuildOrchestrator {
 
   async design(): Promise<void> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'design' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: design — architecture decisions');
 
-    const result = await this.executeStrategy('design', 'design-architecture');
+    const strategyId = this.config.strategyIds.design;
+    const result = await this.executeStrategy('design', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -194,9 +305,10 @@ export class BuildOrchestrator {
 
     await this.gate('design');
 
-    const phaseResult = this.buildPhaseResult('design', 'design-architecture', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('design', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'design', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('plan');
   }
 
@@ -204,10 +316,12 @@ export class BuildOrchestrator {
 
   async plan(): Promise<void> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'plan' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: plan — commission decomposition');
 
-    const result = await this.executeStrategy('plan', 'plan-commissions');
+    const strategyId = this.config.strategyIds.plan;
+    const result = await this.executeStrategy('plan', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -220,9 +334,10 @@ export class BuildOrchestrator {
 
     await this.gate('plan');
 
-    const phaseResult = this.buildPhaseResult('plan', 'plan-commissions', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('plan', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'plan', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('implement');
   }
 
@@ -230,10 +345,12 @@ export class BuildOrchestrator {
 
   async implement(): Promise<StrategyExecutionResult> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'implement' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: implement — executing commissions');
 
-    const result = await this.executeStrategy('implement', 'implement-commissions');
+    const strategyId = this.config.strategyIds.implement;
+    const result = await this.executeStrategy('implement', strategyId);
 
     if (!result.success) {
       // Failure routing: construct retry context and re-execute
@@ -244,16 +361,23 @@ export class BuildOrchestrator {
         `Implementation failed: ${result.error || 'unknown error'}. Retrying with context...`,
       );
 
-      const retryResult = await this.executeStrategy('implement', 'implement-commissions-retry', {
+      const retryResult = await this.executeStrategy('implement', strategyId, {
         previousError: result.error || result.output,
         previousExecutionId: result.executionId,
+        retry: true,
       });
 
       if (retryResult.success) {
         this.failureRecoveries.succeeded++;
       }
 
-      const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', retryResult, phaseStart, 1);
+      this.emitPhaseEvent('failure_recovery', {
+        phase: 'implement',
+        strategy: strategyId,
+        succeeded: retryResult.success,
+      });
+
+      const phaseResult = this.buildPhaseResult('implement', strategyId, retryResult, phaseStart, 1);
       this.phaseResults.push(phaseResult);
 
       if (retryResult.artifacts) {
@@ -264,13 +388,14 @@ export class BuildOrchestrator {
       return retryResult;
     }
 
-    const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', result, phaseStart);
-    this.phaseResults.push(phaseResult);
+    const okPhaseResult = this.buildPhaseResult('implement', strategyId, result, phaseStart);
+    this.phaseResults.push(okPhaseResult);
 
     if (result.artifacts) {
       Object.assign(this.artifactManifest, result.artifacts);
     }
 
+    this.emitPhaseEvent('phase_completed', { phase: 'implement', cost: result.cost, durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('review');
     return result;
   }
@@ -279,10 +404,12 @@ export class BuildOrchestrator {
 
   async review(): Promise<GateDecision> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'review' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: review — code review');
 
-    const result = await this.executeStrategy('review', 'review-code');
+    const strategyId = this.config.strategyIds.review;
+    const result = await this.executeStrategy('review', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -295,9 +422,10 @@ export class BuildOrchestrator {
 
     const gateResult = await this.gate('review');
 
-    const phaseResult = this.buildPhaseResult('review', 'review-code', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('review', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'review', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('validate');
 
     return gateResult;
@@ -307,6 +435,7 @@ export class BuildOrchestrator {
 
   async validate(): Promise<ValidationReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'validate' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: validate — running testable assertions');
 
@@ -314,6 +443,14 @@ export class BuildOrchestrator {
 
     if (this.validator && this.featureSpec) {
       report = await this.validator.evaluateAssertions(this.featureSpec.criteria);
+      // Emit individual validation results
+      for (const criterion of report.criteria) {
+        this.emitPhaseEvent('validation_result', {
+          criterion: criterion.name,
+          passed: criterion.passed,
+          evidence: criterion.evidence ?? '',
+        });
+      }
     } else {
       // No validator or no spec — report as skipped
       report = { criteria: [], allPassed: true };
@@ -328,6 +465,7 @@ export class BuildOrchestrator {
     };
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'validate', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('measure');
 
     return report;
@@ -337,10 +475,10 @@ export class BuildOrchestrator {
 
   async measure(): Promise<EvidenceReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'measure' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: measure — producing evidence report');
 
-    const validationPhase = this.phaseResults.find(p => p.phase === 'validate');
     const validationReport = this.lastValidationReport();
 
     const criteriaPassed = validationReport?.criteria.filter(c => c.passed).length ?? 0;
@@ -466,28 +604,43 @@ export class BuildOrchestrator {
 
     // Discuss-all (or low confidence): always wait for human
     this.humanInterventions++;
+    this.emitPhaseEvent('gate_waiting', { gate: gateType });
     return this.conversation.waitForGateDecision(this.sessionId, gateType);
   }
 
-  // ── Strategy Execution (virtual — overridable in tests) ────────
+  // ── Strategy Execution (delegates to StrategyExecutorPort) ─────
 
   /**
-   * Execute a strategy. This is the integration point for C-3.
-   * In this implementation, it returns a mock result. Subclass or
-   * provide a strategy executor to wire real strategies.
+   * Execute a strategy via the injected StrategyExecutorPort. The port
+   * adapter resolves the strategy ID to a DAG, runs it, and returns a
+   * normalized result. Remains `protected` for subclass-based test
+   * overrides (though injecting a mock port is preferred).
    */
   protected async executeStrategy(
     _phase: Phase,
-    _strategyId: string,
-    _context?: Record<string, unknown>,
+    strategyId: string,
+    context?: Record<string, unknown>,
   ): Promise<StrategyExecutionResult> {
-    this.completedStrategies.push(_strategyId);
-    return {
-      success: true,
-      output: `Strategy ${_strategyId} completed for phase ${_phase}`,
-      cost: { tokens: 0, usd: 0 },
-      executionId: `exec-${_strategyId}-${Date.now()}`,
+    this.completedStrategies.push(strategyId);
+
+    // Base inputs: feature_request + session_id (declared by all FCD strategies)
+    const baseInputs: Record<string, unknown> = {
+      feature_request: this.requirement,
+      session_id: this.sessionId,
     };
+
+    // Project inputs: strategies use project_context, project_root, project_id
+    if (this.projectContext) {
+      baseInputs.project_context = `${this.projectContext.name}: ${this.projectContext.description}`;
+      baseInputs.project_root = this.projectContext.path;
+      baseInputs.project_id = this.projectContext.id;
+    }
+
+    // Per-call context overrides base inputs (e.g. retry feedback)
+    return this.strategyExecutor.executeStrategy(strategyId, {
+      ...baseInputs,
+      ...context,
+    });
   }
 
   // ── Checkpoint ─────────────────────────────────────────────────
@@ -505,6 +658,7 @@ export class BuildOrchestrator {
     };
 
     await this.checkpoint.save(this.sessionId, checkpoint);
+    this.emitPhaseEvent('checkpoint_saved', { nextPhase });
   }
 
   // ── Phase Timeout (F-A-4) ─────────────────────────────────────
@@ -522,6 +676,12 @@ export class BuildOrchestrator {
     ]);
   }
 
+  // ── Phase Event Emission (§3.3) ──────────────────────────────
+
+  private emitPhaseEvent(type: PhaseEventType, payload: Record<string, unknown>): void {
+    this.onPhaseEvent?.({ type, buildId: this.sessionId, payload });
+  }
+
   // ── Helpers ────────────────────────────────────────────────────
 
   private buildPhaseResult(
@@ -533,6 +693,14 @@ export class BuildOrchestrator {
   ): PhaseResult {
     this.costAccumulator.tokens += result.cost.tokens;
     this.costAccumulator.usd += result.cost.usd;
+
+    // Emit cost update for dashboard
+    this.emitPhaseEvent('cost_updated', {
+      totalUsd: this.costAccumulator.usd,
+      totalTokens: this.costAccumulator.tokens,
+      phaseUsd: result.cost.usd,
+      phase,
+    });
 
     return {
       phase,

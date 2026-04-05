@@ -82,6 +82,7 @@ import { createPlanner } from '../../../packages/pacta/src/cognitive/modules/pla
 import type { PlannerInput } from '../../../packages/pacta/src/cognitive/modules/planner.js';
 import { createVerifier } from '../../../packages/pacta/src/cognitive/modules/verifier.js';
 import type { VerifierInput } from '../../../packages/pacta/src/cognitive/modules/verifier.js';
+import { createRouter } from '../../../packages/pacta/src/cognitive/modules/router.js';
 import type { PartitionRole } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
@@ -136,7 +137,7 @@ interface TaskDefinition {
 
 const TASKS: TaskDefinition[] = [TASK_01, TASK_02, TASK_03, TASK_04, TASK_05, TASK_06];
 
-type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory' | 'partitioned-cognitive-goal' | 'unified-memory';
+type Condition = 'flat' | 'rule-cognitive' | 'monitor-only' | 'slm-cognitive' | 'partitioned-cognitive' | 'slm-partitioned' | 'partitioned-smart' | 'partitioned-memory' | 'partitioned-cognitive-goal' | 'unified-memory' | 'meta-cognitive';
 
 interface ContextProfile {
   cycle: number;
@@ -2448,6 +2449,65 @@ async function runUnifiedMemory(
   }
 }
 
+// ── Condition I: Meta-Cognitive Router (PRD 050) ────────────────
+//
+// Runs the Router at cycle -1 to classify the task, then dispatches
+// to either runFlat() (for simple tasks) or runUnifiedMemory() (for
+// complex multi-file structural tasks). Converts task-dependent
+// architecture into composite architecture.
+
+async function runMetaCognitive(
+  task: TaskDefinition,
+  runNumber: number,
+  config: CognitiveConfig,
+): Promise<RunResult> {
+  // 1. Create router — try SLM first, fall back to LLM refinement
+  let slmPort: import('../../../packages/pacta/src/cognitive/algebra/router-types.js').RouterSLMPort | undefined;
+  try {
+    const { createHttpRouterSLM } = await import('../../../packages/pacta/src/cognitive/algebra/router-slm.js');
+    slmPort = createHttpRouterSLM({ serverUrl: process.env.ROUTER_SLM_URL ?? 'http://localhost:8101' });
+    console.log(`    [router-slm] connected to ${process.env.ROUTER_SLM_URL ?? 'http://localhost:8101'}`);
+  } catch {
+    console.log('    [router-slm] not available — using rule-based + LLM fallback');
+  }
+
+  const routeProvider = anthropicProvider({ model: LLM_MODEL, maxOutputTokens: 64 });
+  const routeAdapter = createProviderAdapter(routeProvider, {
+    pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 64 } },
+  });
+  const router = createRouter({ provider: routeAdapter, slmPort });
+
+  // 2. Classify the task
+  const goal = extractGoalFromTask(task);
+  const routerState = router.initialState();
+  const routerResult = await router.step(
+    { goal, taskDescription: task.description },
+    routerState,
+    { target: moduleId('router'), timestamp: Date.now() },
+  );
+  const decision = routerResult.output.decision;
+
+  console.log(`    [router] ${task.name} → ${decision.architecture} (conf=${decision.confidence.toFixed(2)}, ${decision.tokensUsed} tok)`);
+  console.log(`    [router] rationale: ${decision.rationale}`);
+  console.log(`    [router] features: multi=${decision.features.isMultiFile} struct=${decision.features.isStructural} constr=${decision.features.hasImplicitConstraints} edit=${decision.features.isSingleFileEdit} diff=${decision.features.estimatedDifficulty}`);
+
+  // 3. Dispatch to selected architecture
+  let result: RunResult;
+  if (decision.architecture === 'flat') {
+    result = await runFlat(task, runNumber);
+  } else {
+    result = await runUnifiedMemory(task, runNumber, config);
+  }
+
+  // 4. Add routing overhead to total tokens + annotate condition
+  return {
+    ...result,
+    condition: 'meta-cognitive',
+    tokensUsed: result.tokensUsed + decision.tokensUsed,
+    reason: `[${decision.architecture}] ${result.reason}`,
+  };
+}
+
 // ── Condition C: Monitor-Only SLM ──────────────────────────────
 
 async function runMonitorOnly(
@@ -3543,6 +3603,15 @@ async function main() {
       console.log('\nCondition: unified-memory (RFC 006 Part III — Cowan model)');
       for (let i = 1; i <= numRuns; i++) {
         const r = await runUnifiedMemory(task, i, cognitiveConfig);
+        printResult(r);
+        results.push(r);
+      }
+    }
+
+    if (runConditions.has('meta-cognitive')) {
+      console.log('\nCondition: meta-cognitive (PRD 050 — task-aware router)');
+      for (let i = 1; i <= numRuns; i++) {
+        const r = await runMetaCognitive(task, i, cognitiveConfig);
         printResult(r);
         results.push(r);
       }

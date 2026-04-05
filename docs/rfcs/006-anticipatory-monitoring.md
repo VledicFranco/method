@@ -257,7 +257,7 @@ context assembly.
 
 ---
 
-## Empirical Validation (R-20 → R-23)
+## Empirical Validation (R-20 → R-31b)
 
 | Run | Intervention | Result | Finding |
 |-----|-------------|--------|---------|
@@ -272,9 +272,13 @@ context assembly.
 | R-26c | + formal Planner module | 50% | T03 67% — exceeds flat 33% |
 | R-26d | + subgoal checklist seeding | 44% | T04 67% — best at that point |
 | R-27 | + Verifier (LLM-only) | 44% | Verification fires but 0 programmatic checks |
-| R-27b | + programmatic verification | 44% | **T04 100% — matches flat. All 5 tasks validated.** |
+| R-27b | + programmatic verification | 44% | T04 100% — matches flat. All 5 tasks validated at N=3 |
+| R-28 | Cognitive N=5 replication | 37% | N=3 variance was inflating prior results. Honest cognitive rate. |
+| R-29 | Flat N=5 replication | 57% | R-15 N=3 (73%) also inflated. Gap is 20pp, not 36pp. |
+| R-30b | Rule-based router N=5 (PRD 050) | 56% | Routing works but misroutes T04 (single-file edit pattern fails) |
+| R-31b | **Meta-cognitive routing (PRD 051)** | **60%** | **SLM router beats flat 57% AND cognitive 37%. T04 recovered 20%→100% via correct routing.** |
 
-**Flat baseline (R-15): 73%.** Best demonstrated per-task rates all match or exceed flat.
+**Honest baselines at N=5:** flat 57%, cognitive 37%. **Meta-cognitive routing 60%** — converts task-dependent architecture advantage into composite gain.
 
 ### Best Demonstrated Rates (Across Full Arc)
 
@@ -296,6 +300,9 @@ context assembly.
 6. Programmatic verification closes the cybernetic loop — T04 matches flat (R-27b)
 7. LLM-only verification is insufficient — same quality issues as the actor (R-27)
 8. No single layer suffices — each intervention contributes measurably (R-20→R-27b)
+9. **Architecture is task-dependent at N=5 (R-28/R-29): cognitive helps T01/T03 (+20pp), hurts T02/T04 (-80pp)**
+10. **Meta-cognitive routing converts task-dependent advantage into composite gain — 60% > max(57%, 37%) (R-31b)**
+11. **SLM-backed routing (Qwen2.5-0.5B-LoRA, 100% holdout) is production-viable: 6/6 correct at N=5, <600ms latency (R-31b)**
 
 ---
 

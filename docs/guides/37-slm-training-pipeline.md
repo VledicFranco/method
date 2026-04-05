@@ -285,10 +285,11 @@ const pipeline = {
 
 | SLM | Domain | Corpus | Accuracy | Status |
 |-----|--------|--------|----------|--------|
-| B-1 v2 (Schema→Grammar) | Type→PEG grammar | 3K (TS + JSON Schema) | 96.7% novel TS, 100% JSON Schema | **Production** |
-| B-2 (Causal Validator) | Corpus quality | 8.5K (3 domains) | ~93% (training) | **Training** |
+| B-1 v3 (Schema→Grammar) | Type→PEG grammar | 4K (TS + JSON + Protobuf + Python) | 95.6% (43/45 across 4 type systems) | **Production** |
+| B-2 (Causal Validator) | Corpus quality | 8.5K (3 domains) | 95.5% precision (Gate B-G1 PASS) | **Production** |
 | Downstream WorktreeInfo | Session→DSL | 1.25K | 100% parse + semantic | **Production** |
-| KPI Checker (PRD 049) | KPI→Check DSL | 3K | Pending | **Corpus ready** |
+| KPI Checker (PRD 049) | KPI→Check DSL | 3K | 100% (600/600) | **Production** |
+| Router (PRD 051) | Task→Architecture | 2K | 100% (400/400) | **Production** |
 | Monitor v2 | Signals→Anomaly DSL | 33K | 98.6% | **Production** (exp-slm) |
 | Observer | Signals→Observer DSL | ~5K | 93.4% | **Production** (exp-slm) |
 | Evaluator | Signals→Evaluator DSL | ~5K | 93.4% | **Production** (exp-slm) |

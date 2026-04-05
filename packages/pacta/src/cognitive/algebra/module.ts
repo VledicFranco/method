@@ -105,6 +105,13 @@ export interface VerifierMonitoring extends MonitoringSignal {
   failureStreak: number;
 }
 
+/** Router monitoring: meta-cognitive architecture selection (PRD 050). */
+export interface RouterMonitoring extends MonitoringSignal {
+  type: 'router';
+  architectureSelected: 'flat' | 'unified-memory';
+  confidence: number;
+}
+
 /** Discriminated union of all per-module monitoring signal types. */
 export type ModuleMonitoringSignal =
   | ReasonerMonitoring
@@ -117,6 +124,7 @@ export type ModuleMonitoringSignal =
   | PlannerMonitoring
   | ReflectorMonitoring
   | VerifierMonitoring
+  | RouterMonitoring
   | GoalDiscrepancy
   | TerminateSignal;
 
