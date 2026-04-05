@@ -113,7 +113,14 @@ export interface FailurePolicy {
 
 export type PipelineStep =
   | { readonly type: 'stage'; readonly stage: StagePort }
-  | { readonly type: 'gate'; readonly gate: GatePort; readonly onFail: FailurePolicy };
+  | { readonly type: 'gate'; readonly gate: GatePort; readonly onFail: FailurePolicy }
+  | { readonly type: 'competitive'; readonly candidates: readonly StagePort[]; readonly selector: GatePort };
+
+/**
+ * Competitive composition (A ⊕ B): run N candidate stages in parallel,
+ * validate each through the selector gate, pick the first that passes.
+ * Falls back to highest-confidence candidate if none pass.
+ */
 
 export interface PipelineDefinition {
   readonly id: string;

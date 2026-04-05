@@ -256,4 +256,84 @@ describe('executePipeline', () => {
     assert.ok(capturedState);
     assert.equal(capturedState.get('myKey'), 'myValue');
   });
+
+  it('competitive step: picks first candidate that passes selector', async () => {
+    const badCandidate = mockStage('bad', () => 'BAD_OUTPUT');
+    const goodCandidate = mockStage('good', () => 'GOOD_OUTPUT');
+
+    const selector: GatePort = {
+      id: 'selector',
+      async validate(input: GateInput): Promise<GateResult> {
+        return input.data === 'GOOD_OUTPUT'
+          ? { pass: true }
+          : { pass: false, reason: 'not good' };
+      },
+    };
+
+    const pipeline: PipelineDefinition = {
+      id: 'competitive-test',
+      stages: [
+        { type: 'competitive', candidates: [badCandidate, goodCandidate], selector },
+      ],
+    };
+
+    const result = await executePipeline(pipeline, 'input');
+    assert.equal(result.success, true);
+    assert.equal(result.data, 'GOOD_OUTPUT');
+  });
+
+  it('competitive step: falls back to highest confidence when none pass', async () => {
+    const lowConf: StagePort = {
+      id: 'low',
+      type: 'slm',
+      async execute(): Promise<StageOutput> {
+        return { data: 'LOW', confidence: 0.3, latencyMs: 1 };
+      },
+    };
+    const highConf: StagePort = {
+      id: 'high',
+      type: 'slm',
+      async execute(): Promise<StageOutput> {
+        return { data: 'HIGH', confidence: 0.9, latencyMs: 1 };
+      },
+    };
+
+    const rejectAll: GatePort = {
+      id: 'reject-all',
+      async validate(): Promise<GateResult> {
+        return { pass: false, reason: 'all rejected' };
+      },
+    };
+
+    const pipeline: PipelineDefinition = {
+      id: 'competitive-fallback',
+      stages: [
+        { type: 'competitive', candidates: [lowConf, highConf], selector: rejectAll },
+      ],
+    };
+
+    const result = await executePipeline(pipeline, 'input');
+    assert.equal(result.success, true);
+    assert.equal(result.data, 'HIGH');
+  });
+
+  it('competitive step: fails when all candidates error', async () => {
+    const errorCandidate: StagePort = {
+      id: 'error',
+      type: 'slm',
+      async execute(): Promise<StageOutput> {
+        throw new Error('crashed');
+      },
+    };
+
+    const pipeline: PipelineDefinition = {
+      id: 'competitive-all-fail',
+      stages: [
+        { type: 'competitive', candidates: [errorCandidate], selector: mockGate('sel') },
+      ],
+    };
+
+    const result = await executePipeline(pipeline, 'input');
+    assert.equal(result.success, false);
+  });
 });

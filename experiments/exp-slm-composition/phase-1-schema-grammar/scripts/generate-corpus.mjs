@@ -273,6 +273,72 @@ function interfaceToJsonSchema(iface) {
   }, null, 2);
 }
 
+// ── Protobuf rendering ───────────────────────────────────────
+
+function fieldToProtobufType(field) {
+  switch (field.type) {
+    case 'string': return 'string';
+    case 'number':
+    case 'float': return 'double';
+    case 'integer': return 'int32';
+    case 'boolean': return 'bool';
+    case 'enum': return 'string';  // simplified: protobuf enums need separate definition
+    case 'string-array': return 'repeated string';
+    case 'enum-array': return 'repeated string';
+    case 'nullable-string': return 'optional string';
+    default: return 'string';
+  }
+}
+
+function interfaceToProtobuf(iface) {
+  const lines = [`message ${iface.name} {`];
+  let fieldNum = 1;
+  for (const f of iface.fields) {
+    const pbType = fieldToProtobufType(f);
+    const optional = f.optional ? 'optional ' : '';
+    if (pbType.startsWith('repeated')) {
+      lines.push(`  ${pbType} ${f.name} = ${fieldNum};`);
+    } else {
+      lines.push(`  ${optional}${pbType} ${f.name} = ${fieldNum};`);
+    }
+    fieldNum++;
+  }
+  lines.push('}');
+  return lines.join('\n');
+}
+
+// ── Python dataclass rendering ───────────────────────────────
+
+function fieldToPythonType(field) {
+  switch (field.type) {
+    case 'string': return 'str';
+    case 'number':
+    case 'float': return 'float';
+    case 'integer': return 'int';
+    case 'boolean': return 'bool';
+    case 'enum': return `Literal[${field.enumValues.map(v => `"${v}"`).join(', ')}]`;
+    case 'string-array': return 'list[str]';
+    case 'enum-array': return `list[Literal[${field.enumValues.map(v => `"${v}"`).join(', ')}]]`;
+    case 'nullable-string': return 'str | None';
+    default: return 'str';
+  }
+}
+
+function interfaceToPythonDataclass(iface) {
+  const lines = ['@dataclass', `class ${iface.name}:`];
+  // Required fields first (Python dataclass rule: no defaults before defaults)
+  const required = iface.fields.filter(f => !f.optional);
+  const optional = iface.fields.filter(f => f.optional);
+
+  for (const f of required) {
+    lines.push(`    ${f.name}: ${fieldToPythonType(f)}`);
+  }
+  for (const f of optional) {
+    lines.push(`    ${f.name}: ${fieldToPythonType(f)} | None = None`);
+  }
+  return lines.join('\n');
+}
+
 // ── PEG Grammar rendering ────────────────────────────────────
 
 function fieldToSectionName(fieldName) {
@@ -532,7 +598,7 @@ function main() {
   console.log(`Added ${seeds.length} seed pairs directly`);
 
   // 2. Generate synthetic interfaces
-  const TARGET = 3000;
+  const TARGET = 4000;
   const ATTEMPTS = TARGET * 3; // generate more, filter by validation
 
   console.log(`Generating synthetic pairs (target: ${TARGET})...`);
@@ -563,10 +629,14 @@ function main() {
 
     corpus.push({ input: tsCode, output: grammar });
 
-    // Also add JSON Schema version of same interface (20% of the time)
-    if (Math.random() < 0.2) {
-      const jsonSchemaInput = interfaceToJsonSchema(iface);
-      corpus.push({ input: jsonSchemaInput, output: grammar });
+    // Multi-language variants of the same interface (~10% each)
+    const langRoll = Math.random();
+    if (langRoll < 0.12) {
+      corpus.push({ input: interfaceToJsonSchema(iface), output: grammar });
+    } else if (langRoll < 0.24) {
+      corpus.push({ input: interfaceToProtobuf(iface), output: grammar });
+    } else if (langRoll < 0.36) {
+      corpus.push({ input: interfaceToPythonDataclass(iface), output: grammar });
     }
 
     validated++;

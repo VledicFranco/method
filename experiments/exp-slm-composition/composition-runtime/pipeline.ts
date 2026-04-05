@@ -168,6 +168,102 @@ export async function executePipeline(
         }
 
         currentData = retryResult.data;
+
+      } else if (step.type === 'competitive') {
+        // Competitive composition: run all candidates, pick best via selector
+        const competitiveStart = performance.now();
+
+        // Run all candidates in parallel
+        const results = await Promise.all(
+          step.candidates.map(async (candidate) => {
+            try {
+              const output = await candidate.execute({
+                data: currentData,
+                context: currentContext,
+              });
+              return { candidate, output, error: undefined };
+            } catch (err) {
+              return { candidate, output: undefined, error: err as Error };
+            }
+          }),
+        );
+
+        // Validate each through the selector gate, pick first that passes
+        let selected: { data: string; confidence: number; stageId: string } | undefined;
+
+        for (const r of results) {
+          if (!r.output) continue;
+
+          const gateResult = await step.selector.validate({
+            data: r.output.data,
+            context: { ...currentContext, state },
+          });
+
+          if (gateResult.pass) {
+            selected = {
+              data: r.output.data,
+              confidence: r.output.confidence,
+              stageId: r.candidate.id,
+            };
+            // Merge state from gate
+            if (gateResult.stateUpdates) {
+              state = new Map([...state, ...gateResult.stateUpdates]);
+            }
+            break;
+          }
+        }
+
+        // Fallback: pick highest-confidence candidate
+        if (!selected) {
+          const valid = results.filter(r => r.output);
+          if (valid.length > 0) {
+            valid.sort((a, b) => (b.output!.confidence) - (a.output!.confidence));
+            selected = {
+              data: valid[0].output!.data,
+              confidence: valid[0].output!.confidence,
+              stageId: valid[0].candidate.id,
+            };
+          }
+        }
+
+        const competitiveLatency = performance.now() - competitiveStart;
+
+        if (selected) {
+          collector.recordStage({
+            stageId: `competitive(${selected.stageId})`,
+            latencyMs: competitiveLatency,
+            confidence: selected.confidence,
+            retryCount: 0,
+            escalated: false,
+          });
+          collector.recordGate({
+            gateId: step.selector.id,
+            pass: true,
+          });
+          currentData = selected.data;
+        } else {
+          // All candidates failed
+          collector.recordStage({
+            stageId: 'competitive(none)',
+            latencyMs: competitiveLatency,
+            confidence: 0,
+            retryCount: 0,
+            escalated: true,
+            escalationTarget: 'abort',
+          });
+          collector.recordGate({
+            gateId: step.selector.id,
+            pass: false,
+            reason: 'All competitive candidates failed',
+          });
+          const totalLatency = performance.now() - pipelineStart;
+          return {
+            success: false,
+            data: currentData,
+            metrics: collector.finalize(false, totalLatency),
+            error: `All ${step.candidates.length} competitive candidates failed selector ${step.selector.id}`,
+          };
+        }
       }
     }
 
