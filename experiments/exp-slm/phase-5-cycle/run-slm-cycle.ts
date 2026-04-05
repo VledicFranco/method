@@ -1832,11 +1832,24 @@ async function runUnifiedMemory(
   const plannerPlan = plannerResult.output.plan;
   const plannerSubgoals = plannerResult.output.subgoals;
 
-  // LH1: Dynamic cycle budget from difficulty assessment
-  // Also force high for tasks with 5+ subgoals (T06 calibration fix)
-  const effectiveDifficulty = plannerSubgoals.length >= 5 ? 'high' : taskAssessment.difficulty;
+  // Dynamic cycle budget from difficulty assessment.
+  // Heuristics for upgrading to 'high' (25 cycles):
+  //   - 5+ subgoals (complex decomposition)
+  //   - 3+ KPIs that mention file creation/modification (multi-file tasks)
+  //   - Planner estimated cycles > MAX_CYCLES (assessor thinks it needs more)
+  const fileActionKpis = taskAssessment.kpis.filter(k =>
+    /\b(creat|extract|updat|modif|written|import.*updat|export.*updat)\b/i.test(k)
+  ).length;
+  const needsHighBudget =
+    plannerSubgoals.length >= 5 ||
+    fileActionKpis >= 3 ||
+    taskAssessment.estimatedCycles > MAX_CYCLES;
+  const effectiveDifficulty = needsHighBudget ? 'high' : taskAssessment.difficulty;
   const difficultyBudget = { low: MAX_CYCLES, medium: MAX_CYCLES, high: Math.max(MAX_CYCLES, 25) };
   const effectiveMaxCycles = difficultyBudget[effectiveDifficulty];
+  if (needsHighBudget && taskAssessment.difficulty !== 'high') {
+    console.log(`    [difficulty-override] ${taskAssessment.difficulty}→high (subgoals=${plannerSubgoals.length}, file-kpis=${fileActionKpis}, est=${taskAssessment.estimatedCycles})`);
+  }
   console.log(`    [planner] difficulty=${effectiveDifficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)} max_cycles=${effectiveMaxCycles}`);
   console.log(`    [planner] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
   console.log(`    [planner] subgoals: ${plannerSubgoals.length} — ${plannerSubgoals.map(s => s.description.slice(0, 40)).join('; ')}`);
@@ -1867,6 +1880,27 @@ async function runUnifiedMemory(
   let monitorState = monitor.initialState();
   let evaluatorState = evaluator.initialState();
   let raState = reasonerActor.initialState();
+
+  // Seed ReasonerActor working memory with Planner's subgoal checklist.
+  // Gives the reasoner an explicit step-by-step plan from cycle 1,
+  // preventing read-loop behavior (T04 diagnosis: failing runs lost momentum).
+  if (raState.workingMemory && plannerSubgoals.length > 0) {
+    const checklist = plannerSubgoals.map((sg, i) => `${i + 1}. [ ] ${sg.description}`).join('\n');
+    raState = {
+      ...raState,
+      workingMemory: {
+        ...raState.workingMemory,
+        entries: [{
+          source: moduleId('planner'),
+          content: `PLAN CHECKLIST:\n${checklist}\n\nExecute steps in order. After each, mark [x] and proceed to next.`,
+          salience: 1.0,
+          timestamp: Date.now(),
+        }],
+      },
+    };
+    console.log(`    [working-memory] seeded with ${plannerSubgoals.length}-step checklist`);
+  }
+
   let prevRAMonitoring: MonitoringSignal | null = null;
 
   const raControl: ReasonerActorControl = {
@@ -1878,6 +1912,9 @@ async function runUnifiedMemory(
 
   let terminatedAt: number | undefined;
   let terminateReason: TerminateSignal['reason'] | undefined;
+
+  // Track subgoal completion for progress injection
+  let completedSubgoals = 0;
 
   try {
     for (let cycle = 0; cycle < effectiveMaxCycles; cycle++) {
@@ -2063,6 +2100,27 @@ async function runUnifiedMemory(
           salience: isWriteAction ? 0.9 : 0.6,
           timestamp: Date.now(),
         } as any);
+      }
+
+      // Subgoal progress tracking: after writes, inject progress into store
+      // Addresses T04 read-loop: explicitly tells the reasoner what's done and what's next
+      if (isWriteAction && plannerSubgoals.length > 0) {
+        completedSubgoals++;
+        const newFiles: string[] = [];
+        const modFiles: string[] = [];
+        for (const [path] of vfs.files) {
+          if (!(path in task.initialFiles)) newFiles.push(path);
+          else if (vfs.files.get(path) !== task.initialFiles[path]) modFiles.push(path);
+        }
+        const progressSummary =
+          `[PROGRESS c${cycle + 1}] Files created: ${newFiles.join(', ') || 'none'}. ` +
+          `Files modified: ${modFiles.join(', ') || 'none'}. ` +
+          `Writes so far: ${completedSubgoals}. ` +
+          `DO NOT re-read files you just wrote. Proceed to the next uncompleted step in your plan.`;
+        store.store(
+          { content: progressSummary, timestamp: Date.now(), source: moduleId('monitor'), salience: 1.0 } as any,
+          'goal', moduleId('monitor'), ['progress', 'subgoal'],
+        );
       }
 
       const conf = (raResult.monitoring as any).confidence ?? 0;
