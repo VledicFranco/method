@@ -96,6 +96,15 @@ export interface ReflectorMonitoring extends MonitoringSignal {
   lessonsExtracted: number;
 }
 
+/** Verifier monitoring: action-outcome verification results (PRD 048). */
+export interface VerifierMonitoring extends MonitoringSignal {
+  type: 'verifier';
+  verified: boolean;
+  kpisChecked: number;
+  kpisPassing: number;
+  failureStreak: number;
+}
+
 /** Discriminated union of all per-module monitoring signal types. */
 export type ModuleMonitoringSignal =
   | ReasonerMonitoring
@@ -107,6 +116,7 @@ export type ModuleMonitoringSignal =
   | EvaluatorMonitoring
   | PlannerMonitoring
   | ReflectorMonitoring
+  | VerifierMonitoring
   | GoalDiscrepancy
   | TerminateSignal;
 

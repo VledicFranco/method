@@ -142,6 +142,9 @@ export interface PlannerOutput {
   planRevised: boolean;
   /** Tokens consumed by LLM invocations this step. */
   tokensUsed: number;
+  /** PRD 048: Checkable KPIs with optional machine-checkable predicates.
+   *  Populated when the Planner generates structured KPI checks. */
+  checkableKpis: import('../algebra/verification.js').CheckableKPI[];
 }
 
 /** State: current plan, assessment, working memory, revision tracking. */
@@ -306,6 +309,7 @@ export function createPlanner(
             directives,
             planRevised,
             tokensUsed,
+            checkableKpis: [], // PRD 048: populated by Wave 1 (C-4) Planner extension
           },
           state: newState,
           monitoring,
@@ -337,6 +341,7 @@ export function createPlanner(
             directives: [],
             planRevised: false,
             tokensUsed: 0,
+            checkableKpis: [],
           },
           state: {
             ...state,

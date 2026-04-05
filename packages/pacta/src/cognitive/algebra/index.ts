@@ -29,7 +29,26 @@ export type {
 
 export { moduleId, CompositionError, createWorkingMemory, updateWorkingMemory } from './module.js';
 
-export type { WorkingMemoryConfig, ModuleWorkingMemory } from './module.js';
+export type { WorkingMemoryConfig, ModuleWorkingMemory, VerifierMonitoring } from './module.js';
+
+// ── Verification types (PRD 048) ────────────────────────────
+
+export type {
+  VerificationState,
+  KPICheckResult,
+  CheckableKPI,
+  VerificationResult,
+  CorrectionSignal,
+} from './verification.js';
+
+export {
+  fileExists,
+  fileContains,
+  fileExports,
+  fileCountChanged,
+  allChecks,
+  anyCheck,
+} from './verification.js';
 
 // ── Goal-state types (PRD 045 — RFC 004) ────────────────────────
 
