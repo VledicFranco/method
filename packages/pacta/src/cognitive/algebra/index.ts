@@ -29,7 +29,15 @@ export type {
 
 export { moduleId, CompositionError, createWorkingMemory, updateWorkingMemory } from './module.js';
 
-export type { WorkingMemoryConfig, ModuleWorkingMemory, VerifierMonitoring } from './module.js';
+export type { WorkingMemoryConfig, ModuleWorkingMemory, VerifierMonitoring, RouterMonitoring } from './module.js';
+
+// ── Router types (PRD 050) ───────────────────────────────────
+
+export type {
+  ArchitectureKind,
+  TaskFeatures,
+  RoutingDecision,
+} from './router-types.js';
 
 // ── Verification types (PRD 048) ────────────────────────────
 
