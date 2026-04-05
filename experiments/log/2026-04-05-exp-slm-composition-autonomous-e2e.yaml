@@ -1,0 +1,85 @@
+run_id: phase-4-autonomous-e2e
+date: 2026-04-05
+experiment: exp-slm-composition
+phase: phase-4-autonomous
+condition: end-to-end-autonomous-compilation
+
+hypothesis: >
+  The full autonomous compilation loop produces SLMs of comparable quality
+  to hand-crafted ones. Starting from N behavioral traces, the loop:
+  (1) induces grammar via frontier LLM, (2) auto-refines, (3) validates
+  a training corpus, (4) trains an SLM — without human intervention.
+
+method:
+  step_1:
+    action: "DSL Induction"
+    input: "20 Monitor traces sampled from train.jsonl"
+    process: "qwen3-coder:30b generates PEG grammar from traces"
+    output: "induced-grammar.peggy"
+  step_2:
+    action: "Auto-refine"
+    process: "Pattern fixes (duplicate labels, whitespace, quotes, lists)"
+    output: "induced-grammar-auto.peggy"
+    result: "100% parse on 33K Monitor traces (matches hand-crafted)"
+  step_3:
+    action: "Corpus Generation"
+    process: "Sample 3K from 20K source traces, validate each through induced grammar"
+    output: "autonomous-monitor-corpus/ (2400 train + 600 holdout)"
+    validation_rate: "20000/20000 (100%) — grammar accepts all traces"
+  step_4:
+    action: "Training"
+    model: "Qwen/Qwen2.5-0.5B-Instruct LoRA r=16"
+    corpus: "2400 train / 600 holdout"
+    steps: 3000
+    duration: "51.4 min on RTX 4090"
+    peak_vram_mb: 4278
+    final_loss: 0.306
+  step_5:
+    action: "Evaluation"
+    predictions_generated: 600
+    validation_method: "Parse predictions through BOTH induced and hand-crafted grammars"
+
+results:
+  autonomous_monitor_slm:
+    parse_rate_induced_grammar: "600/600 (100.0%)"
+    parse_rate_handcrafted_grammar: "600/600 (100.0%)"
+    semantic_accuracy: "594/600 (99.0%)"
+    verdict: "MATCHES hand-crafted Monitor SLM quality"
+
+  comparison_to_original_monitor:
+    hand_crafted_baseline: "~98% semantic accuracy (RFC 002 Phase 3)"
+    autonomous_result: "99.0% semantic accuracy"
+    difference: "Within noise — autonomous pipeline produces equivalent SLM"
+
+key_findings:
+  - "F1: Full autonomous loop works — traces → SLM without human intervention"
+  - "F2: Autonomously-induced grammar accepts 100% of predictions (equivalent to hand-crafted)"
+  - "F3: Autonomous SLM achieves 99.0% semantic accuracy (matches ~98% baseline)"
+  - "F4: 20 sample traces were sufficient to induce a production-quality grammar"
+  - "F5: Auto-refiner handles all common Peggy syntax issues from LLM output"
+
+gate_d_g1_status: "PASS — autonomous compilation loop fully demonstrated"
+
+phase_4_complete:
+  research_question: "Can the agent compile its own skills autonomously?"
+  answer: "YES — demonstrated end-to-end on the Monitor domain"
+
+remaining_engineering:
+  - "Compilation trigger in Memory module (ACT-R activation threshold)"
+  - "MetaComposer: dynamically route compiled patterns to SLMs"
+  - "Continuous learning: retrain SLMs as new traces accumulate"
+
+timeline:
+  dsl_induction: "~1 min (LLM call)"
+  auto_refinement: "< 1 sec"
+  corpus_generation: "< 10 sec"
+  training: "51 min (GPU)"
+  evaluation: "40 min (prediction generation)"
+  total_autonomous_time: "~93 min"
+  human_effort: "0 min (after providing seed traces)"
+
+session_cost_estimate:
+  llm_induction: "$0 (local Ollama)"
+  training: "$0 (local GPU)"
+  inference: "$0 (local GPU)"
+  total: "$0"
