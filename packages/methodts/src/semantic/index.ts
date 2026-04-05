@@ -25,3 +25,6 @@ export { pipe, parallel, recurse, withInvariants } from "./compose.js";
 
 // Execution
 export { runSemantic, type RunSemanticConfig } from "./run.js";
+
+// Node executor port (PRD 046 — SPL as strategy node type)
+export { type SemanticNodeExecutor, DefaultSemanticNodeExecutor } from "./node-executor.js";

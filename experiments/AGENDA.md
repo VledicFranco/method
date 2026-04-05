@@ -40,6 +40,7 @@ Does pre-task assessment + phase-aware evaluation + per-module working memory cl
 | — | SLM compilation | **Evaluator + assessment SLM targets** — distill phase-aware evaluator and task assessor from frontier traces. Eliminates ~11K tokens/run overhead. RFC 002 pipeline. | P1 | Planner module stable |
 | — | Closed algebra | **Per-module working memory for all modules** — extend Monitor, Evaluator, Observer with ModuleWorkingMemory. Complete the algebraic closure from RFC 006. | P2 | R-25 validates architecture |
 | — | exp-arc-agi | ARC-AGI-3 baseline: flat vs cognitive vs SLM cognitive | P1 | SDK setup, adapter code |
+| — | Structured output | **P(parse) = 1.0 hypothesis** — re-run exp-spl-design recursive condition with StructuredAgentProvider. Validate that structured JSON output eliminates parser bottleneck in implement/design algorithms. PRD 046 C-3 enables this. | P1 | StructuredAgentProvider (merged) |
 | — | Observer v3 training | Train Observer on tool-result inputs for every-cycle mode | P3 | Chobits, corpus design |
 | — | GPU ONNX re-export | Re-export ONNX models on 2080 Ti for local GPU inference | P2 | Chobits or re-export script |
 

@@ -134,6 +134,8 @@ Strategy YAML (.method/strategies/*.yaml)
     ├── Node Types
     │   methodology: spawns claude --print, invokes LLM
     │   script: executes inline JS (sandboxed)
+    │   strategy: invokes a sub-strategy DAG (recursive composition)
+    │   semantic: runs SPL algorithms (explore, design, implement, review)
     │
     ├── Gate Types
     │   algorithmic: JS expression on output/artifacts
@@ -268,6 +270,46 @@ Execute inline JavaScript. No LLM invocation, no cost. Used for data transformat
 ```
 
 **Sandboxed:** Script nodes run in a `new Function()` sandbox. No access to `require`, `process`, `fs`, or Node.js globals. This is defense-in-depth for trusted YAML, not a security boundary.
+
+### Strategy Nodes (Sub-Strategies)
+
+Invoke another strategy DAG as a child. Enables recursive composition — break complex workflows into reusable sub-strategies.
+
+```yaml
+- id: run_tests
+  type: strategy
+  strategy_id: S-TEST-SUITE
+  inputs: [code_output]
+  outputs: [test_results]
+  depends_on: [implement]
+```
+
+The child strategy receives the parent's artifact bundle as context inputs. Sub-strategy results (artifacts, cost, status) are merged back into the parent's artifact store. Cycle detection prevents infinite recursion across nested invocations.
+
+### Semantic Nodes (SPL Algorithms)
+
+Invoke SPL (Semantic Programming Language) algorithms directly from the DAG. Four algorithms are available: `explore` (codebase traversal), `design` (port-first architecture), `implement` (gate-checked code generation), and `review` (compositional quality audit).
+
+```yaml
+- id: explore_codebase
+  type: semantic
+  algorithm: explore
+  input_mapping:
+    query: analysis_query
+    path: project_root
+  output_key: exploration_results
+  inputs: [analysis_query, project_root]
+  outputs: [exploration_results]
+```
+
+**Fields:**
+- `algorithm` — one of `explore`, `design`, `implement`, `review`
+- `input_mapping` — maps algorithm input fields to artifact names in the DAG context
+- `output_key` — artifact name where the algorithm's result is stored
+
+Semantic nodes require a `SemanticNodeExecutor` port to be wired in the bridge (done automatically). They run through the SPL runtime with truth tracking and confidence scoring.
+
+> **Added in PRD 046 Wave 2c.** Requires bridge version with semantic node support.
 
 ## Gates
 
@@ -689,9 +731,8 @@ Every strategy execution generates a retro at `.method/retros/retro-strategy-YYY
 - Gate results (passed, failed, retries)
 - Artifacts produced
 
-## Limitations (Phase 2)
+## Limitations
 
-- **No sub-strategy composition** — strategies cannot invoke other strategies as nodes (Phase 3)
 - **No LLM review gates** — gates are algorithmic expressions only, not LLM-evaluated (Phase 2b)
 - **No resumption** — suspended executions (from `escalate_to_human`) cannot be resumed; they must be re-executed. The `POST /strategies/:id/resume` endpoint returns `501 Not Implemented`. Checkpoint-based resumption is planned for Phase 2b.
 - **Abort does not cancel in-flight LLM calls** — `POST /strategies/:id/abort` sets the execution status to `failed` but does not signal the running `claude --print` process. The current node may continue until it finishes. Full cancellation via AbortController is planned for Phase 2b.

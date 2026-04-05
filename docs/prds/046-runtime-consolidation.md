@@ -3,7 +3,7 @@ type: prd
 id: "046"
 title: "Runtime Consolidation — Unified Gates, SPL-Strategy Integration, Visual App Foundation"
 date: "2026-04-03"
-status: draft
+status: implemented
 domains: [methodts/gate, methodts/semantic, methodts/runtime, methodts/strategy, methodts/provider, bridge/strategies]
 surfaces: [DagGateEvaluator, SemanticNodeExecutor, StructuredAgentProvider, RuntimeObserver]
 review: "fcd-review 2026-04-03 — 11 findings (2 critical, 5 high, 4 medium), all critical/high resolved"
