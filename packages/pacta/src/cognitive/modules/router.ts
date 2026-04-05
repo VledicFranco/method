@@ -98,8 +98,8 @@ export function extractFeatures(
 ): TaskFeatures {
   const text = `${goal.objective}\n${taskDescription}`.toLowerCase();
 
-  // File count: match paths like src/foo.ts, src/bar.js, tests/baz.ts
-  const filePaths = text.match(/[\w-]+\/[\w/.-]+\.(ts|js|tsx|jsx|json|yaml|yml)/g) ?? [];
+  // File count: match paths like src/foo.ts OR bare filenames like module-a.ts
+  const filePaths = text.match(/[\w/-]+\.(ts|js|tsx|jsx|json|yaml|yml)\b/g) ?? [];
   const uniquePaths = new Set(filePaths);
   const isMultiFile = uniquePaths.size >= 3;
 
