@@ -39,6 +39,13 @@ export type {
   RoutingDecision,
 } from './router-types.js';
 
+// ── KPI Checker port (PRD 049) ───────────────────────────────
+
+export type { KPICheckerPort, KPICheckerInput } from './kpi-checker-port.js';
+export { parseDSL, buildCheckableKPIFromDSL } from './kpi-checker-port.js';
+export { createHttpKPIChecker, createMockKPIChecker } from './kpi-checker-slm.js';
+export type { HttpKPICheckerConfig } from './kpi-checker-slm.js';
+
 // ── Verification types (PRD 048) ────────────────────────────
 
 export type {

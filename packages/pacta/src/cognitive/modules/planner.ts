@@ -118,6 +118,9 @@ export interface PlannerConfig {
   maxCycles?: number;
   /** System prompt override for re-planning LLM calls. */
   systemPrompt?: string;
+  /** PRD 049: optional SLM-backed KPIChecker. When present, replaces the LLM
+   *  requestCheckableKPIs call with reliable SLM DSL generation. */
+  kpiChecker?: import('../algebra/kpi-checker-port.js').KPICheckerPort;
 }
 
 /** Input to the Planner: goal representation + workspace snapshot. */
@@ -214,6 +217,7 @@ export function createPlanner(
   const maxCycles = config?.maxCycles ?? 15;
   const wmConfig = config?.workingMemoryConfig;
   const systemPrompt = config?.systemPrompt ?? DEFAULT_REPLAN_SYSTEM_PROMPT;
+  const kpiChecker = config?.kpiChecker;
 
   return {
     id,
@@ -254,12 +258,28 @@ export function createPlanner(
           subgoals = buildSubgoalsFromAssessment(assessment, goal);
           planRevised = true;
 
-          // PRD 048: request checkable KPI predicates from the LLM
-          const checksResult = await requestCheckableKPIs(
-            adapter, goal, assessment.kpis, id,
-          );
-          checkableKpis = checksResult.checkableKpis;
-          tokensUsed += checksResult.tokensUsed;
+          // PRD 049: prefer SLM-backed KPIChecker when available (100% parse rate,
+          // near-zero cost). Falls back to LLM requestCheckableKPIs if no SLM port.
+          if (kpiChecker && assessment.kpis.length > 0) {
+            const inputs = assessment.kpis.map(kpi => ({
+              kpi,
+              context: {
+                objective: goal.objective,
+                knownPaths: [] as string[],
+                knownIdentifiers: [] as string[],
+                difficulty: assessment!.difficulty as 'low' | 'medium' | 'high' | undefined,
+              },
+            }));
+            checkableKpis = await kpiChecker.generateChecks(inputs);
+            // SLM has its own token budget — not counted against planner LLM budget
+          } else {
+            // PRD 048 fallback: LLM-based check generation
+            const checksResult = await requestCheckableKPIs(
+              adapter, goal, assessment.kpis, id,
+            );
+            checkableKpis = checksResult.checkableKpis;
+            tokensUsed += checksResult.tokensUsed;
+          }
         } else if (isCycle0 && !goal) {
           // No goal provided — produce a default assessment
           assessment = defaultAssessment(maxCycles);
