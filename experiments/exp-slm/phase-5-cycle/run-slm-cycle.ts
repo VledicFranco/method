@@ -78,6 +78,8 @@ import { extractProhibitions } from '../../../packages/pacta/src/cognitive/algeb
 import type { GoalRepresentation, TerminateSignal, TaskAssessment } from '../../../packages/pacta/src/cognitive/algebra/goal-types.js';
 import { assessTaskWithLLM } from '../../../packages/pacta/src/cognitive/algebra/llm-task-assessment.js';
 import { createCognitiveMemoryStore } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
+import { createPlanner } from '../../../packages/pacta/src/cognitive/modules/planner.js';
+import type { PlannerInput } from '../../../packages/pacta/src/cognitive/modules/planner.js';
 import type { PartitionRole } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
@@ -1806,21 +1808,40 @@ async function runUnifiedMemory(
     stagnationThreshold: config.monitor.stagnationThreshold,
   });
 
-  // Phase-aware evaluator
+  // Phase-aware evaluator + Planner module
   const evalProvider = anthropicProvider({ model: LLM_MODEL, maxOutputTokens: 512 });
   const evalAdapter = createProviderAdapter(evalProvider, {
     pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 512 } },
   });
-  const assessResult = await assessTaskWithLLM(evalAdapter, goalRepresentation, MAX_CYCLES, moduleId('evaluator'));
-  const taskAssessment = assessResult.assessment;
+
+  // RFC 006: Formal Planner module (replaces standalone assessTaskWithLLM)
+  const planner = createPlanner(evalAdapter, {
+    maxCycles: MAX_CYCLES,
+    workingMemoryConfig: { capacity: 3, includeInContext: true },
+  });
+  let plannerState = planner.initialState();
+
+  // Run Planner at cycle 0 to get TaskAssessment
+  const plannerResult = await planner.step(
+    { workspace: [], goal: goalRepresentation },
+    plannerState,
+    { target: moduleId('planner'), timestamp: Date.now() },
+  );
+  plannerState = plannerResult.state;
+  const taskAssessment = plannerResult.output.assessment!;
+  const plannerPlan = plannerResult.output.plan;
+  const plannerSubgoals = plannerResult.output.subgoals;
 
   // LH1: Dynamic cycle budget from difficulty assessment
+  // Also force high for tasks with 5+ subgoals (T06 calibration fix)
+  const effectiveDifficulty = plannerSubgoals.length >= 5 ? 'high' : taskAssessment.difficulty;
   const difficultyBudget = { low: MAX_CYCLES, medium: MAX_CYCLES, high: Math.max(MAX_CYCLES, 25) };
-  const effectiveMaxCycles = difficultyBudget[taskAssessment.difficulty];
-  console.log(`    [task-assessment] difficulty=${taskAssessment.difficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)} max_cycles=${effectiveMaxCycles}`);
-  console.log(`    [task-assessment] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+  const effectiveMaxCycles = difficultyBudget[effectiveDifficulty];
+  console.log(`    [planner] difficulty=${effectiveDifficulty} est_cycles=${taskAssessment.estimatedCycles} solvability=${taskAssessment.solvabilityPrior.toFixed(2)} max_cycles=${effectiveMaxCycles}`);
+  console.log(`    [planner] phases: ${taskAssessment.phases.map(p => `${p.name}(${p.expectedCycles[0]}-${p.expectedCycles[1]})`).join(' → ')}`);
+  console.log(`    [planner] subgoals: ${plannerSubgoals.length} — ${plannerSubgoals.map(s => s.description.slice(0, 40)).join('; ')}`);
   if (taskAssessment.kpis.length > 0) {
-    console.log(`    [task-assessment] kpis: ${taskAssessment.kpis.join(', ')}`);
+    console.log(`    [planner] kpis: ${taskAssessment.kpis.join(', ')}`);
   }
 
   const evaluator = createEvaluator({
@@ -1874,6 +1895,20 @@ async function runUnifiedMemory(
         for (const entry of decomposed.context) {
           store.store(entry, 'task', moduleId('observer'), ['context']);
         }
+
+        // Store Planner's plan and subgoals as high-salience entries
+        // The reasoner retrieves these via spreading activation from its working memory
+        store.store(
+          { content: `[PLAN] ${plannerPlan}`, timestamp: Date.now(), source: moduleId('planner'), salience: 1.0 } as any,
+          'goal', moduleId('planner'), ['plan', 'strategy'],
+        );
+        for (const sg of plannerSubgoals) {
+          store.store(
+            { content: `[SUBGOAL] ${sg.description}`, timestamp: Date.now(), source: moduleId('planner'), salience: 0.95 } as any,
+            'goal', moduleId('planner'), ['subgoal', 'goal'],
+          );
+        }
+        console.log(`    [unified-store] ${store.size()} entries after observe+plan`);
 
         // Also write to monolithic workspace for evaluator
         workspace.getWritePort(moduleId('observer')).write({
@@ -1944,7 +1979,7 @@ async function runUnifiedMemory(
 
       const snapshot = store.retrieve({
         module: moduleId('reasoner-actor'),
-        roles: ['constraint', 'operational', 'task'],
+        roles: ['constraint', 'operational', 'task', 'goal'],
         budget: 8192,
         cues,
       });
