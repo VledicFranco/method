@@ -6,6 +6,11 @@
  * Nothing is ever destructively evicted — activation decays but entries remain
  * retrievable when spreading activation cues match.
  *
+ * Retrieval uses hybrid scoring (Collins & Loftus, 1975):
+ * - Lexical: term overlap between cues and entry content (ACT-R spreading activation)
+ * - Semantic: cosine similarity between cue embedding and entry embedding (when EmbeddingPort available)
+ * - Fusion: RRF (Reciprocal Rank Fusion) combines both rankings
+ *
  * Grounded in Cowan's embedded-processes model (1999, 2001): working memory is
  * the activated subset of long-term memory, not a separate buffer. The "capacity
  * limit" is an attention bottleneck (retrieval budget), not a container size.
@@ -15,6 +20,7 @@
 
 import type { WorkspaceEntry, ReadonlyWorkspaceSnapshot } from './workspace-types.js';
 import type { ModuleId } from './module.js';
+import type { EmbeddingPort } from '../../ports/embedding-port.js';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -41,6 +47,8 @@ export interface MemoryStoreEntry {
   tags: string[];
   /** Whether this entry has been marked expired (stale invalidation). */
   expired: boolean;
+  /** Embedding vector for semantic retrieval (populated when EmbeddingPort available). */
+  embedding?: number[];
 }
 
 /** Per-module retrieval query. */
@@ -59,7 +67,7 @@ export interface RetrievalQuery {
 
 /** Configuration for the store. */
 export interface CognitiveMemoryStoreConfig {
-  /** Spreading activation weight for content-term matches. Default: 0.15 */
+  /** Spreading activation weight for content-term matches. Default: 0.25 */
   contentSpreadingWeight?: number;
   /** Spreading activation weight for tag matches. Default: 0.3 */
   tagSpreadingWeight?: number;
@@ -69,6 +77,30 @@ export interface CognitiveMemoryStoreConfig {
   noiseAmplitude?: number;
   /** Age gating: don't retrieve entries stored within this many ms. Default: 0 */
   ageGateMs?: number;
+  /** Optional embedding port for semantic retrieval. When present, enables hybrid search. */
+  embeddingPort?: EmbeddingPort;
+  /** RRF k parameter for rank fusion. Default: 60 */
+  rrfK?: number;
+}
+
+// ── Cosine Similarity ─────────────────────────────────────
+
+function cosine(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom > 0 ? dot / denom : 0;
+}
+
+// ── RRF Fusion ────────────────────────────────────────────
+
+function rrfScore(rank1: number, rank2: number, k: number): number {
+  return 1 / (k + rank1) + 1 / (k + rank2);
 }
 
 // ── Term Extraction ───────────────────────────────────────────
@@ -92,7 +124,7 @@ function computeStoreActivation(
   entry: MemoryStoreEntry,
   cueTerms: Set<string>,
   now: number,
-  config: Required<CognitiveMemoryStoreConfig>,
+  config: ResolvedConfig,
 ): number {
   // 1. Base-level activation: log(accessCount / sqrt(ageSec))
   const ageMs = now - entry.lastAccessed;
@@ -127,11 +159,11 @@ function computeStoreActivation(
 // ── Store Implementation ──────────────────────────────────────
 
 export interface CognitiveMemoryStore {
-  /** Store an entry. */
+  /** Store an entry. Embeds content asynchronously when EmbeddingPort is available. */
   store(entry: WorkspaceEntry, role: PartitionRole, source: ModuleId, tags?: string[]): void;
 
-  /** Retrieve entries relevant to a query. Returns as workspace snapshot. */
-  retrieve(query: RetrievalQuery): ReadonlyWorkspaceSnapshot;
+  /** Retrieve entries relevant to a query. Uses hybrid search when embeddings available. */
+  retrieve(query: RetrievalQuery): Promise<ReadonlyWorkspaceSnapshot>;
 
   /** Expire entries matching a predicate (stale invalidation). */
   expire(predicate: (entry: MemoryStoreEntry) => boolean): number;
@@ -143,33 +175,66 @@ export interface CognitiveMemoryStore {
   allEntries(): MemoryStoreEntry[];
 }
 
+/** Resolved config — optional fields replaced with concrete values or undefined. */
+interface ResolvedConfig {
+  contentSpreadingWeight: number;
+  tagSpreadingWeight: number;
+  decayRate: number;
+  noiseAmplitude: number;
+  ageGateMs: number;
+  embeddingPort: EmbeddingPort | undefined;
+  rrfK: number;
+}
+
 /**
  * Create a CognitiveMemoryStore — the unified memory that replaces partitions.
+ *
+ * When an EmbeddingPort is provided, store() embeds entry content and retrieve()
+ * uses hybrid search: lexical activation + semantic cosine similarity, fused via RRF.
+ * Without an EmbeddingPort, falls back to lexical-only scoring.
  */
 export function createCognitiveMemoryStore(
   config?: CognitiveMemoryStoreConfig,
 ): CognitiveMemoryStore {
-  const cfg: Required<CognitiveMemoryStoreConfig> = {
-    contentSpreadingWeight: config?.contentSpreadingWeight ?? 0.15,
+  const cfg: ResolvedConfig = {
+    contentSpreadingWeight: config?.contentSpreadingWeight ?? 0.25,
     tagSpreadingWeight: config?.tagSpreadingWeight ?? 0.3,
     decayRate: config?.decayRate ?? 0.5,
     noiseAmplitude: config?.noiseAmplitude ?? 0.05,
     ageGateMs: config?.ageGateMs ?? 0,
+    embeddingPort: config?.embeddingPort,
+    rrfK: config?.rrfK ?? 60,
   };
 
   const entries: MemoryStoreEntry[] = [];
   let idCounter = 0;
 
+  // Background embedding queue — entries are embedded asynchronously after store()
+  const pendingEmbeddings: Array<{ entry: MemoryStoreEntry; text: string }> = [];
+
+  async function processPendingEmbeddings(): Promise<void> {
+    if (!cfg.embeddingPort || pendingEmbeddings.length === 0) return;
+    const batch = pendingEmbeddings.splice(0);
+    try {
+      const texts = batch.map(b => b.text.slice(0, 2000)); // truncate for embedding
+      const vectors = await cfg.embeddingPort.embedBatch(texts);
+      for (let i = 0; i < batch.length; i++) {
+        batch[i].entry.embedding = vectors[i];
+      }
+    } catch {
+      // Embedding failure is non-fatal — entries just won't have vectors
+    }
+  }
+
   return {
     store(entry: WorkspaceEntry, role: PartitionRole, source: ModuleId, tags?: string[]): void {
       const content = typeof entry.content === 'string' ? entry.content : JSON.stringify(entry.content);
-      // Auto-extract tags from content (file paths, identifiers)
       const autoTags = tags ?? [];
       const pathMatch = content.match(/[\w/.-]+\.\w{1,4}/g);
       if (pathMatch) autoTags.push(...pathMatch.slice(0, 5));
 
       const now = Date.now();
-      entries.push({
+      const storeEntry: MemoryStoreEntry = {
         id: `cms-${idCounter++}`,
         entry,
         role,
@@ -179,10 +244,19 @@ export function createCognitiveMemoryStore(
         lastAccessed: now,
         tags: autoTags,
         expired: false,
-      });
+      };
+      entries.push(storeEntry);
+
+      // Queue for async embedding if port available
+      if (cfg.embeddingPort) {
+        pendingEmbeddings.push({ entry: storeEntry, text: content });
+      }
     },
 
-    retrieve(query: RetrievalQuery): ReadonlyWorkspaceSnapshot {
+    async retrieve(query: RetrievalQuery): Promise<ReadonlyWorkspaceSnapshot> {
+      // Process any pending embeddings before retrieval
+      await processPendingEmbeddings();
+
       const now = Date.now();
       const cueTerms = new Set<string>();
       for (const cue of query.cues) {
@@ -193,32 +267,76 @@ export function createCognitiveMemoryStore(
 
       const threshold = query.threshold ?? -1.0;
 
-      // Score all non-expired entries
-      const scored: Array<{ entry: MemoryStoreEntry; activation: number }> = [];
+      // Filter eligible entries
+      const eligible: MemoryStoreEntry[] = [];
       for (const e of entries) {
         if (e.expired) continue;
         if (query.roles && !query.roles.includes(e.role)) continue;
         if (cfg.ageGateMs > 0 && (now - e.storedAt) < cfg.ageGateMs) continue;
-
-        const activation = computeStoreActivation(e, cueTerms, now, cfg);
-        if (activation >= threshold) {
-          scored.push({ entry: e, activation });
-        }
+        eligible.push(e);
       }
 
-      // Sort by activation descending
-      scored.sort((a, b) => b.activation - a.activation);
+      // 1. Lexical scoring (ACT-R activation)
+      const lexicalScored = eligible
+        .map(e => ({ entry: e, score: computeStoreActivation(e, cueTerms, now, cfg) }))
+        .filter(s => s.score >= threshold)
+        .sort((a, b) => b.score - a.score);
+
+      // 2. Semantic scoring (cosine similarity, when embeddings available)
+      let fusedRanking: Array<{ entry: MemoryStoreEntry; score: number }>;
+
+      const hasEmbeddings = cfg.embeddingPort && eligible.some(e => e.embedding);
+      if (hasEmbeddings) {
+        // Embed the cue text
+        const cueText = query.cues.join(' ').slice(0, 2000);
+        let cueEmbedding: number[] | null = null;
+        try {
+          cueEmbedding = await cfg.embeddingPort!.embed(cueText);
+        } catch {
+          // Fall through to lexical-only
+        }
+
+        if (cueEmbedding) {
+          // Compute semantic scores
+          const semanticScored = eligible
+            .filter(e => e.embedding)
+            .map(e => ({ entry: e, score: cosine(cueEmbedding!, e.embedding!) }))
+            .sort((a, b) => b.score - a.score);
+
+          // Build rank maps
+          const lexicalRank = new Map<string, number>();
+          lexicalScored.forEach((s, i) => lexicalRank.set(s.entry.id, i + 1));
+
+          const semanticRank = new Map<string, number>();
+          semanticScored.forEach((s, i) => semanticRank.set(s.entry.id, i + 1));
+
+          // RRF fusion
+          const allIds = new Set([...lexicalRank.keys(), ...semanticRank.keys()]);
+          const fused: Array<{ entry: MemoryStoreEntry; score: number }> = [];
+          for (const id of allIds) {
+            const e = eligible.find(x => x.id === id)!;
+            const lRank = lexicalRank.get(id) ?? eligible.length;
+            const sRank = semanticRank.get(id) ?? eligible.length;
+            fused.push({ entry: e, score: rrfScore(lRank, sRank, cfg.rrfK) });
+          }
+          fused.sort((a, b) => b.score - a.score);
+          fusedRanking = fused;
+        } else {
+          fusedRanking = lexicalScored;
+        }
+      } else {
+        fusedRanking = lexicalScored;
+      }
 
       // Select entries within token budget
       const result: WorkspaceEntry[] = [];
       let tokensUsed = 0;
-      for (const { entry: se } of scored) {
+      for (const { entry: se } of fusedRanking) {
         const content = typeof se.entry.content === 'string'
           ? se.entry.content : JSON.stringify(se.entry.content);
         const entryTokens = Math.ceil(content.length / 4);
 
         if (tokensUsed + entryTokens > query.budget) {
-          // Try to fit — if we haven't added anything yet, add at least one
           if (result.length === 0) {
             result.push(se.entry);
             se.accessCount++;

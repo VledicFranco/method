@@ -1793,11 +1793,22 @@ async function runUnifiedMemory(
   const workspace = createWorkspace({ capacity: config.workspace.capacity }, salienceContext);
 
   // ── Unified Memory Store (RFC 006 Part III) ──────────────────
+  // Hybrid retrieval: try to create Voyage embedding port for semantic search
+  let embeddingPort: import('../../../packages/pacta/src/ports/embedding-port.js').EmbeddingPort | undefined;
+  try {
+    const { createVoyageEmbedding } = await import('../../../packages/pacta/src/ports/voyage-embedding.js');
+    embeddingPort = createVoyageEmbedding({ model: 'voyage-3-lite' });
+    console.log(`    [hybrid-search] Voyage embedding enabled (${embeddingPort.model}, ${embeddingPort.dimensions}d)`);
+  } catch {
+    console.log('    [hybrid-search] No embedding port — lexical-only retrieval');
+  }
+
   const store = createCognitiveMemoryStore({
-    contentSpreadingWeight: 0.25,  // LH3: tuned up from 0.15 for better content matching
+    contentSpreadingWeight: 0.25,
     tagSpreadingWeight: 0.3,
     decayRate: 0.5,
     noiseAmplitude: 0.05,
+    embeddingPort,
   });
 
   // Goal extraction
@@ -2014,7 +2025,7 @@ async function runUnifiedMemory(
       const lastActionCue = raState.lastActionName ?? '';
       const cues = [wmContent, goalCue, lastActionCue].filter(c => c.length > 0);
 
-      const snapshot = store.retrieve({
+      const snapshot = await store.retrieve({
         module: moduleId('reasoner-actor'),
         roles: ['constraint', 'operational', 'task', 'goal'],
         budget: 8192,
