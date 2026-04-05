@@ -8,6 +8,12 @@ export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session
 export { createNodeNativeSessionDiscovery } from './native-session-discovery.js';
 export type { SessionPool, SessionStatusInfo, SessionBudget, SessionChainInfo, WorktreeInfo, SessionMode, IsolationMode, WorktreeAction, StreamEvent } from './session-pool.js';
 
+// PRD 051: Cost Governor ports
+export type { CostOracle, NodeEstimate, StrategyEstimate } from './cost-oracle.js';
+export type { BridgeRateGovernor } from './rate-governor.js';
+export type { HistoricalObservations, Observation, AppendToken } from './historical-observations.js';
+export { createAppendToken } from './historical-observations.js';
+
 // PRD 047: Build Orchestrator ports
 export type { CheckpointPort, PipelineCheckpoint, PipelineCheckpointSummary, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from './checkpoint.js';
 export type { ConversationPort, AgentMessage, HumanMessage, GateDecision, GateType, SkillRequest, StructuredCard } from './conversation.js';

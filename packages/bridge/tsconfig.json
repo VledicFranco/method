@@ -5,6 +5,7 @@
     "rootDir": "src"
   },
   "references": [
+    { "path": "../types" },
     { "path": "../methodts" },
     { "path": "../pacta" },
     { "path": "../pacta-provider-claude-cli" },

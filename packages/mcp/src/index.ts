@@ -647,6 +647,50 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "strategy_dry_run",
+      description: "Estimate cost and duration for a strategy DAG using historical observations. Returns p50/p90 cost bands, critical-path duration, and a list of nodes lacking historical data. Useful for operators to understand expected cost before execution.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          nodes: {
+            type: "array",
+            description: "DAG nodes to estimate",
+            items: {
+              type: "object",
+              properties: {
+                node_id: { type: "string" },
+                methodology_id: { type: "string", description: "Methodology (e.g. P2-SD, P0-META)" },
+                model: { type: "string", description: "Model (e.g. claude-opus-4-6)" },
+                capabilities: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Tool capabilities this node needs",
+                },
+                prompt_char_count: {
+                  type: "number",
+                  description: "Estimated prompt length (bucketed into xs/s/m/l/xl)",
+                },
+              },
+              required: ["node_id", "methodology_id", "model"],
+            },
+          },
+          edges: {
+            type: "array",
+            description: "DAG edges (node -> list of dependency node IDs)",
+            items: {
+              type: "object",
+              properties: {
+                node_id: { type: "string" },
+                depends_on: { type: "array", items: { type: "string" } },
+              },
+              required: ["node_id"],
+            },
+          },
+        },
+        required: ["nodes", "edges"],
+      },
+    },
+    {
       name: "strategy_status",
       description: "Get the status of a Strategy pipeline execution. Returns node statuses, cost, gate results, artifacts, and retro path when complete.",
       inputSchema: {
@@ -1008,6 +1052,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "bridge_read_events":
       case "bridge_all_events":
       case "strategy_execute":
+      case "strategy_dry_run":
       case "strategy_status":
       case "strategy_create":
       case "strategy_update":

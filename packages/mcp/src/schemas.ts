@@ -145,6 +145,20 @@ export const strategyStatusInput = z.object({
   execution_id: z.string(),
 });
 
+export const strategyDryRunInput = z.object({
+  nodes: z.array(z.object({
+    node_id: z.string(),
+    methodology_id: z.string(),
+    model: z.string(),
+    capabilities: z.array(z.string()).default([]),
+    prompt_char_count: z.number().nonnegative().default(0),
+  })).describe("DAG nodes to estimate"),
+  edges: z.array(z.object({
+    node_id: z.string(),
+    depends_on: z.array(z.string()).default([]),
+  })).describe("DAG edge list (node -> its dependencies)"),
+});
+
 export const strategyCreateInput = z.object({
   id: z.string().describe("Strategy ID (alphanumeric + hyphens, normalized to lowercase kebab-case)"),
   yaml: z.string().describe("Full strategy YAML content"),

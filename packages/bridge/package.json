@@ -12,6 +12,7 @@
   "dependencies": {
     "@fastify/websocket": "^11.2.0",
     "@glyphjs/compiler": "^0.9.1",
+    "@method/types": "*",
     "@method/methodts": "*",
     "@method/pacta": "*",
     "@method/pacta-provider-anthropic": "*",

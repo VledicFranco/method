@@ -19,6 +19,7 @@ import {
   bridgeReadChannelInput,
   bridgeAllEventsInput,
   strategyExecuteInput,
+  strategyDryRunInput,
   strategyStatusInput,
   strategyCreateInput,
   strategyUpdateInput,
@@ -414,6 +415,64 @@ const strategy_execute = createBridgeHandler({
     }, null, 2));
   },
 });
+
+const strategy_dry_run = createBridgeHandler({
+  schema: strategyDryRunInput,
+  handler: async (parsed, bridgeFetch, bridgeUrl) => {
+    // Build signature for each node
+    const nodes = parsed.nodes.map(n => ({
+      nodeId: n.node_id,
+      signature: {
+        methodologyId: n.methodology_id,
+        capabilities: [...n.capabilities].sort(),
+        model: n.model,
+        inputSizeBucket: bucketFromSize(n.prompt_char_count),
+      },
+    }));
+    const edges = parsed.edges.map(e => ({
+      nodeId: e.node_id,
+      dependsOn: e.depends_on,
+    }));
+
+    const res = await bridgeFetch(`${bridgeUrl}/api/cost-governor/dry-run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodes, edges }),
+    });
+    const data = await res.json() as {
+      totalCost: { p50Usd: number; p90Usd: number; confidence: string; sampleCount: number };
+      totalDurationMs: { p50Usd: number; p90Usd: number };
+      unknownNodes: string[];
+    };
+
+    const warning = data.unknownNodes.length > 0
+      ? `NOT VALIDATED — ${data.unknownNodes.length} nodes have no historical data`
+      : undefined;
+
+    return ok(JSON.stringify({
+      totalCostUsd: {
+        p50: data.totalCost.p50Usd,
+        p90: data.totalCost.p90Usd,
+        confidence: data.totalCost.confidence,
+        sampleCount: data.totalCost.sampleCount,
+      },
+      totalDurationMs: {
+        p50: data.totalDurationMs.p50Usd,
+        p90: data.totalDurationMs.p90Usd,
+      },
+      unknownNodes: data.unknownNodes,
+      confidenceWarning: warning,
+    }, null, 2));
+  },
+});
+
+function bucketFromSize(chars: number): 'xs' | 's' | 'm' | 'l' | 'xl' {
+  if (chars < 1000) return 'xs';
+  if (chars < 10_000) return 's';
+  if (chars < 100_000) return 'm';
+  if (chars < 1_000_000) return 'l';
+  return 'xl';
+}
 
 const strategy_status = createBridgeHandler({
   schema: strategyStatusInput,
@@ -937,6 +996,7 @@ export const bridgeHandlers: Record<
   bridge_read_events,
   bridge_all_events,
   strategy_execute,
+  strategy_dry_run,
   strategy_status,
   strategy_create,
   strategy_update,

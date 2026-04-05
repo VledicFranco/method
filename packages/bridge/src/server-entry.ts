@@ -54,6 +54,7 @@ import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisS
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
 import { createBuildDomain } from './domains/build/index.js';
+import { createCostGovernorDomain, loadCostGovernorConfig } from './domains/cost-governor/index.js';
 import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
@@ -514,6 +515,20 @@ async function start() {
       yamlLoader,
     });
     buildDomain.registerRoutes(app);
+
+    // PRD 051: Register Cost Governor domain
+    const costGovernorConfig = loadCostGovernorConfig();
+    const costGovernorDomain = costGovernorConfig.enabled
+      ? createCostGovernorDomain({
+          eventBus,
+          fileSystem: fsProvider,
+          config: costGovernorConfig,
+        })
+      : null;
+    if (costGovernorDomain) {
+      costGovernorDomain.registerRoutes(app);
+      app.log.info('Cost Governor domain enabled');
+    }
 
     // F-I-2: Register Genesis and Project routes before listening (prevents initialization race)
     await registerGenesisRoutes(app, genesisRouteContext);

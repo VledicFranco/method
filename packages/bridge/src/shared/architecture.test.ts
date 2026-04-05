@@ -412,3 +412,100 @@ describe('G-LAYER: Package layer ordering is respected', () => {
     });
   }
 });
+
+// ── G-PRD051-TAXONOMY: Provider files use ProviderError taxonomy ──
+
+describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/pacta', () => {
+  const PROVIDER_FILES = [
+    join(BRIDGE_SRC, '..', '..', 'pacta-provider-claude-cli', 'src', 'cli-executor.ts'),
+    join(BRIDGE_SRC, '..', '..', 'pacta-provider-claude-cli', 'src', 'claude-cli-provider.ts'),
+    join(BRIDGE_SRC, '..', '..', 'pacta-provider-anthropic', 'src', 'anthropic-provider.ts'),
+  ];
+
+  it('no bare "throw new Error(" in provider production code', () => {
+    const violations: string[] = [];
+    for (const file of PROVIDER_FILES) {
+      let content: string;
+      try {
+        content = readFileSync(file, 'utf-8');
+      } catch {
+        continue; // file may not exist in all envs
+      }
+      // Match: throw new Error(...) but NOT part of Error subclass name
+      // (i.e., throw new FooError(...) is fine)
+      const bareErrors = content.match(/throw\s+new\s+Error\s*\(/g);
+      if (bareErrors && bareErrors.length > 0) {
+        violations.push(
+          `${relative(BRIDGE_SRC, file).replace(/\\/g, '/')}: ${bareErrors.length} bare throw new Error(...)`,
+        );
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'G-PRD051 violation: provider code must throw typed ProviderError subclasses.',
+      'Use RateLimitError, AuthError, NetworkError, TimeoutError, CliExecutionError, etc.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+
+  it('providers import from @method/pacta error taxonomy', () => {
+    const TAXONOMY_CLASSES = [
+      'ProviderError', 'PermanentError', 'TransientError',
+      'RateLimitError', 'AuthError', 'NetworkError', 'TimeoutError',
+      'InvalidRequestError', 'CliExecutionError', 'CliSpawnError', 'CliAbortError',
+    ];
+    const violations: string[] = [];
+    for (const file of PROVIDER_FILES) {
+      let content: string;
+      try {
+        content = readFileSync(file, 'utf-8');
+      } catch {
+        continue;
+      }
+      const importsFromPacta = /from\s+['"]@method\/pacta['"]/.test(content);
+      const hasTaxonomyImport = TAXONOMY_CLASSES.some(cls =>
+        new RegExp(`\\b${cls}\\b`).test(content),
+      );
+      if (!importsFromPacta || !hasTaxonomyImport) {
+        violations.push(
+          `${relative(BRIDGE_SRC, file).replace(/\\/g, '/')}: missing taxonomy import`,
+        );
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'G-PRD051 violation: providers must import error taxonomy from @method/pacta.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+});
+
+// ── G-PRD051-COST-GOVERNOR: cost-governor domain uses ports ──
+
+describe('G-PRD051-COST-GOVERNOR: cost-governor domain uses FileSystemProvider port', () => {
+  it('cost-governor domain does not import node:fs directly', () => {
+    const costGovDir = join(DOMAINS_DIR, 'cost-governor');
+    let files: string[];
+    try {
+      files = collectTsFiles(costGovDir).filter(f => !isTestFile(f));
+    } catch {
+      return; // domain may not exist yet
+    }
+    const violations: string[] = [];
+    for (const file of files) {
+      const imports = extractImports(file);
+      for (const imp of imports) {
+        if (/^(node:)?fs(\/promises)?$/.test(imp.specifier)) {
+          violations.push(
+            `${relative(DOMAINS_DIR, file).replace(/\\/g, '/')}:${imp.line} — imports '${imp.specifier}'`,
+          );
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'G-PRD051 violation: cost-governor must use FileSystemProvider port, not direct fs.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+});

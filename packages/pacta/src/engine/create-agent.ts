@@ -16,6 +16,7 @@ import type { ContextPolicy } from '../context/context-policy.js';
 import type { ReasoningPolicy } from '../reasoning/reasoning-policy.js';
 import { budgetEnforcer } from '../middleware/budget-enforcer.js';
 import { outputValidator } from '../middleware/output-validator.js';
+import { throttler, type ThrottlerOptions } from '../middleware/throttler.js';
 
 // ── Agent State ──────────────────────────────────────────────────
 
@@ -49,6 +50,8 @@ export interface CreateAgentOptions<TOutput = unknown> {
   tools?: ToolProvider;
   memory?: MemoryPort;
   onEvent?: (event: AgentEvent) => void;
+  /** Optional throttler for rate governing (PRD 051). */
+  throttle?: ThrottlerOptions;
 }
 
 // ── Capability Validation ────────────────────────────────────────
@@ -85,7 +88,7 @@ function validateCapabilities<T>(options: CreateAgentOptions<T>): void {
 type InvokeFn<T> = (pact: Pact<T>, request: AgentRequest) => Promise<AgentResult<T>>;
 
 function buildPipeline<T>(options: CreateAgentOptions<T>): InvokeFn<T> {
-  const { pact, provider, onEvent } = options;
+  const { pact, provider, onEvent, throttle } = options;
 
   // Base: provider invoke
   let pipeline: InvokeFn<T> = (p, req) => provider.invoke(p, req);
@@ -95,9 +98,14 @@ function buildPipeline<T>(options: CreateAgentOptions<T>): InvokeFn<T> {
     pipeline = outputValidator(pipeline, pact, onEvent);
   }
 
-  // Wrap with budget enforcer (outer — runs first)
+  // Wrap with budget enforcer (middle)
   if (pact.budget) {
     pipeline = budgetEnforcer(pipeline, pact, onEvent);
+  }
+
+  // Wrap with throttler (outermost — slot held for full pipeline duration)
+  if (throttle) {
+    pipeline = throttler(pipeline, throttle);
   }
 
   return pipeline;
