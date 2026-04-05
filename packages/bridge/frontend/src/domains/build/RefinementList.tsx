@@ -14,10 +14,12 @@ import type { Refinement } from './types';
 type FilterTarget = 'all' | Refinement['target'];
 
 const TAG_COLOR: Record<Refinement['target'], string> = {
+  product: 'bg-[#10b98122] text-[#10b981]',
   strategy: 'bg-[#6d5aed33] text-[#6d5aed]',
   gate: 'bg-[#ef444422] text-[#ef4444]',
   orchestrator: 'bg-[#f59e0b22] text-[#f59e0b]',
   bridge: 'bg-[#3b82f622] text-[#3b82f6]',
+  pacta: 'bg-[#8b5cf622] text-[#8b5cf6]',
 };
 
 const FILTERS: { id: FilterTarget; label: string }[] = [
