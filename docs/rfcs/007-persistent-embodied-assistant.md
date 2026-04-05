@@ -3,7 +3,7 @@
 **Status:** Draft — exploratory architecture + research program
 **Author:** PO + Lysica
 **Date:** 2026-04-05
-**Applies to:** `@method/pacta`, `packages/bridge`, `experiments/`
+**Applies to:** `pv-lysica` (new repo), `pacta-py` (new package), `@method/pacta` (parity), `packages/bridge` (MCP consumer)
 **Organization:** Vidtecci
 **Extends:** RFC 001 (Cognitive Composition), RFC 002 (SLM Compilation), RFC 005 (Autonomous Skill Compilation)
 **Depends on:** RFC 001 module algebra, RFC 003 workspace partitions, RFC 005 bootstrap flywheel
@@ -74,90 +74,169 @@ and autonomy boundaries.
 
 ## Part I: Architecture Overview
 
-### System Topology
+### Architectural Decision: Independent Runtime
 
-Lysica is not a single process. She is a composition of daemons communicating through
-the bridge event bus, split by trust boundary and language fit:
+Lysica is **not** a bridge domain. In FCA terms, the bridge is L4 infrastructure —
+it manages sessions, events, strategies. Lysica is an agent that *uses* that
+infrastructure. She belongs at L5. Coupling her lifecycle to the bridge would mean:
+
+- Bridge restart kills Lysica (or requires complex resurrection logic)
+- Lysica crash takes down infrastructure other agents depend on
+- Identity modules forced into TypeScript despite Python being the natural fit for
+  ML (Whisper, Silero, XTTS, SLM inference, LanceDB)
+
+Instead, Lysica is an **independent Python runtime** in her own repo (`pv-lysica/`).
+She accesses the bridge as a client through MCP tools and Playwright MCP for the
+dashboard. The cognitive algebra (RFC 001) is reimplemented in Python (`pacta-py`) —
+a clean port of the module contract, composition operators, and workspace system.
+
+### pacta-py Parity Strategy
+
+Reimplementing the cognitive algebra in Python creates a drift risk. Three mechanisms
+enforce parity between `@method/pacta` (TypeScript) and `pacta-py` (Python):
+
+**P1 — Shared test fixtures (primary enforcement):**
+Language-agnostic YAML/JSON test scenarios in a shared `pacta-schema/` package:
+```yaml
+# fixtures/algebra/sequential-composition.yaml
+- name: "sequential passes output to next module"
+  modules: [observer, reasoner]
+  input_workspace: [{ content: "read file.ts", source: "user" }]
+  expected_output_type: "action"
+  expected_monitoring_signals: ["observation-complete", "reasoning-complete"]
+```
+Both implementations run the same fixture suite. Drift shows up as test failure.
+
+**P2 — Shared type schema (structural alignment):**
+Module interfaces, event types, workspace schema defined in JSON Schema. TypeScript
+types generated via `json-schema-to-typescript`, Python types via
+`datamodel-code-generator`. Types aligned by construction.
+
+**P3 — Algebraic property tests (deferred to stabilization):**
+Composition operators have mathematical properties (associativity of sequential,
+commutativity of parallel, type preservation of hierarchical). Property-based testing
+(Hypothesis in Python, fast-check in TS) verifies these hold in both implementations.
+
+**What gets reimplemented vs what doesn't:**
+
+| Component | Reimplement? | Notes |
+|-----------|-------------|-------|
+| Algebra core (module contract, workspace, operators) | **Yes** | ~500 lines, clean math |
+| Workspace partitions + eviction | **Yes** | ~300 lines, specified by RFC 003 |
+| MonitorV2 (rule-based) | **Yes** | ~200 lines, no LLM calls, pure logic |
+| Observer, Evaluator | **Yes** | Small, well-defined contracts |
+| ReasonerActorV2 | **Adapt** | Python uses anthropic SDK directly |
+| Memory v3 (dual-store) | **Replace** | LanceDB + SQLite instead of in-memory arrays |
+| PriorityAttend | **Yes** | ~150 lines, 3-factor salience scoring |
+| Identity modules (new) | **Python-first** | No TS counterpart — no parity issue |
+| Planner, Reflector, Verifier | **Phase 2** | Not needed for MVP |
+
+### System Topology
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  BRIDGE (Node.js) — packages/bridge/src/domains/lysica/      │
+│ LYSICA RUNTIME (Python, independent process — pv-lysica/)    │
 │                                                              │
-│  LysicaSpawner         fork of Genesis pattern               │
-│    ├─ startup dedup    (single-authoritative instance)       │
-│    ├─ checkpoint/restore (cognitive state + memory)           │
-│    └─ budget enforcement (daily token gate)                   │
+│ Cognitive Engine (pacta-py)                                   │
+│   ├─ Algebra core        M=(I,O,S,μ,κ), 4 operators         │
+│   ├─ Workspace           partitions, salience, eviction      │
+│   ├─ ReasonerActor       anthropic SDK, tool execution       │
+│   ├─ MonitorV2           rule-based anomaly detection        │
+│   ├─ Observer            input classification                │
+│   ├─ PriorityAttend      salience-based context selection    │
+│   ├─ Evaluator           progress estimation                 │
+│   └─ Planner             goal decomposition (Phase 2)        │
 │                                                              │
-│  Cognitive Session (persistent=true, cognitive-agent mode)    │
-│    ├─ PersonalityModule    NEW — trait-consistent generation  │
-│    ├─ AffectModule         EXTENDED — continuous valence/     │
-│    │                       arousal state, expression output   │
-│    ├─ SelfModelModule      NEW — autobiographical continuity  │
-│    ├─ SocialModule         NEW — context-appropriate register │
-│    ├─ Memory v3            EXTENDED — persistent dual-store   │
-│    ├─ Consolidator         EXTENDED — sleep cycles, decay     │
-│    ├─ ReasonerActorV2      existing                          │
-│    ├─ MonitorV2            existing                          │
-│    ├─ PriorityAttend       existing                          │
-│    ├─ Planner              existing                          │
-│    ├─ Verifier             existing                          │
-│    └─ Observer             existing                          │
+│ Identity Layer (Python-first, no TS counterpart)             │
+│   ├─ PersonalityModule   CAPS if-then rules                  │
+│   ├─ AffectModule v2     valence/arousal + expressions       │
+│   ├─ SelfModelModule     autobiographical narrative          │
+│   ├─ SocialModule        register adaptation                 │
+│   ├─ PreferenceModule    learned preferences                 │
+│   └─ NarrativeMemory     hierarchical autobiographical store │
 │                                                              │
-│  EventBus                                                    │
-│    ├─ AvatarConnector  → WS → Avatar Daemon                  │
-│    ├─ VoiceConnector   → WS → Discord Daemon                 │
-│    ├─ VisionConnector  ← WS ← Vision Daemon                 │
-│    └─ ActuationAudit   → JSONL audit log                     │
+│ Persistence (owned by Lysica, not bridge)                     │
+│   ├─ LanceDB            vector embeddings (semantic memory)  │
+│   ├─ SQLite             episodic log, relationships, prefs   │
+│   └─ JSONL              audit trail, checkpoints             │
 │                                                              │
-│  Strategies (YAML, autonomous behaviors)                     │
-│    ├─ S-MORNING-BRIEFING      schedule 8am                   │
-│    ├─ S-MEMORY-CONSOLIDATION  schedule 3am                   │
-│    ├─ S-WORKSPACE-RESONANCE   file_watch on wb-*.md          │
-│    ├─ S-COMMIT-REVIEW         git_commit trigger             │
-│    └─ S-SELF-REFLECTION       schedule weekly                │
+│ I/O Subsystems                                               │
+│   ├─ Discord             py-cord, voice recv/send, VAD, STT  │
+│   ├─ Avatar              VTube Studio WS, expression control  │
+│   ├─ Vision              screen capture → vision model        │
+│   └─ Actuation           pywinauto + ahk, named capabilities │
+│                                                              │
+│ Daemon Loop                                                  │
+│   ├─ Heartbeat           10-30s tick, process event queue     │
+│   ├─ Scheduled actions   cron-like (morning briefing, sleep)  │
+│   ├─ Bridge watcher      subscribe to bridge events via WS    │
+│   └─ Budget enforcer     daily token cap, tier routing        │
+│                                                              │
+│ Bridge Access (Lysica is a CLIENT, not a component)           │
+│   ├─ MCP client          methodology, registry, projects     │
+│   ├─ Bridge WS           event bus subscription (awareness)   │
+│   ├─ Playwright MCP      bridge dashboard + web browsing      │
+│   └─ HTTP                strategy triggers, project APIs      │
 └──────────────────────────────────────────────────────────────┘
-        ↕ WS                ↕ WS                ↕ WS
-┌───────────────┐  ┌──────────────────┐  ┌─────────────────┐
-│ Avatar Daemon │  │ Discord Daemon   │  │ Vision Daemon   │
-│ VTube Studio  │  │ py-cord          │  │ Screen capture  │
-│ <emotion> tag │  │ voice recv/send  │  │ or OBS          │
-│ parser        │  │ Silero VAD       │  │ → Claude vision │
-│ TTS → VB-    │  │ openWakeWord     │  │ → event into    │
-│ CABLE → VTS  │  │ faster-whisper   │  │   bus           │
-│ lipsync      │  │ XTTS-v2 / 11L   │  └─────────────────┘
-└───────────────┘  └──────────────────┘
+         ↕ MCP / WS / HTTP
+┌──────────────────────────────────────────────────────────────┐
+│ BRIDGE (Node.js) — existing infrastructure, unmodified        │
+│   Event bus (Lysica subscribes via WS/webhook)                │
+│   Strategies (Lysica triggers via HTTP)                       │
+│   Projects (Lysica queries via MCP)                           │
+│   Registry (methodology access via MCP)                       │
+│   Sessions (Lysica can spawn sub-agent sessions if needed)    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
+**Key design properties:**
+- **Lifecycle independence.** Bridge restart doesn't kill Lysica. Lysica crash doesn't
+  take down the bridge. Both can be updated independently.
+- **Language fit.** Lysica's entire stack is Python-native: ML inference (SLMs, Whisper,
+  XTTS), Discord (py-cord), vector DB (LanceDB), actuation (pywinauto). No FFI.
+- **Clean dependency direction.** Lysica depends on bridge (via MCP/HTTP). Bridge knows
+  nothing about Lysica. No circular dependencies.
+- **Unified process.** Discord, avatar, vision, actuation are subsystems within Lysica's
+  process (or managed sub-processes), not independent daemons. Lysica owns her I/O.
+
 **Single-authoritative rule:** One Lysica instance at a time. No federated memory
-(out of scope — that's its own research program). The bridge she lives on is the
-authority.
+(out of scope — that's its own research program).
 
 ### Persistence Stack
 
+All persistence is owned by Lysica's process, stored locally:
+
 ```
-~/.method/lysica/
+~/.lysica/
   persona.md                  Author-controlled identity definition (locked)
-  memory/
-    episodic.jsonl            Time-ordered episodes, FIFO with capacity
-    semantic.jsonl            Generalized patterns, ACT-R activation decay
-    procedural.jsonl          Learned tool-use patterns, compiled strategies
-    autobiographical.jsonl    Self-referential memories (new — see Part II §4)
-  sessions/
-    {id}/cognitive-state.json Workspace + module state checkpoint
-  strategies/
-    *.yaml                    Autonomous behavior definitions
+  config.yaml                 Token budget, model routing, module enables
+  db/
+    episodic.db               SQLite — time-ordered episodes, relationships, prefs
+    semantic.lance/            LanceDB — vector embeddings for semantic memory
+    autobiographical.db       SQLite — hierarchical narrative (periods → events → episodes)
+  checkpoints/
+    cognitive-state.json      Workspace + module state (saved after each cycle)
+    module-states/            Per-module serialized state (personality rules, affect, etc.)
+  schedules/
+    morning-briefing.yaml     Cron-like schedule definitions
+    memory-consolidation.yaml
+    self-reflection.yaml
   audit/
     actuation.jsonl           Every computer action, timestamped
-  config.yaml                 Token budget, model routing, module enables
+    token-usage.jsonl         Per-cycle cost tracking
+  models/
+    *.onnx                    Compiled SLMs (affect, personality, preference)
 ```
 
-**Persistence contract:** After every prompt completion, the bridge serializes:
+**Persistence contract:** After every cognitive cycle, Lysica serializes:
 1. Workspace entries (content, salience, source, partition, timestamp)
-2. Module state for each active module (monitor flags, reasoner-actor state)
+2. Module state for each active module (monitor flags, reasoner-actor state,
+   affect point, personality rules, preference graph)
 3. Cumulative cost tracking (input/output tokens, USD)
-4. Memory stores (episodic + semantic + procedural + autobiographical)
+4. Memory writes flushed to SQLite/LanceDB
 
-On restart: spawner loads checkpoint, runs consolidation pass, resumes.
+On restart: load checkpoint, run consolidation pass (episodic → semantic extraction),
+verify persona anchor integrity, resume daemon loop.
 
 ### Token Budget Architecture
 
@@ -560,9 +639,13 @@ guardrails.
 
 ## Part V: I/O Channels
 
+All I/O subsystems live within Lysica's Python process (or as managed sub-processes).
+They are not independent daemons — Lysica owns her senses.
+
 ### Voice (Discord)
 
-**Architecture:** Separate Python daemon communicating with bridge via HTTP/WS.
+**Architecture:** Subsystem within Lysica's runtime. Discord voice → STT → cognitive
+cycle → TTS → Discord voice, all in-process.
 
 ```
 Discord voice channel
@@ -570,11 +653,11 @@ Discord voice channel
   → Silero VAD (speech boundary detection)
   → openWakeWord ("Lysica" wake word, custom-trained)
   → faster-whisper (distil-large-v3, RTX 4090 CUDA, ~200x RTFx)
-  → POST bridge /sessions/lysica/prompt { text, source: "discord_voice", channel_id }
-  → Cognitive cycle runs
-  → Response tokens streamed via WS
+  → Lysica cognitive cycle (pacta-py, in-process)
+  → Response tokens streamed through AffectModule → emotion tags
   → XTTS-v2 (local, emotion-conditioned) or ElevenLabs Flash v2.5 (cloud)
   → py-cord VoiceClient.play(audio)
+  → Avatar expression update (parallel, via VTS WebSocket)
 ```
 
 **Turn-taking:** Half-duplex with barge-in. Silero VAD runs during TTS playback;
@@ -601,8 +684,8 @@ servers (credential/identity separation).
   - `InjectParameterDataRequest` — raw blend shape control
   - `HotkeyTriggerRequest` — one-shot animations
 - **Lipsync:** TTS audio → VB-CABLE virtual device → VTS mic input (automatic)
-- **Expression pipeline:** `AffectModule.step() → ExpressionDirective → AvatarConnector
-  → VTS WS`
+- **Expression pipeline:** `AffectModule.step() → ExpressionDirective → VTS WebSocket`
+  (in-process, no bridge involvement)
 
 **Alternatives considered:**
 - **Warudo + VRM (3D):** More flexible, better for future VR/AR. Higher setup cost.
@@ -652,8 +735,9 @@ run_approved_script(name: string)        // pre-approved PowerShell scripts only
 **Destructive actions** (delete, move, send message) require human-in-loop approval
 via bridge UI confirmation dialog.
 
-**Implementation:** pywinauto + ahk (Python) wrapped in an MCP server. The bridge
-registers the MCP tools at Lysica session creation time.
+**Implementation:** pywinauto + ahk (Python) as a subsystem within Lysica's runtime.
+Lysica exposes her actuation capabilities as an MCP server that other agents can
+consume — but she controls the allowlist and audit trail internally.
 
 **Alternatives considered:**
 - **Open Interpreter:** Arbitrary code execution — security hazard for always-on agent.
@@ -674,57 +758,86 @@ Prioritization deferred — listed here for co-design session with Lysica.
 | F2 | **Personality erosion** — learned rules gradually override author baseline | HIGH | PersonalityModule `personality-drift` μ signal | Immutable author rules + drift threshold alert |
 | F3 | **Token blowup** — always-on agent exceeds budget silently | HIGH | Daily budget gate in Monitor | Hard cap in config.yaml, T0/T1 routing for routine tasks |
 | F4 | **Wrong action** — actuation does something destructive | CRITICAL | Audit log + human-in-loop gate for destructive ops | Named capability allowlist, no arbitrary execution |
-| F5 | **Context amnesia** — bridge restart loses cognitive state | MEDIUM | Checkpoint verification on startup | Serialize after every prompt, consolidation on restore |
+| F5 | **Context amnesia** — process restart loses cognitive state | MEDIUM | Checkpoint verification on startup | Serialize after every cycle, consolidation on restore |
 | F6 | **Affect loop** — emotional state self-reinforces into extreme valence | MEDIUM | Affect homeostasis (decay toward neutral) + Monitor dampen | Inertia model + hard bounds on valence/arousal |
 | F7 | **Social misfire** — inappropriate register in public channel | MEDIUM | SocialModule `social-misstep` μ signal | Conservative defaults for unknown contexts |
 | F8 | **Workspace swelling** — long-running session accumulates stale entries | MEDIUM | Workspace saturation warning in MonitorV2 (already exists) | PriorityAttend eviction + consolidation strategy |
 | F9 | **SLM confidence miscalibration** — compiled SLM is wrong but confident | MEDIUM | Confidence-gated escalation (RFC 002 pattern) | Periodic A/B validation against frontier LLM |
 | F10 | **Narrative incoherence** — autobiography contradicts recent behavior | LOW | SelfModelModule `narrative-incoherence` μ signal | Weekly self-reflection reconciliation |
 | F11 | **Substrate discontinuity** — model upgrade changes reasoning character | LOW | Calibration protocol (S4) | Observable but not fully solvable; log and adapt |
-| F12 | **Concurrent access** — multiple bridge instances share memory files | LOW (by design) | Single-authoritative-instance rule | Startup dedup (Genesis pattern); file locking for safety |
+| F12 | **Concurrent access** — multiple Lysica instances share memory files | LOW (by design) | Single-authoritative-instance rule | PID lockfile on startup; file locking for safety |
+| F13 | **pacta-py drift** — Python algebra diverges from TypeScript implementation | MEDIUM | Shared fixture test suite (P1) | CI runs both implementations against same fixtures |
 
 ---
 
 ## Part VII: Phase Plan & Experimentation
 
-### Phase 0 — Foundation + Co-Design (2 weeks)
+### Phase 0 — Runtime + pacta-py + Co-Design (3 weeks)
 
-**Goal:** Persistent cognitive session that survives restarts + co-design session.
+**Goal:** Independent Python runtime with cognitive engine, persistent memory,
+and co-design session.
 
 **Deliverables:**
-1. `packages/bridge/src/domains/lysica/` — fork Genesis spawner pattern
-   - Startup dedup, `persistent=true`, cognitive-agent mode
-   - Loads checkpoint from `~/.method/lysica/sessions/`
-2. Memory v3 persistence — JSONL serialize/deserialize for dual-store
-   - `~/.method/lysica/memory/{episodic,semantic}.jsonl`
-   - Load on session restore, save after each prompt
-3. Session checkpoint — workspace + module state + costs
-4. `persona.md` — initial personality definition (minimal, will be extended in co-design)
-5. `S-MORNING-BRIEFING` strategy (schedule trigger, 8am daily)
-6. **Co-design session:** PO + running Lysica instance define:
+1. **`pv-lysica/` repo scaffolding** — Python project (uv/pyproject.toml)
+   ```
+   pv-lysica/
+     src/lysica/
+       core/               pacta-py algebra (module, workspace, operators)
+       modules/            Core modules (reasoner, monitor, observer, attend, evaluator)
+       identity/           Identity modules (personality, affect — stubs initially)
+       memory/             LanceDB + SQLite persistence layer
+       daemon/             Heartbeat loop, scheduler, bridge watcher
+       io/                 Discord, avatar, vision, actuation (stubs initially)
+       config/             Config loading, budget enforcement
+     tests/
+       fixtures/           Shared YAML fixtures (also consumed by TS pacta)
+     persona.md            Author-controlled identity anchor
+     CLAUDE.md             Project-level agent instructions
+   ```
+2. **pacta-py core** — Python port of RFC 001 algebra:
+   - Module contract (`step(input, state, control) → (output, state', monitoring)`)
+   - Workspace with typed partitions, salience scoring, eviction policies
+   - 4 composition operators (sequential, parallel, competitive, hierarchical)
+   - Monitoring signal types, control directive types
+3. **Core modules ported** — ReasonerActor (anthropic SDK), MonitorV2 (rule-based),
+   Observer, PriorityAttend, Evaluator
+4. **Memory persistence** — LanceDB for semantic vectors, SQLite for episodic log
+   - Dual-store with ACT-R activation retrieval
+   - Checkpoint/restore for workspace + module state after each cycle
+5. **Daemon loop** — heartbeat (10-30s tick), scheduled actions, PID lockfile
+6. **Shared test fixtures** — `tests/fixtures/` YAML scenarios, CI runs against
+   both TS and Python implementations
+7. **`persona.md`** — initial personality definition (minimal, extended in co-design)
+8. **Bridge MCP client** — connect to running bridge for methodology, projects, events
+9. **Co-design session:** PO + running Lysica instance define:
    - Mission surface (what does she do when you're not there?)
    - Communication norms (when to speak, when to stay quiet)
    - Autonomy boundaries (what can she do without asking?)
    - Discord server setup and channel purposes
    - Avatar visual identity preferences
 
-**Gate:** Lysica restarts cleanly after bridge kill, remembers previous conversation,
-delivers morning briefing.
+**Gate:** Lysica starts as independent process, runs cognitive cycles via pacta-py,
+persists memory to disk, restarts cleanly with memory intact, connects to bridge
+via MCP. Shared fixtures pass on both TS and Python implementations.
 
 ### Phase 1 — Memory Consolidation + Autonomy (3 weeks)
 
-**Goal:** Long-term memory that improves over time + autonomous strategy execution.
+**Goal:** Long-term memory that improves over time + autonomous scheduled actions.
 
 **Deliverables:**
-1. `S-MEMORY-CONSOLIDATION` strategy (schedule, 3am) — sleep cycle
+1. Memory consolidation sleep cycle (scheduled, 3am):
    - Episodic → semantic extraction (Consolidator module)
    - Memory integrity scan (contradiction detection)
    - Forgetting-curve decay on unaccessed entries
-2. `S-WORKSPACE-RESONANCE` strategy (file_watch on `docs/wb-*.md`)
-3. `S-COMMIT-REVIEW` strategy (git_commit trigger)
-4. Token budget enforcement — daily cap in Monitor, tiered routing via Router module
-5. PersonalityModule v1 — CAPS-style if-then rules, immutable author baseline
-6. PreferenceModule v1 — learned tool/style preferences
+2. Scheduled actions via daemon loop:
+   - Morning briefing (8am, reads git logs + objectives)
+   - Workspace resonance (file watch on whiteboards)
+   - Commit review (watches repos via bridge event subscription)
+3. Token budget enforcement — daily cap in Monitor, tiered routing via Router
+4. PersonalityModule v1 — CAPS-style if-then rules, immutable author baseline
+5. PreferenceModule v1 — learned tool/style preferences
+6. Bridge strategy triggering — Lysica can invoke bridge strategies via HTTP
+   for tasks that need the bridge's session/project infrastructure
 
 **Experiments:**
 - **E-L1:** Memory persistence over 7 days. Metric: fact retention accuracy at day 7
@@ -741,11 +854,11 @@ daily cap.
 **Goal:** Discord voice I/O with social awareness.
 
 **Deliverables:**
-1. Discord daemon (Python) — py-cord + voice recv/send
+1. Discord I/O subsystem in Lysica runtime — py-cord + voice recv/send
    - Silero VAD + openWakeWord ("Lysica")
    - faster-whisper (distil-large-v3, RTX 4090)
    - XTTS-v2 local TTS (emotion-conditioned)
-2. `VoiceConnector` event bus sink — bridge ↔ Discord daemon WS
+2. Bridge event subscription — Lysica watches bridge events via WS for awareness
 3. AffectModule v2 — continuous valence/arousal + ExpressionDirective output
 4. SocialModule v1 — register classification (private/public/intimate)
 5. Discord server setup — Lysica's own server, PO's server integration
@@ -766,14 +879,13 @@ appropriately between private and public channels.
 **Goal:** VTuber avatar driven by cognitive state.
 
 **Deliverables:**
-1. Avatar Daemon — VTube Studio WS integration
-   - Expression activation from AffectModule
+1. Avatar subsystem in Lysica runtime — VTube Studio WS integration
+   - Expression activation from AffectModule (in-process)
    - Lipsync via VB-CABLE → VTS mic input
    - Idle animations (breathing, blinking, gaze wander)
-2. `AvatarConnector` event bus sink
 3. Live2D avatar commission/selection
 4. Inline `<emotion>` tag parser for streaming output
-5. VisionDaemon v1 — on-demand screen capture → vision model
+5. Vision subsystem v1 — on-demand screen capture → vision model
 
 **Experiments:**
 - **E-L6:** Expression-affect alignment. Metric: evaluators watch avatar during
@@ -856,14 +968,14 @@ Beyond Phase 5, the following directions are available but not planned:
 
 | Component | Relationship |
 |-----------|-------------|
-| RFC 001 (Cognitive Composition) | Foundation — Lysica modules follow M=(I,O,S,μ,κ) contract |
+| RFC 001 (Cognitive Composition) | Foundation — pacta-py reimplements the M=(I,O,S,μ,κ) algebra in Python |
 | RFC 002 (SLM Compilation) | Compilation pipeline — new modules feed the bootstrap flywheel |
-| RFC 003 (Workspace Partitions) | Persona anchor uses NoEviction constraint partition |
+| RFC 003 (Workspace Partitions) | Persona anchor uses NoEviction constraint partition (ported to pacta-py) |
 | RFC 005 (Autonomous Compilation) | Lysica's accumulated experience → training data → autonomous SLM creation |
-| RFC 006 (Anticipatory Monitoring) | Phase-aware evaluation applies to Lysica's autonomous strategies |
-| PRD 025 (Genesis) | Fork pattern for persistent daemon |
-| PRD 036 (Memory Architecture) | CLS dual-store extended with autobiographical tier |
-| PRD 042 (Bridge Integration) | Cognitive session infrastructure Lysica runs on |
+| RFC 006 (Anticipatory Monitoring) | Phase-aware evaluation applies to Lysica's scheduled actions |
+| `@method/pacta` (TypeScript) | Parity target — shared fixtures ensure algebra consistency across languages |
+| `@method/bridge` | Infrastructure consumed via MCP + WS + HTTP. Bridge is unmodified. |
+| PRD 036 (Memory Architecture) | CLS dual-store design ported to LanceDB + SQLite |
 | PRD 049 (KPI Checker SLM) | Bootstrapped SLM methodology applies to new Lysica modules |
 
 ### External
@@ -875,7 +987,7 @@ Beyond Phase 5, the following directions are available but not planned:
 | MemGPT / Letta | Memory architecture reference (context paging, self-editing memory) |
 | A-MEM | Dynamic memory linking, Zettelkasten-style — consider for NarrativeMemory |
 | Generative Agents (Stanford) | Reflection mechanism for memory consolidation |
-| ext-paperclip/ | Heartbeat scheduler + atomic execution pattern for autonomous daemon |
+| ext-paperclip/ | Heartbeat scheduler + atomic execution pattern for daemon loop |
 | pv-franco-twin/ | Existing local MCP + KPI tracking — may overlap or merge with Lysica |
 
 ### pv-franco-twin Overlap
@@ -886,48 +998,65 @@ the twin's capabilities (memory, actuation, tracking) but adds cognitive archite
 embodiment, voice, personality, and affect. The twin project should be evaluated for
 merger or clear scope separation during Phase 0 co-design.
 
+### pacta-py as Independent Package
+
+`pacta-py` is the Python implementation of RFC 001's cognitive algebra. It lives within
+`pv-lysica/` initially but is designed for extraction as a standalone package
+(`VledicFranco/pacta-py`) once stabilized. This enables:
+- Other Python agents to use the cognitive algebra
+- SLM experiments to run natively in Python (where the ML tooling lives)
+- Eventual parity with `@method/pacta` as two implementations of one specification
+
 ---
 
 ## Appendix A: Cognitive Module Summary
 
-| Module | Status | Layer | SLM Priority | Cognitive Science Basis |
-|--------|--------|-------|-------------|----------------------|
-| ReasonerActorV2 | Exists | Core | — | SOAR impasse-subgoal |
-| MonitorV2 | Exists | Core | Already compiled | Nelson & Narens monitoring |
-| Observer | Exists | Core | Already compiled | ACT-R buffer system |
-| PriorityAttend | Exists | Core | — | GWT salience competition |
-| Evaluator | Exists | Core | Already compiled | Carver-Scheier control |
-| Planner | Exists | Core | — | SOAR goal decomposition |
-| Reflector | Exists | Core | — | SOAR chunking/learning |
-| Memory v3 | Exists | Core | — | CLS (McClelland et al.) |
-| Verifier | Exists | Core | P2 (PRD 049) | Cybernetic feedback loop |
-| Router | Exists | Meta | P2 (PRD 050) | Task-aware architecture selection |
-| Affect (basic) | Exists | Enrichment | — | Russell circumplex |
-| Curiosity | Exists | Enrichment | — | Berlyne (1960) curiosity drive |
-| **PersonalityModule** | **Proposed** | **Identity** | **P1** | **Mischel & Shoda CAPS** |
-| **AffectModule v2** | **Proposed** | **Identity** | **P0** | **Scherer CPM + Fredrickson** |
-| **SelfModelModule** | **Proposed** | **Identity** | **P3** | **Damasio, Conway SMS, Dennett** |
-| **SocialModule** | **Proposed** | **Identity** | **P2** | **Goffman, Brown & Levinson** |
-| **NarrativeMemory** | **Proposed** | **Identity** | **P3** | **Conway (2005) hierarchical AM** |
-| **PreferenceModule** | **Proposed** | **Identity** | **P1** | **Schwartz values, SDT** |
+| Module | TS Status | Python Status | Layer | SLM Priority | Cognitive Science Basis |
+|--------|-----------|---------------|-------|-------------|----------------------|
+| ReasonerActorV2 | Exists | **Port (Phase 0)** | Core | — | SOAR impasse-subgoal |
+| MonitorV2 | Exists | **Port (Phase 0)** | Core | Already compiled | Nelson & Narens monitoring |
+| Observer | Exists | **Port (Phase 0)** | Core | Already compiled | ACT-R buffer system |
+| PriorityAttend | Exists | **Port (Phase 0)** | Core | — | GWT salience competition |
+| Evaluator | Exists | **Port (Phase 0)** | Core | Already compiled | Carver-Scheier control |
+| Planner | Exists | Port (Phase 2) | Core | — | SOAR goal decomposition |
+| Reflector | Exists | Port (Phase 2) | Core | — | SOAR chunking/learning |
+| Memory v3 | Exists | **Replace (LanceDB+SQLite)** | Core | — | CLS (McClelland et al.) |
+| Verifier | Exists | Port (Phase 2) | Core | P2 (PRD 049) | Cybernetic feedback loop |
+| Router | Exists | Port (Phase 2) | Meta | P2 (PRD 050) | Task-aware architecture selection |
+| Affect (basic) | Exists | Superseded by v2 | Enrichment | — | Russell circumplex |
+| Curiosity | Exists | Port (Phase 5+) | Enrichment | — | Berlyne (1960) curiosity drive |
+| **PersonalityModule** | — | **Python-first (Phase 1)** | **Identity** | **P1** | **Mischel & Shoda CAPS** |
+| **AffectModule v2** | — | **Python-first (Phase 2)** | **Identity** | **P0** | **Scherer CPM + Fredrickson** |
+| **SelfModelModule** | — | **Python-first (Phase 5)** | **Identity** | **P3** | **Damasio, Conway SMS, Dennett** |
+| **SocialModule** | — | **Python-first (Phase 2)** | **Identity** | **P2** | **Goffman, Brown & Levinson** |
+| **NarrativeMemory** | — | **Python-first (Phase 5)** | **Identity** | **P3** | **Conway (2005) hierarchical AM** |
+| **PreferenceModule** | — | **Python-first (Phase 1)** | **Identity** | **P1** | **Schwartz values, SDT** |
 
 ## Appendix B: Technology Stack Reference
 
 | Component | Primary Choice | Alternative | Notes |
 |-----------|---------------|-------------|-------|
+| **Runtime** | Python 3.12+ (uv) | — | Single language for entire Lysica stack |
+| **Cognitive engine** | pacta-py (in-repo) | — | RFC 001 algebra ported to Python |
+| **LLM SDK** | anthropic (Python) | litellm | Direct Anthropic SDK for Claude |
+| **Package manager** | uv | poetry | uv for speed; poetry as fallback |
+| **Bridge access** | MCP client + Playwright MCP | HTTP direct | MCP for methodology; Playwright for dashboard/web |
 | Avatar software | VTube Studio ($15, Steam) | Warudo (VRM/3D) | VTS more mature for programmatic control |
 | Avatar format | Live2D | VRM | Live2D better expressiveness; VRM better 3D flexibility |
+| VTS client lib | pyvts (Python) | vtubestudio (npm) | Python since runtime is Python |
 | TTS | XTTS-v2 (local) | ElevenLabs Flash v2.5 (cloud) | Local for privacy/cost; cloud for quality |
 | STT | faster-whisper distil-large-v3 | Deepgram Nova-3 (cloud) | Local on RTX 4090, ~200x RTFx |
 | VAD | Silero VAD | WebRTC VAD | Silero significantly better accuracy |
 | Wake word | openWakeWord | Porcupine | Open-source vs commercial |
-| Discord lib | py-cord (Python) | discord.js (Node) | Python wins for ML ecosystem |
+| Discord lib | py-cord (Python) | — | Python-only stack now |
 | Voice receive | py-cord built-in | discord-ext-voice-recv | py-cord has first-class recording API |
 | Lipsync | VB-CABLE → VTS mic | Viseme injection via WS | Cable simpler; injection higher fidelity |
 | Vector DB | LanceDB (embedded) | ChromaDB | Embedded = no server process |
+| Relational DB | SQLite | — | Episodic log, relationships, preferences |
 | Actuation | pywinauto + ahk | Open Interpreter | Named capabilities vs arbitrary exec |
 | Vision | Screen capture + Claude vision | OBS + RTMP | On-demand vs continuous |
-| VTS client lib | vtubestudio (npm, Hawkbat) | pyvts (Python) | Depends on daemon language choice |
+| Test fixtures | YAML (shared with TS pacta) | — | Language-agnostic parity enforcement |
+| SLM inference | ONNX Runtime | — | Local, <10ms, Python-native |
 
 ## Appendix C: Reference Bibliography
 
