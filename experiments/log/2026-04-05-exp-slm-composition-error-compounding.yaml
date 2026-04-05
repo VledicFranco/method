@@ -1,0 +1,91 @@
+run_id: phase-3-error-compounding-stress
+date: 2026-04-05
+experiment: exp-slm-composition
+phase: phase-3-composition-runtime
+condition: stress-test-with-noisy-slm
+
+hypothesis: >
+  RFC 005 Part VI predicts that validation gates with retry bound error
+  compounding from multiplicative (a^N) to linear. Specifically:
+    P(pipeline success with retry k) = 1 - p^(k+1)
+  where p = per-stage failure rate.
+
+method: >
+  Wrap B-1 v1 predictions (100% clean baseline) with a noise injector
+  that corrupts grammar output at controllable rate p. Run gated pipeline
+  (compile gate + retry(k=2)) and ungated (single sample, no retry).
+  Compare success rates to theoretical predictions.
+
+corruption_strategies: >
+  5 strategies that guaranteed-break Peggy compile:
+  - Append invalid syntax
+  - Prepend invalid syntax
+  - Unclosed string literal
+  - Garbage injected mid-grammar
+  - Remove all rule definitions
+  Verified: 0/50 grammars compile after any corruption.
+
+pipeline:
+  stages:
+    - "SLM stage (noisy B-1 predictions)"
+    - "PeggyCompileGate with maxRetries=2"
+  test_set: 50 B-1 holdout predictions
+  trials: 5
+  total_runs: 250
+
+results:
+  p_0.10:
+    ungated_predicted: 0.900
+    ungated_actual: 0.908
+    gated_predicted: 0.999
+    gated_actual: 1.000
+    lift_pp: 9.2
+    retries: 22
+    escalations: 0
+
+  p_0.25:
+    ungated_predicted: 0.750
+    ungated_actual: 0.716
+    gated_predicted: 0.984
+    gated_actual: 0.992
+    lift_pp: 27.6
+    retries: 84
+    escalations: 2
+
+  p_0.40:
+    ungated_predicted: 0.600
+    ungated_actual: 0.604
+    gated_predicted: 0.936
+    gated_actual: 0.932
+    lift_pp: 32.8
+    retries: 155
+    escalations: 17
+
+bug_discovered:
+  location: pipeline.ts executeWithRetry
+  description: >
+    When a gate failed, the retry passed the failed stage's OUTPUT as
+    input to re-execute the stage. For SLMs using input-based lookups
+    (JsonlInference), this caused retries to get garbage.
+  fix: >
+    Pipeline engine now tracks each stage's ORIGINAL input. When retry
+    is triggered, the stage re-executes with that original input while
+    the gate validates the new output.
+
+findings:
+  - "F1: RFC 005 error compounding theory validated within 1-3pp of prediction"
+  - "F2: At p=0.4 noise (60% per-stage accuracy), gates provide +32.8pp lift"
+  - "F3: Retry mechanism collapses error bound from a^N to 1 - p^(k+1)"
+  - "F4: Found and fixed pipeline bug — retries previously passed wrong input to stages"
+  - "F5: Gate effectiveness grows with noise rate (more to catch = more lift)"
+
+implications:
+  - "Validation gates provide real, measurable error protection at realistic noise rates"
+  - "Deterministic gates (f=0) make pipeline success rate nearly independent of SLM accuracy"
+  - "RFC 005's theoretical framework is predictive, not just descriptive"
+  - "Retry budget k matters: lift scales as (1 - p^(k+1)) — 2 retries is a good default"
+
+next_steps:
+  - "Test multi-stage pipelines (N>=3) to validate compounding at depth"
+  - "Test with classifier gates (B-2) to see how non-zero false-positive rates affect bounds"
+  - "Measure latency cost of retries — at what p does retry overhead exceed benefit?"
