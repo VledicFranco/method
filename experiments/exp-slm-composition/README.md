@@ -43,15 +43,16 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] B-1 v2 novel TS: **96.7%** (29/30 full pipeline, up from 76.7%)
 - [x] Language generalization: **100%** (5/5 JSON Schema → grammar, up from 20%)
 
-### Phase 2 — Bootstrap Pipeline (IN PROGRESS)
+### Phase 2 — Bootstrap Pipeline (IN PROGRESS — flywheel validated)
 
 - [x] B-2: Causal Validator corpus generated (8.5K pairs, 47/53 valid/invalid split)
-- [ ] B-2: Training on chobits (5000 steps, running)
+- [ ] B-2: Training on chobits (5000 steps, running — 93% accuracy at step 3100)
 - [ ] B-2: Gate B-G1 evaluation (precision >= 90% on known-bad pairs)
+- [x] **KPI Checker SLM bootstrapped** (PRD 049): corpus 3K pairs, Check DSL grammar, 100% validation
+- [x] **Gate B-G2 (partial): SLM creation time ~2 hours** (45 min human + GPU time, vs ~14 hours manual)
 - [ ] B-3: Trace Distiller SLM
 - [ ] Wire B-1 + B-2 + B-3 into automated pipeline
-- [ ] Measure SLM creation time (Gate B-G2: target < 2 days)
-- [ ] Create >= 2 new SLMs using the bootstrap pipeline
+- [ ] Create >= 2 new SLMs using the bootstrap pipeline (KPI Checker = first)
 - [ ] Compare bootstrapped SLMs to hand-crafted baseline
 
 ### Phase 3 — Composition Runtime (DONE — Gates C-G1 + C-G2 PASS)
