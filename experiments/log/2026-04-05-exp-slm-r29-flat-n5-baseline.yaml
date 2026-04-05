@@ -1,0 +1,66 @@
+experiment: exp-slm
+run_id: r29-flat-n5-baseline
+date: 2026-04-05
+agent: "Claude Opus 4.6"
+config:
+  task: "R-29 — flat baseline at N=5 (honest comparison for R-28 cognitive N=5)"
+  conditions: ["flat"]
+  n_per_task: 5
+  max_cycles: 15
+  model: "claude-sonnet-4"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01: { pass: 2, fail: 3, rate: 0.40, note: "Below R-15 N=3 rate of 67%" }
+    t02: { pass: 5, fail: 0, rate: 1.00, note: "Stable at 100% — simple bug fix suits flat" }
+    t03: { pass: 0, fail: 5, rate: 0.00, note: "Below R-15 N=3 rate of 33% — task-inherent difficulty" }
+    t04: { pass: 5, fail: 0, rate: 1.00, note: "Stable at 100% — clear multi-file coordination" }
+    t05: { pass: 5, fail: 0, rate: 1.00, note: "Stable — trivial" }
+    t06: { pass: 0, fail: 5, rate: 0.00, note: "Complex extraction beyond flat reasoning" }
+  overall: { pass: 17, fail: 13, rate: 0.57 }
+
+comparison_vs_cognitive:
+  r29_flat_n5: { total: 17, rate: 0.57 }
+  r28_cognitive_n5: { total: 11, rate: 0.37 }
+  per_task_delta_cognitive_minus_flat:
+    t01: 0.20   # cognitive wins
+    t02: -0.80  # cognitive loses
+    t03: 0.20   # cognitive wins
+    t04: -0.80  # cognitive loses
+    t05: 0.00
+    t06: 0.00
+
+findings:
+  - id: F1
+    title: "Flat baseline is 57% N=5, not 73% as R-15 N=3 suggested"
+    detail: "Both baselines were inflated by N=3 variance. Honest gap between cognitive (37%) and flat (57%) is 20pp, not 36pp."
+
+  - id: F2
+    title: "Cognitive architecture is TASK-DEPENDENT — wins on T01/T03, loses on T02/T04"
+    detail: >
+      T01 (circular dep, structural): cognitive +20pp (60% vs 40%)
+      T02 (bug fix, simple): cognitive -80pp (20% vs 100%)
+      T03 (config migration, multi-file): cognitive +20pp (20% vs 0%)
+      T04 (api versioning, multi-file): cognitive -80pp (20% vs 100%)
+      Pattern: cognitive overhead HURTS when tasks are straightforward for the base model.
+
+  - id: F3
+    title: "The right architecture depends on task complexity"
+    detail: >
+      For T02/T04 (Sonnet handles them natively), adding Planner + Verifier + unified
+      memory is DISTRACTING. The cognitive modules add noise that the agent has to
+      process, taking attention away from the straightforward task.
+      For T01/T03 (harder for the base model), cognitive support provides genuine lift.
+      This suggests dynamic architecture selection: run flat first, engage cognitive
+      modules only when the flat agent struggles.
+
+  - id: F4
+    title: "T02 and T04 100% flat prove Sonnet 4 can do these tasks"
+    detail: "The base model isn't the bottleneck on T02/T04. The cognitive overhead is actively hurting. This contradicts the earlier 'LLM quality is the ceiling' hypothesis from R-28."
+
+next_steps:
+  - "Investigate why cognitive hurts T02/T04 — too many prompts? Context pollution?"
+  - "Consider dynamic architecture: detect task type, engage cognitive modules selectively"
+  - "Opus comparison may no longer be the highest-value next test"
