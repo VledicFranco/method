@@ -31,6 +31,8 @@ data/
 .method/cluster-node-id
 .method/events.jsonl
 .method/events-cursors.json
+.method/sessions/build-*/
+test-fixtures/bridge-test/.method/
 
 # agent-generated junk (review artifacts, logs, debug output)
 *.stackdump
