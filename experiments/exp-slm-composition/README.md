@@ -43,9 +43,11 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] B-1 v2 novel TS: **96.7%** (29/30 full pipeline, up from 76.7%)
 - [x] Language generalization: **100%** (5/5 JSON Schema → grammar, up from 20%)
 
-### Phase 2 — Bootstrap Pipeline
+### Phase 2 — Bootstrap Pipeline (IN PROGRESS)
 
-- [ ] B-2: Causal Validator SLM (precision >= 90% on known-bad pairs)
+- [x] B-2: Causal Validator corpus generated (8.5K pairs, 47/53 valid/invalid split)
+- [ ] B-2: Training on chobits (5000 steps, running)
+- [ ] B-2: Gate B-G1 evaluation (precision >= 90% on known-bad pairs)
 - [ ] B-3: Trace Distiller SLM
 - [ ] Wire B-1 + B-2 + B-3 into automated pipeline
 - [ ] Measure SLM creation time (Gate B-G2: target < 2 days)
@@ -60,8 +62,10 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] Gate C-G1: 2-stage CLM e2e accuracy = **100%** (50/50 holdout + 5/5 real, target >= 85%)
 - [x] Gate C-G2: gate effectiveness = **100%** (all corrupted grammars caught, target >= 50%)
 - [x] 3-stage CLM (B-1 + downstream SLM): **100%** (50/50) — no depth ceiling at N=3
+- [x] Competitive composition operator (`A ⊕ B`): parallel candidates + selector gate
 - [x] Ollama inference adapter + frontier escalation (qwen3-coder:30b fallback)
 - [x] Novel input evaluation: B-1 v2 = **96.7%** TS (29/30), **100%** JSON Schema (5/5)
+- [x] B-1 v3 corpus: 4K pairs with Protobuf + Python dataclass formats (training pending)
 
 ### Phase 4 — Autonomous Compilation Loop
 
