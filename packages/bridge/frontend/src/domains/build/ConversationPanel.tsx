@@ -11,14 +11,16 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { api } from '@/shared/lib/api';
 import { ChatMessage } from './ChatMessage';
 import { GateActions } from './GateActions';
 import { SkillButtons } from './SkillButtons';
 import { MessageThread } from './MessageThread';
 import { useBuildEvents } from './useBuildEvents';
 import { useWebSocket } from '@/shared/websocket/useWebSocket';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReplyContext } from './MessageThread';
-import type { BuildSummary, ConversationMessage, SkillType } from './types';
+import type { BuildSummary, ConversationMessage, SkillType, GateType } from './types';
 
 // ── Tab dot color ──
 
@@ -58,6 +60,8 @@ export function ConversationPanel({
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const queryClient = useQueryClient();
+
   // WebSocket connection state for live indicator
   const { connected: wsConnected } = useWebSocket('builds');
 
@@ -70,14 +74,30 @@ export function ConversationPanel({
     [builds, selectedBuildId],
   );
 
-  // Merge: mock/API messages + live WebSocket messages + locally-typed messages.
+  // Fetch conversation history from backend (§1.6)
+  const { data: apiMessages } = useQuery({
+    queryKey: ['build-conversation', selectedBuildId],
+    queryFn: async ({ signal }) => {
+      if (!selectedBuildId) return [];
+      const res = await api.get<{ messages: ConversationMessage[] }>(
+        `/api/builds/${selectedBuildId}/conversation`,
+        signal,
+      );
+      return res.messages;
+    },
+    enabled: !!selectedBuildId,
+    retry: 1,
+  });
+
+  // Merge: API messages + mock/embedded messages + live WebSocket messages + locally-typed messages.
   // Dedup by message ID to prevent duplicates if the same event appears in both
   // the API response and the WebSocket stream.
   const messages = useMemo(() => {
     if (!selectedBuild) return [];
-    const base = selectedBuild.conversation ?? [];
+    const fetched = apiMessages ?? [];
+    const embedded = selectedBuild.conversation ?? [];
     const local = localMessages[selectedBuild.id] ?? [];
-    const all = [...base, ...liveMessages, ...local];
+    const all = [...fetched, ...embedded, ...liveMessages, ...local];
 
     // Deduplicate by id (first occurrence wins, preserving order)
     const seen = new Set<string>();
@@ -123,24 +143,33 @@ export function ConversationPanel({
   const handleSend = useCallback(() => {
     if (!inputText.trim() || !selectedBuild) return;
 
+    const content = inputText.trim();
+    const replyTo = replyContext?.messageId;
+
+    // Optimistic local update for immediate UX
     const msg: ConversationMessage = {
       id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       sender: 'human',
-      content: inputText.trim(),
+      content,
       timestamp: new Date().toLocaleTimeString('en-US', {
         hour12: false,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
       }),
-      replyTo: replyContext?.messageId,
+      replyTo,
     };
 
     addLocalMessage(selectedBuild.id, msg);
     setInputText('');
     setReplyContext(null);
     inputRef.current?.focus();
-  }, [inputText, selectedBuild, replyContext, addLocalMessage]);
+
+    // POST to backend — WebSocket event will confirm the message round-trip
+    void api.post(`/api/builds/${selectedBuild.id}/message`, { content, replyTo }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['build-conversation', selectedBuild.id] });
+    });
+  }, [inputText, selectedBuild, replyContext, addLocalMessage, queryClient]);
 
   const handleReply = useCallback(
     (messageId: string) => {
@@ -160,11 +189,30 @@ export function ConversationPanel({
     (action: string) => {
       if (!selectedBuild) return;
 
-      // Mock: add a system message indicating the action
+      const activeGate: GateType | undefined = liveGate ?? selectedBuild.activeGate;
+      if (!activeGate) return;
+
+      // Map action labels to gate decision values
+      const decisionMap: Record<string, 'approve' | 'reject' | 'adjust'> = {
+        'Approve': 'approve',
+        'Approve Spec': 'approve',
+        'Approve Design': 'approve',
+        'Approve Plan': 'approve',
+        'Approve with Comments': 'approve',
+        'Request Changes': 'adjust',
+        'Retry with Direction': 'adjust',
+        'Fix Manually': 'reject',
+        'Abort': 'reject',
+      };
+
+      const decision = decisionMap[action] ?? 'approve';
+      const feedback = inputText.trim() || undefined;
+
+      // Optimistic local update
       const msg: ConversationMessage = {
         id: `action-${Date.now()}`,
         sender: 'system',
-        content: `Gate action: ${action}`,
+        content: `Gate decision: ${action}${feedback ? ` — "${feedback}"` : ''}`,
         timestamp: new Date().toLocaleTimeString('en-US', {
           hour12: false,
           hour: '2-digit',
@@ -173,8 +221,18 @@ export function ConversationPanel({
         }),
       };
       addLocalMessage(selectedBuild.id, msg);
+      setInputText('');
+
+      // POST gate decision to backend
+      void api.post(`/api/builds/${selectedBuild.id}/gate/${activeGate}/decide`, {
+        decision,
+        feedback,
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['builds'] });
+        queryClient.invalidateQueries({ queryKey: ['build-conversation', selectedBuild.id] });
+      });
     },
-    [selectedBuild, addLocalMessage],
+    [selectedBuild, liveGate, inputText, addLocalMessage, queryClient],
   );
 
   const handleSkill = useCallback(

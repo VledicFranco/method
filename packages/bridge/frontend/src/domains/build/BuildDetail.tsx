@@ -11,13 +11,15 @@
 
 import { useState, useMemo } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { api } from '@/shared/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import { PhaseTimeline } from './PhaseTimeline';
 import { CommissionProgress } from './CommissionProgress';
 import { CriteriaTracker } from './CriteriaTracker';
 import { EvidenceReport } from './EvidenceReport';
 import { AnalyticsView } from './AnalyticsView';
 import { PHASE_LABELS, PHASES } from './types';
-import type { BuildSummary, BuildEvent } from './types';
+import type { BuildSummary, BuildEvent, EvidenceStats, Verdict } from './types';
 
 // ── Tab definitions ──
 
@@ -54,17 +56,55 @@ function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => 
 
 // ── Overview Tab ──
 
+/** Backend evidence report shape from GET /api/builds/:id/evidence */
+interface ApiEvidenceReport {
+  requirement: string;
+  verdict: Verdict;
+  validation: { criteriaTotal: number; criteriaPassed: number; criteriaFailed: number };
+  delivery: {
+    totalCost: { tokens: number; usd: number };
+    wallClockMs: number;
+    humanInterventions: number;
+    failureRecoveries: { attempted: number; succeeded: number };
+    overheadPercent: number;
+  };
+}
+
 function OverviewTab({ build }: { build: BuildSummary }) {
   const isCompleted = build.status === 'completed';
+
+  // §1.7: Fetch evidence report from backend for completed builds
+  const { data: apiEvidence } = useQuery({
+    queryKey: ['build-evidence', build.id],
+    queryFn: async ({ signal }) => {
+      const res = await api.get<ApiEvidenceReport>(`/api/builds/${build.id}/evidence`, signal);
+      return res;
+    },
+    enabled: isCompleted && !build.verdict,
+    retry: 1,
+  });
+
+  // Merge API evidence into build if available (and build doesn't already have it from mock)
+  const enrichedBuild = useMemo(() => {
+    if (build.verdict || !apiEvidence) return build;
+    const evidence: EvidenceStats = {
+      totalCost: apiEvidence.delivery.totalCost.usd,
+      overheadPct: apiEvidence.delivery.overheadPercent,
+      interventions: apiEvidence.delivery.humanInterventions,
+      durationMin: Math.round(apiEvidence.delivery.wallClockMs / 60_000),
+      failureRecoveries: apiEvidence.delivery.failureRecoveries.attempted,
+    };
+    return { ...build, verdict: apiEvidence.verdict, evidence };
+  }, [build, apiEvidence]);
 
   return (
     <div>
       {/* Phase timeline + Gantt */}
-      <PhaseTimeline phases={build.phases} gantt={build.gantt} />
+      <PhaseTimeline phases={enrichedBuild.phases} gantt={enrichedBuild.gantt} />
 
       {/* Evidence report for completed builds */}
-      {isCompleted && build.verdict ? (
-        <EvidenceReport build={build} />
+      {isCompleted && enrichedBuild.verdict ? (
+        <EvidenceReport build={enrichedBuild} />
       ) : (
         <>
           {/* Commission progress (only during implement) */}
@@ -215,12 +255,27 @@ function ArtifactsTab({ build }: { build: BuildSummary }) {
               </span>
             </div>
 
-            {/* Expanded content placeholder */}
+            {/* Expanded artifact content */}
             {isExpanded && (
               <div className="bg-[#08080e] border border-bdr border-t-0 rounded-b-[5px] p-4 mb-2 -mt-[9px] font-mono text-[11px] leading-[1.7] text-txt-dim">
-                <span className="text-txt-dim italic">
-                  Artifact content renders here when backend provides build artifacts.
-                </span>
+                {build.artifacts && build.artifacts[phase] ? (
+                  <pre className="whitespace-pre-wrap break-words text-txt">
+                    {build.artifacts[phase]}
+                  </pre>
+                ) : build.artifacts && Object.keys(build.artifacts).some(k => k.startsWith(phase)) ? (
+                  Object.entries(build.artifacts)
+                    .filter(([k]) => k.startsWith(phase))
+                    .map(([key, content]) => (
+                      <div key={key} className="mb-3 last:mb-0">
+                        <div className="text-[#6d5aed] font-semibold mb-1">{key}</div>
+                        <pre className="whitespace-pre-wrap break-words text-txt">{content}</pre>
+                      </div>
+                    ))
+                ) : (
+                  <span className="text-txt-dim italic">
+                    No artifact available for this phase yet.
+                  </span>
+                )}
               </div>
             )}
           </div>

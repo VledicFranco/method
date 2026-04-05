@@ -58,13 +58,18 @@ const MOCK_REFINEMENTS: Refinement[] = [
   },
 ];
 
-export function RefinementList() {
+export interface RefinementListProps {
+  refinements?: Refinement[];
+}
+
+export function RefinementList({ refinements }: RefinementListProps) {
   const [filter, setFilter] = useState<FilterTarget>('all');
 
+  const data = refinements ?? MOCK_REFINEMENTS;
   const visible =
     filter === 'all'
-      ? MOCK_REFINEMENTS
-      : MOCK_REFINEMENTS.filter((r) => r.target === filter);
+      ? data
+      : data.filter((r) => r.target === filter);
 
   return (
     <div className="bg-abyss border border-bdr rounded-xl p-5 mb-4">

@@ -26,6 +26,24 @@ import type { Validator } from './validator.js';
 // Re-export for domain consumers that previously imported from this file.
 export type { StrategyExecutionResult } from '../../ports/strategy-executor.js';
 
+// ── Phase event callback (§3.3) ──────────────────────────────
+
+export type PhaseEventType =
+  | 'phase_started'
+  | 'phase_completed'
+  | 'checkpoint_saved'
+  | 'gate_waiting'
+  | 'failure_recovery'
+  | 'validation_result';
+
+export interface PhaseEvent {
+  type: PhaseEventType;
+  buildId: string;
+  payload: Record<string, unknown>;
+}
+
+export type PhaseEventCallback = (event: PhaseEvent) => void;
+
 // ── Orchestrator ───────────────────────────────────────────────
 
 const PHASE_ORDER: readonly Phase[] = [
@@ -47,6 +65,7 @@ export class BuildOrchestrator {
   private failureRecoveries = { attempted: 0, succeeded: 0 };
   private reviewLoopCount = 0;
   private validateLoopCount = 0;
+  private readonly onPhaseEvent?: PhaseEventCallback;
 
   constructor(
     private readonly checkpoint: CheckpointPort,
@@ -55,9 +74,11 @@ export class BuildOrchestrator {
     private readonly strategyExecutor: StrategyExecutorPort,
     private readonly validator?: Validator,
     sessionId?: string,
+    onPhaseEvent?: PhaseEventCallback,
   ) {
     this.sessionId = sessionId ?? `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.autonomyLevel = config.defaultAutonomyLevel as AutonomyLevel;
+    this.onPhaseEvent = onPhaseEvent;
   }
 
   /** Unique session identifier for this build. */
@@ -104,6 +125,7 @@ export class BuildOrchestrator {
 
   async explore(): Promise<ExplorationReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'explore' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: explore — analyzing codebase');
 
@@ -121,6 +143,7 @@ export class BuildOrchestrator {
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('specify');
+    this.emitPhaseEvent('phase_completed', { phase: 'explore', cost: result.cost, durationMs: Date.now() - phaseStart });
 
     return report;
   }
@@ -129,6 +152,7 @@ export class BuildOrchestrator {
 
   async specify(exploration: ExplorationReport): Promise<FeatureSpec> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'specify' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: specify — collecting feature spec');
 
@@ -163,6 +187,7 @@ export class BuildOrchestrator {
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('design');
+    this.emitPhaseEvent('phase_completed', { phase: 'specify', durationMs: Date.now() - phaseStart });
 
     return spec;
   }
@@ -171,6 +196,7 @@ export class BuildOrchestrator {
 
   async design(): Promise<void> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'design' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: design — architecture decisions');
 
@@ -191,6 +217,7 @@ export class BuildOrchestrator {
     const phaseResult = this.buildPhaseResult('design', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'design', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('plan');
   }
 
@@ -198,6 +225,7 @@ export class BuildOrchestrator {
 
   async plan(): Promise<void> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'plan' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: plan — commission decomposition');
 
@@ -218,6 +246,7 @@ export class BuildOrchestrator {
     const phaseResult = this.buildPhaseResult('plan', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'plan', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('implement');
   }
 
@@ -225,6 +254,7 @@ export class BuildOrchestrator {
 
   async implement(): Promise<StrategyExecutionResult> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'implement' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: implement — executing commissions');
 
@@ -250,6 +280,12 @@ export class BuildOrchestrator {
         this.failureRecoveries.succeeded++;
       }
 
+      this.emitPhaseEvent('failure_recovery', {
+        phase: 'implement',
+        strategy: strategyId,
+        succeeded: retryResult.success,
+      });
+
       const phaseResult = this.buildPhaseResult('implement', strategyId, retryResult, phaseStart, 1);
       this.phaseResults.push(phaseResult);
 
@@ -268,6 +304,7 @@ export class BuildOrchestrator {
       Object.assign(this.artifactManifest, result.artifacts);
     }
 
+    this.emitPhaseEvent('phase_completed', { phase: 'implement', cost: result.cost, durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('review');
     return result;
   }
@@ -276,6 +313,7 @@ export class BuildOrchestrator {
 
   async review(): Promise<GateDecision> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'review' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: review — code review');
 
@@ -296,6 +334,7 @@ export class BuildOrchestrator {
     const phaseResult = this.buildPhaseResult('review', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'review', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('validate');
 
     return gateResult;
@@ -305,6 +344,7 @@ export class BuildOrchestrator {
 
   async validate(): Promise<ValidationReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'validate' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: validate — running testable assertions');
 
@@ -312,6 +352,14 @@ export class BuildOrchestrator {
 
     if (this.validator && this.featureSpec) {
       report = await this.validator.evaluateAssertions(this.featureSpec.criteria);
+      // Emit individual validation results
+      for (const criterion of report.criteria) {
+        this.emitPhaseEvent('validation_result', {
+          criterion: criterion.name,
+          passed: criterion.passed,
+          evidence: criterion.evidence ?? '',
+        });
+      }
     } else {
       // No validator or no spec — report as skipped
       report = { criteria: [], allPassed: true };
@@ -326,6 +374,7 @@ export class BuildOrchestrator {
     };
     this.phaseResults.push(phaseResult);
 
+    this.emitPhaseEvent('phase_completed', { phase: 'validate', durationMs: Date.now() - phaseStart });
     await this.saveCheckpoint('measure');
 
     return report;
@@ -335,10 +384,10 @@ export class BuildOrchestrator {
 
   async measure(): Promise<EvidenceReport> {
     const phaseStart = Date.now();
+    this.emitPhaseEvent('phase_started', { phase: 'measure' });
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: measure — producing evidence report');
 
-    const validationPhase = this.phaseResults.find(p => p.phase === 'validate');
     const validationReport = this.lastValidationReport();
 
     const criteriaPassed = validationReport?.criteria.filter(c => c.passed).length ?? 0;
@@ -464,6 +513,7 @@ export class BuildOrchestrator {
 
     // Discuss-all (or low confidence): always wait for human
     this.humanInterventions++;
+    this.emitPhaseEvent('gate_waiting', { gate: gateType });
     return this.conversation.waitForGateDecision(this.sessionId, gateType);
   }
 
@@ -499,6 +549,7 @@ export class BuildOrchestrator {
     };
 
     await this.checkpoint.save(this.sessionId, checkpoint);
+    this.emitPhaseEvent('checkpoint_saved', { nextPhase });
   }
 
   // ── Phase Timeout (F-A-4) ─────────────────────────────────────
@@ -514,6 +565,12 @@ export class BuildOrchestrator {
         ),
       ),
     ]);
+  }
+
+  // ── Phase Event Emission (§3.3) ──────────────────────────────
+
+  private emitPhaseEvent(type: PhaseEventType, payload: Record<string, unknown>): void {
+    this.onPhaseEvent?.({ type, buildId: this.sessionId, payload });
   }
 
   // ── Helpers ────────────────────────────────────────────────────

@@ -140,6 +140,8 @@ export interface BuildSummary {
   readonly conversation?: ConversationMessage[];
   /** Active gate type (if any) */
   readonly activeGate?: GateType;
+  /** Artifact manifest: artifact_id → content (from orchestrator) */
+  readonly artifacts?: Record<string, string>;
 }
 
 // ── Conversation Types ──

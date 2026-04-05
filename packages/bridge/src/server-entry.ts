@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
+import { exec as nodeExec } from 'node:child_process';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
 import { SessionCheckpointSink } from './shared/event-bus/session-checkpoint-sink.js';
@@ -526,11 +527,30 @@ async function start() {
     );
 
     // PRD 047: Register Build Orchestrator domain
+    // CommandExecutor — process execution port for Validator (§3.1)
+    const buildCommandExecutor = {
+      exec(command: string, opts?: { cwd?: string; timeout?: number }) {
+        return new Promise<{ exitCode: number; stdout: string; stderr: string }>((resolve) => {
+          nodeExec(command, {
+            cwd: opts?.cwd ?? process.cwd(),
+            timeout: opts?.timeout ?? 60_000,
+            maxBuffer: 1024 * 1024,
+          }, (error: Error & { code?: number } | null, stdout: string, stderr: string) => {
+            resolve({
+              exitCode: error?.code ?? (error ? 1 : 0),
+              stdout: stdout ?? '',
+              stderr: stderr ?? '',
+            });
+          });
+        });
+      },
+    };
     const buildDomain = createBuildDomain({
       eventBus,
       fileSystem: fsProvider,
       yamlLoader,
       strategyExecutor: buildStrategyExecutorPort,
+      commandExecutor: buildCommandExecutor,
     });
     buildDomain.registerRoutes(app);
 

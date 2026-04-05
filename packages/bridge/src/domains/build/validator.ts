@@ -166,21 +166,70 @@ export class Validator {
     }
   }
 
-  private async evaluateEndpoint(_assertion: TestableAssertion): Promise<CriterionResult> {
-    return {
-      name: _assertion.name,
-      type: 'endpoint',
-      passed: false,
-      evidence: 'Endpoint validation not implemented (Wave 2)',
-    };
+  private async evaluateEndpoint(assertion: TestableAssertion): Promise<CriterionResult> {
+    try {
+      // assertion.check is the URL to fetch, assertion.expect is the expected status or body content
+      const url = assertion.check;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30_000);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        const expectedStatus = parseInt(assertion.expect, 10);
+        const passed = isNaN(expectedStatus)
+          ? (await response.text()).includes(assertion.expect)
+          : response.status === expectedStatus;
+
+        return {
+          name: assertion.name,
+          type: 'endpoint',
+          passed,
+          evidence: passed
+            ? `Endpoint ${url} returned status ${response.status} (expected: ${assertion.expect})`
+            : `Endpoint ${url} returned status ${response.status}, expected ${assertion.expect}`,
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      return {
+        name: assertion.name,
+        type: 'endpoint',
+        passed: false,
+        evidence: `Endpoint check error: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 
-  private async evaluateCustom(_assertion: TestableAssertion): Promise<CriterionResult> {
-    return {
-      name: _assertion.name,
-      type: 'custom',
-      passed: false,
-      evidence: 'Custom validation not implemented (Wave 2)',
-    };
+  private async evaluateCustom(assertion: TestableAssertion): Promise<CriterionResult> {
+    try {
+      // assertion.check is a shell script/command to execute
+      const result = await this.executor.exec(assertion.check, {
+        cwd: this.projectRoot,
+        timeout: 120_000,
+      });
+
+      const passed = assertion.expect
+        ? result.stdout.includes(assertion.expect)
+        : result.exitCode === 0;
+
+      return {
+        name: assertion.name,
+        type: 'custom',
+        passed,
+        evidence: passed
+          ? `Custom check passed (exit ${result.exitCode}): ${result.stdout.slice(0, 500)}`
+          : `Custom check failed (exit ${result.exitCode}): ${(result.stderr || result.stdout).slice(0, 500)}`,
+      };
+    } catch (err) {
+      return {
+        name: assertion.name,
+        type: 'custom',
+        passed: false,
+        evidence: `Custom check error: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 }
