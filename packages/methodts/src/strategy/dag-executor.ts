@@ -638,8 +638,12 @@ export class DagStrategyExecutor {
         inputBundle,
       );
       if (stratResult.status === "failed") {
+        // F-D-5: propagate the underlying error message
+        const detail = stratResult.error_message
+          ? `: ${stratResult.error_message}`
+          : "";
         throw new Error(
-          `Sub-strategy "${stratResult.strategy_id}" failed`,
+          `Sub-strategy "${stratResult.strategy_id}" failed${detail}`,
         );
       }
       return {
