@@ -39,23 +39,41 @@ function buildPrompt(traces) {
     return `--- Example ${i + 1} ---\nINPUT:\n${t.input}\nOUTPUT:\n${t.output}`;
   }).join('\n\n');
 
-  return `You are a grammar induction expert. You are given ${traces.length} examples of (input → output) behavioral traces from a cognitive module. Your task is to:
+  return `You are a PEG grammar induction expert using the Peggy parser generator.
 
-1. Identify the STRUCTURAL INVARIANT in the outputs — what's always the same across all examples.
-2. Identify the VARIATION — what changes between examples (these become grammar slots).
-3. Produce a PEG grammar (Peggy/PEG.js format) that can parse ALL the output strings.
+TASK: Given ${traces.length} examples of (input → output) traces, produce a PEG grammar that parses the OUTPUT strings ONLY (ignore the input).
+
+PEGGY SYNTAX REFERENCE:
+\`\`\`
+// Rules use labeled expressions and return actions:
+MyRule
+  = label1:SubRule " " label2:SubRule { return { a: label1, b: label2 }; }
+
+// Alternatives use /
+Choice = "yes" { return true; } / "no" { return false; }
+
+// Lists use recursion
+List = first:Item rest:("," _ item:Item { return item; })* { return [first, ...rest]; }
+
+// Primitives
+Identifier = chars:$[a-zA-Z0-9_-]+ { return chars; }
+QuotedString = '"' chars:$[^"]* '"' { return chars; }
+_ = [ \\t]*
+EOL = _ "\\n"
+EOLopt = (_ "\\n")?
+\`\`\`
 
 RULES:
-- The grammar must be valid Peggy syntax.
-- The grammar must parse every output example shown below.
-- Include semantic actions that return a structured JavaScript object.
-- Use the standard Peggy conventions: rules start with uppercase, terminals in quotes.
-- Include primitive rules for identifiers, quoted strings, whitespace, and line endings.
-- DO NOT include any explanation or commentary — output ONLY the PEG grammar.
+- Output ONLY valid Peggy grammar. No comments, no explanation.
+- Use labeled expressions (label:Rule) NOT this.Rule
+- Use $ for text capture (chars:$[a-z]+)
+- Grammar must parse every OUTPUT string below (ignore INPUT sections)
+- Include semantic actions with { return ...; }
+- Lines in the output are separated by \\n
 
 ${examples}
 
-PEG GRAMMAR (Peggy format):`;
+Produce ONLY the Peggy grammar that parses the OUTPUT strings above:`;
 }
 
 // ── Call Ollama ──────────────────────────────────────────────
@@ -195,13 +213,46 @@ async function main() {
     return;
   }
 
-  // Call frontier LLM
-  const response = await callOllama(ollamaUrl, model, prompt);
+  // Call frontier LLM with iterative refinement
+  let grammar;
+  const MAX_REFINEMENTS = 3;
 
-  // Extract grammar
-  const grammar = extractGrammar(response);
-  console.log(`\nExtracted grammar (${grammar.length} chars):\n`);
-  console.log(grammar.slice(0, 500) + (grammar.length > 500 ? '\n...' : ''));
+  for (let attempt = 0; attempt <= MAX_REFINEMENTS; attempt++) {
+    let currentPrompt;
+
+    if (attempt === 0) {
+      currentPrompt = prompt;
+    } else {
+      // Refinement: feed the compile error back
+      currentPrompt = `Your previous PEG grammar had a compilation error. Fix it.
+
+ERROR: ${lastError}
+
+YOUR PREVIOUS GRAMMAR:
+${grammar}
+
+Fix the grammar so it compiles with Peggy. Output ONLY the corrected PEG grammar, nothing else.`;
+    }
+
+    const response = await callOllama(ollamaUrl, model, currentPrompt);
+    grammar = extractGrammar(response);
+
+    console.log(`\n=== Attempt ${attempt + 1} — Grammar (${grammar.length} chars) ===`);
+    console.log(grammar.slice(0, 300) + (grammar.length > 300 ? '\n...' : ''));
+
+    // Try to compile
+    try {
+      peggy.generate(grammar);
+      console.log('✓ Grammar compiles!');
+      break;
+    } catch (e) {
+      var lastError = e.message?.slice(0, 300);
+      console.log(`✗ Compile error: ${lastError}`);
+      if (attempt === MAX_REFINEMENTS) {
+        console.log('Max refinements reached. Using last grammar.');
+      }
+    }
+  }
 
   // Validate
   console.log('\n=== Validation ===');
