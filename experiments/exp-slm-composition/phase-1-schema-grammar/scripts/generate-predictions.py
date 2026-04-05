@@ -113,7 +113,8 @@ def main():
     elapsed = time.time() - start
     print(f"\nGenerated {len(predictions)} predictions in {elapsed:.1f}s")
 
-    # Save
+    # Save (ensure parent dir exists)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         for p in predictions:
             f.write(json.dumps(p, ensure_ascii=False) + "\n")
