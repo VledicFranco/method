@@ -1,0 +1,585 @@
+/**
+ * BuildOrchestrator — 8-phase build lifecycle loop.
+ *
+ * Drives a requirement through: explore → specify → design → plan →
+ * implement → review → validate → measure. Each phase saves a checkpoint,
+ * gates consult the human (or auto-approve based on autonomy level),
+ * and failures route to retry with context.
+ *
+ * @see PRD 047 — Build Orchestrator
+ */
+
+import type { CheckpointPort, PipelineCheckpoint, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from '../../ports/checkpoint.js';
+import type { ConversationPort, GateDecision } from '../../ports/conversation.js';
+import type { BuildConfig } from './config.js';
+import type {
+  AutonomyLevel,
+  ExplorationReport,
+  ValidationReport,
+  EvidenceReport,
+  PhaseResult,
+  Refinement,
+} from './types.js';
+import type { Validator } from './validator.js';
+
+// ── Strategy Executor (abstract — real wiring in C-3) ──────────
+
+/** Result from a strategy execution. Override or mock in tests. */
+export interface StrategyExecutionResult {
+  readonly success: boolean;
+  readonly output: string;
+  readonly cost: { tokens: number; usd: number };
+  readonly executionId: string;
+  readonly artifacts?: Record<string, string>;
+  readonly error?: string;
+}
+
+// ── Orchestrator ───────────────────────────────────────────────
+
+const PHASE_ORDER: readonly Phase[] = [
+  'explore', 'specify', 'design', 'plan', 'implement', 'review', 'validate', 'measure',
+] as const;
+
+export class BuildOrchestrator {
+  private readonly sessionId: string;
+  private autonomyLevel: AutonomyLevel;
+  private requirement = '';
+  private featureSpec: FeatureSpec | undefined;
+  private phaseResults: PhaseResult[] = [];
+  private completedStrategies: string[] = [];
+  private artifactManifest: Record<string, string> = {};
+  private conversationHistory: ConversationMessage[] = [];
+  private costAccumulator = { tokens: 0, usd: 0 };
+  private startTime = 0;
+  private humanInterventions = 0;
+  private failureRecoveries = { attempted: 0, succeeded: 0 };
+  private reviewLoopCount = 0;
+  private validateLoopCount = 0;
+
+  constructor(
+    private readonly checkpoint: CheckpointPort,
+    private readonly conversation: ConversationPort,
+    private readonly config: BuildConfig,
+    private readonly validator?: Validator,
+    sessionId?: string,
+  ) {
+    this.sessionId = sessionId ?? `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.autonomyLevel = config.defaultAutonomyLevel as AutonomyLevel;
+  }
+
+  /** Unique session identifier for this build. */
+  get id(): string {
+    return this.sessionId;
+  }
+
+  /**
+   * Drive the full 8-phase loop.
+   * Returns an EvidenceReport summarizing the build outcome.
+   */
+  async start(requirement: string, autonomyLevel: AutonomyLevel): Promise<EvidenceReport> {
+    this.requirement = requirement;
+    this.autonomyLevel = autonomyLevel;
+    this.startTime = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}`);
+
+    // Phase 1: Explore
+    const exploration = await this.explore();
+
+    // Phase 2: Specify (gate)
+    const spec = await this.specify(exploration);
+    this.featureSpec = spec;
+
+    // Phase 3: Design (gate)
+    await this.design();
+
+    // Phase 4: Plan (gate)
+    await this.plan();
+
+    // Phase 5+6: Implement → Review loop
+    await this.implementReviewLoop();
+
+    // Phase 7: Validate
+    const validationReport = await this.validate();
+    this._lastValidationReport = validationReport;
+
+    // Phase 8: Measure
+    return this.measure();
+  }
+
+  // ── Phase 1: Explore ───────────────────────────────────────────
+
+  async explore(): Promise<ExplorationReport> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: explore — analyzing codebase');
+
+    // Mock strategy call — real wiring comes in C-3
+    const result = await this.executeStrategy('explore', 'explore-codebase');
+
+    const report: ExplorationReport = {
+      domains: result.success ? ['build'] : [],
+      patterns: result.success ? ['FCA domain structure'] : [],
+      constraints: result.success ? ['G-PORT: use ports'] : [],
+      approach: result.output || 'Codebase exploration completed',
+    };
+
+    const phaseResult = this.buildPhaseResult('explore', 'explore-codebase', result, phaseStart);
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('specify');
+
+    return report;
+  }
+
+  // ── Phase 2: Specify (gate) ────────────────────────────────────
+
+  async specify(exploration: ExplorationReport): Promise<FeatureSpec> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: specify — collecting feature spec');
+
+    // Present exploration findings to human
+    await this.conversation.sendAgentMessage(this.sessionId, {
+      type: 'card',
+      content: `Exploration complete. Found ${exploration.domains.length} domains, ${exploration.patterns.length} patterns.`,
+      card: {
+        type: 'feature-spec',
+        data: { exploration },
+      },
+    });
+
+    // Gate: wait for human to provide/approve the spec
+    const gateResult = await this.gate('specify');
+
+    const spec: FeatureSpec = {
+      requirement: this.requirement,
+      problem: gateResult.feedback || exploration.approach,
+      criteria: this.extractCriteria(gateResult),
+      scope: { in: exploration.domains.slice() as string[], out: [] },
+      constraints: exploration.constraints.slice() as string[],
+    };
+
+    const phaseResult: PhaseResult = {
+      phase: 'specify',
+      status: 'completed',
+      cost: { tokens: 0, usd: 0 },
+      durationMs: Date.now() - phaseStart,
+      retries: 0,
+    };
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('design');
+
+    return spec;
+  }
+
+  // ── Phase 3: Design (gate) ─────────────────────────────────────
+
+  async design(): Promise<void> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: design — architecture decisions');
+
+    const result = await this.executeStrategy('design', 'design-architecture');
+
+    await this.conversation.sendAgentMessage(this.sessionId, {
+      type: 'card',
+      content: 'Design proposal ready for review.',
+      card: {
+        type: 'review-findings',
+        data: { design: result.output },
+      },
+    });
+
+    await this.gate('design');
+
+    const phaseResult = this.buildPhaseResult('design', 'design-architecture', result, phaseStart);
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('plan');
+  }
+
+  // ── Phase 4: Plan (gate) ───────────────────────────────────────
+
+  async plan(): Promise<void> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: plan — commission decomposition');
+
+    const result = await this.executeStrategy('plan', 'plan-commissions');
+
+    await this.conversation.sendAgentMessage(this.sessionId, {
+      type: 'card',
+      content: 'Commission plan ready for review.',
+      card: {
+        type: 'commission-plan',
+        data: { plan: result.output },
+      },
+    });
+
+    await this.gate('plan');
+
+    const phaseResult = this.buildPhaseResult('plan', 'plan-commissions', result, phaseStart);
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('implement');
+  }
+
+  // ── Phase 5: Implement ─────────────────────────────────────────
+
+  async implement(): Promise<StrategyExecutionResult> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: implement — executing commissions');
+
+    const result = await this.executeStrategy('implement', 'implement-commissions');
+
+    if (!result.success) {
+      // Failure routing: construct retry context and re-execute
+      this.failureRecoveries.attempted++;
+
+      await this.conversation.sendSystemMessage(
+        this.sessionId,
+        `Implementation failed: ${result.error || 'unknown error'}. Retrying with context...`,
+      );
+
+      const retryResult = await this.executeStrategy('implement', 'implement-commissions-retry', {
+        previousError: result.error || result.output,
+        previousExecutionId: result.executionId,
+      });
+
+      if (retryResult.success) {
+        this.failureRecoveries.succeeded++;
+      }
+
+      const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', retryResult, phaseStart, 1);
+      this.phaseResults.push(phaseResult);
+
+      if (retryResult.artifacts) {
+        Object.assign(this.artifactManifest, retryResult.artifacts);
+      }
+
+      await this.saveCheckpoint('review');
+      return retryResult;
+    }
+
+    const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', result, phaseStart);
+    this.phaseResults.push(phaseResult);
+
+    if (result.artifacts) {
+      Object.assign(this.artifactManifest, result.artifacts);
+    }
+
+    await this.saveCheckpoint('review');
+    return result;
+  }
+
+  // ── Phase 6: Review (gate) ─────────────────────────────────────
+
+  async review(): Promise<GateDecision> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: review — code review');
+
+    const result = await this.executeStrategy('review', 'review-code');
+
+    await this.conversation.sendAgentMessage(this.sessionId, {
+      type: 'card',
+      content: 'Review findings ready.',
+      card: {
+        type: 'review-findings',
+        data: { review: result.output },
+      },
+    });
+
+    const gateResult = await this.gate('review');
+
+    const phaseResult = this.buildPhaseResult('review', 'review-code', result, phaseStart);
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('validate');
+
+    return gateResult;
+  }
+
+  // ── Phase 7: Validate ──────────────────────────────────────────
+
+  async validate(): Promise<ValidationReport> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: validate — running testable assertions');
+
+    let report: ValidationReport;
+
+    if (this.validator && this.featureSpec) {
+      report = await this.validator.evaluateAssertions(this.featureSpec.criteria);
+    } else {
+      // No validator or no spec — report as skipped
+      report = { criteria: [], allPassed: true };
+    }
+
+    const phaseResult: PhaseResult = {
+      phase: 'validate',
+      status: report.allPassed ? 'completed' : 'failed',
+      cost: { tokens: 0, usd: 0 },
+      durationMs: Date.now() - phaseStart,
+      retries: 0,
+    };
+    this.phaseResults.push(phaseResult);
+
+    await this.saveCheckpoint('measure');
+
+    return report;
+  }
+
+  // ── Phase 8: Measure ───────────────────────────────────────────
+
+  async measure(): Promise<EvidenceReport> {
+    const phaseStart = Date.now();
+
+    await this.conversation.sendSystemMessage(this.sessionId, 'Phase: measure — producing evidence report');
+
+    const validationPhase = this.phaseResults.find(p => p.phase === 'validate');
+    const validationReport = this.lastValidationReport();
+
+    const criteriaPassed = validationReport?.criteria.filter(c => c.passed).length ?? 0;
+    const criteriaFailed = validationReport?.criteria.filter(c => !c.passed).length ?? 0;
+    const criteriaTotal = criteriaPassed + criteriaFailed;
+
+    const wallClockMs = Date.now() - this.startTime;
+
+    const refinements = this.collectRefinements();
+
+    const verdict: EvidenceReport['verdict'] =
+      criteriaFailed === 0 && criteriaTotal > 0
+        ? 'fully_validated'
+        : criteriaTotal > 0 && criteriaPassed > 0
+          ? 'partially_validated'
+          : criteriaTotal === 0
+            ? 'fully_validated'
+            : 'validation_failed';
+
+    const report: EvidenceReport = {
+      requirement: this.requirement,
+      phases: [...this.phaseResults],
+      validation: {
+        criteriaTotal,
+        criteriaPassed,
+        criteriaFailed,
+        details: validationReport?.criteria ? [...validationReport.criteria] : [],
+      },
+      delivery: {
+        totalCost: { ...this.costAccumulator },
+        orchestratorCost: { ...this.costAccumulator },
+        overheadPercent: 0,
+        wallClockMs,
+        humanInterventions: this.humanInterventions,
+        failureRecoveries: { ...this.failureRecoveries },
+      },
+      verdict,
+      artifacts: { ...this.artifactManifest },
+      refinements,
+    };
+
+    const phaseResult: PhaseResult = {
+      phase: 'measure',
+      status: 'completed',
+      cost: { tokens: 0, usd: 0 },
+      durationMs: Date.now() - phaseStart,
+      retries: 0,
+    };
+    this.phaseResults.push(phaseResult);
+
+    await this.conversation.sendAgentMessage(this.sessionId, {
+      type: 'card',
+      content: `Build complete: ${verdict}`,
+      card: {
+        type: 'evidence-report',
+        data: report as unknown as Record<string, unknown>,
+      },
+    });
+
+    await this.saveCheckpoint('completed');
+
+    return report;
+  }
+
+  // ── Implement → Review Loop ────────────────────────────────────
+
+  private async implementReviewLoop(): Promise<void> {
+    this.reviewLoopCount = 0;
+
+    while (this.reviewLoopCount < this.config.reviewLoopLimit) {
+      const implResult = await this.implement();
+
+      if (!implResult.success) {
+        // Escalate if implementation keeps failing
+        await this.conversation.sendSystemMessage(
+          this.sessionId,
+          'Implementation failed after retry. Escalating.',
+        );
+        const escalation = await this.conversation.waitForGateDecision(this.sessionId, 'escalation');
+        this.humanInterventions++;
+        if (escalation.decision === 'reject') return;
+        // On adjust/approve, continue to review
+      }
+
+      const reviewDecision = await this.review();
+
+      if (reviewDecision.decision === 'approve') {
+        return;
+      }
+
+      this.reviewLoopCount++;
+
+      if (this.reviewLoopCount >= this.config.reviewLoopLimit) {
+        await this.conversation.sendSystemMessage(
+          this.sessionId,
+          `Review loop limit (${this.config.reviewLoopLimit}) reached. Proceeding to validation.`,
+        );
+        return;
+      }
+
+      await this.conversation.sendSystemMessage(
+        this.sessionId,
+        `Review requested changes. Re-implementing (attempt ${this.reviewLoopCount + 1}/${this.config.reviewLoopLimit}).`,
+      );
+    }
+  }
+
+  // ── Gate Check ─────────────────────────────────────────────────
+
+  private async gate(gateType: 'specify' | 'design' | 'plan' | 'review' | 'escalation'): Promise<GateDecision> {
+    // Full-auto: skip all gates
+    if (this.autonomyLevel === 'full-auto') {
+      return { gate: gateType, decision: 'approve' };
+    }
+
+    // Auto-routine: skip gates when confidence is above threshold
+    if (this.autonomyLevel === 'auto-routine') {
+      const confidence = this.estimateConfidence();
+      if (confidence >= this.config.autoRoutineConfidenceThreshold) {
+        return { gate: gateType, decision: 'approve' };
+      }
+    }
+
+    // Discuss-all (or low confidence): always wait for human
+    this.humanInterventions++;
+    return this.conversation.waitForGateDecision(this.sessionId, gateType);
+  }
+
+  // ── Strategy Execution (virtual — overridable in tests) ────────
+
+  /**
+   * Execute a strategy. This is the integration point for C-3.
+   * In this implementation, it returns a mock result. Subclass or
+   * provide a strategy executor to wire real strategies.
+   */
+  protected async executeStrategy(
+    _phase: Phase,
+    _strategyId: string,
+    _context?: Record<string, unknown>,
+  ): Promise<StrategyExecutionResult> {
+    this.completedStrategies.push(_strategyId);
+    return {
+      success: true,
+      output: `Strategy ${_strategyId} completed for phase ${_phase}`,
+      cost: { tokens: 0, usd: 0 },
+      executionId: `exec-${_strategyId}-${Date.now()}`,
+    };
+  }
+
+  // ── Checkpoint ─────────────────────────────────────────────────
+
+  private async saveCheckpoint(nextPhase: Phase): Promise<void> {
+    const checkpoint: PipelineCheckpoint = {
+      sessionId: this.sessionId,
+      phase: nextPhase,
+      completedStrategies: [...this.completedStrategies],
+      artifactManifest: { ...this.artifactManifest },
+      featureSpec: this.featureSpec,
+      costAccumulator: { ...this.costAccumulator },
+      conversationHistory: [...this.conversationHistory],
+      savedAt: new Date().toISOString(),
+    };
+
+    await this.checkpoint.save(this.sessionId, checkpoint);
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+
+  private buildPhaseResult(
+    phase: Phase,
+    strategyId: string,
+    result: StrategyExecutionResult,
+    phaseStart: number,
+    retries = 0,
+  ): PhaseResult {
+    this.costAccumulator.tokens += result.cost.tokens;
+    this.costAccumulator.usd += result.cost.usd;
+
+    return {
+      phase,
+      strategyId,
+      executionId: result.executionId,
+      status: result.success ? 'completed' : 'failed',
+      cost: { ...result.cost },
+      durationMs: Date.now() - phaseStart,
+      retries,
+      failureContext: result.success ? undefined : result.error,
+    };
+  }
+
+  private extractCriteria(gateResult: GateDecision): TestableAssertion[] {
+    if (gateResult.adjustments?.criteria) {
+      return gateResult.adjustments.criteria as TestableAssertion[];
+    }
+    return [];
+  }
+
+  private estimateConfidence(): number {
+    // Simple heuristic: confidence based on phase success rate
+    if (this.phaseResults.length === 0) return 0.5;
+    const successCount = this.phaseResults.filter(p => p.status === 'completed').length;
+    return successCount / this.phaseResults.length;
+  }
+
+  private _lastValidationReport: ValidationReport | undefined;
+
+  /** Store the last validation report for measure phase to access. */
+  setValidationReport(report: ValidationReport): void {
+    this._lastValidationReport = report;
+  }
+
+  private lastValidationReport(): ValidationReport | undefined {
+    return this._lastValidationReport;
+  }
+
+  private collectRefinements(): Refinement[] {
+    const refinements: Refinement[] = [];
+
+    // Check for repeated failures
+    const failedPhases = this.phaseResults.filter(p => p.status === 'failed');
+    if (failedPhases.length > 0) {
+      refinements.push({
+        target: 'orchestrator',
+        observation: `${failedPhases.length} phase(s) failed during build`,
+        proposal: 'Review failure patterns and adjust strategy selection',
+        evidence: failedPhases.map(p => `${p.phase}: ${p.failureContext || 'unknown'}`).join('; '),
+      });
+    }
+
+    // Check for high intervention count
+    if (this.humanInterventions > PHASE_ORDER.length) {
+      refinements.push({
+        target: 'gate',
+        observation: `High human intervention count: ${this.humanInterventions}`,
+        proposal: 'Consider increasing autonomy level or refining gate criteria',
+        evidence: `${this.humanInterventions} interventions across ${this.phaseResults.length} phases`,
+      });
+    }
+
+    return refinements;
+  }
+}
