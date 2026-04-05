@@ -80,6 +80,8 @@ import { assessTaskWithLLM } from '../../../packages/pacta/src/cognitive/algebra
 import { createCognitiveMemoryStore } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
 import { createPlanner } from '../../../packages/pacta/src/cognitive/modules/planner.js';
 import type { PlannerInput } from '../../../packages/pacta/src/cognitive/modules/planner.js';
+import { createVerifier } from '../../../packages/pacta/src/cognitive/modules/verifier.js';
+import type { VerifierInput } from '../../../packages/pacta/src/cognitive/modules/verifier.js';
 import type { PartitionRole } from '../../../packages/pacta/src/cognitive/algebra/cognitive-memory-store.js';
 
 import { createPartitionSystem } from '../../../packages/pacta/src/cognitive/partitions/index.js';
@@ -1881,10 +1883,17 @@ async function runUnifiedMemory(
     { workingMemoryConfig: { capacity: 3, includeInContext: true } },
   );
 
+  // PRD 048: Verifier module — checks action outcomes against CheckableKPIs
+  const verifier = createVerifier(evalAdapter);
+  let verifierState = verifier.initialState();
+  const checkableKpis = plannerResult.output.checkableKpis;
+  console.log(`    [verifier] ${checkableKpis.length} checkable KPIs (${checkableKpis.filter(k => k.check).length} with programmatic checks)`);
+
   let totalTokens = 0;
   let evaluatorTokensTotal = 0;
   let providerCalls = 0;
   let monitorInterventions = 0;
+  let verificationFailures = 0;
   const allToolCalls: Array<{ tool: string; input: unknown; success: boolean }> = [];
   const contextProfiles: ContextProfile[] = [];
 
@@ -2027,7 +2036,7 @@ async function runUnifiedMemory(
 
       const snapshot = await store.retrieve({
         module: moduleId('reasoner-actor'),
-        roles: ['constraint', 'operational', 'task', 'goal'],
+        roles: ['constraint', 'operational', 'task', 'goal', 'correction'],
         budget: 8192,
         cues,
       });
@@ -2111,6 +2120,71 @@ async function runUnifiedMemory(
           salience: isWriteAction ? 0.9 : 0.6,
           timestamp: Date.now(),
         } as any);
+      }
+
+      // 7. VERIFY — check action outcome against CheckableKPIs (PRD 048)
+      if (isWriteAction && checkableKpis.length > 0) {
+        // Build VerificationState from VFS
+        const verificationInput: VerifierInput = {
+          lastAction: {
+            tool: actionName,
+            input: raResult.output.toolResult ?? {},
+            result: raResult.output.toolResult ?? 'ok',
+          },
+          workspaceSnapshot: snapshot,
+          kpis: checkableKpis,
+          currentSubgoal: plannerSubgoals[Math.min(completedSubgoals, plannerSubgoals.length - 1)]?.description ?? '',
+        };
+
+        const verifyResult = await verifier.step(
+          verificationInput,
+          verifierState,
+          { target: moduleId('verifier'), timestamp: Date.now() },
+        );
+        verifierState = verifyResult.state;
+
+        const vr = verifyResult.output.verification;
+        const passing = vr.kpiStatus.filter(k => k.met).length;
+        const failing = vr.kpiStatus.filter(k => !k.met).length;
+        console.log(`    [verify c${cycle + 1}] ${vr.verified ? 'PASS' : 'FAIL'} (${passing}/${passing + failing} KPIs) streak=${verifyResult.monitoring.failureStreak}`);
+
+        if (!vr.verified && verifyResult.output.correctionSignal) {
+          const cs = verifyResult.output.correctionSignal;
+          verificationFailures++;
+
+          // Inject CorrectionSignal into unified store — high salience, drives next retrieval
+          store.store(
+            {
+              content: `[CORRECTION c${cycle + 1}] Problem: ${cs.problem}\nFix: ${cs.suggestion}\nUnmet: ${cs.unmetKPIs.join(', ')}`,
+              timestamp: Date.now(),
+              source: moduleId('verifier'),
+              salience: 1.0,
+            } as any,
+            'correction' as any,
+            moduleId('verifier'),
+            ['correction', 'fix', 'error', ...cs.unmetKPIs.slice(0, 3)],
+          );
+          console.log(`    [correction c${cycle + 1}] ${cs.problem.slice(0, 80)}`);
+
+          // Planner replan trigger: 3 consecutive verification failures
+          if (verifyResult.monitoring.failureStreak >= 3) {
+            console.log(`    [replan c${cycle + 1}] 3 consecutive verification failures — triggering replan`);
+            const replanResult = await planner.step(
+              { workspace: snapshot, goal: goalRepresentation },
+              plannerState,
+              { target: moduleId('planner'), timestamp: Date.now(), replanTrigger: `${verifyResult.monitoring.failureStreak} consecutive verification failures on: ${cs.problem}` },
+            );
+            plannerState = replanResult.state;
+            if (replanResult.output.planRevised) {
+              // Inject revised plan into store
+              store.store(
+                { content: `[REPLAN c${cycle + 1}] ${replanResult.output.plan}`, timestamp: Date.now(), source: moduleId('planner'), salience: 1.0 } as any,
+                'goal', moduleId('planner'), ['replan', 'strategy'],
+              );
+              console.log(`    [replan c${cycle + 1}] plan revised: ${replanResult.output.plan.slice(0, 80)}`);
+            }
+          }
+        }
       }
 
       // Subgoal progress tracking: after writes, inject progress into store

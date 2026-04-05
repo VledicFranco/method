@@ -25,7 +25,7 @@ import type { EmbeddingPort } from '../../ports/embedding-port.js';
 // ── Types ─────────────────────────────────────────────────────
 
 /** Partition role — retrieval filter tag, not a capacity-limited bin. */
-export type PartitionRole = 'constraint' | 'operational' | 'task' | 'goal' | 'memory';
+export type PartitionRole = 'constraint' | 'operational' | 'task' | 'goal' | 'memory' | 'correction';
 
 /** Entry in the unified store. */
 export interface MemoryStoreEntry {
