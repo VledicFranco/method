@@ -213,7 +213,7 @@ This IS the System 1/2 transition from RFC 002 — made concrete.
 | B-2 (Causal Validator) | Classifier | 8.5K (3 domains) | 95.5% precision | 189 min | Production |
 | Downstream WorktreeInfo | Generator | 1.25K | 100% | 26 min | Production |
 | KPI Checker (PRD 049) | Generator | 3K | 100% (600/600) | 40 min | Production |
-| Router (PRD 051) | Classifier | 2K | 100% (400/400) | 28 min | Production |
+| Router (PRD 052) | Classifier | 2K | 100% (400/400) | 28 min | Production |
 
 **Bootstrapped via flywheel:** KPI Checker (1h 45min), Router (40 min).
 **Manual baseline:** ~14 hours per SLM.

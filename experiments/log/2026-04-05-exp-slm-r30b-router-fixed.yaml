@@ -37,4 +37,4 @@ findings:
     detail: "Rule-based features can't distinguish T04 (clear goals despite multiple files) from T01 (genuinely structural). Need frontier LLM traces → SLM pipeline."
 
 next_steps:
-  - "PRD 051: Router SLM — same pipeline as KPI Checker"
+  - "PRD 052: Router SLM — same pipeline as KPI Checker"

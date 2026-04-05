@@ -1,7 +1,7 @@
 """
 Router SLM HTTP Server
 
-Serves the Router SLM (PRD 051) via FastAPI. Loads the merged LoRA model
+Serves the Router SLM (PRD 052) via FastAPI. Loads the merged LoRA model
 directly with transformers (no ONNX conversion needed).
 
 Usage:
@@ -126,7 +126,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Router SLM Server",
-    description="HTTP server for PRD 051 Router SLM (task → architecture classifier)",
+    description="HTTP server for PRD 052 Router SLM (task → architecture classifier)",
     lifespan=lifespan,
 )
 

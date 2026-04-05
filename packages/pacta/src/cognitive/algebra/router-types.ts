@@ -18,7 +18,7 @@
 /** Architecture options the router can select. */
 export type ArchitectureKind = 'flat' | 'unified-memory';
 
-// ── Router SLM Port (PRD 051) ─────────────────────────────────
+// ── Router SLM Port (PRD 052) ─────────────────────────────────
 
 /**
  * Port for SLM-backed architecture classification.

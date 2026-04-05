@@ -28,7 +28,7 @@ Does the full cognitive stack match or exceed flat baseline?
 **Status:** ARCHITECTURE IS TASK-DEPENDENT. N=5 replication revealed cognitive helps T01/T03 (+20pp) and hurts T02/T04 (-80pp). R-28 cognitive 37% vs R-29 flat 57%. Best per-task: T01 60%, T02 20% (cog) vs 100% (flat), etc.
 **Key findings:** (1) Cognitive architecture validates the mechanisms (Cowan memory, working memory, verification) but adds overhead that hurts simple tasks. (2) Sonnet 4 handles T02/T04 natively — cognitive distracts. (3) Cognitive wins on structural/multi-file tasks. (4) The right architecture depends on task features. Motivates PRD 050 (meta-cognitive router).
 
-### Line 6: Meta-Cognitive Routing (PRD 050/051)
+### Line 6: Meta-Cognitive Routing (PRD 050/052)
 Can a meta-level router select the right architecture per task, achieving composite pass rate > max(flat, cognitive)?
 **Status:** VALIDATED. R-31b: 18/30 (60%) — beats flat 57% and cognitive 37%. Router SLM (Qwen2.5-0.5B-LoRA, 100% holdout) served via HTTP bridge on chobits. 6/6 routing decisions correct at N=5. T04 recovered 20%→100% via correct routing. Bootstrap flywheel proven twice (KPI Checker + Router SLM, ~45 min each).
 **Remaining gap:** T03 inconsistent (0-20%), T06 still 0% regardless of architecture — reasoning-bound, needs Opus comparison.

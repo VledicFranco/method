@@ -276,7 +276,7 @@ context assembly.
 | R-28 | Cognitive N=5 replication | 37% | N=3 variance was inflating prior results. Honest cognitive rate. |
 | R-29 | Flat N=5 replication | 57% | R-15 N=3 (73%) also inflated. Gap is 20pp, not 36pp. |
 | R-30b | Rule-based router N=5 (PRD 050) | 56% | Routing works but misroutes T04 (single-file edit pattern fails) |
-| R-31b | **Meta-cognitive routing (PRD 051)** | **60%** | **SLM router beats flat 57% AND cognitive 37%. T04 recovered 20%→100% via correct routing.** |
+| R-31b | **Meta-cognitive routing (PRD 052)** | **60%** | **SLM router beats flat 57% AND cognitive 37%. T04 recovered 20%→100% via correct routing.** |
 
 **Honest baselines at N=5:** flat 57%, cognitive 37%. **Meta-cognitive routing 60%** — converts task-dependent architecture advantage into composite gain.
 

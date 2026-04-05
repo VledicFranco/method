@@ -289,7 +289,7 @@ const pipeline = {
 | B-2 (Causal Validator) | Corpus quality | 8.5K (3 domains) | 95.5% precision (Gate B-G1 PASS) | **Production** |
 | Downstream WorktreeInfo | Session→DSL | 1.25K | 100% parse + semantic | **Production** |
 | KPI Checker (PRD 049) | KPI→Check DSL | 3K | 100% (600/600) | **Production** |
-| Router (PRD 051) | Task→Architecture | 2K | 100% (400/400) | **Production** |
+| Router (PRD 052) | Task→Architecture | 2K | 100% (400/400) | **Production** |
 | Monitor v2 | Signals→Anomaly DSL | 33K | 98.6% | **Production** (exp-slm) |
 | Observer | Signals→Observer DSL | ~5K | 93.4% | **Production** (exp-slm) |
 | Evaluator | Signals→Evaluator DSL | ~5K | 93.4% | **Production** (exp-slm) |

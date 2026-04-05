@@ -1,6 +1,6 @@
 ---
 type: prd
-title: "PRD 051: Router SLM — Compiled Architecture Selection"
+title: "PRD 052: Router SLM — Compiled Architecture Selection"
 date: "2026-04-05"
 status: draft
 tier: lightweight
@@ -13,7 +13,7 @@ surfaces: [RouterSLMPort]
 rfc: "docs/rfcs/002-small-language-models.md"
 ---
 
-# PRD 051: Router SLM — Compiled Architecture Selection
+# PRD 052: Router SLM — Compiled Architecture Selection
 
 ## Problem
 

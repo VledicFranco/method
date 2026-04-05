@@ -50,7 +50,7 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] **B-2 Gate B-G1 PASS: 95.5% precision** on INVALID class (target >= 90%)
   - 89.6% accuracy, 83.9% recall, 89.3% F1, 0 parse errors
 - [x] **KPI Checker SLM DONE** (PRD 049): 100% parse + 100% semantic (600/600)
-- [x] **Router SLM DONE** (PRD 051): 100% accuracy (400/400), 28 min training
+- [x] **Router SLM DONE** (PRD 052): 100% accuracy (400/400), 28 min training
 - [x] B-2 cross-domain validation: 97.3% VALID on KPI Checker corpus (surfaces edge cases)
 - [x] **Gate B-G2 VALIDATED: SLM creation time 40 min → 1h 45min** (vs ~14 hours manual — 8-20x speedup)
 - [x] Create >= 2 new SLMs using bootstrap pipeline: KPI Checker + Router ✓

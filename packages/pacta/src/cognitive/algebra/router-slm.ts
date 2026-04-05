@@ -1,5 +1,5 @@
 /**
- * Router SLM Adapters — PRD 051 HTTP bridge + mock implementations.
+ * Router SLM Adapters — PRD 052 HTTP bridge + mock implementations.
  *
  * The Router SLM (Qwen2.5-0.5B-LoRA, 100% holdout accuracy) classifies
  * tasks as 'flat' or 'unified-memory' with a single word output.
