@@ -11,7 +11,7 @@
  * - aggregateRefinements reads from YAML files on disk
  */
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeEach as before, afterEach as after } from 'vitest';
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
