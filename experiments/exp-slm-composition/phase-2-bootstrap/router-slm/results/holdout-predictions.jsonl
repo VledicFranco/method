@@ -1,0 +1,400 @@
+{"input": "<task>Update src/validator.ts to use factory method instead of callbacks. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a v2 endpoint for users. Wire it into src/app.ts. Keep it simple, no audit logging.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add distributed tracing to the notifications pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add REDIS_URL environment variable support. Wire it through src/config.ts, src/service.ts, and src/handler.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the logging logic from src/auth.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split lib/core.ts into src/user.ts and src/services/notification.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up i18n infrastructure: create src/config.ts, update src/service.ts, add middleware to src/app.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split lib/core.ts into src/auth.ts and src/domain/products.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add metrics with cross-cutting concerns: authentication, metrics, and circuit breaking. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/pricing.ts to use async/await instead of singleton. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the formatting bug in src/utils.ts. The applyDiscount function has a off-by-one error.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the CQRS pattern for billing. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix validateInput in lib/math.ts. Expected proper format but getting wrong value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to parseConfig. Catch ValidationError and return default value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement handleEvent in api/routes.ts. Simple validate and transform input, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The formatCurrency function in src/formatter.ts has an off-by-one error when processing zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Write a utility function calculateTotal that validate and transform input. Put it in api/routes.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the port-adapter pattern for billing. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct invoices access with a facade layer. All 5 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up auth infrastructure: create lib/config.ts, update lib/server.ts, add middleware to src/app.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add input validation to validateInput in src/formatter.ts. Throw on invalid amount.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The parseConfig function in src/validator.ts has an off-by-one error when processing large inputs.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Update src/formatter.ts to use factory method instead of service locator. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix serializeData in src/utils.ts. Expected matching hash but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix formatCurrency in src/utils.ts. Expected correct total but getting wrong value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix validateInput in api/routes.ts. Expected proper format but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>There's a calculation error in lib/math.ts. The validateInput function returns wrong results for empty arrays.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement v3 users handler in src/handlers/v2.ts. Register in src/app.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a buildQuery function to src/pricing.ts. It should compute the result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for order processing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for analytics: event store, projection, and 10 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>lib/core.ts and src/permissions.ts have circular imports. Break the cycle by extracting shared types.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the validation bug in lib/math.ts. The parseConfig function has a null reference.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split src/service.ts into src/domain/orders.ts and src/services/notification.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for event bus: event store, projection, and 4 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate database config from JSON file to config service. Update all 10 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>src/services/payment.ts and src/permissions.ts have circular imports. Break the cycle by extracting shared types.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the null reference in parseConfig. It's in src/utils.ts, line around 123.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to calculateTotal. Catch TimeoutError and return cached result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add structured logging to the analytics pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up caching infrastructure: create src/env.ts, update src/app.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement calculateTotal in src/service.ts. Simple compute the result, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the repository pattern for billing. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a validateInput function to src/handler.ts. It should format the output.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor calculateTotal for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/user.ts and src/services/notification.ts have circular imports. Break the cycle by extracting shared types.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up caching infrastructure: create src/config.ts, update lib/server.ts, add middleware to src/server.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix processRequest in src/handler.ts. Expected correct total but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Remove deprecated logging from src/handler.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor the dependency chain: src/domain/orders.ts → src/profile.ts → src/session.ts. Eliminate the back-reference from src/session.ts to src/domain/orders.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Rename handleRequest to HttpClient across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the authentication logic from lib/core.ts into a new module src/shared/validation.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for user management: event store, projection, and 6 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in src/pricing.ts. The buildQuery function returns wrong results for zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Rename formatDate to HttpClient across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add structured logging to the notifications pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate API keys from JSON file to Vault secrets. Update all 5 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split lib/core.ts into src/services/payment.ts and lib/utils.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks end-to-end: database migration, business logic, HTTP handler, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct orders access with a repository layer. All 12 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement metrics across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: src/services/payment.ts → src/profile.ts → src/api.ts. Eliminate the back-reference from src/api.ts to src/services/payment.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the notifications pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the user management pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add beta support to products API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>There's a calculation error in api/routes.ts. The computeHash function returns wrong results for large inputs.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the port-adapter pattern for notifications. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create a new order at src/handlers/v2.ts. Export handleEvent and add route in api/router.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Rename UserService to handleHttpRequest across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor processRequest for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor the dependency chain: src/services/payment.ts → src/permissions.ts → src/session.ts. Eliminate the back-reference from src/session.ts to src/services/payment.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The computeHash function in lib/math.ts has an off-by-one error when processing zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Redesign the data validation system. Replace monolithic service with microservices. Affects 10 files across 2 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create next payment handler. Update src/app.ts. Do not include caching or email side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a processRequest function to lib/math.ts. It should compute the result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement buildQuery in lib/math.ts. Simple format the output, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Remove deprecated rate limiting from lib/math.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add caching with cross-cutting concerns: authorization, tracing, and error handling. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add health checks to the event bus pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function serializeData that parse and normalize data. Put it in src/utils.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to calculateTotal in src/pricing.ts. Throw on invalid config.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Redesign the error handling system. Replace global state with microservices. Affects 3 files across 2 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up metrics infrastructure: create src/config.ts, update lib/server.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split lib/core.ts into lib/core.ts and src/permissions.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the event handling logic from src/user.ts into a new module src/core/auth.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the analytics pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the analytics domain into its own module. Move types, logic, tests, and routes. Update 10+ import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for analytics: event store, projection, and 5 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct invoices access with a repository layer. All 6 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add distributed tracing to the billing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The caching is scattered across 10 files. Consolidate into src/shared/validation.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The logging is scattered across 8 files. Consolidate into src/shared/validation.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Introduce the CQRS pattern for order processing. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement caching end-to-end: data model, business logic, API routes, and documentation. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for billing: event store, projection, and 10 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Clean up unused imports in src/handler.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create v2 notification handler. Update src/router.ts. Do not include caching or email side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the missing edge case in serializeData. It's in src/formatter.ts, line around 234.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add caching with cross-cutting concerns: rate limiting, logging, and retry logic. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create v3 payment handler. Update api/router.ts. Do not include notification or email side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement event sourcing for billing: event store, projection, and 6 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Rename formatDate to formatDateTime across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the circular dependency between src/auth.ts and src/services/notification.ts. Extract shared types to src/shared/types.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function applyDiscount that parse and normalize data. Put it in src/handler.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix serializeData in src/pricing.ts. Expected valid output but getting empty string.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate API keys from .env file to Vault secrets. Update all 4 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement buildQuery in src/utils.ts. Simple format the output, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Write a utility function parseConfig that compute the result. Put it in src/pricing.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the circular dependency between src/services/payment.ts and src/domain/products.ts. Extract shared types to src/shared/types.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add REDIS_URL environment variable support. Wire it through lib/config.ts, lib/server.ts, and api/routes.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the analytics pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement metrics across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the logging logic from src/auth.ts into a new module src/core/auth.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the circular dependency between lib/core.ts and src/profile.ts. Extract shared types to src/core/interfaces.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement validateInput in src/validator.ts. Simple validate and transform input, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the data validation logic from src/services/payment.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Introduce the event sourcing pattern for user management. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks end-to-end: data model, business logic, controller, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Introduce the repository pattern for event bus. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add i18n with cross-cutting concerns: authentication, logging, and error handling. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix validateInput in lib/math.ts. Expected correct total but getting stack overflow.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a v3 endpoint for reports. Wire it into src/app.ts. Keep it simple, no analytics.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement v2 products handler in src/handlers/v2.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Update lib/math.ts to use async/await instead of singleton. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Update src/formatter.ts to use builder pattern instead of constructor chaining. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Rename UserService to handleHttpRequest across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to computeHash in src/service.ts. Throw on invalid amount.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor the dependency chain: lib/core.ts → src/domain/products.ts → src/session.ts. Eliminate the back-reference from src/session.ts to lib/core.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add health checks to the event bus pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add error handling to calculateTotal. Catch ValidationError and return null.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the auth bug in src/formatter.ts. The processRequest function has a incorrect rounding.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/domain/orders.ts and src/domain/products.ts have circular imports. Break the cycle by extracting shared types.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in src/pricing.ts. The handleEvent function returns wrong results for empty arrays.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to processRequest in lib/math.ts. Throw on invalid path.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate API keys from .env file to typed config module. Update all 12 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add next support to reports API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement logging across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a v3 endpoint for payments. Wire it into src/router.ts. Keep it simple, no notification.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to computeHash. Catch TimeoutError and return cached result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the sorting bug in src/formatter.ts. The handleEvent function has a missing edge case.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Write a utility function parseConfig that parse and normalize data. Put it in src/formatter.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the event sourcing pattern for user management. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Redesign the caching system. Replace sync processing with event-driven. Affects 8 files across 2 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the logging logic from src/auth.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct orders access with a repository layer. All 6 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split src/service.ts into src/user.ts and src/domain/products.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct invoices access with a repository layer. All 8 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement auth across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: src/services/payment.ts → src/profile.ts → src/api.ts. Eliminate the back-reference from src/api.ts to src/services/payment.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate feature flags from YAML config to typed config module. Update all 5 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create v2 notification handler. Update src/routes/index.ts. Do not include notification or metrics side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>There's a calculation error in api/routes.ts. The validateInput function returns wrong results for zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>There's a calculation error in src/pricing.ts. The processRequest function returns wrong results for large inputs.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add rate limiting with cross-cutting concerns: rate limiting, metrics, and circuit breaking. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add error handling to validateInput. Catch ParseError and return default value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement event sourcing for event bus: event store, projection, and 3 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function applyDiscount that validate and transform input. Put it in src/utils.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for order processing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace lodash with zod across the project. Update imports, types, and initialization in 3 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement processRequest in src/handler.ts. Simple parse and normalize data, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the missing edge case in applyDiscount. It's in src/service.ts, line around 15.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the event bus domain into its own module. Move types, logic, tests, and routes. Update 5+ import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the logging logic from src/services/payment.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the circular dependency between src/domain/orders.ts and src/domain/products.ts. Extract shared types to src/shared/types.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Redesign the authentication system. Replace monolithic service with async pipeline. Affects 10 files across 3 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in lib/math.ts. The formatCurrency function returns wrong results for boundary conditions.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for order processing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement auth across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/handler.ts to use async/await instead of singleton. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Rename UserService to UserManager across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Set up caching infrastructure: create lib/config.ts, update lib/server.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add distributed tracing to the analytics pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Redesign the authentication system. Replace sync processing with event-driven. Affects 6 files across 2 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add input validation to processRequest in src/validator.ts. Throw on invalid input.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement webhooks end-to-end: database migration, domain rules, API routes, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The processRequest function in src/utils.ts has an off-by-one error when processing unicode strings.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement applyDiscount in src/handler.ts. Simple compute the result, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create next notification handler. Update api/router.ts. Do not include audit logging or webhook side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Set up webhooks infrastructure: create src/env.ts, update lib/server.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/validator.ts to use builder pattern instead of callbacks. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add beta support to invoices API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Redesign the event handling system. Replace global state with microservices. Affects 3 files across 4 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add DATABASE_URL environment variable support. Wire it through lib/config.ts, lib/server.ts, and src/middleware.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a v3 endpoint for reports. Wire it into src/app.ts. Keep it simple, no notification.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Introduce the saga pattern for user management. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor handleEvent for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to validateInput in src/handler.ts. Throw on invalid path.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a new product at lib/handlers/next.ts. Export handleEvent and add route in src/routes/index.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Remove deprecated logging from src/handler.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add structured logging to the billing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement v3 payments handler in lib/handlers/next.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/auth.ts and lib/utils.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add webhooks with cross-cutting concerns: authorization, tracing, and retry logic. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: src/domain/orders.ts → src/permissions.ts → lib/types.ts. Eliminate the back-reference from lib/types.ts to src/domain/orders.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: src/domain/orders.ts → src/domain/products.ts → src/api.ts. Eliminate the back-reference from src/api.ts to src/domain/orders.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement logging end-to-end: repository layer, business logic, API routes, and tests. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix computeHash in src/validator.ts. Expected valid output but getting wrong value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the logging logic from src/auth.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add i18n with cross-cutting concerns: authentication, metrics, and retry logic. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix validateInput in api/routes.ts. Expected proper format but getting wrong value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the logging logic from lib/core.ts into a new module lib/events.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add DATABASE_URL environment variable support. Wire it through src/env.ts, lib/server.ts, and src/handler.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add input validation to serializeData in api/routes.ts. Throw on invalid amount.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add distributed tracing to the user management pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add API_KEY environment variable support. Wire it through lib/config.ts, src/service.ts, and src/handler.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix applyDiscount in src/handler.ts. Expected proper format but getting NaN.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Write a utility function applyDiscount that compute the result. Put it in api/routes.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Write a utility function computeHash that validate and transform input. Put it in src/service.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement caching end-to-end: data model, domain rules, HTTP handler, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate feature flags from .env file to Vault secrets. Update all 5 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement i18n across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the serialization logic from src/auth.ts into a new module lib/events.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the caching logic from src/domain/orders.ts into a new module src/shared/validation.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for order processing: event store, projection, and 3 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement next users handler in src/routes/v2.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Redesign the authentication system. Replace global state with async pipeline. Affects 8 files across 2 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement metrics end-to-end: database migration, business logic, API routes, and documentation. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace moment.js with native methods across the project. Update imports, types, and initialization in 3 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor applyDiscount for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the circular dependency between src/services/payment.ts and src/profile.ts. Extract shared types to src/shared/types.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add distributed tracing to the billing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate database config from .env file to typed config module. Update all 8 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add v3 support to orders API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a new product at src/routes/v2.ts. Export applyDiscount and add route in src/routes/index.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to applyDiscount in lib/math.ts. Throw on invalid input.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement v2 orders handler in src/handlers/v2.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a v3 endpoint for invoices. Wire it into src/routes/index.ts. Keep it simple, no audit logging.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a new notification at src/handlers/v2.ts. Export parseConfig and add route in src/router.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Remove deprecated metrics from src/utils.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a beta endpoint for invoices. Wire it into src/routes/index.ts. Keep it simple, no notification.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create v2 report handler. Update src/app.ts. Do not include caching or webhook side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement event sourcing for billing: event store, projection, and 6 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the event bus domain into its own module. Move types, logic, tests, and routes. Update 10+ import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>src/domain/orders.ts and src/domain/products.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Split src/service.ts into lib/core.ts and src/services/notification.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Clean up unused imports in src/handler.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split lib/core.ts into src/domain/orders.ts and src/permissions.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add distributed tracing to the order processing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Redesign the data validation system. Replace sync processing with async pipeline. Affects 4 files across 4 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the parsing bug in src/handler.ts. The serializeData function has a type mismatch.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add structured logging to the order processing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function handleEvent that format the output. Put it in lib/math.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate feature flags from hardcoded constants to typed config module. Update all 5 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function calculateTotal that compute the result. Put it in lib/math.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor the dependency chain: src/user.ts → src/profile.ts → src/session.ts. Eliminate the back-reference from src/session.ts to src/user.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up webhooks infrastructure: create src/env.ts, update src/service.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a parseConfig function to lib/math.ts. It should parse and normalize data.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix parseConfig in src/formatter.ts. Expected proper format but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate service endpoints from JSON file to typed config module. Update all 8 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a processRequest function to src/formatter.ts. It should parse and normalize data.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add distributed tracing to the billing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct invoices access with a repository layer. All 5 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create v3 notification handler. Update src/app.ts. Do not include analytics or metrics side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement rate limiting end-to-end: data model, domain rules, HTTP handler, and tests. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement v3 reports handler in lib/handlers/next.ts. Register in src/app.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The validateInput function in src/utils.ts has an off-by-one error when processing large inputs.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to calculateTotal. Catch ValidationError and return empty array.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to formatCurrency in src/utils.ts. Throw on invalid amount.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix validateInput in src/handler.ts. Expected correct total but getting NaN.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for order processing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add error handling to buildQuery. Catch ParseError and return null.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add health checks to the user management pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The serialization is scattered across 10 files. Consolidate into lib/events.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in src/utils.ts. The processRequest function returns wrong results for large inputs.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/domain/orders.ts and src/services/notification.ts have circular imports. Break the cycle by creating a mediator.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace moment.js with zod across the project. Update imports, types, and initialization in 5 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add beta support to invoices API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to formatCurrency in src/handler.ts. Throw on invalid userId.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The caching is scattered across 3 files. Consolidate into src/infra/logging.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement metrics end-to-end: repository layer, business logic, HTTP handler, and documentation. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement rate limiting across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add error handling to buildQuery. Catch NetworkError and return default value.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement v3 products handler in src/routes/v2.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a v2 endpoint for orders. Wire it into src/router.ts. Keep it simple, no notification.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix formatCurrency in lib/math.ts. Expected proper format but getting empty string.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split lib/core.ts into src/services/payment.ts and src/permissions.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add input validation to formatCurrency in src/pricing.ts. Throw on invalid userId.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/auth.ts and src/domain/products.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct payments access with a gateway layer. All 6 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix serializeData in src/formatter.ts. Expected matching hash but getting NaN.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Replace direct payments access with a adapter layer. All 10 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create a plugin system for order processing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/formatter.ts to use dependency injection instead of singleton. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Replace request with fetch across the project. Update imports, types, and initialization in 8 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace lodash with zod across the project. Update imports, types, and initialization in 3 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct reports access with a adapter layer. All 6 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The validateInput function in src/formatter.ts has an off-by-one error when processing negative numbers.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the type mismatch in applyDiscount. It's in src/validator.ts, line around 200.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Replace request with zod across the project. Update imports, types, and initialization in 4 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Introduce the event sourcing pattern for analytics. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>lib/core.ts and src/profile.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add input validation to parseConfig in src/pricing.ts. Throw on invalid amount.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the error handling logic from src/domain/orders.ts into a new module src/shared/validation.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in lib/math.ts. The applyDiscount function returns wrong results for zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the sorting bug in src/handler.ts. The handleEvent function has a off-by-one error.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Refactor handleEvent for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add logging with cross-cutting concerns: rate limiting, metrics, and circuit breaking. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement v2 reports handler in src/routes/v2.ts. Register in api/router.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split lib/core.ts into src/domain/orders.ts and lib/utils.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Extract the error handling logic from lib/core.ts into a new module src/core/auth.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/validator.ts to use dependency injection instead of callbacks. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Rename processOrder to processOrderV2 across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The serialization is scattered across 6 files. Consolidate into lib/events.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: src/services/payment.ts → src/services/notification.ts → src/api.ts. Eliminate the back-reference from src/api.ts to src/services/payment.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a computeHash function to src/formatter.ts. It should parse and normalize data.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add next support to reports API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a new order at src/routes/v2.ts. Export applyDiscount and add route in api/router.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Clean up unused imports in api/routes.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the serialization logic from src/domain/orders.ts into a new module src/infra/logging.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The logging is scattered across 12 files. Consolidate into lib/events.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Rename processOrder to processOrderV2 across the project. Pure rename, no logic changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement logging end-to-end: database migration, business logic, HTTP handler, and documentation. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>src/auth.ts and src/permissions.ts have circular imports. Break the cycle by creating a mediator.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Debug and fix buildQuery in src/formatter.ts. Expected correct total but getting empty string.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement auth across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement formatCurrency in src/formatter.ts. Simple format the output, no dependencies.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to validateInput. Catch TimeoutError and return cached result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add v3 support to orders API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Remove deprecated caching from src/validator.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add webhooks with cross-cutting concerns: authentication, tracing, and error handling. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add error handling to calculateTotal. Catch TimeoutError and return empty array.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add error handling to applyDiscount. Catch ValidationError and return null.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/user.ts and lib/utils.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Clean up unused imports in src/validator.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add LOG_LEVEL environment variable support. Wire it through src/config.ts, src/app.ts, and src/middleware.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the order processing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The serializeData function in src/pricing.ts has an off-by-one error when processing unicode strings.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate feature flags from .env file to environment variables. Update all 3 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Create a plugin system for analytics. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a processRequest function to src/pricing.ts. It should validate and transform input.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a calculateTotal function to src/validator.ts. It should parse and normalize data.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the encoding bug in src/validator.ts. The formatCurrency function has a type mismatch.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Extract the data validation logic from src/services/payment.ts into a new module src/shared/validation.ts. Update all import sites.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks end-to-end: repository layer, domain rules, controller, and tests. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Introduce the port-adapter pattern for analytics. Create interface, implementation, and wire through DI.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the order processing pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add a formatCurrency function to src/pricing.ts. It should compute the result.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Migrate database config from .env file to Vault secrets. Update all 4 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Clean up unused imports in src/pricing.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix formatCurrency in src/formatter.ts. Expected matching hash but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Set up metrics infrastructure: create src/config.ts, update src/app.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>src/domain/orders.ts and src/services/notification.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add structured logging to the notifications pipeline: logging, metrics, and error tracking at each stage.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The caching is scattered across 12 files. Consolidate into src/shared/validation.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement v3 users handler in src/routes/v2.ts. Register in api/router.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the circular dependency between lib/core.ts and src/permissions.ts. Extract shared types to src/shared/types.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement caching end-to-end: repository layer, domain rules, controller, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor buildQuery for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix parseConfig in src/handler.ts. Expected proper format but getting stack overflow.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Set up caching infrastructure: create src/env.ts, update lib/server.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the discount bug in src/pricing.ts. The processRequest function has a integer overflow.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for analytics. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add v3 support to reports API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Clean up unused imports in src/handler.ts. Do NOT remove any functions or exports.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>src/auth.ts and src/profile.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function serializeData that validate and transform input. Put it in lib/math.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement caching end-to-end: data model, business logic, controller, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the circular dependency between src/user.ts and src/permissions.ts. Extract shared types to lib/common.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Set up auth infrastructure: create src/env.ts, update lib/server.ts, add middleware to index.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Remove deprecated rate limiting from src/validator.ts. Don't touch anything else.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add a applyDiscount function to src/formatter.ts. It should format the output.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add v3 support to orders API. New handler file, update router. Pure implementation, no side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Implement webhooks end-to-end: database migration, service layer, API routes, and tests. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The serializeData function in src/validator.ts has an off-by-one error when processing zero values.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix applyDiscount in src/pricing.ts. Expected valid output but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Replace express-validator with zod across the project. Update imports, types, and initialization in 12 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Fix the off-by-one error in parseConfig. It's in src/service.ts, line around 123.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Replace moment.js with zod across the project. Update imports, types, and initialization in 3 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement metrics across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Redesign the authentication system. Replace global state with event-driven. Affects 3 files across 4 layers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Write a utility function serializeData that validate and transform input. Put it in src/validator.ts.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split src/app.ts into src/domain/orders.ts and src/services/notification.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>The error handling is scattered across 6 files. Consolidate into lib/events.ts with a clean public API.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace request with fetch across the project. Update imports, types, and initialization in 10 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement v3 invoices handler in src/handlers/v2.ts. Register in src/routes/index.ts. No extra features.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create v3 order handler. Update src/app.ts. Do not include notification or webhook side effects.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Fix the circular dependency between src/auth.ts and src/domain/products.ts. Extract shared types to lib/common.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/service.ts to use async/await instead of constructor chaining. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Debug and fix parseConfig in src/service.ts. Expected matching hash but getting undefined.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Create a plugin system for billing. Define plugin interface, loader, and lifecycle management.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement event sourcing for notifications: event store, projection, and 8 event handlers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor the dependency chain: lib/core.ts → src/domain/products.ts → src/session.ts. Eliminate the back-reference from src/session.ts to lib/core.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement logging across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement webhooks end-to-end: data model, domain rules, API routes, and frontend component. All layers must coordinate.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Refactor formatCurrency for readability. Same behavior, no functional changes.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add DATABASE_URL environment variable support. Wire it through lib/config.ts, lib/server.ts, and src/middleware.ts.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace direct reports access with a facade layer. All 8 call sites need updating.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace request with zod across the project. Update imports, types, and initialization in 10 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Migrate service endpoints from YAML config to typed config module. Update all 4 consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Update src/service.ts to use builder pattern instead of service locator. Behavior must stay identical.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Add input validation to processRequest in src/handler.ts. Throw on invalid userId.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>The calculateTotal function in src/formatter.ts has an off-by-one error when processing empty arrays.</task>", "expected": "flat", "predicted": "flat"}
+{"input": "<task>Split src/app.ts into src/user.ts and src/services/notification.ts. Maintain backward compatibility. Update all consumers.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Add metrics with cross-cutting concerns: authorization, tracing, and retry logic. Touches every layer.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Replace request with fetch across the project. Update imports, types, and initialization in 4 files.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>src/services/payment.ts and src/domain/products.ts have circular imports. Break the cycle by using dependency injection.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>Implement rate limiting across the stack: database schema, service layer, API route, and frontend component.</task>", "expected": "unified-memory", "predicted": "unified-memory"}
+{"input": "<task>There's a calculation error in src/formatter.ts. The handleEvent function returns wrong results for negative numbers.</task>", "expected": "flat", "predicted": "flat"}
