@@ -38,7 +38,13 @@ export function createHttpRouterSLM(config: HttpRouterSLMConfig): RouterSLMPort 
       architecture: ArchitectureKind;
       confidence: number;
     }> {
-      const input = `<task>${taskDescription}\n${objective}</task>`;
+      // SLM trained on short task summaries. The full description has noise
+      // ("Start by reading..." / "When done, signal..."). Use just objective
+      // if it's non-trivial, otherwise fall back to truncated taskDescription.
+      const summary = objective.length >= 30
+        ? objective
+        : taskDescription.split(/\n\n/)[0].slice(0, 500);
+      const input = `<task>${summary}</task>`;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
