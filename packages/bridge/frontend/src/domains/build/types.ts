@@ -50,7 +50,7 @@ export type BuildStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'paus
 
 export type AutonomyLevel = 'discuss-all' | 'auto-routine' | 'full-auto';
 
-export type Verdict = 'FULLY_VALIDATED' | 'PARTIALLY_VALIDATED' | 'FAILED';
+export type Verdict = 'fully_validated' | 'partially_validated' | 'validation_failed';
 
 export interface PhaseInfo {
   readonly phase: Phase;
@@ -103,7 +103,7 @@ export interface EvidenceStats {
 }
 
 export interface Refinement {
-  readonly target: 'strategy' | 'gate' | 'orchestrator' | 'bridge';
+  readonly target: 'product' | 'strategy' | 'gate' | 'bridge' | 'pacta' | 'orchestrator';
   readonly description: string;
   readonly frequency: string;
 }

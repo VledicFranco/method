@@ -10,7 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { appendFile, readFile, mkdir } from 'node:fs/promises';
+import { appendFile as nodeAppendFile, readFile as nodeReadFile, mkdir as nodeMkdir } from 'node:fs/promises';
 
 import type { ConversationPort, AgentMessage, HumanMessage, GateDecision, GateType, SkillRequest } from '../../ports/conversation.js';
 import type { ConversationMessage } from '../../ports/checkpoint.js';
@@ -36,11 +36,20 @@ interface PendingGateDecision {
 
 // ── Adapter Options ────────────────────────────────────────────
 
+/** Minimal async fs operations needed by ConversationAdapter. Defaults to node:fs/promises. */
+export interface ConversationAdapterFs {
+  appendFile(path: string, data: string, encoding: BufferEncoding): Promise<void>;
+  readFile(path: string, encoding: BufferEncoding): Promise<string>;
+  mkdir(path: string, opts?: { recursive: boolean }): Promise<void>;
+}
+
 export interface ConversationAdapterOptions {
   /** Base directory for session data. Conversation JSONL files are stored at {sessionDir}/{buildId}/conversation.jsonl */
   sessionDir: string;
   /** Optional event callback — wired to the event bus in C-3. */
   onEvent?: ConversationEventCallback;
+  /** Optional fs implementation for testability. Defaults to node:fs/promises. */
+  fs?: ConversationAdapterFs;
 }
 
 // ── ConversationAdapter ────────────────────────────────────────
@@ -51,10 +60,12 @@ export class ConversationAdapter implements ConversationPort {
   private readonly pendingGateDecisions = new Map<string, PendingGateDecision>();
   private readonly sessionDir: string;
   private readonly onEvent?: ConversationEventCallback;
+  private readonly fs: ConversationAdapterFs;
 
   constructor(options: ConversationAdapterOptions) {
     this.sessionDir = options.sessionDir;
     this.onEvent = options.onEvent;
+    this.fs = options.fs ?? { appendFile: nodeAppendFile, readFile: nodeReadFile, mkdir: nodeMkdir as ConversationAdapterFs['mkdir'] };
   }
 
   // ── ConversationPort implementation ──────────────────────────
@@ -84,14 +95,28 @@ export class ConversationAdapter implements ConversationPort {
   }
 
   waitForHumanMessage(buildId: string): Promise<HumanMessage> {
-    return new Promise<HumanMessage>((resolve) => {
-      this.pendingHumanMessages.set(buildId, { resolve });
+    const TIMEOUT_MS = 3_600_000; // 1 hour
+    return new Promise<HumanMessage>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingHumanMessages.delete(buildId);
+        reject(new Error(`waitForHumanMessage timed out after ${TIMEOUT_MS}ms for build "${buildId}"`));
+      }, TIMEOUT_MS);
+      this.pendingHumanMessages.set(buildId, {
+        resolve: (msg: HumanMessage) => { clearTimeout(timer); resolve(msg); },
+      });
     });
   }
 
   waitForGateDecision(buildId: string, _gate: GateType): Promise<GateDecision> {
-    return new Promise<GateDecision>((resolve) => {
-      this.pendingGateDecisions.set(buildId, { resolve });
+    const TIMEOUT_MS = 3_600_000; // 1 hour
+    return new Promise<GateDecision>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingGateDecisions.delete(buildId);
+        reject(new Error(`waitForGateDecision timed out after ${TIMEOUT_MS}ms for build "${buildId}" gate "${_gate}"`));
+      }, TIMEOUT_MS);
+      this.pendingGateDecisions.set(buildId, {
+        resolve: (decision: GateDecision) => { clearTimeout(timer); resolve(decision); },
+      });
     });
   }
 
@@ -182,16 +207,25 @@ export class ConversationAdapter implements ConversationPort {
   private async persistMessage(buildId: string, msg: ConversationMessage): Promise<void> {
     const filePath = this.jsonlPath(buildId);
     const dir = join(this.sessionDir, buildId);
-    await mkdir(dir, { recursive: true });
-    await appendFile(filePath, JSON.stringify(msg) + '\n', 'utf-8');
+    await this.fs.mkdir(dir, { recursive: true });
+    await this.fs.appendFile(filePath, JSON.stringify(msg) + '\n', 'utf-8');
   }
 
   private async loadFromJsonl(buildId: string): Promise<ConversationMessage[]> {
     const filePath = this.jsonlPath(buildId);
     try {
-      const raw = await readFile(filePath, 'utf-8');
+      const raw = await this.fs.readFile(filePath, 'utf-8');
       const lines = raw.split('\n').filter((line) => line.trim().length > 0);
-      return lines.map((line) => JSON.parse(line) as ConversationMessage);
+      const messages: ConversationMessage[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        try {
+          messages.push(JSON.parse(lines[i]) as ConversationMessage);
+        } catch {
+          // Fix 7 (F-A-6): Skip corrupted lines, log warning with line number
+          console.warn(`[ConversationAdapter] Skipping corrupted JSONL line ${i + 1} in ${filePath}`);
+        }
+      }
+      return messages;
     } catch {
       // File doesn't exist or read error — return empty
       return [];

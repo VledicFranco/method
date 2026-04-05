@@ -7,10 +7,10 @@
  * @see PRD 047 — Build Orchestrator §Evidence & Refinement
  */
 
-import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import * as yaml from 'js-yaml';
 
+import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { YamlLoader } from '../../ports/yaml-loader.js';
 import type { FeatureSpec } from '../../ports/checkpoint.js';
 import type { PhaseResult, Refinement, EvidenceReport } from './types.js';
 import type { BuildConfig } from './config.js';
@@ -105,8 +105,9 @@ export function produceRefinements(
 export async function aggregateRefinements(
   retrosDir: string,
   config: Pick<BuildConfig, 'refinementFrequencyThreshold' | 'refinementConfidenceThreshold'>,
+  ports?: { fs: FileSystemProvider; yaml: YamlLoader },
 ): Promise<Refinement[]> {
-  const reports = await loadEvidenceReports(retrosDir);
+  const reports = await loadEvidenceReports(retrosDir, ports);
   return aggregateFromReports(reports, config);
 }
 
@@ -160,18 +161,40 @@ export function aggregateFromReports(
 
 // ── File system helpers ────────────────────────────────────────
 
-async function loadEvidenceReports(retrosDir: string): Promise<EvidenceReport[]> {
+async function loadEvidenceReports(
+  retrosDir: string,
+  ports?: { fs: FileSystemProvider; yaml: YamlLoader },
+): Promise<EvidenceReport[]> {
   const reports: EvidenceReport[] = [];
   try {
-    const files = await readdir(retrosDir);
+    let files: string[];
+    if (ports) {
+      files = ports.fs.readdirSync(retrosDir);
+    } else {
+      const { readdir } = await import('node:fs/promises');
+      files = await readdir(retrosDir);
+    }
     const buildRetros = files.filter((f) => f.startsWith('retro-build-') && f.endsWith('.yaml'));
 
     for (const file of buildRetros) {
       try {
-        const raw = await readFile(join(retrosDir, file), 'utf-8');
-        const parsed = yaml.load(raw) as EvidenceReport;
-        if (parsed && parsed.refinements) {
-          reports.push(parsed);
+        let raw: string;
+        if (ports) {
+          raw = ports.fs.readFileSync(join(retrosDir, file), 'utf-8');
+        } else {
+          const { readFile } = await import('node:fs/promises');
+          raw = await readFile(join(retrosDir, file), 'utf-8');
+        }
+        let parsed: unknown;
+        if (ports) {
+          parsed = ports.yaml.load(raw);
+        } else {
+          const yaml = await import('js-yaml');
+          parsed = yaml.load(raw);
+        }
+        const report = parsed as EvidenceReport;
+        if (report && report.refinements) {
+          reports.push(report);
         }
       } catch {
         // Skip malformed files

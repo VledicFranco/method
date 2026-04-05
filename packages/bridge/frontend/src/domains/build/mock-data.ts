@@ -194,7 +194,7 @@ const MOCK_CONVERSATIONS: Record<string, ConversationMessage[]> = {
       card: {
         type: 'evidence-report',
         data: {
-          verdict: 'FULLY_VALIDATED',
+          verdict: 'fully_validated',
           totalCost: 1.80,
           overheadPct: 9,
           interventions: 3,
@@ -393,7 +393,7 @@ export const MOCK_BUILDS: BuildSummary[] = [
     autonomy: 'discuss-all',
     costUsd: 1.8,
     budgetUsd: 15.0,
-    verdict: 'FULLY_VALIDATED',
+    verdict: 'fully_validated',
     evidence: {
       totalCost: 1.8,
       overheadPct: 9,

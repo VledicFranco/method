@@ -34,17 +34,15 @@ export type {
 export { BuildConfigSchema, type BuildConfig } from './config.js';
 export { buildOrchestratorPact } from './pact.js';
 
-// C-1: Core orchestrator, checkpoint adapter, validator
+// C-1: Core orchestrator, validator (adapters are internal — use factory)
 export { BuildOrchestrator } from './orchestrator.js';
 export type { StrategyExecutionResult } from './orchestrator.js';
-export { FileCheckpointAdapter } from './checkpoint-adapter.js';
 export { Validator } from './validator.js';
 export type { CommandExecutor, CommandExecutorResult } from './validator.js';
 
-// C-3: Routes and domain factory
+// C-3: Routes and domain factory (adapters are internal — use createBuildDomain)
 export { registerBuildRoutes } from './routes.js';
 export type { BuildEntry, BuildRouteContext } from './routes.js';
-export { ConversationAdapter } from './conversation-adapter.js';
 export type { ConversationEvent, ConversationEventCallback } from './conversation-adapter.js';
 
 // ── Domain Factory ─────────────────────────────────────────────

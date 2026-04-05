@@ -23,7 +23,11 @@ export class FileCheckpointAdapter implements CheckpointPort {
     const dir = join(this.checkpointDir, sessionId);
     this.fs.mkdirSync(dir, { recursive: true });
     const content = this.yaml.dump(checkpoint as unknown as Record<string, unknown>);
-    this.fs.writeFileSync(join(dir, 'checkpoint.yaml'), content);
+    const finalPath = join(dir, 'checkpoint.yaml');
+    const tmpPath = join(dir, 'checkpoint.yaml.tmp');
+    // Atomic write: write to tmp first, then rename to final path (F-A-3)
+    this.fs.writeFileSync(tmpPath, content);
+    this.fs.renameSync(tmpPath, finalPath);
   }
 
   async load(sessionId: string): Promise<PipelineCheckpoint | null> {

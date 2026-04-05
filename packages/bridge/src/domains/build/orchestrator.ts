@@ -84,27 +84,27 @@ export class BuildOrchestrator {
     await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}`);
 
     // Phase 1: Explore
-    const exploration = await this.explore();
+    const exploration = await this.withTimeout(this.explore(), 'explore');
 
     // Phase 2: Specify (gate)
-    const spec = await this.specify(exploration);
+    const spec = await this.withTimeout(this.specify(exploration), 'specify');
     this.featureSpec = spec;
 
     // Phase 3: Design (gate)
-    await this.design();
+    await this.withTimeout(this.design(), 'design');
 
     // Phase 4: Plan (gate)
-    await this.plan();
+    await this.withTimeout(this.plan(), 'plan');
 
     // Phase 5+6: Implement → Review loop
-    await this.implementReviewLoop();
+    await this.withTimeout(this.implementReviewLoop(), 'implement-review');
 
     // Phase 7: Validate
-    const validationReport = await this.validate();
+    const validationReport = await this.withTimeout(this.validate(), 'validate');
     this._lastValidationReport = validationReport;
 
     // Phase 8: Measure
-    return this.measure();
+    return this.withTimeout(this.measure(), 'measure');
   }
 
   // ── Phase 1: Explore ───────────────────────────────────────────
@@ -505,6 +505,21 @@ export class BuildOrchestrator {
     };
 
     await this.checkpoint.save(this.sessionId, checkpoint);
+  }
+
+  // ── Phase Timeout (F-A-4) ─────────────────────────────────────
+
+  private withTimeout<T>(promise: Promise<T>, phase: string): Promise<T> {
+    const timeoutMs = this.config.phaseTimeoutMs;
+    return Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) =>
+        setTimeout(
+          () => reject(new Error(`Phase "${phase}" timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        ),
+      ),
+    ]);
   }
 
   // ── Helpers ────────────────────────────────────────────────────

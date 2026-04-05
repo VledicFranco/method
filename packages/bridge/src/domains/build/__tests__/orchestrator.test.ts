@@ -72,6 +72,14 @@ class MockConversationPort implements ConversationPort {
     // no-op
   }
 
+  receiveHumanMessage(_buildId: string, _message: HumanMessage): void {
+    // no-op in test mock
+  }
+
+  receiveGateDecision(_buildId: string, _decision: GateDecision): void {
+    // no-op in test mock
+  }
+
   get totalGateCalls(): number {
     return this.gateCallCount;
   }

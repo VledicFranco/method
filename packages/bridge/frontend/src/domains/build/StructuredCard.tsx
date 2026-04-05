@@ -291,19 +291,19 @@ function EvidenceReportCard({ data }: { data: Record<string, unknown> }) {
   const durationMin = data.durationMin as number | undefined;
 
   const verdictColor =
-    verdict === 'FULLY_VALIDATED'
+    verdict === 'fully_validated'
       ? 'bg-[#10b98122] text-[#10b981] border-[#10b98133]'
-      : verdict === 'PARTIALLY_VALIDATED'
+      : verdict === 'partially_validated'
         ? 'bg-[#f59e0b22] text-[#f59e0b] border-[#f59e0b33]'
         : 'bg-[#ef444422] text-[#ef4444] border-[#ef444433]';
 
   const verdictIcon =
-    verdict === 'FULLY_VALIDATED' ? '\u2713' : verdict === 'PARTIALLY_VALIDATED' ? '~' : '\u2717';
+    verdict === 'fully_validated' ? '\u2713' : verdict === 'partially_validated' ? '~' : '\u2717';
 
   const verdictLabel =
-    verdict === 'FULLY_VALIDATED'
+    verdict === 'fully_validated'
       ? 'Fully Validated'
-      : verdict === 'PARTIALLY_VALIDATED'
+      : verdict === 'partially_validated'
         ? 'Partially Validated'
         : 'Failed';
 

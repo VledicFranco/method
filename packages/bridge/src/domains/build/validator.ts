@@ -135,9 +135,12 @@ export class Validator {
     try {
       // assertion.check is the grep pattern, assertion.expect contains the file/dir to search
       const target = assertion.expect || '.';
+      // Escape shell special characters to prevent command injection (F-A-2)
+      const escapedCheck = assertion.check.replace(/[`$\\!"';&|<>(){}[\]#~?*\n\r]/g, '\\$&');
+      const escapedTarget = target.replace(/[`$\\!"';&|<>(){}[\]#~?*\n\r]/g, '\\$&');
       const cmd = process.platform === 'win32'
-        ? `findstr /s /r "${assertion.check}" ${target}`
-        : `grep -r "${assertion.check}" ${target}`;
+        ? `findstr /s /r "${escapedCheck}" ${escapedTarget}`
+        : `grep -r "${escapedCheck}" ${escapedTarget}`;
       const result = await this.executor.exec(cmd, {
         cwd: this.projectRoot,
         timeout: 30_000,

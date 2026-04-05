@@ -16,17 +16,17 @@ import type { BuildSummary, Verdict, Refinement } from './types';
 
 function VerdictBadge({ verdict }: { verdict: Verdict }) {
   const config: Record<Verdict, { label: string; icon: string; classes: string }> = {
-    FULLY_VALIDATED: {
+    fully_validated: {
       label: 'FULLY VALIDATED',
       icon: '\u2713',
       classes: 'bg-[#10b98122] text-[#10b981] border-[#10b98133]',
     },
-    PARTIALLY_VALIDATED: {
+    partially_validated: {
       label: 'PARTIALLY VALIDATED',
       icon: '\u26A0',
       classes: 'bg-[#f59e0b22] text-[#f59e0b] border-[#f59e0b33]',
     },
-    FAILED: {
+    validation_failed: {
       label: 'FAILED',
       icon: '\u2717',
       classes: 'bg-[#ef444422] text-[#ef4444] border-[#ef444433]',
@@ -118,10 +118,12 @@ function PhaseCostBreakdown({ costs }: { costs: Record<string, number> }) {
 
 function RefinementsList({ refinements }: { refinements: Refinement[] }) {
   const tagColor: Record<Refinement['target'], string> = {
+    product: 'bg-[#10b98122] text-[#10b981]',
     strategy: 'bg-[#6d5aed33] text-[#6d5aed]',
     gate: 'bg-[#ef444422] text-[#ef4444]',
-    orchestrator: 'bg-[#f59e0b22] text-[#f59e0b]',
     bridge: 'bg-[#3b82f622] text-[#3b82f6]',
+    pacta: 'bg-[#8b5cf622] text-[#8b5cf6]',
+    orchestrator: 'bg-[#f59e0b22] text-[#f59e0b]',
   };
 
   if (refinements.length === 0) {

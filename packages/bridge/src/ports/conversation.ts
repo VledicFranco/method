@@ -25,6 +25,10 @@ export interface ConversationPort {
   getHistory(buildId: string): Promise<ConversationMessage[]>;
   /** Human requests an optional skill invocation mid-pipeline. */
   requestSkillInvocation(buildId: string, skill: SkillRequest): Promise<void>;
+  /** Deliver a human message from the REST route (resolves waitForHumanMessage). */
+  receiveHumanMessage(buildId: string, message: HumanMessage): void;
+  /** Deliver a gate decision from the REST route (resolves waitForGateDecision). */
+  receiveGateDecision(buildId: string, decision: GateDecision): void;
 }
 
 // ── Message Types ──

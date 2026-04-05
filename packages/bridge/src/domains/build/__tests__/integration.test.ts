@@ -79,6 +79,12 @@ function createMockConversation(): ConversationPort & { messages: ConversationMe
     async requestSkillInvocation(_buildId: string, _skill: SkillRequest) {
       // no-op in tests
     },
+    receiveHumanMessage(_buildId: string, _message: HumanMessage): void {
+      // no-op in tests
+    },
+    receiveGateDecision(_buildId: string, _decision: GateDecision): void {
+      // no-op in tests
+    },
   };
 }
 

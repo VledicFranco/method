@@ -43,6 +43,23 @@ export interface BuildRouteContext {
   config: BuildConfig;
 }
 
+// ── Builds Map eviction (F-A-5) ──────────────────────────────
+
+const MAX_BUILDS = 100;
+
+function evictStaleBuilds(builds: Map<string, BuildEntry>): void {
+  if (builds.size <= MAX_BUILDS) return;
+  const evictable = Array.from(builds.entries())
+    .filter(([, e]) => e.status !== 'running')
+    .sort((a, b) => (a[1].completedAt ?? a[1].startedAt).localeCompare(b[1].completedAt ?? b[1].startedAt));
+  let toRemove = builds.size - MAX_BUILDS;
+  for (const [id] of evictable) {
+    if (toRemove <= 0) break;
+    builds.delete(id);
+    toRemove--;
+  }
+}
+
 // ── Event emission helper ──────────────────────────────────────
 
 function emitBuildEvent(
@@ -225,6 +242,15 @@ export function registerBuildRoutes(
           });
         }
 
+        // Validate autonomyLevel (F-I-3)
+        const validAutonomyLevels: AutonomyLevel[] = ['discuss-all', 'auto-routine', 'full-auto'];
+        if (autonomyLevel !== undefined && !validAutonomyLevels.includes(autonomyLevel)) {
+          return reply.status(400).send({
+            error: 'Invalid autonomy level',
+            message: `autonomyLevel must be one of: ${validAutonomyLevels.join(', ')}`,
+          });
+        }
+
         const level: AutonomyLevel = autonomyLevel ?? ctx.config.defaultAutonomyLevel as AutonomyLevel;
 
         const { orchestrator, conversation } = ctx.createOrchestrator();
@@ -240,6 +266,7 @@ export function registerBuildRoutes(
         };
 
         ctx.builds.set(buildId, entry);
+        evictStaleBuilds(ctx.builds);
 
         emitBuildEvent(ctx.eventBus, 'started', 'info', {
           buildId,
@@ -247,9 +274,10 @@ export function registerBuildRoutes(
           autonomyLevel: level,
         }, buildId);
 
-        // Start the build in the background (non-blocking)
-        orchestrator.start(requirement.trim(), level).then(
-          (report) => {
+        // Start the build in the background (non-blocking) (F-A-7)
+        void (async () => {
+          try {
+            const report = await orchestrator.start(requirement.trim(), level);
             entry.status = 'completed';
             entry.completedAt = new Date().toISOString();
             entry.evidenceReport = report;
@@ -260,8 +288,7 @@ export function registerBuildRoutes(
               criteriaPassed: report.validation.criteriaPassed,
               criteriaFailed: report.validation.criteriaFailed,
             }, buildId);
-          },
-          (err) => {
+          } catch (err) {
             entry.status = 'failed';
             entry.completedAt = new Date().toISOString();
 
@@ -269,8 +296,8 @@ export function registerBuildRoutes(
               buildId,
               error: (err as Error).message,
             }, buildId);
-          },
-        );
+          }
+        })();
 
         return reply.status(201).send({ buildId });
       } catch (err) {

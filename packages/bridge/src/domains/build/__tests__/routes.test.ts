@@ -95,6 +95,14 @@ class MockFileSystem {
   readdirSync(_path: string, _opts?: { withFileTypes: boolean }): Array<{ name: string; isDirectory(): boolean }> {
     return [];
   }
+
+  renameSync(oldPath: string, newPath: string): void {
+    const content = this.files.get(oldPath);
+    if (content !== undefined) {
+      this.files.set(newPath, content);
+      this.files.delete(oldPath);
+    }
+  }
 }
 
 class MockYamlLoader {
