@@ -545,12 +545,26 @@ async function start() {
         });
       },
     };
+    // ProjectLookup adapter — bridges discovery service to build domain (G-BOUNDARY)
+    const buildProjectLookup = {
+      async getProject(id: string) {
+        const projects = discoveryService.getCachedProjects();
+        const found = projects.find(p => p.id === id);
+        return found ? { id: found.id, name: found.name, path: found.path, description: found.description } : null;
+      },
+      async listProjects() {
+        return discoveryService.getCachedProjects().map(p => ({
+          id: p.id, name: p.name, path: p.path, description: p.description,
+        }));
+      },
+    };
     const buildDomain = createBuildDomain({
       eventBus,
       fileSystem: fsProvider,
       yamlLoader,
       strategyExecutor: buildStrategyExecutorPort,
       commandExecutor: buildCommandExecutor,
+      projectLookup: buildProjectLookup,
     });
     buildDomain.registerRoutes(app);
 

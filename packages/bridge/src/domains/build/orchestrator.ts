@@ -50,6 +50,18 @@ const PHASE_ORDER: readonly Phase[] = [
   'explore', 'specify', 'design', 'plan', 'implement', 'review', 'validate', 'measure',
 ] as const;
 
+/** Project context bound to this build. Null if no project selected. */
+export interface BuildProjectContext {
+  /** Project identifier. */
+  id: string;
+  /** Human-readable project name. */
+  name: string;
+  /** Absolute path to project root. */
+  path: string;
+  /** Short description for strategy prompts. */
+  description: string;
+}
+
 export class BuildOrchestrator {
   private readonly sessionId: string;
   private autonomyLevel: AutonomyLevel;
@@ -66,6 +78,7 @@ export class BuildOrchestrator {
   private reviewLoopCount = 0;
   private validateLoopCount = 0;
   private readonly onPhaseEvent?: PhaseEventCallback;
+  private readonly projectContext?: BuildProjectContext;
 
   constructor(
     private readonly checkpoint: CheckpointPort,
@@ -75,10 +88,12 @@ export class BuildOrchestrator {
     private readonly validator?: Validator,
     sessionId?: string,
     onPhaseEvent?: PhaseEventCallback,
+    projectContext?: BuildProjectContext,
   ) {
     this.sessionId = sessionId ?? `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.autonomyLevel = config.defaultAutonomyLevel as AutonomyLevel;
     this.onPhaseEvent = onPhaseEvent;
+    this.projectContext = projectContext;
   }
 
   /** Unique session identifier for this build. */
@@ -95,7 +110,10 @@ export class BuildOrchestrator {
     this.autonomyLevel = autonomyLevel;
     this.startTime = Date.now();
 
-    await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}`);
+    const projectLabel = this.projectContext
+      ? ` [project: ${this.projectContext.name} @ ${this.projectContext.path}]`
+      : '';
+    await this.conversation.sendSystemMessage(this.sessionId, `Build started: ${requirement}${projectLabel}`);
 
     // Phase 1: Explore
     const exploration = await this.withTimeout(this.explore(), 'explore');
@@ -531,7 +549,21 @@ export class BuildOrchestrator {
     context?: Record<string, unknown>,
   ): Promise<StrategyExecutionResult> {
     this.completedStrategies.push(strategyId);
-    return this.strategyExecutor.executeStrategy(strategyId, context ?? {});
+
+    // Merge project context into strategy inputs so strategies know
+    // which codebase to operate on and can read project-card data.
+    const projectInputs: Record<string, unknown> = this.projectContext
+      ? {
+          project_context: `${this.projectContext.name}: ${this.projectContext.description}`,
+          project_root: this.projectContext.path,
+          project_id: this.projectContext.id,
+        }
+      : {};
+
+    return this.strategyExecutor.executeStrategy(strategyId, {
+      ...projectInputs,
+      ...context,
+    });
   }
 
   // ── Checkpoint ─────────────────────────────────────────────────
