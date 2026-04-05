@@ -136,4 +136,46 @@ export interface BuildSummary {
   readonly refinements: Refinement[];
   /** Per-phase cost breakdown (phase name -> USD) */
   readonly phaseCosts?: Record<string, number>;
+  /** Conversation messages for the build's chat panel */
+  readonly conversation?: ConversationMessage[];
+  /** Active gate type (if any) */
+  readonly activeGate?: GateType;
 }
+
+// ── Conversation Types ──
+
+export type MessageSender = 'agent' | 'human' | 'system';
+
+export type GateType = 'specify' | 'design' | 'plan' | 'review' | 'escalation';
+
+export type StructuredCardType =
+  | 'feature-spec'
+  | 'commission-plan'
+  | 'review-findings'
+  | 'debate-decision'
+  | 'evidence-report';
+
+export interface StructuredCard {
+  readonly type: StructuredCardType;
+  readonly data: Record<string, unknown>;
+}
+
+export interface ConversationMessage {
+  readonly id: string;
+  readonly sender: MessageSender;
+  readonly content: string;
+  readonly timestamp: string;
+  readonly replyTo?: string;
+  readonly card?: StructuredCard;
+}
+
+/** Per-gate action button definitions */
+export const GATE_ACTIONS: Record<GateType, readonly string[]> = {
+  specify: ['Approve Spec'],
+  design: ['Approve Design'],
+  plan: ['Approve Plan'],
+  review: ['Approve', 'Approve with Comments', 'Request Changes'],
+  escalation: ['Retry with Direction', 'Fix Manually', 'Abort'],
+} as const;
+
+export type SkillType = 'debate' | 'review' | 'surface';

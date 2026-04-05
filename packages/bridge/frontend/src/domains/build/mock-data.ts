@@ -3,7 +3,215 @@
  * Matches the 3 builds from the approved mockup (tmp/build-dashboard-mock.html).
  */
 
-import type { BuildSummary } from './types';
+import type { BuildSummary, ConversationMessage } from './types';
+
+// ── Mock Conversations ──────────────────────────────────────────────
+
+const MOCK_CONVERSATIONS: Record<string, ConversationMessage[]> = {
+  'build-rate-limiting': [
+    {
+      id: 'rl-1',
+      sender: 'system',
+      content: 'Phase 5: Implement started \u2014 s-fcd-commission-orch spawning 3 commissions',
+      timestamp: '20:14:32',
+    },
+    {
+      id: 'rl-2',
+      sender: 'agent',
+      content: 'Implementation started. I\'m running 3 parallel commissions: `rate-limit-port`, `gateway-middleware`, and `tenant-quota-store`. Each follows the FCA domain structure.',
+      timestamp: '20:14:35',
+    },
+    {
+      id: 'rl-3',
+      sender: 'system',
+      content: 'C-1 rate-limit-port completed ($1.20) \u2014 142 lines, 3 files',
+      timestamp: '20:14:45',
+    },
+    {
+      id: 'rl-4',
+      sender: 'system',
+      content: 'C-3 tenant-quota-store completed ($1.40) \u2014 89 lines, 2 files',
+      timestamp: '20:15:12',
+    },
+    {
+      id: 'rl-5',
+      sender: 'agent',
+      content: 'C-2 hit a gate failure. `G-NO-ANY` found 2 untyped parameters in `gateway/middleware.ts` (lines 47, 83). I\'m retrying with explicit `GatewayRequest<RateLimitPayload>` type injection.\n\nNo action needed \u2014 automatic retry in progress.',
+      timestamp: '20:15:30',
+    },
+    {
+      id: 'rl-6',
+      sender: 'system',
+      content: 's-fcd-commission-orch: 2/3 complete, 1 retrying',
+      timestamp: '20:15:50',
+    },
+  ],
+
+  'build-auth-extraction': [
+    {
+      id: 'auth-1',
+      sender: 'system',
+      content: 'Build started: Auth extraction',
+      timestamp: '19:38:00',
+    },
+    {
+      id: 'auth-2',
+      sender: 'system',
+      content: 'Phase 1: Explore completed. Phase 2: Specify started.',
+      timestamp: '19:40:22',
+    },
+    {
+      id: 'auth-3',
+      sender: 'agent',
+      content: 'I\'ve explored the codebase. Auth logic is scattered across 3 domains: `sessions/`, `strategies/`, `genesis/`. I found 18 direct imports and 4 shared auth utils.\n\nI also spawned a council debate \u2014 the recommendation is to extract an `AuthPort` and migrate consumers in 3 waves.',
+      timestamp: '19:42:15',
+      card: {
+        type: 'debate-decision',
+        data: {
+          motion: 'Extract AuthPort as central auth interface',
+          advisors: [
+            { name: 'architecture', position: 'for', argument: 'Clean separation. Port pattern matches FCA.' },
+            { name: 'security', position: 'for', argument: 'Centralizes auth surface. Easier to audit.' },
+            { name: 'DX', position: 'for', argument: '3-wave migration avoids big-bang risk.' },
+          ],
+          verdict: 'unanimous approval',
+        },
+      },
+    },
+    {
+      id: 'auth-4',
+      sender: 'system',
+      content: 'Debate spawned \u2014 council reviewing auth extraction approach',
+      timestamp: '19:42:16',
+    },
+    {
+      id: 'auth-5',
+      sender: 'agent',
+      content: 'Here\'s my proposed specification:',
+      timestamp: '19:42:18',
+      card: {
+        type: 'feature-spec',
+        data: {
+          problem: 'Auth logic duplicated across 3 domains',
+          scope: 'domains/auth/ (new), sessions/, strategies/, genesis/',
+          approach: 'Extract AuthPort, 3-wave consumer migration',
+          criteria: [
+            'All auth imports resolve to domains/auth/',
+            'Zero runtime auth logic in consumer domains',
+            'tsc --noEmit: 0 errors',
+            'Existing tests pass (no behavior change)',
+            'AuthPort has full test coverage',
+          ],
+        },
+      },
+    },
+    {
+      id: 'auth-6',
+      sender: 'agent',
+      content: 'The success criteria I recommend are listed above. Do these look right, or would you adjust anything?',
+      timestamp: '19:42:20',
+    },
+    {
+      id: 'auth-7',
+      sender: 'human',
+      content: 'Add a criterion for no auth logic outside `domains/auth/` \u2014 I want that verified by grep.',
+      timestamp: '19:44:03',
+    },
+    {
+      id: 'auth-8',
+      sender: 'agent',
+      content: 'Added. Updated spec:',
+      timestamp: '19:44:05',
+      replyTo: 'auth-7',
+      card: {
+        type: 'feature-spec',
+        data: {
+          problem: 'Auth logic duplicated across 3 domains',
+          scope: 'domains/auth/ (new), sessions/, strategies/, genesis/',
+          approach: 'Extract AuthPort, 3-wave consumer migration',
+          criteria: [
+            'All auth imports resolve to domains/auth/',
+            'Zero runtime auth logic in consumer domains',
+            'tsc --noEmit: 0 errors',
+            'Existing tests pass (no behavior change)',
+            'AuthPort has full test coverage',
+            'grep -r "auth" src/domains/ finds 0 matches outside domains/auth/',
+          ],
+          addedIndex: 5,
+        },
+      },
+    },
+  ],
+
+  'build-health-endpoint': [
+    {
+      id: 'health-1',
+      sender: 'system',
+      content: 'Build started: Health endpoint',
+      timestamp: '18:20:00',
+    },
+    {
+      id: 'health-2',
+      sender: 'agent',
+      content: 'Starting build for health endpoint. I\'ll explore the codebase for existing health check patterns.',
+      timestamp: '18:20:05',
+    },
+    {
+      id: 'health-3',
+      sender: 'system',
+      content: 'Phase 1: Explore completed. Phase 2: Specify started.',
+      timestamp: '18:20:48',
+    },
+    {
+      id: 'health-4',
+      sender: 'agent',
+      content: 'Exploration complete. No existing health route found. The bridge server uses Express with domain-based routing. I propose adding a `GET /health` route that returns uptime, version, and connection status.',
+      timestamp: '18:21:30',
+    },
+    {
+      id: 'health-5',
+      sender: 'system',
+      content: 'Phase 3: Design started',
+      timestamp: '18:23:45',
+    },
+    {
+      id: 'health-6',
+      sender: 'system',
+      content: 'Checkpoint saved at phase 4/8',
+      timestamp: '18:24:50',
+    },
+    {
+      id: 'health-7',
+      sender: 'system',
+      content: 's-fcd-review: 4/4 advisors complete \u2014 all passed',
+      timestamp: '18:29:20',
+    },
+    {
+      id: 'health-8',
+      sender: 'agent',
+      content: 'Build complete. All 3 criteria passed. Health endpoint is live at `GET /health`. Evidence report generated.',
+      timestamp: '18:31:50',
+      card: {
+        type: 'evidence-report',
+        data: {
+          verdict: 'FULLY_VALIDATED',
+          totalCost: 1.80,
+          overheadPct: 9,
+          interventions: 3,
+          durationMin: 12,
+        },
+      },
+    },
+    {
+      id: 'health-9',
+      sender: 'system',
+      content: 'Build validated: FULLY VALIDATED. Total cost $1.80, duration 12m.',
+      timestamp: '18:32:00',
+    },
+  ],
+};
+
+// ── Mock Builds ─────────────────────────────────────────────────────
 
 export const MOCK_BUILDS: BuildSummary[] = [
   // ── Build 1: Rate Limiting (running, in implement phase) ──────────
@@ -123,6 +331,7 @@ export const MOCK_BUILDS: BuildSummary[] = [
       { time: '20:15:50', type: 'strategy.status', target: 'orch', detail: 's-fcd-commission-orch: 2/3 complete, 1 retrying', category: 'system' },
     ],
     refinements: [],
+    conversation: MOCK_CONVERSATIONS['build-rate-limiting'],
   },
 
   // ── Build 2: Auth Extraction (waiting for human input) ────────────
@@ -169,6 +378,8 @@ export const MOCK_BUILDS: BuildSummary[] = [
       { time: '19:42:10', type: 'build.gate_waiting', target: 'specify', detail: 'human-approve-spec: awaiting input', category: 'gate' },
     ],
     refinements: [],
+    activeGate: 'specify',
+    conversation: MOCK_CONVERSATIONS['build-auth-extraction'],
   },
 
   // ── Build 3: Health Endpoint (completed, fully validated) ─────────
@@ -243,5 +454,6 @@ export const MOCK_BUILDS: BuildSummary[] = [
       { time: '18:32:20', type: 'build.completed', target: 'build', detail: 'FULLY VALIDATED ($1.80)', category: 'system' },
     ],
     refinements: [],
+    conversation: MOCK_CONVERSATIONS['build-health-endpoint'],
   },
 ];

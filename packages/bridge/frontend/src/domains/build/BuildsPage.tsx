@@ -13,6 +13,7 @@ import { cn } from '@/shared/lib/cn';
 import { BuildList } from './BuildList';
 import { BuildDetail } from './BuildDetail';
 import { ContextBar } from './ContextBar';
+import { ConversationPanel } from './ConversationPanel';
 import { useBuilds } from './useBuilds';
 
 export default function BuildsPage() {
@@ -43,17 +44,17 @@ export default function BuildsPage() {
         )}
       </div>
 
-      {/* Right panel — Conversation placeholder (C-5 implements) */}
+      {/* Right panel — Conversation */}
       <div
         className={cn(
           'bg-abyss border-l border-bdr flex flex-col transition-all duration-300 overflow-hidden',
           rightPanelOpen
-            ? 'w-[380px] min-w-[380px] opacity-100'
+            ? 'w-[400px] min-w-[400px] opacity-100'
             : 'w-0 min-w-0 border-l-0 opacity-0 pointer-events-none',
         )}
       >
         {/* Panel header */}
-        <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-bdr flex items-center gap-2 shrink-0">
           <span className="text-xs font-semibold uppercase tracking-wider text-txt-dim">
             Conversation
           </span>
@@ -66,18 +67,12 @@ export default function BuildsPage() {
           </button>
         </div>
 
-        {/* Placeholder content */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="text-[#64748b] text-3xl mb-3">&#9993;</div>
-            <div className="text-[13px] text-txt-dim mb-1">Conversation Panel</div>
-            <div className="text-[11px] text-[#64748b]">
-              C-5 implements gate conversations,
-              <br />
-              skill buttons, and inline editing.
-            </div>
-          </div>
-        </div>
+        {/* Conversation panel */}
+        <ConversationPanel
+          builds={builds}
+          selectedBuildId={selectedId}
+          onSelectBuild={selectBuild}
+        />
       </div>
 
       {/* Toggle button when panel is collapsed */}
