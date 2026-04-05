@@ -41,11 +41,25 @@ function itemToString(item: unknown): string {
   return String(item);
 }
 
+/** Full stringification preserving content — for long-form cards like design proposals. */
+function contentToString(item: unknown): string {
+  if (typeof item === 'string') return item;
+  if (item === null || item === undefined) return '';
+  try {
+    return JSON.stringify(item, null, 2);
+  } catch {
+    return String(item);
+  }
+}
+
 // ── Feature Spec Card ──
 
 function FeatureSpecCard({ data }: { data: Record<string, unknown> }) {
-  const problem = data.problem as string | undefined;
-  const scope = data.scope as string | undefined;
+  // Agent outputs may arrive as objects — coerce to strings defensively.
+  const problem = data.problem !== undefined && data.problem !== null
+    ? itemToString(data.problem) : undefined;
+  const scope = data.scope !== undefined && data.scope !== null
+    ? itemToString(data.scope) : undefined;
   const criteria = data.criteria as string[] | undefined;
   const addedIndex = data.addedIndex as number | undefined;
 
@@ -57,7 +71,10 @@ function FeatureSpecCard({ data }: { data: Record<string, unknown> }) {
     approach?: string;
   } | undefined;
 
-  const effectiveApproach = (data.approach as string | undefined) ?? exploration?.approach;
+  const rawApproach = (data.approach as unknown) ?? exploration?.approach;
+  const effectiveApproach = rawApproach !== undefined && rawApproach !== null
+    ? itemToString(rawApproach)
+    : undefined;
   const effectiveConstraints = (data.constraints as unknown[] | undefined) ?? exploration?.constraints;
   const effectiveDomains = exploration?.domains;
   const effectivePatterns = exploration?.patterns;
@@ -230,9 +247,9 @@ function CommissionPlanCard({ data }: { data: Record<string, unknown> }) {
     status?: string;
   }> | undefined;
 
-  // Fallback: raw plan text from orchestrator (data.plan)
-  if (!commissions && typeof data.plan === 'string') {
-    return <RawContentCard title="Commission Plan" content={data.plan} />;
+  // Fallback: raw plan from orchestrator (may be string OR object).
+  if (!commissions && data.plan !== undefined && data.plan !== null) {
+    return <RawContentCard title="Commission Plan" content={contentToString(data.plan)} />;
   }
 
   if (!commissions) return null;
@@ -273,12 +290,13 @@ function ReviewFindingsCard({ data }: { data: Record<string, unknown> }) {
   type Finding = { severity: string; message: string; file?: string; line?: number };
   const findings = data.findings as Finding[] | undefined;
 
-  // Fallback: raw text from orchestrator (data.design or data.review)
-  if (!findings && typeof data.design === 'string') {
-    return <RawContentCard title="Design Proposal" content={data.design} />;
+  // Fallback: raw content from orchestrator (data.design or data.review)
+  // Content may be a string OR an object (when the LLM returns structured JSON).
+  if (!findings && data.design !== undefined && data.design !== null) {
+    return <RawContentCard title="Design Proposal" content={contentToString(data.design)} />;
   }
-  if (!findings && typeof data.review === 'string') {
-    return <RawContentCard title="Review Findings" content={data.review} accent="#f59e0b" />;
+  if (!findings && data.review !== undefined && data.review !== null) {
+    return <RawContentCard title="Review Findings" content={contentToString(data.review)} accent="#f59e0b" />;
   }
 
   if (!findings) return null;

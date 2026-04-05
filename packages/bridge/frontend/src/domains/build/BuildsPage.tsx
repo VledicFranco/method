@@ -23,7 +23,7 @@ export default function BuildsPage() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   // Live phase/status from WebSocket events — enriches the selected build
-  const { currentPhase, phaseActive, liveStatus, liveCost, completedPhases } = useBuildEvents(selectedId);
+  const { currentPhase, phaseActive, liveStatus, liveCost, completedPhases, liveArtifacts } = useBuildEvents(selectedId);
 
   // Enrich selected build with live phase/status/cost data
   const selectedBuild = useMemo(() => {
@@ -49,11 +49,12 @@ export default function BuildsPage() {
       currentActivity: phaseActive && currentPhase ? `${currentPhase} phase running` : undefined,
       costUsd: liveCost > 0 ? liveCost : rawSelectedBuild.costUsd,
       phases: updatedPhases,
+      artifacts: Object.keys(liveArtifacts).length > 0 ? liveArtifacts : rawSelectedBuild.artifacts,
     };
-  }, [rawSelectedBuild, currentPhase, phaseActive, liveStatus, liveCost, completedPhases]);
+  }, [rawSelectedBuild, currentPhase, phaseActive, liveStatus, liveCost, completedPhases, liveArtifacts]);
 
-  const handleStartBuild = useCallback((requirement: string, projectId?: string) => {
-    void startBuild(requirement, undefined, projectId);
+  const handleStartBuild = useCallback(async (requirement: string, projectId?: string) => {
+    await startBuild(requirement, undefined, projectId);
   }, [startBuild]);
 
   const handleAbort = useCallback(() => {

@@ -7,9 +7,11 @@
  * @see PRD 047 §Dashboard Architecture — Build List (sidebar)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
 import { cn } from '@/shared/lib/cn';
 import { api } from '@/shared/lib/api';
+import { Button } from '@/shared/components/Button';
+import { X, Hammer, FolderOpen, ChevronDown } from 'lucide-react';
 import { PHASE_LABELS } from './types';
 import type { BuildSummary, PhaseInfo } from './types';
 
@@ -83,6 +85,16 @@ function BuildItem({
         )}
       </div>
 
+      {/* Project badge (if set) */}
+      {build.projectId && (
+        <div className="flex items-center gap-1 mb-1 ml-4">
+          <FolderOpen className="w-2.5 h-2.5 text-[#6d5aed]" />
+          <span className="font-mono text-[10px] text-[#6d5aed] truncate">
+            {build.projectId}
+          </span>
+        </div>
+      )}
+
       {/* Mini pipeline + phase label + cost */}
       <div className="flex items-center gap-[3px]">
         <MiniPipeline phases={build.phases} />
@@ -105,6 +117,8 @@ interface ProjectOption {
 }
 
 // ── New Build Modal ──
+// Follows the same modal pattern as SpawnSessionModal:
+// backdrop + centered dialog + header with icon + form + shared Button actions.
 
 function NewBuildModal({
   open,
@@ -113,11 +127,15 @@ function NewBuildModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (requirement: string, projectId?: string) => void;
+  onSubmit: (requirement: string, projectId?: string) => Promise<unknown>;
 }) {
   const [text, setText] = useState('');
+  const [projectSearch, setProjectSearch] = useState('');
   const [projectId, setProjectId] = useState<string>('');
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Fetch projects when modal opens
   useEffect(() => {
@@ -127,69 +145,195 @@ function NewBuildModal({
         !('status' in p) || p.status === 'healthy',
       );
       setProjects(healthy);
+      // Auto-select when only one project exists
+      if (healthy.length === 1) {
+        setProjectId(healthy[0].id);
+        setProjectSearch(healthy[0].name);
+      }
     }).catch(() => {
       // Projects API unavailable — allow builds without project
     });
   }, [open]);
 
+  // Filter projects based on search input
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch.trim()) return projects;
+    const lower = projectSearch.toLowerCase();
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(lower) ||
+        p.path.toLowerCase().includes(lower) ||
+        (p.description && p.description.toLowerCase().includes(lower)),
+    );
+  }, [projects, projectSearch]);
+
+  const handleSelectProject = useCallback((p: ProjectOption) => {
+    setProjectId(p.id);
+    setProjectSearch(p.name);
+    setShowProjectPicker(false);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  const handleSubmit = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    if (!text.trim() || isSubmitting) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await onSubmit(text.trim(), projectId || undefined);
+      setText('');
+      setProjectSearch('');
+      setProjectId('');
+      onClose();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [text, projectId, isSubmitting, onSubmit, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[900] flex items-center justify-center bg-black/65">
-      <div className="w-[520px] bg-abyss border border-bdr rounded-lg p-7 shadow-2xl">
-        <h3 className="text-base font-bold text-txt mb-4">New Build</h3>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-void/60 backdrop-blur-sm animate-backdrop-fade"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-        {/* Project selector */}
-        <label className="block text-[11px] font-semibold uppercase tracking-wider text-txt-dim mb-1.5">
-          Project
-        </label>
-        <select
-          className="w-full bg-void border border-bdr rounded-[5px] px-3 py-2 text-txt text-[13px] mb-4 outline-none focus:border-[#6d5aed] cursor-pointer"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="w-full max-w-lg rounded-xl border border-bdr bg-abyss shadow-2xl animate-slide-over-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="New Build"
+          onClick={(e) => e.stopPropagation()}
         >
-          <option value="">Select a project...</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}{p.description ? ` — ${p.description.slice(0, 60)}` : ''}
-            </option>
-          ))}
-        </select>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-bdr px-sp-5 py-sp-4">
+            <div className="flex items-center gap-2">
+              <Hammer className="h-4 w-4 text-bio" />
+              <h2 className="font-display text-md text-txt font-semibold">New Build</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
-        {/* Requirement textarea */}
-        <label className="block text-[11px] font-semibold uppercase tracking-wider text-txt-dim mb-1.5">
-          Requirement
-        </label>
-        <textarea
-          className="w-full h-[100px] bg-void border border-bdr rounded-[5px] p-3 text-txt text-[13px] resize-y outline-none focus:border-[#6d5aed] placeholder:text-[#ffffff22]"
-          placeholder="Describe the feature requirement..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          autoFocus
-        />
-        <div className="flex justify-end gap-2 mt-4">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-[5px] text-[13px] font-semibold bg-[#ffffff08] text-txt-dim border border-bdr hover:text-txt cursor-pointer transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              if (text.trim()) {
-                onSubmit(text.trim(), projectId || undefined);
-                setText('');
-                setProjectId('');
-                onClose();
-              }
-            }}
-            className="px-5 py-2 rounded-[5px] text-[13px] font-semibold bg-[#6d5aed] text-white hover:bg-[#7d6cf7] cursor-pointer transition-colors"
-          >
-            Start Build
-          </button>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-sp-5 space-y-sp-4">
+            {/* Project autocomplete picker */}
+            <div className="relative">
+              <label className="block text-xs text-txt-dim font-medium mb-1.5">
+                <FolderOpen className="inline h-3 w-3 mr-1" />
+                Project
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={projectSearch}
+                  onChange={(e) => {
+                    setProjectSearch(e.target.value);
+                    setProjectId(''); // clear selection when typing
+                    if (projects.length > 0) setShowProjectPicker(true);
+                  }}
+                  onFocus={() => {
+                    if (projects.length > 0) setShowProjectPicker(true);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowProjectPicker(false), 200);
+                  }}
+                  placeholder={projects.length > 0 ? 'Search projects...' : 'No projects discovered'}
+                  className="flex-1 rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio"
+                />
+                {projects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowProjectPicker(!showProjectPicker)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-bdr bg-void text-txt-dim hover:text-txt hover:bg-abyss-light transition-colors"
+                    aria-label="Pick project"
+                  >
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', showProjectPicker && 'rotate-180')} />
+                  </button>
+                )}
+              </div>
+
+              {/* Project autocomplete dropdown */}
+              {showProjectPicker && filteredProjects.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-48 overflow-y-auto rounded-lg border border-bdr bg-void shadow-lg">
+                  {filteredProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={cn(
+                        'w-full text-left px-3 py-2 hover:bg-abyss-light transition-colors border-b border-bdr last:border-b-0',
+                        p.id === projectId && 'bg-abyss-light',
+                      )}
+                      onClick={() => handleSelectProject(p)}
+                    >
+                      <div className="text-sm text-txt font-medium">{p.name}</div>
+                      <div className="font-mono text-[0.65rem] text-txt-muted truncate">
+                        {p.description ? p.description.slice(0, 80) : p.path}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Requirement */}
+            <div>
+              <label className="block text-xs text-txt-dim font-medium mb-1.5">Requirement</label>
+              <textarea
+                className="w-full rounded-lg border border-bdr bg-void px-3 py-2 text-sm text-txt font-mono placeholder:text-txt-muted focus:border-bio focus:outline-none focus:ring-1 focus:ring-bio resize-y"
+                placeholder="Describe the feature requirement..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={4}
+                autoFocus
+              />
+            </div>
+
+            {/* Error display */}
+            {submitError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {submitError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-sp-2">
+              <Button variant="secondary" size="md" type="button" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                type="submit"
+                loading={isSubmitting}
+                leftIcon={<Hammer className="h-4 w-4" />}
+              >
+                Start Build
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -199,7 +343,7 @@ export interface BuildListProps {
   builds: BuildSummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onStartBuild: (requirement: string, projectId?: string) => void;
+  onStartBuild: (requirement: string, projectId?: string) => Promise<unknown>;
 }
 
 export function BuildList({ builds, selectedId, onSelect, onStartBuild }: BuildListProps) {
@@ -245,9 +389,7 @@ export function BuildList({ builds, selectedId, onSelect, onStartBuild }: BuildL
       <NewBuildModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSubmit={(req, projId) => {
-          onStartBuild(req, projId);
-        }}
+        onSubmit={onStartBuild}
       />
     </>
   );

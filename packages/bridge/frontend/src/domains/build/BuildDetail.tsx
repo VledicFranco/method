@@ -99,6 +99,21 @@ function OverviewTab({ build }: { build: BuildSummary }) {
 
   return (
     <div>
+      {/* Original prompt/requirement */}
+      <div className="bg-abyss border border-bdr rounded-xl p-5 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[13px] font-semibold text-txt">Requirement</div>
+          {build.projectId && (
+            <span className="font-mono text-[10px] text-[#6d5aed] bg-[#6d5aed22] border border-[#6d5aed33] px-2 py-[3px] rounded">
+              {build.projectId}
+            </span>
+          )}
+        </div>
+        <div className="text-[13px] text-txt-dim leading-relaxed whitespace-pre-wrap">
+          {build.requirement}
+        </div>
+      </div>
+
       {/* Phase timeline + Gantt */}
       <PhaseTimeline phases={enrichedBuild.phases} gantt={enrichedBuild.gantt} />
 
@@ -182,6 +197,7 @@ function OverviewTab({ build }: { build: BuildSummary }) {
 
 function ArtifactsTab({ build }: { build: BuildSummary }) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [expandedArtifact, setExpandedArtifact] = useState<string | null>(null);
 
   // Generate artifact entries for each phase
   const artifactNames: Record<string, string> = {
@@ -195,8 +211,57 @@ function ArtifactsTab({ build }: { build: BuildSummary }) {
     measure: 'EvidenceReport',
   };
 
+  const allArtifacts = Object.entries(build.artifacts ?? {});
+
   return (
     <div>
+      {/* Strategy-produced artifacts (flat list) */}
+      {allArtifacts.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[13px] font-semibold text-txt">Strategy Artifacts</div>
+            <div className="font-mono text-[11px] text-txt-dim">{allArtifacts.length} produced</div>
+          </div>
+          <div className="space-y-1">
+            {allArtifacts.map(([key, content]) => {
+              const isExpanded = expandedArtifact === key;
+              const preview = typeof content === 'string' ? content.slice(0, 80) : '';
+              return (
+                <div key={key}>
+                  <div
+                    className={cn(
+                      'bg-void border border-bdr rounded-[5px] px-3 py-2 flex items-center gap-2 cursor-pointer transition-all duration-150 hover:border-[#6d5aed]',
+                      isExpanded && 'border-[#6d5aed]',
+                    )}
+                    onClick={() => setExpandedArtifact(isExpanded ? null : key)}
+                  >
+                    <span className="font-mono text-[11px] text-[#6d5aed] font-semibold shrink-0">{key}</span>
+                    <span className="font-mono text-[10px] text-txt-muted flex-1 truncate">
+                      {preview}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[#64748b] text-xs transition-transform duration-150 shrink-0',
+                        isExpanded && 'rotate-90',
+                      )}
+                    >
+                      &#9654;
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <div className="bg-[#08080e] border border-bdr border-t-0 rounded-b-[5px] p-4 mb-2 -mt-[1px] font-mono text-[11px] leading-[1.7] text-txt-dim max-h-96 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap break-words text-txt">{content}</pre>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Phase-level artifact status (visual pipeline) */}
+      <div className="text-[13px] font-semibold text-txt mb-2">Pipeline Phases</div>
       {PHASES.map((phase, idx) => {
         const phaseInfo = build.phases[idx];
         const isFuture = phaseInfo?.status === 'future';
