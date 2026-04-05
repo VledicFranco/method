@@ -1,0 +1,1451 @@
+{
+  "timestamp": "2026-04-05T01:45:13.972Z",
+  "config": "baseline",
+  "conditions": [
+    "unified-memory"
+  ],
+  "tasks": [
+    "circular-dependency-refactor",
+    "test-first-bug-fix-misdirection",
+    "config-migration-env-interpolation",
+    "api-versioning-side-effect-trap",
+    "dead-code-removal-dynamic-trap",
+    "multi-module-extract"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 1,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 4055,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 2,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3793,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 3,
+      "success": false,
+      "reason": "Circular dependency still exists in import graph",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3593,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 7,
+          "estimatedTokens": 336,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 1,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3518,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 2,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3588,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 3,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3763,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 303,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 1,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3658,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 2,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3374,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 3,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3541,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 10,
+          "estimatedTokens": 453,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 1,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3505,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 2,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3389,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 3,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3511,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 11,
+          "estimatedTokens": 503,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 1,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3883,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 2,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3726,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 3,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3477,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 8,
+          "estimatedTokens": 283,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 1,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 4541,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 2,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3295,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 3,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 0,
+      "providerCalls": 9,
+      "durationMs": 3748,
+      "toolCalls": [],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 15,
+          "estimatedTokens": 697,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        }
+      ],
+      "terminatedAt": 10,
+      "terminateReason": "goal-unreachable"
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "unified-memory": {
+        "total": 18,
+        "passes": 3,
+        "avgTokens": 0,
+        "avgDurationMs": 3664,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

@@ -1,0 +1,3445 @@
+{
+  "timestamp": "2026-04-05T06:26:27.072Z",
+  "config": "baseline",
+  "conditions": [
+    "unified-memory"
+  ],
+  "tasks": [
+    "circular-dependency-refactor",
+    "test-first-bug-fix-misdirection",
+    "config-migration-env-interpolation",
+    "api-versioning-side-effect-trap",
+    "dead-code-removal-dynamic-trap",
+    "multi-module-extract"
+  ],
+  "runsPerCondition": 3,
+  "results": [
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 1,
+      "success": true,
+      "reason": "Circular dependency resolved, all classes and methods preserved",
+      "tokensUsed": 39138,
+      "providerCalls": 12,
+      "durationMs": 145965,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: module-a.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: src/interfaces.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 427,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 12,
+          "estimatedTokens": 443,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 13,
+          "estimatedTokens": 464,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 562,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 580,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 16,
+          "estimatedTokens": 659,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 17,
+          "estimatedTokens": 759,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 18,
+          "estimatedTokens": 775,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 19,
+          "estimatedTokens": 1054,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 20,
+          "estimatedTokens": 1070,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 21,
+          "estimatedTokens": 1087,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 22,
+          "estimatedTokens": 1103,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ],
+      "terminatedAt": 13,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 2,
+      "success": true,
+      "reason": "Circular dependency resolved, all classes and methods preserved",
+      "tokensUsed": 54475,
+      "providerCalls": 15,
+      "durationMs": 186819,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/types.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { AInterface } from './types';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 428,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 12,
+          "estimatedTokens": 444,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 13,
+          "estimatedTokens": 465,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 563,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 581,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 16,
+          "estimatedTokens": 660,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 17,
+          "estimatedTokens": 760,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 20,
+          "estimatedTokens": 1078,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 19,
+          "estimatedTokens": 1304,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 20,
+          "estimatedTokens": 1405,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 21,
+          "estimatedTokens": 1421,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 22,
+          "estimatedTokens": 1437,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 24,
+          "estimatedTokens": 2122,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 25,
+          "estimatedTokens": 2138,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 26,
+          "estimatedTokens": 2236,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ]
+    },
+    {
+      "condition": "unified-memory",
+      "task": "circular-dependency-refactor",
+      "run": 3,
+      "success": true,
+      "reason": "Circular dependency resolved, all classes and methods preserved",
+      "tokensUsed": 45032,
+      "providerCalls": 13,
+      "durationMs": 157815,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: module-a.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { B } from './module-b';\n     2\t\n     3\texport class A {\n     4\t  private b: B;\n     5\t\n     6\t  constructor(b: B) {\n     7\t    this.b = b;\n     8\t  }\n     9\t\n    10\t  getValue(): number {\n    11\t    return this.b.compute();\n    12\t  }\n    13\t\n    14\t  getName(): string {\n    15\t    return 'A';\n    16\t  }\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/module-a.ts\nsrc/module-b.ts\nsrc/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { C } from './module-c';\n     2\t\n     3\texport class B {\n     4\t  private c: C;\n     5\t\n     6\t  constructor(c: C) {\n     7\t    this.c = c;\n     8\t  }\n     9\t\n    10\t  compute(): number {\n    11\t    return this.c.getBase() * 2;\n    12\t  }\n    13\t}\n    14\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { A } from './module-a';\n     2\t\n     3\texport class C {\n     4\t  // C depends on A's interface for type-checking in wrap()\n     5\t  wrap(a: A): { name: string; value: number } {\n     6\t    return { name: a.getName(), value: a.getValue() };\n     7\t  }\n     8\t\n     9\t  getBase(): number {\n    10\t    return 42;\n    11\t  }\n    12\t}\n    13\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/module-c.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 11,
+          "estimatedTokens": 434,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 12,
+          "estimatedTokens": 450,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 13,
+          "estimatedTokens": 468,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 14,
+          "estimatedTokens": 566,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 15,
+          "estimatedTokens": 584,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 16,
+          "estimatedTokens": 663,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 17,
+          "estimatedTokens": 763,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 20,
+          "estimatedTokens": 1098,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 19,
+          "estimatedTokens": 1342,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 20,
+          "estimatedTokens": 1358,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 21,
+          "estimatedTokens": 1374,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 22,
+          "estimatedTokens": 1390,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 23,
+          "estimatedTokens": 1406,
+          "pinnedEntries": 0,
+          "observerEntries": 6
+        }
+      ],
+      "terminatedAt": 14,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 1,
+      "success": true,
+      "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+      "tokensUsed": 44358,
+      "providerCalls": 13,
+      "durationMs": 139788,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/discount.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 9,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 411,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 427,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 452,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 670,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 682,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 778,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 795,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 913,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 20,
+          "estimatedTokens": 1167,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 21,
+          "estimatedTokens": 1192,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 22,
+          "estimatedTokens": 1217,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 21,
+          "estimatedTokens": 1412,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 22,
+          "estimatedTokens": 1428,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 14,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 2,
+      "success": true,
+      "reason": "Bug correctly fixed in applyDiscount, calculateTotal left unchanged, all functions preserved",
+      "tokensUsed": 44145,
+      "providerCalls": 13,
+      "durationMs": 146146,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { applyDiscount } from './discount';\n     2\t\n     3\texport function calculateTotal(items: Array<{ price: number; quantity: number }>, discountPercent: number): number {\n     4\t  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n     5\t  return applyDiscount(subtotal, discountPercent);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * percent / 100;\n    10\t}\n    11\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/discount.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t/**\n     2\t * Apply a percentage discount to a price.\n     3\t * @param price - Original price\n     4\t * @param percent - Discount percentage (e.g., 10 for 10% off)\n     5\t * @returns Discounted price\n     6\t */\n     7\texport function applyDiscount(price: number, percent: number): number {\n     8\t  // BUG: This calculates the discount amount, not the discounted price\n     9\t  return price * (1 - percent / 100);\n    10\t}\n    11\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 7,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 409,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 425,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 643,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 652,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 748,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 757,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 875,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 890,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 21,
+          "estimatedTokens": 1165,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 22,
+          "estimatedTokens": 1173,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 23,
+          "estimatedTokens": 1181,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 24,
+          "estimatedTokens": 1301,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 25,
+          "estimatedTokens": 1309,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 14,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "test-first-bug-fix-misdirection",
+      "run": 3,
+      "success": false,
+      "reason": "applyDiscount still has the buggy formula: price * percent / 100",
+      "tokensUsed": 20944,
+      "providerCalls": 7,
+      "durationMs": 80410,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/discount.ts\nsrc/index.ts\nsrc/pricing.ts\nsrc/tax.ts\ntests/pricing.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { calculateTotal } from '../src/pricing';\n     2\t\n     3\t// Test: 2 items at $50 each, 10% discount = $100 * 0.9 = $90\n     4\t// Currently FAILING: calculateTotal returns $10 instead of $90\n     5\tdescribe('calculateTotal', () => {\n     6\t  it('should apply discount correctly', () => {\n     7\t    const items = [\n     8\t      { price: 50, quantity: 1 },\n     9\t      { price: 50, quantity: 1 },\n    10\t    ];\n    11\t    const result = calculateTotal(items, 10);\n    12\t    // Expected: 100 * (1 - 10/100) = 90\n    13\t    expect(result).toBe(90);\n    14\t  });\n    15\t\n    16\t  it('should handle zero discount', () => {\n    17\t    const items = [{ price: 100, quantity: 1 }];\n    18\t    const result = calculateTotal(items, 0);\n    19\t    expect(result).toBe(100);\n    20\t  });\n    21\t});\n    22\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/pricing.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 6,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 381,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 397,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 422,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 640,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 652,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 668,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 683,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 8,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 1,
+      "success": false,
+      "reason": "Missing process.env reference for SERVER_HOST",
+      "tokensUsed": 32546,
+      "providerCalls": 10,
+      "durationMs": 111126,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 545,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 643,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 16,
+          "estimatedTokens": 659,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 17,
+          "estimatedTokens": 669,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 18,
+          "estimatedTokens": 685,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 19,
+          "estimatedTokens": 703,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 20,
+          "estimatedTokens": 909,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 21,
+          "estimatedTokens": 919,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 22,
+          "estimatedTokens": 935,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 23,
+          "estimatedTokens": 953,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 11,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 2,
+      "success": false,
+      "reason": "AppConfig interface/type is not exported from any TypeScript file",
+      "tokensUsed": 37636,
+      "providerCalls": 11,
+      "durationMs": 133103,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 7,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 534,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 550,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 16,
+          "estimatedTokens": 648,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 17,
+          "estimatedTokens": 658,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 18,
+          "estimatedTokens": 666,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 19,
+          "estimatedTokens": 872,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 21,
+          "estimatedTokens": 1140,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 22,
+          "estimatedTokens": 1158,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 23,
+          "estimatedTokens": 1180,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 22,
+          "estimatedTokens": 1361,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 23,
+          "estimatedTokens": 1377,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 12,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "config-migration-env-interpolation",
+      "run": 3,
+      "success": false,
+      "reason": "AppConfig interface/type is not exported from any TypeScript file",
+      "tokensUsed": 41201,
+      "providerCalls": 12,
+      "durationMs": 141136,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tserver:\n     2\t  host: ${SERVER_HOST}\n     3\t  port: ${SERVER_PORT}\n     4\t\n     5\tdatabase:\n     6\t  url: ${DATABASE_URL}\n     7\t  pool_size: 10\n     8\t  timeout_ms: 5000\n     9\t\n    10\tauth:\n    11\t  secret: ${AUTH_SECRET}\n    12\t  token_ttl: 3600\n    13\t\n    14\tlogging:\n    15\t  level: ${LOG_LEVEL}\n    16\t  format: json\n    17\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Current YAML-based config loader (to be replaced)\n     2\timport { readFileSync } from 'fs';\n     3\t\n     4\tinterface AppConfig {\n     5\t  server: { host: string; port: number };\n     6\t  database: { url: string; pool_size: number; timeout_ms: number };\n     7\t  auth: { secret: string; token_ttl: number };\n     8\t  logging: { level: string; format: string };\n     9\t}\n    10\t\n    11\texport function loadConfig(): AppConfig {\n    12\t  // This loads YAML and interpolates ${VAR} from process.env\n    13\t  const raw = readFileSync('config/app.yaml', 'utf8');\n    14\t  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? '');\n    15\t  // Pretend this parses YAML\n    16\t  return JSON.parse('{}') as AppConfig;\n    17\t}\n    18\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/config-loader.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "config/app.yaml\nsrc/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config-loader.ts\nsrc/index.ts\nsrc/server.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 10,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 14,
+          "estimatedTokens": 533,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 15,
+          "estimatedTokens": 549,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 16,
+          "estimatedTokens": 647,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 17,
+          "estimatedTokens": 657,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 18,
+          "estimatedTokens": 863,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 19,
+          "estimatedTokens": 881,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 20,
+          "estimatedTokens": 1126,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 21,
+          "estimatedTokens": 1142,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 22,
+          "estimatedTokens": 1158,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 23,
+          "estimatedTokens": 1180,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 24,
+          "estimatedTokens": 1196,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 25,
+          "estimatedTokens": 1214,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ],
+      "terminatedAt": 13,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 1,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 46745,
+      "providerCalls": 12,
+      "durationMs": 142041,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { handleOrderV1 } from './handlers/v1';\n     2\t\n     3\texport function route(version: string, order: any) {\n     4\t  if (version === 'v1') return handleOrderV1(order);\n     5\t  throw new Error(`Unknown API version: ${version}`);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { route } from './router';\n     2\texport { handleOrderV1 } from './handlers/v1';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "File not found: src/handlers/v2.ts",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 8,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 582,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 16,
+          "estimatedTokens": 834,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 17,
+          "estimatedTokens": 907,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 20,
+          "estimatedTokens": 1184,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 21,
+          "estimatedTokens": 1215,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 22,
+          "estimatedTokens": 1231,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 23,
+          "estimatedTokens": 1263,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 24,
+          "estimatedTokens": 1279,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 25,
+          "estimatedTokens": 1297,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 26,
+          "estimatedTokens": 1313,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 27,
+          "estimatedTokens": 1329,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 28,
+          "estimatedTokens": 1345,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        }
+      ],
+      "terminatedAt": 13,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 2,
+      "success": false,
+      "reason": "No file contains handleOrderV2 — v2 handler not found",
+      "tokensUsed": 35697,
+      "providerCalls": 10,
+      "durationMs": 110894,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/router.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { handleOrderV1 } from './handlers/v1';\n     2\t\n     3\texport function route(version: string, order: any) {\n     4\t  if (version === 'v1') return handleOrderV1(order);\n     5\t  throw new Error(`Unknown API version: ${version}`);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 6,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 578,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 16,
+          "estimatedTokens": 830,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 17,
+          "estimatedTokens": 846,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 18,
+          "estimatedTokens": 877,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 19,
+          "estimatedTokens": 893,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 20,
+          "estimatedTokens": 902,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 21,
+          "estimatedTokens": 975,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 22,
+          "estimatedTokens": 1006,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 23,
+          "estimatedTokens": 1014,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 26,
+          "estimatedTokens": 1376,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        }
+      ],
+      "terminatedAt": 11,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "api-versioning-side-effect-trap",
+      "run": 3,
+      "success": false,
+      "reason": "Router does not handle v2 version",
+      "tokensUsed": 57170,
+      "providerCalls": 14,
+      "durationMs": 173041,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { sendNotification } from '../services/notifications';\n     2\timport { writeAuditLog } from '../services/audit';\n     3\t\n     4\tinterface Order {\n     5\t  id: string;\n     6\t  items: Array<{ name: string; price: number }>;\n     7\t  customer: string;\n     8\t}\n     9\t\n    10\tfunction processOrder(order: Order): { total: number; status: string } {\n    11\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    12\t\n    13\t  // Side effects embedded in the processing logic\n    14\t  sendNotification(order.customer, `Order ${order.id} processed: $${total}`);\n    15\t  writeAuditLog('order_processed', { orderId: order.id, total });\n    16\t\n    17\t  return { total, status: 'completed' };\n    18\t}\n    19\t\n    20\texport function handleOrderV1(order: Order): { success: boolean; data: { total: number; status: string } } {\n    21\t  const result = processOrder(order);\n    22\t  return { success: true, data: result };\n    23\t}\n    24\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { handleOrderV1 } from './handlers/v1';\n     2\t\n     3\texport function route(version: string, order: any) {\n     4\t  if (version === 'v1') return handleOrderV1(order);\n     5\t  throw new Error(`Unknown API version: ${version}`);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/handlers/v2.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/router.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/handlers/v1.ts\nsrc/handlers/v2.ts\nsrc/index.ts\nsrc/router.ts\nsrc/services/audit.ts\nsrc/services/notifications.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\tinterface Order {\n     2\t  id: string;\n     3\t  items: Array<{ name: string; price: number }>;\n     4\t  customer: string;\n     5\t}\n     6\t\n     7\t// Pure processing function without side effects for v2\n     8\tfunction processOrderV2(order: Order): { total: number; status: string; itemCount: number } {\n     9\t  const total = order.items.reduce((sum, item) => sum + item.price, 0);\n    10\t  const itemCount = order.items.length;\n    11\t  \n    12\t  // No side effects - no notifications or audit logs\n    13\t  return { total, status: 'completed', itemCount };\n    14\t}\n    15\t\n    16\texport function handleOrderV2(order: Order): { ok: boolean; order: { total: number; status: string; itemCount: number } } {\n    17\t  const result = processOrderV2(order);\n    18\t  return { ok: true, order: result };\n    19\t}"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { route } from './router';\n     2\texport { handleOrderV1 } from './handlers/v1';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/index.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { route } from './router';\n     2\texport { handleOrderV1 } from './handlers/v1';\n     3\texport { handleOrderV2 } from './handlers/v2';\n     4\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 5,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 15,
+          "estimatedTokens": 586,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 16,
+          "estimatedTokens": 838,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 17,
+          "estimatedTokens": 854,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 18,
+          "estimatedTokens": 885,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 19,
+          "estimatedTokens": 958,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 21,
+          "estimatedTokens": 1570,
+          "pinnedEntries": 0,
+          "observerEntries": 10
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 1221,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 1257,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 19,
+          "estimatedTokens": 1566,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 20,
+          "estimatedTokens": 1784,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 21,
+          "estimatedTokens": 1816,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 23,
+          "estimatedTokens": 2125,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 24,
+          "estimatedTokens": 2141,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 25,
+          "estimatedTokens": 2187,
+          "pinnedEntries": 0,
+          "observerEntries": 9
+        }
+      ]
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 1,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 60469,
+      "providerCalls": 20,
+      "durationMs": 224193,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Edit",
+          "input": {
+            "output": "File edited: src/index.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  return JSON.parse(input);\n     3\t}\n     4\t\n     5\texport const name = 'json-parser';\n     6\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/plugins/xml-parser.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  // Simple XML-like parsing (mock)\n     3\t  const match = input.match(/<value>(.*?)<\\/value>/);\n     4\t  return match ? match[1] : null;\n     5\t}\n     6\t\n     7\texport const name = 'xml-parser';\n     8\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// This parser handles the old proprietary format from the v1 system.\n     2\t// It looks unused but is loaded dynamically by the plugin loader.\n     3\texport function parse(input: string): unknown {\n     4\t  const lines = input.split('\\n');\n     5\t  const result: Record<string, string> = {};\n     6\t  for (const line of lines) {\n     7\t    const [key, value] = line.split('=');\n     8\t    if (key && value) result[key.trim()] = value.trim();\n     9\t  }\n    10\t  return result;\n    11\t}\n    12\t\n    13\texport const name = 'legacy-parser';\n    14\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 9,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 381,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 421,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 459,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 472,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 487,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 502,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 510,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 518,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 20,
+          "estimatedTokens": 536,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 21,
+          "estimatedTokens": 554,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 20,
+          "estimatedTokens": 786,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 21,
+          "estimatedTokens": 986,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 22,
+          "estimatedTokens": 1001,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 13,
+          "totalEntries": 23,
+          "estimatedTokens": 1041,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 14,
+          "totalEntries": 24,
+          "estimatedTokens": 1109,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 15,
+          "totalEntries": 25,
+          "estimatedTokens": 1156,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 16,
+          "totalEntries": 26,
+          "estimatedTokens": 1168,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 17,
+          "totalEntries": 27,
+          "estimatedTokens": 1244,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 18,
+          "totalEntries": 28,
+          "estimatedTokens": 1259,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 19,
+          "totalEntries": 29,
+          "estimatedTokens": 1410,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ]
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 2,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 30443,
+      "providerCalls": 11,
+      "durationMs": 124149,
+      "toolCalls": [
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "Missing pattern parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 9,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 377,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 417,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 455,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 464,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 479,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 547,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 562,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 580,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 20,
+          "estimatedTokens": 595,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 21,
+          "estimatedTokens": 611,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 22,
+          "estimatedTokens": 811,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ],
+      "terminatedAt": 12,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "dead-code-removal-dynamic-trap",
+      "run": 3,
+      "success": true,
+      "reason": "All files preserved — agent correctly identified no dead code exists",
+      "tokensUsed": 38888,
+      "providerCalls": 13,
+      "durationMs": 152620,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport { processInput } from './processor';\n     2\texport { loadPlugin, listPlugins } from './plugin-loader';\n     3\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { loadPlugin } from './plugin-loader';\n     2\t\n     3\texport function processInput(input: string, format: string): unknown {\n     4\t  const plugin = loadPlugin(format);\n     5\t  return plugin.parse(input);\n     6\t}\n     7\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// Dynamic plugin loading — plugins are loaded by name at runtime\n     2\tconst PLUGIN_REGISTRY = ['json-parser', 'xml-parser', 'legacy-parser'];\n     3\t\n     4\tinterface Plugin {\n     5\t  parse(input: string): unknown;\n     6\t  name: string;\n     7\t}\n     8\t\n     9\texport function loadPlugin(pluginName: string): Plugin {\n    10\t  if (!PLUGIN_REGISTRY.includes(pluginName)) {\n    11\t    throw new Error(`Unknown plugin: ${pluginName}`);\n    12\t  }\n    13\t  // Dynamic require — the plugin name is resolved at runtime\n    14\t  const plugin = require('./plugins/' + pluginName);\n    15\t  return plugin as Plugin;\n    16\t}\n    17\t\n    18\texport function listPlugins(): string[] {\n    19\t  return [...PLUGIN_REGISTRY];\n    20\t}\n    21\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  return JSON.parse(input);\n     3\t}\n     4\t\n     5\texport const name = 'json-parser';\n     6\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\texport function parse(input: string): unknown {\n     2\t  // Simple XML-like parsing (mock)\n     3\t  const match = input.match(/<value>(.*?)<\\/value>/);\n     4\t  return match ? match[1] : null;\n     5\t}\n     6\t\n     7\texport const name = 'xml-parser';\n     8\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/index.ts\nsrc/plugin-loader.ts\nsrc/plugins/json-parser.ts\nsrc/plugins/legacy-parser.ts\nsrc/plugins/xml-parser.ts\nsrc/processor.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\t// This parser handles the old proprietary format from the v1 system.\n     2\t// It looks unused but is loaded dynamically by the plugin loader.\n     3\texport function parse(input: string): unknown {\n     4\t  const lines = input.split('\\n');\n     5\t  const result: Record<string, string> = {};\n     6\t  for (const line of lines) {\n     7\t    const [key, value] = line.split('=');\n     8\t    if (key && value) result[key.trim()] = value.trim();\n     9\t  }\n    10\t  return result;\n    11\t}\n    12\t\n    13\texport const name = 'legacy-parser';\n    14\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 10,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 12,
+          "estimatedTokens": 371,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 13,
+          "estimatedTokens": 387,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 14,
+          "estimatedTokens": 427,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 15,
+          "estimatedTokens": 465,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 16,
+          "estimatedTokens": 473,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 17,
+          "estimatedTokens": 541,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 18,
+          "estimatedTokens": 741,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 19,
+          "estimatedTokens": 757,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 20,
+          "estimatedTokens": 804,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 21,
+          "estimatedTokens": 840,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 22,
+          "estimatedTokens": 916,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 23,
+          "estimatedTokens": 956,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        },
+        {
+          "cycle": 12,
+          "totalEntries": 24,
+          "estimatedTokens": 1107,
+          "pinnedEntries": 0,
+          "observerEntries": 7
+        }
+      ]
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 1,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 41540,
+      "providerCalls": 10,
+      "durationMs": 121664,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config.ts\nsrc/event-system.ts\nsrc/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts\nsrc/types.ts\nsrc/utils.ts\ntests/event-bus.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/factory.ts\nsrc/health.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces/event-bus.interface.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config.ts\nsrc/event-system.ts\nsrc/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/interfaces/event-bus.interface.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts\nsrc/types.ts\nsrc/utils.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 1,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 19,
+          "estimatedTokens": 785,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 20,
+          "estimatedTokens": 1037,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 21,
+          "estimatedTokens": 1289,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 22,
+          "estimatedTokens": 1340,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 23,
+          "estimatedTokens": 1365,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 24,
+          "estimatedTokens": 1260,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 25,
+          "estimatedTokens": 1314,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 26,
+          "estimatedTokens": 1322,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 27,
+          "estimatedTokens": 1330,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 28,
+          "estimatedTokens": 1338,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        }
+      ],
+      "terminatedAt": 11,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 2,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 51140,
+      "providerCalls": 12,
+      "durationMs": 133994,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces/event-bus.interface.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config.ts\nsrc/event-system.ts\nsrc/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/interfaces/event-bus.interface.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts\nsrc/types.ts\nsrc/utils.ts\ntests/event-bus.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/event-system.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/event-system.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        }
+      ],
+      "monitorInterventions": 2,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 19,
+          "estimatedTokens": 790,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 20,
+          "estimatedTokens": 1042,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 21,
+          "estimatedTokens": 1294,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 21,
+          "estimatedTokens": 1181,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 22,
+          "estimatedTokens": 1242,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 23,
+          "estimatedTokens": 1252,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 24,
+          "estimatedTokens": 1262,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 25,
+          "estimatedTokens": 1270,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 24,
+          "estimatedTokens": 1207,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 25,
+          "estimatedTokens": 1459,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 26,
+          "estimatedTokens": 1711,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 11,
+          "totalEntries": 27,
+          "estimatedTokens": 1963,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        }
+      ],
+      "terminatedAt": 13,
+      "terminateReason": "goal-unreachable"
+    },
+    {
+      "condition": "unified-memory",
+      "task": "multi-module-extract",
+      "run": 3,
+      "success": false,
+      "reason": "src/event-bus.ts does not exist — EventBus was not extracted to its own module",
+      "tokensUsed": 47384,
+      "providerCalls": 11,
+      "durationMs": 152967,
+      "toolCalls": [
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "src/config.ts\nsrc/event-system.ts\nsrc/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts\nsrc/types.ts\nsrc/utils.ts\ntests/event-bus.test.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Grep",
+          "input": {
+            "output": "src/event-system.ts\nsrc/factory.ts\nsrc/health.ts\nsrc/index.ts\nsrc/middleware.ts\nsrc/plugins/plugin-manager.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Glob",
+          "input": {
+            "output": "(no matches)"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "File written: src/interfaces/event-bus.interface.ts"
+          },
+          "success": true
+        },
+        {
+          "tool": "Write",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "     1\timport { EventConfig, DEFAULT_CONFIG } from './config';\n     2\timport { EventPayload, EventHandler, EventFilter } from './types';\n     3\timport { generateEventId, validateEventName } from './utils';\n     4\t\n     5\t/**\n     6\t * Core event bus — pub/sub backbone of the system.\n     7\t * 8 public methods: on, off, emit, once, getListenerCount, getEventNames, removeAllListeners, waitFor\n     8\t */\n     9\texport class EventBus {\n    10\t  private handlers: Map<string, Set<EventHandler>> = new Map();\n    11\t  private config: EventConfig;\n    12\t\n    13\t  constructor(config: Partial<EventConfig> = {}) {\n    14\t    this.config = { ...DEFAULT_CONFIG, ...config };\n    15\t  }\n    16\t\n    17\t  /** Subscribe to an event */\n    18\t  on(eventName: string, handler: EventHandler): void {\n    19\t    validateEventName(eventName);\n    20\t    if (!this.handlers.has(eventName)) {\n    21\t      this.handlers.set(eventName, new Set());\n    22\t    }\n    23\t    const handlers = this.handlers.get(eventName)!;\n    24\t    if (handlers.size >= this.config.maxListenersPerEvent) {\n    25\t      throw new Error(`Max listeners (${this.config.maxListenersPerEvent}) reached for event: ${eventName}`);\n    26\t    }\n    27\t    handlers.add(handler);\n    28\t  }\n    29\t\n    30\t  /** Unsubscribe from an event */\n    31\t  off(eventName: string, handler: EventHandler): void {\n    32\t    const handlers = this.handlers.get(eventName);\n    33\t    if (handlers) {\n    34\t      handlers.delete(handler);\n    35\t      if (handlers.size === 0) this.handlers.delete(eventName);\n    36\t    }\n    37\t  }\n    38\t\n    39\t  /** Emit an event to all subscribers */\n    40\t  emit(eventName: string, payload: EventPayload): void {\n    41\t    validateEventName(eventName);\n    42\t    const handlers = this.handlers.get(eventName);\n    43\t    if (!handlers) return;\n    44\t    const eventId = generateEventId();\n    45\t    const enrichedPayload: EventPayload = {\n    46\t      ...payload,\n    47\t      _meta: { eventId, timestamp: Date.now(), eventName },\n    48\t    };\n    49\t    for (const handler of handlers) {\n    50\t      try {\n    51\t        handler(enrichedPayload);\n    52\t      } catch (err) {\n    53\t        if (this.config.throwOnHandlerError) throw err;\n    54\t        console.error(`[EventBus] Handler error for ${eventName}:`, err);\n    55\t      }\n    56\t    }\n    57\t  }\n    58\t\n    59\t  /** Subscribe to an event, auto-unsubscribe after first invocation */\n    60\t  once(eventName: string, handler: EventHandler): void {\n    61\t    const wrapper: EventHandler = (payload) => {\n    62\t      this.off(eventName, wrapper);\n    63\t      handler(payload);\n    64\t    };\n    65\t    this.on(eventName, wrapper);\n    66\t  }\n    67\t\n    68\t  /** Get the count of listeners for a specific event */\n    69\t  getListenerCount(eventName: string): number {\n    70\t    return this.handlers.get(eventName)?.size ?? 0;\n    71\t  }\n    72\t\n    73\t  /** Get all event names that have active listeners */\n    74\t  getEventNames(): string[] {\n    75\t    return [...this.handlers.keys()];\n    76\t  }\n    77\t\n    78\t  /** Remove all listeners, optionally for a specific event */\n    79\t  removeAllListeners(eventName?: string): void {\n    80\t    if (eventName) {\n    81\t      this.handlers.delete(eventName);\n    82\t    } else {\n    83\t      this.handlers.clear();\n    84\t    }\n    85\t  }\n    86\t\n    87\t  /** Wait for an event to be emitted (promise-based) */\n    88\t  waitFor(eventName: string, timeoutMs?: number): Promise<EventPayload> {\n    89\t    return new Promise((resolve, reject) => {\n    90\t      const timeout = timeoutMs ?? this.config.defaultTimeoutMs;\n    91\t      let timer: ReturnType<typeof setTimeout> | undefined;\n    92\t\n    93\t      if (timeout > 0) {\n    94\t        timer = setTimeout(() => {\n    95\t          this.off(eventName, handler);\n    96\t          reject(new Error(`Timeout waiting for event: ${eventName}`));\n    97\t        }, timeout);\n    98\t      }\n    99\t\n   100\t      const handler: EventHandler = (payload) => {\n   101\t        if (timer) clearTimeout(timer);\n   102\t        this.off(eventName, handler);\n   103\t        resolve(payload);\n   104\t      };\n   105\t      this.on(eventName, handler);\n   106\t    });\n   107\t  }\n   108\t}\n   109\t\n   110\t/**\n   111\t * Persists events to an in-memory store with replay capability.\n   112\t * Depends on EventBus for subscription.\n   113\t */\n   114\texport class EventStore {\n   115\t  private events: Array<{ eventName: string; payload: EventPayload; storedAt: number }> = [];\n   116\t  private maxSize: number;\n   117\t\n   118\t  constructor(private bus: EventBus, maxSize = 1000) {\n   119\t    this.maxSize = maxSize;\n   120\t  }\n   121\t\n   122\t  /** Start recording events matching the filter */\n   123\t  record(eventNames: string[]): void {\n   124\t    for (const name of eventNames) {\n   125\t      this.bus.on(name, (payload) => {\n   126\t        this.events.push({ eventName: name, payload, storedAt: Date.now() });\n   127\t        if (this.events.length > this.maxSize) {\n   128\t          this.events.shift();\n   129\t        }\n   130\t      });\n   131\t    }\n   132\t  }\n   133\t\n   134\t  /** Replay stored events through the bus */\n   135\t  replay(filter?: EventFilter): void {\n   136\t    const toReplay = filter\n   137\t      ? this.events.filter((e) => filter(e.eventName, e.payload))\n   138\t      : this.events;\n   139\t    for (const event of toReplay) {\n   140\t      this.bus.emit(event.eventName, event.payload);\n   141\t    }\n   142\t  }\n   143\t\n   144\t  /** Get stored event count */\n   145\t  getCount(): number {\n   146\t    return this.events.length;\n   147\t  }\n   148\t\n   149\t  /** Clear all stored events */\n   150\t  clear(): void {\n   151\t    this.events = [];\n   152\t  }\n   153\t}\n   154\t\n   155\t/**\n   156\t * Routes events between buses based on configurable rules.\n   157\t * Depends on EventBus for both source and target subscriptions.\n   158\t */\n   159\texport class EventRouter {\n   160\t  private rules: Array<{ pattern: RegExp; target: EventBus; transform?: (p: EventPayload) => EventPayload }> = [];\n   161\t\n   162\t  constructor(private source: EventBus) {}\n   163\t\n   164\t  /** Add a routing rule: events matching the pattern get forwarded to target */\n   165\t  addRule(pattern: string | RegExp, target: EventBus, transform?: (p: EventPayload) => EventPayload): void {\n   166\t    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;\n   167\t    this.rules.push({ pattern: regex, target, transform });\n   168\t  }\n   169\t\n   170\t  /** Start routing — subscribe to all current event names on source */\n   171\t  start(): void {\n   172\t    const names = this.source.getEventNames();\n   173\t    for (const name of names) {\n   174\t      this.source.on(name, (payload) => {\n   175\t        for (const rule of this.rules) {\n   176\t          if (rule.pattern.test(name)) {\n   177\t            const transformed = rule.transform ? rule.transform(payload) : payload;\n   178\t            rule.target.emit(name, transformed);\n   179\t          }\n   180\t        }\n   181\t      });\n   182\t    }\n   183\t  }\n   184\t\n   185\t  /** Get the number of active routing rules */\n   186\t  getRuleCount(): number {\n   187\t    return this.rules.length;\n   188\t  }\n   189\t}\n   190\t"
+          },
+          "success": true
+        },
+        {
+          "tool": "Read",
+          "input": {
+            "output": "Missing file_path parameter",
+            "isError": true
+          },
+          "success": false
+        }
+      ],
+      "monitorInterventions": 4,
+      "contextProfiles": [
+        {
+          "cycle": 0,
+          "totalEntries": 19,
+          "estimatedTokens": 790,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 1,
+          "totalEntries": 20,
+          "estimatedTokens": 1042,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 2,
+          "totalEntries": 21,
+          "estimatedTokens": 1294,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 3,
+          "totalEntries": 22,
+          "estimatedTokens": 1345,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 4,
+          "totalEntries": 23,
+          "estimatedTokens": 1379,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 5,
+          "totalEntries": 24,
+          "estimatedTokens": 1387,
+          "pinnedEntries": 0,
+          "observerEntries": 14
+        },
+        {
+          "cycle": 6,
+          "totalEntries": 24,
+          "estimatedTokens": 1277,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 7,
+          "totalEntries": 24,
+          "estimatedTokens": 1275,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 8,
+          "totalEntries": 25,
+          "estimatedTokens": 1291,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 9,
+          "totalEntries": 26,
+          "estimatedTokens": 1307,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        },
+        {
+          "cycle": 10,
+          "totalEntries": 27,
+          "estimatedTokens": 1559,
+          "pinnedEntries": 0,
+          "observerEntries": 13
+        }
+      ],
+      "terminatedAt": 12,
+      "terminateReason": "goal-unreachable"
+    }
+  ],
+  "summary": {
+    "byCondition": {
+      "unified-memory": {
+        "total": 18,
+        "passes": 8,
+        "avgTokens": 42720,
+        "avgDurationMs": 143215,
+        "avgFallbackRate": null
+      }
+    }
+  }
+}

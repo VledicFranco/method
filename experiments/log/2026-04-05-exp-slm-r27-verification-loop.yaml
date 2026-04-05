@@ -1,0 +1,39 @@
+experiment: exp-slm
+run_id: r27-verification-loop
+date: 2026-04-05
+agent: "Claude Opus 4.6"
+config:
+  task: "R-27 — PRD 048 Verification Loop (Verifier module + correction signals)"
+  conditions: ["unified-memory"]
+  baseline_comparison: "R-26e (no verification, 44%), R-15 (flat, 73%)"
+  prd048_features:
+    verifier: "createVerifier(evalAdapter) — LLM fallback mode (0 programmatic checks)"
+    correction_signals: "CorrectionSignal injected into store on verification failure"
+    planner_replan: "3 consecutive failures trigger Planner replanTrigger"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01: { pass: 3, fail: 0, rate: 1.00 }
+    t02: { pass: 2, fail: 1, rate: 0.67 }
+    t03: { pass: 0, fail: 3, rate: 0.00 }
+    t04: { pass: 0, fail: 3, rate: 0.00, note: "Verification fires but 0 programmatic checks. LLM fallback unreliable." }
+    t05: { pass: 3, fail: 0, rate: 1.00 }
+    t06: { pass: 0, fail: 3, rate: 0.00 }
+  overall: { pass: 8, fail: 10, rate: 0.44 }
+
+findings:
+  - id: F1
+    title: "Verification loop works mechanically but 0% programmatic checks"
+    detail: "Verifier fires on every Write/Edit. CorrectionSignals injected. But all 4 KPIs per task have no check() function — LLM fallback mode only. The Planner's LLM call doesn't produce the <checks> block. This is exactly what PRD 049 (KPI Checker SLM) addresses."
+  - id: F2
+    title: "T01 3/3 stable — verification doesn't hurt easy tasks"
+    detail: "Verification overhead (~1K tokens per check) doesn't degrade simple tasks."
+  - id: F3
+    title: "LLM fallback verification is unreliable for catching code errors"
+    detail: "The evaluator LLM says 'looks good' when handleOrderV2 is referenced but not defined. Same quality issue as the ReasonerActor. SLM programmatic checks would catch this at 100%."
+
+next_steps:
+  - "PRD 049: Train KPI Checker SLM to generate programmatic checks from KPI descriptions"
+  - "Replace Planner's LLM requestCheckableKPIs with SLM inference"
