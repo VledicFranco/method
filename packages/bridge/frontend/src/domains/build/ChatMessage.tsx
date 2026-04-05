@@ -79,9 +79,11 @@ export interface ChatMessageProps {
   message: ConversationMessage;
   onReply?: (messageId: string) => void;
   isReply?: boolean;
+  /** True for messages arriving via WebSocket (shows a subtle live indicator). */
+  isLive?: boolean;
 }
 
-export function ChatMessage({ message, onReply, isReply }: ChatMessageProps) {
+export function ChatMessage({ message, onReply, isReply, isLive }: ChatMessageProps) {
   const isSystem = message.sender === 'system';
   const isAgent = message.sender === 'agent';
 
@@ -94,6 +96,7 @@ export function ChatMessage({ message, onReply, isReply }: ChatMessageProps) {
         'mb-4 relative group/msg animate-[msg-in_200ms_ease]',
         isSystem && 'mb-2.5',
         isReply && 'border-l-2 border-l-[#6d5aed] pl-2 ml-8',
+        isLive && !isReply && 'border-l-2 border-l-[#10b98144] pl-2',
       )}
     >
       {/* Header: avatar + name + time + reply button */}

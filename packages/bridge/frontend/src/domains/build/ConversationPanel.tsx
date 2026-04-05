@@ -15,6 +15,8 @@ import { ChatMessage } from './ChatMessage';
 import { GateActions } from './GateActions';
 import { SkillButtons } from './SkillButtons';
 import { MessageThread } from './MessageThread';
+import { useBuildEvents } from './useBuildEvents';
+import { useWebSocket } from '@/shared/websocket/useWebSocket';
 import type { ReplyContext } from './MessageThread';
 import type { BuildSummary, ConversationMessage, SkillType } from './types';
 
@@ -56,24 +58,47 @@ export function ConversationPanel({
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // WebSocket connection state for live indicator
+  const { connected: wsConnected } = useWebSocket('builds');
+
+  // Real-time WebSocket events for the selected build
+  const { messages: liveMessages, liveGate } = useBuildEvents(selectedBuildId);
+
   // Current build
   const selectedBuild = useMemo(
     () => builds.find((b) => b.id === selectedBuildId) ?? null,
     [builds, selectedBuildId],
   );
 
-  // Merge mock conversation with any locally-added messages
+  // Merge: mock/API messages + live WebSocket messages + locally-typed messages.
+  // Dedup by message ID to prevent duplicates if the same event appears in both
+  // the API response and the WebSocket stream.
   const messages = useMemo(() => {
     if (!selectedBuild) return [];
     const base = selectedBuild.conversation ?? [];
     const local = localMessages[selectedBuild.id] ?? [];
-    return [...base, ...local];
-  }, [selectedBuild, localMessages]);
+    const all = [...base, ...liveMessages, ...local];
 
-  // Builds that have conversation data (for tabs)
+    // Deduplicate by id (first occurrence wins, preserving order)
+    const seen = new Set<string>();
+    return all.filter((msg) => {
+      if (seen.has(msg.id)) return false;
+      seen.add(msg.id);
+      return true;
+    });
+  }, [selectedBuild, liveMessages, localMessages]);
+
+  // Builds that have conversation data (for tabs) — includes builds with
+  // mock/API messages, live WebSocket messages, or locally-typed messages.
   const conversationBuilds = useMemo(
-    () => builds.filter((b) => (b.conversation && b.conversation.length > 0) || (localMessages[b.id] && localMessages[b.id].length > 0)),
-    [builds, localMessages],
+    () => builds.filter((b) => {
+      if (b.conversation && b.conversation.length > 0) return true;
+      if (localMessages[b.id] && localMessages[b.id].length > 0) return true;
+      // Include the selected build if it has live messages
+      if (b.id === selectedBuildId && liveMessages.length > 0) return true;
+      return false;
+    }),
+    [builds, localMessages, selectedBuildId, liveMessages],
   );
 
   // Auto-scroll to bottom on new messages
@@ -213,6 +238,18 @@ export function ConversationPanel({
             No active conversations
           </div>
         )}
+        {/* WebSocket connection indicator */}
+        <div className="ml-auto flex items-center gap-1.5 px-2 shrink-0">
+          <span
+            className={cn(
+              'inline-block w-1.5 h-1.5 rounded-full',
+              wsConnected ? 'bg-[#10b981]' : 'bg-[#64748b]',
+            )}
+          />
+          <span className="text-[10px] text-[#64748b]">
+            {wsConnected ? 'Live' : 'Offline'}
+          </span>
+        </div>
       </div>
 
       {/* Message list */}
@@ -227,6 +264,7 @@ export function ConversationPanel({
               message={msg}
               onReply={msg.sender === 'agent' ? handleReply : undefined}
               isReply={!!msg.replyTo}
+              isLive={msg.id.startsWith('ws-')}
             />
           ))
         ) : (
@@ -273,7 +311,7 @@ export function ConversationPanel({
           />
 
           <GateActions
-            activeGate={selectedBuild?.activeGate}
+            activeGate={liveGate ?? selectedBuild?.activeGate}
             onAction={handleGateAction}
             onSend={handleSend}
             sendDisabled={!inputText.trim()}
