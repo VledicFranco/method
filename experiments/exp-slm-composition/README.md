@@ -39,7 +39,9 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] Gate A-G1 generalization: **5/5 real unseen production interfaces** compile
 - [x] Gate A-G2: downstream SLM parse accuracy = **100%** (50/50, target >= 85%)
 - [x] Gate A-G2: downstream SLM semantic match = **100%** (50/50)
-- [ ] Test language generalization (train on TS, test on JSON Schema)
+- [x] B-1 v2: improved corpus (3K pairs, compound names, snake_case, JSON Schema format)
+- [x] B-1 v2 novel TS: **96.7%** (29/30 full pipeline, up from 76.7%)
+- [x] Language generalization: **100%** (5/5 JSON Schema → grammar, up from 20%)
 
 ### Phase 2 — Bootstrap Pipeline
 
