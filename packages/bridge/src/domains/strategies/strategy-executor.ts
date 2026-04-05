@@ -221,8 +221,12 @@ export class StrategyExecutor {
     config: StrategyExecutorConfig,
     subStrategySource?: SubStrategySource | null,
     humanApprovalResolver?: HumanApprovalResolver | null,
-    semanticNodeExecutor?: SemanticNodeExecutor | null,
+    _semanticNodeExecutor?: SemanticNodeExecutor | null,
   ) {
+    // NOTE: semanticNodeExecutor is accepted for API compatibility but not yet
+    // wired to DagStrategyExecutor. The methodts-side support for semantic
+    // nodes (PRD 046 C-2c) was reverted during merge conflict resolution.
+    // Track via TODO: re-integrate semantic node dispatch in methodts.
     const nodeExecutor = new PactaNodeExecutor(
       provider,
       config.defaultTimeoutMs,
@@ -241,7 +245,6 @@ export class StrategyExecutor {
       subStrategySource ?? null,
       humanApprovalResolver ?? null,
       undefined, // sharedChain — not used at top level
-      semanticNodeExecutor ?? null,
     );
   }
 
