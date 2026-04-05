@@ -525,6 +525,103 @@ describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-in
   });
 });
 
+// ── G-PERSISTENCE: shared/persistence library gates ─────────────
+
+describe('G-PERSISTENCE: projection-based persistence library respects boundaries', () => {
+  const PERSISTENCE_DIR = join(BRIDGE_SRC, 'shared', 'persistence');
+
+  it('shared/persistence does not import from domains/', () => {
+    let files: string[];
+    try {
+      files = collectTsFiles(PERSISTENCE_DIR).filter(f => !isTestFile(f));
+    } catch {
+      return; // directory may not exist yet (before Wave 0)
+    }
+    if (files.length === 0) return; // empty directory — no files to check
+
+    const violations: string[] = [];
+    for (const file of files) {
+      const rel = relative(PERSISTENCE_DIR, file).replace(/\\/g, '/');
+      for (const imp of extractImports(file)) {
+        // Allow type-only imports (they vanish at compile time)
+        if (imp.isTypeOnly) continue;
+        // Flag any import from ../domains or domains/
+        if (imp.specifier.includes('/domains/') || imp.specifier.match(/^\.\.\/\.\.\/domains\//)) {
+          violations.push(
+            `shared/persistence/${rel}:${imp.line} — imports from domains: ${imp.raw}`,
+          );
+        }
+      }
+    }
+
+    assert.deepStrictEqual(violations, [], [
+      'G-PERSISTENCE violation: shared/persistence/ (L2) must not import from domains/ (L3).',
+      'The persistence library is shared infrastructure consumed by domains, never the reverse.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+
+  it('shared/persistence does not import node:fs directly (must use FileSystemProvider port)', () => {
+    let files: string[];
+    try {
+      files = collectTsFiles(PERSISTENCE_DIR).filter(f => !isTestFile(f));
+    } catch {
+      return;
+    }
+    if (files.length === 0) return;
+
+    const violations: string[] = [];
+    for (const file of files) {
+      const rel = relative(PERSISTENCE_DIR, file).replace(/\\/g, '/');
+      for (const imp of extractImports(file)) {
+        if (/^(node:)?fs(\/promises)?$/.test(imp.specifier)) {
+          violations.push(
+            `shared/persistence/${rel}:${imp.line} — imports '${imp.specifier}' directly`,
+          );
+        }
+      }
+    }
+
+    assert.deepStrictEqual(violations, [], [
+      'G-PERSISTENCE violation: shared/persistence/ must use FileSystemProvider port, not direct fs.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+
+  it('ProjectionSnapshot is imported only from shared/persistence (canonical entity)', () => {
+    // Scan all .ts files under bridge/src for ProjectionSnapshot imports
+    const allFiles = collectTsFiles(BRIDGE_SRC).filter(f => !isTestFile(f));
+    const violations: string[] = [];
+
+    for (const file of allFiles) {
+      const rel = relative(BRIDGE_SRC, file).replace(/\\/g, '/');
+      for (const imp of extractImports(file)) {
+        if (!imp.raw.includes('ProjectionSnapshot')) continue;
+        // Allowed sources: shared/persistence/types, shared/persistence, or ports/ (which re-exports)
+        const ok =
+          imp.specifier.includes('shared/persistence') ||
+          imp.specifier.endsWith('/persistence/types.js') ||
+          imp.specifier.endsWith('/persistence/types') ||
+          imp.specifier.endsWith('/persistence/index.js') ||
+          imp.specifier.endsWith('/persistence');
+        if (!ok) {
+          violations.push(
+            `${rel}:${imp.line} — ProjectionSnapshot imported from '${imp.specifier}' (must be shared/persistence)`,
+          );
+        }
+      }
+    }
+
+    assert.deepStrictEqual(violations, [], [
+      'G-PERSISTENCE violation: ProjectionSnapshot is canonical — import from shared/persistence/types only.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+});
+
 // ── G-PRD051-COST-GOVERNOR: cost-governor domain uses ports ──
 
 describe('G-PRD051-COST-GOVERNOR: cost-governor domain uses FileSystemProvider port', () => {

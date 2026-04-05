@@ -18,3 +18,9 @@ export { createAppendToken } from './historical-observations.js';
 export type { CheckpointPort, PipelineCheckpoint, PipelineCheckpointSummary, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from './checkpoint.js';
 export type { ConversationPort, AgentMessage, HumanMessage, GateDecision, GateType, SkillRequest, StructuredCard } from './conversation.js';
 export { GATE_ACTIONS } from './conversation.js';
+
+// Projection-based persistence ports
+export type { Projection } from './projection.js';
+export type { ProjectionStore, StartResult } from './projection-store.js';
+export type { EventReader } from './event-reader.js';
+export type { EventRotator, RotateOptions, RotateResult } from './event-rotator.js';
