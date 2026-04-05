@@ -1838,7 +1838,7 @@ async function runUnifiedMemory(
   //   - 3+ KPIs that mention file creation/modification (multi-file tasks)
   //   - Planner estimated cycles > MAX_CYCLES (assessor thinks it needs more)
   const fileActionKpis = taskAssessment.kpis.filter(k =>
-    /\b(creat|extract|updat|modif|written|import.*updat|export.*updat)\b/i.test(k)
+    /\b(creat\w*|extract\w*|updat\w*|modif\w*|written|import.*updat\w*|export.*updat\w*)\b/i.test(k)
   ).length;
   const needsHighBudget =
     plannerSubgoals.length >= 5 ||
