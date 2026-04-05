@@ -85,6 +85,9 @@ export interface RouterConfig {
   provider?: ProviderAdapter;
   /** When true, skip LLM refinement and use rule-based only. Default: false. */
   ruleBasedOnly?: boolean;
+  /** PRD 051: SLM-backed classification. When present, replaces rule-based
+   *  extractFeatures + decide with trained model (100% holdout accuracy). */
+  slmPort?: import('../algebra/router-types.js').RouterSLMPort;
 }
 
 // ── Feature Extraction (rule-based, zero LLM cost) ────────────
@@ -274,6 +277,7 @@ export function createRouter(
   const id = moduleId(config?.id ?? 'router');
   const provider = config?.provider;
   const ruleBasedOnly = config?.ruleBasedOnly ?? false;
+  const slmPort = config?.slmPort;
 
   return {
     id,
@@ -302,11 +306,38 @@ export function createRouter(
         };
       }
 
-      // 1. Extract features (rule-based, always runs)
+      // 1. Extract features (rule-based, always runs — used for logging + fallback)
       let features = extractFeatures(input.goal, input.taskDescription);
       let tokensUsed = 0;
 
-      // 2. Optional LLM refinement of difficulty estimate
+      // PRD 051: SLM classification takes priority when available
+      if (slmPort) {
+        try {
+          const slmResult = await slmPort.classify(input.taskDescription, input.goal.objective);
+          const decision: RoutingDecision = {
+            architecture: slmResult.architecture,
+            features,
+            confidence: slmResult.confidence,
+            rationale: `SLM (${slmPort.model}): ${slmResult.architecture}`,
+            tokensUsed: 0, // SLM cost is near-zero, not counted as LLM tokens
+          };
+          return {
+            output: { decision },
+            state: { lastDecision: decision },
+            monitoring: {
+              type: 'router',
+              source: id,
+              timestamp: Date.now(),
+              architectureSelected: decision.architecture,
+              confidence: decision.confidence,
+            },
+          };
+        } catch {
+          // SLM failed — fall through to rule-based
+        }
+      }
+
+      // 2. Optional LLM refinement of difficulty estimate (fallback path)
       if (!ruleBasedOnly && provider) {
         const refined = await refineWithLLM(provider, input.goal, features, id);
         if (refined) {
@@ -315,7 +346,7 @@ export function createRouter(
         }
       }
 
-      // 3. Apply decision rules
+      // 3. Apply decision rules (fallback path)
       const { architecture, confidence, rationale } = decide(features);
 
       const decision: RoutingDecision = {

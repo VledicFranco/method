@@ -37,9 +37,13 @@ export type {
   ArchitectureKind,
   TaskFeatures,
   RoutingDecision,
+  RouterSLMPort,
 } from './router-types.js';
 
 // ── KPI Checker port (PRD 049) ───────────────────────────────
+
+export { createHttpRouterSLM, createMockRouterSLM } from './router-slm.js';
+export type { HttpRouterSLMConfig } from './router-slm.js';
 
 export type { KPICheckerPort, KPICheckerInput } from './kpi-checker-port.js';
 export { parseDSL, buildCheckableKPIFromDSL } from './kpi-checker-port.js';

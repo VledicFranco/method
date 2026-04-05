@@ -18,6 +18,23 @@
 /** Architecture options the router can select. */
 export type ArchitectureKind = 'flat' | 'unified-memory';
 
+// ── Router SLM Port (PRD 051) ─────────────────────────────────
+
+/**
+ * Port for SLM-backed architecture classification.
+ * When provided to the Router, replaces rule-based feature extraction
+ * with trained model inference (100% accuracy on holdout, <100ms).
+ */
+export interface RouterSLMPort {
+  /** Classify a task → architecture selection. */
+  classify(taskDescription: string, objective: string): Promise<{
+    architecture: ArchitectureKind;
+    confidence: number;
+  }>;
+  /** Model identifier for telemetry. */
+  readonly model: string;
+}
+
 // ── Task Features ─────────────────────────────────────────────
 
 /**

@@ -2461,12 +2461,21 @@ async function runMetaCognitive(
   runNumber: number,
   config: CognitiveConfig,
 ): Promise<RunResult> {
-  // 1. Create router with LLM refinement
+  // 1. Create router — try SLM first, fall back to LLM refinement
+  let slmPort: import('../../../packages/pacta/src/cognitive/algebra/router-types.js').RouterSLMPort | undefined;
+  try {
+    const { createHttpRouterSLM } = await import('../../../packages/pacta/src/cognitive/algebra/router-slm.js');
+    slmPort = createHttpRouterSLM({ serverUrl: process.env.ROUTER_SLM_URL ?? 'http://localhost:8101' });
+    console.log(`    [router-slm] connected to ${process.env.ROUTER_SLM_URL ?? 'http://localhost:8101'}`);
+  } catch {
+    console.log('    [router-slm] not available — using rule-based + LLM fallback');
+  }
+
   const routeProvider = anthropicProvider({ model: LLM_MODEL, maxOutputTokens: 64 });
   const routeAdapter = createProviderAdapter(routeProvider, {
     pactTemplate: { mode: { type: 'oneshot' }, budget: { maxOutputTokens: 64 } },
   });
-  const router = createRouter({ provider: routeAdapter });
+  const router = createRouter({ provider: routeAdapter, slmPort });
 
   // 2. Classify the task
   const goal = extractGoalFromTask(task);
