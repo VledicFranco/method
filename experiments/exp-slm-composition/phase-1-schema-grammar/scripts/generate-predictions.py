@@ -45,6 +45,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=str, default=str(DEFAULT_MODEL))
     parser.add_argument("--holdout", type=str, default=str(HOLDOUT_PATH))
+    parser.add_argument("--output", type=str, default=None, help="Output path (default: results/predictions.jsonl)")
     parser.add_argument("--max-entries", type=int, default=0, help="0 = all")
     args = parser.parse_args()
 
@@ -74,7 +75,7 @@ def main():
 
     # Generate predictions
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = RESULTS_DIR / "predictions.jsonl"
+    out_path = Path(args.output) if args.output else RESULTS_DIR / "predictions.jsonl"
 
     predictions = []
     start = time.time()
