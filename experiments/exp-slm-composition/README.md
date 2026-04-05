@@ -59,6 +59,9 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] Per-stage metrics: accuracy, latency, error propagation
 - [x] Gate C-G1: 2-stage CLM e2e accuracy = **100%** (50/50 holdout + 5/5 real, target >= 85%)
 - [x] Gate C-G2: gate effectiveness = **100%** (all corrupted grammars caught, target >= 50%)
+- [x] 3-stage CLM (B-1 + downstream SLM): **100%** (50/50) — no depth ceiling at N=3
+- [x] Ollama inference adapter + frontier escalation (qwen3-coder:30b fallback)
+- [x] Novel input evaluation: B-1 v2 = **96.7%** TS (29/30), **100%** JSON Schema (5/5)
 
 ### Phase 4 — Autonomous Compilation Loop
 
