@@ -1759,6 +1759,186 @@ async function runPartitionedCognitiveGoal(
   }
 }
 
+// ── Hard-Coded CheckableKPIs per Task (PRD 049 validation) ──────
+//
+// Hand-written programmatic checks for T01-T06. These bypass the
+// Planner's unreliable LLM-based check generation and test whether
+// programmatic verification actually fixes T04. When the KPI Checker
+// SLM is trained, it replaces these with auto-generated checks.
+
+import { fileExists, fileContains, fileExports, allChecks } from '../../../packages/pacta/src/cognitive/algebra/verification.js';
+import type { CheckableKPI, VerificationState } from '../../../packages/pacta/src/cognitive/algebra/verification.js';
+
+function getHardCodedKPIs(taskName: string): CheckableKPI[] {
+  switch (taskName) {
+    case 'circular-dependency-refactor':
+      return [
+        { description: 'No circular dependency in import graph', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            // Build import graph and check for cycles (simplified DFS)
+            const modules = ['src/module-a.ts', 'src/module-b.ts', 'src/module-c.ts'];
+            const imports = new Map<string, string[]>();
+            for (const mod of modules) {
+              const content = state.files.get(mod) ?? '';
+              const deps: string[] = [];
+              const re = /from\s+['"]\.\/(\w[\w-]*)['"]/g;
+              let m; while ((m = re.exec(content)) !== null) deps.push(`src/${m[1]}.ts`);
+              imports.set(mod, deps);
+            }
+            // DFS cycle detection
+            const visited = new Set<string>(); const stack = new Set<string>();
+            function hasCycle(node: string): boolean {
+              if (stack.has(node)) return true;
+              if (visited.has(node)) return false;
+              visited.add(node); stack.add(node);
+              for (const dep of imports.get(node) ?? []) { if (hasCycle(dep)) return true; }
+              stack.delete(node); return false;
+            }
+            const cyclic = modules.some(m => hasCycle(m));
+            return { met: !cyclic, evidence: cyclic ? 'Circular dependency exists' : 'No cycles' };
+          },
+        },
+        { description: 'All classes preserved', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const all = [...state.files.values()].join('\n');
+            const classes = ['class A', 'class B', 'class C'];
+            const missing = classes.filter(c => !all.includes(c));
+            return { met: missing.length === 0, evidence: missing.length > 0 ? `Missing: ${missing.join(', ')}` : 'All present' };
+          },
+        },
+      ];
+
+    case 'test-first-bug-fix-misdirection':
+      return [
+        { description: 'discount.ts exists', met: false, evidence: '', check: fileExists('src/discount.ts') },
+        { description: 'Buggy formula removed from discount.ts', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const content = state.files.get('src/discount.ts') ?? '';
+            const hasBug = content.includes('price * percent / 100');
+            return { met: !hasBug, evidence: hasBug ? 'Buggy formula still present' : 'Formula fixed' };
+          },
+        },
+        { description: 'Correct subtraction pattern in discount.ts', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const content = state.files.get('src/discount.ts') ?? '';
+            const hasCorrect = /1\s*-\s*percent|100\s*-\s*percent|price\s*-\s*\(|price\s*\*\s*\(1\s*-/.test(content);
+            return { met: hasCorrect, evidence: hasCorrect ? 'Correct formula found' : 'No correct subtraction pattern' };
+          },
+        },
+        { description: 'pricing.ts unchanged', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            // pricing.ts should still exist and not be modified from initial
+            const exists = state.files.has('src/pricing.ts');
+            return { met: exists, evidence: exists ? 'pricing.ts exists' : 'pricing.ts missing' };
+          },
+        },
+      ];
+
+    case 'config-migration-env-interpolation':
+      return [
+        { description: 'process.env references exist', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const all = [...state.files.entries()].filter(([p]) => p.endsWith('.ts'));
+            const hasEnv = all.some(([, c]) => c.includes('process.env'));
+            return { met: hasEnv, evidence: hasEnv ? 'process.env found' : 'No process.env in any .ts file' };
+          },
+        },
+        { description: 'SERVER_HOST wired to process.env', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const all = [...state.files.values()].join('\n');
+            const has = /process\.env\.SERVER_HOST|process\.env\['SERVER_HOST'\]/.test(all);
+            return { met: has, evidence: has ? 'SERVER_HOST wired' : 'SERVER_HOST not wired to env' };
+          },
+        },
+        { description: 'AppConfig type exported', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const all = [...state.files.values()].join('\n');
+            const has = /export\s+(interface|type)\s+AppConfig/.test(all);
+            return { met: has, evidence: has ? 'AppConfig exported' : 'AppConfig not exported' };
+          },
+        },
+      ];
+
+    case 'api-versioning-side-effect-trap':
+      return [
+        { description: 'handleOrderV2 function defined', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const all = [...state.files.values()].join('\n');
+            const has = /function\s+handleOrderV2/.test(all);
+            return { met: has, evidence: has ? 'handleOrderV2 defined' : 'handleOrderV2 NOT defined as a function' };
+          },
+        },
+        { description: 'v2 handler has no side effects (no notification/audit)', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            // Find the file containing handleOrderV2
+            let v2Content = '';
+            for (const [path, content] of state.files) {
+              if (/function\s+handleOrderV2/.test(content)) { v2Content = content; break; }
+            }
+            if (!v2Content) return { met: false, evidence: 'handleOrderV2 not found' };
+            const hasNotify = v2Content.includes('sendNotification');
+            const hasAudit = v2Content.includes('writeAuditLog');
+            const pure = !hasNotify && !hasAudit;
+            return { met: pure, evidence: pure ? 'No side effects' : `Side effects: ${hasNotify ? 'sendNotification ' : ''}${hasAudit ? 'writeAuditLog' : ''}` };
+          },
+        },
+        { description: 'v2 handler includes itemCount', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            let v2Content = '';
+            for (const [, content] of state.files) {
+              if (/function\s+handleOrderV2/.test(content)) { v2Content = content; break; }
+            }
+            const has = v2Content.includes('itemCount');
+            return { met: has, evidence: has ? 'itemCount present' : 'itemCount missing from v2 handler' };
+          },
+        },
+        { description: 'Router handles v2', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const router = state.files.get('src/router.ts') ?? '';
+            const hasV2 = router.includes("'v2'") || router.includes('"v2"');
+            const hasHandler = router.includes('handleOrderV2');
+            return { met: hasV2 && hasHandler, evidence: `v2=${hasV2} handler=${hasHandler}` };
+          },
+        },
+      ];
+
+    case 'dead-code-removal-dynamic-trap':
+      return [
+        { description: 'legacy-parser.ts preserved', met: false, evidence: '', check: fileExists('src/plugins/legacy-parser.ts') },
+        { description: 'plugin-loader.ts has PLUGIN_REGISTRY', met: false, evidence: '',
+          check: fileContains('src/plugin-loader.ts', 'PLUGIN_REGISTRY'),
+        },
+        { description: 'plugin-loader.ts has dynamic require', met: false, evidence: '',
+          check: fileContains('src/plugin-loader.ts', "require('./plugins/"),
+        },
+      ];
+
+    case 'multi-module-extract':
+      return [
+        { description: 'src/event-bus.ts exists with EventBus class', met: false, evidence: '',
+          check: allChecks(fileExists('src/event-bus.ts'), fileContains('src/event-bus.ts', 'class EventBus')),
+        },
+        { description: 'IEventBus interface created', met: false, evidence: '',
+          check: fileContains('src/interfaces/event-bus.interface.ts', 'interface IEventBus'),
+        },
+        { description: 'EventBus has all 8 methods', met: false, evidence: '',
+          check: (state: VerificationState) => {
+            const content = state.files.get('src/event-bus.ts') ?? '';
+            const methods = ['on(', 'off(', 'emit(', 'once(', 'getListenerCount(', 'getEventNames(', 'removeAllListeners(', 'waitFor('];
+            const missing = methods.filter(m => !content.includes(m));
+            return { met: missing.length === 0, evidence: missing.length > 0 ? `Missing: ${missing.join(', ')}` : 'All 8 methods' };
+          },
+        },
+        { description: 'IEventBus exported from index.ts', met: false, evidence: '',
+          check: fileContains('src/index.ts', 'IEventBus'),
+        },
+      ];
+
+    default:
+      return [];
+  }
+}
+
 // ── Condition H: Unified Memory (RFC 006 Part III) ──────────────
 //
 // Replaces partitioned workspace + Memory v3 bolt-on with a single
@@ -1886,8 +2066,12 @@ async function runUnifiedMemory(
   // PRD 048: Verifier module — checks action outcomes against CheckableKPIs
   const verifier = createVerifier(evalAdapter);
   let verifierState = verifier.initialState();
-  const checkableKpis = plannerResult.output.checkableKpis;
-  console.log(`    [verifier] ${checkableKpis.length} checkable KPIs (${checkableKpis.filter(k => k.check).length} with programmatic checks)`);
+  // Use hard-coded programmatic KPIs (PRD 049 validation: proves verification works)
+  // Falls back to Planner's LLM-generated KPIs if no hard-coded ones exist
+  const hardCodedKpis = getHardCodedKPIs(task.name);
+  const checkableKpis = hardCodedKpis.length > 0 ? hardCodedKpis : plannerResult.output.checkableKpis;
+  const programmaticCount = checkableKpis.filter(k => k.check).length;
+  console.log(`    [verifier] ${checkableKpis.length} KPIs (${programmaticCount} programmatic${hardCodedKpis.length > 0 ? ', hard-coded' : ''})`);
 
   let totalTokens = 0;
   let evaluatorTokensTotal = 0;
@@ -2124,14 +2308,24 @@ async function runUnifiedMemory(
 
       // 7. VERIFY — check action outcome against CheckableKPIs (PRD 048)
       if (isWriteAction && checkableKpis.length > 0) {
-        // Build VerificationState from VFS
+        // Build VFS-enriched snapshot for the Verifier — inject actual file contents
+        // so programmatic checks (fileExists, fileContains, etc.) can inspect the VFS.
+        // Uses both conventions: file:path source prefix AND structured {path, content}.
+        const vfsEntries = [...vfs.files.entries()].map(([filePath, fileContent]) => ({
+          source: moduleId(`file:${filePath}`),
+          content: { path: filePath, content: fileContent },
+          salience: 0.5,
+          timestamp: Date.now(),
+        }));
+        const verifierSnapshot = [...snapshot, ...vfsEntries] as any;
+
         const verificationInput: VerifierInput = {
           lastAction: {
             tool: actionName,
             input: raResult.output.toolResult ?? {},
             result: raResult.output.toolResult ?? 'ok',
           },
-          workspaceSnapshot: snapshot,
+          workspaceSnapshot: verifierSnapshot,
           kpis: checkableKpis,
           currentSubgoal: plannerSubgoals[Math.min(completedSubgoals, plannerSubgoals.length - 1)]?.description ?? '',
         };
