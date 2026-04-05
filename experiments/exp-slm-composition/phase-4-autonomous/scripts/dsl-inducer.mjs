@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import peggy from 'peggy';
+import { refineGrammar } from './grammar-refiner.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -254,12 +255,20 @@ Fix the grammar so it compiles with Peggy. Output ONLY the corrected PEG grammar
     }
   }
 
-  // Validate
-  console.log('\n=== Validation ===');
-  const result = validateGrammar(grammar, sampled);
+  // Auto-refine
+  console.log('\n=== Auto-Refine ===');
+  const refined = refineGrammar(grammar, { verbose: true, traces: sampled });
+  if (refined.ok && refined.fixesApplied.length > 0) {
+    console.log(`Applied fixes: ${refined.fixesApplied.join(', ')}`);
+    grammar = refined.grammar;
+  }
 
-  // Also test on held-out traces (not in the sample)
-  const heldOut = allTraces.filter(t => !sampled.includes(t)).slice(0, 50);
+  // Validate on sample
+  console.log('\n=== Validation (sample) ===');
+  validateGrammar(grammar, sampled);
+
+  // Validate on held-out
+  const heldOut = allTraces.filter(t => !sampled.includes(t)).slice(0, 100);
   if (heldOut.length > 0) {
     console.log(`\n=== Held-Out Validation (${heldOut.length} unseen traces) ===`);
     validateGrammar(grammar, heldOut);
