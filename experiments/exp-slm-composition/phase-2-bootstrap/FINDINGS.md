@@ -205,17 +205,51 @@ This IS the System 1/2 transition from RFC 002 — made concrete.
 
 ---
 
+## SLM Inventory
+
+| SLM | Type | Corpus | Accuracy | Training | Status |
+|-----|------|--------|----------|----------|--------|
+| B-1 v3 (Schema→Grammar) | Translator | 4K (4 type systems) | 95.6% (43/45) | 91 min | Production |
+| B-2 (Causal Validator) | Classifier | 8.5K (3 domains) | 95.5% precision | 189 min | Production |
+| Downstream WorktreeInfo | Generator | 1.25K | 100% | 26 min | Production |
+| KPI Checker (PRD 049) | Generator | 3K | 100% (600/600) | 40 min | Production |
+| Router (PRD 051) | Classifier | 2K | 100% (400/400) | 28 min | Production |
+
+**Bootstrapped via flywheel:** KPI Checker (1h 45min), Router (40 min).
+**Manual baseline:** ~14 hours per SLM.
+
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| SLMs in the pipeline | 4 (B-1, B-2, downstream WorktreeInfo, KPI Checker pending) |
+| SLMs in the pipeline | 5 (B-1, B-2, WorktreeInfo, KPI Checker, Router) |
 | Manual SLM creation time | ~14 hours |
-| Bootstrapped SLM creation time | ~2 hours (45 min human + GPU time) |
-| Speedup | ~7x |
+| Fastest bootstrapped SLM | **40 min** (Router — 12 min human + 28 min GPU) |
+| Speedup | **8-20x** |
 | Corpus validation | 100% automated (Peggy grammar gate) |
-| Causal validation | Automated (B-2, 93% accuracy at step 3100) |
+| Causal validation | Automated (B-2, 95.5% precision) |
 | Composition depth tested | N=3 (100% accuracy) |
+| Error compounding theory | Validated (RFC 005 Part VI, +32.8pp lift at p=0.4) |
 | Type systems supported | 4 (TypeScript, JSON Schema, Protobuf, Python) |
-| Total tests | 31 (all pass) |
+| Total runtime tests | 34 (all pass) |
 | Total training cost | $0 (local GPU) |
+
+## What's Next: Phase 4 — Autonomous Compilation
+
+The flywheel is the compiler. The agent needs to become the operator.
+
+**Three pieces, in order of difficulty:**
+
+1. **Compilation Trigger** (easy) — Memory ACT-R activation already
+   computed. Add threshold: `if activation > COMPILE_THRESHOLD → emit
+   compile event`. Engineering, not research.
+
+2. **DSL Inducer** (hard — the research question) — Given N behavioral
+   traces, abstract a formal PEG grammar that captures the structural
+   invariant. The core contribution of RFC 005. Nobody has demonstrated
+   this. Test with existing cognitive cycle traces (R-20 through R-30).
+
+3. **MetaComposer** (medium) — Dynamically wire compiled SLMs into the
+   cognitive cycle. The Router SLM is a simpler version of this concept.
+
+**Gate D-G1:** Agent compiles >= 1 pattern without human intervention.
