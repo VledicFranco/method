@@ -1,0 +1,35 @@
+experiment: exp-slm
+run_id: r26d-subgoal-tracking
+date: 2026-04-04
+agent: "Claude Opus 4.6"
+config:
+  task: "R-26d — subgoal progress tracking + difficulty override (KPI regex bug)"
+  conditions: ["unified-memory"]
+  baseline_comparison: "R-26c (Planner, 50%), R-15 (flat, 73%)"
+  changes_from_r26c:
+    - "Working memory seeded with Planner subgoal checklist at cycle 0"
+    - "PROGRESS entries injected into store after each write action"
+    - "Difficulty override for 3+ file-action KPIs (REGEX BUG — didn't match)"
+
+status: closed-validated
+
+outcomes:
+  per_task:
+    t01: { pass: 1, fail: 2, rate: 0.33 }
+    t02: { pass: 2, fail: 1, rate: 0.67, note: "Stable at flat parity across 4 runs." }
+    t03: { pass: 0, fail: 3, rate: 0.00, note: "N=3 noise — was 67% in R-26c." }
+    t04: { pass: 2, fail: 1, rate: 0.67, note: "BEST EVER. Subgoal checklist seeding addressed read-loop. Up from 0% (R-20) to 67%." }
+    t05: { pass: 3, fail: 0, rate: 1.00 }
+    t06: { pass: 0, fail: 3, rate: 0.00, note: "Difficulty override didn't fire — KPI regex bug (\b word boundary). Fixed in R-26e." }
+  overall: { pass: 8, fail: 10, rate: 0.44 }
+
+findings:
+  - id: F1
+    title: "T04 67% — subgoal checklist seeding works"
+    detail: "Working memory seeded with 'PLAN CHECKLIST: 1. [ ] create v2.ts, 2. [ ] update router, 3. [ ] update index, 4. [ ] no side effects' gives the agent explicit sequential steps. 2/3 runs completed all 3 files. The failing run got stuck on a read but not for as long."
+  - id: F2
+    title: "KPI regex bug prevented T06 fix"
+    detail: "\b(creat)\b doesn't match 'created'. Fixed to creat\w* in R-26e."
+
+next_steps:
+  - "R-26e: Fix regex, rerun. Target T06 recovery with 25-cycle budget."
