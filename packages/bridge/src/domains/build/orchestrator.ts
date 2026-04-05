@@ -11,6 +11,7 @@
 
 import type { CheckpointPort, PipelineCheckpoint, Phase, FeatureSpec, TestableAssertion, ConversationMessage } from '../../ports/checkpoint.js';
 import type { ConversationPort, GateDecision } from '../../ports/conversation.js';
+import type { StrategyExecutorPort, StrategyExecutionResult } from '../../ports/strategy-executor.js';
 import type { BuildConfig } from './config.js';
 import type {
   AutonomyLevel,
@@ -22,17 +23,8 @@ import type {
 } from './types.js';
 import type { Validator } from './validator.js';
 
-// ── Strategy Executor (abstract — real wiring in C-3) ──────────
-
-/** Result from a strategy execution. Override or mock in tests. */
-export interface StrategyExecutionResult {
-  readonly success: boolean;
-  readonly output: string;
-  readonly cost: { tokens: number; usd: number };
-  readonly executionId: string;
-  readonly artifacts?: Record<string, string>;
-  readonly error?: string;
-}
+// Re-export for domain consumers that previously imported from this file.
+export type { StrategyExecutionResult } from '../../ports/strategy-executor.js';
 
 // ── Orchestrator ───────────────────────────────────────────────
 
@@ -60,6 +52,7 @@ export class BuildOrchestrator {
     private readonly checkpoint: CheckpointPort,
     private readonly conversation: ConversationPort,
     private readonly config: BuildConfig,
+    private readonly strategyExecutor: StrategyExecutorPort,
     private readonly validator?: Validator,
     sessionId?: string,
   ) {
@@ -114,8 +107,8 @@ export class BuildOrchestrator {
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: explore — analyzing codebase');
 
-    // Mock strategy call — real wiring comes in C-3
-    const result = await this.executeStrategy('explore', 'explore-codebase');
+    const strategyId = this.config.strategyIds.explore;
+    const result = await this.executeStrategy('explore', strategyId);
 
     const report: ExplorationReport = {
       domains: result.success ? ['build'] : [],
@@ -124,7 +117,7 @@ export class BuildOrchestrator {
       approach: result.output || 'Codebase exploration completed',
     };
 
-    const phaseResult = this.buildPhaseResult('explore', 'explore-codebase', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('explore', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('specify');
@@ -181,7 +174,8 @@ export class BuildOrchestrator {
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: design — architecture decisions');
 
-    const result = await this.executeStrategy('design', 'design-architecture');
+    const strategyId = this.config.strategyIds.design;
+    const result = await this.executeStrategy('design', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -194,7 +188,7 @@ export class BuildOrchestrator {
 
     await this.gate('design');
 
-    const phaseResult = this.buildPhaseResult('design', 'design-architecture', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('design', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('plan');
@@ -207,7 +201,8 @@ export class BuildOrchestrator {
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: plan — commission decomposition');
 
-    const result = await this.executeStrategy('plan', 'plan-commissions');
+    const strategyId = this.config.strategyIds.plan;
+    const result = await this.executeStrategy('plan', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -220,7 +215,7 @@ export class BuildOrchestrator {
 
     await this.gate('plan');
 
-    const phaseResult = this.buildPhaseResult('plan', 'plan-commissions', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('plan', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('implement');
@@ -233,7 +228,8 @@ export class BuildOrchestrator {
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: implement — executing commissions');
 
-    const result = await this.executeStrategy('implement', 'implement-commissions');
+    const strategyId = this.config.strategyIds.implement;
+    const result = await this.executeStrategy('implement', strategyId);
 
     if (!result.success) {
       // Failure routing: construct retry context and re-execute
@@ -244,16 +240,17 @@ export class BuildOrchestrator {
         `Implementation failed: ${result.error || 'unknown error'}. Retrying with context...`,
       );
 
-      const retryResult = await this.executeStrategy('implement', 'implement-commissions-retry', {
+      const retryResult = await this.executeStrategy('implement', strategyId, {
         previousError: result.error || result.output,
         previousExecutionId: result.executionId,
+        retry: true,
       });
 
       if (retryResult.success) {
         this.failureRecoveries.succeeded++;
       }
 
-      const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', retryResult, phaseStart, 1);
+      const phaseResult = this.buildPhaseResult('implement', strategyId, retryResult, phaseStart, 1);
       this.phaseResults.push(phaseResult);
 
       if (retryResult.artifacts) {
@@ -264,8 +261,8 @@ export class BuildOrchestrator {
       return retryResult;
     }
 
-    const phaseResult = this.buildPhaseResult('implement', 'implement-commissions', result, phaseStart);
-    this.phaseResults.push(phaseResult);
+    const okPhaseResult = this.buildPhaseResult('implement', strategyId, result, phaseStart);
+    this.phaseResults.push(okPhaseResult);
 
     if (result.artifacts) {
       Object.assign(this.artifactManifest, result.artifacts);
@@ -282,7 +279,8 @@ export class BuildOrchestrator {
 
     await this.conversation.sendSystemMessage(this.sessionId, 'Phase: review — code review');
 
-    const result = await this.executeStrategy('review', 'review-code');
+    const strategyId = this.config.strategyIds.review;
+    const result = await this.executeStrategy('review', strategyId);
 
     await this.conversation.sendAgentMessage(this.sessionId, {
       type: 'card',
@@ -295,7 +293,7 @@ export class BuildOrchestrator {
 
     const gateResult = await this.gate('review');
 
-    const phaseResult = this.buildPhaseResult('review', 'review-code', result, phaseStart);
+    const phaseResult = this.buildPhaseResult('review', strategyId, result, phaseStart);
     this.phaseResults.push(phaseResult);
 
     await this.saveCheckpoint('validate');
@@ -469,25 +467,21 @@ export class BuildOrchestrator {
     return this.conversation.waitForGateDecision(this.sessionId, gateType);
   }
 
-  // ── Strategy Execution (virtual — overridable in tests) ────────
+  // ── Strategy Execution (delegates to StrategyExecutorPort) ─────
 
   /**
-   * Execute a strategy. This is the integration point for C-3.
-   * In this implementation, it returns a mock result. Subclass or
-   * provide a strategy executor to wire real strategies.
+   * Execute a strategy via the injected StrategyExecutorPort. The port
+   * adapter resolves the strategy ID to a DAG, runs it, and returns a
+   * normalized result. Remains `protected` for subclass-based test
+   * overrides (though injecting a mock port is preferred).
    */
   protected async executeStrategy(
     _phase: Phase,
-    _strategyId: string,
-    _context?: Record<string, unknown>,
+    strategyId: string,
+    context?: Record<string, unknown>,
   ): Promise<StrategyExecutionResult> {
-    this.completedStrategies.push(_strategyId);
-    return {
-      success: true,
-      output: `Strategy ${_strategyId} completed for phase ${_phase}`,
-      cost: { tokens: 0, usd: 0 },
-      executionId: `exec-${_strategyId}-${Date.now()}`,
-    };
+    this.completedStrategies.push(strategyId);
+    return this.strategyExecutor.executeStrategy(strategyId, context ?? {});
   }
 
   // ── Checkpoint ─────────────────────────────────────────────────

@@ -53,7 +53,10 @@ import { StdlibSource } from './ports/stdlib-source.js';
 import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisSink, WebhookConnector } from './shared/event-bus/index.js';
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
-import { createBuildDomain } from './domains/build/index.js';
+import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/index.js';
+import { StrategyExecutor } from './domains/strategies/strategy-executor.js';
+import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
+import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
@@ -507,11 +510,27 @@ async function start() {
       app.log.info(`Replayed ${replayedEvents.length} events from disk`);
     }
 
+    // PRD 047 / issue #154: Construct the StrategyExecutor adapter so the
+    // BuildOrchestrator can drive real strategy DAGs (Phases 3-6 of the build
+    // lifecycle). Reuses the same SubStrategySource the strategy-routes use,
+    // plus a dedicated executor instance with the shared PRD-044 ports.
+    const buildStrategyExecutor = new StrategyExecutor(
+      claudeCliProvider(),
+      loadExecutorConfig(),
+      subStrategySource,
+      humanApprovalResolver,
+    );
+    const buildStrategyExecutorPort = new StrategyExecutorAdapter(
+      buildStrategyExecutor,
+      subStrategySource,
+    );
+
     // PRD 047: Register Build Orchestrator domain
     const buildDomain = createBuildDomain({
       eventBus,
       fileSystem: fsProvider,
       yamlLoader,
+      strategyExecutor: buildStrategyExecutorPort,
     });
     buildDomain.registerRoutes(app);
 

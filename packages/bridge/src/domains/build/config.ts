@@ -29,6 +29,18 @@ export const BuildConfigSchema = z.object({
   refinementConfidenceThreshold: z.number().default(0.7),
   /** Minimum refinement frequency (across builds) to surface. */
   refinementFrequencyThreshold: z.number().default(2),
+  /**
+   * Strategy IDs executed for each phase. Defaults target the FCD strategy
+   * family under `.method/strategies/`. Override in tests or per-environment
+   * to point at fixtures or alternative pipelines.
+   */
+  strategyIds: z.object({
+    explore: z.string().default("explore-codebase"),
+    design: z.string().default("s-fcd-design"),
+    plan: z.string().default("s-fcd-plan"),
+    implement: z.string().default("s-fcd-commission-orch"),
+    review: z.string().default("s-fcd-review"),
+  }).default({}),
 });
 
 export type BuildConfig = z.infer<typeof BuildConfigSchema>;
