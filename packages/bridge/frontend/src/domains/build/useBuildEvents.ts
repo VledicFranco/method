@@ -16,9 +16,21 @@
  */
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useBridgeEvents } from '@/shared/websocket/useBridgeEvents';
+import { api } from '@/shared/lib/api';
 import type { BridgeEvent } from '@/shared/stores/event-store';
 import type { ConversationMessage, GateType, Phase } from './types';
+
+interface BuildLiveState {
+  id: string;
+  status: 'running' | 'completed' | 'failed' | 'aborted';
+  currentPhase: Phase | null;
+  costUsd: number;
+  costTokens: number;
+  completedPhases: Phase[];
+  humanInterventions: number;
+}
 
 // ── Event → Message conversion ─────────────────────────────────
 
@@ -141,6 +153,18 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
   // Subscribe to all build-domain events via useBridgeEvents (PRD 026)
   const events = useBridgeEvents({ domain: 'build' });
 
+  // Fetch initial live state from backend (for restoring state after page reload)
+  const { data: initialState } = useQuery({
+    queryKey: ['build-state', buildId],
+    queryFn: async ({ signal }) => {
+      if (!buildId) return null;
+      return api.get<BuildLiveState>(`/api/builds/${buildId}/state`, signal);
+    },
+    enabled: !!buildId,
+    retry: 1,
+    refetchInterval: 10_000,
+  });
+
   // Filter events for the selected build and convert to messages
   const result = useMemo(() => {
     const empty = {
@@ -154,13 +178,14 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
     };
     if (!buildId) return empty;
 
+    // Seed from backend state (restores after reload) — events override these
     const msgs: ConversationMessage[] = [];
     let gate: GateType | null = null;
-    let phase: Phase | null = null;
-    let phaseActive = false;
-    let status: 'running' | 'completed' | 'failed' | 'aborted' | null = null;
-    let cost = 0;
-    const completedPhases = new Set<Phase>();
+    let phase: Phase | null = initialState?.currentPhase ?? null;
+    let phaseActive = initialState?.status === 'running' && !!initialState?.currentPhase;
+    let status: 'running' | 'completed' | 'failed' | 'aborted' | null = initialState?.status ?? null;
+    let cost = initialState?.costUsd ?? 0;
+    const completedPhases = new Set<Phase>(initialState?.completedPhases ?? []);
 
     for (const event of events) {
       // Filter: match against sessionId (primary) OR payload.buildId (fallback)
@@ -213,7 +238,7 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
     }
 
     return { messages: msgs, liveGate: gate, currentPhase: phase, phaseActive, liveStatus: status, liveCost: cost, completedPhases };
-  }, [buildId, events]);
+  }, [buildId, events, initialState]);
 
   return result;
 }

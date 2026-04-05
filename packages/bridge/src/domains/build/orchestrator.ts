@@ -147,6 +147,35 @@ export class BuildOrchestrator {
     return this.sessionId;
   }
 
+  /** Live state snapshot for dashboards — current phase, cost, completed phases. */
+  getLiveState(): {
+    currentPhase: Phase | null;
+    costUsd: number;
+    costTokens: number;
+    completedPhases: Phase[];
+    humanInterventions: number;
+  } {
+    // currentPhase: last phase that has a result entry (latest activity)
+    const currentPhase =
+      this.phaseResults.length > 0
+        ? this.phaseResults[this.phaseResults.length - 1].phase
+        : null;
+
+    // completedPhases: unique phases with status 'completed'
+    const completed = new Set<Phase>();
+    for (const p of this.phaseResults) {
+      if (p.status === 'completed') completed.add(p.phase);
+    }
+
+    return {
+      currentPhase,
+      costUsd: this.costAccumulator.usd,
+      costTokens: this.costAccumulator.tokens,
+      completedPhases: Array.from(completed),
+      humanInterventions: this.humanInterventions,
+    };
+  }
+
   /**
    * Drive the full 8-phase loop.
    * Returns an EvidenceReport summarizing the build outcome.

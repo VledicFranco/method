@@ -170,6 +170,37 @@ export function registerBuildRoutes(
   );
 
   /**
+   * GET /api/builds/:id/state — Live orchestrator state (current phase, cost, completed phases).
+   * Used by the dashboard to restore state after page refresh.
+   */
+  app.get<{ Params: { id: string } }>(
+    '/api/builds/:id/state',
+    async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const entry = ctx.builds.get(req.params.id);
+        if (!entry) {
+          return reply.status(404).send({
+            error: 'Build not found',
+            message: `No build with id "${req.params.id}"`,
+          });
+        }
+
+        const liveState = entry.orchestrator.getLiveState();
+        return reply.status(200).send({
+          id: req.params.id,
+          status: entry.status,
+          ...liveState,
+        });
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'Failed to get build state',
+          message: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  /**
    * GET /api/builds/:id/conversation — Full conversation history.
    */
   app.get<{ Params: { id: string } }>(
