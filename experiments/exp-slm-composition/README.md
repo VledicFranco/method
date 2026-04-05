@@ -49,8 +49,8 @@ the System 1/2 compilation loop that RFC 002 left manual.
 - [x] B-2: Training DONE (5000 steps, 189 min on RTX 4090)
 - [x] **B-2 Gate B-G1 PASS: 95.5% precision** on INVALID class (target >= 90%)
   - 89.6% accuracy, 83.9% recall, 89.3% F1, 0 parse errors
-- [x] **KPI Checker SLM bootstrapped** (PRD 049): corpus 3K pairs, Check DSL grammar, 100% validation
-- [x] **Gate B-G2 (partial): SLM creation time ~2 hours** (45 min human + GPU time, vs ~14 hours manual)
+- [x] **KPI Checker SLM DONE** (PRD 049): 100% parse accuracy, 100% semantic match (600/600)
+- [x] **Gate B-G2 VALIDATED: SLM creation time ~1h 45min** (50 min human + 53 min GPU, vs ~14 hours manual — 8x speedup)
 - [ ] B-3: Trace Distiller SLM
 - [ ] Wire B-1 + B-2 + B-3 into automated pipeline
 - [ ] Create >= 2 new SLMs using the bootstrap pipeline (KPI Checker = first)
