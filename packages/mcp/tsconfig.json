@@ -4,6 +4,8 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "references": [],
+  "references": [
+    { "path": "../fca-index" }
+  ],
   "include": ["src"]
 }

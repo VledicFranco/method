@@ -133,3 +133,69 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
 
   return { scan, query: queryEngine, coverage: coverageEngine };
 }
+
+// ── Default factory (production wiring) ──────────────────────────────────────
+
+/**
+ * createDefaultFcaIndex — convenience factory for production use.
+ *
+ * Constructs NodeFileSystem, DefaultManifestReader, VoyageEmbeddingClient,
+ * and SqliteLanceIndexStore internally. Callers only need to provide
+ * projectRoot and a Voyage API key.
+ *
+ * For testing, use createFcaIndex() with injected ports instead.
+ */
+export interface DefaultFcaIndexConfig {
+  projectRoot: string;
+  voyageApiKey: string;
+  coverageThreshold?: number;
+  requiredParts?: FcaPart[];
+  indexDir?: string;        // default: '.fca-index'
+  embeddingModel?: string;  // default: 'voyage-3-lite'
+  embeddingDimensions?: number; // default: 512
+}
+
+export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Promise<FcaIndex> {
+  const {
+    projectRoot,
+    voyageApiKey,
+    coverageThreshold,
+    requiredParts,
+    indexDir = '.fca-index',
+    embeddingModel = 'voyage-3-lite',
+    embeddingDimensions = 512,
+  } = config;
+
+  // Dynamic imports — these are optional infra deps, not part of core API
+  const { NodeFileSystem } = await import('./cli/node-filesystem.js');
+  const { DefaultManifestReader } = await import('./cli/manifest-reader.js');
+  const { VoyageEmbeddingClient } = await import('./index-store/embedding-client.js');
+  const { SqliteStore } = await import('./index-store/sqlite-store.js');
+  const { LanceStore } = await import('./index-store/lance-store.js');
+  const { SqliteLanceIndexStore } = await import('./index-store/index-store.js');
+  const Database = (await import('better-sqlite3')).default;
+
+  const dbPath = `${projectRoot}/${indexDir}`;
+  const db = new Database(`${dbPath}/fca.db`);
+  const sqliteStore = new SqliteStore(db);
+  const lanceStore = new LanceStore({ dbPath: `${dbPath}/lance`, dimensions: embeddingDimensions });
+  await lanceStore.initialize();
+
+  const store = new SqliteLanceIndexStore(sqliteStore, lanceStore);
+  const fs = new NodeFileSystem();
+  const manifestReader = new DefaultManifestReader(fs);
+  const embedder = new VoyageEmbeddingClient({
+    apiKey: voyageApiKey,
+    model: embeddingModel,
+    dimensions: embeddingDimensions,
+  });
+
+  // Ensure index directory exists
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(dbPath, { recursive: true });
+
+  return createFcaIndex(
+    { projectRoot, coverageThreshold, requiredParts },
+    { fileSystem: fs, embedder, store, manifestReader },
+  );
+}

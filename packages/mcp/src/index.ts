@@ -10,6 +10,8 @@ import { createValidationMiddleware } from "./validate-project-access.js";
 import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
 import { experimentHandlers, EXPERIMENT_TOOLS } from "./experiment-tools.js";
+import { createDefaultFcaIndex } from "@method/fca-index";
+import { createContextTools, CONTEXT_TOOLS } from "./context-tools.js";
 
 // Path resolution
 const ROOT = process.env.METHOD_ROOT ?? process.cwd();
@@ -17,6 +19,23 @@ const THEORY = resolve(ROOT, "theory");
 const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 
 const BRIDGE_TIMEOUT_MS = parseInt(process.env.BRIDGE_TIMEOUT_MS ?? '30000', 10);
+
+// FCA index — lazy init, fails gracefully if VOYAGE_API_KEY is not set
+let contextQueryHandler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
+let coverageCheckHandler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
+
+const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
+if (VOYAGE_API_KEY) {
+  createDefaultFcaIndex({ projectRoot: ROOT, voyageApiKey: VOYAGE_API_KEY })
+    .then(fcaIndex => {
+      const tools = createContextTools(fcaIndex.query, fcaIndex.coverage, ROOT);
+      contextQueryHandler = tools.contextQueryHandler;
+      coverageCheckHandler = tools.coverageCheckHandler;
+    })
+    .catch(e => {
+      console.error('[fca-index] Failed to initialize:', e.message);
+    });
+}
 
 async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
   try {
@@ -992,6 +1011,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     // PRD 041: Cognitive Experiment Lab tools
     ...EXPERIMENT_TOOLS,
+    // PRD 054: FCA context tools (only available when VOYAGE_API_KEY is set)
+    ...(VOYAGE_API_KEY ? CONTEXT_TOOLS : []),
   ],
 }));
 
@@ -1091,6 +1112,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const handler = experimentHandlers[name];
         if (!handler) throw new Error(`Unknown experiment tool: ${name}`);
         return handler(args as Record<string, unknown>, bridgeFetch, BRIDGE_URL);
+      }
+
+      // PRD 054: FCA context tools
+      case 'context_query': {
+        if (!contextQueryHandler) return err('context_query unavailable: VOYAGE_API_KEY not set');
+        return contextQueryHandler(args as Record<string, unknown>);
+      }
+      case 'coverage_check': {
+        if (!coverageCheckHandler) return err('coverage_check unavailable: VOYAGE_API_KEY not set');
+        return coverageCheckHandler(args as Record<string, unknown>);
       }
 
       default:
