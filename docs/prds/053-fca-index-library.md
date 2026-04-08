@@ -3,7 +3,10 @@ type: prd
 id: "053"
 title: "@method/fca-index — FCA-Indexed Context Library"
 date: "2026-04-08"
-status: draft
+status: complete
+completed: "2026-04-08"
+branch: feat/053-fca-index-c2-index-store
+tests: 158/158
 domains: [fca-index/scanner, fca-index/index-store, fca-index/query, fca-index/coverage, fca-index/cli]
 surfaces: [ContextQueryPort, ManifestReaderPort, CoverageReportPort]
 co-design-records:
