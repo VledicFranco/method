@@ -1,0 +1,3 @@
+# src/coverage/ is a source domain, not a test coverage report directory.
+# Negate the root-level coverage/ ignore rule for this package.
+!src/coverage/
