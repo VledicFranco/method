@@ -35,5 +35,6 @@ export type {
   CoverageReportError,
 } from './ports/coverage-report.js';
 
-// createFcaIndex() factory — added in C-6 (Wave 3)
-// export { createFcaIndex } from './factory.js';
+// Factory
+export { createFcaIndex } from './factory.js';
+export type { FcaIndex, FcaIndexConfig, FcaIndexPorts } from './factory.js';
