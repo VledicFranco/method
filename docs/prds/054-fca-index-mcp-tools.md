@@ -3,8 +3,10 @@ type: prd
 id: "054"
 title: "@method/mcp context tools — FCA context query + coverage check"
 date: "2026-04-08"
-status: active
-prerequisite_met: "2026-04-08"
+status: complete
+completed: "2026-04-08"
+branch: feat/054-mcp-context-tools
+tests: 10/10 (mcp) + 158/158 (fca-index)
 domains: [mcp/context-tools]
 surfaces: [ContextQueryPort, CoverageReportPort]
 depends_on: "053 (fca-index library — Wave 3 complete)"
