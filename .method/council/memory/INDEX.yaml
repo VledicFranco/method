@@ -47,3 +47,10 @@ topics:
     status: active
     last_session: "2026-03-27"
     session_count: 2
+
+  - id: TOPIC-FCA-INDEX
+    name: "@method/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
+    file: fca-index.yaml
+    status: active
+    last_session: "2026-04-08"
+    session_count: 1

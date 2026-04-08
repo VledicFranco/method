@@ -1,0 +1,49 @@
+id: TOPIC-FCA-INDEX
+name: "@method/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
+status: active
+sessions:
+  - date: "2026-04-08"
+    cast: [Oryn, Sable, Vera, Rion, Lena]
+    surface_advocate: Sable
+    outcome: decided
+    artifact: .method/sessions/fcd-debate-fca-index/decision.md
+
+decision_summary: >
+  Build @method/fca-index as a universal L3 library. Hybrid SQLite + embedding index
+  over FCA co-located documentation. Two modes (discovery / production) with
+  library-computed coverage scores in every query response. Two consumer surfaces:
+  structured API for @method/mcp, human-readable CLI. ComponentContext is the
+  primary canonical type and must be Wave 0 co-designed first.
+
+ports_identified:
+  - name: ComponentContext
+    producer: "@method/fca-index query engine"
+    consumer: "@method/mcp, CLI"
+    priority: critical
+    wave: 0
+  - name: ProjectManifest
+    producer: "consuming project (FCA directory structure)"
+    consumer: "@method/fca-index scanner"
+    priority: high
+    wave: 0
+  - name: IndexStore
+    producer: "internal SQLite+Lance storage"
+    consumer: "query engine"
+    priority: medium
+    wave: 0
+    open_question: "pluggable vs. fixed backend"
+  - name: ModeGate
+    producer: "compliance engine"
+    consumer: "CI/CD, quality gate runner"
+    priority: medium
+    wave: 1
+
+wave_0_sessions:
+  - "/fcd-surface fca-index mcp — ComponentContext type (HIGHEST PRIORITY)"
+  - "/fcd-surface fca-index consuming-project — ProjectManifest / directory contract"
+  - "/fcd-surface fca-index cli — CoverageReport + output mode split"
+
+open_questions:
+  - "Embedding model validation: Voyage-3-lite vs. code-doc-optimized alternative"
+  - "IndexStore pluggability: real port or internal detail?"
+  - "Coverage threshold default for production mode graduation"
