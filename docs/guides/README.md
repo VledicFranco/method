@@ -42,6 +42,8 @@ Conceptual and operational guides for the method system — what methods and met
 | 34 | [Memory: Hybrid Search & Persistence](34-memory-hybrid-search.md) | pacta | Agent operators, contributors | BM25, embedding fusion, JSONL persistence, Markdown export |
 | 35 | [Structured Output](35-structured-output.md) | provider | Developers | Typed JSON from LLM agents via StructuredAgentProvider |
 | 36 | [Build Orchestrator](36-build-orchestrator.md) | build | Developers, delivery teams | Autonomous FCD lifecycle from idea to validated delivery |
+| 38 | [fca-index: Getting Started](38-fca-index-getting-started.md) | fca-index | Developers, agent operators | Scan a project, query for context, understand coverage modes |
+| 39 | [fca-index: MCP Context Tools](39-fca-index-mcp-tools.md) | fca-index/mcp | Agent operators | Using context_query and coverage_check in methodology execution |
 
 ## Guide Frontmatter Spec
 
@@ -89,6 +91,8 @@ touches:                           # Source paths this guide documents (for stal
 | `multi-project` | Genesis, project discovery, resource sharing | 19, 20, 21 |
 | `testkit` | Test framework, assertions, diagnostics | 22, 23, 24, 25 |
 | `pacta` | Modular Agent SDK — pacts, providers, composition, testing | 26, 27, 28, 29, 32, 33, 34 |
+| `fca-index` | FCA semantic index — scanning, querying, coverage | 38 |
+| `fca-index/mcp` | MCP context tools over the FCA index | 39 |
 
 ### Audience Values
 
@@ -114,6 +118,7 @@ Choose the path that matches your role, then follow guide numbers in order. Each
 - **Using the Build Orchestrator?** 10 → 16 → 36
 - **Contributing to the bridge UI?** 10 → 14 → 17
 - **Building or testing agents with Pacta?** 26 → 27 → 28 → 29 → 32 → 33 → 34
+- **Using fca-index for context gathering?** 38 → 39
 - **Just curious?** Guide 1 is self-contained — 5 minutes.
 
 ## Staleness Detection
