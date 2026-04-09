@@ -176,9 +176,14 @@ export class ProjectScanner {
   }
 
   private relativize(absPath: string, projectRoot: string): string {
-    if (absPath === projectRoot) return '.';
-    if (absPath.startsWith(projectRoot + '/')) {
-      return absPath.slice(projectRoot.length + 1);
+    // Normalize to forward slashes — fast-glob returns forward slashes on Windows
+    // but node:path.resolve() returns backslashes, causing startsWith to fail.
+    const norm = (p: string) => p.replace(/\\/g, '/');
+    const normAbs = norm(absPath);
+    const normRoot = norm(projectRoot);
+    if (normAbs === normRoot) return '.';
+    if (normAbs.startsWith(normRoot + '/')) {
+      return normAbs.slice(normRoot.length + 1);
     }
     return absPath;
   }
