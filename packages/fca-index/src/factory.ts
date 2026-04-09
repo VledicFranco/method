@@ -17,6 +17,7 @@ import { CoverageScorer } from './scanner/coverage-scorer.js';
 import { ProjectScanner } from './scanner/project-scanner.js';
 import { QueryEngine } from './query/query-engine.js';
 import { ComponentDetailEngine } from './query/component-detail-engine.js';
+import { ComplianceEngine } from './compliance/compliance-engine.js';
 import { CoverageEngine } from './coverage/coverage-engine.js';
 import type { FileSystemPort } from './ports/internal/file-system.js';
 import type { EmbeddingClientPort } from './ports/internal/embedding-client.js';
@@ -26,6 +27,7 @@ import type { ContextQueryPort } from './ports/context-query.js';
 import type { FcaPart } from './ports/context-query.js';
 import type { CoverageReportPort } from './ports/coverage-report.js';
 import type { ComponentDetailPort } from './ports/component-detail.js';
+import type { ComplianceSuggestionPort } from './ports/compliance-suggestion.js';
 
 // ── Config & Ports ───────────────────────────────────────────────────────────
 
@@ -73,6 +75,9 @@ export interface FcaIndex {
 
   /** Get full detail for a single component by path. */
   detail: ComponentDetailPort;
+
+  /** Generate compliance suggestions for a component (missing FCA parts + stubs). */
+  compliance: ComplianceSuggestionPort;
 }
 
 // ── Factory ──────────────────────────────────────────────────────────────────
@@ -99,6 +104,9 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
 
   // Wire detail domain
   const detailEngine = new ComponentDetailEngine(store);
+
+  // Wire compliance domain
+  const complianceEngine = new ComplianceEngine(store);
 
   // Wire coverage domain
   const coverageEngine = new CoverageEngine(store, {
@@ -139,7 +147,7 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
     return { componentCount: components.length };
   }
 
-  return { scan, query: queryEngine, coverage: coverageEngine, detail: detailEngine };
+  return { scan, query: queryEngine, coverage: coverageEngine, detail: detailEngine, compliance: complianceEngine };
 }
 
 // ── Default factory (production wiring) ──────────────────────────────────────

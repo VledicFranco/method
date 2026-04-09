@@ -84,6 +84,17 @@ describe('G-BOUNDARY-DETAIL: component-detail-engine does not import cli/ or @me
   });
 });
 
+describe('G-BOUNDARY-COMPLIANCE: compliance-engine does not import cli/ or @method/mcp', () => {
+  it('compliance/ does not import cli/ or @method/mcp', () => {
+    const files = readSourceFiles(`${SRC}/compliance`);
+    const violations = files.filter(
+      (content) =>
+        /from ['"]\.\.\/cli\//.test(content) || /@method\/mcp/.test(content),
+    );
+    expect(violations, 'compliance/ imports cli/ or @method/mcp').toHaveLength(0);
+  });
+});
+
 describe('G-LAYER: fca-index does not import @method/mcp or @method/bridge', () => {
   it('no source file imports @method/mcp or @method/bridge', () => {
     const allFiles = fg

@@ -19,6 +19,7 @@ import { runScanCommand } from './commands/scan.js';
 import { runQueryCommand } from './commands/query.js';
 import { runCoverageCommand } from './commands/coverage.js';
 import { runDetailCommand } from './commands/detail.js';
+import { runSuggestCommand } from './commands/suggest.js';
 import type { FcaPart } from '../ports/context-query.js';
 
 // ── Arg parsing helpers ──────────────────────────────────────────────────────
@@ -168,13 +169,35 @@ async function main(): Promise<void> {
       break;
     }
 
+    case 'suggest': {
+      const projectRoot = args[1] ? resolve(args[1]) : process.cwd();
+      const componentPath = args[2];
+      if (!componentPath) fatal('Usage: fca-index suggest <projectRoot> <componentPath> [--apply] [--json]');
+
+      const apply = hasFlag(args, '--apply');
+      const json = hasFlag(args, '--json');
+
+      const scanConfig = await manifestReader.read(projectRoot);
+      const indexDir = scanConfig.indexDir ?? '.fca-index';
+      const dimensions = scanConfig.embeddingDimensions ?? 512;
+
+      const store = await buildStore(projectRoot, indexDir, dimensions);
+
+      const { ComplianceEngine } = await import('../compliance/compliance-engine.js');
+      const complianceEngine = new ComplianceEngine(store);
+
+      await runSuggestCommand(complianceEngine, { projectRoot, path: componentPath }, { apply, json });
+      break;
+    }
+
     default:
       process.stderr.write(
         'Usage:\n' +
           '  fca-index scan <projectRoot> [--verbose]\n' +
           '  fca-index query <projectRoot> <queryString> [--topK=5] [--parts=port,interface]\n' +
           '  fca-index coverage <projectRoot> [--verbose]\n' +
-          '  fca-index detail <projectRoot> <componentPath>\n',
+          '  fca-index detail <projectRoot> <componentPath>\n' +
+          '  fca-index suggest <projectRoot> <componentPath> [--apply] [--json]\n',
       );
       process.exit(1);
   }

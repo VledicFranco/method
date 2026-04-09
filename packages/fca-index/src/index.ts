@@ -47,6 +47,15 @@ export type {
 // ComponentDetailError is a class — export as value so consumers can use `new` and `instanceof`
 export { ComponentDetailError } from './ports/component-detail.js';
 
+export type {
+  ComplianceSuggestionPort,
+  ComplianceSuggestionRequest,
+  ComplianceSuggestion,
+  PartSuggestion,
+} from './ports/compliance-suggestion.js';
+// ComplianceSuggestionError is a class — export as value so consumers can use `new` and `instanceof`
+export { ComplianceSuggestionError } from './ports/compliance-suggestion.js';
+
 // Factory
 export { createFcaIndex } from './factory.js';
 export type { FcaIndex, FcaIndexConfig, FcaIndexPorts } from './factory.js';
