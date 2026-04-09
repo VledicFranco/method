@@ -4,6 +4,9 @@ dist/
 .env
 .env.local
 
+# fca-index databases (SQLite + Lance vector store)
+.fca-index/
+
 # stale docs — experiments, impl scratch, research
 docs/exp/
 docs/impl/
