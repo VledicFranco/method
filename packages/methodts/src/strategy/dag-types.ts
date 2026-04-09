@@ -149,22 +149,44 @@ export interface HumanApprovalResolver {
   requestApproval(ctx: HumanApprovalContext): Promise<HumanApprovalDecision>;
 }
 
+/**
+ * Configuration for a context-load node — pre-execution fca-index retrieval.
+ *
+ * Fetches relevant FCA components from the index BEFORE downstream methodology
+ * nodes execute. Results are stored in ArtifactStore under `output_key` as
+ * RetrievedComponent[] and become available to subsequent nodes via inputs.
+ *
+ * Co-designed: 2026-04-09 — see .method/sessions/fcd-surface-context-load-executor/
+ */
+export interface ContextLoadNodeConfig {
+  readonly type: 'context-load';
+  /** Semantic query describing what the next steps need context about. */
+  readonly query: string;
+  /** Maximum components to retrieve. Default: 5. */
+  readonly topK?: number;
+  /** Filter results to components covering these FCA parts (e.g. ['port', 'interface']). */
+  readonly filterParts?: readonly string[];
+  /** Artifact key under which RetrievedComponent[] is stored in ArtifactStore. */
+  readonly output_key: string;
+}
+
 /** Union of all node configuration types. */
 export type NodeConfig =
   | MethodologyNodeConfig
   | ScriptNodeConfig
   | StrategyNodeConfig
-  | SemanticNodeConfig;
+  | SemanticNodeConfig
+  | ContextLoadNodeConfig;
 
 /** A node in the strategy DAG. */
 export interface StrategyNode {
   readonly id: string;
-  readonly type: "methodology" | "script" | "strategy" | "semantic";
+  readonly type: "methodology" | "script" | "strategy" | "semantic" | "context-load";
   readonly depends_on: readonly string[];
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
   readonly gates: readonly DagGateConfig[];
-  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig;
+  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig;
   readonly refresh_context?: boolean;
 }
 
@@ -219,7 +241,7 @@ export interface StrategyYaml {
     dag: {
       nodes: Array<{
         id: string;
-        type: "methodology" | "script" | "strategy" | "semantic";
+        type: "methodology" | "script" | "strategy" | "semantic" | "context-load";
         // methodology node fields
         methodology?: string;
         method_hint?: string;
@@ -235,6 +257,10 @@ export interface StrategyYaml {
         algorithm?: SemanticAlgorithm;
         input_mapping?: Record<string, string>;
         output_key?: string;
+        // context-load node fields
+        query?: string;
+        topK?: number;
+        filterParts?: string[];
         // common fields
         inputs?: string[];
         outputs?: string[];
@@ -377,6 +403,12 @@ export interface StrategyExecutorConfig {
   readonly defaultTimeoutMs: number;
   readonly defaultBudgetUsd?: number;
   readonly retroDir: string;
+  /**
+   * Absolute path to the project root for context-load nodes.
+   * Required when the strategy DAG contains context-load nodes.
+   * If absent and a context-load node is encountered, execution fails with a clear error.
+   */
+  readonly projectRoot?: string;
 }
 
 // ── Retro Types ─────────────────────────────────────────────────

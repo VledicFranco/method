@@ -27,6 +27,7 @@ import type {
   StrategyNodeConfig,
   SemanticNodeConfig,
   SemanticAlgorithm,
+  ContextLoadNodeConfig,
   StrategyValidationResult,
 } from "./dag-types.js";
 
@@ -77,7 +78,7 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
       timeout_ms: g.timeout_ms ?? getDefaultTimeout(g.type),
     }));
 
-    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig;
+    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig;
 
     if (rawNode.type === "methodology") {
       config = {
@@ -99,6 +100,14 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
         type: "semantic",
         algorithm: (rawNode.algorithm ?? "explore") as SemanticAlgorithm,
         input_mapping: rawNode.input_mapping ?? {},
+        output_key: rawNode.output_key ?? "",
+      };
+    } else if (rawNode.type === "context-load") {
+      config = {
+        type: "context-load",
+        query: rawNode.query ?? "",
+        topK: rawNode.topK,
+        filterParts: rawNode.filterParts,
         output_key: rawNode.output_key ?? "",
       };
     } else {

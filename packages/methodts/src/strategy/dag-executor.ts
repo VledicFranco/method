@@ -22,6 +22,7 @@ import type {
   MethodologyNodeConfig,
   ScriptNodeConfig,
   StrategyNodeConfig,
+  ContextLoadNodeConfig,
   SubStrategySource,
   SubStrategyResult,
   HumanApprovalResolver,
@@ -79,6 +80,75 @@ export interface DagNodeExecutor {
   }>;
 }
 
+// ── ContextLoadExecutor Port ────────────────────────────────────
+
+/**
+ * ContextLoadExecutor — Port for executing context-load DAG nodes.
+ *
+ * A context-load node retrieves relevant FCA components from fca-index
+ * before downstream methodology nodes execute. The bridge wires a concrete
+ * ContextLoadExecutorImpl that imports @method/fca-index. methodts never
+ * knows about the index internals — only this interface.
+ *
+ * Owner:    @method/methodts (defines contract)
+ * Producer: @method/bridge (ContextLoadExecutorImpl)
+ * Consumer: DagStrategyExecutor (calls it for context-load nodes)
+ * Co-designed: 2026-04-09
+ * Status:   frozen
+ */
+export interface ContextLoadExecutor {
+  /**
+   * Execute a context-load node: query fca-index and return scored components.
+   *
+   * @param config - The context-load node config from the strategy YAML
+   * @param projectRoot - Absolute path to the indexed project root
+   * @throws ContextLoadError 'INDEX_NOT_FOUND' if no index exists for projectRoot
+   * @throws ContextLoadError 'QUERY_FAILED' on internal errors
+   */
+  executeContextLoad(
+    config: ContextLoadNodeConfig,
+    projectRoot: string,
+  ): Promise<ContextLoadResult>;
+}
+
+export interface ContextLoadResult {
+  /** Components retrieved and ranked by semantic relevance. */
+  readonly components: RetrievedComponent[];
+  /** Time taken for the query in milliseconds. */
+  readonly queryTime: number;
+  /** Index mode at query time — informs consumers of coverage quality. */
+  readonly mode: 'discovery' | 'production';
+}
+
+/**
+ * A component retrieved from fca-index, shaped for prompt injection.
+ * Intentionally minimal — only fields a strategy template needs.
+ * The bridge adapter maps ComponentContext → RetrievedComponent.
+ */
+export interface RetrievedComponent {
+  /** Component path relative to projectRoot. */
+  readonly path: string;
+  /** FCA level (L0–L5). */
+  readonly level: string;
+  /** Raw documentation text. Primary content for prompt injection. */
+  readonly docText: string;
+  /** Coverage score 0–1. Useful for gate checks on context quality. */
+  readonly coverageScore: number;
+  /** Semantic relevance score. Higher = more relevant to the query. */
+  readonly score: number;
+}
+
+export class ContextLoadError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'INDEX_NOT_FOUND' | 'QUERY_FAILED',
+    public readonly nodeId: string,
+  ) {
+    super(message);
+    this.name = 'ContextLoadError';
+  }
+}
+
 // ── Execution State ─────────────────────────────────────────────
 
 interface ExecutionState {
@@ -110,6 +180,7 @@ export class DagStrategyExecutor {
     private config: StrategyExecutorConfig,
     private subStrategySource?: SubStrategySource | null,
     private humanApprovalResolver?: HumanApprovalResolver | null,
+    private contextLoadExecutor?: ContextLoadExecutor | null,
     /** Internal: shared chain reference for cycle detection across nested executors. */
     sharedChain?: string[],
   ) {
@@ -630,6 +701,8 @@ export class DagStrategyExecutor {
         this.currentSessionId,
         effectiveFeedback,
       );
+    } else if (node.config.type === "context-load") {
+      return this.executeContextLoadNode(node, node.config as ContextLoadNodeConfig);
     } else if (node.config.type === "strategy") {
       const stratResult = await this.executeStrategyNode(
         dag,
@@ -665,6 +738,47 @@ export class DagStrategyExecutor {
         duration_ms: 0,
       };
     }
+  }
+
+  /**
+   * Execute a context-load node: query fca-index via the ContextLoadExecutor port
+   * and return results for storage in ArtifactStore.
+   */
+  private async executeContextLoadNode(
+    node: StrategyNode,
+    config: ContextLoadNodeConfig,
+  ): Promise<{
+    output: Record<string, unknown>;
+    cost_usd: number;
+    num_turns: number;
+    duration_ms: number;
+  }> {
+    if (this.contextLoadExecutor == null) {
+      throw new ContextLoadError(
+        `Node "${node.id}": context-load node requires a ContextLoadExecutor to be injected but none was provided`,
+        'QUERY_FAILED',
+        node.id,
+      );
+    }
+
+    if (!this.config.projectRoot) {
+      throw new ContextLoadError(
+        `Node "${node.id}": context-load node requires StrategyExecutorConfig.projectRoot to be set`,
+        'QUERY_FAILED',
+        node.id,
+      );
+    }
+
+    const startMs = Date.now();
+    const result = await this.contextLoadExecutor.executeContextLoad(config, this.config.projectRoot);
+    const durationMs = Date.now() - startMs;
+
+    return {
+      output: { [config.output_key]: result.components },
+      cost_usd: 0, // context-load nodes have no LLM cost
+      num_turns: 0,
+      duration_ms: durationMs,
+    };
   }
 
   /**
@@ -763,6 +877,7 @@ ${config.script}`,
       this.config,
       this.subStrategySource,
       this.humanApprovalResolver,
+      this.contextLoadExecutor,
       this.executionChain, // shared by reference — cycle detection works across levels
     );
 
