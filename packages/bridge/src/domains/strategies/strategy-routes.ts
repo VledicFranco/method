@@ -59,7 +59,8 @@ export function setStrategyRoutesSubStrategySource(source: SubStrategySource): v
 import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
 import type { StrategyYaml } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
-import type { StrategyExecutorConfig, StrategyExecutionResult } from './strategy-executor.js';
+import type { StrategyExecutorConfig, StrategyExecutionResult, ContextLoadExecutor } from './strategy-executor.js';
+import { ContextLoadExecutorImpl } from './context-load-executor.js';
 
 /** Build executor config from environment variables with defaults (DR-03: env access in bridge only) */
 export function loadExecutorConfig(): StrategyExecutorConfig {
@@ -71,7 +72,26 @@ export function loadExecutorConfig(): StrategyExecutorConfig {
       ? parseFloat(process.env.STRATEGY_DEFAULT_BUDGET_USD)
       : undefined,
     retroDir: process.env.STRATEGY_RETRO_DIR ?? '.method/retros',
+    projectRoot: process.cwd(),
   };
+}
+
+// ── Context Load Executor — lazy init when VOYAGE_API_KEY is available ────────
+
+let _contextLoadExecutor: ContextLoadExecutor | null = null;
+
+const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
+if (VOYAGE_API_KEY) {
+  const projectRoot = process.cwd();
+  import('@method/fca-index').then(({ createDefaultFcaIndex }) =>
+    createDefaultFcaIndex({ projectRoot, voyageApiKey: VOYAGE_API_KEY })
+  ).then((fcaIndex) => {
+    _contextLoadExecutor = new ContextLoadExecutorImpl(fcaIndex.query);
+  }).catch((e: unknown) => {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Non-fatal: context-load nodes will fail with INDEX_NOT_FOUND at runtime
+    console.error('[fca-index] context-load executor failed to initialize:', msg);
+  });
 }
 import { generateRetro } from './retro-generator.js';
 import { saveRetro } from './retro-writer.js';
@@ -276,6 +296,8 @@ export function registerStrategyRoutes(
       executorConfig,
       subStrategySource,
       _humanApprovalResolver,
+      null, // semanticNodeExecutor — not yet wired
+      _contextLoadExecutor,
     );
     const executionId = `exec-${dag.id}-${Date.now()}`;
     const startedAt = new Date().toISOString();

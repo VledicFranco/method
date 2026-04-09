@@ -18,6 +18,7 @@ import type {
 import {
   DagStrategyExecutor,
   type DagNodeExecutor,
+  type ContextLoadExecutor,
 } from '@method/methodts/strategy/dag-executor.js';
 import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
 import type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
@@ -33,6 +34,8 @@ export type {
   SubStrategySource,
   HumanApprovalResolver,
 } from '@method/methodts/strategy/dag-types.js';
+
+export type { ContextLoadExecutor } from '@method/methodts/strategy/dag-executor.js';
 
 // Re-export SemanticNodeExecutor port type for bridge composition root
 export type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
@@ -292,6 +295,7 @@ export class StrategyExecutor {
     subStrategySource?: SubStrategySource | null,
     humanApprovalResolver?: HumanApprovalResolver | null,
     _semanticNodeExecutor?: SemanticNodeExecutor | null,
+    contextLoadExecutor?: ContextLoadExecutor | null,
   ) {
     // NOTE: semanticNodeExecutor is accepted for API compatibility but not yet
     // wired to DagStrategyExecutor. The methodts-side support for semantic
@@ -311,9 +315,11 @@ export class StrategyExecutor {
         defaultTimeoutMs: config.defaultTimeoutMs,
         defaultBudgetUsd: config.defaultBudgetUsd,
         retroDir: config.retroDir,
+        projectRoot: config.projectRoot,
       },
       subStrategySource ?? null,
       humanApprovalResolver ?? null,
+      contextLoadExecutor ?? null,
       undefined, // sharedChain — not used at top level
     );
   }

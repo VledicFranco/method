@@ -499,6 +499,32 @@ describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/p
   });
 });
 
+// ── G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-index ──
+
+describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-index', () => {
+  it('methodts strategy domain does not import fca-index directly', () => {
+    const strategyDir = join(METHODTS_SRC, 'strategy');
+    const files = collectTsFiles(strategyDir).filter(f => !isTestFile(f));
+    const violations: string[] = [];
+    for (const file of files) {
+      const imports = extractImports(file);
+      for (const imp of imports) {
+        if (imp.specifier.includes('@method/fca-index')) {
+          violations.push(
+            `${relative(METHODTS_SRC, file).replace(/\\/g, '/')}:${imp.line} — imports '${imp.specifier}'`,
+          );
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [], [
+      'G-LAYER-CONTEXT-LOAD violation: methodts/strategy must not import @method/fca-index.',
+      'Use the ContextLoadExecutor port (defined in dag-executor.ts) instead.',
+      '',
+      ...violations,
+    ].join('\n'));
+  });
+});
+
 // ── G-PRD051-COST-GOVERNOR: cost-governor domain uses ports ──
 
 describe('G-PRD051-COST-GOVERNOR: cost-governor domain uses FileSystemProvider port', () => {
