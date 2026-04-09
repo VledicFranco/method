@@ -1,3 +1,16 @@
+/**
+ * @method/mcp — MCP Protocol Adapter
+ *
+ * Thin MCP stdio server exposing methodts methodology tools, fca-index context
+ * tools, and bridge session tools to Claude agents.
+ *
+ * Tools: methodology_list, methodology_load, methodology_step, methodology_status,
+ * theory_lookup, context_query, context_detail, coverage_check (requires VOYAGE_API_KEY),
+ * bridge_list_projects, bridge_list_sessions, bridge_run_session, bridge_prompt,
+ * experiment_run, experiment_list.
+ *
+ * DR-04: handlers are thin wrappers — parse → call port → format. No domain logic here.
+ */
 import { resolve } from "path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -1141,3 +1154,5 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+export type {};

@@ -207,3 +207,7 @@ main().catch((err: unknown) => {
   process.stderr.write(String(err instanceof Error ? err.message : err) + '\n');
   process.exit(1);
 });
+
+// FCA interface marker — this file IS the CLI interface surface.
+// Commands: scan, query, coverage, detail, suggest.
+export type {};
