@@ -15,6 +15,9 @@ import type {
 import { SqliteStore } from './sqlite-store.js';
 import { LanceStore } from './lance-store.js';
 
+/** Minimum concatenated doc text length to warrant a vector embedding. */
+const MIN_DOC_TEXT_LENGTH = 100;
+
 export class SqliteLanceIndexStore implements IndexStorePort {
   constructor(
     private readonly sqlite: SqliteStore,
@@ -23,8 +26,14 @@ export class SqliteLanceIndexStore implements IndexStorePort {
 
   async upsertComponent(entry: IndexEntry): Promise<void> {
     const { embedding, ...metadata } = entry;
+    // Always persist metadata — coverage tracking needs every component in SQLite.
     this.sqlite.upsert(metadata);
-    await this.lance.upsert(entry.id, embedding);
+    // Only embed if the component has sufficient documentation to be useful in
+    // similarity search. Undocumented components would pollute vector results.
+    const docText = entry.parts.map((p) => p.excerpt ?? '').join(' ');
+    if (docText.length >= MIN_DOC_TEXT_LENGTH) {
+      await this.lance.upsert(entry.id, embedding);
+    }
   }
 
   async queryBySimilarity(

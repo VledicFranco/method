@@ -10,6 +10,7 @@ import type { ContextQueryPort, ContextQueryRequest, ContextQueryResult } from '
 import { ContextQueryError } from '../ports/context-query.js';
 import type { IndexStorePort, IndexQueryFilters } from '../ports/internal/index-store.js';
 import type { EmbeddingClientPort } from '../ports/internal/embedding-client.js';
+import type { FileSystemPort } from '../ports/internal/file-system.js';
 import { ResultFormatter } from './result-formatter.js';
 
 export interface QueryEngineConfig {
@@ -29,6 +30,7 @@ export class QueryEngine implements ContextQueryPort {
   constructor(
     private readonly store: IndexStorePort,
     private readonly embedder: EmbeddingClientPort,
+    private readonly fs: FileSystemPort,
     private readonly config: QueryEngineConfig,
   ) {}
 
@@ -68,9 +70,29 @@ export class QueryEngine implements ContextQueryPort {
     const stats = await this.store.getCoverageStats(projectRoot);
     const mode = stats.weightedAverage >= coverageThreshold ? 'production' : 'discovery';
 
-    // Step 6: format results
+    // Step 6: check freshness — compare each entry's directory mtime to its indexedAt.
+    // Only checks the top-K returned results, not the entire index (performance constraint).
+    const staleComponents: string[] = [];
+    for (const entry of entries) {
+      const absPath = `${projectRoot}/${entry.path}`;
+      try {
+        const mtime = await this.fs.getModifiedTime(absPath);
+        const indexedAtMs = new Date(entry.indexedAt).getTime();
+        if (mtime > indexedAtMs) {
+          staleComponents.push(entry.path);
+        }
+      } catch {
+        // Path may not exist or be inaccessible — skip silently.
+      }
+    }
+
+    // Step 7: format results
     const results = this.formatter.format(entries);
 
-    return { mode, results };
+    return {
+      mode,
+      results,
+      staleComponents: staleComponents.length > 0 ? staleComponents : undefined,
+    };
   }
 }

@@ -12,9 +12,12 @@ import type { FileSystemPort, DirEntry } from '../../ports/internal/file-system.
 
 export class InMemoryFileSystem implements FileSystemPort {
   private readonly files: Map<string, string>;
+  /** Optional per-path mtime overrides for freshness testing. Defaults to 0. */
+  private readonly mtimes: Map<string, number>;
 
-  constructor(tree: Record<string, string>) {
+  constructor(tree: Record<string, string>, mtimes: Record<string, number> = {}) {
     this.files = new Map(Object.entries(tree));
+    this.mtimes = new Map(Object.entries(mtimes));
   }
 
   async readFile(path: string, _encoding: 'utf-8'): Promise<string> {
@@ -71,6 +74,10 @@ export class InMemoryFileSystem implements FileSystemPort {
       if (filePath.startsWith(prefix)) return true;
     }
     return false;
+  }
+
+  async getModifiedTime(path: string): Promise<number> {
+    return this.mtimes.get(path) ?? 0;
   }
 
   async glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]> {

@@ -19,11 +19,19 @@ function makeSuccessResponse(embeddings: number[][]): Response {
   } as unknown as Response;
 }
 
-function make429Response(): Response {
+function make429Response(retryAfterSeconds?: number): Response {
   return {
     ok: false,
     status: 429,
     statusText: 'Too Many Requests',
+    headers: {
+      get: (name: string) => {
+        if (name === 'Retry-After' || name === 'retry-after') {
+          return retryAfterSeconds !== undefined ? String(retryAfterSeconds) : null;
+        }
+        return null;
+      },
+    },
     json: async () => ({ error: 'rate limited' }),
   } as unknown as Response;
 }
@@ -107,10 +115,10 @@ describe('VoyageEmbeddingClient', () => {
 
         const embedPromise = client.embed(['text']);
 
-        // Advance timers for first retry: 2^0 * 500 = 500ms
-        await vi.advanceTimersByTimeAsync(500);
-        // Advance timers for second retry: 2^1 * 500 = 1000ms
-        await vi.advanceTimersByTimeAsync(1000);
+        // Advance timers for first retry: 2^0 * 5000 = 5000ms
+        await vi.advanceTimersByTimeAsync(5000);
+        // Advance timers for second retry: 2^1 * 5000 = 10000ms
+        await vi.advanceTimersByTimeAsync(10000);
 
         const result = await embedPromise;
         expect(result).toEqual([[1, 0, 0, 0]]);
@@ -120,7 +128,7 @@ describe('VoyageEmbeddingClient', () => {
       }
     });
 
-    it('throws EmbeddingClientError after 3 retries exhausted', async () => {
+    it('throws EmbeddingClientError after max retries exhausted', async () => {
       vi.useFakeTimers();
       try {
         const mockFetch = vi.fn().mockResolvedValue(make429Response());
@@ -130,10 +138,12 @@ describe('VoyageEmbeddingClient', () => {
         let caughtError: unknown;
         const embedPromise = client.embed(['text']).catch((e) => { caughtError = e; });
 
-        // Advance through all retry delays: 500ms + 1000ms + 2000ms
-        await vi.advanceTimersByTimeAsync(500);
-        await vi.advanceTimersByTimeAsync(1000);
-        await vi.advanceTimersByTimeAsync(2000);
+        // Advance through all 5 retry delays: 5000 + 10000 + 20000 + 40000 + 80000ms
+        await vi.advanceTimersByTimeAsync(5000);
+        await vi.advanceTimersByTimeAsync(10000);
+        await vi.advanceTimersByTimeAsync(20000);
+        await vi.advanceTimersByTimeAsync(40000);
+        await vi.advanceTimersByTimeAsync(80000);
 
         await embedPromise;
         expect(caughtError).toBeInstanceOf(EmbeddingClientError);
@@ -152,9 +162,12 @@ describe('VoyageEmbeddingClient', () => {
         let caughtError: unknown;
         const embedPromise = client.embed(['text']).catch((e) => { caughtError = e; });
 
-        await vi.advanceTimersByTimeAsync(500);
-        await vi.advanceTimersByTimeAsync(1000);
-        await vi.advanceTimersByTimeAsync(2000);
+        // Advance through all 5 retry delays: 5000 + 10000 + 20000 + 40000 + 80000ms
+        await vi.advanceTimersByTimeAsync(5000);
+        await vi.advanceTimersByTimeAsync(10000);
+        await vi.advanceTimersByTimeAsync(20000);
+        await vi.advanceTimersByTimeAsync(40000);
+        await vi.advanceTimersByTimeAsync(80000);
 
         await embedPromise;
         expect(caughtError).toBeInstanceOf(EmbeddingClientError);

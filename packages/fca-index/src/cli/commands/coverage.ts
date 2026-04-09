@@ -10,4 +10,9 @@ export async function runCoverageCommand(
 ): Promise<void> {
   const report = await coveragePort.getReport(request);
   process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+  // Exit with non-zero code in CI when coverage is below threshold.
+  // Print first so CI logs capture the report before the process exits.
+  if (!report.summary.meetsThreshold) {
+    process.exit(1);
+  }
 }

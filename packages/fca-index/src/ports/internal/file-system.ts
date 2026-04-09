@@ -23,6 +23,16 @@ export interface FileSystemPort {
    * @param options.ignore - Glob patterns to exclude from results (relative to root).
    */
   glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]>;
+
+  /**
+   * Get the last modified time of a path, in milliseconds since Unix epoch.
+   *
+   * WARN-LEGACY: Added post-freeze (2026-04-09) for freshness tracking in the query engine.
+   * This method was not part of the original co-design session (2026-04-08). A formal
+   * co-design record should be produced to freeze this addition properly.
+   * Tech debt: schedule a `/fcd-surface` session to update the frozen record.
+   */
+  getModifiedTime(path: string): Promise<number>;
 }
 
 export interface DirEntry {

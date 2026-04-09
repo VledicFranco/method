@@ -6,7 +6,7 @@
  * fca-index library that imports node:fs directly.
  */
 
-import { readFile, readdir, access } from 'node:fs/promises';
+import { readFile, readdir, access, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import fg from 'fast-glob';
 import type { FileSystemPort, DirEntry } from '../ports/internal/file-system.js';
@@ -34,5 +34,10 @@ export class NodeFileSystem implements FileSystemPort {
 
   async glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]> {
     return fg(pattern, { cwd: root, absolute: true, dot: false, ignore: options?.ignore ?? [] });
+  }
+
+  async getModifiedTime(path: string): Promise<number> {
+    const s = await stat(path);
+    return s.mtimeMs;
   }
 }

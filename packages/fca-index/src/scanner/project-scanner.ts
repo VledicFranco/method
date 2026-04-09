@@ -36,6 +36,12 @@ export interface ScannedComponent {
 
 const DEFAULT_SOURCE_PATTERNS = ['src/**', 'packages/*/src/**'];
 const DEFAULT_REQUIRED_PARTS: FcaPart[] = ['interface', 'documentation'];
+const DEFAULT_EXCLUDE_PATTERNS: string[] = [
+  '**/__tests__/**',
+  '**/*.test.ts',
+  '**/*.spec.ts',
+  '**/*.d.ts',
+];
 
 export class ProjectScanner {
   constructor(
@@ -47,7 +53,7 @@ export class ProjectScanner {
   async scan(config: ProjectScanConfig): Promise<ScannedComponent[]> {
     const { projectRoot } = config;
     const sourcePatterns = config.sourcePatterns ?? DEFAULT_SOURCE_PATTERNS;
-    const excludePatterns = config.excludePatterns ?? [];
+    const excludePatterns = [...DEFAULT_EXCLUDE_PATTERNS, ...(config.excludePatterns ?? [])];
     const requiredParts = config.requiredParts ?? DEFAULT_REQUIRED_PARTS;
 
     // Collect all candidate directories by expanding source patterns

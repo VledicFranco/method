@@ -121,7 +121,7 @@ async function main(): Promise<void> {
       const store = await buildStore(projectRoot, indexDir, dimensions);
 
       const { QueryEngine } = await import('../query/query-engine.js');
-      const queryEngine = new QueryEngine(store, embedder, {
+      const queryEngine = new QueryEngine(store, embedder, fs, {
         projectRoot,
         coverageThreshold: scanConfig.coverageThreshold,
       });

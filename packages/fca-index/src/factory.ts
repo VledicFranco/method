@@ -90,7 +90,7 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
   const scanner = new ProjectScanner(fileSystem, detector, scorer);
 
   // Wire query domain
-  const queryEngine = new QueryEngine(store, embedder, { projectRoot, coverageThreshold });
+  const queryEngine = new QueryEngine(store, embedder, fileSystem, { projectRoot, coverageThreshold });
 
   // Wire coverage domain
   const coverageEngine = new CoverageEngine(store, {

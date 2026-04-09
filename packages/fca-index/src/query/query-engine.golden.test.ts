@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { QueryEngine } from './query-engine.js';
 import type { EmbeddingClientPort } from '../ports/internal/embedding-client.js';
 import { InMemoryIndexStore } from '../index-store/in-memory-store.js';
+import { InMemoryFileSystem } from '../scanner/test-helpers/in-memory-fs.js';
 
 // ── Fixture embedding dictionary ─────────────────────────────────────────────
 // Each component has a distinct 8-dimensional "semantic axis".
@@ -72,6 +73,9 @@ class FixtureEmbeddingClient implements EmbeddingClientPort {
 // ── Fixture data ─────────────────────────────────────────────────────────────
 
 const PROJECT_ROOT = '/golden-project';
+
+/** Stub FileSystem that returns mtime=0 for all paths (nothing is ever stale). */
+const stubFs = new InMemoryFileSystem({});
 
 async function buildFixture(store: InMemoryIndexStore): Promise<void> {
   // 1. Auth domain — L2, port + documentation, coverage 0.95
@@ -213,7 +217,7 @@ describe('QueryEngine — golden test set (≥ 16/20 must pass)', () => {
     store = new InMemoryIndexStore();
     embedder = new FixtureEmbeddingClient();
     await buildFixture(store);
-    engine = new QueryEngine(store, embedder, {
+    engine = new QueryEngine(store, embedder, stubFs, {
       projectRoot: PROJECT_ROOT,
       coverageThreshold: 0.8,
     });
@@ -362,7 +366,7 @@ describe('QueryEngine — golden test set (≥ 16/20 must pass)', () => {
   // G-19: mode is 'discovery' when avg coverage < threshold
   it('G-19: mode is discovery — avg coverage ≈ 0.82, threshold=0.9', async () => {
     // avg = (0.95+0.85+0.75+0.80+0.65+0.88+0.70+1.0) / 8 = 0.823
-    const strictEngine = new QueryEngine(store, embedder, {
+    const strictEngine = new QueryEngine(store, embedder, stubFs, {
       projectRoot: PROJECT_ROOT,
       coverageThreshold: 0.9,
     });
@@ -373,7 +377,7 @@ describe('QueryEngine — golden test set (≥ 16/20 must pass)', () => {
   // G-20: mode is 'production' when avg coverage >= threshold
   it('G-20: mode is production — avg coverage ≈ 0.82, threshold=0.7', async () => {
     // avg = (0.95+0.85+0.75+0.80+0.65+0.88+0.70+1.0) / 8 ≈ 0.823 > 0.7
-    const looseEngine = new QueryEngine(store, embedder, {
+    const looseEngine = new QueryEngine(store, embedder, stubFs, {
       projectRoot: PROJECT_ROOT,
       coverageThreshold: 0.7,
     });

@@ -68,6 +68,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Excerpt long enough (>= 100 chars) to pass the MIN_DOC_TEXT_LENGTH guard in SqliteLanceIndexStore. */
+const LONG_EXCERPT =
+  'This domain manages the core business logic for the application. ' +
+  'It exposes an interface for external consumers and maintains clear boundaries.';
+
 function makeEntry(overrides: Partial<IndexEntry> = {}): IndexEntry {
   return {
     id: 'contract00000001',
@@ -75,7 +80,7 @@ function makeEntry(overrides: Partial<IndexEntry> = {}): IndexEntry {
     path: 'src/domain',
     level: 'L2',
     parts: [
-      { part: 'interface', filePath: 'src/domain/index.ts', excerpt: 'export interface X {}' },
+      { part: 'interface', filePath: 'src/domain/index.ts', excerpt: LONG_EXCERPT },
     ],
     coverageScore: 0.8,
     embedding: [1, 0, 0, 0],

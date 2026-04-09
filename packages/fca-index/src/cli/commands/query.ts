@@ -20,4 +20,11 @@ export async function runQueryCommand(
     })),
   };
   process.stdout.write(JSON.stringify(output, null, 2) + '\n');
+  if (result.staleComponents && result.staleComponents.length > 0) {
+    process.stderr.write(
+      `Warning: ${result.staleComponents.length} component(s) may be stale (directory modified since last scan):\n` +
+        result.staleComponents.map((p) => `  - ${p}`).join('\n') +
+        '\n',
+    );
+  }
 }

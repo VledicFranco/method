@@ -87,6 +87,13 @@ export interface ContextQueryResult {
 
   /** Ranked component descriptors, most relevant first. */
   results: ComponentContext[];
+
+  /**
+   * Paths (relative to projectRoot) of components whose directory mtime is newer
+   * than their `indexedAt` timestamp. A non-empty list indicates the index may be
+   * stale for these components. Omitted when all returned components are fresh.
+   */
+  staleComponents?: string[];
 }
 
 /**
