@@ -32,7 +32,7 @@ export class NodeFileSystem implements FileSystemPort {
     );
   }
 
-  async glob(pattern: string, root: string): Promise<string[]> {
-    return fg(pattern, { cwd: root, absolute: true, dot: false });
+  async glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]> {
+    return fg(pattern, { cwd: root, absolute: true, dot: false, ignore: options?.ignore ?? [] });
   }
 }

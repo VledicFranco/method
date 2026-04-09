@@ -73,13 +73,14 @@ export class InMemoryFileSystem implements FileSystemPort {
     return false;
   }
 
-  async glob(pattern: string, root: string): Promise<string[]> {
+  async glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]> {
     // Simple glob implementation supporting ** and * wildcards
     const normalizedRoot = root.endsWith('/') ? root.slice(0, -1) : root;
     const regex = globToRegex(pattern, normalizedRoot);
+    const ignoreRegexes = (options?.ignore ?? []).map(p => globToRegex(p, normalizedRoot));
 
     return Array.from(this.files.keys())
-      .filter(p => regex.test(p))
+      .filter(p => regex.test(p) && !ignoreRegexes.some(ir => ir.test(p)))
       .sort();
   }
 }

@@ -47,10 +47,11 @@ export class ProjectScanner {
   async scan(config: ProjectScanConfig): Promise<ScannedComponent[]> {
     const { projectRoot } = config;
     const sourcePatterns = config.sourcePatterns ?? DEFAULT_SOURCE_PATTERNS;
+    const excludePatterns = config.excludePatterns ?? [];
     const requiredParts = config.requiredParts ?? DEFAULT_REQUIRED_PARTS;
 
     // Collect all candidate directories by expanding source patterns
-    const candidateDirs = await this.collectCandidateDirs(projectRoot, sourcePatterns);
+    const candidateDirs = await this.collectCandidateDirs(projectRoot, sourcePatterns, excludePatterns);
 
     const components: ScannedComponent[] = [];
     const seenPaths = new Set<string>();
@@ -71,12 +72,13 @@ export class ProjectScanner {
   private async collectCandidateDirs(
     projectRoot: string,
     sourcePatterns: string[],
+    excludePatterns: string[],
   ): Promise<string[]> {
     const dirs = new Set<string>();
 
     for (const pattern of sourcePatterns) {
       // Use glob to find matching files, then extract unique directories
-      const files = await this.fs.glob(pattern, projectRoot).catch(() => []);
+      const files = await this.fs.glob(pattern, projectRoot, { ignore: excludePatterns }).catch(() => []);
 
       for (const filePath of files) {
         // Get the directory of each matched file

@@ -11,6 +11,7 @@
 
 import type { ManifestReaderPort, ProjectScanConfig } from '../ports/manifest-reader.js';
 import type { FileSystemPort } from '../ports/internal/file-system.js';
+import type { FcaPart } from '../ports/context-query.js';
 
 export class DefaultManifestReader implements ManifestReaderPort {
   constructor(private readonly fs: FileSystemPort) {}
@@ -33,32 +34,59 @@ export class DefaultManifestReader implements ManifestReaderPort {
 
   private parseConfig(yaml: string): Partial<ProjectScanConfig> {
     const result: Partial<ProjectScanConfig> = {};
+    let currentArrayKey: 'sourcePatterns' | 'excludePatterns' | 'requiredParts' | null = null;
 
     for (const line of yaml.split('\n')) {
-      // Match simple key: value lines (no nested objects or arrays)
-      const match = line.match(/^(\w+):\s*(.+)$/);
-      if (!match) continue;
-
-      const [, key, raw] = match;
-      const value = raw.trim();
-
-      switch (key) {
-        case 'coverageThreshold': {
-          const n = parseFloat(value);
-          if (!isNaN(n)) result.coverageThreshold = n;
-          break;
+      // YAML list item — must check first to preserve array collection state
+      const listMatch = line.match(/^\s+-\s+(.+)$/);
+      if (listMatch && currentArrayKey) {
+        const value = listMatch[1].trim();
+        if (currentArrayKey === 'sourcePatterns') {
+          (result.sourcePatterns ??= []).push(value);
+        } else if (currentArrayKey === 'excludePatterns') {
+          (result.excludePatterns ??= []).push(value);
+        } else if (currentArrayKey === 'requiredParts') {
+          (result.requiredParts ??= []).push(value as FcaPart);
         }
-        case 'embeddingModel':
-          result.embeddingModel = value;
-          break;
-        case 'embeddingDimensions': {
-          const n = parseInt(value, 10);
-          if (!isNaN(n)) result.embeddingDimensions = n;
-          break;
+        continue;
+      }
+
+      // Any non-list line ends the current array block
+      currentArrayKey = null;
+
+      // Scalar key: value line
+      const scalarMatch = line.match(/^(\w+):\s*(.+)$/);
+      if (scalarMatch) {
+        const [, key, raw] = scalarMatch;
+        const value = raw.trim();
+        switch (key) {
+          case 'coverageThreshold': {
+            const n = parseFloat(value);
+            if (!isNaN(n)) result.coverageThreshold = n;
+            break;
+          }
+          case 'embeddingModel':
+            result.embeddingModel = value;
+            break;
+          case 'embeddingDimensions': {
+            const n = parseInt(value, 10);
+            if (!isNaN(n)) result.embeddingDimensions = n;
+            break;
+          }
+          case 'indexDir':
+            result.indexDir = value;
+            break;
         }
-        case 'indexDir':
-          result.indexDir = value;
-          break;
+        continue;
+      }
+
+      // Array header — key with no value (e.g. "sourcePatterns:")
+      const arrayKeyMatch = line.match(/^(\w+):\s*$/);
+      if (arrayKeyMatch) {
+        const key = arrayKeyMatch[1];
+        if (key === 'sourcePatterns' || key === 'excludePatterns' || key === 'requiredParts') {
+          currentArrayKey = key;
+        }
       }
     }
 

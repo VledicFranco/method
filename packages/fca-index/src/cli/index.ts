@@ -41,6 +41,9 @@ function fatal(message: string): never {
 async function buildStore(projectRoot: string, indexDir: string, dimensions: number) {
   const resolvedIndexDir = resolve(projectRoot, indexDir);
 
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(resolvedIndexDir, { recursive: true });
+
   const { SqliteStore } = await import('../index-store/sqlite-store.js');
   const { LanceStore } = await import('../index-store/lance-store.js');
   const { SqliteLanceIndexStore } = await import('../index-store/index-store.js');

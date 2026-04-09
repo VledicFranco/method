@@ -54,7 +54,7 @@ export class LanceStore {
       const sentinel = [
         {
           id: '__schema_init__',
-          vector: new Float32Array(this.config.dimensions).fill(0),
+          vector: Array.from({ length: this.config.dimensions }, () => 0) as number[],
         },
       ];
       this.table = await db.createTable(tableName, sentinel);
@@ -77,7 +77,7 @@ export class LanceStore {
     const table = this.getTable();
     // Delete existing entry if present, then insert
     await table.delete(`id = '${id.replace(/'/g, "''")}'`);
-    await table.add([{ id, vector: new Float32Array(embedding) }]);
+    await table.add([{ id, vector: Array.from(embedding) }]);
   }
 
   async querySimilar(
@@ -87,13 +87,13 @@ export class LanceStore {
   ): Promise<Array<{ id: string; score: number }>> {
     const table = this.getTable();
 
-    const results = await table
-      .search(new Float32Array(queryEmbedding))
-      .metricType('cosine')
+    const results: Record<string, unknown>[] = await table
+      .search(Array.from(queryEmbedding))
+      .distanceType('cosine')
       .limit(ids ? topK * 4 : topK)
       .toArray();
 
-    let scored = results.map((row: Record<string, unknown>) => ({
+    let scored = results.map((row) => ({
       id: row['id'] as string,
       // Lance cosine distance is 1 - similarity; convert to similarity score
       score: 1 - (row['_distance'] as number),
@@ -101,10 +101,10 @@ export class LanceStore {
 
     if (ids && ids.length > 0) {
       const idSet = new Set(ids);
-      scored = scored.filter((r) => idSet.has(r.id));
+      scored = scored.filter((r: { id: string; score: number }) => idSet.has(r.id));
     }
 
-    scored.sort((a, b) => b.score - a.score);
+    scored.sort((a: { id: string; score: number }, b: { id: string; score: number }) => b.score - a.score);
     return scored.slice(0, topK);
   }
 

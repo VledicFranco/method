@@ -1,0 +1,13 @@
+# .fca-index.yaml — fca-index scan config for method-2
+# Scans all TypeScript source packages. Excludes non-source trees that would add
+# noise without improving query quality (experiments, registry, theory, docs, playground).
+
+excludePatterns:
+  - packages/pacta-playground/**
+  - experiments/**
+  - registry/**
+  - theory/**
+  - docs/**
+  - tmp/**
+  - dist/**
+  - node_modules/**

@@ -41,7 +41,7 @@ export class VoyageEmbeddingClient implements EmbeddingClientPort {
     });
 
     let attempt = 0;
-    const maxRetries = 3;
+    const maxRetries = 5;
 
     while (true) {
       const response = await fetch(url, {
@@ -57,7 +57,12 @@ export class VoyageEmbeddingClient implements EmbeddingClientPort {
         if (attempt >= maxRetries) {
           throw new EmbeddingClientError('Rate limit exceeded after retries', 'RATE_LIMITED');
         }
-        const waitMs = Math.pow(2, attempt) * 500;
+        // Respect Retry-After header if present; otherwise exponential backoff starting at 5s
+        const retryAfterRaw = response.headers.get('Retry-After') ?? response.headers.get('retry-after');
+        const waitMs = retryAfterRaw
+          ? parseInt(retryAfterRaw, 10) * 1000
+          : Math.pow(2, attempt) * 5000;
+        process.stderr.write(`[fca-index] Rate limited — waiting ${Math.round(waitMs / 1000)}s before retry ${attempt + 1}/${maxRetries}\n`);
         await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
         attempt++;
         continue;

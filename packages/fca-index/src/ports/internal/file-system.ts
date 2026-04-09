@@ -20,8 +20,9 @@ export interface FileSystemPort {
   /**
    * Resolve glob pattern relative to root.
    * Returns absolute paths sorted lexicographically.
+   * @param options.ignore - Glob patterns to exclude from results (relative to root).
    */
-  glob(pattern: string, root: string): Promise<string[]>;
+  glob(pattern: string, root: string, options?: { ignore?: string[] }): Promise<string[]>;
 }
 
 export interface DirEntry {

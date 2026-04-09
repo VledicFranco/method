@@ -21,8 +21,9 @@ const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3456';
 const BRIDGE_TIMEOUT_MS = parseInt(process.env.BRIDGE_TIMEOUT_MS ?? '30000', 10);
 
 // FCA index — lazy init, fails gracefully if VOYAGE_API_KEY is not set
-let contextQueryHandler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
-let coverageCheckHandler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
+type McpToolResult = { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
+let contextQueryHandler: ((args: Record<string, unknown>) => Promise<McpToolResult>) | null = null;
+let coverageCheckHandler: ((args: Record<string, unknown>) => Promise<McpToolResult>) | null = null;
 
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 if (VOYAGE_API_KEY) {

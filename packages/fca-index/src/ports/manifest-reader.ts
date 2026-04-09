@@ -50,7 +50,7 @@ export interface ProjectScanConfig {
 
   /**
    * Glob patterns for locating FCA source trees within the project.
-   * @default ['src/**', 'source/**', 'packages/*/src/**', 'packages/*/source/**']
+   * @default ['src/**', 'source/**', 'packages/{pkg}/src/**', 'packages/{pkg}/source/**']
    */
   sourcePatterns?: string[];
 
