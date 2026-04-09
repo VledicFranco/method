@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "fca-index": "./dist/cli/index.js"
+  },
   "exports": {
     ".": "./dist/index.js",
     "./testkit": "./dist/testkit/index.js"
