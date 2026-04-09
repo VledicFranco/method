@@ -7,6 +7,12 @@ sessions:
     surface_advocate: Sable
     outcome: decided
     artifact: .method/sessions/fcd-debate-fca-index/decision.md
+  - date: "2026-04-09"
+    cast: [Oryn, Sable, Vera, Rion, Lena]
+    surface_advocate: Sable
+    outcome: decided
+    artifact: .method/sessions/fcd-debate-fca-index-features/decision.md
+    topic: "next features — scan hygiene, context detail, compliance tooling"
 
 decision_summary: >
   Build @method/fca-index as a universal L3 library. Hybrid SQLite + embedding index
@@ -15,35 +21,125 @@ decision_summary: >
   structured API for @method/mcp, human-readable CLI. ComponentContext is the
   primary canonical type and must be Wave 0 co-designed first.
 
-ports_identified:
-  - name: ComponentContext
+ports_frozen:
+  - name: ContextQueryPort
     producer: "@method/fca-index query engine"
     consumer: "@method/mcp, CLI"
-    priority: critical
-    wave: 0
-  - name: ProjectManifest
+    file: "packages/fca-index/src/ports/context-query.ts"
+    frozen: "2026-04-08"
+    record: ".method/sessions/fcd-surface-fca-index-mcp/record.md"
+
+  - name: CoverageReportPort
+    producer: "@method/fca-index coverage engine"
+    consumer: "@method/mcp, CLI"
+    file: "packages/fca-index/src/ports/coverage-report.ts"
+    frozen: "2026-04-08"
+    record: ".method/sessions/fcd-surface-fca-index-cli/record.md"
+
+  - name: ManifestReaderPort
     producer: "consuming project (FCA directory structure)"
     consumer: "@method/fca-index scanner"
-    priority: high
-    wave: 0
-  - name: IndexStore
-    producer: "internal SQLite+Lance storage"
-    consumer: "query engine"
-    priority: medium
-    wave: 0
-    open_question: "pluggable vs. fixed backend"
-  - name: ModeGate
-    producer: "compliance engine"
-    consumer: "CI/CD, quality gate runner"
-    priority: medium
-    wave: 1
+    file: "packages/fca-index/src/ports/manifest-reader.ts"
+    frozen: "2026-04-08"
+    record: ".method/sessions/fcd-surface-fca-index-project/record.md"
 
-wave_0_sessions:
-  - "/fcd-surface fca-index mcp — ComponentContext type (HIGHEST PRIORITY)"
-  - "/fcd-surface fca-index consuming-project — ProjectManifest / directory contract"
-  - "/fcd-surface fca-index cli — CoverageReport + output mode split"
+  - name: ComponentDetailPort
+    producer: "@method/fca-index query domain (ComponentDetailEngine)"
+    consumer: "@method/mcp (context_detail tool)"
+    file: "packages/fca-index/src/ports/component-detail.ts"
+    frozen: "2026-04-09"
+    record: ".method/sessions/fcd-surface-component-detail/record.md"
+
+  - name: ComplianceSuggestionPort
+    producer: "@method/fca-index compliance domain (ComplianceEngine)"
+    consumer: "CLI (fca-index suggest command)"
+    file: "packages/fca-index/src/ports/compliance-suggestion.ts"
+    frozen: "2026-04-09"
+    record: ".method/sessions/fcd-surface-compliance-suggestion/record.md"
+
+ports_warn_legacy:
+  - name: FileSystemPort.getModifiedTime
+    added: "2026-04-09"
+    reason: "Freshness tracking for query engine (Feature Set A)"
+    action: "Schedule formal extension session for FileSystemPort frozen record"
+
+  - name: IndexStorePort.getByPath
+    added: "2026-04-09"
+    reason: "Path-based lookup for ComponentDetailPort (Feature Set B)"
+    action: "Schedule formal extension session for IndexStorePort frozen record"
+
+feature_sets:
+  set_a:
+    status: "shipped — commit e97e1f4"
+    shipped: "2026-04-09"
+    items:
+      - "DEFAULT_EXCLUDE_PATTERNS: __tests__, *.test.ts, *.spec.ts"
+      - "MIN_DOC_TEXT_LENGTH=100: skip Lance for undocumented components"
+      - "Relative paths in coverage output"
+      - "Non-zero exit code when meetsThreshold: false"
+      - "staleComponents field in ContextQueryResult + freshness tracking in QueryEngine"
+      - "getModifiedTime on FileSystemPort (WARN-LEGACY)"
+
+  set_b:
+    status: "shipped — commit 9e14228"
+    shipped: "2026-04-09"
+    surface: ".method/sessions/fcd-surface-component-detail/record.md"
+    items:
+      - "ComponentDetailPort (frozen port) + ComponentDetailEngine"
+      - "IndexStorePort.getByPath extension (WARN-LEGACY)"
+      - "CLI: fca-index detail <projectRoot> <componentPath>"
+      - "MCP: context_detail tool in context-tools.ts + index.ts"
+      - "RecordingComponentDetailPort test double in testkit"
+      - "G-BOUNDARY-DETAIL architecture gate"
+
+  set_c:
+    status: "shipped — commit f69549e"
+    shipped: "2026-04-09"
+    surface: ".method/sessions/fcd-surface-compliance-suggestion/record.md"
+    items:
+      - "ComplianceSuggestionPort (frozen port) + ComplianceEngine"
+      - "TemplateGenerator: stub content for all 8 FCA parts"
+      - "CLI: fca-index suggest <projectRoot> <componentPath> [--apply] [--json]"
+      - "compliance/ domain: compliance-engine.ts, template-generator.ts, index.ts"
+      - "G-BOUNDARY-COMPLIANCE architecture gate"
+      - "MCP exposure: deferred (no current consumer)"
+
+architecture_gates:
+  - id: G-PORT-SCANNER
+    description: "scanner/ uses FileSystemPort, not node:fs directly"
+    status: passing
+
+  - id: G-PORT-QUERY
+    description: "query/ uses EmbeddingClientPort, not HTTP clients directly"
+    status: passing
+
+  - id: G-BOUNDARY-CLI
+    description: "cli/ does not import query-engine or coverage-engine internals"
+    status: passing
+
+  - id: G-BOUNDARY-DETAIL
+    description: "query/ does not import cli/ or @method/mcp"
+    status: passing
+    added: "2026-04-09 (Feature Set B)"
+
+  - id: G-BOUNDARY-COMPLIANCE
+    description: "compliance/ does not import cli/ or @method/mcp"
+    status: passing
+    added: "2026-04-09 (Feature Set C)"
+
+  - id: G-LAYER
+    description: "fca-index does not import @method/mcp or @method/bridge"
+    status: passing
+
+test_counts:
+  fca_index: 166
+  mcp: 16
+  total: 182
+  as_of: "2026-04-09 (after Feature Sets A, B, C)"
 
 open_questions:
+  - "IndexStorePort frozen record extension: add getByPath formally"
+  - "FileSystemPort frozen record extension: add getModifiedTime formally"
   - "Embedding model validation: Voyage-3-lite vs. code-doc-optimized alternative"
-  - "IndexStore pluggability: real port or internal detail?"
-  - "Coverage threshold default for production mode graduation"
+  - "MCP context_detail: consider batch mode when an agent consumer needs it"
+  - "MCP compliance suggest: wire coverage_suggest when an agent consumer requests it"
