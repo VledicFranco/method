@@ -24,14 +24,16 @@ const BRIDGE_TIMEOUT_MS = parseInt(process.env.BRIDGE_TIMEOUT_MS ?? '30000', 10)
 type McpToolResult = { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
 let contextQueryHandler: ((args: Record<string, unknown>) => Promise<McpToolResult>) | null = null;
 let coverageCheckHandler: ((args: Record<string, unknown>) => Promise<McpToolResult>) | null = null;
+let contextDetailHandler: ((args: Record<string, unknown>) => Promise<McpToolResult>) | null = null;
 
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 if (VOYAGE_API_KEY) {
   createDefaultFcaIndex({ projectRoot: ROOT, voyageApiKey: VOYAGE_API_KEY })
     .then(fcaIndex => {
-      const tools = createContextTools(fcaIndex.query, fcaIndex.coverage, ROOT);
+      const tools = createContextTools(fcaIndex.query, fcaIndex.coverage, ROOT, fcaIndex.detail);
       contextQueryHandler = tools.contextQueryHandler;
       coverageCheckHandler = tools.coverageCheckHandler;
+      contextDetailHandler = tools.contextDetailHandler;
     })
     .catch(e => {
       console.error('[fca-index] Failed to initialize:', e.message);
@@ -1123,6 +1125,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'coverage_check': {
         if (!coverageCheckHandler) return err('coverage_check unavailable: VOYAGE_API_KEY not set');
         return coverageCheckHandler(args as Record<string, unknown>);
+      }
+      case 'context_detail': {
+        if (!contextDetailHandler) return err('context_detail unavailable: VOYAGE_API_KEY not set');
+        return contextDetailHandler(args as Record<string, unknown>);
       }
 
       default:

@@ -7,9 +7,11 @@
 import type {
   ContextQueryPort,
   CoverageReportPort,
+  ComponentDetailPort,
   FcaPart,
   FcaLevel,
 } from '@method/fca-index';
+import { ComponentDetailError } from '@method/fca-index';
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
 
@@ -53,6 +55,28 @@ export const CONTEXT_TOOLS = [
     },
   },
   {
+    name: 'context_detail',
+    description:
+      'Retrieve full detail for a single indexed component by its path. ' +
+      'Returns all FCA parts (with file locations and excerpts), full docText, level, and indexedAt. ' +
+      'Use after context_query to get the complete picture of a specific component — ' +
+      'more precise than reading the source files directly.',
+    inputSchema: {
+      type: 'object' as const,
+      required: ['path'],
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Component path relative to projectRoot (e.g., "src/domains/sessions")',
+        },
+        projectRoot: {
+          type: 'string',
+          description: 'Absolute path to the project root (defaults to METHOD_ROOT env var)',
+        },
+      },
+    },
+  },
+  {
     name: 'coverage_check',
     description:
       'Check FCA documentation coverage for a project. Returns coverage summary and ' +
@@ -81,11 +105,13 @@ export function createContextTools(
   contextQuery: ContextQueryPort,
   coverageReport: CoverageReportPort,
   defaultProjectRoot: string,
+  componentDetail?: ComponentDetailPort,
 ) {
   return {
     CONTEXT_TOOLS,
     contextQueryHandler,
     coverageCheckHandler,
+    contextDetailHandler,
   };
 
   async function contextQueryHandler(args: Record<string, unknown>) {
@@ -134,6 +160,38 @@ export function createContextTools(
     }
 
     return ok(formatCoverageReport(report));
+  }
+
+  async function contextDetailHandler(args: Record<string, unknown>) {
+    if (!componentDetail) {
+      return ok('[error: DETAIL_UNAVAILABLE]\ncontext_detail tool is not configured on this server.');
+    }
+
+    const path = typeof args.path === 'string' ? args.path : undefined;
+    if (!path) {
+      return ok('[error: INVALID_INPUT]\nRequired parameter "path" is missing or not a string.');
+    }
+    const projectRoot =
+      typeof args.projectRoot === 'string' ? args.projectRoot : defaultProjectRoot;
+
+    let detail;
+    try {
+      detail = await componentDetail.getDetail({ path, projectRoot });
+    } catch (e: unknown) {
+      if (e instanceof ComponentDetailError) {
+        if (e.code === 'INDEX_NOT_FOUND') {
+          return ok(
+            `[error: INDEX_NOT_FOUND]\nRun 'fca-index scan <projectRoot>' to build the index.`,
+          );
+        }
+        if (e.code === 'NOT_FOUND') {
+          return ok(`[error: NOT_FOUND]\n${e.message}`);
+        }
+      }
+      throw e;
+    }
+
+    return ok(formatComponentDetail(detail));
   }
 }
 
@@ -193,6 +251,38 @@ function formatCoverageReport(
   );
 
   return lines.join('\n');
+}
+
+function formatComponentDetail(
+  detail: import('@method/fca-index').ComponentDetail,
+): string {
+  const lines: string[] = [
+    `path: ${detail.path}`,
+    `level: ${detail.level}`,
+    `indexedAt: ${detail.indexedAt}`,
+    '',
+    'parts:',
+  ];
+
+  for (const p of detail.parts) {
+    lines.push(`  ${p.part}: ${p.filePath}`);
+    if (p.excerpt) {
+      const excerpt = p.excerpt.slice(0, 300).replace(/\n/g, '\n    ');
+      lines.push(`    > ${excerpt}`);
+    }
+  }
+
+  if (detail.docText) {
+    lines.push('');
+    lines.push('docText:');
+    const truncated =
+      detail.docText.length > 2000
+        ? detail.docText.slice(0, 2000) + '\n... (truncated)'
+        : detail.docText;
+    lines.push(truncated);
+  }
+
+  return lines.join('\n').trimEnd();
 }
 
 function ok(text: string) {

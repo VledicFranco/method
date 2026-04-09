@@ -9,3 +9,4 @@
 
 export { RecordingContextQueryPort } from './recording-context-query-port.js';
 export { RecordingCoverageReportPort } from './recording-coverage-report-port.js';
+export { RecordingComponentDetailPort } from './recording-component-detail-port.js';

@@ -44,6 +44,16 @@ export interface IndexStorePort {
    * Called before a full rescan.
    */
   clear(projectRoot: string): Promise<void>;
+
+  /**
+   * Retrieve a single entry by its path within a project.
+   * Returns null if no entry exists for the given path.
+   *
+   * WARN-LEGACY: Added 2026-04-09 to support ComponentDetailPort lookup.
+   * Not in the original frozen record (frozen 2026-04-08).
+   * Tech debt: formal extension session for IndexStorePort pending.
+   */
+  getByPath(path: string, projectRoot: string): Promise<IndexEntry | null>;
 }
 
 // ── Entry type ───────────────────────────────────────────────────────────────

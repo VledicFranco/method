@@ -146,6 +146,18 @@ export class SqliteStore {
     return { totalComponents, weightedAverage, byPart };
   }
 
+  getByPath(
+    path: string,
+    projectRoot: string,
+  ): Omit<IndexEntry, 'embedding'> | undefined {
+    const stmt = this.db.prepare(
+      'SELECT * FROM fca_components WHERE project_root = ? AND path = ?',
+    );
+    const row = stmt.get(projectRoot, path) as StoredRow | undefined;
+    if (!row) return undefined;
+    return rowToEntry(row);
+  }
+
   deleteByProjectRoot(projectRoot: string): void {
     this.db.prepare('DELETE FROM fca_components WHERE project_root = ?').run(projectRoot);
   }

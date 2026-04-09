@@ -110,4 +110,13 @@ export class InMemoryIndexStore implements IndexStorePort {
       }
     }
   }
+
+  async getByPath(path: string, projectRoot: string): Promise<IndexEntry | null> {
+    for (const entry of this.entries.values()) {
+      if (entry.projectRoot === projectRoot && entry.path === path) {
+        return { ...entry };
+      }
+    }
+    return null;
+  }
 }

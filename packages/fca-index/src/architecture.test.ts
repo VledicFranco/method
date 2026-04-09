@@ -73,6 +73,17 @@ describe('G-BOUNDARY-CLI: cli imports only from ports/, not domain internals', (
   });
 });
 
+describe('G-BOUNDARY-DETAIL: component-detail-engine does not import cli/ or @method/mcp', () => {
+  it('query/ does not import cli/ or @method/mcp', () => {
+    const files = readSourceFiles(`${SRC}/query`);
+    const violations = files.filter(
+      (content) =>
+        /from ['"]\.\.\/cli\//.test(content) || /@method\/mcp/.test(content),
+    );
+    expect(violations, 'query/ imports cli/ or @method/mcp').toHaveLength(0);
+  });
+});
+
 describe('G-LAYER: fca-index does not import @method/mcp or @method/bridge', () => {
   it('no source file imports @method/mcp or @method/bridge', () => {
     const allFiles = fg

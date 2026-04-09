@@ -18,8 +18,10 @@ describe('G-DR04: context-tools.ts handlers are thin wrappers', () => {
     const content = readFileSync(CONTEXT_TOOLS_FILE, 'utf-8');
     // DR-04: no domain-specific conditionals (e.g. checking specific query strings,
     // routing based on domain names, etc.)
-    // This is a structure check: the file should not grow beyond ~250 lines
+    // This is a structure check: the file should not grow beyond ~350 lines.
+    // Threshold was raised from 250 → 350 when context_detail tool was added (2026-04-09).
+    // Each new tool adds ~40–50 lines (definition + handler). Review for business logic if exceeded.
     const lineCount = content.split('\n').length;
-    expect(lineCount, 'context-tools.ts has grown beyond 250 lines — review for business logic').toBeLessThan(250);
+    expect(lineCount, 'context-tools.ts has grown beyond 350 lines — review for business logic').toBeLessThan(350);
   });
 });

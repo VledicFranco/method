@@ -88,4 +88,10 @@ export class SqliteLanceIndexStore implements IndexStorePort {
     await this.lance.deleteByIds(ids);
     this.sqlite.deleteByProjectRoot(projectRoot);
   }
+
+  async getByPath(path: string, projectRoot: string): Promise<import('../ports/internal/index-store.js').IndexEntry | null> {
+    const entry = this.sqlite.getByPath(path, projectRoot);
+    if (!entry) return null;
+    return { ...entry, embedding: [] };
+  }
 }

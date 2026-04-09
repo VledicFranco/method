@@ -38,6 +38,15 @@ export type {
 // CoverageReportError is a class — export as value so consumers can use `new` and `instanceof`
 export { CoverageReportError } from './ports/coverage-report.js';
 
+export type {
+  ComponentDetailPort,
+  ComponentDetailRequest,
+  ComponentDetail,
+  ComponentDetailPart,
+} from './ports/component-detail.js';
+// ComponentDetailError is a class — export as value so consumers can use `new` and `instanceof`
+export { ComponentDetailError } from './ports/component-detail.js';
+
 // Factory
 export { createFcaIndex } from './factory.js';
 export type { FcaIndex, FcaIndexConfig, FcaIndexPorts } from './factory.js';

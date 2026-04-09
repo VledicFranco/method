@@ -202,6 +202,30 @@ function runContractSuite(name: string, factory: () => IndexStorePort): void {
       const results = await store.queryByFilters({ projectRoot: '/proj' });
       expect(results).toHaveLength(0);
     });
+
+    it('getByPath: returns entry for known path', async () => {
+      const entry = makeEntry({ id: 'cgp000000000001', path: 'src/my/component' });
+      await store.upsertComponent(entry);
+
+      const result = await store.getByPath('src/my/component', '/proj');
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe('cgp000000000001');
+      expect(result!.path).toBe('src/my/component');
+      expect(result!.projectRoot).toBe('/proj');
+    });
+
+    it('getByPath: returns null for unknown path', async () => {
+      const result = await store.getByPath('does/not/exist', '/proj');
+      expect(result).toBeNull();
+    });
+
+    it('getByPath: returns null when path belongs to different project', async () => {
+      const entry = makeEntry({ id: 'cgp000000000002', path: 'src/shared' });
+      await store.upsertComponent(entry);
+
+      const result = await store.getByPath('src/shared', '/other-proj');
+      expect(result).toBeNull();
+    });
   });
 }
 
