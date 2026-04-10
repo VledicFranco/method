@@ -16,6 +16,7 @@ import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
 import { createAgent, type Pact } from '@method/pacta';
 import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
+import { MethodologyMock } from './executor/methodology-mock.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 5180);
@@ -198,6 +199,164 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
     }
   }
 
+  // Methodology test cases — run via MethodologyMock (no bridge needed)
+  if (testCase.category === 'methodology') {
+    try {
+      const mock = new MethodologyMock();
+      const assertions: Array<{ name: string; passed: boolean; expected: string; actual: string }> = [];
+
+      switch (testCase.id) {
+        case 'methodology-list-and-start': {
+          const entries = mock.list();
+          assertions.push({ name: 'list() returns entries', passed: entries.length > 0, expected: '>0', actual: String(entries.length) });
+          const session = mock.startSession('smoke-1', 'SMOKE-TEST-METH', 'test challenge');
+          assertions.push({ name: 'Session status is initialized', passed: session.status === 'initialized', expected: 'initialized', actual: session.status });
+          assertions.push({ name: 'Methodology ID correct', passed: session.methodology.id === 'SMOKE-TEST-METH', expected: 'SMOKE-TEST-METH', actual: session.methodology.id });
+          assertions.push({ name: 'Method count', passed: session.methodology.methodCount === 2, expected: '2', actual: String(session.methodology.methodCount) });
+          break;
+        }
+        case 'methodology-routing-inspection': {
+          const routing = mock.getRouting('SMOKE-TEST-METH');
+          assertions.push({ name: 'Has predicates', passed: routing.predicates.length > 0, expected: '>0', actual: String(routing.predicates.length) });
+          assertions.push({ name: 'Has arms', passed: routing.arms.length > 0, expected: '>0', actual: String(routing.arms.length) });
+          assertions.push({ name: 'Arms have priorities', passed: routing.arms.every(a => typeof a.priority === 'number'), expected: 'all numeric', actual: 'all numeric' });
+          assertions.push({ name: 'Evaluation order', passed: routing.evaluationOrder.includes('priority'), expected: 'contains "priority"', actual: routing.evaluationOrder });
+          break;
+        }
+        case 'methodology-route-evaluation': {
+          mock.startSession('smoke-route', 'SMOKE-TEST-METH', 'test');
+          const result = mock.route('smoke-route', { needs_analysis: true, all_done: false });
+          assertions.push({ name: 'Arm selected', passed: result.selectedArm !== null, expected: 'non-null', actual: result.selectedArm?.label ?? 'null' });
+          assertions.push({ name: 'Method recommended', passed: result.selectedMethod !== null, expected: 'non-null', actual: result.selectedMethod?.id ?? 'null' });
+          assertions.push({ name: 'Evaluated predicates returned', passed: result.evaluatedPredicates.length > 0, expected: '>0', actual: String(result.evaluatedPredicates.length) });
+          break;
+        }
+        case 'methodology-select-method': {
+          mock.startSession('smoke-select', 'SMOKE-TEST-METH', 'test');
+          const sel = mock.select('smoke-select', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          assertions.push({ name: 'Method loaded', passed: sel.selectedMethod.methodId === 'M-ANALYZE', expected: 'M-ANALYZE', actual: sel.selectedMethod.methodId });
+          assertions.push({ name: 'Step count correct', passed: sel.selectedMethod.stepCount === 3, expected: '3', actual: String(sel.selectedMethod.stepCount) });
+          assertions.push({ name: 'First step accessible', passed: sel.selectedMethod.firstStep.id === 'gather', expected: 'gather', actual: sel.selectedMethod.firstStep.id });
+          break;
+        }
+        case 'methodology-full-lifecycle': {
+          mock.startSession('smoke-full', 'SMOKE-TEST-METH', 'test');
+          mock.route('smoke-full', { needs_analysis: true, all_done: false });
+          mock.select('smoke-full', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          // Step through all 3 steps of M-ANALYZE
+          mock.recordStepOutput('smoke-full', 'gather', { data: 'gathered' });
+          mock.advanceStep('smoke-full');
+          mock.recordStepOutput('smoke-full', 'assess', { assessment: 'done' });
+          mock.advanceStep('smoke-full');
+          mock.recordStepOutput('smoke-full', 'report', { report: 'delivered' });
+          // Transition
+          const trans = mock.transition('smoke-full', 'Analysis complete', { needs_analysis: false, needs_implementation: true, all_done: false });
+          assertions.push({ name: 'Method completed', passed: trans.completedMethod.id === 'M-ANALYZE', expected: 'M-ANALYZE', actual: trans.completedMethod.id });
+          assertions.push({ name: 'Outputs recorded', passed: trans.completedMethod.outputsRecorded === 3, expected: '3', actual: String(trans.completedMethod.outputsRecorded) });
+          assertions.push({ name: 'Next method available', passed: trans.nextMethod !== null, expected: 'non-null', actual: trans.nextMethod?.id ?? 'null' });
+          break;
+        }
+        case 'methodology-session-status': {
+          mock.startSession('smoke-status', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-status', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const status = mock.getStatus('smoke-status');
+          assertions.push({ name: 'Method ID correct', passed: status.methodId === 'M-ANALYZE', expected: 'M-ANALYZE', actual: status.methodId });
+          assertions.push({ name: 'Step index is 0', passed: status.stepIndex === 0, expected: '0', actual: String(status.stepIndex) });
+          assertions.push({ name: 'Total steps is 3', passed: status.totalSteps === 3, expected: '3', actual: String(status.totalSteps) });
+          break;
+        }
+        case 'methodology-session-isolation': {
+          mock.startSession('iso-a', 'SMOKE-TEST-METH', 'test A');
+          mock.startSession('iso-b', 'SMOKE-TEST-METH', 'test B');
+          mock.select('iso-a', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          mock.select('iso-b', 'SMOKE-TEST-METH', 'M-IMPLEMENT');
+          mock.recordStepOutput('iso-a', 'gather', { data: 'gathered' });
+          mock.advanceStep('iso-a');
+          const statusA = mock.getStatus('iso-a');
+          const statusB = mock.getStatus('iso-b');
+          assertions.push({ name: 'Session A advanced to step 1', passed: statusA.stepIndex === 1, expected: '1', actual: String(statusA.stepIndex) });
+          assertions.push({ name: 'Session B still at step 0', passed: statusB.stepIndex === 0, expected: '0', actual: String(statusB.stepIndex) });
+          assertions.push({ name: 'Different methods loaded', passed: statusA.methodId !== statusB.methodId, expected: 'different', actual: `${statusA.methodId} vs ${statusB.methodId}` });
+          break;
+        }
+        case 'step-inspect-current': {
+          mock.startSession('smoke-step', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-step', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const step = mock.getCurrentStep('smoke-step');
+          assertions.push({ name: 'Step ID is "gather"', passed: step.step.id === 'gather', expected: 'gather', actual: step.step.id });
+          assertions.push({ name: 'Role is "analyst"', passed: step.step.role === 'analyst', expected: 'analyst', actual: step.step.role ?? 'null' });
+          assertions.push({ name: 'Has precondition', passed: step.step.precondition !== null, expected: 'non-null', actual: step.step.precondition ?? 'null' });
+          assertions.push({ name: 'Has postcondition', passed: step.step.postcondition !== null, expected: 'non-null', actual: step.step.postcondition ?? 'null' });
+          break;
+        }
+        case 'step-context-assembly': {
+          mock.startSession('smoke-ctx', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-ctx', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const ctx1 = mock.getStepContext('smoke-ctx');
+          assertions.push({ name: 'No prior outputs at start', passed: ctx1.priorStepOutputs.length === 0, expected: '0', actual: String(ctx1.priorStepOutputs.length) });
+          mock.recordStepOutput('smoke-ctx', 'gather', { data: 'gathered' });
+          mock.advanceStep('smoke-ctx');
+          const ctx2 = mock.getStepContext('smoke-ctx');
+          assertions.push({ name: 'Prior output appears after advance', passed: ctx2.priorStepOutputs.length === 1, expected: '1', actual: String(ctx2.priorStepOutputs.length) });
+          assertions.push({ name: 'Prior output has correct stepId', passed: ctx2.priorStepOutputs[0]?.stepId === 'gather', expected: 'gather', actual: ctx2.priorStepOutputs[0]?.stepId ?? 'none' });
+          assertions.push({ name: 'Methodology progress updated', passed: ctx2.methodology.progress === '2 / 3', expected: '2 / 3', actual: ctx2.methodology.progress });
+          break;
+        }
+        case 'step-advance-through-dag': {
+          mock.startSession('smoke-adv', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-adv', 'SMOKE-TEST-METH', 'M-IMPLEMENT');
+          const step0 = mock.getCurrentStep('smoke-adv');
+          assertions.push({ name: 'First step is "design"', passed: step0.step.id === 'design', expected: 'design', actual: step0.step.id });
+          const adv = mock.advanceStep('smoke-adv');
+          assertions.push({ name: 'Previous step was "design"', passed: adv.previousStep.id === 'design', expected: 'design', actual: adv.previousStep.id });
+          assertions.push({ name: 'Next step is null (terminal)', passed: adv.nextStep === null, expected: 'null', actual: adv.nextStep?.id ?? 'null' });
+          let threwOnOverAdvance = false;
+          try { mock.advanceStep('smoke-adv'); } catch { threwOnOverAdvance = true; }
+          assertions.push({ name: 'Throws on advance past terminal', passed: threwOnOverAdvance, expected: 'throws', actual: threwOnOverAdvance ? 'threw' : 'did not throw' });
+          break;
+        }
+        case 'step-validate-pass': {
+          mock.startSession('smoke-val-pass', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-val-pass', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const result = mock.validateStep('smoke-val-pass', 'gather', { data: 'gathered data for challenge_defined' });
+          assertions.push({ name: 'Valid output accepted', passed: result.valid === true, expected: 'true', actual: String(result.valid) });
+          assertions.push({ name: 'Recommendation is advance', passed: result.recommendation === 'advance', expected: 'advance', actual: result.recommendation });
+          assertions.push({ name: 'Postcondition met', passed: result.postconditionMet === true, expected: 'true', actual: String(result.postconditionMet) });
+          break;
+        }
+        case 'step-validate-fail': {
+          mock.startSession('smoke-val-fail', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-val-fail', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const result = mock.validateStep('smoke-val-fail', 'gather', { unrelated: 'xyz' });
+          assertions.push({ name: 'Postcondition not met', passed: result.postconditionMet === false, expected: 'false', actual: String(result.postconditionMet) });
+          assertions.push({ name: 'Recommendation is not advance', passed: result.recommendation !== 'advance', expected: 'retry or escalate', actual: result.recommendation });
+          break;
+        }
+        case 'step-precondition-display': {
+          mock.startSession('smoke-pre', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-pre', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const step = mock.getCurrentStep('smoke-pre');
+          assertions.push({ name: 'Precondition label extracted', passed: step.step.precondition !== null, expected: 'non-null', actual: step.step.precondition ?? 'null' });
+          assertions.push({ name: 'Precondition contains "challenge"', passed: (step.step.precondition ?? '').includes('challenge'), expected: 'contains "challenge"', actual: step.step.precondition ?? '' });
+          break;
+        }
+        default:
+          return { type: 'case_failed', caseId: testCase.id, error: `Unknown methodology case: ${testCase.id}`, durationMs: Date.now() - startMs };
+      }
+
+      return {
+        type: 'case_completed',
+        caseId: testCase.id,
+        result: { status: 'completed', cost_usd: 0, duration_ms: Date.now() - startMs, node_count: 0, artifact_count: 0, gate_count: 0, oversight_count: 0 },
+        assertions,
+        allPassed: assertions.every(a => a.passed),
+        durationMs: Date.now() - startMs,
+      };
+    } catch (err) {
+      return { type: 'case_failed', caseId: testCase.id, error: err instanceof Error ? err.message : String(err), durationMs: Date.now() - startMs };
+    }
+  }
+
   // Method test cases — run via Pacta agent with real provider
   if (testCase.category === 'method') {
     if (!isLiveModeAvailable()) {
@@ -377,6 +536,7 @@ const server = http.createServer(async (req, res) => {
       name: c.name,
       description: c.description,
       category: c.category,
+      layer: c.layer,
       features: c.features,
       mode: c.mode,
     }));

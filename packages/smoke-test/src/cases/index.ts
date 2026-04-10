@@ -10,7 +10,9 @@ export interface SmokeTestCase {
   id: string;
   name: string;
   description: string;
-  category: 'strategy' | 'method';
+  category: 'strategy' | 'method' | 'methodology';
+  /** Abstraction layer this case operates at */
+  layer: 'methodology' | 'method' | 'strategy' | 'agent';
   /** Which methodology features this case validates */
   features: string[];
   /** Path to YAML fixture (strategy) or module (method), relative to fixtures/ */
@@ -48,18 +50,21 @@ export interface SmokeExpected {
 
 export { strategyCases } from './strategy-cases.js';
 export { methodCases } from './method-cases.js';
+export { methodologyCases } from './methodology-cases.js';
 
 import { strategyCases } from './strategy-cases.js';
 import { methodCases } from './method-cases.js';
+import { methodologyCases } from './methodology-cases.js';
 
 /** All smoke test cases, keyed by ID */
 export const allCases: Map<string, SmokeTestCase> = new Map([
   ...strategyCases.map((c) => [c.id, c] as const),
   ...methodCases.map((c) => [c.id, c] as const),
+  ...methodologyCases.map((c) => [c.id, c] as const),
 ]);
 
 /** Get cases filtered by category */
-export function casesByCategory(cat: 'strategy' | 'method'): SmokeTestCase[] {
+export function casesByCategory(cat: 'strategy' | 'method' | 'methodology'): SmokeTestCase[] {
   return [...allCases.values()].filter((c) => c.category === cat);
 }
 
