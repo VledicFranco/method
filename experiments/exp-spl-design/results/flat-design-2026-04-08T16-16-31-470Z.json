@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 1365,
+  "cost_usd": 0.0823825,
+  "duration_ms": 11742,
+  "ports": 4,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 4,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.7,
+    "rationale": "The design correctly identifies all three domains (projects, tasks, notifications) and proposes the matching file structure. All port interfaces are properly typed with no `any`, clearly named, and well-documented with ownership annotations. Minor deviations from reference: ProjectLookupPort includes both `projectExists()` and `getProject()` rather than just `exists()` (slightly over-specified but practical), and method naming is more prescriptive (e.g., `getById` vs `get`, `listByProject` vs generic `list(filter)`). These improve clarity without compromising the core FCD principle—surfaces are presented first, and architecture flows from frozen ports."
+  },
+  "compositeScore": 0.97
+}

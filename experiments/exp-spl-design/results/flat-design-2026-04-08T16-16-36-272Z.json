@@ -1,0 +1,18 @@
+{
+  "condition": "flat-design",
+  "tokens": 3068,
+  "cost_usd": 0.09089749999999999,
+  "duration_ms": 24532,
+  "ports": 4,
+  "subComponents": 3,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 4,
+    "documentation": 5,
+    "surfaceFirst": 5,
+    "overall": 4.7,
+    "rationale": "The design correctly identifies all three domains (projects, tasks, notifications) and all four critical ports. Port interfaces are well-typed with discriminated unions and no `any` types. Documentation explicitly names owner/consumer relationships and purpose for each port. The design demonstrates surface-first thinking by presenting ports as the primary deliverable before describing architecture and composition. Minor deduction on PORT_QUALITY: ProjectLookupPort includes both `projectExists()` and `getProject()` when the reference design achieves the same goal with just `exists(id)`, trading minimalism for convenience—acceptable but not maximally restrained."
+  },
+  "compositeScore": 0.97
+}

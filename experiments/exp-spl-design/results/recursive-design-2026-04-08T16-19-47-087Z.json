@@ -1,0 +1,36 @@
+{
+  "condition": "recursive-design",
+  "tokens": 20290,
+  "cost_usd": 0.44547125,
+  "duration_ms": 26075,
+  "ports": 13,
+  "subComponents": 3,
+  "childDesigns": 3,
+  "childPorts": [
+    {
+      "path": "/hatch/src/projects",
+      "ports": 4,
+      "subComponents": 3
+    },
+    {
+      "path": "/hatch/src/tasks",
+      "ports": 4,
+      "subComponents": 3
+    },
+    {
+      "path": "/hatch/src/notifications",
+      "ports": 1,
+      "subComponents": 3
+    }
+  ],
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 5,
+    "portQuality": 3,
+    "documentation": 4,
+    "surfaceFirst": 4,
+    "overall": 4.05,
+    "rationale": "The decomposition correctly identifies all three domains (projects, tasks, notifications) with the exact file structure as the reference. However, the design presents multiple conflicting port interface variations (ProjectLookupPort has both `exists()` and `getProject()` in some versions; NotificationPort signature varies from `notify()` to `emit()` with different return types), creating ambiguity about which is final. The ports are properly typed with no `any` types, but several are over-engineered compared to the reference's minimal CRUD contracts. Documentation clearly explains domain responsibilities and port-driven composition, but lacks explicit method signatures and emit semantics. Ports are the primary deliverable, yet showing multiple variations weakens the surface-first discipline—a frozen, singular port spec would signal confident design."
+  },
+  "compositeScore": 0.905
+}

@@ -1,0 +1,36 @@
+{
+  "condition": "flat-implement-synthetic",
+  "task": "bridge-synthetic-5-children",
+  "tokens": 9671,
+  "cost_usd": 0.29424465,
+  "duration_ms": 146966,
+  "files": 7,
+  "filesByKind": {
+    "index": 7
+  },
+  "gateResults": [
+    {
+      "gate": "no-any-types",
+      "passed": true,
+      "detail": "0 files checked, no `any` types found"
+    },
+    {
+      "gate": "no-todos",
+      "passed": true,
+      "detail": "7 files checked, no TODOs/stubs found"
+    },
+    {
+      "gate": "port-substance",
+      "passed": true,
+      "detail": "0 port files have typed members"
+    },
+    {
+      "gate": "structure-complete",
+      "passed": false,
+      "detail": "Missing artifacts: implementation"
+    }
+  ],
+  "gatePassRate": 0.75,
+  "allGatesPass": false,
+  "compositeScore": 0.7274999999999999
+}

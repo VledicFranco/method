@@ -1,0 +1,36 @@
+{
+  "condition": "recursive-design",
+  "tokens": 20101,
+  "cost_usd": 0.37744505,
+  "duration_ms": 16658,
+  "ports": 12,
+  "subComponents": 3,
+  "childDesigns": 3,
+  "childPorts": [
+    {
+      "path": "/hatch/src/projects",
+      "ports": 2,
+      "subComponents": 3
+    },
+    {
+      "path": "/hatch/src/tasks",
+      "ports": 4,
+      "subComponents": 4
+    },
+    {
+      "path": "/hatch/src/notifications",
+      "ports": 2,
+      "subComponents": 3
+    }
+  ],
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 4,
+    "portQuality": 4,
+    "documentation": 4,
+    "surfaceFirst": 4,
+    "overall": 3.9999999999999996,
+    "rationale": "The design correctly identifies the 3-domain decomposition (projects, tasks, notifications) matching the reference, with clear file structure for each domain. Port interfaces are well-typed (no `any`), minimally scoped, and clearly named with owner/consumer relationships documented. Minor deviations: event structures in NotificationPort are slightly over-specified in some versions (metadata vs. minimal payload), and architecture narrative is interleaved with port definitions rather than purely surface-first. Overall, a developer could implement this design correctly; ports clearly drive the architecture."
+  },
+  "compositeScore": 0.8999999999999999
+}

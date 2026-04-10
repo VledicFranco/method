@@ -1,0 +1,20 @@
+{
+  "condition": "flat-design-bridge",
+  "task": "bridge",
+  "tokens": 1638,
+  "cost_usd": 0.025928100000000003,
+  "duration_ms": 14867,
+  "ports": 6,
+  "subComponents": 10,
+  "childDesigns": 0,
+  "gatePassRate": 1,
+  "judge": {
+    "decomposition": 4,
+    "portQuality": 3,
+    "documentation": 3,
+    "surfaceFirst": 4,
+    "overall": 3.5,
+    "rationale": "The generated design correctly identifies all 10 domains and 6 shared ports, matching the reference decomposition structure. However, port interfaces lack TypeScript precision — parameter types, return structures, and optional fields are vague (e.g., SessionPool.create is shown without the workdir/prompt/isolation/budget options that drive domain boundaries). Documentation covers the concept map but omits specifics like file counts, ownership flows, and composition root wiring that a new developer would need. The design framing is surface-first (ports presented before domains), but surfaces aren't detailed enough to unambiguously constrain the architecture—they read as sketches rather than specifications."
+  },
+  "compositeScore": 0.85
+}
