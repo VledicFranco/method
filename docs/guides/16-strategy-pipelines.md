@@ -136,6 +136,7 @@ Strategy YAML (.method/strategies/*.yaml)
     │   script: executes inline JS (sandboxed)
     │   strategy: invokes a sub-strategy DAG (recursive composition)
     │   semantic: runs SPL algorithms (explore, design, implement, review)
+    │   context-load: queries fca-index for FCA components before downstream nodes
     │
     ├── Gate Types
     │   algorithmic: JS expression on output/artifacts
@@ -284,7 +285,9 @@ Invoke another strategy DAG as a child. Enables recursive composition — break 
   depends_on: [implement]
 ```
 
-The child strategy receives the parent's artifact bundle as context inputs. Sub-strategy results (artifacts, cost, status) are merged back into the parent's artifact store. Cycle detection prevents infinite recursion across nested invocations.
+The child strategy receives the parent's artifact bundle as context inputs. Sub-strategy results (artifacts, cost, status) are merged back into the parent's artifact store.
+
+**Cycle detection:** The executor maintains a `sharedChain: string[]` that tracks ancestor strategy IDs. Before invoking a sub-strategy, the executor checks whether the target strategy's ID already appears in the chain. This detects both direct cycles (A invokes A) and indirect cycles (A invokes B, B invokes A). If a cycle is detected, the node fails immediately with an error message identifying the cycle path (e.g., `"Cycle detected: S-A → S-B → S-A"`). The chain is passed down to child executors, so detection works at any nesting depth.
 
 ### Semantic Nodes (SPL Algorithms)
 
@@ -311,6 +314,35 @@ Semantic nodes require a `SemanticNodeExecutor` port to be wired in the bridge (
 
 > **Added in PRD 046 Wave 2c.** Requires bridge version with semantic node support.
 
+### Context-Load Nodes
+
+Query the `fca-index` for relevant FCA components before downstream methodology nodes execute. This pre-fetches architectural context (ports, interfaces, domain boundaries) so that methodology nodes receive grounded structural knowledge instead of relying on the LLM to discover it.
+
+```yaml
+- id: load_ports
+  type: context-load
+  query: "all ports consumed by the sessions domain"
+  topK: 5
+  filterParts: [port, interface]
+  output_key: relevant_components
+  outputs: [relevant_components]
+```
+
+**Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `query` | string | *(required)* | Semantic description of what to retrieve from the FCA index |
+| `topK` | number | `5` | Maximum number of components to return |
+| `filterParts` | string[] | *(none — all parts)* | Restrict results to specific FCA parts (e.g., `port`, `interface`, `domain`, `layer`) |
+| `output_key` | string | *(required)* | Artifact key where `RetrievedComponent[]` is stored in the ArtifactStore |
+
+**Requirements:**
+- `VOYAGE_API_KEY` must be set (used for embedding-based semantic search)
+- The `fca-index` must have been scanned for the project (run `fca-index scan` first)
+
+Results are stored in the ArtifactStore under `output_key` as a `RetrievedComponent[]` array. Downstream nodes reference this artifact via `inputs` to receive pre-fetched architectural context.
+
 ## Gates
 
 Gates validate node output before the pipeline continues. Failed gates trigger retries with feedback.
@@ -334,6 +366,46 @@ Result: FAILED — Expression evaluated to falsy
 Please address the gate failure and try again.
 ```
 
+### Observation Gates
+
+Same expression mechanism as algorithmic gates but semantically intended for monitoring execution metadata — cost, duration, token usage, and other runtime metrics. Default `max_retries` is `2`.
+
+```yaml
+gates:
+  - type: observation
+    check: "output.cost_usd < 0.50 && output.duration_ms < 30000"
+    max_retries: 2
+```
+
+Use observation gates to enforce runtime budgets per node. While algorithmic gates validate output quality, observation gates validate that the execution stayed within acceptable resource bounds.
+
+### Human Approval Gates
+
+Suspend execution and wait for a human decision. Backed by the EventBus via `BridgeHumanApprovalResolver`.
+
+```yaml
+gates:
+  - type: human_approval
+    artifact_type: prd
+    timeout_ms: 300000
+```
+
+**Flow:**
+
+1. The gate emits a `strategy.gate.awaiting_approval` event with:
+   - `artifact_markdown` — GlyphJS content summarizing what needs approval
+   - `artifact_type` — one of `surface_record`, `prd`, `plan`, `review_report`, or `custom`
+   - `timeout_ms` — how long to wait before escalation (default: 300000ms / 5 minutes)
+
+2. The executor subscribes to `strategy.gate.approval_response` and suspends the node.
+
+3. A human (via dashboard or MCP tool) responds with a decision:
+   - `approved` — gate passes, execution continues
+   - `rejected` — gate fails, node is marked failed
+   - `changes_requested` — gate fails with feedback, node retries with the feedback injected into the prompt
+
+4. If `timeout_ms` elapses without a response, the gate triggers oversight escalation (same as `escalate_to_human`).
+
 ### Strategy Gates
 
 Run after all nodes complete. Validate the final artifact state:
@@ -347,6 +419,44 @@ strategy_gates:
 ```
 
 Strategy gates are **single-shot** (no retries) — they validate the whole pipeline, not individual steps.
+
+## Artifact Store Versioning
+
+The artifact store is an immutable versioned store. Every write creates a new version — content is never overwritten in place.
+
+**Operations:**
+- `put(id, content, producer_node_id)` — creates a new version of artifact `id`. Never overwrites; appends a new version entry.
+- `get(id)` — returns the latest version of artifact `id`.
+- `getVersion(id, n)` — returns version `n` (1-indexed) of artifact `id`.
+- `history(id)` — returns all versions of artifact `id`, oldest first.
+- `snapshot()` — returns a frozen bundle of all artifacts at their latest versions, used as input when a node begins execution.
+
+**ArtifactVersion structure:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `artifact_id` | string | The artifact key (e.g., `"analysis"`, `"review_results"`) |
+| `version` | number | 1-indexed version number |
+| `content` | any | The artifact content (object, string, array, etc.) |
+| `producer_node_id` | string | ID of the node that produced this version |
+| `timestamp` | string | ISO 8601 timestamp of creation |
+
+Context inputs declared in the strategy's `context.inputs` are initialized as version 1 with `producer_node_id` set to `"__context__"`. When a node writes to an artifact that already exists (e.g., a retry produces updated output), the new content becomes the next version. Downstream nodes always receive the latest version via `snapshot()`.
+
+## DAG Validation
+
+Before execution begins, the strategy YAML is validated. Validation catches structural errors early, before any LLM calls are made.
+
+**Checks performed:**
+
+1. **Unique node IDs** — no two nodes may share the same `id`
+2. **Dependency target existence** — every ID in a node's `depends_on` array must correspond to a defined node
+3. **Gate type validity** — `type` must be one of `algorithmic`, `observation`, or `human_approval`
+4. **Capability reference existence** — every capability group referenced by a node must be defined in the strategy's `capabilities` map
+5. **Acyclicity** — DFS-based cycle detection ensures the DAG has no circular dependencies
+6. **Gate expression syntax** — algorithmic and observation gate `check` expressions are validated as syntactically correct JavaScript via `new Function()` (not executed, only parsed)
+
+Validation results are returned as a `StrategyValidationResult` object. If any check fails, the `errors` array contains one entry per violation with a human-readable message. Execution does not begin if `errors` is non-empty.
 
 ## Event Triggers
 
@@ -421,13 +531,32 @@ curl -X POST http://localhost:3456/strategies/execute \
 
 The body accepts either `strategy_path` (reads from disk) or `strategy_yaml` (inline YAML string). Exactly one must be provided.
 
+### ExecutionStateSnapshot
+
+The execution state is available at any time via `executor.getState()` (programmatic) or the status endpoint (HTTP). It returns an `ExecutionStateSnapshot` with the following structure:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `strategy_id` | string | The strategy's `id` from YAML |
+| `strategy_name` | string | The strategy's `name` from YAML |
+| `status` | enum | `running`, `completed`, `failed`, or `suspended` |
+| `node_status` | Map\<string, string\> | Per-node status (`pending`, `running`, `completed`, `failed`, `skipped`) |
+| `node_results` | Map\<string, object\> | Per-node execution results (output, cost, duration, gate results) |
+| `artifacts` | object | Current artifact bundle (latest version of each artifact) |
+| `gate_results` | object[] | Strategy gate evaluation results |
+| `cost_usd` | number | Total accumulated LLM cost |
+| `started_at` | string | ISO 8601 start timestamp |
+| `completed_at` | string \| null | ISO 8601 completion timestamp (null if still running) |
+| `levels` | string[][] | Topological levels — each level is an array of node IDs that execute in parallel |
+| `oversight_events` | object[] | Oversight rule triggers (warnings, escalations) |
+
 ### Polling Status
 
 ```bash
 curl http://localhost:3456/strategies/exec-S-MY-STRATEGY-1774011072980/status
 ```
 
-Returns node statuses, cost, gate results, artifacts, and retro path.
+Returns the `ExecutionStateSnapshot` — node statuses, cost, gate results, artifacts, and retro path.
 
 ### Listing Executions
 
@@ -637,7 +766,7 @@ Statuses `completed`, `failed`, and `suspended` are terminal — these execution
      ↓
 5. Topological sort → dependency levels
      ↓
-6. For each level: execute nodes in parallel
+6. For each level: execute ready nodes in parallel (chunked by maxParallel)
      ↓
 7. Per node: invoke LLM (methodology) or run script
      ↓
@@ -649,6 +778,8 @@ Statuses `completed`, `failed`, and `suspended` are terminal — these execution
      ↓
 11. Generate retro at .method/retros/retro-strategy-*.yaml
 ```
+
+**maxParallel chunking:** At step 6, each topological level's ready nodes are split into groups of `maxParallel` size (default: `STRATEGY_MAX_PARALLEL=3`). Each group executes via `Promise.allSettled` — all nodes in the group run concurrently, but the next group does not start until the current group finishes. This ensures the executor never exceeds `maxParallel` concurrent node executions within a level.
 
 ## Configuration
 
@@ -730,6 +861,10 @@ Every strategy execution generates a retro at `.method/retros/retro-strategy-YYY
 - Cost breakdown (total and per-node)
 - Gate results (passed, failed, retries)
 - Artifacts produced
+
+**Critical path calculation:** The Earliest Completion Time (ECT) is calculated per node in topological order: `ECT(n) = max(ECT of all dependencies) + own_duration_ms`. For root nodes (no dependencies), `ECT(n) = own_duration_ms`. The critical path is the sequence of nodes that determines the minimum possible pipeline duration — the chain of nodes whose ECTs form the longest path through the DAG. It represents the theoretical lower bound on execution time even with unlimited parallelism.
+
+**Speedup ratio:** Calculated as `sum(all node durations) / actual_duration`. A ratio greater than 1.0 indicates that parallelism reduced wall-clock time compared to sequential execution. For example, a speedup ratio of 2.5 means the pipeline ran 2.5x faster than if all nodes had executed one after another. A ratio of 1.0 or below indicates no parallelism benefit (either the DAG is fully sequential or overhead dominated).
 
 ## Limitations
 

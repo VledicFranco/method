@@ -132,6 +132,55 @@ const agent = createAgent({
 
 The validator wraps the provider directly. When validation fails, it retries by sending the error details as verbal feedback. If `retryOnValidationFailure` is `false`, it returns immediately with `stopReason: 'error'`.
 
+## Scope Contract
+
+The `scope` field on a pact declares capability constraints — what the agent is allowed to do at runtime:
+
+```typescript
+import { createAgent } from '@method/pacta';
+
+const agent = createAgent({
+  pact: {
+    mode: { type: 'oneshot' },
+    scope: {
+      allowedTools: ['Read', 'Grep', 'Glob', 'Bash'],  // whitelist — only these tools are available
+      deniedTools: ['Bash'],                             // blacklist — removed even if in allowedTools
+      allowedPaths: ['src/**', 'tests/**'],              // glob patterns restricting filesystem access
+      model: 'claude-sonnet-4-6',                       // model constraint
+      permissionMode: 'auto',                            // 'ask' | 'auto' | 'deny'
+    },
+  },
+  provider: myProvider,
+});
+```
+
+The full `ScopeContract` interface:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `allowedTools` | `string[]` | Whitelist — if set, only these tools are available to the agent. |
+| `deniedTools` | `string[]` | Blacklist — applied after the whitelist. Tools matching `deniedTools` are removed even if they match `allowedTools`. |
+| `allowedPaths` | `string[]` | Glob patterns restricting filesystem access. Only paths matching these patterns are accessible to the agent. |
+| `model` | `string` | Model constraint (e.g., `'claude-sonnet-4-6'`, `'claude-haiku-4-5'`). |
+| `permissionMode` | `'ask' \| 'auto' \| 'deny'` | How tool permission prompts are handled. |
+
+**Tool filtering order:** `allowedTools` is evaluated first (whitelist). Then `deniedTools` is applied on top (blacklist). This means you can whitelist a broad set and then surgically remove specific tools:
+
+```typescript
+scope: {
+  allowedTools: ['Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write'],
+  deniedTools: ['Write'],  // allow reading and editing, but not overwriting entire files
+}
+```
+
+**Path restriction** with `allowedPaths` uses glob patterns. The agent can only access filesystem paths that match at least one of the patterns:
+
+```typescript
+scope: {
+  allowedPaths: ['src/**', 'tests/**', 'package.json'],  // no access to node_modules, .env, etc.
+}
+```
+
 ## Reasoning Strategies
 
 Reasoning strategies are middleware factories that read a `ReasoningPolicy` and augment the agent's requests. Import them from `@method/pacta`:
