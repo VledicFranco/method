@@ -32,12 +32,13 @@ Also touches: `src/ports/compliance-suggestion.ts`, `src/cli/`, `src/factory.ts`
 
 ## Tasks
 
-- [ ] Task C1: Create `src/compliance/template-generator.ts`
-- [ ] Task C2: Create `src/compliance/compliance-engine.ts`
-- [ ] Task C3: Create `src/compliance/index.ts`
-- [ ] Task C4: Create `src/cli/commands/suggest.ts`
-- [ ] Task C5: Update `src/cli/index.ts` — add `suggest` subcommand
-- [ ] Task C6: Update `src/factory.ts` — add `compliance: ComplianceSuggestionPort`
-- [ ] Task C7: Update `src/index.ts` — export new types
-- [ ] Task C8: Update `src/architecture.test.ts` — G-BOUNDARY-COMPLIANCE gate
-- [ ] Quality gates: build, test, architecture gates
+- [x] Task C1: Create `src/compliance/template-generator.ts`
+- [x] Task C2: Create `src/compliance/compliance-engine.ts`
+- [x] Task C3: Create `src/compliance/index.ts`
+- [x] Task C4: Create `src/cli/commands/suggest.ts`
+- [x] Task C5: Update `src/cli/index.ts` — add `suggest` subcommand
+- [x] Task C6: Update `src/factory.ts` — add `compliance: ComplianceSuggestionPort`
+- [x] Task C7: Update `src/index.ts` — export new types
+- [x] Task C8: Update `src/architecture.test.ts` — G-BOUNDARY-COMPLIANCE gate
+- [x] Task C9: Add `src/compliance/compliance-engine.test.ts` — 24 unit tests
+- [x] Quality gates: build clean, 233 tests pass, architecture gates 6/6
