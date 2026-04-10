@@ -14,6 +14,8 @@ import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executo
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
 import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
+import { createAgent, type Pact } from '@method/pacta';
+import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 5180);
@@ -196,20 +198,108 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
     }
   }
 
-  // Method test cases (not strategy YAML)
+  // Method test cases — run via Pacta agent with real provider
   if (testCase.category === 'method') {
-    return {
-      type: 'case_completed',
-      caseId: testCase.id,
-      assertions: [{
-        name: 'Method case (requires live mode or dedicated runner)',
-        passed: testCase.mode === 'mock',
-        expected: 'mock-runnable',
-        actual: testCase.mode,
-      }],
-      allPassed: testCase.mode === 'mock',
-      durationMs: Date.now() - startMs,
-    };
+    if (!isLiveModeAvailable()) {
+      return {
+        type: 'case_completed',
+        caseId: testCase.id,
+        assertions: [{
+          name: 'Live provider available (ANTHROPIC_API_KEY)',
+          passed: testCase.mode === 'mock',
+          expected: 'API key present or mock-only case',
+          actual: 'no ANTHROPIC_API_KEY',
+        }],
+        allPassed: testCase.mode === 'mock',
+        durationMs: Date.now() - startMs,
+      };
+    }
+
+    try {
+      const fixturePathAbs = join(__dirname, 'fixtures', testCase.fixture);
+      const fixtureUrl = new URL('file://' + fixturePathAbs.replace(/\\/g, '/')).href;
+      const fixture = await import(fixtureUrl);
+      const provider = createLiveProvider();
+      const pact: Pact = fixture.pact ?? { mode: { type: 'oneshot' } };
+
+      if (fixture.steps) {
+        // Multi-step method (analyse-critique-propose pattern)
+        const bundle: Record<string, string> = { ...(fixture.initialBundle ?? {}) };
+        let totalCost = 0;
+        let totalIn = 0;
+        let totalOut = 0;
+        const stepResults: Array<{ name: string; output: string; cost: number; tokens: number; durationMs: number }> = [];
+
+        for (const step of fixture.steps) {
+          const prompt = step.buildPrompt(bundle);
+          const stepPact = step.pact ?? pact;
+          const agent = createAgent({ pact: stepPact, provider });
+          const stepStart = Date.now();
+          const result = await agent.invoke({ prompt, workdir: process.cwd() });
+          const output = String(result.output ?? '').trim();
+          bundle[step.outputKey] = output;
+          const cost = result.cost?.totalUsd ?? 0;
+          const tokens = (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0);
+          totalCost += cost;
+          totalIn += result.usage?.inputTokens ?? 0;
+          totalOut += result.usage?.outputTokens ?? 0;
+          stepResults.push({ name: step.name, output: output.slice(0, 200), cost, tokens, durationMs: Date.now() - stepStart });
+        }
+
+        const artifacts = Object.keys(bundle).filter(k => k !== 'code');
+        const assertions: AssertionResult[] = [
+          { name: 'All steps completed', passed: true, expected: `${fixture.steps.length} steps`, actual: `${stepResults.length} steps` },
+          ...artifacts.map((k: string) => ({
+            name: `Artifact "${k}" produced`,
+            passed: !!bundle[k],
+            expected: 'present',
+            actual: bundle[k] ? 'present' : 'missing',
+          })),
+        ];
+
+        return {
+          type: 'case_completed',
+          caseId: testCase.id,
+          result: { status: 'completed', cost_usd: totalCost, duration_ms: Date.now() - startMs, node_count: stepResults.length, artifact_count: artifacts.length, gate_count: 0, oversight_count: 0, input_tokens: totalIn, output_tokens: totalOut, steps: stepResults },
+          assertions,
+          allPassed: assertions.every(a => a.passed),
+          durationMs: Date.now() - startMs,
+        };
+      } else {
+        // Single-prompt method
+        const prompt = fixture.prompt;
+        const agent = createAgent({ pact, provider });
+        const result = await agent.invoke({ prompt, workdir: process.cwd() });
+        const output = String(result.output ?? '').trim();
+
+        return {
+          type: 'case_completed',
+          caseId: testCase.id,
+          result: { status: 'completed', cost_usd: result.cost?.totalUsd ?? 0, duration_ms: Date.now() - startMs, node_count: 1, artifact_count: 0, gate_count: 0, oversight_count: 0, input_tokens: result.usage?.inputTokens ?? 0, output_tokens: result.usage?.outputTokens ?? 0, output: output.slice(0, 500) },
+          assertions: [{ name: 'Agent completed', passed: true, expected: 'completed', actual: 'completed' }],
+          allPassed: true,
+          durationMs: Date.now() - startMs,
+        };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const expectsFailure = testCase.expected.status === 'failed';
+      const errorMatch = testCase.expected.errorContains ? msg.toLowerCase().includes(testCase.expected.errorContains.toLowerCase()) : false;
+
+      return {
+        type: 'case_completed',
+        caseId: testCase.id,
+        assertions: [{
+          name: expectsFailure ? 'Expected failure' : 'Unexpected error',
+          passed: expectsFailure && (!testCase.expected.errorContains || errorMatch),
+          expected: expectsFailure ? `failure with "${testCase.expected.errorContains}"` : 'success',
+          actual: msg.slice(0, 200),
+        }],
+        allPassed: expectsFailure && (!testCase.expected.errorContains || errorMatch),
+        error: expectsFailure ? undefined : msg,
+        durationMs: Date.now() - startMs,
+      };
+    }
   }
 
   try {
