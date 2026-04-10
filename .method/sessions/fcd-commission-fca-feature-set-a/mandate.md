@@ -44,4 +44,14 @@ Bug fixes and small enhancements within the `@method/fca-index` package:
 
 ## Completed Tasks
 
-(none yet)
+All tasks were implemented but the mandate was not updated at the time.
+Reconciled 2026-04-10 during com-20260410-1836-finish-fca-index-build-test.
+
+- [x] Task A1: Scanner excludes test dirs/files by default (DEFAULT_EXCLUDE_PATTERNS)
+- [x] Task A2: Index store skips Lance upsert for < 100 chars doc text
+- [x] Task A3: Coverage CLI exits with code 1 when below threshold
+- [x] Task A4: ContextQueryResult has optional staleComponents field
+- [x] Task A5: FileSystemPort has getModifiedTime (WARN-LEGACY)
+- [x] Task A6: NodeFileSystem implements getModifiedTime
+- [x] Task A7: QueryEngine injects FileSystemPort, populates staleComponents
+- [x] Task A8: Query CLI command prints stale warning
