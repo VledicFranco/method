@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smoke Tests — Method</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Methodology Smoke Tests</h1>
+      <div class="sub">Strategy, Method, and Methodology feature verification</div>
+    </div>
+    <div class="header-right">
+      <span class="progress-text" id="progress"></span>
+      <button class="run-all-btn" id="run-all">Run All (mock)</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-filter">
+        <input type="text" id="filter" placeholder="Filter by name or feature..." />
+      </div>
+      <div class="sidebar-list" id="sidebar-list"></div>
+    </div>
+
+    <!-- Main -->
+    <div class="main" id="main">
+      <div class="main-empty">Select a test case from the sidebar</div>
+    </div>
+  </div>
+
+  <script>
+    let cases = [];
+    let features = [];
+    let selectedId = null;
+    let caseResults = {}; // id -> { status, assertions, result, error, durationMs }
+
+    // ── Load cases ──
+    async function loadCases() {
+      const res = await fetch('/api/cases');
+      const data = await res.json();
+      cases = data.cases;
+      features = data.features;
+      renderSidebar();
+    }
+
+    // ── Sidebar ──
+    function renderSidebar(filter = '') {
+      const list = document.getElementById('sidebar-list');
+      const lf = filter.toLowerCase();
+      const filtered = cases.filter(c =>
+        !lf || c.name.toLowerCase().includes(lf) || c.features.some(f => f.includes(lf)) || c.id.includes(lf)
+      );
+
+      const grouped = {};
+      for (const c of filtered) {
+        (grouped[c.category] = grouped[c.category] || []).push(c);
+      }
+
+      let html = '';
+      for (const cat of ['strategy', 'method']) {
+        const items = grouped[cat] || [];
+        if (!items.length) continue;
+        html += `<div class="cat-header">${cat} (${items.length})</div>`;
+        for (const c of items) {
+          const r = caseResults[c.id];
+          const dotClass = r ? (r.allPassed ? 'pass' : 'fail') : (r === undefined ? '' : 'running');
+          const active = c.id === selectedId ? ' active' : '';
+          html += `<div class="case-item${active}" data-id="${c.id}" onclick="selectCase('${c.id}')">
+            <div class="case-dot ${dotClass}"></div>
+            <div class="case-name">${c.name}</div>
+            <div class="case-mode">${c.mode}</div>
+          </div>`;
+        }
+      }
+      list.innerHTML = html;
+    }
+
+    document.getElementById('filter').addEventListener('input', (e) => renderSidebar(e.target.value));
+
+    // ── Select case ──
+    window.selectCase = function(id) {
+      selectedId = id;
+      renderSidebar(document.getElementById('filter').value);
+      renderMain(id);
+    };
+
+    function renderMain(id) {
+      const c = cases.find(x => x.id === id);
+      if (!c) return;
+      const main = document.getElementById('main');
+      const r = caseResults[id];
+
+      let html = `<div class="case-detail">
+        <div class="case-header">
+          <h2>${c.name}</h2>
+          <div class="desc">${c.description}</div>
+          <div class="feature-tags">${c.features.map(f => `<span class="feature-tag">${f}</span>`).join('')}</div>
+          <div class="case-actions">
+            <button class="run-btn" id="run-single" onclick="runSingle('${c.id}')">Run</button>
+          </div>
+        </div>
+        <div class="results-area" id="results-area">`;
+
+      if (r) {
+        // Status banner
+        if (r.error) {
+          html += `<div class="status-banner fail">Failed: ${r.error}</div>`;
+        } else if (r.allPassed) {
+          html += `<div class="status-banner pass">All assertions passed (${r.durationMs}ms)</div>`;
+        } else {
+          html += `<div class="status-banner fail">Some assertions failed (${r.durationMs}ms)</div>`;
+        }
+
+        // Execution summary
+        if (r.result) {
+          html += `<div class="result-section">
+            <div class="result-section-title">Execution Summary</div>
+            <div class="exec-summary">
+              <div class="exec-stat"><div class="label">Status</div><div class="val">${r.result.status}</div></div>
+              <div class="exec-stat"><div class="label">Cost</div><div class="val">$${(r.result.cost_usd || 0).toFixed(4)}</div></div>
+              <div class="exec-stat"><div class="label">Duration</div><div class="val">${Math.round(r.result.duration_ms || 0)}ms</div></div>
+              <div class="exec-stat"><div class="label">Nodes</div><div class="val">${r.result.node_count || 0}</div></div>
+              <div class="exec-stat"><div class="label">Artifacts</div><div class="val">${r.result.artifact_count || 0}</div></div>
+              <div class="exec-stat"><div class="label">Gates</div><div class="val">${r.result.gate_count || 0}</div></div>
+              <div class="exec-stat"><div class="label">Oversight</div><div class="val">${r.result.oversight_count || 0}</div></div>
+            </div>
+          </div>`;
+        }
+
+        // Assertions
+        if (r.assertions && r.assertions.length) {
+          html += `<div class="result-section">
+            <div class="result-section-title">Verification (${r.assertions.filter(a=>a.passed).length}/${r.assertions.length} pass)</div>`;
+          for (const a of r.assertions) {
+            html += `<div class="assertion ${a.passed ? 'pass' : 'fail'}">
+              <div class="assert-icon">${a.passed ? '&#10003;' : '&#10007;'}</div>
+              <div class="assert-content">
+                <div class="assert-name">${a.name}</div>
+                <div class="assert-detail">expected: ${a.expected} | actual: ${a.actual}</div>
+              </div>
+            </div>`;
+          }
+          html += '</div>';
+        }
+      } else {
+        html += '<div style="color:var(--text-3);padding:20px;">Click "Run" to execute this test case</div>';
+      }
+
+      html += '</div></div>';
+      main.innerHTML = html;
+    }
+
+    // ── Run single case ──
+    window.runSingle = async function(id) {
+      const btn = document.getElementById('run-single');
+      if (btn) btn.disabled = true;
+      caseResults[id] = null; // running
+      renderSidebar(document.getElementById('filter').value);
+
+      const main = document.getElementById('main');
+      const resultsArea = document.getElementById('results-area');
+      if (resultsArea) resultsArea.innerHTML = '<div class="status-banner running"><span class="spinner"></span> Running...</div>';
+
+      const es = new EventSource(`/api/run/${id}`);
+      es.onmessage = (e) => {
+        const ev = JSON.parse(e.data);
+        if (ev.type === 'case_completed' || ev.type === 'case_failed') {
+          caseResults[id] = {
+            allPassed: ev.allPassed ?? false,
+            assertions: ev.assertions ?? [],
+            result: ev.result ?? null,
+            error: ev.error ?? null,
+            durationMs: ev.durationMs ?? 0,
+          };
+          renderSidebar(document.getElementById('filter').value);
+          renderMain(id);
+          es.close();
+        }
+      };
+      es.onerror = () => {
+        es.close();
+        if (btn) btn.disabled = false;
+      };
+    };
+
+    // ── Run all ──
+    document.getElementById('run-all').addEventListener('click', async () => {
+      const btn = document.getElementById('run-all');
+      btn.disabled = true;
+      const prog = document.getElementById('progress');
+
+      const es = new EventSource('/api/run-all');
+      es.onmessage = (e) => {
+        const ev = JSON.parse(e.data);
+        if (ev.type === 'case_started') {
+          caseResults[ev.caseId] = null;
+          prog.textContent = `${ev.completed ?? 0}/${ev.total ?? '?'}`;
+          renderSidebar(document.getElementById('filter').value);
+        }
+        if (ev.type === 'case_completed' || ev.type === 'case_failed') {
+          caseResults[ev.caseId] = {
+            allPassed: ev.allPassed ?? false,
+            assertions: ev.assertions ?? [],
+            result: ev.result ?? null,
+            error: ev.error ?? null,
+            durationMs: ev.durationMs ?? 0,
+          };
+          prog.textContent = `${ev.completed ?? 0}/${ev.total ?? '?'}`;
+          renderSidebar(document.getElementById('filter').value);
+          if (selectedId === ev.caseId) renderMain(ev.caseId);
+        }
+      };
+      es.onerror = () => {
+        es.close();
+        btn.disabled = false;
+        const total = cases.filter(c => c.mode !== 'live').length;
+        const passed = Object.values(caseResults).filter(r => r && r.allPassed).length;
+        const failed = Object.values(caseResults).filter(r => r && !r.allPassed).length;
+        prog.textContent = `Done: ${passed} pass, ${failed} fail / ${total}`;
+      };
+    });
+
+    // ── Init ──
+    loadCases();
+  </script>
+</body>
+</html>

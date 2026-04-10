@@ -15,7 +15,7 @@ export const methodCases: SmokeTestCase[] = [
     category: 'method',
     features: ['method-steps', 'data-flow', 'token-tracking', 'cost-tracking'],
     fixture: 'methods/analyse-critique-propose.ts',
-    mode: 'both',
+    mode: 'live',
     expected: {
       status: 'completed',
       artifactsProduced: ['summary', 'issue', 'fix'],

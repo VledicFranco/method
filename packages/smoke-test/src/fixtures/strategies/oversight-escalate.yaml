@@ -18,5 +18,5 @@ strategy:
         outputs: [result]
   oversight:
     rules:
-      - condition: "execution_metadata.cost_usd > 0.5"
+      - condition: "total_cost_usd > 0.001"
         action: "escalate_to_human"

@@ -23,5 +23,5 @@ strategy:
             timeout_ms: 30000
   oversight:
     rules:
-      - condition: "execution_metadata.duration_ms > 100"
+      - condition: "step_duration_ms > 10"
         action: warn_human
