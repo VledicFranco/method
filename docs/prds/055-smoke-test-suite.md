@@ -1,6 +1,6 @@
 # PRD 055 — Methodology Smoke Test Suite
 
-**Status:** draft
+**Status:** implemented
 **Date:** 2026-04-09
 **Domains:** new `@method/smoke-test` (L4), consumes methodts, pacta, pacta-testkit
 **Surfaces:** none (leaf consumer package)
