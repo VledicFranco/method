@@ -318,7 +318,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
         case 'step-validate-pass': {
           mock.startSession('smoke-val-pass', 'SMOKE-TEST-METH', 'test');
           mock.select('smoke-val-pass', 'SMOKE-TEST-METH', 'M-ANALYZE');
-          const result = mock.validateStep('smoke-val-pass', 'gather', { data: 'gathered data for challenge_defined' });
+          const result = mock.validateStep('smoke-val-pass', 'gather', { data_gathered: true, summary: 'data gathered successfully' });
           assertions.push({ name: 'Valid output accepted', passed: result.valid === true, expected: 'true', actual: String(result.valid) });
           assertions.push({ name: 'Recommendation is advance', passed: result.recommendation === 'advance', expected: 'advance', actual: result.recommendation });
           assertions.push({ name: 'Postcondition met', passed: result.postconditionMet === true, expected: 'true', actual: String(result.postconditionMet) });
