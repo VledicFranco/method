@@ -1,0 +1,16 @@
+strategy:
+  id: S-SMOKE-NODE-SEMANTIC
+  name: "Single semantic node with explore algorithm"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: project_path, type: string }
+  dag:
+    nodes:
+      - id: explore
+        type: semantic
+        algorithm: "explore"
+        input_mapping:
+          target: "project_path"
+        output_key: "exploration_result"
+        outputs: [exploration_result]

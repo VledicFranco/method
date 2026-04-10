@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-SCOPE-CONTRACT
+  name: "Scope contract restricts tools"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    limited_tools: [Read, Grep]
+  dag:
+    nodes:
+      - id: restricted-task
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [limited_tools]
+        inputs: [task_desc]
+        outputs: [analysis_result]
+        gates:
+          - type: algorithmic
+            check: "output.analysis_result !== undefined"
+            max_retries: 0
+            timeout_ms: 30000

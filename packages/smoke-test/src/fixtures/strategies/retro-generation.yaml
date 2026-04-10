@@ -1,0 +1,27 @@
+strategy:
+  id: S-SMOKE-RETRO
+  name: "Two-step sequence for retro generation"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: step-1
+        type: script
+        script: 'return { step1: "done" };'
+        outputs: [step1]
+        gates:
+          - type: algorithmic
+            check: "output.step1 === 'done'"
+            max_retries: 0
+            timeout_ms: 5000
+
+      - id: step-2
+        type: script
+        script: 'return { step2: "done" };'
+        depends_on: [step-1]
+        inputs: [step1]
+        outputs: [step2]
+        gates:
+          - type: algorithmic
+            check: "output.step2 === 'done'"
+            max_retries: 0
+            timeout_ms: 5000

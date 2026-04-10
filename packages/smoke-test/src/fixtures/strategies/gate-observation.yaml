@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-GATE-OBSERVATION
+  name: "Methodology node with observation gate"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    work: [implement]
+  dag:
+    nodes:
+      - id: work
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        inputs: [task_desc]
+        outputs: [result]
+        gates:
+          - type: observation
+            check: "execution_metadata.cost_usd < 1.0 && execution_metadata.duration_ms < 30000"
+            max_retries: 1
+            timeout_ms: 60000

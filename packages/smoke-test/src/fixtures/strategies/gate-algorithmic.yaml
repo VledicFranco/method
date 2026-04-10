@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-GATE-ALGORITHMIC
+  name: "Methodology node with algorithmic gate"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    scoring: [evaluate]
+  dag:
+    nodes:
+      - id: score
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [scoring]
+        inputs: [task_desc]
+        outputs: [score]
+        gates:
+          - type: algorithmic
+            check: "output.score >= 0.8"
+            max_retries: 2
+            timeout_ms: 30000

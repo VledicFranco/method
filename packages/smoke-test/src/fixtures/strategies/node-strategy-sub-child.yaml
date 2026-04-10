@@ -1,0 +1,12 @@
+# Child strategy invoked by node-strategy-sub.yaml parent.
+
+strategy:
+  id: S-SMOKE-SUB-CHILD
+  name: "Child strategy returning a greeting"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: greet
+        type: script
+        script: 'return { child_output: "hello" };'
+        outputs: [child_output]

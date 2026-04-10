@@ -1,0 +1,19 @@
+strategy:
+  id: S-SMOKE-BUDGET
+  name: "Budget enforcement via low cost threshold"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: cheap-task
+        type: script
+        script: 'return { result: "ok" };'
+        outputs: [result]
+        gates:
+          - type: algorithmic
+            check: "output.result === 'ok'"
+            max_retries: 0
+            timeout_ms: 5000
+  oversight:
+    rules:
+      - condition: "execution_metadata.cost_usd > 0.001"
+        action: kill_and_requeue

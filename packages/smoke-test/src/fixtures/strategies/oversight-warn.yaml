@@ -1,0 +1,27 @@
+strategy:
+  id: S-SMOKE-OVERSIGHT-WARN
+  name: "Oversight rule warn on slow execution"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    analysis: [analyze_code]
+  dag:
+    nodes:
+      - id: slow-task
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [analysis]
+        inputs: [task_desc]
+        outputs: [analysis_result]
+        gates:
+          - type: algorithmic
+            check: "output.analysis_result !== undefined"
+            max_retries: 0
+            timeout_ms: 30000
+  oversight:
+    rules:
+      - condition: "execution_metadata.duration_ms > 100"
+        action: warn_human

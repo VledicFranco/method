@@ -1,0 +1,10 @@
+strategy:
+  id: S-SMOKE-CYCLE
+  name: "Self-referencing strategy for cycle detection"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: recursive-call
+        type: strategy
+        strategy_id: "S-SMOKE-CYCLE"
+        outputs: [loop_result]

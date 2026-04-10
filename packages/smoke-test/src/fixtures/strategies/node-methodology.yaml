@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-NODE-METHODOLOGY
+  name: "Single methodology node"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    analysis: [analyze_code, summarize]
+  dag:
+    nodes:
+      - id: analyze
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [analysis]
+        inputs: [task_desc]
+        outputs: [analysis_result]
+        gates:
+          - type: algorithmic
+            check: "output.analysis_result !== undefined"
+            max_retries: 1
+            timeout_ms: 30000

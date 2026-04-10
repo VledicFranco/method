@@ -1,0 +1,38 @@
+strategy:
+  id: S-SMOKE-REFRESH-CONTEXT
+  name: "Sequential nodes with context refresh"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    work: [execute]
+  dag:
+    nodes:
+      - id: step-1
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        inputs: [task_desc]
+        outputs: [step1_result]
+        gates:
+          - type: algorithmic
+            check: "output.step1_result !== undefined"
+            max_retries: 0
+            timeout_ms: 30000
+
+      - id: step-2
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        depends_on: [step-1]
+        inputs: [step1_result]
+        outputs: [step2_result]
+        refresh_context: true
+        gates:
+          - type: algorithmic
+            check: "output.step2_result !== undefined"
+            max_retries: 0
+            timeout_ms: 30000

@@ -1,0 +1,14 @@
+# Parent strategy that invokes a child strategy via a strategy node.
+# Child strategy defined in node-strategy-sub-child.yaml.
+
+strategy:
+  id: S-SMOKE-SUB-PARENT
+  name: "Parent strategy with sub-strategy invocation"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: invoke-child
+        type: strategy
+        strategy_id: "S-SMOKE-SUB-CHILD"
+        input_map: {}
+        outputs: [child_output]

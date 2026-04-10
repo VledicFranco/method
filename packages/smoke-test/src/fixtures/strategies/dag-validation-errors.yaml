@@ -1,0 +1,15 @@
+strategy:
+  id: S-SMOKE-DAG-VALIDATION-ERRORS
+  name: "Invalid strategy with duplicate node IDs"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: dup-node
+        type: script
+        script: 'return { a: 1 };'
+        outputs: [a]
+
+      - id: dup-node
+        type: script
+        script: 'return { b: 2 };'
+        outputs: [b]

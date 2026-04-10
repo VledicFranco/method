@@ -1,0 +1,55 @@
+strategy:
+  id: S-SMOKE-FULL-PIPELINE
+  name: "Full execution pipeline with all features"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    analysis: [analyze_code, summarize]
+  dag:
+    nodes:
+      - id: load-context
+        type: context-load
+        query: "project structure and key modules"
+        topK: 3
+        output_key: "project_context"
+        outputs: [project_context]
+
+      - id: analyze
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [analysis]
+        depends_on: [load-context]
+        inputs: [task_desc, project_context]
+        outputs: [analysis_result]
+        gates:
+          - type: algorithmic
+            check: "typeof output.analysis_result === 'object'"
+            max_retries: 1
+            timeout_ms: 30000
+
+      - id: transform
+        type: script
+        script: 'const r = inputs.analysis_result || {}; return { summary: "processed", input_keys: Object.keys(r) };'
+        depends_on: [analyze]
+        inputs: [analysis_result]
+        outputs: [summary, input_keys]
+        gates:
+          - type: algorithmic
+            check: "output.summary === 'processed'"
+            max_retries: 0
+            timeout_ms: 5000
+
+    strategy_gates:
+      - id: final-quality
+        depends_on: [transform]
+        type: algorithmic
+        check: "artifacts.summary !== undefined"
+        max_retries: 0
+        timeout_ms: 5000
+  oversight:
+    rules:
+      - condition: "execution_metadata.cost_usd > 10"
+        action: escalate_to_human

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../methodts" },
+    { "path": "../pacta" },
+    { "path": "../pacta-testkit" },
+    { "path": "../pacta-provider-anthropic" }
+  ]
+}

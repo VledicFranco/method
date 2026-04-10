@@ -1,0 +1,20 @@
+strategy:
+  id: S-SMOKE-NODE-SCRIPT
+  name: "Single script node"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: a, type: number }
+      - { name: b, type: number }
+  dag:
+    nodes:
+      - id: add
+        type: script
+        script: "const sum = inputs.a + inputs.b; return { sum };"
+        inputs: [a, b]
+        outputs: [sum]
+        gates:
+          - type: algorithmic
+            check: "output.sum === 30"
+            max_retries: 0
+            timeout_ms: 5000

@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-GATE-RETRY-FEEDBACK
+  name: "Gate with retry feedback injection"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    quality: [refine]
+  dag:
+    nodes:
+      - id: refine
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [quality]
+        inputs: [task_desc]
+        outputs: [quality]
+        gates:
+          - type: algorithmic
+            check: 'output.quality === "high"'
+            max_retries: 3
+            timeout_ms: 30000

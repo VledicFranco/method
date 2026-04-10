@@ -1,0 +1,49 @@
+strategy:
+  id: S-SMOKE-PARALLEL
+  name: "Three independent parallel methodology nodes"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    work: [execute]
+  dag:
+    nodes:
+      - id: node-a
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        inputs: [task_desc]
+        outputs: [result_a]
+        gates:
+          - type: algorithmic
+            check: "output.result_a !== undefined"
+            max_retries: 0
+            timeout_ms: 30000
+
+      - id: node-b
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        inputs: [task_desc]
+        outputs: [result_b]
+        gates:
+          - type: algorithmic
+            check: "output.result_b !== undefined"
+            max_retries: 0
+            timeout_ms: 30000
+
+      - id: node-c
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [work]
+        inputs: [task_desc]
+        outputs: [result_c]
+        gates:
+          - type: algorithmic
+            check: "output.result_c !== undefined"
+            max_retries: 0
+            timeout_ms: 30000

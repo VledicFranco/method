@@ -1,0 +1,37 @@
+strategy:
+  id: S-SMOKE-CRITICAL-PATH
+  name: "Diamond DAG for critical path computation"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: node-a
+        type: script
+        script: 'return { a: "done" };'
+        outputs: [a]
+        gates:
+          - type: algorithmic
+            check: "output.a === 'done'"
+            max_retries: 0
+            timeout_ms: 5000
+
+      - id: node-b
+        type: script
+        script: 'return { b: "done" };'
+        outputs: [b]
+        gates:
+          - type: algorithmic
+            check: "output.b === 'done'"
+            max_retries: 0
+            timeout_ms: 5000
+
+      - id: node-c
+        type: script
+        script: 'return { c: "done" };'
+        depends_on: [node-a, node-b]
+        inputs: [a, b]
+        outputs: [c]
+        gates:
+          - type: algorithmic
+            check: "output.c === 'done'"
+            max_retries: 0
+            timeout_ms: 5000

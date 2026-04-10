@@ -1,0 +1,13 @@
+strategy:
+  id: S-SMOKE-NODE-CONTEXT-LOAD
+  name: "Single context-load node"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: load-ctx
+        type: context-load
+        query: "strategy executor port"
+        topK: 3
+        filterParts: [port, interface]
+        output_key: "ctx_components"
+        outputs: [ctx_components]

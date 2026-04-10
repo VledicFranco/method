@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-OUTPUT-VALIDATION
+  name: "Output validation with type check gate"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    analysis: [analyze_code]
+  dag:
+    nodes:
+      - id: produce-output
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [analysis]
+        inputs: [task_desc]
+        outputs: [structured_result]
+        gates:
+          - type: algorithmic
+            check: "typeof output.structured_result === 'object'"
+            max_retries: 1
+            timeout_ms: 30000

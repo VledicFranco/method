@@ -1,0 +1,21 @@
+strategy:
+  id: S-SMOKE-TRIGGER-MANUAL
+  name: "Manual trigger with context passthrough"
+  version: "1.0"
+  triggers:
+    - type: manual
+  context:
+    inputs:
+      - { name: trigger_event, type: string }
+  dag:
+    nodes:
+      - id: handle-trigger
+        type: script
+        script: 'return { triggered: true };'
+        inputs: [trigger_event]
+        outputs: [triggered]
+        gates:
+          - type: algorithmic
+            check: "output.triggered === true"
+            max_retries: 0
+            timeout_ms: 5000

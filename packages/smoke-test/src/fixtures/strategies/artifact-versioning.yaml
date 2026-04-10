@@ -1,0 +1,16 @@
+strategy:
+  id: S-SMOKE-ARTIFACT-VERSIONING
+  name: "Artifact versioning with two writes to same key"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: producer-v1
+        type: script
+        script: 'return { shared_data: "v1" };'
+        outputs: [shared_data]
+      - id: producer-v2
+        type: script
+        script: 'return { shared_data: "v2" };'
+        depends_on: [producer-v1]
+        inputs: [shared_data]
+        outputs: [shared_data]

@@ -1,0 +1,22 @@
+strategy:
+  id: S-SMOKE-ARTIFACT-PASSING
+  name: "Three-node artifact passing chain"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: node-a
+        type: script
+        script: 'return { intermediate: "step-1-result" };'
+        outputs: [intermediate]
+      - id: node-b
+        type: script
+        script: 'return { final: "step-2-result-from-" + inputs.intermediate };'
+        depends_on: [node-a]
+        inputs: [intermediate]
+        outputs: [final]
+      - id: node-c
+        type: script
+        script: 'return { done: "received-" + inputs.final };'
+        depends_on: [node-b]
+        inputs: [final]
+        outputs: [done]

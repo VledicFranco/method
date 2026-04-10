@@ -1,0 +1,23 @@
+strategy:
+  id: S-SMOKE-GATE-HUMAN-APPROVAL
+  name: "Methodology node with human approval gate"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    design: [plan]
+  dag:
+    nodes:
+      - id: design
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        capabilities: [design]
+        inputs: [task_desc]
+        outputs: [design_doc]
+        gates:
+          - type: human_approval
+            check: "true"
+            max_retries: 0
+            timeout_ms: 5000

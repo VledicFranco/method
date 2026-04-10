@@ -1,0 +1,21 @@
+strategy:
+  id: S-SMOKE-GATE-STRATEGY-LEVEL
+  name: "Strategy-level gate across two nodes"
+  version: "1.0"
+  dag:
+    nodes:
+      - id: node-a
+        type: script
+        script: 'return { result_a: "done" };'
+        outputs: [result_a]
+      - id: node-b
+        type: script
+        script: 'return { result_b: "done" };'
+        outputs: [result_b]
+    strategy_gates:
+      - id: final-check
+        depends_on: [node-a, node-b]
+        type: algorithmic
+        check: "artifacts.result_a !== undefined && artifacts.result_b !== undefined"
+        max_retries: 0
+        timeout_ms: 5000

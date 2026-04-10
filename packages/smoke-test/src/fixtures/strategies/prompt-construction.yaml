@@ -1,0 +1,24 @@
+strategy:
+  id: S-SMOKE-PROMPT-CONSTRUCTION
+  name: "Prompt construction with all parts"
+  version: "1.0"
+  context:
+    inputs:
+      - { name: task_desc, type: string }
+  capabilities:
+    analysis: [analyze_code, summarize]
+  dag:
+    nodes:
+      - id: full-prompt
+        type: methodology
+        methodology: "P2-SD"
+        method_hint: "M1-IMPL"
+        prompt: "PHASE_INSTRUCTION: Analyse the requirements."
+        capabilities: [analysis]
+        inputs: [task_desc]
+        outputs: [prompt_result]
+        gates:
+          - type: algorithmic
+            check: "output.prompt_result !== undefined"
+            max_retries: 0
+            timeout_ms: 30000
