@@ -156,9 +156,15 @@ export async function executeCli(
 
   const cliArgs = buildCliArgs(args);
 
+  // Scrub ANTHROPIC_API_KEY from child env so the Claude CLI uses OAuth
+  // (Max subscription) instead of a potentially credit-depleted API key.
+  const childEnv = { ...process.env };
+  delete childEnv.ANTHROPIC_API_KEY;
+
   return new Promise<CliResult>((resolve, reject) => {
     const child = spawnFn(binary, cliArgs, {
       cwd: args.cwd,
+      env: childEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
     });
@@ -268,9 +274,14 @@ export async function executeCliStream(
     cliArgs.push('--verbose');
   }
 
+  // Scrub ANTHROPIC_API_KEY — same rationale as executeCli
+  const childEnv = { ...process.env };
+  delete childEnv.ANTHROPIC_API_KEY;
+
   return new Promise<CliResult>((resolve, reject) => {
     const child = spawnFn(binary, cliArgs, {
       cwd: args.cwd,
+      env: childEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
     });

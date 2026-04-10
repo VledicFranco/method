@@ -155,10 +155,19 @@ export function claudeCliProvider(
     const result = await executeCli(cliArgs, execOpts);
 
     if (result.exitCode !== 0) {
+      // CLI may report errors in stdout (JSON) when stderr is empty —
+      // extract the result field from JSON stdout as a fallback error message.
+      let errorDetail = result.stderr;
+      if (!errorDetail) {
+        try {
+          const parsed = JSON.parse(result.stdout.trim());
+          if (parsed.result) errorDetail = parsed.result;
+        } catch { /* ignore parse failures */ }
+      }
       throw new CliExecutionError({
         providerClass: 'claude-cli',
         exitCode: result.exitCode,
-        stderr: result.stderr,
+        stderr: errorDetail,
       });
     }
 

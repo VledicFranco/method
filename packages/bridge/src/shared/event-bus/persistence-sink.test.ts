@@ -252,6 +252,86 @@ describe('PersistenceSink', () => {
     });
   });
 
+  describe('readEventsSince', () => {
+    it('returns events with sequence > sinceSeq', async () => {
+      const events = [makeEvent(1), makeEvent(2), makeEvent(3), makeEvent(4), makeEvent(5)];
+      fs.files.set(logPath, events.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const result = await sink.readEventsSince(2);
+      assert.equal(result.length, 3, 'should return events 3, 4, 5');
+      assert.deepEqual(result.map(e => e.sequence), [3, 4, 5]);
+    });
+
+    it('returns empty array when sinceSeq >= max sequence', async () => {
+      const events = [makeEvent(1), makeEvent(2), makeEvent(3)];
+      fs.files.set(logPath, events.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const result = await sink.readEventsSince(99);
+      assert.deepEqual(result, []);
+    });
+
+    it('returns empty array when log file missing', async () => {
+      const result = await sink.readEventsSince(0);
+      assert.deepEqual(result, []);
+    });
+
+    it('skips corrupt JSONL lines gracefully', async () => {
+      const goodEvent1 = makeEvent(1);
+      const goodEvent2 = makeEvent(2);
+      fs.files.set(
+        logPath,
+        `${JSON.stringify(goodEvent1)}\n{this is not valid json\n${JSON.stringify(goodEvent2)}\n`,
+      );
+
+      const result = await sink.readEventsSince(0);
+      assert.equal(result.length, 2, 'should skip corrupt line and return the rest');
+      assert.deepEqual(result.map(e => e.sequence), [1, 2]);
+    });
+
+    it('returns events in append (monotonic) order', async () => {
+      const events = [makeEvent(1), makeEvent(2), makeEvent(3), makeEvent(4), makeEvent(5)];
+      fs.files.set(logPath, events.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const result = await sink.readEventsSince(0);
+      assert.equal(result.length, 5);
+      for (let i = 1; i < result.length; i++) {
+        assert.ok(
+          result[i].sequence > result[i - 1].sequence,
+          'sequences should be monotonically increasing',
+        );
+      }
+    });
+
+    it('sinceSeq=0 returns all events', async () => {
+      const events = [makeEvent(1), makeEvent(2), makeEvent(3)];
+      fs.files.set(logPath, events.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const result = await sink.readEventsSince(0);
+      assert.equal(result.length, 3);
+      assert.deepEqual(result.map(e => e.sequence), [1, 2, 3]);
+    });
+
+    it('returns empty array for empty file', async () => {
+      fs.files.set(logPath, '');
+      const result = await sink.readEventsSince(0);
+      assert.deepEqual(result, []);
+    });
+
+    it('ignores replay window (returns old events outside 24h)', async () => {
+      // readEventsSince uses cursor filter, NOT time window — so old events should be included.
+      const oldEvent = makeEvent(1, {
+        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+      });
+      const recentEvent = makeEvent(2, {
+        timestamp: new Date().toISOString(),
+      });
+      fs.files.set(logPath, [oldEvent, recentEvent].map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const result = await sink.readEventsSince(0);
+      assert.equal(result.length, 2, 'cursor-based replay should not filter by time');
+    });
+  });
+
   describe('flush failure', () => {
     it('emits overflow callback on write error', async () => {
       const overflows: string[] = [];

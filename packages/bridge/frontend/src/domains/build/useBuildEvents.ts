@@ -30,6 +30,7 @@ interface BuildLiveState {
   costTokens: number;
   completedPhases: Phase[];
   humanInterventions: number;
+  artifacts?: Record<string, string>;
 }
 
 // ── Event → Message conversion ─────────────────────────────────
@@ -50,6 +51,13 @@ function formatTimestamp(isoTimestamp: string): string {
   }
 }
 
+/** Safely coerce a payload value to a string — stringify objects instead of lying with `as string`. */
+function toStr(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value);
+}
+
 /** Convert a BridgeEvent into a ConversationMessage (or null if not mappable). */
 function eventToMessage(event: BridgeEvent): ConversationMessage | null {
   const timestamp = formatTimestamp(event.timestamp);
@@ -60,7 +68,7 @@ function eventToMessage(event: BridgeEvent): ConversationMessage | null {
       return {
         id: `ws-${event.id}`,
         sender: (payload.sender as 'agent' | 'human' | 'system' | undefined) ?? 'agent',
-        content: (payload.content as string) ?? (payload.message as string) ?? '',
+        content: toStr(payload.content) || toStr(payload.message),
         timestamp,
         replyTo: (payload.replyTo as string) ?? undefined,
         card: payload.card as ConversationMessage['card'],
@@ -70,7 +78,7 @@ function eventToMessage(event: BridgeEvent): ConversationMessage | null {
       return {
         id: `ws-${event.id}`,
         sender: 'system',
-        content: (payload.content as string) ?? '',
+        content: toStr(payload.content),
         timestamp,
       };
 
@@ -139,6 +147,8 @@ export interface UseBuildEventsResult {
   liveCost: number;
   /** Phases that have completed (for pipeline progress display). */
   completedPhases: Set<Phase>;
+  /** Artifact manifest (artifact_id → content) from the orchestrator. */
+  liveArtifacts: Record<string, string>;
 }
 
 // ── Hook ───────────────────────────────────────────────────────
@@ -175,6 +185,7 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
       liveStatus: null as 'running' | 'completed' | 'failed' | 'aborted' | null,
       liveCost: 0,
       completedPhases: new Set<Phase>(),
+      liveArtifacts: {} as Record<string, string>,
     };
     if (!buildId) return empty;
 
@@ -237,7 +248,16 @@ export function useBuildEvents(buildId: string | null): UseBuildEventsResult {
       }
     }
 
-    return { messages: msgs, liveGate: gate, currentPhase: phase, phaseActive, liveStatus: status, liveCost: cost, completedPhases };
+    return {
+      messages: msgs,
+      liveGate: gate,
+      currentPhase: phase,
+      phaseActive,
+      liveStatus: status,
+      liveCost: cost,
+      completedPhases,
+      liveArtifacts: initialState?.artifacts ?? {},
+    };
   }, [buildId, events, initialState]);
 
   return result;

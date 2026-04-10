@@ -147,13 +147,14 @@ export class BuildOrchestrator {
     return this.sessionId;
   }
 
-  /** Live state snapshot for dashboards — current phase, cost, completed phases. */
+  /** Live state snapshot for dashboards — current phase, cost, completed phases, artifacts. */
   getLiveState(): {
     currentPhase: Phase | null;
     costUsd: number;
     costTokens: number;
     completedPhases: Phase[];
     humanInterventions: number;
+    artifacts: Record<string, string>;
   } {
     // currentPhase: last phase that has a result entry (latest activity)
     const currentPhase =
@@ -173,6 +174,7 @@ export class BuildOrchestrator {
       costTokens: this.costAccumulator.tokens,
       completedPhases: Array.from(completed),
       humanInterventions: this.humanInterventions,
+      artifacts: { ...this.artifactManifest },
     };
   }
 

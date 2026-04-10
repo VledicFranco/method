@@ -14,6 +14,7 @@
  */
 
 import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
+import type { EventReader } from '../../ports/event-reader.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 
 // ── Configuration ───────────────────────────────────────────────
@@ -35,7 +36,7 @@ const DEFAULT_FLUSH_BATCH_SIZE = 100;
 
 // ── PersistenceSink ─────────────────────────────────────────────
 
-export class PersistenceSink implements EventSink {
+export class PersistenceSink implements EventSink, EventReader {
   readonly name = 'persistence';
 
   private readonly fs: FileSystemProvider;
@@ -138,10 +139,11 @@ export class PersistenceSink implements EventSink {
   // ── Replay ───────────────────────────────────────────────────
 
   /**
-   * Read events from JSONL file for replay into the bus.
-   * Filters by replay window. Skips corrupt lines gracefully.
+   * Read and parse all events from the JSONL log file.
+   * Skips corrupt lines gracefully. Returns empty array if the log is missing.
+   * Shared by replay() (time-window filter) and readEventsSince() (cursor filter).
    */
-  async replay(): Promise<BridgeEvent[]> {
+  private async readAllEvents(): Promise<BridgeEvent[]> {
     let content: string;
     try {
       content = await this.fs.readFile(this.logPath, 'utf-8');
@@ -150,8 +152,6 @@ export class PersistenceSink implements EventSink {
       return [];
     }
 
-    const windowMs = this.replayWindowHours * 60 * 60 * 1000;
-    const cutoff = Date.now() - windowMs;
     const events: BridgeEvent[] = [];
 
     for (const line of content.split('\n')) {
@@ -160,15 +160,35 @@ export class PersistenceSink implements EventSink {
 
       try {
         const event = JSON.parse(trimmed) as BridgeEvent;
-        if (new Date(event.timestamp).getTime() >= cutoff) {
-          events.push(event);
-        }
+        events.push(event);
       } catch {
         console.warn('[persistence-sink] Skipping corrupt JSONL line');
       }
     }
 
     return events;
+  }
+
+  /**
+   * Read events from JSONL file for replay into the bus.
+   * Filters by replay window. Skips corrupt lines gracefully.
+   */
+  async replay(): Promise<BridgeEvent[]> {
+    const all = await this.readAllEvents();
+    const windowMs = this.replayWindowHours * 60 * 60 * 1000;
+    const cutoff = Date.now() - windowMs;
+    return all.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+  }
+
+  // ── EventReader interface ────────────────────────────────────
+
+  /**
+   * Read events from the persistent log where sequence > sinceSeq.
+   * Returns events in append order. Corrupt JSONL lines are skipped gracefully.
+   */
+  async readEventsSince(sinceSeq: number): Promise<BridgeEvent[]> {
+    const all = await this.readAllEvents();
+    return all.filter(e => e.sequence > sinceSeq);
   }
 
   // ── Cursor management ────────────────────────────────────────
