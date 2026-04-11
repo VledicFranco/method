@@ -40,11 +40,11 @@ Six ports, split by visibility:
 | `CoverageReportPort` | fca-index → mcp, fca-index → CLI | `@method/mcp` `coverage_check`, `fca-index` binary |
 | `ManifestReaderPort` | filesystem → scanner | `@method/fca-index` scanner domain (via factory) |
 
-**Internal (frozen 2026-04-08) — within the library:**
+**Internal (frozen 2026-04-10, extended from 2026-04-08) — within the library:**
 
 | Port | Direction | Consumer |
 |------|-----------|----------|
-| `FileSystemPort` | filesystem → scanner | `scanner/` domain |
+| `FileSystemPort` | filesystem → scanner, query | `scanner/` domain, `query/` domain (freshness) |
 | `EmbeddingClientPort` | Voyage AI → index-store | `index-store/` domain, `factory.ts` |
 | `IndexStorePort` | index-store → query, coverage | `query/` and `coverage/` domains |
 
