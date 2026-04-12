@@ -1,0 +1,23 @@
+session_id: "com-20260410-1836-finish-fca-index-build-test"
+methodology: P2-SD
+method: com
+date: "2026-04-10"
+hardest_decision: >
+  Determining the actual state of fca-index — mandates said 0% done for Feature Sets A/B,
+  but exploration revealed all code existed. The real blocker was infrastructure (missing deps,
+  no vitest config), not implementation. Correct diagnosis avoided unnecessary reimplementation.
+observations:
+  - >
+    Prior commissions wrote Feature Set A/B/C code but never ran npm install or created a
+    vitest config, so the code was never validated. Mandates for A and B were never updated.
+    This created a false impression of 0% completion when reality was ~95%.
+  - >
+    The entire fix was: npm install + one 7-line vitest.config.ts. Zero source code changes.
+    The /com protocol was heavyweight for this task but the Phase A confidence check
+    (verifying claims against source) was exactly what caught the mandate-vs-reality mismatch.
+  - >
+    LanceDB installs cleanly on Windows via npm. better-sqlite3 also works. No platform issues.
+card_feedback:
+  essence: "Not exercised — this was infrastructure, not feature work."
+  delivery_rules: "DR-09 (real fixtures) validated — all 189 tests use real fixtures and pass."
+proposed_deltas: []
