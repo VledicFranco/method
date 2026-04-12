@@ -94,10 +94,13 @@ per-query excerpt bundles so no subsequent file read is needed.
 
 ### SC-5 revision — 2026-04-12
 
-Full scan of method-2 (101 components) took **2m37s wall clock** on 2026-04-12. Root cause:
-Voyage API rate limiting inserted ~120s of retry waits. Pure code execution was likely under
-30s. SC-5 should measure code time, not wait time. Mitigation: upgrade Voyage tier to remove
-rate-limit bottleneck, or implement embedding batching per request.
+Initial scan of method-2 (101 components) on the free Voyage tier took **2m37s wall clock**
+due to ~120s of rate-limit retry waits. After upgrading to a paid tier (2000 RPS),
+a re-scan of the same 101 components completed in **6.2 seconds** — roughly 10% of the
+SC-5 budget. The code-level scan performance is excellent; the bottleneck was purely
+external API throughput.
+
+**SC-5 status:** ✅ PASS (6.2s on paid tier, 60s budget).
 
 ## Scope
 
