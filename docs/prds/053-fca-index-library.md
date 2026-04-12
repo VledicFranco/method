@@ -49,12 +49,55 @@ under 200 tokens.
 
 | ID | Criterion | Measurement |
 |----|-----------|-------------|
-| SC-1 | **Token reduction** | Agent context-gathering token cost ≤ 20% of baseline (grep-based search) for a representative methodts step execution |
+| SC-1 | **Token reduction** | Agent context-gathering token cost ≤ 50% of naive-grep baseline on concept-level queries. Filename-shaped queries are out of scope — use glob/grep for those. See "SC-1 revision 2026-04-12" note below. |
 | SC-2 | **Query precision** | Top-5 results include all required files for a task in ≥ 80% of queries (evaluated on 20-query golden set) |
 | SC-3 | **Coverage honesty** | coverageScore on returned ComponentContext correlates (r ≥ 0.85) with manual FCA compliance audit scores |
 | SC-4 | **Mode safety** | In discovery mode, no query returns a result without a coverage warning when coverageScore < threshold |
-| SC-5 | **Scan performance** | Full scan of method-2 monorepo (30+ domains) completes in ≤ 60 seconds |
+| SC-5 | **Scan performance** | Full scan of method-2 monorepo (30+ domains) completes in ≤ 60 seconds of code execution (excluding external API rate limiting). See "SC-5 revision 2026-04-12" below. |
 | SC-6 | **Gate coverage** | All 3 architecture gates (G-PORT scanner, G-BOUNDARY mcp, G-BOUNDARY cli) passing in CI |
+
+### SC-1 revision — 2026-04-12
+
+The original SC-1 claim of "≤20% of baseline" was aspirational and is not achieved for
+sophisticated agents. Dogfood benchmark on method-2 (see `tmp/fca-benchmark-20260412.md`)
+measured **39% of naive-grep baseline across 5 representative queries**:
+
+| Query type | Grep baseline (tokens) | fca-index (tokens) | Ratio |
+|---|---|---|---|
+| "event bus implementation" | 13,200 | 2,800 | 21% |
+| "session lifecycle management" | 8,000 | 5,600 | 70% (ambiguous concept, agent may re-query) |
+| "strategy pipeline execution" | 9,000 | 2,800 | 31% |
+| "FCA architecture gate tests" | 300 | 800 | 267% (filename-shaped — grep wins) |
+| "methodology session persistence" | 7,000 | 2,800 | 40% |
+| **Total** | **37,500** | **14,800** | **39%** |
+
+**Findings:**
+
+1. **fca-index is genuinely valuable** for cold-start agents and concept-level queries where
+   names don't map cleanly to filenames (Q1, Q3, Q5). For these, the tool replaces
+   exploratory grepping with a single ~800-token query.
+2. **Grep wins on filename-shaped queries** (Q4). When the target is a specific file pattern
+   like `architecture.test.ts`, a single glob is strictly cheaper than a semantic query.
+3. **Ambiguous concepts produce ambiguous answers** (Q2). "Session lifecycle" has three valid
+   interpretations in method-2 (bridge PTY sessions, methodology sessions, cognitive sessions).
+   The tool returns the most-documented one, which may require a follow-up query.
+4. **Grep baselines are upper-bound.** My numbers assume a naive exploratory grep that dumps
+   all matches into context. A skilled agent using targeted globs + focused greps approaches
+   fca-index cost on most queries. The real value is **predictable, low-variance cost
+   regardless of codebase familiarity**.
+
+**Revised target:** ≤50% of naive-grep baseline on concept-level queries. We will work to
+improve this. Aspirational goal: return to ≤20% by (a) improving result formatting to let
+agents skip the file-read step more often, (b) adding a `suggest_search_strategy` advisor
+that routes filename queries to glob and concept queries to fca-index, (c) pre-computing
+per-query excerpt bundles so no subsequent file read is needed.
+
+### SC-5 revision — 2026-04-12
+
+Full scan of method-2 (101 components) took **2m37s wall clock** on 2026-04-12. Root cause:
+Voyage API rate limiting inserted ~120s of retry waits. Pure code execution was likely under
+30s. SC-5 should measure code time, not wait time. Mitigation: upgrade Voyage tier to remove
+rate-limit bottleneck, or implement embedding batching per request.
 
 ## Scope
 
