@@ -4,7 +4,7 @@
  * Owner: @method/fca-index (defines interface + provides NodeFileSystem impl)
  * Consumer: scanner domain (internal)
  * Direction: filesystem → scanner (unidirectional)
- * Status: frozen 2026-04-08
+ * Status: frozen 2026-04-10 (extended from 2026-04-08; see fcd-surface-fca-index-internal-ports-ext)
  */
 
 export interface FileSystemPort {
@@ -26,11 +26,7 @@ export interface FileSystemPort {
 
   /**
    * Get the last modified time of a path, in milliseconds since Unix epoch.
-   *
-   * WARN-LEGACY: Added post-freeze (2026-04-09) for freshness tracking in the query engine.
-   * This method was not part of the original co-design session (2026-04-08). A formal
-   * co-design record should be produced to freeze this addition properly.
-   * Tech debt: schedule a `/fcd-surface` session to update the frozen record.
+   * Added 2026-04-09; formalized in fcd-surface-fca-index-internal-ports-ext (2026-04-10).
    */
   getModifiedTime(path: string): Promise<number>;
 }

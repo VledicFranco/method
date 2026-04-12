@@ -107,24 +107,18 @@ export class ComponentDetailError extends Error {
 - **Usage:** `packages/mcp/src/context-tools.ts` — `context_detail` tool handler
 - **Injection:** Passed via `createContextTools()` factory function parameter
 
-## IndexStorePort Extension (WARN-LEGACY)
+## IndexStorePort Extension
 
-The implementation requires a `getByPath` lookup method on `IndexStorePort`. Since
-`IndexStorePort` is frozen (2026-04-08), this is added with a WARN-LEGACY marker:
+The implementation requires a `getByPath` lookup method on `IndexStorePort`. This was added
+2026-04-09 and formalized in `fcd-surface-fca-index-internal-ports-ext` (2026-04-10).
 
 ```typescript
 /**
  * Retrieve a single entry by its path within a project.
  * Returns null if no entry exists for the given path.
- *
- * WARN-LEGACY: Added 2026-04-09 to support ComponentDetailPort.
- * Not in the original frozen record. Formal extension session pending.
  */
 getByPath(path: string, projectRoot: string): Promise<IndexEntry | null>;
 ```
-
-Tech debt: schedule a formal `/fcd-surface` extension session for `IndexStorePort` to freeze
-the `getByPath` addition.
 
 ## Gate Assertion
 

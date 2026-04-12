@@ -4,7 +4,7 @@
  * Produced by: index-store domain (SqliteLanceIndexStore, InMemoryIndexStore)
  * Consumed by: query domain (ContextQueryPort impl), coverage domain (CoverageReportPort impl)
  * Direction: index-store → query, index-store → coverage (unidirectional to both)
- * Status: frozen 2026-04-08
+ * Status: frozen 2026-04-10 (extended from 2026-04-08; see fcd-surface-fca-index-internal-ports-ext)
  */
 
 import type { FcaLevel, FcaPart, ComponentPart } from '../context-query.js';
@@ -48,10 +48,7 @@ export interface IndexStorePort {
   /**
    * Retrieve a single entry by its path within a project.
    * Returns null if no entry exists for the given path.
-   *
-   * WARN-LEGACY: Added 2026-04-09 to support ComponentDetailPort lookup.
-   * Not in the original frozen record (frozen 2026-04-08).
-   * Tech debt: formal extension session for IndexStorePort pending.
+   * Added 2026-04-09; formalized in fcd-surface-fca-index-internal-ports-ext (2026-04-10).
    */
   getByPath(path: string, projectRoot: string): Promise<IndexEntry | null>;
 }

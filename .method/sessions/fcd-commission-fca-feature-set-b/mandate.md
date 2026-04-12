@@ -34,12 +34,15 @@ Secondary: `packages/mcp/src/` (context-tools.ts, index.ts)
 
 ## Tasks
 
-- [ ] Wave 0: Add `getByPath` to `IndexStorePort` + both impls + `architecture.test.ts` gate
-- [ ] Task B1: Create `src/query/component-detail-engine.ts`
-- [ ] Task B2: Create `src/cli/commands/detail.ts`
-- [ ] Task B3: Update `src/cli/index.ts` — add `detail` subcommand
-- [ ] Task B4: Update `src/factory.ts` — add `detail: ComponentDetailPort` to `FcaIndex`
-- [ ] Task B5: Update `src/index.ts` — export new types
-- [ ] Task B6: Update `packages/mcp/src/context-tools.ts` — add `context_detail`
-- [ ] Task B7: Update `packages/mcp/src/index.ts` — wire `context_detail`
-- [ ] Quality gates: build, test, architecture gates
+All tasks were implemented but the mandate was not updated at the time.
+Reconciled 2026-04-10 during com-20260410-1836-finish-fca-index-build-test.
+
+- [x] Wave 0: Add `getByPath` to `IndexStorePort` + both impls + `architecture.test.ts` gate
+- [x] Task B1: Create `src/query/component-detail-engine.ts`
+- [x] Task B2: Create `src/cli/commands/detail.ts`
+- [x] Task B3: Update `src/cli/index.ts` — add `detail` subcommand
+- [x] Task B4: Update `src/factory.ts` — add `detail: ComponentDetailPort` to `FcaIndex`
+- [x] Task B5: Update `src/index.ts` — export new types
+- [x] Task B6: Update `packages/mcp/src/context-tools.ts` — add `context_detail`
+- [x] Task B7: Update `packages/mcp/src/index.ts` — wire `context_detail`
+- [x] Quality gates: build clean, 189 fca-index tests + 16 mcp tests pass, architecture gates 8/8
