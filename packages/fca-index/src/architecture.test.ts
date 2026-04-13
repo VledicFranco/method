@@ -95,6 +95,22 @@ describe('G-BOUNDARY-COMPLIANCE: compliance-engine does not import cli/ or @meth
   });
 });
 
+describe('G-BOUNDARY-MCP: mcp/ composition root does not import domain internals', () => {
+  it('mcp/ imports only from ports/, factory, and its own files', () => {
+    const files = readSourceFiles(`${SRC}/mcp`);
+    const violations = files.filter(content =>
+      // Must not reach into scanner, index-store, query, coverage, compliance, or cli internals
+      /from ['"]\.\.\/scanner\//.test(content) ||
+      /from ['"]\.\.\/index-store\//.test(content) ||
+      /from ['"]\.\.\/query\//.test(content) ||
+      /from ['"]\.\.\/coverage\//.test(content) ||
+      /from ['"]\.\.\/compliance\//.test(content) ||
+      /from ['"]\.\.\/cli\//.test(content),
+    );
+    expect(violations, 'mcp/ imports domain internals (should use ports + factory)').toHaveLength(0);
+  });
+});
+
 describe('G-LAYER: fca-index does not import @method/mcp or @method/bridge', () => {
   it('no source file imports @method/mcp or @method/bridge', () => {
     const allFiles = fg
