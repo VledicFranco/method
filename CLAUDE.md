@@ -21,6 +21,18 @@ npm run bridge:stop:test  # Stop test instance
 npm run bridge -- --instance <name>  # Start a named instance from .method/instances/<name>.env
 ```
 
+**Smoke tests (`@method/smoke-test`):** end-to-end coverage organized by abstraction layer, plus a browser UI that doubles as live runtime documentation. See Guide 41.
+
+```bash
+npm --workspace=@method/smoke-test run build
+npm --workspace=@method/smoke-test test                    # vitest — registry invariants, RunFlow, fixture parse
+npm --workspace=@method/smoke-test run smoke               # Playwright E2E (mock mode, no API key needed)
+npm --workspace=@method/smoke-test run smoke:live          # live mode — requires ANTHROPIC_API_KEY
+cd packages/smoke-test && npm run serve                    # browser UI at http://localhost:5180
+```
+
+The server validates three registry gates at startup (G-LAYER-REG, G-FEATURE-REF, G-FEATURE-COMPLETENESS) and exits non-zero on failure. UI views: `/#/layers` (layer stack), `/#/features` (feature map), `/#/feature/:id` (detail + SVG DAG).
+
 **Secrets:** API keys resolve automatically via 1Password CLI (`op run --env-file=.env.tpl`). Fallback: plain `.env` file if `op` is not available. See Guide 30 for setup details.
 
 ## Architecture — Fractal Component Architecture (FCA)
@@ -39,6 +51,7 @@ L3  @method/cluster    Cluster protocol — membership, routing, federation (PRD
     @method/pacta-*    Provider packages (claude-cli, anthropic, ollama), testkit, playground
 L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
     @method/testkit    Testing framework (assertions, builders, runners)
+    @method/smoke-test End-to-end coverage — layer-aware test suite + browser UI (PRDs 055, 056)
 ```
 
 > **Note:** Methodology operations go through the `MethodologySource` port (defined in

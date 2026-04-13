@@ -44,6 +44,8 @@ Conceptual and operational guides for the method system — what methods and met
 | 36 | [Build Orchestrator](36-build-orchestrator.md) | build | Developers, delivery teams | Autonomous FCD lifecycle from idea to validated delivery |
 | 38 | [fca-index: Getting Started](38-fca-index-getting-started.md) | fca-index | Developers, agent operators | Scan a project, query for context, understand coverage modes |
 | 39 | [fca-index: MCP Context Tools](39-fca-index-mcp-tools.md) | fca-index/mcp | Agent operators | Using context_query and coverage_check in methodology execution |
+| 40 | [Cognitive Composition Operators](40-cognitive-composition-operators.md) | pacta-cognitive | Contributors, agent operators | Four algebraic operators (sequential, parallel, competitive, hierarchical) for composing cognitive modules |
+| 41 | [Smoke Test Suite](41-smoke-test-suite.md) | smoke-test | Contributors, agent operators | Layer-aware smoke tests, browser UI, feature registry — runtime coverage organized by methodology/method/strategy/agent |
 
 ## Guide Frontmatter Spec
 

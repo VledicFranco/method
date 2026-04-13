@@ -21,12 +21,12 @@ export const pact: Pact = {
     schema: {
       parse(raw: unknown) {
         if (typeof raw !== 'object' || raw === null) {
-          return { success: false as const, error: 'Expected object' };
+          return { success: false as const, errors: ['Expected object'] };
         }
         const obj = raw as Record<string, unknown>;
-        if (typeof obj.title !== 'string') return { success: false as const, error: 'Missing title string' };
-        if (typeof obj.score !== 'number') return { success: false as const, error: 'Missing score number' };
-        if (!Array.isArray(obj.tags)) return { success: false as const, error: 'Missing tags array' };
+        if (typeof obj.title !== 'string') return { success: false as const, errors: ['Missing title string'] };
+        if (typeof obj.score !== 'number') return { success: false as const, errors: ['Missing score number'] };
+        if (!Array.isArray(obj.tags)) return { success: false as const, errors: ['Missing tags array'] };
         return { success: true as const, data: obj as unknown as ExpectedOutput };
       },
     },

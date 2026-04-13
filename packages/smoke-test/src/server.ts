@@ -9,16 +9,20 @@ import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { allCases, casesByCategory, allFeatures, type SmokeTestCase } from './cases/index.js';
+import { allCases, allFeatures, type SmokeTestCase } from './cases/index.js';
 import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executor/mock-executor.js';
+import type { RunFlow } from './executor/run-flow.js';
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
 import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
 import { createAgent, type Pact } from '@method/pacta';
 import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
+import { MethodologyMock } from './executor/methodology-mock.js';
+import { layerRegistry } from './layers/index.js';
+import { clusterRegistry, featureRegistry, computeCoverage } from './features/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT ?? 5180);
+const DEFAULT_PORT = 5180;
 
 // ── Load .env from repo root ────────────────────────────────────
 function loadDotEnv(): void {
@@ -157,6 +161,12 @@ interface RunEvent {
   allPassed?: boolean;
   error?: string;
   durationMs?: number;
+  /**
+   * Strategy-layer run flow (PRD 056 Surface 6 — consumed by the SVG DAG renderer
+   * in the feature detail view). Populated for strategy cases via runMockStrategy;
+   * undefined for method/methodology cases (renderer handles defensively).
+   */
+  flow?: RunFlow;
 }
 
 async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
@@ -198,8 +208,166 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
     }
   }
 
-  // Method test cases — run via Pacta agent with real provider
-  if (testCase.category === 'method') {
+  // Methodology + method test cases — run via MethodologyMock (no bridge needed)
+  if (testCase.layer === 'methodology' || testCase.layer === 'method') {
+    try {
+      const mock = new MethodologyMock();
+      const assertions: Array<{ name: string; passed: boolean; expected: string; actual: string }> = [];
+
+      switch (testCase.id) {
+        case 'methodology-list-and-start': {
+          const entries = mock.list();
+          assertions.push({ name: 'list() returns entries', passed: entries.length > 0, expected: '>0', actual: String(entries.length) });
+          const session = mock.startSession('smoke-1', 'SMOKE-TEST-METH', 'test challenge');
+          assertions.push({ name: 'Session status is initialized', passed: session.status === 'initialized', expected: 'initialized', actual: session.status });
+          assertions.push({ name: 'Methodology ID correct', passed: session.methodology.id === 'SMOKE-TEST-METH', expected: 'SMOKE-TEST-METH', actual: session.methodology.id });
+          assertions.push({ name: 'Method count', passed: session.methodology.methodCount === 2, expected: '2', actual: String(session.methodology.methodCount) });
+          break;
+        }
+        case 'methodology-routing-inspection': {
+          const routing = mock.getRouting('SMOKE-TEST-METH');
+          assertions.push({ name: 'Has predicates', passed: routing.predicates.length > 0, expected: '>0', actual: String(routing.predicates.length) });
+          assertions.push({ name: 'Has arms', passed: routing.arms.length > 0, expected: '>0', actual: String(routing.arms.length) });
+          assertions.push({ name: 'Arms have priorities', passed: routing.arms.every(a => typeof a.priority === 'number'), expected: 'all numeric', actual: 'all numeric' });
+          assertions.push({ name: 'Evaluation order', passed: routing.evaluationOrder.includes('priority'), expected: 'contains "priority"', actual: routing.evaluationOrder });
+          break;
+        }
+        case 'methodology-route-evaluation': {
+          mock.startSession('smoke-route', 'SMOKE-TEST-METH', 'test');
+          const result = mock.route('smoke-route', { needs_analysis: true, all_done: false });
+          assertions.push({ name: 'Arm selected', passed: result.selectedArm !== null, expected: 'non-null', actual: result.selectedArm?.label ?? 'null' });
+          assertions.push({ name: 'Method recommended', passed: result.selectedMethod !== null, expected: 'non-null', actual: result.selectedMethod?.id ?? 'null' });
+          assertions.push({ name: 'Evaluated predicates returned', passed: result.evaluatedPredicates.length > 0, expected: '>0', actual: String(result.evaluatedPredicates.length) });
+          break;
+        }
+        case 'methodology-select-method': {
+          mock.startSession('smoke-select', 'SMOKE-TEST-METH', 'test');
+          const sel = mock.select('smoke-select', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          assertions.push({ name: 'Method loaded', passed: sel.selectedMethod.methodId === 'M-ANALYZE', expected: 'M-ANALYZE', actual: sel.selectedMethod.methodId });
+          assertions.push({ name: 'Step count correct', passed: sel.selectedMethod.stepCount === 3, expected: '3', actual: String(sel.selectedMethod.stepCount) });
+          assertions.push({ name: 'First step accessible', passed: sel.selectedMethod.firstStep.id === 'gather', expected: 'gather', actual: sel.selectedMethod.firstStep.id });
+          break;
+        }
+        case 'methodology-full-lifecycle': {
+          mock.startSession('smoke-full', 'SMOKE-TEST-METH', 'test');
+          mock.route('smoke-full', { needs_analysis: true, all_done: false });
+          mock.select('smoke-full', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          // Step through all 3 steps of M-ANALYZE
+          mock.recordStepOutput('smoke-full', 'gather', { data: 'gathered' });
+          mock.advanceStep('smoke-full');
+          mock.recordStepOutput('smoke-full', 'assess', { assessment: 'done' });
+          mock.advanceStep('smoke-full');
+          mock.recordStepOutput('smoke-full', 'report', { report: 'delivered' });
+          // Transition
+          const trans = mock.transition('smoke-full', 'Analysis complete', { needs_analysis: false, needs_implementation: true, all_done: false });
+          assertions.push({ name: 'Method completed', passed: trans.completedMethod.id === 'M-ANALYZE', expected: 'M-ANALYZE', actual: trans.completedMethod.id });
+          assertions.push({ name: 'Outputs recorded', passed: trans.completedMethod.outputsRecorded === 3, expected: '3', actual: String(trans.completedMethod.outputsRecorded) });
+          assertions.push({ name: 'Next method available', passed: trans.nextMethod !== null, expected: 'non-null', actual: trans.nextMethod?.id ?? 'null' });
+          break;
+        }
+        case 'methodology-session-status': {
+          mock.startSession('smoke-status', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-status', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const status = mock.getStatus('smoke-status');
+          assertions.push({ name: 'Method ID correct', passed: status.methodId === 'M-ANALYZE', expected: 'M-ANALYZE', actual: status.methodId });
+          assertions.push({ name: 'Step index is 0', passed: status.stepIndex === 0, expected: '0', actual: String(status.stepIndex) });
+          assertions.push({ name: 'Total steps is 3', passed: status.totalSteps === 3, expected: '3', actual: String(status.totalSteps) });
+          break;
+        }
+        case 'methodology-session-isolation': {
+          mock.startSession('iso-a', 'SMOKE-TEST-METH', 'test A');
+          mock.startSession('iso-b', 'SMOKE-TEST-METH', 'test B');
+          mock.select('iso-a', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          mock.select('iso-b', 'SMOKE-TEST-METH', 'M-IMPLEMENT');
+          mock.recordStepOutput('iso-a', 'gather', { data: 'gathered' });
+          mock.advanceStep('iso-a');
+          const statusA = mock.getStatus('iso-a');
+          const statusB = mock.getStatus('iso-b');
+          assertions.push({ name: 'Session A advanced to step 1', passed: statusA.stepIndex === 1, expected: '1', actual: String(statusA.stepIndex) });
+          assertions.push({ name: 'Session B still at step 0', passed: statusB.stepIndex === 0, expected: '0', actual: String(statusB.stepIndex) });
+          assertions.push({ name: 'Different methods loaded', passed: statusA.methodId !== statusB.methodId, expected: 'different', actual: `${statusA.methodId} vs ${statusB.methodId}` });
+          break;
+        }
+        case 'step-inspect-current': {
+          mock.startSession('smoke-step', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-step', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const step = mock.getCurrentStep('smoke-step');
+          assertions.push({ name: 'Step ID is "gather"', passed: step.step.id === 'gather', expected: 'gather', actual: step.step.id });
+          assertions.push({ name: 'Role is "analyst"', passed: step.step.role === 'analyst', expected: 'analyst', actual: step.step.role ?? 'null' });
+          assertions.push({ name: 'Has precondition', passed: step.step.precondition !== null, expected: 'non-null', actual: step.step.precondition ?? 'null' });
+          assertions.push({ name: 'Has postcondition', passed: step.step.postcondition !== null, expected: 'non-null', actual: step.step.postcondition ?? 'null' });
+          break;
+        }
+        case 'step-context-assembly': {
+          mock.startSession('smoke-ctx', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-ctx', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const ctx1 = mock.getStepContext('smoke-ctx');
+          assertions.push({ name: 'No prior outputs at start', passed: ctx1.priorStepOutputs.length === 0, expected: '0', actual: String(ctx1.priorStepOutputs.length) });
+          mock.recordStepOutput('smoke-ctx', 'gather', { data: 'gathered' });
+          mock.advanceStep('smoke-ctx');
+          const ctx2 = mock.getStepContext('smoke-ctx');
+          assertions.push({ name: 'Prior output appears after advance', passed: ctx2.priorStepOutputs.length === 1, expected: '1', actual: String(ctx2.priorStepOutputs.length) });
+          assertions.push({ name: 'Prior output has correct stepId', passed: ctx2.priorStepOutputs[0]?.stepId === 'gather', expected: 'gather', actual: ctx2.priorStepOutputs[0]?.stepId ?? 'none' });
+          assertions.push({ name: 'Methodology progress updated', passed: ctx2.methodology.progress === '2 / 3', expected: '2 / 3', actual: ctx2.methodology.progress });
+          break;
+        }
+        case 'step-advance-through-dag': {
+          mock.startSession('smoke-adv', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-adv', 'SMOKE-TEST-METH', 'M-IMPLEMENT');
+          const step0 = mock.getCurrentStep('smoke-adv');
+          assertions.push({ name: 'First step is "design"', passed: step0.step.id === 'design', expected: 'design', actual: step0.step.id });
+          const adv = mock.advanceStep('smoke-adv');
+          assertions.push({ name: 'Previous step was "design"', passed: adv.previousStep.id === 'design', expected: 'design', actual: adv.previousStep.id });
+          assertions.push({ name: 'Next step is null (terminal)', passed: adv.nextStep === null, expected: 'null', actual: adv.nextStep?.id ?? 'null' });
+          let threwOnOverAdvance = false;
+          try { mock.advanceStep('smoke-adv'); } catch { threwOnOverAdvance = true; }
+          assertions.push({ name: 'Throws on advance past terminal', passed: threwOnOverAdvance, expected: 'throws', actual: threwOnOverAdvance ? 'threw' : 'did not throw' });
+          break;
+        }
+        case 'step-validate-pass': {
+          mock.startSession('smoke-val-pass', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-val-pass', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const result = mock.validateStep('smoke-val-pass', 'gather', { data_gathered: true, summary: 'data gathered successfully' });
+          assertions.push({ name: 'Valid output accepted', passed: result.valid === true, expected: 'true', actual: String(result.valid) });
+          assertions.push({ name: 'Recommendation is advance', passed: result.recommendation === 'advance', expected: 'advance', actual: result.recommendation });
+          assertions.push({ name: 'Postcondition met', passed: result.postconditionMet === true, expected: 'true', actual: String(result.postconditionMet) });
+          break;
+        }
+        case 'step-validate-fail': {
+          mock.startSession('smoke-val-fail', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-val-fail', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const result = mock.validateStep('smoke-val-fail', 'gather', { unrelated: 'xyz' });
+          assertions.push({ name: 'Postcondition not met', passed: result.postconditionMet === false, expected: 'false', actual: String(result.postconditionMet) });
+          assertions.push({ name: 'Recommendation is not advance', passed: result.recommendation !== 'advance', expected: 'retry or escalate', actual: result.recommendation });
+          break;
+        }
+        case 'step-precondition-display': {
+          mock.startSession('smoke-pre', 'SMOKE-TEST-METH', 'test');
+          mock.select('smoke-pre', 'SMOKE-TEST-METH', 'M-ANALYZE');
+          const step = mock.getCurrentStep('smoke-pre');
+          assertions.push({ name: 'Precondition label extracted', passed: step.step.precondition !== null, expected: 'non-null', actual: step.step.precondition ?? 'null' });
+          assertions.push({ name: 'Precondition contains "challenge"', passed: (step.step.precondition ?? '').includes('challenge'), expected: 'contains "challenge"', actual: step.step.precondition ?? '' });
+          break;
+        }
+        default:
+          return { type: 'case_failed', caseId: testCase.id, error: `Unknown methodology case: ${testCase.id}`, durationMs: Date.now() - startMs };
+      }
+
+      return {
+        type: 'case_completed',
+        caseId: testCase.id,
+        result: { status: 'completed', cost_usd: 0, duration_ms: Date.now() - startMs, node_count: 0, artifact_count: 0, gate_count: 0, oversight_count: 0 },
+        assertions,
+        allPassed: assertions.every(a => a.passed),
+        durationMs: Date.now() - startMs,
+      };
+    } catch (err) {
+      return { type: 'case_failed', caseId: testCase.id, error: err instanceof Error ? err.message : String(err), durationMs: Date.now() - startMs };
+    }
+  }
+
+  // Agent-layer test cases — run via Pacta agent with real provider
+  if (testCase.layer === 'agent') {
     if (!isLiveModeAvailable()) {
       return {
         type: 'case_completed',
@@ -305,7 +473,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
   try {
     const yaml = loadFixtureYaml(fixturePath);
     const options = getMockOptions(testCase);
-    const { result } = await runMockStrategy(yaml, options);
+    const { result, flow } = await runMockStrategy(yaml, options);
     const assertions = checkResult(result, testCase.expected);
     const passed = assertions.every((a) => a.passed);
 
@@ -324,6 +492,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
       assertions,
       allPassed: passed,
       durationMs: Date.now() - startMs,
+      flow,
     };
   } catch (err) {
     // If the test case expects failure, check error message
@@ -352,92 +521,207 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
   }
 }
 
+// ── Startup validation gates ────────────────────────────────────
+
+/**
+ * Validate layer/cluster/feature/case registries before the server accepts
+ * traffic. On any failure, logs a clear message and exits with code 1.
+ *
+ * Gates:
+ *  - G-LAYER-REG          — every layerId reference resolves to layerRegistry
+ *  - G-FEATURE-REF        — every case.features[] entry resolves to a Feature
+ *  - G-FEATURE-COMPLETENESS — every feature has a valid coverage value after
+ *                             computeCoverage() runs
+ */
+export function validateRegistries(): void {
+  // G-LAYER-REG — clusters
+  for (const c of clusterRegistry) {
+    if (!layerRegistry.find((l) => l.id === c.layerId)) {
+      console.error(
+        `G-LAYER-REG FAIL: cluster ${c.id} references unknown layer '${c.layerId}'`,
+      );
+      process.exit(1);
+    }
+  }
+  // G-LAYER-REG — features
+  for (const f of featureRegistry) {
+    if (!layerRegistry.find((l) => l.id === f.layerId)) {
+      console.error(
+        `G-LAYER-REG FAIL: feature ${f.id} references unknown layer '${f.layerId}'`,
+      );
+      process.exit(1);
+    }
+  }
+  // G-LAYER-REG — cases
+  for (const c of allCases.values()) {
+    if (!layerRegistry.find((l) => l.id === c.layer)) {
+      console.error(
+        `G-LAYER-REG FAIL: case ${c.id} references unknown layer '${c.layer}'`,
+      );
+      process.exit(1);
+    }
+  }
+
+  // G-FEATURE-REF — every case.features[i] must resolve
+  for (const c of allCases.values()) {
+    for (const fid of c.features) {
+      if (!featureRegistry.find((f) => f.id === fid)) {
+        console.error(
+          `G-FEATURE-REF FAIL: case ${c.id} references unknown feature '${fid}'`,
+        );
+        process.exit(1);
+      }
+    }
+  }
+
+  // Compute coverage once at startup so /api/features can return directly
+  computeCoverage([...allCases.values()]);
+
+  // G-FEATURE-COMPLETENESS — every feature has a valid coverage value
+  for (const f of featureRegistry) {
+    if (f.coverage !== 'covered' && f.coverage !== 'gap') {
+      console.error(
+        `G-FEATURE-COMPLETENESS FAIL: feature ${f.id} has invalid coverage '${String(f.coverage)}'`,
+      );
+      process.exit(1);
+    }
+  }
+
+  console.log(
+    `Registry validation: OK (${layerRegistry.length} layers, ${clusterRegistry.length} clusters, ${featureRegistry.length} features, ${allCases.size} cases)`,
+  );
+}
+
 // ── HTTP server ─────────────────────────────────────────────────
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+export function createServer(): http.Server {
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
 
-  if (req.method === 'GET' && url.pathname === '/') {
-    const html = readFileSync(join(__dirname, 'app/index.html'), 'utf8');
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(html);
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/styles.css') {
-    const css = readFileSync(join(__dirname, 'app/styles.css'), 'utf8');
-    res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
-    res.end(css);
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/cases') {
-    const cases = [...allCases.values()].map((c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description,
-      category: c.category,
-      features: c.features,
-      mode: c.mode,
-    }));
-    const features = allFeatures();
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ cases, features }));
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname.startsWith('/api/run/')) {
-    const caseId = url.pathname.slice('/api/run/'.length);
-    const testCase = allCases.get(caseId);
-    if (!testCase) {
-      res.writeHead(404, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Case not found' }));
+    if (req.method === 'GET' && url.pathname === '/') {
+      const html = readFileSync(join(__dirname, 'app/index.html'), 'utf8');
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(html);
       return;
     }
 
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    });
-
-    const send = (ev: RunEvent) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
-    send({ type: 'case_started', caseId });
-
-    const result = await runCase(testCase);
-    send(result);
-    res.end();
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/run-all') {
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    });
-
-    const send = (ev: RunEvent & { total?: number; completed?: number }) =>
-      res.write(`data: ${JSON.stringify(ev)}\n\n`);
-
-    const cases = [...allCases.values()].filter((c) => c.mode !== 'live');
-    let completed = 0;
-
-    for (const tc of cases) {
-      send({ type: 'case_started', caseId: tc.id, total: cases.length, completed });
-      const result = await runCase(tc);
-      completed++;
-      send({ ...result, total: cases.length, completed });
+    if (req.method === 'GET' && url.pathname === '/styles.css') {
+      const css = readFileSync(join(__dirname, 'app/styles.css'), 'utf8');
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      res.end(css);
+      return;
     }
-    res.end();
-    return;
-  }
 
-  res.writeHead(404);
-  res.end('not found');
-});
+    if (req.method === 'GET' && url.pathname === '/api/cases') {
+      const cases = [...allCases.values()].map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        layer: c.layer,
+        features: c.features,
+        mode: c.mode,
+      }));
+      const features = allFeatures();
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ cases, features }));
+      return;
+    }
 
-server.listen(PORT, () => {
-  console.log(`Smoke test UI at http://localhost:${PORT}`);
-  console.log(`${allCases.size} test cases loaded`);
-});
+    if (req.method === 'GET' && url.pathname === '/api/layers') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(layerRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/clusters') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(clusterRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/features') {
+      // Coverage is precomputed at startup by validateRegistries().
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(featureRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith('/api/run/')) {
+      const caseId = url.pathname.slice('/api/run/'.length);
+      const testCase = allCases.get(caseId);
+      if (!testCase) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Case not found' }));
+        return;
+      }
+
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      });
+
+      const send = (ev: RunEvent) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
+      send({ type: 'case_started', caseId });
+
+      const result = await runCase(testCase);
+      send(result);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/run-all') {
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      });
+
+      const send = (ev: RunEvent & { total?: number; completed?: number }) =>
+        res.write(`data: ${JSON.stringify(ev)}\n\n`);
+
+      const cases = [...allCases.values()].filter((c) => c.mode !== 'live');
+      let completed = 0;
+
+      for (const tc of cases) {
+        send({ type: 'case_started', caseId: tc.id, total: cases.length, completed });
+        const result = await runCase(tc);
+        completed++;
+        send({ ...result, total: cases.length, completed });
+      }
+      res.end();
+      return;
+    }
+
+    res.writeHead(404);
+    res.end('not found');
+  });
+}
+
+/**
+ * Start the smoke test server. Validates registries first; on failure the
+ * process exits non-zero. Resolves with the bound {@link http.Server} once
+ * it is listening. If `port` is 0, the OS assigns a free port — read
+ * `.address()` on the returned server to discover it.
+ */
+export function start(port: number = Number(process.env.PORT ?? DEFAULT_PORT)): Promise<http.Server> {
+  validateRegistries();
+  const server = createServer();
+  return new Promise((resolve) => {
+    server.listen(port, () => {
+      const addr = server.address();
+      const boundPort = typeof addr === 'object' && addr !== null ? addr.port : port;
+      console.log(`Smoke test UI at http://localhost:${boundPort}`);
+      console.log(`${allCases.size} test cases loaded`);
+      resolve(server);
+    });
+  });
+}
+
+// CLI entrypoint — run when executed directly via `npx tsx src/server.ts`.
+// The file:// comparison tolerates Windows path quirks by normalizing both
+// sides through the URL constructor.
+const invokedPath = process.argv[1] ? new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href : '';
+if (import.meta.url === invokedPath) {
+  void start();
+}
