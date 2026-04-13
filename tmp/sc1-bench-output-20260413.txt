@@ -1,0 +1,695 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q1: "event bus implementation"  (229ms)
+  query result tokens :  1158  (4631 chars)
+  +top-1 detail tokens:   834  (3334 chars)
+  combined            :  1992
+  grep baseline       : 13200
+  ratio (query only)  : 9%
+  ratio (q+detail)    : 15%
+
+--- query rendering ---
+[mode: production]
+[5 results for "event bus implementation"]
+
+1. packages/cluster/src (L2) — relevance: 1.00, coverage: 1.00
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\federation\event-relay.config.ts
+     | // ── Federation Configuration ────────────────────────────────────
+     | //
+     | // Zod-validated config for the EventRelay. Controls which events
+     | // are federated across cluster peers and at what severity threshold.
+     | 
+     | import { z } from 'zod';
+     | 
+     | const EventSeveritySchema = z.enum(['debug', 'info', 'warning', 'error', 'critical']);
+     | 
+     | export type EventSe
+   interface: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\index.ts
+     | // ── @method/cluster — Public API ────────────────────────────────
+     | //
+     | // Transport-agnostic cluster protocol package (L3). Defines
+     | // membership state machine, resource reporting, and port interfaces
+     | // for discovery, networking, and resource monitoring.
+     | //
+     | // Zero transport dependencies — all I/O enters through ports.
+     | 
+     | // ── Types ───────
+   port: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\ports\discovery-provider.ts
+     | // ── Discovery Provider Port ─────────────────────────────────────
+     | //
+     | // How a bridge finds other bridges in the cluster. Implementations
+     | // might use Tailscale API, static seed lists, mDNS, gossip, etc.
+     | // The cluster package never imports a specific discovery mechanism.
+     | 
+     | import type { PeerAddress, NodeIdentity } from '../types.js';
+     | 
+     | /**
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\README.md
+     | # @method/cluster — Cluster Protocol
+
+2. packages/bridge/src/ports (L2) — relevance: 0.80, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\index.ts
+     > export { FileSystemProvider, DirEntry, FileStat, NodeFileSystemProvider } from './file-system.js'; export { YamlLoader,
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\methodology-source.test.ts
+     > /**  * MethodologySource port tests.  *  * Tests both implementations:  * 1. StdlibSource — production implementatio
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\README.md
+     > # ports/ — Bridge Cross-Domain Port Interfaces
+
+3. packages/bridge/src (L2) — relevance: 0.60, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\health-instance-name.test.ts
+     > /**  * Health endpoint — instance_name field tests (PRD 038 C-2).  *  * Verifies that INSTANCE_NAME env var is surfac
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\index.ts
+     > /**  * @method/bridge — L4 Application Entry Point  *  * The bridge is the composition root for the entire method run
+   port: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\README.md
+     > # @method/bridge — Bridge Application
+
+4. packages/method-ctl/src (L2) — relevance: 0.40, coverage: 0.50
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\commands\index.ts
+     > /**  * commands/ — method-ctl command handler functions.  *  * statusCommand: fetches bridge health + cluster overvie
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\README.md
+     > # method-ctl — Cluster Management CLI
+
+5. packages/pacta-provider-anthropic/src (L2) — relevance: 0.20, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\anthropic-provider.test.ts
+     > /**  * Tests for Anthropic Messages API Provider.  *  * All HTTP calls are mocked — no actual Anthropic API calls are
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\index.ts
+     > // @method/pacta-provider-anthropic — Anthropic Messages API AgentProvider // anthropicProvider(), streaming, tool use,
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\README.md
+     > # @method/pacta-provider-anthropic
+
+--- top-1 detail rendering ---
+path: packages/cluster/src
+level: L2
+indexedAt: 2026-04-13T01:56:12.760Z
+
+parts:
+  boundary: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\federation\event-relay.config.ts
+    > // ── Federation Configuration ────────────────────────────────────
+    //
+    // Zod-validated config for the EventRelay. Controls which events
+    // are federated across cluster peers and at what severity threshold.
+    
+    import { z } from 'zod';
+    
+    const EventSeveritySchema = z.enum(['debug', 'info', 'warni
+  interface: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\index.ts
+    > // ── @method/cluster — Public API ────────────────────────────────
+    //
+    // Transport-agnostic cluster protocol package (L3). Defines
+    // membership state machine, resource reporting, and port interfaces
+    // for discovery, networking, and resource monitoring.
+    //
+    // Zero transport dependencies — al
+  port: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\ports\discovery-provider.ts
+    > // ── Discovery Provider Port ─────────────────────────────────────
+    //
+    // How a bridge finds other bridges in the cluster. Implementations
+    // might use Tailscale API, static seed lists, mDNS, gossip, etc.
+    // The cluster package never imports a specific discovery mechanism.
+    
+    import type { PeerA
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\README.md
+    > # @method/cluster — Cluster Protocol
+
+docText:
+// ── Federation Configuration ────────────────────────────────────
+//
+// Zod-validated config for the EventRelay. Controls which events
+// are federated across cluster peers and at what severity threshold.
+
+import { z } from 'zod';
+
+const EventSeveritySchema = z.enum(['debug', 'info', 'warning', 'error', 'critical']);
+
+export type EventSeverity = z.infer<typeof EventSeveritySchema>;
+
+export const EventRelayConfigSchema = z.object({
+  /** Whether event federation is enabled at all. */
+  federationEnabled: z.boolean().default(true),
+
+  /** Only relay events at or above these seve
+
+// ── @method/cluster — Public API ────────────────────────────────
+//
+// Transport-agnostic cluster protocol package (L3). Defines
+// membership state machine, resource reporting, and port interfaces
+// for discovery, networking, and resource monitoring.
+//
+// Zero transport dependencies — all I/O enters through ports.
+
+// ── Types ───────────────────────────────────────────────────────
+
+export type {
+  PeerAddress,
+  NodeIdentity,
+  NodeStatus,
+  ClusterNode,
+  ClusterState,
+  ClusterMessage,
+  ResourceSnapshot,
+  FederatedEvent,
+  ProjectSummary,
+  WorkRequest,
+} from '
+
+// ── Discovery Provider Port ─────────────────────────────────────
+//
+// How a bridge finds other bridges in the cluster. Implementations
+// might use Tailscale API, static seed lists, mDNS, gossip, etc.
+// The cluster package never imports a specific discovery mechanism.
+
+import type { PeerAddress, NodeIdentity } from '../types.js';
+
+/**
+ * Port interface for peer discovery.
+ *
+ * Implementations are injected at the composition root (L4).
+ * The cluster package only depends on this interface, never on
+ * a concrete discovery mechanism.
+ */
+export interface DiscoveryProvider {
+
+# @method/cluster — Cluster Protocol
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q2: "session lifecycle management"  (146ms)
+  query result tokens :  1076  (4304 chars)
+  +top-1 detail tokens:   469  (1873 chars)
+  combined            :  1545
+  grep baseline       :  8000
+  ratio (query only)  : 13%
+  ratio (q+detail)    : 19%
+
+--- query rendering ---
+[mode: production]
+[5 results for "session lifecycle management"]
+
+1. packages/pacta-playground/src (L2) — relevance: 1.00, coverage: 0.50
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+     | /**
+     |  * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     |  *
+     |  * Three scenarios:
+     |  * 1. Cognitive scenario executes with default recording modules
+     |  * 2. Phase order assertion verifies correct cycle execution
+     |  * 3. Monitor intervention detection works (threshold configured to always intervene)
+     |  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+     | // @method/pacta-playground — simulated agent evaluation environment
+     | // Scenario runner, virtual FS, scripted tools, comparative eval
+     | 
+     | // Types
+     | export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+     | 
+     | // Virtual tool provider (Tier 3)
+     | export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+2. packages/method-ctl/src (L2) — relevance: 0.80, coverage: 0.50
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\commands\index.ts
+     > /**  * commands/ — method-ctl command handler functions.  *  * statusCommand: fetches bridge health + cluster overvie
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\README.md
+     > # method-ctl — Cluster Management CLI
+
+3. packages/bridge/src (L2) — relevance: 0.60, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\health-instance-name.test.ts
+     > /**  * Health endpoint — instance_name field tests (PRD 038 C-2).  *  * Verifies that INSTANCE_NAME env var is surfac
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\index.ts
+     > /**  * @method/bridge — L4 Application Entry Point  *  * The bridge is the composition root for the entire method run
+   port: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\README.md
+     > # @method/bridge — Bridge Application
+
+4. packages/pacta/src (L2) — relevance: 0.40, coverage: 1.00
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\agents\code-agent.ts
+     > /**  * Code Agent — pre-assembled reference agent for coding tasks.  *  * Default pact:  * - Mode: oneshot  * - Bud
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\errors.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import {   ProviderError,   Trans
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\index.ts
+     > // ── Pacta — Modular Agent SDK ───────────────────────────────────── // // The pact is the core abstraction: a typed 
+   port: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\ports\agent-provider.ts
+     > /**  * Agent Provider — the port interface for agent runtimes.  *  * Split into base (required) + optional capability
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\README.md
+     > # @method/pacta — Modular Agent SDK
+
+5. packages/bridge/src/ports (L2) — relevance: 0.20, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\index.ts
+     > export { FileSystemProvider, DirEntry, FileStat, NodeFileSystemProvider } from './file-system.js'; export { YamlLoader,
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\methodology-source.test.ts
+     > /**  * MethodologySource port tests.  *  * Tests both implementations:  * 1. StdlibSource — production implementatio
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\README.md
+     > # ports/ — Bridge Cross-Domain Port Interfaces
+
+--- top-1 detail rendering ---
+path: packages/pacta-playground/src
+level: L2
+indexedAt: 2026-04-13T01:56:12.768Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+    > /**
+     * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     *
+     * Three scenarios:
+     * 1. Cognitive scenario executes with default recording modules
+     * 2. Phase order assertion verifies correct cycle execution
+     * 3. Monitor intervention detection works (threshold configured to always intervene
+  interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+    > // @method/pacta-playground — simulated agent evaluation environment
+    // Scenario runner, virtual FS, scripted tools, comparative eval
+    
+    // Types
+    export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+    
+    // Virtual tool provider (Tier 3)
+    export { Virtua
+
+docText:
+/**
+ * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+ *
+ * Three scenarios:
+ * 1. Cognitive scenario executes with default recording modules
+ * 2. Phase order assertion verifies correct cycle execution
+ * 3. Monitor intervention detection works (threshold configured to always intervene)
+ */
+
+// @method/pacta-playground — simulated agent evaluation environment
+// Scenario runner, virtual FS, scripted tools, comparative eval
+
+// Types
+export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+
+// Virtual tool provider (Tier 3)
+export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+// Scripted tool provider (Tier 2)
+export { ScriptedToolProvider } from './scripted-tool-provider.js';
+export type { InputMatcher, ScriptedRule } from './scripted-tool-provider.js';
+
+// Scenario builder and helpers
+export {
+  ScenarioBuilde
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q3: "strategy pipeline execution"  (150ms)
+  query result tokens :  1226  (4901 chars)
+  +top-1 detail tokens:   469  (1873 chars)
+  combined            :  1695
+  grep baseline       :  9000
+  ratio (query only)  : 14%
+  ratio (q+detail)    : 19%
+
+--- query rendering ---
+[mode: production]
+[5 results for "strategy pipeline execution"]
+
+1. packages/pacta-playground/src (L2) — relevance: 1.00, coverage: 0.50
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+     | /**
+     |  * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     |  *
+     |  * Three scenarios:
+     |  * 1. Cognitive scenario executes with default recording modules
+     |  * 2. Phase order assertion verifies correct cycle execution
+     |  * 3. Monitor intervention detection works (threshold configured to always intervene)
+     |  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+     | // @method/pacta-playground — simulated agent evaluation environment
+     | // Scenario runner, virtual FS, scripted tools, comparative eval
+     | 
+     | // Types
+     | export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+     | 
+     | // Virtual tool provider (Tier 3)
+     | export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+2. packages/bridge/src (L2) — relevance: 0.80, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\health-instance-name.test.ts
+     > /**  * Health endpoint — instance_name field tests (PRD 038 C-2).  *  * Verifies that INSTANCE_NAME env var is surfac
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\index.ts
+     > /**  * @method/bridge — L4 Application Entry Point  *  * The bridge is the composition root for the entire method run
+   port: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\README.md
+     > # @method/bridge — Bridge Application
+
+3. packages/methodts/src (L2) — relevance: 0.60, coverage: 1.00
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\adapter\index.ts
+     > /**  * adapter/ — YAML ↔ TypeScript serialization layer.  *  * YamlAdapter: bidirectional converter between raw YAML 
+   domain: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\domain\domain-theory.ts
+     > /**  * DomainTheory<S> — Typed representation of F1-FTH Definition 1.1.  *  * D = (Σ, Ax) where Σ = (S, Ω, Π) is a ma
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\index.ts
+     > /**  * @method/methodts — Typed Methodology SDK  *  * Makes the formal theory (F1-FTH) executable in TypeScript.  * 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\README.md
+     > # @method/methodts — Typed Methodology SDK
+
+4. packages/pacta/src (L2) — relevance: 0.40, coverage: 1.00
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\agents\code-agent.ts
+     > /**  * Code Agent — pre-assembled reference agent for coding tasks.  *  * Default pact:  * - Mode: oneshot  * - Bud
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\errors.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import {   ProviderError,   Trans
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\index.ts
+     > // ── Pacta — Modular Agent SDK ───────────────────────────────────── // // The pact is the core abstraction: a typed 
+   port: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\ports\agent-provider.ts
+     > /**  * Agent Provider — the port interface for agent runtimes.  *  * Split into base (required) + optional capability
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\README.md
+     > # @method/pacta — Modular Agent SDK
+
+5. packages/bridge/src/shared (L2) — relevance: 0.20, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\architecture.test.ts
+     > /**  * FCA Architecture Gate Tests  *  * Structural validation that enforces Fractal Component Architecture invariant
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\config\config-reload.test.ts
+     > /**  * Config Reload Tests — Atomic writes, validation, audit logging  *  * Tests:  * - Config validation (valid/inv
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\index.ts
+     > /** Shared module barrel — re-exports from subdirectories. */
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\README.md
+     > # shared/ — Cross-Domain Bridge Utilities
+
+--- top-1 detail rendering ---
+path: packages/pacta-playground/src
+level: L2
+indexedAt: 2026-04-13T01:56:12.768Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+    > /**
+     * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     *
+     * Three scenarios:
+     * 1. Cognitive scenario executes with default recording modules
+     * 2. Phase order assertion verifies correct cycle execution
+     * 3. Monitor intervention detection works (threshold configured to always intervene
+  interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+    > // @method/pacta-playground — simulated agent evaluation environment
+    // Scenario runner, virtual FS, scripted tools, comparative eval
+    
+    // Types
+    export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+    
+    // Virtual tool provider (Tier 3)
+    export { Virtua
+
+docText:
+/**
+ * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+ *
+ * Three scenarios:
+ * 1. Cognitive scenario executes with default recording modules
+ * 2. Phase order assertion verifies correct cycle execution
+ * 3. Monitor intervention detection works (threshold configured to always intervene)
+ */
+
+// @method/pacta-playground — simulated agent evaluation environment
+// Scenario runner, virtual FS, scripted tools, comparative eval
+
+// Types
+export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+
+// Virtual tool provider (Tier 3)
+export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+// Scripted tool provider (Tier 2)
+export { ScriptedToolProvider } from './scripted-tool-provider.js';
+export type { InputMatcher, ScriptedRule } from './scripted-tool-provider.js';
+
+// Scenario builder and helpers
+export {
+  ScenarioBuilde
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q4: "FCA architecture gate tests"  (305ms)
+  query result tokens :  1096  (4383 chars)
+  +top-1 detail tokens:   576  (2304 chars)
+  combined            :  1672
+  grep baseline       :   300
+  ratio (query only)  : 365%
+  ratio (q+detail)    : 557%
+
+--- query rendering ---
+[mode: production]
+[5 results for "FCA architecture gate tests"]
+
+1. packages/bridge/src/shared (L2) — relevance: 1.00, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\architecture.test.ts
+     | /**
+     |  * FCA Architecture Gate Tests
+     |  *
+     |  * Structural validation that enforces Fractal Component Architecture invariants
+     |  * at test time. These are fitness functions — they test the architecture itself,
+     |  * not behavior. Runs on every `npm test`.
+     |  *
+     |  * Gates enforced:
+     |  *   G-PORT:    Domain production code must not import fs/js-yaml/child_proc
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\config\config-reload.test.ts
+     | /**
+     |  * Config Reload Tests — Atomic writes, validation, audit logging
+     |  *
+     |  * Tests:
+     |  * - Config validation (valid/invalid configs)
+     |  * - Atomic writes (temp file + rename)
+     |  * - Privilege enforcement (project_id matching)
+     |  * - Audit logging (timestamp, user, diffs)
+     |  * - File watcher integration (trigger rescan)
+     |  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\index.ts
+     | /** Shared module barrel — re-exports from subdirectories. */
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\README.md
+     | # shared/ — Cross-Domain Bridge Utilities
+
+2. packages/fca-index/src (L2) — relevance: 0.80, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\architecture.test.ts
+     > /**  * FCA Architecture Gate Tests — @method/fca-index  *  * Structural fitness functions enforcing FCA invariants wi
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\cli\index.ts
+     > #!/usr/bin/env node /**  * fca-index CLI — index and query FCA-compliant projects.  *  * Usage:  *   fca-index scan
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\index.ts
+     > /**  * @method/fca-index — FCA-Indexed Context Library  *  * Public API. Exports port interfaces and canonical types.
+   port: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\ports\compliance-suggestion.ts
+     > /**  * ComplianceSuggestionPort — Port for generating FCA compliance improvement suggestions.  *  * A caller provides
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\README.md
+     > # @method/fca-index — FCA Index Library
+
+3. packages/fca-index/src/compliance (L2) — relevance: 0.60, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\compliance\compliance-engine.test.ts
+     > /**  * ComplianceEngine + TemplateGenerator — unit tests.  *  * All tests use InMemoryIndexStore as the store double.
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\compliance\index.ts
+     > /**  * compliance/ — FCA compliance suggestion domain.  *  * Analyzes indexed components for missing FCA parts and ge
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\compliance\README.md
+     > # compliance/ — FCA Compliance Suggestion Domain
+
+4. packages/fca-index/src/coverage (L2) — relevance: 0.40, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\coverage\coverage-engine.test.ts
+     > /**  * CoverageEngine — unit tests.  *  * All tests use InMemoryIndexStore as the store double.  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\coverage\index.ts
+     > /**  * coverage/ — Coverage reporting domain.  *  * Computes FCA documentation coverage across all indexed components
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\coverage\README.md
+     > # coverage
+
+5. packages/pacta-playground/src (L2) — relevance: 0.20, coverage: 0.50
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+     > /**  * Unit tests for cognitive scenario DSL (PRD 030, C-7).  *  * Three scenarios:  * 1. Cognitive scenario execute
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+     > // @method/pacta-playground — simulated agent evaluation environment // Scenario runner, virtual FS, scripted tools, co
+
+--- top-1 detail rendering ---
+path: packages/bridge/src/shared
+level: L2
+indexedAt: 2026-04-13T01:56:12.774Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\architecture.test.ts
+    > /**
+     * FCA Architecture Gate Tests
+     *
+     * Structural validation that enforces Fractal Component Architecture invariants
+     * at test time. These are fitness functions — they test the architecture itself,
+     * not behavior. Runs on every `npm test`.
+     *
+     * Gates enforced:
+     *   G-PORT:    Domain pro
+  boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\config\config-reload.test.ts
+    > /**
+     * Config Reload Tests — Atomic writes, validation, audit logging
+     *
+     * Tests:
+     * - Config validation (valid/invalid configs)
+     * - Atomic writes (temp file + rename)
+     * - Privilege enforcement (project_id matching)
+     * - Audit logging (timestamp, user, diffs)
+     * - File watcher integration
+  interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\index.ts
+    > /** Shared module barrel — re-exports from subdirectories. */
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\README.md
+    > # shared/ — Cross-Domain Bridge Utilities
+
+docText:
+/**
+ * FCA Architecture Gate Tests
+ *
+ * Structural validation that enforces Fractal Component Architecture invariants
+ * at test time. These are fitness functions — they test the architecture itself,
+ * not behavior. Runs on every `npm test`.
+ *
+ * Gates enforced:
+ *   G-PORT:    Domain production code must not import fs/js-yaml/child_process directly
+ *   G-BOUNDARY: Domains must not import sibling domain internals at runtime
+ *   G-LAYER:   Lower-layer packages must not import higher-layer packages
+ *
+ * References: docs/fractal-component-architecture/05-principles.md (P3, P6, P
+
+/**
+ * Config Reload Tests — Atomic writes, validation, audit logging
+ *
+ * Tests:
+ * - Config validation (valid/invalid configs)
+ * - Atomic writes (temp file + rename)
+ * - Privilege enforcement (project_id matching)
+ * - Audit logging (timestamp, user, diffs)
+ * - File watcher integration (trigger rescan)
+ */
+
+/** Shared module barrel — re-exports from subdirectories. */
+
+# shared/ — Cross-Domain Bridge Utilities
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q5: "methodology session persistence"  (138ms)
+  query result tokens :  1046  (4182 chars)
+  +top-1 detail tokens:   469  (1873 chars)
+  combined            :  1515
+  grep baseline       :  7000
+  ratio (query only)  : 15%
+  ratio (q+detail)    : 22%
+
+--- query rendering ---
+[mode: production]
+[5 results for "methodology session persistence"]
+
+1. packages/pacta-playground/src (L2) — relevance: 1.00, coverage: 0.50
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+     | /**
+     |  * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     |  *
+     |  * Three scenarios:
+     |  * 1. Cognitive scenario executes with default recording modules
+     |  * 2. Phase order assertion verifies correct cycle execution
+     |  * 3. Monitor intervention detection works (threshold configured to always intervene)
+     |  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+     | // @method/pacta-playground — simulated agent evaluation environment
+     | // Scenario runner, virtual FS, scripted tools, comparative eval
+     | 
+     | // Types
+     | export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+     | 
+     | // Virtual tool provider (Tier 3)
+     | export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+2. packages/pacta-testkit/src (L2) — relevance: 0.80, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-testkit\src\assertions.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import type { AgentResult, TokenUsa
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-testkit\src\index.ts
+     > // @method/pacta-testkit — verification affordances for Pacta agents // RecordingProvider, builders, assertions, cognit
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta-testkit\src\README.md
+     > # @method/pacta-testkit
+
+3. packages/fca-index/src/index-store (L2) — relevance: 0.60, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\index-store\embedding-client.test.ts
+     > /**  * VoyageEmbeddingClient — unit tests.  *  * Uses vi.stubGlobal to mock fetch. Tests rate-limit backoff with fake
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\index-store\index.ts
+     > /**  * index-store/ — Hybrid SQLite + LanceDB storage layer.  *  * SqliteLanceIndexStore: implements IndexStorePort b
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\index-store\README.md
+     > # index-store domain
+
+4. packages/bridge/src (L2) — relevance: 0.40, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\health-instance-name.test.ts
+     > /**  * Health endpoint — instance_name field tests (PRD 038 C-2).  *  * Verifies that INSTANCE_NAME env var is surfac
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\index.ts
+     > /**  * @method/bridge — L4 Application Entry Point  *  * The bridge is the composition root for the entire method run
+   port: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\README.md
+     > # @method/bridge — Bridge Application
+
+5. packages/pacta-provider-anthropic/src (L2) — relevance: 0.20, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\anthropic-provider.test.ts
+     > /**  * Tests for Anthropic Messages API Provider.  *  * All HTTP calls are mocked — no actual Anthropic API calls are
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\index.ts
+     > // @method/pacta-provider-anthropic — Anthropic Messages API AgentProvider // anthropicProvider(), streaming, tool use,
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta-provider-anthropic\src\README.md
+     > # @method/pacta-provider-anthropic
+
+--- top-1 detail rendering ---
+path: packages/pacta-playground/src
+level: L2
+indexedAt: 2026-04-13T01:56:12.768Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\cognitive-scenario.test.ts
+    > /**
+     * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+     *
+     * Three scenarios:
+     * 1. Cognitive scenario executes with default recording modules
+     * 2. Phase order assertion verifies correct cycle execution
+     * 3. Monitor intervention detection works (threshold configured to always intervene
+  interface: C:\Users\atfm0\Repositories\method-1\packages\pacta-playground\src\index.ts
+    > // @method/pacta-playground — simulated agent evaluation environment
+    // Scenario runner, virtual FS, scripted tools, comparative eval
+    
+    // Types
+    export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+    
+    // Virtual tool provider (Tier 3)
+    export { Virtua
+
+docText:
+/**
+ * Unit tests for cognitive scenario DSL (PRD 030, C-7).
+ *
+ * Three scenarios:
+ * 1. Cognitive scenario executes with default recording modules
+ * 2. Phase order assertion verifies correct cycle execution
+ * 3. Monitor intervention detection works (threshold configured to always intervene)
+ */
+
+// @method/pacta-playground — simulated agent evaluation environment
+// Scenario runner, virtual FS, scripted tools, comparative eval
+
+// Types
+export type { FidelityLevel, EvalReport, ComparativeReport, ScenarioAssertion } from './types.js';
+
+// Virtual tool provider (Tier 3)
+export { VirtualToolProvider } from './virtual-tool-provider.js';
+
+// Scripted tool provider (Tier 2)
+export { ScriptedToolProvider } from './scripted-tool-provider.js';
+export type { InputMatcher, ScriptedRule } from './scripted-tool-provider.js';
+
+// Scenario builder and helpers
+export {
+  ScenarioBuilde
+
+════════════════════════════════════════════════════════════════════════════════
+TOTALS
+════════════════════════════════════════════════════════════════════════════════
+grep baseline total       : 37500
+query-only total          : 5602  (15%)
+query+top-1 detail total  : 8419  (22%)
+
+Per-query summary (tokens):
+id  query                                  grep   q-only  +det   ratio
+Q1  event bus implementation               13200    1158   1992      9%
+Q2  session lifecycle management            8000    1076   1545     13%
+Q3  strategy pipeline execution             9000    1226   1695     14%
+Q4  FCA architecture gate tests              300    1096   1672    365%
+Q5  methodology session persistence         7000    1046   1515     15%
