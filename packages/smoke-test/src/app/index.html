@@ -434,10 +434,335 @@
     }
 
     // ────────────────────────────────────────────────────────────
+    // CaseCard — reusable DOM factory (C-8 deliverable, consumed by C-9)
+    //
+    // Returns a self-contained element that renders a SmokeTestCase and,
+    // when the Run button is clicked, opens /api/run/:id via SSE and
+    // streams events into its own status dot + assertion list.
+    // ────────────────────────────────────────────────────────────
+    const CaseCard = {
+      /**
+       * @param {{
+       *   id: string, name: string, description?: string,
+       *   layer: 'methodology'|'method'|'strategy'|'agent',
+       *   status?: 'idle'|'running'|'pass'|'fail',
+       *   proposed?: boolean,            // render as amber PROPOSED card, disables Run
+       *   assertions?: Array<{name:string, passed:boolean, expected?:string, actual?:string}>,
+       * }} caseData
+       */
+      render(caseData) {
+        const root = document.createElement('div');
+        root.className = 'case-card';
+        root.dataset.caseId = caseData.id;
+
+        const initialStatus = caseData.proposed ? 'proposed' : (caseData.status ?? 'idle');
+        root.classList.add(initialStatus);
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'case-card-header';
+
+        const title = document.createElement('div');
+        title.className = 'case-card-title';
+        const dot = document.createElement('span');
+        dot.className = `status-dot ${initialStatus}`;
+        title.appendChild(dot);
+        title.appendChild(Badge.layerBadge(caseData.layer));
+        const nameEl = document.createElement('span');
+        nameEl.className = 'case-name';
+        nameEl.textContent = caseData.name;
+        title.appendChild(nameEl);
+        header.appendChild(title);
+
+        const badges = document.createElement('div');
+        badges.className = 'case-card-badge';
+        const timeEl = document.createElement('span');
+        timeEl.className = 'case-card-time';
+        timeEl.textContent = '';
+        badges.appendChild(timeEl);
+        const statusPill = document.createElement('span');
+        statusPill.className = `case-card-status ${initialStatus}`;
+        statusPill.textContent = caseData.proposed ? 'PROPOSED' : initialStatus.toUpperCase();
+        badges.appendChild(statusPill);
+        if (!caseData.proposed) {
+          const runBtn = document.createElement('button');
+          runBtn.type = 'button';
+          runBtn.className = 'case-run-btn';
+          runBtn.textContent = 'Run';
+          badges.appendChild(runBtn);
+        }
+        header.appendChild(badges);
+        root.appendChild(header);
+
+        // Body
+        const body = document.createElement('div');
+        body.className = 'case-card-body';
+
+        if (caseData.description) {
+          const desc = document.createElement('div');
+          desc.className = 'case-narrative';
+          desc.textContent = caseData.description;
+          body.appendChild(desc);
+        }
+
+        const assertionsEl = document.createElement('div');
+        assertionsEl.className = 'assertions';
+        body.appendChild(assertionsEl);
+        root.appendChild(body);
+
+        if (Array.isArray(caseData.assertions)) {
+          renderAssertions(assertionsEl, caseData.assertions);
+        }
+
+        // SSE wiring (self-contained; closes on terminal event or detach)
+        let source = null;
+        function setStatus(next, label) {
+          for (const s of ['idle', 'running', 'pass', 'fail']) {
+            root.classList.remove(s);
+            dot.classList.remove(s);
+          }
+          root.classList.add(next);
+          dot.classList.add(next);
+          statusPill.className = `case-card-status ${next}`;
+          statusPill.textContent = label ?? next.toUpperCase();
+        }
+
+        const runBtn = header.querySelector('.case-run-btn');
+        if (runBtn) {
+          runBtn.addEventListener('click', () => {
+            if (source) { source.close(); source = null; }
+            assertionsEl.innerHTML = '';
+            timeEl.textContent = '';
+            runBtn.disabled = true;
+            setStatus('running', 'RUNNING');
+            source = API.runCase(caseData.id);
+            source.onmessage = (msg) => {
+              try {
+                const ev = JSON.parse(msg.data);
+                if (ev.type === 'case_completed' || ev.type === 'case_failed' || ev.type === 'parse_error') {
+                  const passed = ev.type === 'case_completed' && ev.allPassed === true;
+                  if (typeof ev.durationMs === 'number') timeEl.textContent = `${ev.durationMs}ms`;
+                  if (Array.isArray(ev.assertions)) renderAssertions(assertionsEl, ev.assertions);
+                  setStatus(passed ? 'pass' : 'fail', passed ? 'PASS' : 'FAIL');
+                  runBtn.disabled = false;
+                  if (source) { source.close(); source = null; }
+                }
+              } catch (err) {
+                console.error('[case-card] parse error', err, msg.data);
+              }
+            };
+            source.onerror = () => {
+              if (source && source.readyState === 2) {
+                source.close();
+                source = null;
+                runBtn.disabled = false;
+              }
+            };
+          });
+        }
+
+        return root;
+      },
+    };
+
+    function renderAssertions(host, assertions) {
+      host.innerHTML = '';
+      if (!assertions.length) return;
+      for (const a of assertions) {
+        const row = document.createElement('div');
+        row.className = 'assertion';
+        const icon = document.createElement('div');
+        icon.className = `assert-icon ${a.passed ? 'pass' : 'fail'}`;
+        icon.textContent = a.passed ? '\u2713' : '\u2717';
+        row.appendChild(icon);
+        const meta = document.createElement('div');
+        meta.className = 'assert-meta';
+        const name = document.createElement('div');
+        name.className = 'assert-name';
+        name.textContent = a.name;
+        meta.appendChild(name);
+        if (a.expected !== undefined || a.actual !== undefined) {
+          const detail = document.createElement('div');
+          detail.className = 'assert-detail';
+          detail.textContent = `expected: ${a.expected ?? ''} | actual: ${a.actual ?? ''}`;
+          meta.appendChild(detail);
+        }
+        row.appendChild(meta);
+        host.appendChild(row);
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Feature Map view — C-8 deliverable
+    //
+    // Fetches /api/clusters + /api/features, groups features by cluster,
+    // renders cluster sections (header + narrative + tile grid) in the
+    // canonical layer order: methodology → method → strategy → agent.
+    // ────────────────────────────────────────────────────────────
+    const LAYER_ORDER = ['methodology', 'method', 'strategy', 'agent'];
+
+    const FeatureMapView = {
+      async render(root) {
+        const [clusters, features] = await Promise.all([API.getClusters(), API.getFeatures()]);
+
+        const featureById = new Map(features.map((f) => [f.id, f]));
+        const covered = features.filter((f) => f.coverage === 'covered').length;
+        const total = features.length;
+
+        const container = document.createElement('div');
+        container.className = 'feature-map-view';
+
+        const header = document.createElement('section');
+        header.className = 'fm-header';
+        const h2 = document.createElement('h2');
+        h2.textContent = 'Feature Map';
+        header.appendChild(h2);
+        const summary = document.createElement('p');
+        summary.className = 'fm-summary';
+        summary.textContent = `${covered}/${total} features covered across ${clusters.length} clusters.`;
+        header.appendChild(summary);
+        container.appendChild(header);
+
+        // Canonical order: by layer, then by cluster definition order
+        const sorted = [...clusters].sort((a, b) => {
+          const la = LAYER_ORDER.indexOf(a.layerId);
+          const lb = LAYER_ORDER.indexOf(b.layerId);
+          if (la !== lb) return la - lb;
+          return 0;
+        });
+
+        for (const cluster of sorted) {
+          container.appendChild(renderCluster(cluster, featureById));
+        }
+
+        root.appendChild(container);
+      },
+      destroy() { /* no timers/subscriptions */ },
+    };
+
+    function renderCluster(cluster, featureById) {
+      const section = document.createElement('section');
+      section.className = `cluster ${cluster.layerId}`;
+      section.id = `cluster-${cluster.id}`;
+
+      const clusterFeatures = cluster.featureIds
+        .map((id) => featureById.get(id))
+        .filter(Boolean);
+      const gaps = clusterFeatures.filter((f) => f.coverage !== 'covered').length;
+      const coveredN = clusterFeatures.length - gaps;
+      const covStatus = gaps === 0 ? 'covered' : coveredN === 0 ? 'gap' : 'partial';
+      const covLabel = covStatus === 'covered' ? 'COVERED' : covStatus === 'partial' ? 'PARTIAL' : 'NO COVERAGE';
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'cluster-header';
+      headerEl.appendChild(Badge.layerBadge(cluster.layerId));
+      const title = document.createElement('span');
+      title.className = 'cluster-title';
+      title.textContent = cluster.name;
+      headerEl.appendChild(title);
+      const covCount = document.createElement('span');
+      covCount.className = `cluster-count ${covStatus}`;
+      covCount.textContent = `${coveredN}/${clusterFeatures.length} covered`;
+      headerEl.appendChild(covCount);
+      headerEl.appendChild(Badge.coverageBadge(covStatus, covLabel));
+      section.appendChild(headerEl);
+
+      const narr = document.createElement('div');
+      narr.className = 'cluster-narrative';
+      narr.textContent = cluster.narrative;
+      section.appendChild(narr);
+
+      const grid = document.createElement('div');
+      grid.className = 'cluster-grid';
+      for (const feature of clusterFeatures) {
+        grid.appendChild(renderFeatureTile(feature));
+      }
+      section.appendChild(grid);
+
+      return section;
+    }
+
+    function renderFeatureTile(feature) {
+      const isGap = feature.coverage !== 'covered';
+      const proposed = isGap && !!feature.proposedTest;
+      const tileStatus = proposed ? 'proposed' : (isGap ? 'gap' : 'covered');
+
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = `feature-tile ${tileStatus}`;
+      tile.dataset.featureId = feature.id;
+      tile.addEventListener('click', () => {
+        location.hash = `#/feature/${encodeURIComponent(feature.id)}`;
+      });
+
+      const top = document.createElement('div');
+      top.className = 'tile-top';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'tile-name';
+      nameEl.textContent = feature.name;
+      top.appendChild(nameEl);
+      const badgeLabel = proposed ? 'PROPOSED' : (isGap ? 'GAP' : 'OK');
+      top.appendChild(Badge.coverageBadge(tileStatus, badgeLabel));
+      tile.appendChild(top);
+
+      if (Array.isArray(feature.endpoints) && feature.endpoints.length) {
+        const pills = document.createElement('div');
+        pills.className = 'tile-endpoints';
+        for (const ep of feature.endpoints.slice(0, 3)) {
+          const p = document.createElement('span');
+          p.className = 'tile-endpoint';
+          p.textContent = ep;
+          pills.appendChild(p);
+        }
+        if (feature.endpoints.length > 3) {
+          const more = document.createElement('span');
+          more.className = 'tile-endpoint more';
+          more.textContent = `+${feature.endpoints.length - 3}`;
+          pills.appendChild(more);
+        }
+        tile.appendChild(pills);
+      }
+
+      const bar = document.createElement('div');
+      bar.className = 'tile-bar';
+      const fill = document.createElement('div');
+      fill.className = `tile-bar-fill ${tileStatus}`;
+      fill.style.width = isGap ? '0%' : '100%';
+      bar.appendChild(fill);
+      tile.appendChild(bar);
+
+      const stats = document.createElement('div');
+      stats.className = 'tile-stats';
+      const caseCount = (feature.coveringCaseIds ?? []).length;
+      if (isGap) {
+        const s = document.createElement('span');
+        s.className = 'nok';
+        s.textContent = proposed ? 'proposed test available' : 'no smoke test';
+        stats.appendChild(s);
+      } else {
+        const n = document.createElement('span');
+        n.className = 'ok';
+        n.textContent = String(caseCount);
+        stats.appendChild(n);
+        const lbl = document.createElement('span');
+        lbl.textContent = ` case${caseCount === 1 ? '' : 's'} cover`;
+        stats.appendChild(lbl);
+      }
+      tile.appendChild(stats);
+
+      return tile;
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Main — wire routes, Run All button, kick off initial render
     // ────────────────────────────────────────────────────────────
     Router.register('layers', LayerStackView);
-    // 'features' + 'feature' routes are registered by C-8 and C-9.
+    Router.register('features', FeatureMapView);
+    // 'feature' (detail) route is registered by C-9 — placeholder until then.
+
+    // Expose CaseCard for C-9 consumption + dev-console smoke testing.
+    // (This is the only global — C-9 will wire it into Feature Detail.)
+    window.__CaseCard = CaseCard;
 
     document.getElementById('run-all-btn').addEventListener('click', () => RunAllPanel.start());
 
