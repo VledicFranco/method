@@ -7,6 +7,8 @@
 
 import type { EmbeddingClientPort } from '../ports/internal/embedding-client.js';
 import { EmbeddingClientError } from '../ports/internal/embedding-client.js';
+import type { ObservabilityPort } from '../ports/observability.js';
+import { NullObservabilitySink, scoped } from '../ports/observability.js';
 
 interface VoyageEmbeddingResponse {
   data: Array<{ embedding: number[] }>;
@@ -17,6 +19,7 @@ export class VoyageEmbeddingClient implements EmbeddingClientPort {
   private readonly model: string;
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  private readonly obs: ReturnType<typeof scoped>;
 
   constructor(
     private readonly config: {
@@ -25,11 +28,13 @@ export class VoyageEmbeddingClient implements EmbeddingClientPort {
       dimensions?: number;
       baseUrl?: string;
     },
+    observability: ObservabilityPort = new NullObservabilitySink(),
   ) {
     this.dimensions = config.dimensions ?? 512;
     this.model = config.model ?? 'voyage-3-lite';
     this.baseUrl = config.baseUrl ?? 'https://api.voyageai.com/v1';
     this.apiKey = config.apiKey;
+    this.obs = scoped(observability, 'embed');
   }
 
   async embed(texts: string[]): Promise<number[][]> {
@@ -62,7 +67,11 @@ export class VoyageEmbeddingClient implements EmbeddingClientPort {
         const waitMs = retryAfterRaw
           ? parseInt(retryAfterRaw, 10) * 1000
           : Math.pow(2, attempt) * 5000;
-        process.stderr.write(`[fca-index] Rate limited — waiting ${Math.round(waitMs / 1000)}s before retry ${attempt + 1}/${maxRetries}\n`);
+        this.obs(
+          'rate_limited',
+          { wait_ms: waitMs, attempt: attempt + 1, max_retries: maxRetries },
+          'warn',
+        );
         await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
         attempt++;
         continue;

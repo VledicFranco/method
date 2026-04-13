@@ -11,6 +11,8 @@ import { ContextQueryError } from '../ports/context-query.js';
 import type { IndexStorePort, IndexQueryFilters } from '../ports/internal/index-store.js';
 import type { EmbeddingClientPort } from '../ports/internal/embedding-client.js';
 import type { FileSystemPort } from '../ports/internal/file-system.js';
+import type { ObservabilityPort } from '../ports/observability.js';
+import { NullObservabilitySink, scoped } from '../ports/observability.js';
 import { ResultFormatter } from './result-formatter.js';
 
 export interface QueryEngineConfig {
@@ -26,20 +28,24 @@ export interface QueryEngineConfig {
 
 export class QueryEngine implements ContextQueryPort {
   private readonly formatter = new ResultFormatter();
+  private readonly obs: (event: string, fields?: Record<string, unknown>, severity?: 'debug' | 'info' | 'warn' | 'error') => void;
 
   constructor(
     private readonly store: IndexStorePort,
     private readonly embedder: EmbeddingClientPort,
     private readonly fs: FileSystemPort,
     private readonly config: QueryEngineConfig,
-  ) {}
+    observability: ObservabilityPort = new NullObservabilitySink(),
+  ) {
+    this.obs = scoped(observability, 'query');
+  }
 
   async query(request: ContextQueryRequest): Promise<ContextQueryResult> {
     const { projectRoot, coverageThreshold = 0.8 } = this.config;
     const topK = request.topK ?? 5;
     const startedAtMs = Date.now();
 
-    logQueryEvent('start', {
+    this.obs('start', {
       query: truncateForLog(request.query),
       topK,
       levels: request.levels,
@@ -53,7 +59,11 @@ export class QueryEngine implements ContextQueryPort {
       const embeddings = await this.embedder.embed([request.query]);
       queryEmbedding = embeddings[0];
     } catch (err) {
-      logQueryEvent('error', { stage: 'embed', query: truncateForLog(request.query) });
+      this.obs(
+        'error',
+        { stage: 'embed', query: truncateForLog(request.query) },
+        'error',
+      );
       throw new ContextQueryError('Query embedding failed', 'QUERY_FAILED');
     }
 
@@ -110,7 +120,7 @@ export class QueryEngine implements ContextQueryPort {
       .slice(1)
       .reduce((s, r) => s + r.parts.reduce((a, p) => a + (p.excerpt?.length ?? 0), 0), 0);
 
-    logQueryEvent('done', {
+    this.obs('done', {
       query: truncateForLog(request.query),
       results: results.length,
       mode,
@@ -128,28 +138,6 @@ export class QueryEngine implements ContextQueryPort {
       results,
       staleComponents: staleComponents.length > 0 ? staleComponents : undefined,
     };
-  }
-}
-
-// ── Observability ────────────────────────────────────────────────────────────
-
-/**
- * Emit a structured log line to stderr. Matches the `[fca-index] ...` prefix
- * pattern used elsewhere in this package (see embedding-client.ts). Format is
- * one JSON object per line, preceded by the scope prefix, so `grep` and `jq`
- * both work:
- *
- *   [fca-index.query] {"event":"done","results":5,"mode":"production",...}
- *
- * Kept intentionally simple — no LoggerPort indirection. When a formal
- * ObservabilityPort lands, migrate these call sites to emit via the port.
- */
-function logQueryEvent(event: string, fields: Record<string, unknown>): void {
-  try {
-    const payload = JSON.stringify({ event, ts: new Date().toISOString(), ...fields });
-    process.stderr.write(`[fca-index.query] ${payload}\n`);
-  } catch {
-    // Never let logging break a query.
   }
 }
 

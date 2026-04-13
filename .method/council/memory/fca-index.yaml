@@ -28,6 +28,15 @@ decision_summary: >
   primary canonical type and must be Wave 0 co-designed first.
 
 ports_frozen:
+  - name: ObservabilityPort
+    producer: "@method/fca-index/cli (StderrObservabilitySink), @method/fca-index/testkit (RecordingObservabilitySink); future: bridge adapter"
+    consumer: "fca-index domain code (query, index-store, future: scanner/coverage/compliance)"
+    file: "packages/fca-index/src/ports/observability.ts"
+    frozen: "2026-04-13"
+    record: ".method/sessions/fcd-surface-fca-index-observability/record.md"
+    direction: "fca-index domains → sink (unidirectional, fire-and-forget)"
+    gate: "G-PORT-OBSERVABILITY (in architecture.test.ts)"
+
   - name: ContextQueryPort
     producer: "@method/fca-index query engine"
     consumer: "@method/mcp, CLI"

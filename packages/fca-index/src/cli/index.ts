@@ -14,6 +14,7 @@
 import { resolve } from 'node:path';
 import { NodeFileSystem } from './node-filesystem.js';
 import { DefaultManifestReader } from './manifest-reader.js';
+import { StderrObservabilitySink } from './stderr-observability-sink.js';
 import { Indexer } from './indexer.js';
 import { runScanCommand } from './commands/scan.js';
 import { runQueryCommand } from './commands/query.js';
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
 
   const fs = new NodeFileSystem();
   const manifestReader = new DefaultManifestReader(fs);
+  const observability = new StderrObservabilitySink();
 
   switch (subcommand) {
     case 'scan': {
@@ -80,7 +82,7 @@ async function main(): Promise<void> {
       if (!apiKey) fatal('VOYAGE_API_KEY environment variable is required for scan.');
 
       const { VoyageEmbeddingClient } = await import('../index-store/embedding-client.js');
-      const embedder = new VoyageEmbeddingClient({ apiKey });
+      const embedder = new VoyageEmbeddingClient({ apiKey }, observability);
 
       const scanConfig = await manifestReader.read(projectRoot);
       const indexDir = scanConfig.indexDir ?? '.fca-index';
@@ -114,7 +116,7 @@ async function main(): Promise<void> {
       if (!apiKey) fatal('VOYAGE_API_KEY environment variable is required for query.');
 
       const { VoyageEmbeddingClient } = await import('../index-store/embedding-client.js');
-      const embedder = new VoyageEmbeddingClient({ apiKey });
+      const embedder = new VoyageEmbeddingClient({ apiKey }, observability);
 
       const scanConfig = await manifestReader.read(projectRoot);
       const indexDir = scanConfig.indexDir ?? '.fca-index';
@@ -126,7 +128,7 @@ async function main(): Promise<void> {
       const queryEngine = new QueryEngine(store, embedder, fs, {
         projectRoot,
         coverageThreshold: scanConfig.coverageThreshold,
-      });
+      }, observability);
 
       await runQueryCommand(queryEngine, { query: queryString, topK, parts });
       break;

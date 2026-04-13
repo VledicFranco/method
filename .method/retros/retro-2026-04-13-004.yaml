@@ -1,0 +1,123 @@
+session_id: "fcd-surface-fca-index-observability"
+methodology: P2-SD
+method: fcd-surface
+date: "2026-04-13"
+prior_session: ".method/retros/retro-2026-04-13-003.yaml"
+hardest_decision: >
+  Whether to define `ObservabilityPort` fca-index-locally or as a shared L2
+  package reusable by mcp, pacta, and other L3 packages. Chose fca-index-local
+  for YAGNI reasons (no current second consumer) but documented the extraction
+  path in the port file's top comment and in the co-design record. If/when a
+  second consumer emerges, extraction is straightforward — the port has no
+  fca-index-specific types in its interface.
+
+scope: >
+  Formalize the observability signal that PR #163 shipped as inline stderr
+  writes. Define a typed port, swap domain call sites to emit through it,
+  add a gate to prevent direct stderr writes for observability from domain
+  code in the future.
+
+files_touched:
+  ports_added:
+    - "packages/fca-index/src/ports/observability.ts (port interface + NullObservabilitySink + scoped helper)"
+  impls_added:
+    - "packages/fca-index/src/cli/stderr-observability-sink.ts (default CLI implementation, matches legacy format)"
+    - "packages/fca-index/src/testkit/recording-observability-sink.ts (test double with find/assertEmitted/clear helpers)"
+  tests_added:
+    - "packages/fca-index/src/ports/observability.test.ts (16 cases — contract, each impl, scoped helper, port-level contract loop)"
+  call_sites_migrated:
+    - "packages/fca-index/src/query/query-engine.ts (logQueryEvent/truncateForLog → this.obs via scoped())"
+    - "packages/fca-index/src/index-store/embedding-client.ts (stderr rate-limit write → this.obs)"
+  composition_roots_wired:
+    - "packages/fca-index/src/factory.ts (createFcaIndex + createDefaultFcaIndex)"
+    - "packages/fca-index/src/cli/index.ts (StderrObservabilitySink instantiated once at main)"
+  public_api:
+    - "packages/fca-index/src/index.ts (re-exports ObservabilityPort, ObservabilityEvent, NullObservabilitySink, scoped)"
+  gates:
+    - "packages/fca-index/src/architecture.test.ts (new G-PORT-OBSERVABILITY — 7 gate describes now, was 6)"
+  docs:
+    - ".method/sessions/fcd-surface-fca-index-observability/record.md (co-design record)"
+    - ".method/council/memory/fca-index.yaml (ports_frozen entry — now 6 entries)"
+
+verification:
+  test_count:
+    before: 199  # on master after PR #168
+    after: 216
+    delta: 17    # 16 observability tests + 1 new gate
+  gates:
+    fca_index_count_before: 6
+    fca_index_count_after: 7
+    all_green: true
+  smoke_test: >
+    CLI query command produces identical stderr format to pre-migration:
+    '[fca-index.query] {"event":"start","ts":"...","severity":"info","query":"event bus","topK":2}'
+    One additive change: `severity` field is now always present (defaults to "info").
+    Non-breaking for existing grep/jq pipelines.
+  sc1_bench_regression: >
+    None. Post-migration bench reproduces exactly the same SC-1 numbers as
+    PR #168: query-only 4,645 (12%), Q4 at 309%. The port is a structural
+    refactor with no effect on the measured metric.
+
+observations:
+  - >
+    Adding an optional constructor parameter to internal classes (QueryEngine,
+    VoyageEmbeddingClient) was safe because neither is publicly exported from
+    @method/fca-index. Verified by grepping index.ts. Would have needed a
+    different approach (e.g., a setter) if they were public.
+  - >
+    The `scoped()` helper in the port file earned its keep. Call sites now
+    read `this.obs('start', { topK })` instead of the verbose 6-line
+    `this.observer.emit({ event, scope, ts, severity, fields })` shape.
+    Same port surface, much lighter call-site ergonomics.
+  - >
+    The architecture gate (G-PORT-OBSERVABILITY) has an exception list:
+    template-generator.ts contains `console.warn(...)` inside a STRING
+    LITERAL (the string is code that will be emitted as a new file). Not a
+    real call site. The gate regex explicitly skips that file. If future
+    domains acquire similar "stub code in a string" patterns, the
+    exception list will grow.
+  - >
+    The CLI's own error-reporting stderr writes (for user-facing errors
+    like 'Error: VOYAGE_API_KEY environment variable is required') are NOT
+    observability and are explicitly excluded from the gate. This is a
+    semantic distinction worth preserving: observability is structured
+    signal about what the program is doing; presentation is prose for the
+    user. Different purposes, different concerns.
+
+proposed_deltas:
+  - >
+    When a second L3 consumer (mcp, pacta, or similar) needs observability,
+    extract ObservabilityPort + ObservabilityEvent to a shared L2 package
+    (e.g. @method/observability or add to @method/methodts). Current
+    placement in fca-index is fine until then; extraction is one file move
+    + re-export. Keep a thin fca-index re-export so consumers don't break.
+  - >
+    When bridge integrates fca-index queries, build a BridgeEventBusSink
+    in packages/bridge/src/... that adapts ObservabilityEvent to PRD 026
+    BridgeEvent. That adapter lives in bridge (L4) and can import from
+    fca-index (L3) without violating G-LAYER. Do NOT try to move
+    ObservabilityPort to bridge — direction matters.
+  - >
+    Consider whether the scanner, coverage, and compliance domains should
+    also emit observability events. Scanner progress events would be
+    particularly useful ('[fca-index.scan] {"event":"batch_done","indexed":40/101}')
+    during long scans. Not in this PR's scope; file a small follow-up when
+    someone actually wants the visibility.
+
+next_deferred_items:
+  - "Synthetic agent run (AC-5) — bridge-dependent, real Claude API spend. Remains deferred."
+  - "Scanner/coverage/compliance observability emission — small follow-up, trivial once a use case appears."
+  - "Extract ObservabilityPort to a shared L2 package when a second L3 consumer emerges."
+  - "BridgeEventBusSink — when bridge integrates fca-index queries."
+
+card_feedback:
+  essence: >
+    Faithfulness held: no shortcuts on the non-throwing contract (tested
+    explicitly in observability.test.ts), no type leaks into the port,
+    explicit exception carve-outs in the gate.
+  delivery_rules: >
+    DR-15 (port discipline) extended to observability. Previously domain
+    code wrote to process.stderr directly (pre-PR #163 and pre-port);
+    now the ONLY place that writes stderr for observability is the sink
+    impl in cli/ (composition root). Same pattern as FileSystemPort and
+    EmbeddingClientPort.
