@@ -138,6 +138,39 @@ feature_sets:
       ac5_status: "DEFERRED — synthetic agent run, bridge-dependent, non-blocking per council"
       ac6_status: "PASS — all 8 architecture gates green"
       ac7_status: "PASS — this section"
+
+  set_e:
+    status: "shipped — branch feat/fca-index-narrow-doctext"
+    shipped: "2026-04-13"
+    surface: "none — internal scanner change, no port modifications"
+    triggered_by: "PR #165 qualitative analysis finding: top-1 strict precision was 20% on benchmark; pacta-playground dominated 3 unrelated queries due to broad embedding doc"
+    items:
+      - "project-scanner.ts: narrow docText to documentation/interface/port parts only (excludes verification, boundary, observability, architecture, domain from embedding); fall back to all parts if those produce nothing"
+      - "project-scanner.test.ts: 2 new cases covering the narrowing behavior + fallback"
+      - "Required full project rescan (rm -rf .fca-index && fca-index scan .)"
+      - "PRD 053 SC-1 revision section updated with new measurement"
+    measurement_2026_04_13_post_narrow:
+      query_only_total: 4645
+      query_only_ratio: "12%"
+      query_plus_detail_total: 6893
+      query_plus_detail_ratio: "18%"
+      grep_baseline_total: 37500
+      top1_strict_precision_concept_queries: "4/4 (100%)"
+      ac1_status: "PASS — 4,645 well under 7,500 target"
+      ac2_status: "PASS"
+      ac3_status: "PASS — Q4 now at 309%, under 350% threshold (was 365% pre-narrow)"
+      ac4_status: "PASS — 20/20 golden tests"
+      ac5_status: "DEFERRED — same as before"
+      ac6_status: "PASS — all 8 gates green; 199 fca-index tests pass (was 197)"
+      ac7_status: "PASS — PRD 053 updated"
+    headline: >
+      Narrowing the embedding doc to 'describes-what-it-IS' parts dramatically
+      improved both top-1 strict precision (0/4 → 4/4 on concept queries) and
+      total token cost (15% → 12%). Q1 now hits the actual event-bus, Q2 hits
+      bridge sessions, Q3 hits methodts strategy, Q5 hits bridge methodology.
+      Q4 (filename query) loses its precise top-1 (was bridge/src/shared with
+      verification, now testkit/assertions) — confirming the PRD policy that
+      filename queries should use glob, not fca-index.
       - "MCP exposure: deferred (no current consumer)"
 
 architecture_gates:

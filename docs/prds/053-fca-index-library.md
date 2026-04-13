@@ -172,6 +172,87 @@ guardrail.
 - Realization plan: `.method/sessions/fcd-plan-20260412-2230-sc1-top1-enrichment/realize-plan.md`
 - Commission session: `.method/sessions/fcd-commission-20260412-2240-sc1-top1-enrichment/`
 
+### SC-1 revision — 2026-04-13 (narrow embedding doc)
+
+The post-merge qualitative analysis (`tmp/sc1-ac5-analysis-20260413.md`) found
+that **top-1 strict precision was only 20%** on the benchmark — `pacta-playground`
+appeared as top-1 for Q2 (sessions), Q3 (strategy), and Q5 (methodology
+persistence) because its embedding included the cognitive-scenario.test.ts
+JSDoc, which is concept-dense ("scenario", "phase", "cycle", "execution",
+"persistence", "monitor"). The component's wide semantic surface caused it to
+match unrelated queries.
+
+**Fix shipped:** narrow `docText` (the text used for embedding) to the parts
+that describe what a component **IS**: `documentation`, `interface`, `port`.
+Other parts (`verification`, `boundary`, `observability`, `architecture`,
+`domain`) remain in `parts` for display but no longer pollute the embedding
+space. Fall back to all parts if those three produce nothing, to keep
+verification-only components embeddable. Single-file change in
+`packages/fca-index/src/scanner/project-scanner.ts`.
+
+**Re-measurement (same 5-query harness, same constants 350/1400 from PR #163,
+re-scan after the change):**
+
+| Query | Grep | Pre PR #163 | Post PR #163 | Post narrow-doc | Top-1 path now |
+|---|---:|---:|---:|---:|---|
+| Q1 event bus implementation       | 13,200 |   942 | 1,158 |   907 | `bridge/src/shared/event-bus` ✓ (was `cluster/src` ✗) |
+| Q2 session lifecycle management   |  8,000 |   948 | 1,076 | 1,060 | `bridge/src/domains/sessions` ✓ (was `pacta-playground/src` ✗) |
+| Q3 strategy pipeline execution    |  9,000 | 1,097 | 1,226 |   958 | `methodts/src/strategy` ✓ (was `pacta-playground/src` ✗) |
+| Q4 FCA architecture gate tests    |    300 |   958 | 1,096 |   927 | `methodts/src/testkit/assertions` ✗ (was `bridge/src/shared` ✓) |
+| Q5 methodology session persistence|  7,000 |   917 | 1,046 |   793 | `bridge/src/domains/methodology` ✓ (was `pacta-playground/src` ✗) |
+| **Total query-only**              | **37,500** | **4,862** | **5,602** | **4,645** | — |
+| **Total query + top-1 detail**    | **37,500** | **7,679** | **8,419** | **6,893** | — |
+| **Q4 ratio**                      | — | 319% | 365% | **309%** | — |
+| **Top-1 strict precision (concept queries Q1, Q2, Q3, Q5)** | — | 0/4 | 1/4 | **4/4** | — |
+
+**Headline:** the 5-query total drops from **15% to 12%** of the grep baseline.
+The aspirational ≤20% / 7,500-token target is now met for both query-only AND
+query+detail (6,893 = 18%). **Top-1 strict precision on concept queries goes
+from 0/4 → 4/4** — every concept query now returns the precise intended
+component as the top result.
+
+**Acceptance against PRD AC list (re-evaluated):**
+
+| AC | Threshold | Result |
+|---|---|---|
+| AC-1: 5q query-only ≤ 7,500 (20%) | 4,645 (12%) | ✅ PASS (improved from 5,602 / 15%) |
+| AC-2: revert if > 9,000 (24%) | 4,645 | ✅ PASS |
+| AC-3: Q4 ≤ 350% | 309% | ✅ **NOW PASS** (was MISS at 365%) |
+| AC-4: SC-3 precision unchanged | 20/20 golden tests pass | ✅ PASS |
+| AC-5: synthetic agent validation | qualitative analysis only (`tmp/sc1-ac5-analysis-20260413.md`) | ⏳ FOLLOW-UP — real run still useful |
+| AC-6: all 8 architecture gates pass | 6 fca-index + 2 mcp gates green | ✅ PASS |
+| AC-7: this section | yes | ✅ PASS |
+
+**Trade-off on Q4:** Q4 used to land on `bridge/src/shared` (correct top-1)
+because the verification excerpt (architecture.test.ts JSDoc with "G-PORT",
+"G-BOUNDARY") matched the query. With verification excluded from embedding,
+Q4's top-1 is now `methodts/src/testkit/assertions` (an assertion helper
+package — wrong). This confirms the original PRD's stance: **filename queries
+should use glob, not fca-index**. Q4's net cost still drops (1,096 → 927
+tokens) and the structural ratio drops below the AC-3 threshold — both wins —
+but the precision shift on Q4 is an honest cost of the narrower embedding.
+
+**Reproduction:** `set -a && source .env && set +a && rm -rf .fca-index && node packages/fca-index/dist/cli/index.js scan . && node tmp/sc1-bench-harness.mjs > tmp/sc1-bench-output-narrowdoctext.txt`.
+Note the `rm -rf .fca-index` — scanner changes require a full rescan to take
+effect.
+
+**Follow-up implications:**
+- The qualitative analysis's "indexing precision investigation" follow-up is
+  now resolved for this benchmark.
+- The "narrow embedding doc" approach generalises beyond pacta-playground —
+  any component with a focused interface/README will benefit; components with
+  test-heavy JSDoc will see their embedding tighten. Worth a wider audit
+  next time someone observes a wrong top-1.
+- The `EMBEDDING_PARTS` set (`['documentation', 'interface', 'port']`) is
+  worth promoting to a `ProjectScanConfig` field if a project wants to tune
+  it. Not in scope here — defer until a project asks for it.
+
+**Provenance (this update):**
+- Branch: `feat/fca-index-narrow-doctext`
+- File changed: `packages/fca-index/src/scanner/project-scanner.ts` (~10 LoC)
+- Test added: 2 new cases in `project-scanner.test.ts`
+- Bench output: `tmp/sc1-bench-output-narrowdoctext.txt`
+
 ### SC-5 revision — 2026-04-12
 
 Initial scan of method-2 (101 components) on the free Voyage tier took **2m37s wall clock**
