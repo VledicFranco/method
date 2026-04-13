@@ -78,29 +78,44 @@ test.describe('Smoke test suite: browser UI', () => {
     await expect(page.getByRole('button', { name: 'Run All (mock)' })).toBeVisible();
   });
 
-  test('layer stack: renders 4 layer rows in canonical order with coverage counts', async ({ page }) => {
+  test('layer stack: renders 4 layer rows split across two-stack model with coverage counts', async ({ page }) => {
     await page.goto('/');
-    const rows = page.locator('.layer-stack .layer-row');
-    await expect(rows).toHaveCount(4);
 
-    // Assert layer-row classes carry the expected layer accent (one of the four)
-    await expect(rows.nth(0)).toHaveClass(/methodology/);
-    await expect(rows.nth(1)).toHaveClass(/method/);
-    await expect(rows.nth(2)).toHaveClass(/strategy/);
-    await expect(rows.nth(3)).toHaveClass(/agent/);
+    // Orchestration stack holds Strategy
+    const orchRows = page.locator('.orchestration-stack .layer-row');
+    await expect(orchRows).toHaveCount(1);
+    await expect(orchRows.nth(0)).toHaveClass(/strategy/);
+
+    // Session stack holds Methodology → Method → Agent (in that vertical order)
+    const sessRows = page.locator('.session-stack .layer-row');
+    await expect(sessRows).toHaveCount(3);
+    await expect(sessRows.nth(0)).toHaveClass(/methodology/);
+    await expect(sessRows.nth(1)).toHaveClass(/method/);
+    await expect(sessRows.nth(2)).toHaveClass(/agent/);
 
     // Each row exposes a coverage count ("N/M features tested")
+    const allRows = page.locator('.layer-stacks-two-col .layer-row');
+    await expect(allRows).toHaveCount(4);
     for (let i = 0; i < 4; i++) {
-      await expect(rows.nth(i).locator('.lcount')).toContainText(/\d+\/\d+ features tested/);
+      await expect(allRows.nth(i).locator('.lcount')).toContainText(/\d+\/\d+ features tested/);
     }
   });
 
-  test('layer stack: 3 composition arrows between adjacent layers with tooltips', async ({ page }) => {
+  test('layer stack: two-stack composition — session arrows + bridge + self-loop', async ({ page }) => {
     await page.goto('/');
-    const arrows = page.locator('.layer-stack .comp-arrow');
-    await expect(arrows).toHaveCount(3);
-    // Methodology → Method arrow should mention "selects" per the ARROW_TOOLTIPS map
-    await expect(arrows.nth(0)).toHaveAttribute('aria-label', /selects/i);
+    // Session stack has 2 composition arrows: methodology → method, method → agent
+    const sessionArrows = page.locator('.session-stack .comp-arrow');
+    await expect(sessionArrows).toHaveCount(2);
+    await expect(sessionArrows.nth(0)).toHaveAttribute('aria-label', /selects/i);
+    await expect(sessionArrows.nth(1)).toHaveAttribute('aria-label', /orders|invoke/i);
+
+    // Orchestration stack has a self-loop (strategy → sub-strategy recursion)
+    await expect(page.locator('.orchestration-stack .self-loop')).toHaveCount(1);
+
+    // Bridge arrow hands off from Strategy to Methodology (orchestration → session)
+    const bridge = page.locator('.bridge-arrow');
+    await expect(bridge).toHaveCount(1);
+    await expect(bridge).toHaveAttribute('aria-label', /methodology session/i);
   });
 
   test('layer stack: per-layer documentation sections render narrative + concept pills + lifecycle pills', async ({ page }) => {

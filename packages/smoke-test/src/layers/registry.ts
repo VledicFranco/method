@@ -56,9 +56,9 @@ export const layerRegistry: Layer[] = [
     level: 'L2',
     name: 'Strategy',
     narrative:
-      'Orchestrates nodes, gates, artifacts, and oversight within a YAML-defined execution plan. ' +
-      'A strategy is a YAML-defined DAG with nodes (methodology, script, strategy, semantic, context-load), gates (algorithmic, observation, human-approval, strategy-level), an artifact store, oversight rules, and budget enforcement. The executor traverses the DAG in topological order, running gates after each node, managing artifacts, and generating retrospectives. ' +
-      'Strategies are execution plans. They define the mechanics of getting work done — not workflow structure (that is the method) or selection logic (that is the methodology).',
+      'Orchestrates methodology sessions within a YAML-defined execution plan. ' +
+      'A strategy is a YAML-defined DAG with nodes (methodology, script, strategy, semantic, context-load), gates (algorithmic, observation, human-approval, strategy-level), an artifact store, oversight rules, and budget enforcement. The executor traverses the DAG in topological order, running gates after each node, managing artifacts, and generating retrospectives. Methodology-type nodes invoke a full methodology session (which routes to methods and runs their steps); strategy-type nodes invoke sub-strategies recursively. ' +
+      'Strategies are orchestration plans. They drive event-triggered pipelines and compose methodology runs. Steps inside a method do NOT invoke strategies — strategies sit alongside the Methodology→Method→Agent session stack as a separate orchestration axis.',
     color: '#c3e88d',
     lifecycle: [
       'parse_yaml',

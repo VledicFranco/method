@@ -53,18 +53,33 @@ On startup the server validates three registry gates and exits with a non-zero c
 
 A clean start logs `Registry validation: OK (4 layers, N clusters, M features, K cases)`.
 
-## The four-layer model
+## The runtime in two stacks
 
-Every smoke test case is tagged with the abstraction layer it exercises. Cases never cross layers — a strategy-layer case never exercises agent internals, a methodology-layer case never depends on a strategy DAG.
+Every smoke test case is tagged with the abstraction layer it exercises. Cases never cross layers.
+
+The runtime has **two composition axes**, not one. The Layer Stack UI renders them side by side because treating them as a single linear chain misleads about the architecture.
+
+### Session Stack (what an agent run looks like inside)
 
 | Layer | Level | What it does | Executor |
 |-------|-------|--------------|----------|
 | **Methodology** | L4 | Selects which method to run next via routing predicates over session state | `MethodologyMock` |
-| **Method** | L3 | Orders steps into a DAG, manages preconditions/postconditions, routes agent outputs between steps | `MethodologyMock` |
-| **Strategy** | L2 | Executes a YAML-defined DAG: nodes, gates, artifacts, oversight, retros | `runMockStrategy` |
-| **Agent** | L1 | Single Pacta invocation: prompt, tools, validation, retry, reflexion | Pacta providers |
+| **Method** | L3 | Orders steps into a DAG; each step is `agent` (LLM) or `script` (TS) | `MethodologyMock` |
+| **Agent** | L1 | Single Pacta invocation: prompt, tools, validation, retry, reflexion. Agent-tagged steps invoke this; script-tagged steps never do. | Pacta providers |
 
-Composition: Methodology → selects → Method → orders → Step → invokes → Strategy → invokes → Agent.
+Composition: Methodology → selects → Method → orders → Step → invokes → Agent (for agent-tagged steps only). See `packages/methodts/src/method/step.ts` — `StepExecution` is a disjoint union of `agent` and `script`. **Steps never invoke strategies.**
+
+### Orchestration Stack (what drives event-triggered pipelines)
+
+| Layer | Level | What it does | Executor |
+|-------|-------|--------------|----------|
+| **Strategy** | L2 | YAML-defined DAG over methodology sessions. Nodes: `methodology`, `script`, `strategy`, `semantic`, `context-load`. Plus gates, artifact store, oversight, retros. | `runMockStrategy` |
+
+A strategy's `methodology`-type node invokes a full methodology session (which then routes to methods and runs their steps). A `strategy`-type node invokes a sub-strategy — strategies compose recursively. See `packages/methodts/src/strategy/dag-executor.ts` and `packages/methodts/src/strategy/dag-types.ts`.
+
+### Bridge between the stacks
+
+Orchestration → Session: `methodology`-type strategy nodes are how the orchestration stack hands control to the session stack. No reverse direction — a methodology session never calls back into a strategy.
 
 ## Package layout
 

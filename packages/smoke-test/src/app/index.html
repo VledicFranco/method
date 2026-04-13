@@ -318,10 +318,15 @@
     // ────────────────────────────────────────────────────────────
     // Layer Stack view — the C-7 deliverable
     // ────────────────────────────────────────────────────────────
+    // Composition arrows — the runtime has TWO composition axes, not one.
+    // Session stack (vertical): Methodology → Method → Agent — what an agent run looks like inside.
+    // Orchestration (separate axis): Strategy DAGs orchestrate methodology sessions, and can invoke sub-strategies recursively.
+    // Bridge: a strategy's methodology-type node hands control to the session stack.
     const ARROW_TOOLTIPS = {
-      'methodology->method': 'Methodology selects which Method to run next',
-      'method->strategy':    'Method orders Steps; each Step invokes a Strategy',
-      'strategy->agent':     'Strategy invokes an Agent for each agent-typed node',
+      'methodology->method':   'Methodology selects which Method to run next via routing predicates over session state',
+      'method->agent':         'Method orders Steps; agent-tagged Steps invoke a Pacta agent (script-tagged Steps run TS directly)',
+      'strategy->methodology': 'A methodology-type Strategy node invokes a Methodology session, which then selects methods and runs their steps',
+      'strategy->strategy':    'A strategy-type node invokes a sub-Strategy — strategies compose recursively',
     };
 
     const LayerStackView = {
@@ -338,35 +343,81 @@
           if (f.coverage === 'covered') bucket.covered += 1;
         }
 
+        const byId = new Map(layers.map((l) => [l.id, l]));
+        const sessionOrder = ['methodology', 'method', 'agent'];
+        const orchestrationIds = ['strategy'];
+
         const container = document.createElement('div');
-        container.className = 'layer-stack-view';
+        container.className = 'layer-stack-view two-stack';
 
         const intro = document.createElement('section');
         intro.innerHTML = `
-          <h2>The Four Abstraction Layers</h2>
+          <h2>The Runtime in Two Stacks</h2>
           <p class="intro">
-            The method runtime operates across four nested layers. Each has a distinct
-            responsibility and is tested independently. The layers <strong>compose top
-            to bottom</strong>: Methodology selects Methods, a Method orders Steps,
-            each Step invokes a Strategy, and a Strategy invokes Agents.
+            The method runtime has two composition axes, not one. The
+            <strong>Session Stack</strong> (Methodology → Method → Agent) is what an
+            agent run looks like from the inside: a methodology routes to methods,
+            a method orders steps, and agent-tagged steps invoke a Pacta agent
+            (script-tagged steps run TypeScript directly). The
+            <strong>Orchestration Stack</strong> — Strategy — is a YAML-defined DAG
+            that drives event-triggered pipelines and invokes methodology sessions
+            as nodes. Strategies compose recursively (a strategy node invokes a
+            sub-strategy).
+          </p>
+          <p class="intro">
+            The bridge between them: a strategy's <code>methodology</code>-type
+            node is how the orchestration stack hands control to the session stack.
           </p>`;
         container.appendChild(intro);
 
-        // Layer stack + composition arrows between every adjacent pair (D-4)
-        const stack = document.createElement('div');
-        stack.className = 'layer-stack';
-        for (let i = 0; i < layers.length; i++) {
-          stack.appendChild(renderLayerRow(layers[i], rollup.get(layers[i].id)));
-          if (i < layers.length - 1) {
-            stack.appendChild(renderCompArrow(layers[i].id, layers[i + 1].id));
+        // Two-column layout: Orchestration stack (left) | bridge | Session stack (right)
+        const twoCol = document.createElement('div');
+        twoCol.className = 'layer-stacks-two-col';
+
+        // Orchestration column
+        const orchCol = document.createElement('div');
+        orchCol.className = 'stack-column orchestration-stack';
+        const orchHead = document.createElement('div');
+        orchHead.className = 'stack-header';
+        orchHead.innerHTML = '<h3>Orchestration Stack</h3><div class="stack-sub">YAML DAGs over methodology sessions</div>';
+        orchCol.appendChild(orchHead);
+        for (const id of orchestrationIds) {
+          const l = byId.get(id);
+          if (l) orchCol.appendChild(renderLayerRow(l, rollup.get(id)));
+        }
+        orchCol.appendChild(renderSelfLoop(ARROW_TOOLTIPS['strategy->strategy']));
+
+        // Bridge between columns
+        const bridge = renderBridgeArrow(ARROW_TOOLTIPS['strategy->methodology']);
+
+        // Session column
+        const sessCol = document.createElement('div');
+        sessCol.className = 'stack-column session-stack';
+        const sessHead = document.createElement('div');
+        sessHead.className = 'stack-header';
+        sessHead.innerHTML = '<h3>Session Stack</h3><div class="stack-sub">Coalgebraic agent session</div>';
+        sessCol.appendChild(sessHead);
+        for (let i = 0; i < sessionOrder.length; i++) {
+          const l = byId.get(sessionOrder[i]);
+          if (!l) continue;
+          sessCol.appendChild(renderLayerRow(l, rollup.get(l.id)));
+          if (i < sessionOrder.length - 1) {
+            sessCol.appendChild(renderCompArrow(sessionOrder[i], sessionOrder[i + 1]));
           }
         }
-        container.appendChild(stack);
 
-        // Per-layer documentation
+        twoCol.appendChild(orchCol);
+        twoCol.appendChild(bridge);
+        twoCol.appendChild(sessCol);
+        container.appendChild(twoCol);
+
+        // Per-layer documentation — session stack first (top-down), then orchestration
         const docs = document.createElement('div');
         docs.className = 'layer-docs';
-        for (const layer of layers) docs.appendChild(renderLayerDoc(layer));
+        for (const id of [...sessionOrder, ...orchestrationIds]) {
+          const l = byId.get(id);
+          if (l) docs.appendChild(renderLayerDoc(l));
+        }
         container.appendChild(docs);
 
         root.appendChild(container);
@@ -432,6 +483,24 @@
       el.title = tip;
       el.setAttribute('aria-label', tip);
       el.innerHTML = `<span class="glyph">&#9660;</span><span class="label">${tip}</span>`;
+      return el;
+    }
+
+    function renderBridgeArrow(tip) {
+      const el = document.createElement('div');
+      el.className = 'bridge-arrow';
+      el.title = tip;
+      el.setAttribute('aria-label', tip);
+      el.innerHTML = `<span class="glyph">&#8594;</span><span class="label">${tip}</span>`;
+      return el;
+    }
+
+    function renderSelfLoop(tip) {
+      const el = document.createElement('div');
+      el.className = 'self-loop';
+      el.title = tip;
+      el.setAttribute('aria-label', tip);
+      el.innerHTML = `<span class="glyph">&#8635;</span><span class="label">${tip}</span>`;
       return el;
     }
 
