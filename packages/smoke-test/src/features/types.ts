@@ -8,7 +8,7 @@
  * Frozen in Wave 0 of PRD 056. Populated by C-3 (feature + cluster registries).
  */
 
-import type { Layer } from '../layers/types.js';
+import type { Layer } from '../layers/index.js';
 
 export interface Cluster {
   id: string;

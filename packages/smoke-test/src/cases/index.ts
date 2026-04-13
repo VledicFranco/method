@@ -10,7 +10,7 @@
  * Feature.id in the feature registry (enforced by G-FEATURE-REF at startup).
  */
 
-import type { Layer } from '../layers/types.js';
+import type { Layer } from '../layers/index.js';
 
 export interface SmokeTestCase {
   id: string;

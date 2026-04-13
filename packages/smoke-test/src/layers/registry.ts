@@ -77,8 +77,8 @@ export const layerRegistry: Layer[] = [
     level: 'L1',
     name: 'Agent',
     narrative:
-      'Manages a single LLM invocation — prompt, tools, output validation, retry, budget. ' +
-      'An agent is a single LLM invocation configured by a Pact. The Pacta SDK manages the agent lifecycle: prompt construction, tool execution, output validation, retry with feedback, context compaction, and reflexion. ' +
+      'Manages an LLM agent conversation loop — prompt, multi-turn tool use, output validation, retry, budget. ' +
+      'An agent is configured by a Pact and executed by the Pacta SDK. Despite the name "agent", this is a full conversation loop: the agent can call tools across multiple turns, retry with feedback on validation failure, compact context when it grows too long, and apply reflexion (self-critique before retry). Each loop produces one AgentResult with a stopReason (completed, budget_exhausted, timeout, killed, error). ' +
       'Agents handle the LLM interaction. Everything above the agent level is orchestration; the agent level is where the actual reasoning happens.',
     color: '#f78c6c',
     lifecycle: ['createAgent', 'invoke', 'tool_use', 'validate', 'retry', 'return'],

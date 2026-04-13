@@ -13,7 +13,7 @@
  */
 
 import type { Cluster } from './types.js';
-import type { Layer } from '../layers/types.js';
+import type { Layer } from '../layers/index.js';
 
 export const clusterRegistry: Cluster[] = [
   // ── Methodology Layer ────────────────────────────────────────────

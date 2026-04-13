@@ -50,7 +50,7 @@ export const featureNarratives: Record<string, string> = {
   'semantic-node':
     'Semantic nodes dispatch an SPL (Semantic Processing Language) algorithm — explore, design, implement, review — via the semantic node executor. The executor maps strategy inputs onto algorithm parameters, runs the algorithm, and stores the result as an artifact. Semantic nodes encode reusable multi-agent patterns.',
   'context-load-node':
-    'Context-load nodes retrieve FCA component information from the context index. They query by component name, domain, or layer and return structured records (file paths, summaries, dependencies). Used to inject codebase context into downstream LLM nodes without hand-curated prompts.',
+    'Context-load nodes retrieve FCA component information from the context index. They query via a free-text query string with optional topK and filterParts parameters, returning RetrievedComponent records (path, level, docText, coverageScore, score). Used to inject codebase context into downstream LLM nodes without hand-curated prompts.',
   'sub-strategy':
     'The sub-strategy invocation mechanism used by strategy nodes. Parent loads the child YAML via SubStrategySource, runs it in an isolated context, and threads child artifacts back into the parent bundle. Enables strategy composition and reuse.',
   'spl-algorithms':
@@ -64,7 +64,7 @@ export const featureNarratives: Record<string, string> = {
   'observation-gate':
     'Observation gates check execution metadata like `cost_usd < 0.01` or `duration_ms < 5000`. They inspect the runtime metrics of the preceding node rather than its output. Used to enforce cost and latency budgets at the node level.',
   'human-approval-gate':
-    'Human approval gates emit an `awaiting_approval` event and suspend the strategy until an external resolver (human or agent) approves or rejects. On approval the strategy resumes. Used for high-stakes transitions that need human-in-the-loop oversight.',
+    'Human approval gates emit a `gate.awaiting_approval` event and suspend the strategy until an external resolver (human or agent) approves or rejects. On approval the strategy resumes. Used for high-stakes transitions that need human-in-the-loop oversight.',
   'gate-retry':
     'When a gate fails, the preceding node can be retried with the failure reason injected as feedback into its next prompt. The retry count is tracked per node; the strategy proceeds once the gate passes or max retries are exceeded.',
   'strategy-level-gate':
@@ -74,7 +74,7 @@ export const featureNarratives: Record<string, string> = {
   'execution-metadata':
     'Per-node runtime metrics captured during execution: cost_usd, duration_ms, attempt count, tool calls. Observation gates and oversight rules consume this data.',
   'human-approval-flow':
-    'The end-to-end human approval flow — strategy emits awaiting_approval, external resolver approves or rejects via API/UI, strategy resumes with the resolution recorded in the retro.',
+    'The end-to-end human approval flow — strategy emits gate.awaiting_approval, external resolver approves or rejects via API/UI, strategy resumes with the resolution recorded in the retro.',
   'feedback-injection':
     'On gate failure, the gate\'s failure reason is injected into the preceding node\'s prompt as feedback context, so the next attempt can correct the specific issue. Core mechanism of the gate-retry loop.',
 
@@ -84,11 +84,11 @@ export const featureNarratives: Record<string, string> = {
   'artifact-versioning':
     'The ArtifactStore is immutable and versioned — multiple writes to the same key preserve prior versions rather than overwriting. Retros can inspect the full write history. Enables safe re-runs and audit trails.',
   'oversight-rules':
-    'Oversight rules monitor execution metrics against thresholds (cost, duration, tool calls) and fire actions (escalate, warn) when breached. Rules are declared in the strategy YAML and evaluated after every node completion.',
+    'Oversight rules monitor execution metrics against thresholds (cost, duration, tool calls) and fire actions (escalate_to_human, warn, kill_and_requeue) when breached. Rules are declared in the strategy YAML and evaluated after every node completion.',
   'escalate-to-human':
-    'Escalate action — when an oversight threshold is breached, the strategy suspends and emits an `oversight.escalate` event. Execution halts until a human (or automated resolver) decides to resume, abort, or adjust the strategy.',
+    'Escalate action — when an oversight threshold is breached, the executor records an OversightEvent in the run state and suspends the strategy. Execution halts until a human (or automated resolver) decides to resume, abort, or adjust. No separate domain event is emitted; the suspension itself is the signal.',
   'warn-human':
-    'Warn action — when an oversight threshold is breached, the strategy emits an `oversight.warn` event but continues execution. Used for soft alerts that surface to operators without blocking progress.',
+    'Warn action — when an oversight threshold is breached, the executor records an OversightEvent in the run state but continues execution. The record surfaces in the retrospective and in the RunFlow for UI display. Used for soft alerts that don\'t block progress.',
   'immutable-store':
     'The immutability guarantee of the ArtifactStore — once a value is written, it cannot be overwritten or deleted within a single strategy run. Every write creates a new version. Enables replay and audit.',
   'node-dependencies':
@@ -160,7 +160,7 @@ export const featureNarratives: Record<string, string> = {
   'reflexion':
     'On failure, the agent runs a self-critique pass (reflexion) before retrying. The reflection text is injected as context for the retry attempt. Verifies the critique loop and that the second attempt succeeds.',
   'budget-exhausted':
-    'When the agent exceeds its configured maxCostUsd, it terminates gracefully with a "budget exceeded" error rather than silently overspending. Verifies the budget guard and graceful stop.',
+    'When the agent exceeds its configured maxCostUsd, it returns a normal AgentResult with stopReason: "budget_exhausted" rather than throwing an error or silently overspending. This is a clean stop, not a failure — the result preserves any partial output and metadata.',
   'data-flow':
     'Data flow between agent steps — how each step\'s output becomes the next step\'s input via the accumulating bundle. Tested alongside multi-step chains.',
   'token-tracking':

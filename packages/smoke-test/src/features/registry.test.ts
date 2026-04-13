@@ -13,7 +13,7 @@ import { describe, it, expect } from 'vitest';
 import { layerRegistry } from '../layers/index.js';
 import { clusterRegistry, featureRegistry, computeCoverage } from './index.js';
 import { allCases } from '../cases/index.js';
-import type { Layer } from '../layers/types.js';
+import type { Layer } from '../layers/index.js';
 
 // Frozen in Wave 0 — matches the Layer['id'] union literal.
 const VALID_LAYER_IDS: ReadonlyArray<Layer['id']> = [

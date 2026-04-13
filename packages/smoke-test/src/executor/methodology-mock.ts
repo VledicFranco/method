@@ -22,7 +22,7 @@ import {
   smokeTestCatalogEntry,
   analyzeMethod,
   implementMethod,
-} from '../fixtures/methods/methodology-lifecycle.js';
+} from '../fixtures/methods/index.js';
 
 // ── Types mirroring bridge store output shapes ────────────────────
 

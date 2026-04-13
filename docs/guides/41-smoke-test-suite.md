@@ -65,7 +65,7 @@ The runtime has **two composition axes**, not one. The Layer Stack UI renders th
 |-------|-------|--------------|----------|
 | **Methodology** | L4 | Selects which method to run next via routing predicates over session state | `MethodologyMock` |
 | **Method** | L3 | Orders steps into a DAG; each step is `agent` (LLM) or `script` (TS) | `MethodologyMock` |
-| **Agent** | L1 | Single Pacta invocation: prompt, tools, validation, retry, reflexion. Agent-tagged steps invoke this; script-tagged steps never do. | Pacta providers |
+| **Agent** | L1 | Pacta agent conversation loop: multi-turn tool use, output validation, retry with feedback, context compaction, reflexion. Agent-tagged steps invoke this; script-tagged steps never do. | Pacta providers |
 
 Composition: Methodology → selects → Method → orders → Step → invokes → Agent (for agent-tagged steps only). See `packages/methodts/src/method/step.ts` — `StepExecution` is a disjoint union of `agent` and `script`. **Steps never invoke strategies.**
 

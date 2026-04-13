@@ -256,7 +256,7 @@ GET  /api/clusters   → Cluster[]                 (new)
 GET  /api/features   → Feature[]                 (new — includes computed coverage + coveringCaseIds)
 GET  /api/cases      → SmokeTestCase[]           (existing — enriched with layer field)
 GET  /api/run/:id    → SSE stream of RunEvent    (existing — enriched with flow field for strategy)
-POST /api/run-all    → SSE stream (aggregated)   (existing)
+GET  /api/run-all    → SSE stream (aggregated)   (existing, SSE requires GET)
 ```
 
 **Minimality note:** Layers, clusters, and features are static — they could be served as one `/api/registry` blob. Kept separate because:
