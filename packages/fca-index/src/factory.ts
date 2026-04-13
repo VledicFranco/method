@@ -211,9 +211,14 @@ export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Prom
   const observability = config.observability ?? new StderrObservabilitySink();
 
   const dbPath = `${projectRoot}/${indexDir}`;
-  const db = new Database(`${dbPath}/fca.db`);
+  // Use the same filenames the CLI writes during `fca-index scan`:
+  // index.db for SQLite, vectors/ for LanceDB. Prior to this fix,
+  // the factory used fca.db + lance/ — different from the CLI —
+  // causing INDEX_NOT_FOUND when the MCP server tried to read a
+  // scan produced by the CLI.
+  const db = new Database(`${dbPath}/index.db`);
   const sqliteStore = new SqliteStore(db);
-  const lanceStore = new LanceStore({ dbPath: `${dbPath}/lance`, dimensions: embeddingDimensions });
+  const lanceStore = new LanceStore({ dbPath: `${dbPath}/vectors`, dimensions: embeddingDimensions });
   await lanceStore.initialize();
 
   const store = new SqliteLanceIndexStore(sqliteStore, lanceStore);
