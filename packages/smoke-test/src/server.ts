@@ -9,7 +9,7 @@ import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { allCases, casesByCategory, allFeatures, type SmokeTestCase } from './cases/index.js';
+import { allCases, allFeatures, type SmokeTestCase } from './cases/index.js';
 import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executor/mock-executor.js';
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
 import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
@@ -17,6 +17,8 @@ import { load as loadYaml } from 'js-yaml';
 import { createAgent, type Pact } from '@method/pacta';
 import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
 import { MethodologyMock } from './executor/methodology-mock.js';
+import { layerRegistry } from './layers/index.js';
+import { clusterRegistry, featureRegistry, computeCoverage } from './features/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 5180);
@@ -200,7 +202,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
   }
 
   // Methodology test cases — run via MethodologyMock (no bridge needed)
-  if (testCase.category === 'methodology') {
+  if (testCase.layer === 'methodology') {
     try {
       const mock = new MethodologyMock();
       const assertions: Array<{ name: string; passed: boolean; expected: string; actual: string }> = [];
@@ -357,8 +359,8 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
     }
   }
 
-  // Method test cases — run via Pacta agent with real provider
-  if (testCase.category === 'method') {
+  // Agent-layer test cases — run via Pacta agent with real provider
+  if (testCase.layer === 'agent') {
     if (!isLiveModeAvailable()) {
       return {
         type: 'case_completed',
@@ -535,7 +537,6 @@ const server = http.createServer(async (req, res) => {
       id: c.id,
       name: c.name,
       description: c.description,
-      category: c.category,
       layer: c.layer,
       features: c.features,
       mode: c.mode,
@@ -543,6 +544,27 @@ const server = http.createServer(async (req, res) => {
     const features = allFeatures();
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ cases, features }));
+    return;
+  }
+
+  // PRD 056 Wave 0 — registry endpoints (stubs return empty until C-2/C-3 populate)
+  if (req.method === 'GET' && url.pathname === '/api/layers') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(layerRegistry));
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/clusters') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(clusterRegistry));
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/features') {
+    // Compute coverage on demand — C-5 will move this to startup
+    computeCoverage([...allCases.values()]);
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(featureRegistry));
     return;
   }
 

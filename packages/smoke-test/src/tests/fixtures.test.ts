@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
-import { strategyCases, methodCases, allCases, allFeatures, casesByCategory } from '../cases/index.js';
+import { strategyCases, allCases, allFeatures, casesByLayer } from '../cases/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STRATEGY_DIR = join(__dirname, '..', 'fixtures', 'strategies');
@@ -52,9 +52,10 @@ describe('Test case registry', () => {
     expect(allCases.size).toBeGreaterThanOrEqual(30);
   });
 
-  it('has strategy and method categories', () => {
-    expect(casesByCategory('strategy').length).toBeGreaterThan(0);
-    expect(casesByCategory('method').length).toBeGreaterThan(0);
+  it('has cases at strategy, methodology, and agent layers', () => {
+    expect(casesByLayer('strategy').length).toBeGreaterThan(0);
+    expect(casesByLayer('methodology').length).toBeGreaterThan(0);
+    expect(casesByLayer('agent').length).toBeGreaterThan(0);
   });
 
   it('all features are tagged', () => {

@@ -2,20 +2,25 @@
  * Smoke Test Case Registry
  *
  * Central registry of all smoke test cases. Each case maps to a strategy YAML
- * fixture or method step-sequence, declares which features it covers, and
- * specifies expected outcomes for automated verification.
+ * fixture, method step-sequence, or methodology fixture, declares which features
+ * it covers, and specifies expected outcomes for automated verification.
+ *
+ * PRD 056 schema change (Wave 0): `category` field removed — `layer` is the
+ * primary grouping axis. Every entry in `features[]` must resolve to a
+ * Feature.id in the feature registry (enforced by G-FEATURE-REF at startup).
  */
+
+import type { Layer } from '../layers/types.js';
 
 export interface SmokeTestCase {
   id: string;
   name: string;
   description: string;
-  category: 'strategy' | 'method' | 'methodology';
-  /** Abstraction layer this case operates at */
-  layer: 'methodology' | 'method' | 'strategy' | 'agent';
-  /** Which methodology features this case validates */
+  /** Abstraction layer — primary grouping axis */
+  layer: Layer['id'];
+  /** Feature IDs — MUST match entries in featureRegistry (G-FEATURE-REF) */
   features: string[];
-  /** Path to YAML fixture (strategy) or module (method), relative to fixtures/ */
+  /** Path to YAML fixture (strategy) or TS module (method/agent/methodology), relative to fixtures/ */
   fixture: string;
   /** mock = testkit providers, live = real API, both = runs in either mode */
   mode: 'mock' | 'live' | 'both';
@@ -51,21 +56,24 @@ export interface SmokeExpected {
 export { strategyCases } from './strategy-cases.js';
 export { methodCases } from './method-cases.js';
 export { methodologyCases } from './methodology-cases.js';
+export { agentCases } from './agent-cases.js';
 
 import { strategyCases } from './strategy-cases.js';
 import { methodCases } from './method-cases.js';
 import { methodologyCases } from './methodology-cases.js';
+import { agentCases } from './agent-cases.js';
 
 /** All smoke test cases, keyed by ID */
 export const allCases: Map<string, SmokeTestCase> = new Map([
   ...strategyCases.map((c) => [c.id, c] as const),
   ...methodCases.map((c) => [c.id, c] as const),
   ...methodologyCases.map((c) => [c.id, c] as const),
+  ...agentCases.map((c) => [c.id, c] as const),
 ]);
 
-/** Get cases filtered by category */
-export function casesByCategory(cat: 'strategy' | 'method' | 'methodology'): SmokeTestCase[] {
-  return [...allCases.values()].filter((c) => c.category === cat);
+/** Get cases filtered by abstraction layer */
+export function casesByLayer(layer: Layer['id']): SmokeTestCase[] {
+  return [...allCases.values()].filter((c) => c.layer === layer);
 }
 
 /** Get cases filtered by feature tag */
