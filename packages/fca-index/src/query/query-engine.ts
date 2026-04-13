@@ -37,6 +37,15 @@ export class QueryEngine implements ContextQueryPort {
   async query(request: ContextQueryRequest): Promise<ContextQueryResult> {
     const { projectRoot, coverageThreshold = 0.8 } = this.config;
     const topK = request.topK ?? 5;
+    const startedAtMs = Date.now();
+
+    logQueryEvent('start', {
+      query: truncateForLog(request.query),
+      topK,
+      levels: request.levels,
+      parts: request.parts,
+      minCoverageScore: request.minCoverageScore,
+    });
 
     // Step 1: embed the query
     let queryEmbedding: number[];
@@ -44,6 +53,7 @@ export class QueryEngine implements ContextQueryPort {
       const embeddings = await this.embedder.embed([request.query]);
       queryEmbedding = embeddings[0];
     } catch (err) {
+      logQueryEvent('error', { stage: 'embed', query: truncateForLog(request.query) });
       throw new ContextQueryError('Query embedding failed', 'QUERY_FAILED');
     }
 
@@ -89,10 +99,61 @@ export class QueryEngine implements ContextQueryPort {
     // Step 7: format results
     const results = this.formatter.format(entries);
 
+    // Observability: summarise what we're returning so SC-1 can be watched in
+    // production. Counts top-1 excerpt usage which is the budget we spend on
+    // actionable previews.
+    const top1 = results[0];
+    const top1ExcerptChars = top1
+      ? top1.parts.reduce((s, p) => s + (p.excerpt?.length ?? 0), 0)
+      : 0;
+    const restExcerptChars = results
+      .slice(1)
+      .reduce((s, r) => s + r.parts.reduce((a, p) => a + (p.excerpt?.length ?? 0), 0), 0);
+
+    logQueryEvent('done', {
+      query: truncateForLog(request.query),
+      results: results.length,
+      mode,
+      top1_path: top1?.path,
+      top1_relevance: top1?.relevanceScore,
+      top1_excerpt_chars: top1ExcerptChars,
+      rest_excerpt_chars: restExcerptChars,
+      total_excerpt_chars: top1ExcerptChars + restExcerptChars,
+      stale: staleComponents.length,
+      duration_ms: Date.now() - startedAtMs,
+    });
+
     return {
       mode,
       results,
       staleComponents: staleComponents.length > 0 ? staleComponents : undefined,
     };
   }
+}
+
+// ── Observability ────────────────────────────────────────────────────────────
+
+/**
+ * Emit a structured log line to stderr. Matches the `[fca-index] ...` prefix
+ * pattern used elsewhere in this package (see embedding-client.ts). Format is
+ * one JSON object per line, preceded by the scope prefix, so `grep` and `jq`
+ * both work:
+ *
+ *   [fca-index.query] {"event":"done","results":5,"mode":"production",...}
+ *
+ * Kept intentionally simple — no LoggerPort indirection. When a formal
+ * ObservabilityPort lands, migrate these call sites to emit via the port.
+ */
+function logQueryEvent(event: string, fields: Record<string, unknown>): void {
+  try {
+    const payload = JSON.stringify({ event, ts: new Date().toISOString(), ...fields });
+    process.stderr.write(`[fca-index.query] ${payload}\n`);
+  } catch {
+    // Never let logging break a query.
+  }
+}
+
+/** Truncate a string to keep log lines bounded. */
+function truncateForLog(s: string, max = 120): string {
+  return s.length <= max ? s : `${s.slice(0, max)}…`;
 }

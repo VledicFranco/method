@@ -1,0 +1,105 @@
+session_id: "fcd-commission-20260412-2240-sc1-top1-enrichment"
+methodology: P2-SD
+method: fcd-commission
+date: "2026-04-13"
+prd: ".method/sessions/fcd-design-sc1-top1-enrichment/prd.md"
+council: ".method/sessions/fcd-debate-fca-index-sc1/decision.md"
+plan: ".method/sessions/fcd-plan-20260412-2230-sc1-top1-enrichment/realize-plan.md"
+hardest_decision: >
+  Whether to overfit constants to make AC-3 (Q4 ≤ 350%) pass exactly, or accept
+  a 15-percentage-point miss (365% vs 350%) and document it honestly. I tuned
+  through three configurations (500/1800 → 350/1400 → 300/1200) and watched Q4
+  asymptote at ~359% — the structural overhead of multi-line | prefix rendering
+  on a 4-part top-1 result puts a floor under the cost. Pushing past it would
+  require either tightening caps to the point of losing concept-query benefit,
+  or adding filename-query detection logic (which would be business logic in
+  the presentation layer — DR-04 violation territory). Picked honest miss
+  documented in PRD over goal-fitting. Q4 is filename-shaped and explicitly
+  out of fca-index scope; the right fix is the search-strategy advisor (PRD
+  followup), not crippling concept-query benefit to satisfy a guardrail.
+
+observations:
+  - >
+    The PRD's original "39% baseline" number conflated tool result tokens with
+    agent post-query file reads. My harness measures only the tool's own output
+    and finds the pre-change baseline at 13% (4,862 / 37,500). The change moved
+    that number to 15% — UP — because the new format intentionally sends richer
+    excerpts on top-1. The savings are in the file reads that no longer happen,
+    which the harness can't measure. Without AC-5 (synthetic agent run via
+    bridge), this PR ships on math, not on observed agent behavior.
+  - >
+    Putting the trim logic in result-formatter.ts (the engine variant the
+    council picked) instead of context-tools.ts (the original proposal) was
+    the right call for two independent reasons: composition theorem (one
+    producer fix benefits all consumers) AND DR-04 (presentation logic stays
+    in the domain package, not the MCP wrapper). I would have made the wrong
+    architectural call without the council debate.
+  - >
+    Wave 0 was honestly empty for this PRD. The /fcd-plan skill's "Wave 0
+    non-empty" gate is correctly designed for the typical case but failed for
+    this true zero-surface change. I documented the failure as PO override
+    rather than fabricating a Wave 0 item. The skill could grow a "zero-surface
+    PRD" recognition path so the gate doesn't always need an override here.
+  - >
+    The harness has the MCP formatter inline as a copy. When I changed the
+    real MCP formatter, the harness's stale copy silently swallowed the
+    change and reported pre-change numbers — I caught this only because the
+    numbers were suspiciously identical to the baseline. The harness should
+    import from packages/mcp/dist/ directly to stay in sync. Left as
+    a follow-up so this PR stays scoped.
+  - >
+    Tuning constants by re-measurement is fast (~30s per iteration with paid
+    Voyage tier) but emotionally tempting toward goal-fitting. Three iterations
+    on 500→350→300 was the right level of exploration; a fourth would have been
+    overfit. Stopping at the asymptote and accepting honest miss is healthier
+    than pixel-perfect AC compliance.
+
+card_feedback:
+  essence: >
+    Faithfulness > simplicity > registry integrity held up cleanly here. The
+    change is faithful to the council decision (engine-side, not formatter-side)
+    and stays within the frozen ComponentPart.excerpt contract. Simplicity took
+    a small hit when I added the per-rank conditional in trimParts but it's
+    bounded to ~30 LoC in one function.
+  delivery_rules: >
+    DR-04 was unexpectedly load-bearing here — it independently confirmed the
+    council's choice to put trim logic in fca-index/query/result-formatter.ts
+    rather than in @method/mcp's formatter. DR-09 (real fixtures) was satisfied
+    by the IndexEntry fixture builder pattern in result-formatter.test.ts.
+
+proposed_deltas:
+  - >
+    Add a "zero-surface PRD" recognition path to /fcd-plan so PRDs with empty
+    Wave 0 don't always need PO override on the structural gate. The skill could
+    detect that the upstream /fcd-design + /fcd-debate already discharged the
+    surface obligation and pass the gate with a "verified-empty" annotation.
+  - >
+    Make the SC-1 harness import the MCP formatter from
+    packages/mcp/dist/context-tools.js directly instead of having an inline copy.
+    The inline copy silently masked the post-change measurement until I noticed
+    suspicious identical numbers. Tracked as a followup PR.
+  - >
+    Consider adding a filename-query detection heuristic — not in result-formatter
+    (DR-04 territory) but as a separate mcp tool (suggest_search_strategy). This
+    would resolve the Q4 AC-3 miss by routing filename queries to glob entirely
+    and removing them from the SC-1 measurement. Already noted in PRD 053
+    followups; tracked.
+
+ac_outcomes:
+  ac1_query_only_under_7500: PASS  # 5,602 (15%)
+  ac2_revert_threshold: PASS       # 5,602 (15%) well under 9,000 (24%)
+  ac3_q4_under_350pct: MISS_BY_15PCT  # 365% — documented in PRD
+  ac4_sc3_precision_unchanged: PASS  # 20/20 golden tests
+  ac5_synthetic_agent_validation: DEFERRED  # bridge-dependent, non-blocking per council
+  ac6_eight_architecture_gates: PASS  # 6 fca-index + 2 mcp
+  ac7_prd_section_updated: PASS
+
+constants_landed:
+  TOP_RESULT_EXCERPT_PER_PART: 350
+  TOP_RESULT_TOTAL_BUDGET: 1400
+  REST_RESULT_EXCERPT_PER_PART: 120
+  reasoning: >
+    Sweet spot from three-iteration tuning. 500/1800 gave best Q1-Q5 benefit
+    but Q4 at 379%. 350/1400 brings Q4 to 365% with most of the Q1-Q5 benefit
+    preserved (Q1 keeps +216 tokens of enrichment vs +355 at 500/1800).
+    300/1200 only got Q4 to 359% — diminishing returns past 350/1400.
