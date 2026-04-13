@@ -21,7 +21,10 @@ export const CONTEXT_TOOLS = [
     description:
       'Query the FCA index of a project for components relevant to a task or concept. ' +
       'Returns ranked component descriptors (paths, part excerpts, relevance scores) for ' +
-      'efficient context gathering — reads far fewer tokens than filesystem search.',
+      'efficient context gathering — reads far fewer tokens than filesystem search. ' +
+      'The top result is rendered with expanded excerpts so you can usually act on it ' +
+      'without reading source files. For full implementation details on any result, ' +
+      'call context_detail — it is cheaper than opening the source file.',
     inputSchema: {
       type: 'object' as const,
       required: ['query'],
@@ -197,6 +200,14 @@ export function createContextTools(
 
 // ── Formatters ───────────────────────────────────────────────────────────────
 
+// Per-rank render caps. The producer (fca-index ResultFormatter) already trims
+// excerpts per-rank using identical bounds; these constants are defensive caps
+// at the rendering boundary so the MCP layer never emits more than expected.
+// PRD 053 SC-1 — council 2026-04-12.
+const TOP_EXCERPT_RENDER_LIMIT = 350;
+const TOP_TOTAL_RENDER_LIMIT = 1400;
+const REST_EXCERPT_RENDER_LIMIT = 120;
+
 function formatContextQueryResult(
   result: import('@method/fca-index').ContextQueryResult,
   query: string,
@@ -208,13 +219,30 @@ function formatContextQueryResult(
   ];
   for (let i = 0; i < result.results.length; i++) {
     const c = result.results[i];
+    const isTop = i === 0;
     lines.push(
       `${i + 1}. ${c.path} (${c.level}) — relevance: ${c.relevanceScore.toFixed(2)}, coverage: ${c.coverageScore.toFixed(2)}`,
     );
+
+    let topUsed = 0;
     for (const p of c.parts) {
       lines.push(`   ${p.part}: ${p.filePath}`);
-      if (p.excerpt) {
-        const excerpt = p.excerpt.slice(0, 120).replace(/\n/g, ' ');
+      if (!p.excerpt) continue;
+
+      if (isTop) {
+        const remaining = TOP_TOTAL_RENDER_LIMIT - topUsed;
+        if (remaining <= 0) continue;
+        const limit = Math.min(TOP_EXCERPT_RENDER_LIMIT, remaining);
+        const excerpt = p.excerpt.slice(0, limit);
+        // Multi-line | prefix preserves structure for the top result.
+        const indented = excerpt
+          .split('\n')
+          .map((l) => `     | ${l}`)
+          .join('\n');
+        lines.push(indented);
+        topUsed += excerpt.length;
+      } else {
+        const excerpt = p.excerpt.slice(0, REST_EXCERPT_RENDER_LIMIT).replace(/\n/g, ' ');
         lines.push(`     > ${excerpt}`);
       }
     }
