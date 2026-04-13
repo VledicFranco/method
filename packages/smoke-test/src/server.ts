@@ -21,7 +21,7 @@ import { layerRegistry } from './layers/index.js';
 import { clusterRegistry, featureRegistry, computeCoverage } from './features/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT ?? 5180);
+const DEFAULT_PORT = 5180;
 
 // ── Load .env from repo root ────────────────────────────────────
 function loadDotEnv(): void {
@@ -513,113 +513,207 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
   }
 }
 
+// ── Startup validation gates ────────────────────────────────────
+
+/**
+ * Validate layer/cluster/feature/case registries before the server accepts
+ * traffic. On any failure, logs a clear message and exits with code 1.
+ *
+ * Gates:
+ *  - G-LAYER-REG          — every layerId reference resolves to layerRegistry
+ *  - G-FEATURE-REF        — every case.features[] entry resolves to a Feature
+ *  - G-FEATURE-COMPLETENESS — every feature has a valid coverage value after
+ *                             computeCoverage() runs
+ */
+export function validateRegistries(): void {
+  // G-LAYER-REG — clusters
+  for (const c of clusterRegistry) {
+    if (!layerRegistry.find((l) => l.id === c.layerId)) {
+      console.error(
+        `G-LAYER-REG FAIL: cluster ${c.id} references unknown layer '${c.layerId}'`,
+      );
+      process.exit(1);
+    }
+  }
+  // G-LAYER-REG — features
+  for (const f of featureRegistry) {
+    if (!layerRegistry.find((l) => l.id === f.layerId)) {
+      console.error(
+        `G-LAYER-REG FAIL: feature ${f.id} references unknown layer '${f.layerId}'`,
+      );
+      process.exit(1);
+    }
+  }
+  // G-LAYER-REG — cases
+  for (const c of allCases.values()) {
+    if (!layerRegistry.find((l) => l.id === c.layer)) {
+      console.error(
+        `G-LAYER-REG FAIL: case ${c.id} references unknown layer '${c.layer}'`,
+      );
+      process.exit(1);
+    }
+  }
+
+  // G-FEATURE-REF — every case.features[i] must resolve
+  for (const c of allCases.values()) {
+    for (const fid of c.features) {
+      if (!featureRegistry.find((f) => f.id === fid)) {
+        console.error(
+          `G-FEATURE-REF FAIL: case ${c.id} references unknown feature '${fid}'`,
+        );
+        process.exit(1);
+      }
+    }
+  }
+
+  // Compute coverage once at startup so /api/features can return directly
+  computeCoverage([...allCases.values()]);
+
+  // G-FEATURE-COMPLETENESS — every feature has a valid coverage value
+  for (const f of featureRegistry) {
+    if (f.coverage !== 'covered' && f.coverage !== 'gap') {
+      console.error(
+        `G-FEATURE-COMPLETENESS FAIL: feature ${f.id} has invalid coverage '${String(f.coverage)}'`,
+      );
+      process.exit(1);
+    }
+  }
+
+  console.log(
+    `Registry validation: OK (${layerRegistry.length} layers, ${clusterRegistry.length} clusters, ${featureRegistry.length} features, ${allCases.size} cases)`,
+  );
+}
+
 // ── HTTP server ─────────────────────────────────────────────────
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+export function createServer(): http.Server {
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
 
-  if (req.method === 'GET' && url.pathname === '/') {
-    const html = readFileSync(join(__dirname, 'app/index.html'), 'utf8');
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(html);
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/styles.css') {
-    const css = readFileSync(join(__dirname, 'app/styles.css'), 'utf8');
-    res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
-    res.end(css);
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/cases') {
-    const cases = [...allCases.values()].map((c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description,
-      layer: c.layer,
-      features: c.features,
-      mode: c.mode,
-    }));
-    const features = allFeatures();
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ cases, features }));
-    return;
-  }
-
-  // PRD 056 Wave 0 — registry endpoints (stubs return empty until C-2/C-3 populate)
-  if (req.method === 'GET' && url.pathname === '/api/layers') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify(layerRegistry));
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/clusters') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify(clusterRegistry));
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/features') {
-    // Compute coverage on demand — C-5 will move this to startup
-    computeCoverage([...allCases.values()]);
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify(featureRegistry));
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname.startsWith('/api/run/')) {
-    const caseId = url.pathname.slice('/api/run/'.length);
-    const testCase = allCases.get(caseId);
-    if (!testCase) {
-      res.writeHead(404, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Case not found' }));
+    if (req.method === 'GET' && url.pathname === '/') {
+      const html = readFileSync(join(__dirname, 'app/index.html'), 'utf8');
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(html);
       return;
     }
 
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    });
-
-    const send = (ev: RunEvent) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
-    send({ type: 'case_started', caseId });
-
-    const result = await runCase(testCase);
-    send(result);
-    res.end();
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/run-all') {
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    });
-
-    const send = (ev: RunEvent & { total?: number; completed?: number }) =>
-      res.write(`data: ${JSON.stringify(ev)}\n\n`);
-
-    const cases = [...allCases.values()].filter((c) => c.mode !== 'live');
-    let completed = 0;
-
-    for (const tc of cases) {
-      send({ type: 'case_started', caseId: tc.id, total: cases.length, completed });
-      const result = await runCase(tc);
-      completed++;
-      send({ ...result, total: cases.length, completed });
+    if (req.method === 'GET' && url.pathname === '/styles.css') {
+      const css = readFileSync(join(__dirname, 'app/styles.css'), 'utf8');
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      res.end(css);
+      return;
     }
-    res.end();
-    return;
-  }
 
-  res.writeHead(404);
-  res.end('not found');
-});
+    if (req.method === 'GET' && url.pathname === '/api/cases') {
+      const cases = [...allCases.values()].map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        layer: c.layer,
+        features: c.features,
+        mode: c.mode,
+      }));
+      const features = allFeatures();
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ cases, features }));
+      return;
+    }
 
-server.listen(PORT, () => {
-  console.log(`Smoke test UI at http://localhost:${PORT}`);
-  console.log(`${allCases.size} test cases loaded`);
-});
+    if (req.method === 'GET' && url.pathname === '/api/layers') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(layerRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/clusters') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(clusterRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/features') {
+      // Coverage is precomputed at startup by validateRegistries().
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(featureRegistry));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith('/api/run/')) {
+      const caseId = url.pathname.slice('/api/run/'.length);
+      const testCase = allCases.get(caseId);
+      if (!testCase) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Case not found' }));
+        return;
+      }
+
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      });
+
+      const send = (ev: RunEvent) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
+      send({ type: 'case_started', caseId });
+
+      const result = await runCase(testCase);
+      send(result);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/run-all') {
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      });
+
+      const send = (ev: RunEvent & { total?: number; completed?: number }) =>
+        res.write(`data: ${JSON.stringify(ev)}\n\n`);
+
+      const cases = [...allCases.values()].filter((c) => c.mode !== 'live');
+      let completed = 0;
+
+      for (const tc of cases) {
+        send({ type: 'case_started', caseId: tc.id, total: cases.length, completed });
+        const result = await runCase(tc);
+        completed++;
+        send({ ...result, total: cases.length, completed });
+      }
+      res.end();
+      return;
+    }
+
+    res.writeHead(404);
+    res.end('not found');
+  });
+}
+
+/**
+ * Start the smoke test server. Validates registries first; on failure the
+ * process exits non-zero. Resolves with the bound {@link http.Server} once
+ * it is listening. If `port` is 0, the OS assigns a free port — read
+ * `.address()` on the returned server to discover it.
+ */
+export function start(port: number = Number(process.env.PORT ?? DEFAULT_PORT)): Promise<http.Server> {
+  validateRegistries();
+  const server = createServer();
+  return new Promise((resolve) => {
+    server.listen(port, () => {
+      const addr = server.address();
+      const boundPort = typeof addr === 'object' && addr !== null ? addr.port : port;
+      console.log(`Smoke test UI at http://localhost:${boundPort}`);
+      console.log(`${allCases.size} test cases loaded`);
+      resolve(server);
+    });
+  });
+}
+
+// CLI entrypoint — run when executed directly via `npx tsx src/server.ts`.
+// The file:// comparison tolerates Windows path quirks by normalizing both
+// sides through the URL constructor.
+const invokedPath = process.argv[1] ? new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href : '';
+if (import.meta.url === invokedPath) {
+  void start();
+}
