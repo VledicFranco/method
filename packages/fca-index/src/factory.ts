@@ -28,6 +28,8 @@ import type { FcaPart } from './ports/context-query.js';
 import type { CoverageReportPort } from './ports/coverage-report.js';
 import type { ComponentDetailPort } from './ports/component-detail.js';
 import type { ComplianceSuggestionPort } from './ports/compliance-suggestion.js';
+import type { ObservabilityPort } from './ports/observability.js';
+import { NullObservabilitySink } from './ports/observability.js';
 
 // ── Config & Ports ───────────────────────────────────────────────────────────
 
@@ -59,6 +61,12 @@ export interface FcaIndexPorts {
   embedder: EmbeddingClientPort;
   store: IndexStorePort;
   manifestReader: ManifestReaderPort;
+  /**
+   * Optional observability sink for structured events from query, embed, etc.
+   * Defaults to NullObservabilitySink when omitted. Wire StderrObservabilitySink
+   * for standalone/CLI use, or a bridge adapter when running inside the bridge.
+   */
+  observability?: ObservabilityPort;
 }
 
 // ── Facade ───────────────────────────────────────────────────────────────────
@@ -84,6 +92,7 @@ export interface FcaIndex {
 
 export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): FcaIndex {
   const { fileSystem, embedder, store, manifestReader } = ports;
+  const observability = ports.observability ?? new NullObservabilitySink();
   const {
     projectRoot,
     coverageThreshold = 0.8,
@@ -100,7 +109,7 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
   const scanner = new ProjectScanner(fileSystem, detector, scorer);
 
   // Wire query domain
-  const queryEngine = new QueryEngine(store, embedder, fileSystem, { projectRoot, coverageThreshold });
+  const queryEngine = new QueryEngine(store, embedder, fileSystem, { projectRoot, coverageThreshold }, observability);
 
   // Wire detail domain
   const detailEngine = new ComponentDetailEngine(store);
@@ -169,6 +178,13 @@ export interface DefaultFcaIndexConfig {
   indexDir?: string;        // default: '.fca-index'
   embeddingModel?: string;  // default: 'voyage-3-lite'
   embeddingDimensions?: number; // default: 512
+  /**
+   * Observability sink. Defaults to StderrObservabilitySink — structured JSON
+   * lines to stderr (matches the pre-port `[fca-index.*]` log format).
+   * Pass NullObservabilitySink for silence, or a custom sink (e.g. a bridge
+   * adapter) to route events elsewhere.
+   */
+  observability?: ObservabilityPort;
 }
 
 export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Promise<FcaIndex> {
@@ -189,7 +205,10 @@ export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Prom
   const { SqliteStore } = await import('./index-store/sqlite-store.js');
   const { LanceStore } = await import('./index-store/lance-store.js');
   const { SqliteLanceIndexStore } = await import('./index-store/index-store.js');
+  const { StderrObservabilitySink } = await import('./cli/stderr-observability-sink.js');
   const Database = (await import('better-sqlite3')).default;
+
+  const observability = config.observability ?? new StderrObservabilitySink();
 
   const dbPath = `${projectRoot}/${indexDir}`;
   const db = new Database(`${dbPath}/fca.db`);
@@ -200,11 +219,14 @@ export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Prom
   const store = new SqliteLanceIndexStore(sqliteStore, lanceStore);
   const fs = new NodeFileSystem();
   const manifestReader = new DefaultManifestReader(fs);
-  const embedder = new VoyageEmbeddingClient({
-    apiKey: voyageApiKey,
-    model: embeddingModel,
-    dimensions: embeddingDimensions,
-  });
+  const embedder = new VoyageEmbeddingClient(
+    {
+      apiKey: voyageApiKey,
+      model: embeddingModel,
+      dimensions: embeddingDimensions,
+    },
+    observability,
+  );
 
   // Ensure index directory exists
   const { mkdir } = await import('node:fs/promises');
@@ -212,6 +234,6 @@ export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Prom
 
   return createFcaIndex(
     { projectRoot, coverageThreshold, requiredParts },
-    { fileSystem: fs, embedder, store, manifestReader },
+    { fileSystem: fs, embedder, store, manifestReader, observability },
   );
 }

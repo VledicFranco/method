@@ -107,3 +107,28 @@ describe('G-LAYER: fca-index does not import @method/mcp or @method/bridge', () 
     expect(violations, 'fca-index imports @method/mcp or @method/bridge').toHaveLength(0);
   });
 });
+
+describe('G-PORT-OBSERVABILITY: domain code emits observability through the port, not stderr directly', () => {
+  it('query/, index-store/, scanner/, coverage/, compliance/ do not write to process.stderr for observability', () => {
+    // CLI user-facing error messages are presentation, not observability — excluded.
+    // ObservabilityPort implementations (e.g., StderrObservabilitySink) are explicitly
+    // allowed to write to stderr; they live in cli/ (composition root).
+    const domainDirs = ['query', 'index-store', 'scanner', 'coverage', 'compliance'];
+    const violations: string[] = [];
+    for (const dir of domainDirs) {
+      const files = fg.sync(`${SRC}/${dir}/**/*.ts`, {
+        ignore: ['**/*.test.ts', '**/*.spec.ts'],
+      });
+      for (const file of files) {
+        const content = readFileSync(file, 'utf-8');
+        // Match actual stderr writes but skip matches inside string literals intended
+        // as generated-code content (template-generator.ts contains a stub that will be
+        // written OUT as code for a future component — not a real call site).
+        if (/process\s*\.\s*stderr\s*\.\s*write/.test(content) && !file.endsWith('template-generator.ts')) {
+          violations.push(file);
+        }
+      }
+    }
+    expect(violations, 'Domain code writes to process.stderr directly — use ObservabilityPort').toEqual([]);
+  });
+});

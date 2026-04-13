@@ -61,3 +61,7 @@ export { createFcaIndex } from './factory.js';
 export type { FcaIndex, FcaIndexConfig, FcaIndexPorts } from './factory.js';
 export { createDefaultFcaIndex } from './factory.js';
 export type { DefaultFcaIndexConfig } from './factory.js';
+
+// Observability port (frozen 2026-04-13)
+export type { ObservabilityPort, ObservabilityEvent } from './ports/observability.js';
+export { NullObservabilitySink, scoped } from './ports/observability.js';
