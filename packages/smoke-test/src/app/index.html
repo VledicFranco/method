@@ -1,231 +1,1419 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Smoke Tests — Method</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Methodology Smoke Tests</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>Methodology Smoke Tests</h1>
-      <div class="sub">Strategy, Method, and Methodology feature verification</div>
-    </div>
-    <div class="header-right">
-      <span class="progress-text" id="progress"></span>
-      <button class="run-all-btn" id="run-all">Run All (mock)</button>
-    </div>
-  </div>
+  <header class="top-nav">
+    <div class="brand">Methodology Smoke Tests</div>
+    <nav class="nav-links">
+      <a href="#/layers" data-route="layers">Layers</a>
+      <a href="#/features" data-route="features">Features</a>
+    </nav>
+    <button id="run-all-btn" class="btn-run-all" type="button">Run All (mock)</button>
+  </header>
 
-  <div class="layout">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-filter">
-        <input type="text" id="filter" placeholder="Filter by name or feature..." />
+  <main id="view-root" aria-live="polite"></main>
+
+  <footer id="run-all-panel" class="run-all-panel" hidden>
+    <div class="rap-header">
+      <span class="rap-title">Run All</span>
+      <div class="rap-counts">
+        <span class="c-pass"><span data-c="pass">0</span> passed</span>
+        <span class="c-fail"><span data-c="fail">0</span> failed</span>
+        <span class="c-running"><span data-c="running">0</span> running</span>
+        <span class="c-total">of <span data-c="total">0</span></span>
+        <span class="c-runtime">runtime <span data-c="runtime">0.0s</span></span>
       </div>
-      <div class="sidebar-list" id="sidebar-list"></div>
+      <label class="rap-filter">
+        <input type="checkbox" id="run-all-filter-fail">
+        <span>failures only</span>
+      </label>
+      <button id="run-all-close" class="rap-close" type="button" aria-label="close">&times;</button>
     </div>
+    <div class="rap-list" id="run-all-list"></div>
+  </footer>
 
-    <!-- Main -->
-    <div class="main" id="main">
-      <div class="main-empty">Select a test case from the sidebar</div>
-    </div>
-  </div>
-
-  <script>
-    let cases = [];
-    let features = [];
-    let selectedId = null;
-    let caseResults = {}; // id -> { status, assertions, result, error, durationMs }
-
-    // ── Load cases ──
-    async function loadCases() {
-      const res = await fetch('/api/cases');
-      const data = await res.json();
-      cases = data.cases;
-      features = data.features;
-      renderSidebar();
-    }
-
-    // ── Sidebar ──
-    function renderSidebar(filter = '') {
-      const list = document.getElementById('sidebar-list');
-      const lf = filter.toLowerCase();
-      const filtered = cases.filter(c =>
-        !lf || c.name.toLowerCase().includes(lf) || c.features.some(f => f.includes(lf)) || c.id.includes(lf)
-      );
-
-      const grouped = {};
-      for (const c of filtered) {
-        (grouped[c.category] = grouped[c.category] || []).push(c);
-      }
-
-      let html = '';
-      for (const cat of ['strategy', 'method']) {
-        const items = grouped[cat] || [];
-        if (!items.length) continue;
-        html += `<div class="cat-header">${cat} (${items.length})</div>`;
-        for (const c of items) {
-          const r = caseResults[c.id];
-          const dotClass = r ? (r.allPassed ? 'pass' : 'fail') : (r === undefined ? '' : 'running');
-          const active = c.id === selectedId ? ' active' : '';
-          html += `<div class="case-item${active}" data-id="${c.id}" onclick="selectCase('${c.id}')">
-            <div class="case-dot ${dotClass}"></div>
-            <div class="case-name">${c.name}</div>
-            <div class="case-mode">${c.mode}</div>
-          </div>`;
-        }
-      }
-      list.innerHTML = html;
-    }
-
-    document.getElementById('filter').addEventListener('input', (e) => renderSidebar(e.target.value));
-
-    // ── Select case ──
-    window.selectCase = function(id) {
-      selectedId = id;
-      renderSidebar(document.getElementById('filter').value);
-      renderMain(id);
+  <!--
+    C-7 deliverable: client modules inlined as a single ES module block.
+    Rationale: server.ts (forbidden in C-7 scope) currently only serves
+    /, /styles.css, and /api/*. Until server gains a static asset
+    handler, the client lives here. Module boundaries preserved via
+    const namespaces (API, Badge, Router, RunAllPanel, LayerStackView)
+    so extraction to packages/smoke-test/src/app/client/** is a
+    mechanical follow-up.
+  -->
+  <script type="module">
+    // ────────────────────────────────────────────────────────────
+    // API — fetch wrappers over the smoke-test HTTP surface (PRD 056 §Surface 5)
+    // ────────────────────────────────────────────────────────────
+    const API = {
+      async getLayers()   { return (await fetch('/api/layers')).json(); },
+      async getClusters() { return (await fetch('/api/clusters')).json(); },
+      async getFeatures() { return (await fetch('/api/features')).json(); },
+      async getCases()    {
+        const raw = await (await fetch('/api/cases')).json();
+        // /api/cases returns {cases: SmokeTestCase[]}; unwrap for callers.
+        return Array.isArray(raw) ? raw : (Array.isArray(raw?.cases) ? raw.cases : []);
+      },
+      /** Opens an SSE stream for a single case run. Returns the EventSource. */
+      runCase(id) { return new EventSource(`/api/run/${encodeURIComponent(id)}`); },
+      /** Opens an SSE stream for the full run-all flow. Returns the EventSource. */
+      runAll() { return new EventSource('/api/run-all'); },
     };
 
-    function renderMain(id) {
-      const c = cases.find(x => x.id === id);
-      if (!c) return;
-      const main = document.getElementById('main');
-      const r = caseResults[id];
+    // ────────────────────────────────────────────────────────────
+    // Badge components — layerBadge, coverageBadge
+    // ────────────────────────────────────────────────────────────
+    const Badge = {
+      layerBadge(layerId, label) {
+        const el = document.createElement('span');
+        el.className = `layer-badge ${layerId}`;
+        el.textContent = label ?? layerId;
+        return el;
+      },
+      coverageBadge(status, text) {
+        const el = document.createElement('span');
+        el.className = `cov-badge ${status}`;
+        el.textContent = text;
+        return el;
+      },
+    };
 
-      let html = `<div class="case-detail">
-        <div class="case-header">
-          <h2>${c.name}</h2>
-          <div class="desc">${c.description}</div>
-          <div class="feature-tags">${c.features.map(f => `<span class="feature-tag">${f}</span>`).join('')}</div>
-          <div class="case-actions">
-            <button class="run-btn" id="run-single" onclick="runSingle('${c.id}')">Run</button>
-          </div>
-        </div>
-        <div class="results-area" id="results-area">`;
+    // ────────────────────────────────────────────────────────────
+    // Router — hash-based; dispatches render/destroy
+    // Registered routes: #/layers (default), #/features, #/feature/:id
+    // ────────────────────────────────────────────────────────────
+    const Router = (() => {
+      const routes = new Map();
+      let currentView = null;
 
-      if (r) {
-        // Status banner
-        if (r.error) {
-          html += `<div class="status-banner fail">Failed: ${r.error}</div>`;
-        } else if (r.allPassed) {
-          html += `<div class="status-banner pass">All assertions passed (${r.durationMs}ms)</div>`;
+      function register(name, view) { routes.set(name, view); }
+
+      function parse(hash) {
+        const clean = (hash || '').replace(/^#\/?/, '');
+        if (!clean) return { route: 'layers', params: {} };
+        const parts = clean.split('/');
+        const head = parts[0];
+        if (head === 'feature' && parts[1]) return { route: 'feature', params: { id: parts[1] } };
+        return { route: head, params: {} };
+      }
+
+      async function dispatch() {
+        const { route, params } = parse(location.hash);
+        const view = routes.get(route);
+        const root = document.getElementById('view-root');
+        if (currentView && typeof currentView.destroy === 'function') {
+          try { currentView.destroy(); } catch (err) { console.error('destroy error', err); }
+        }
+        root.innerHTML = '';
+        if (!view) {
+          root.innerHTML = `<div class="view-placeholder">Route <code>${route}</code> is not yet implemented. Pending commission (C-8 Feature Map, C-9 Feature Detail).</div>`;
+          currentView = null;
         } else {
-          html += `<div class="status-banner fail">Some assertions failed (${r.durationMs}ms)</div>`;
-        }
-
-        // Execution summary
-        if (r.result) {
-          html += `<div class="result-section">
-            <div class="result-section-title">Execution Summary</div>
-            <div class="exec-summary">
-              <div class="exec-stat"><div class="label">Status</div><div class="val">${r.result.status}</div></div>
-              <div class="exec-stat"><div class="label">Cost</div><div class="val">$${(r.result.cost_usd || 0).toFixed(4)}</div></div>
-              <div class="exec-stat"><div class="label">Duration</div><div class="val">${Math.round(r.result.duration_ms || 0)}ms</div></div>
-              <div class="exec-stat"><div class="label">Nodes</div><div class="val">${r.result.node_count || 0}</div></div>
-              <div class="exec-stat"><div class="label">Artifacts</div><div class="val">${r.result.artifact_count || 0}</div></div>
-              <div class="exec-stat"><div class="label">Gates</div><div class="val">${r.result.gate_count || 0}</div></div>
-              <div class="exec-stat"><div class="label">Oversight</div><div class="val">${r.result.oversight_count || 0}</div></div>
-            </div>
-          </div>`;
-        }
-
-        // Assertions
-        if (r.assertions && r.assertions.length) {
-          html += `<div class="result-section">
-            <div class="result-section-title">Verification (${r.assertions.filter(a=>a.passed).length}/${r.assertions.length} pass)</div>`;
-          for (const a of r.assertions) {
-            html += `<div class="assertion ${a.passed ? 'pass' : 'fail'}">
-              <div class="assert-icon">${a.passed ? '&#10003;' : '&#10007;'}</div>
-              <div class="assert-content">
-                <div class="assert-name">${a.name}</div>
-                <div class="assert-detail">expected: ${a.expected} | actual: ${a.actual}</div>
-              </div>
-            </div>`;
+          currentView = view;
+          try {
+            await view.render(root, params);
+          } catch (err) {
+            console.error('[router] render error', err);
+            root.innerHTML = `<div class="view-placeholder">Failed to render view: ${err?.message ?? err}</div>`;
           }
-          html += '</div>';
         }
-      } else {
-        html += '<div style="color:var(--text-3);padding:20px;">Click "Run" to execute this test case</div>';
+        document.querySelectorAll('.top-nav .nav-links a').forEach((a) => {
+          const match = a.dataset.route === route || (route === 'feature' && a.dataset.route === 'features');
+          a.classList.toggle('active', match);
+        });
       }
 
-      html += '</div></div>';
-      main.innerHTML = html;
-    }
+      function init() {
+        window.addEventListener('hashchange', dispatch);
+        if (!location.hash) location.hash = '#/layers';
+        else dispatch();
+      }
 
-    // ── Run single case ──
-    window.runSingle = async function(id) {
-      const btn = document.getElementById('run-single');
-      if (btn) btn.disabled = true;
-      caseResults[id] = null; // running
-      renderSidebar(document.getElementById('filter').value);
+      return { register, init, dispatch };
+    })();
 
-      const main = document.getElementById('main');
-      const resultsArea = document.getElementById('results-area');
-      if (resultsArea) resultsArea.innerHTML = '<div class="status-banner running"><span class="spinner"></span> Running...</div>';
+    // ────────────────────────────────────────────────────────────
+    // Run-All Panel — counts, per-layer status dots, runtime, failure filter (D-5)
+    //
+    // Public API (preserved across C-7 → C-9):
+    //   show(), hide(), start(), update(ev)
+    // Adds in C-9:
+    //   - per-row layer color tag (looked up from /api/cases on first start)
+    //   - failure-only filter checkbox
+    //   - aggregate runtime display (clock since start, freezes on completion)
+    // ────────────────────────────────────────────────────────────
+    const RunAllPanel = (() => {
+      const panelEl = document.getElementById('run-all-panel');
+      const listEl  = document.getElementById('run-all-list');
+      const closeBtn = document.getElementById('run-all-close');
+      const filterEl = document.getElementById('run-all-filter-fail');
+      const counts = { pass: 0, fail: 0, running: 0, total: 0 };
+      const rows = new Map();
+      let source = null;
+      let caseLayerById = null;          // caseId → layer (lazy fetched)
+      let caseLayerPromise = null;
+      let startedAt = 0;
+      let runtimeTimer = null;
 
-      const es = new EventSource(`/api/run/${id}`);
-      es.onmessage = (e) => {
-        const ev = JSON.parse(e.data);
-        if (ev.type === 'case_completed' || ev.type === 'case_failed') {
-          caseResults[id] = {
-            allPassed: ev.allPassed ?? false,
-            assertions: ev.assertions ?? [],
-            result: ev.result ?? null,
-            error: ev.error ?? null,
-            durationMs: ev.durationMs ?? 0,
-          };
-          renderSidebar(document.getElementById('filter').value);
-          renderMain(id);
-          es.close();
+      function setCount(k, v) {
+        counts[k] = v;
+        const el = panelEl.querySelector(`[data-c="${k}"]`);
+        if (el) el.textContent = String(v);
+      }
+
+      function setRuntime(ms) {
+        const el = panelEl.querySelector('[data-c="runtime"]');
+        if (!el) return;
+        const s = (ms / 1000).toFixed(1);
+        el.textContent = `${s}s`;
+      }
+
+      function reset() {
+        for (const k of ['pass', 'fail', 'running', 'total']) setCount(k, 0);
+        setRuntime(0);
+        rows.clear();
+        listEl.innerHTML = '';
+      }
+
+      function ensureRow(caseId) {
+        let row = rows.get(caseId);
+        if (row) return row;
+        row = document.createElement('div');
+        row.className = 'rap-row';
+        row.dataset.status = 'running';
+        const layer = caseLayerById?.get(caseId) ?? null;
+        if (layer) row.dataset.layer = layer;
+        const dot = document.createElement('span');
+        dot.className = `rap-dot ${layer ? `layer-${layer}` : ''}`;
+        row.appendChild(dot);
+        if (layer) {
+          const tag = document.createElement('span');
+          tag.className = `rap-layer layer-badge ${layer}`;
+          tag.textContent = layer;
+          row.appendChild(tag);
         }
-      };
-      es.onerror = () => {
-        es.close();
-        if (btn) btn.disabled = false;
-      };
+        const id = document.createElement('span');
+        id.className = 'rap-id';
+        id.textContent = caseId;
+        row.appendChild(id);
+        const status = document.createElement('span');
+        status.className = 'rap-status';
+        status.textContent = '…';
+        row.appendChild(status);
+        listEl.appendChild(row);
+        rows.set(caseId, row);
+        applyFilter();
+        return row;
+      }
+
+      function setRowStatus(caseId, cls, label) {
+        const row = ensureRow(caseId);
+        row.dataset.status = cls;
+        const dot = row.querySelector('.rap-dot');
+        const status = row.querySelector('.rap-status');
+        const layer = row.dataset.layer ?? null;
+        // Per-layer dot: use layer color when running/idle; pass/fail override.
+        if (dot) {
+          if (cls === 'pass' || cls === 'fail') {
+            dot.className = `rap-dot ${cls}`;
+          } else {
+            dot.className = `rap-dot ${cls} ${layer ? `layer-${layer}` : ''}`;
+          }
+        }
+        if (status) status.textContent = label;
+        applyFilter();
+      }
+
+      function applyFilter() {
+        const onlyFail = filterEl?.checked ?? false;
+        for (const row of rows.values()) {
+          const isFail = row.dataset.status === 'fail';
+          row.style.display = (onlyFail && !isFail) ? 'none' : '';
+        }
+      }
+
+      function startRuntime() {
+        startedAt = Date.now();
+        if (runtimeTimer) clearInterval(runtimeTimer);
+        runtimeTimer = setInterval(() => setRuntime(Date.now() - startedAt), 100);
+      }
+
+      function stopRuntime() {
+        if (runtimeTimer) { clearInterval(runtimeTimer); runtimeTimer = null; }
+        if (startedAt) setRuntime(Date.now() - startedAt);
+      }
+
+      function show() { panelEl.hidden = false; }
+      function hide() {
+        panelEl.hidden = true;
+        stopRuntime();
+        if (source) { source.close(); source = null; }
+      }
+
+      function update(ev) {
+        const caseId = ev.caseId ?? 'unknown';
+        if (typeof ev.total === 'number' && ev.total !== counts.total) {
+          setCount('total', ev.total);
+        }
+        if (ev.type === 'case_started') {
+          setRowStatus(caseId, 'running', 'running…');
+          setCount('running', counts.running + 1);
+          return;
+        }
+        if (ev.type === 'case_completed' || ev.type === 'case_failed' || ev.type === 'parse_error') {
+          const passed = ev.type === 'case_completed' && ev.allPassed === true;
+          const label = passed
+            ? `PASS${typeof ev.durationMs === 'number' ? ` (${ev.durationMs}ms)` : ''}`
+            : ev.error ? `FAIL: ${String(ev.error).slice(0, 100)}` : 'FAIL';
+          setRowStatus(caseId, passed ? 'pass' : 'fail', label);
+          setCount('running', Math.max(0, counts.running - 1));
+          if (passed) setCount('pass', counts.pass + 1);
+          else setCount('fail', counts.fail + 1);
+          if (counts.running === 0 && counts.total > 0 && counts.pass + counts.fail >= counts.total) {
+            stopRuntime();
+          }
+        }
+      }
+
+      async function ensureCaseLayers() {
+        if (caseLayerById) return;
+        if (!caseLayerPromise) {
+          caseLayerPromise = API.getCases()
+            .then((cases) => {
+              caseLayerById = new Map(cases.map((c) => [c.id, c.layer]));
+            })
+            .catch((err) => { console.error('[run-all] case layer fetch failed', err); caseLayerById = new Map(); });
+        }
+        await caseLayerPromise;
+      }
+
+      async function start() {
+        // Close any in-flight stream BEFORE reset so late events from a
+        // previous run can't clobber the zeroed counters.
+        if (source) { source.close(); source = null; }
+        reset();
+        show();
+        await ensureCaseLayers();
+        startRuntime();
+        source = API.runAll();
+        source.onmessage = (msg) => {
+          try { update(JSON.parse(msg.data)); }
+          catch (err) { console.error('[run-all] parse error', err, msg.data); }
+        };
+        source.onerror = () => {
+          if (source && source.readyState === 2) { source.close(); source = null; stopRuntime(); }
+        };
+      }
+
+      closeBtn.addEventListener('click', hide);
+      filterEl?.addEventListener('change', applyFilter);
+      return { show, hide, update, start };
+    })();
+
+    // ────────────────────────────────────────────────────────────
+    // Layer Stack view — the C-7 deliverable
+    // ────────────────────────────────────────────────────────────
+    const ARROW_TOOLTIPS = {
+      'methodology->method': 'Methodology selects which Method to run next',
+      'method->strategy':    'Method orders Steps; each Step invokes a Strategy',
+      'strategy->agent':     'Strategy invokes an Agent for each agent-typed node',
     };
 
-    // ── Run all ──
-    document.getElementById('run-all').addEventListener('click', async () => {
-      const btn = document.getElementById('run-all');
-      btn.disabled = true;
-      const prog = document.getElementById('progress');
+    const LayerStackView = {
+      async render(root) {
+        const [layers, features] = await Promise.all([API.getLayers(), API.getFeatures()]);
 
-      const es = new EventSource('/api/run-all');
-      es.onmessage = (e) => {
-        const ev = JSON.parse(e.data);
-        if (ev.type === 'case_started') {
-          caseResults[ev.caseId] = null;
-          prog.textContent = `${ev.completed ?? 0}/${ev.total ?? '?'}`;
-          renderSidebar(document.getElementById('filter').value);
+        // Per-layer coverage rollup from the feature registry (single source of truth).
+        const rollup = new Map();
+        for (const l of layers) rollup.set(l.id, { total: 0, covered: 0 });
+        for (const f of features) {
+          const bucket = rollup.get(f.layerId);
+          if (!bucket) continue;
+          bucket.total += 1;
+          if (f.coverage === 'covered') bucket.covered += 1;
         }
-        if (ev.type === 'case_completed' || ev.type === 'case_failed') {
-          caseResults[ev.caseId] = {
-            allPassed: ev.allPassed ?? false,
-            assertions: ev.assertions ?? [],
-            result: ev.result ?? null,
-            error: ev.error ?? null,
-            durationMs: ev.durationMs ?? 0,
-          };
-          prog.textContent = `${ev.completed ?? 0}/${ev.total ?? '?'}`;
-          renderSidebar(document.getElementById('filter').value);
-          if (selectedId === ev.caseId) renderMain(ev.caseId);
-        }
-      };
-      es.onerror = () => {
-        es.close();
-        btn.disabled = false;
-        const total = cases.filter(c => c.mode !== 'live').length;
-        const passed = Object.values(caseResults).filter(r => r && r.allPassed).length;
-        const failed = Object.values(caseResults).filter(r => r && !r.allPassed).length;
-        prog.textContent = `Done: ${passed} pass, ${failed} fail / ${total}`;
-      };
-    });
 
-    // ── Init ──
-    loadCases();
+        const container = document.createElement('div');
+        container.className = 'layer-stack-view';
+
+        const intro = document.createElement('section');
+        intro.innerHTML = `
+          <h2>The Four Abstraction Layers</h2>
+          <p class="intro">
+            The method runtime operates across four nested layers. Each has a distinct
+            responsibility and is tested independently. The layers <strong>compose top
+            to bottom</strong>: Methodology selects Methods, a Method orders Steps,
+            each Step invokes a Strategy, and a Strategy invokes Agents.
+          </p>`;
+        container.appendChild(intro);
+
+        // Layer stack + composition arrows between every adjacent pair (D-4)
+        const stack = document.createElement('div');
+        stack.className = 'layer-stack';
+        for (let i = 0; i < layers.length; i++) {
+          stack.appendChild(renderLayerRow(layers[i], rollup.get(layers[i].id)));
+          if (i < layers.length - 1) {
+            stack.appendChild(renderCompArrow(layers[i].id, layers[i + 1].id));
+          }
+        }
+        container.appendChild(stack);
+
+        // Per-layer documentation
+        const docs = document.createElement('div');
+        docs.className = 'layer-docs';
+        for (const layer of layers) docs.appendChild(renderLayerDoc(layer));
+        container.appendChild(docs);
+
+        root.appendChild(container);
+      },
+      destroy() { /* no timers/subscriptions */ },
+    };
+
+    function renderLayerRow(layer, bucket) {
+      const row = document.createElement('div');
+      row.className = `layer-row ${layer.id}`;
+      row.id = `layer-row-${layer.id}`;
+      row.addEventListener('click', () => {
+        const doc = document.getElementById(`layer-doc-${layer.id}`);
+        if (doc) doc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      const label = document.createElement('div');
+      label.className = `layer-label ${layer.id}`;
+      label.innerHTML = `
+        <div class="lname">${layer.name}</div>
+        <div class="lsub">${layer.level} — ${levelSubtitle(layer.level)}</div>`;
+      row.appendChild(label);
+
+      const body = document.createElement('div');
+      body.className = 'layer-body';
+
+      const summary = document.createElement('div');
+      summary.className = 'lsummary';
+      summary.textContent = summaryLine(layer);
+      body.appendChild(summary);
+
+      const stats = document.createElement('div');
+      stats.className = 'lstats';
+      const covered = bucket?.covered ?? 0;
+      const total   = bucket?.total ?? 0;
+      const status  = total === 0 ? 'gap' : covered === total ? 'covered' : covered === 0 ? 'gap' : 'partial';
+      const count = document.createElement('span');
+      count.className = `lcount ${status}`;
+      count.textContent = `${covered}/${total} features tested`;
+      stats.appendChild(count);
+      stats.appendChild(Badge.coverageBadge(status, status === 'covered' ? 'COVERED' : status === 'partial' ? 'PARTIAL' : 'NO COVERAGE'));
+      stats.appendChild(levelPill(layer.level));
+      body.appendChild(stats);
+
+      const pills = document.createElement('div');
+      pills.className = 'concept-pills';
+      for (const c of layer.keyConcepts.slice(0, 6)) {
+        const p = document.createElement('span');
+        p.className = 'concept-pill';
+        p.textContent = c;
+        pills.appendChild(p);
+      }
+      body.appendChild(pills);
+
+      row.appendChild(body);
+      return row;
+    }
+
+    function renderCompArrow(fromId, toId) {
+      const tip = ARROW_TOOLTIPS[`${fromId}->${toId}`] ?? `${fromId} → ${toId}`;
+      const el = document.createElement('div');
+      el.className = 'comp-arrow';
+      el.title = tip;
+      el.setAttribute('aria-label', tip);
+      el.innerHTML = `<span class="glyph">&#9660;</span><span class="label">${tip}</span>`;
+      return el;
+    }
+
+    function renderLayerDoc(layer) {
+      const el = document.createElement('section');
+      el.className = `layer-doc ${layer.id}`;
+      el.id = `layer-doc-${layer.id}`;
+
+      const h = document.createElement('h3');
+      h.appendChild(Badge.layerBadge(layer.id, layer.name));
+      h.appendChild(levelPill(layer.level));
+      const htitle = document.createElement('span');
+      htitle.textContent = `${layer.name} Layer`;
+      h.appendChild(htitle);
+      el.appendChild(h);
+
+      const narr = document.createElement('p');
+      narr.className = 'narrative';
+      narr.textContent = layer.narrative;
+      el.appendChild(narr);
+
+      const lifeHead = document.createElement('div');
+      lifeHead.className = 'doc-subhead';
+      lifeHead.textContent = 'Lifecycle';
+      el.appendChild(lifeHead);
+
+      const life = document.createElement('div');
+      life.className = 'lifecycle-pills';
+      layer.lifecycle.forEach((op, idx) => {
+        const pill = document.createElement('span');
+        pill.className = 'lifecycle-pill';
+        pill.textContent = op;
+        life.appendChild(pill);
+        if (idx < layer.lifecycle.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'lifecycle-sep';
+          sep.textContent = '→';
+          life.appendChild(sep);
+        }
+      });
+      el.appendChild(life);
+
+      const conceptHead = document.createElement('div');
+      conceptHead.className = 'doc-subhead';
+      conceptHead.textContent = 'Key concepts';
+      el.appendChild(conceptHead);
+
+      const concepts = document.createElement('div');
+      concepts.className = 'concept-pills';
+      for (const c of layer.keyConcepts) {
+        const p = document.createElement('span');
+        p.className = 'concept-pill';
+        p.textContent = c;
+        concepts.appendChild(p);
+      }
+      el.appendChild(concepts);
+
+      return el;
+    }
+
+    function levelPill(level) {
+      const el = document.createElement('span');
+      el.className = 'level-pill';
+      el.textContent = level;
+      return el;
+    }
+
+    function levelSubtitle(level) {
+      switch (level) {
+        case 'L4': return 'Coalgebraic Session';
+        case 'L3': return 'Step DAG';
+        case 'L2': return 'DAG Executor';
+        case 'L1': return 'Pacta SDK';
+        default:   return level;
+      }
+    }
+
+    function summaryLine(layer) {
+      const s = layer.narrative || '';
+      const i = s.indexOf('. ');
+      return i === -1 ? s : s.slice(0, i + 1);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // CaseCard — reusable DOM factory (C-8 deliverable, consumed by C-9)
+    //
+    // Returns a self-contained element that renders a SmokeTestCase and,
+    // when the Run button is clicked, opens /api/run/:id via SSE and
+    // streams events into its own status dot + assertion list.
+    // ────────────────────────────────────────────────────────────
+    const CaseCard = {
+      /**
+       * @param {{
+       *   id: string, name: string, description?: string,
+       *   layer: 'methodology'|'method'|'strategy'|'agent',
+       *   status?: 'idle'|'running'|'pass'|'fail',
+       *   proposed?: boolean,            // render as amber PROPOSED card, disables Run
+       *   assertions?: Array<{name:string, passed:boolean, expected?:string, actual?:string}>,
+       * }} caseData
+       * @param {{ onEvent?: (ev: object) => void }} [opts]
+       *   onEvent: optional observer invoked for every parsed RunEvent received
+       *   from /api/run/:id. Additive, non-breaking — added in C-9 so the
+       *   Feature Detail view can drive the DAG renderer from the same stream
+       *   without forking a parallel SSE connection.
+       */
+      render(caseData, opts) {
+        const root = document.createElement('div');
+        root.className = 'case-card';
+        root.dataset.caseId = caseData.id;
+
+        const initialStatus = caseData.proposed ? 'proposed' : (caseData.status ?? 'idle');
+        root.classList.add(initialStatus);
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'case-card-header';
+
+        const title = document.createElement('div');
+        title.className = 'case-card-title';
+        const dot = document.createElement('span');
+        dot.className = `status-dot ${initialStatus}`;
+        title.appendChild(dot);
+        title.appendChild(Badge.layerBadge(caseData.layer));
+        const nameEl = document.createElement('span');
+        nameEl.className = 'case-name';
+        nameEl.textContent = caseData.name;
+        title.appendChild(nameEl);
+        header.appendChild(title);
+
+        const badges = document.createElement('div');
+        badges.className = 'case-card-badge';
+        const timeEl = document.createElement('span');
+        timeEl.className = 'case-card-time';
+        timeEl.textContent = '';
+        badges.appendChild(timeEl);
+        const statusPill = document.createElement('span');
+        statusPill.className = `case-card-status ${initialStatus}`;
+        statusPill.textContent = caseData.proposed ? 'PROPOSED' : initialStatus.toUpperCase();
+        badges.appendChild(statusPill);
+        if (!caseData.proposed) {
+          const runBtn = document.createElement('button');
+          runBtn.type = 'button';
+          runBtn.className = 'case-run-btn';
+          runBtn.textContent = 'Run';
+          badges.appendChild(runBtn);
+        }
+        header.appendChild(badges);
+        root.appendChild(header);
+
+        // Body
+        const body = document.createElement('div');
+        body.className = 'case-card-body';
+
+        if (caseData.description) {
+          const desc = document.createElement('div');
+          desc.className = 'case-narrative';
+          desc.textContent = caseData.description;
+          body.appendChild(desc);
+        }
+
+        const assertionsEl = document.createElement('div');
+        assertionsEl.className = 'assertions';
+        body.appendChild(assertionsEl);
+        root.appendChild(body);
+
+        if (Array.isArray(caseData.assertions)) {
+          renderAssertions(assertionsEl, caseData.assertions);
+        }
+
+        // SSE wiring (self-contained; closes on terminal event or detach)
+        let source = null;
+        function setStatus(next, label) {
+          for (const s of ['idle', 'running', 'pass', 'fail']) {
+            root.classList.remove(s);
+            dot.classList.remove(s);
+          }
+          root.classList.add(next);
+          dot.classList.add(next);
+          statusPill.className = `case-card-status ${next}`;
+          statusPill.textContent = label ?? next.toUpperCase();
+        }
+
+        const runBtn = header.querySelector('.case-run-btn');
+        if (runBtn) {
+          runBtn.addEventListener('click', () => {
+            if (source) { source.close(); source = null; }
+            assertionsEl.innerHTML = '';
+            timeEl.textContent = '';
+            runBtn.disabled = true;
+            setStatus('running', 'RUNNING');
+            source = API.runCase(caseData.id);
+            source.onmessage = (msg) => {
+              try {
+                const ev = JSON.parse(msg.data);
+                if (typeof opts?.onEvent === 'function') {
+                  try { opts.onEvent(ev); } catch (e) { console.error('[case-card] onEvent', e); }
+                }
+                if (ev.type === 'case_completed' || ev.type === 'case_failed' || ev.type === 'parse_error') {
+                  const passed = ev.type === 'case_completed' && ev.allPassed === true;
+                  if (typeof ev.durationMs === 'number') timeEl.textContent = `${ev.durationMs}ms`;
+                  if (Array.isArray(ev.assertions)) renderAssertions(assertionsEl, ev.assertions);
+                  setStatus(passed ? 'pass' : 'fail', passed ? 'PASS' : 'FAIL');
+                  runBtn.disabled = false;
+                  if (source) { source.close(); source = null; }
+                }
+              } catch (err) {
+                console.error('[case-card] parse error', err, msg.data);
+              }
+            };
+            source.onerror = () => {
+              if (source && source.readyState === 2) {
+                source.close();
+                source = null;
+                runBtn.disabled = false;
+              }
+            };
+          });
+        }
+
+        return root;
+      },
+    };
+
+    function renderAssertions(host, assertions) {
+      host.innerHTML = '';
+      if (!assertions.length) return;
+      for (const a of assertions) {
+        const row = document.createElement('div');
+        row.className = 'assertion';
+        const icon = document.createElement('div');
+        icon.className = `assert-icon ${a.passed ? 'pass' : 'fail'}`;
+        icon.textContent = a.passed ? '\u2713' : '\u2717';
+        row.appendChild(icon);
+        const meta = document.createElement('div');
+        meta.className = 'assert-meta';
+        const name = document.createElement('div');
+        name.className = 'assert-name';
+        name.textContent = a.name;
+        meta.appendChild(name);
+        if (a.expected !== undefined || a.actual !== undefined) {
+          const detail = document.createElement('div');
+          detail.className = 'assert-detail';
+          detail.textContent = `expected: ${a.expected ?? ''} | actual: ${a.actual ?? ''}`;
+          meta.appendChild(detail);
+        }
+        row.appendChild(meta);
+        host.appendChild(row);
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Feature Map view — C-8 deliverable
+    //
+    // Fetches /api/clusters + /api/features, groups features by cluster,
+    // renders cluster sections (header + narrative + tile grid) in the
+    // canonical layer order: methodology → method → strategy → agent.
+    // ────────────────────────────────────────────────────────────
+    const LAYER_ORDER = ['methodology', 'method', 'strategy', 'agent'];
+
+    const FeatureMapView = {
+      async render(root) {
+        const [clusters, features] = await Promise.all([API.getClusters(), API.getFeatures()]);
+
+        const featureById = new Map(features.map((f) => [f.id, f]));
+        const covered = features.filter((f) => f.coverage === 'covered').length;
+        const total = features.length;
+
+        const container = document.createElement('div');
+        container.className = 'feature-map-view';
+
+        const header = document.createElement('section');
+        header.className = 'fm-header';
+        const h2 = document.createElement('h2');
+        h2.textContent = 'Feature Map';
+        header.appendChild(h2);
+        const summary = document.createElement('p');
+        summary.className = 'fm-summary';
+        summary.textContent = `${covered}/${total} features covered across ${clusters.length} clusters.`;
+        header.appendChild(summary);
+        container.appendChild(header);
+
+        // Canonical order: by layer, then by cluster definition order
+        const sorted = [...clusters].sort((a, b) => {
+          const la = LAYER_ORDER.indexOf(a.layerId);
+          const lb = LAYER_ORDER.indexOf(b.layerId);
+          if (la !== lb) return la - lb;
+          return 0;
+        });
+
+        for (const cluster of sorted) {
+          container.appendChild(renderCluster(cluster, featureById));
+        }
+
+        root.appendChild(container);
+      },
+      destroy() { /* no timers/subscriptions */ },
+    };
+
+    function renderCluster(cluster, featureById) {
+      const section = document.createElement('section');
+      section.className = `cluster ${cluster.layerId}`;
+      section.id = `cluster-${cluster.id}`;
+
+      const clusterFeatures = cluster.featureIds
+        .map((id) => featureById.get(id))
+        .filter(Boolean);
+      const gaps = clusterFeatures.filter((f) => f.coverage !== 'covered').length;
+      const coveredN = clusterFeatures.length - gaps;
+      const covStatus = gaps === 0 ? 'covered' : coveredN === 0 ? 'gap' : 'partial';
+      const covLabel = covStatus === 'covered' ? 'COVERED' : covStatus === 'partial' ? 'PARTIAL' : 'NO COVERAGE';
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'cluster-header';
+      headerEl.appendChild(Badge.layerBadge(cluster.layerId));
+      const title = document.createElement('span');
+      title.className = 'cluster-title';
+      title.textContent = cluster.name;
+      headerEl.appendChild(title);
+      const covCount = document.createElement('span');
+      covCount.className = `cluster-count ${covStatus}`;
+      covCount.textContent = `${coveredN}/${clusterFeatures.length} covered`;
+      headerEl.appendChild(covCount);
+      headerEl.appendChild(Badge.coverageBadge(covStatus, covLabel));
+      section.appendChild(headerEl);
+
+      const narr = document.createElement('div');
+      narr.className = 'cluster-narrative';
+      narr.textContent = cluster.narrative;
+      section.appendChild(narr);
+
+      const grid = document.createElement('div');
+      grid.className = 'cluster-grid';
+      for (const feature of clusterFeatures) {
+        grid.appendChild(renderFeatureTile(feature));
+      }
+      section.appendChild(grid);
+
+      return section;
+    }
+
+    function renderFeatureTile(feature) {
+      const isGap = feature.coverage !== 'covered';
+      const proposed = isGap && !!feature.proposedTest;
+      const tileStatus = proposed ? 'proposed' : (isGap ? 'gap' : 'covered');
+
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = `feature-tile ${tileStatus}`;
+      tile.dataset.featureId = feature.id;
+      tile.addEventListener('click', () => {
+        location.hash = `#/feature/${encodeURIComponent(feature.id)}`;
+      });
+
+      const top = document.createElement('div');
+      top.className = 'tile-top';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'tile-name';
+      nameEl.textContent = feature.name;
+      top.appendChild(nameEl);
+      const badgeLabel = proposed ? 'PROPOSED' : (isGap ? 'GAP' : 'OK');
+      top.appendChild(Badge.coverageBadge(tileStatus, badgeLabel));
+      tile.appendChild(top);
+
+      if (Array.isArray(feature.endpoints) && feature.endpoints.length) {
+        const pills = document.createElement('div');
+        pills.className = 'tile-endpoints';
+        for (const ep of feature.endpoints.slice(0, 3)) {
+          const p = document.createElement('span');
+          p.className = 'tile-endpoint';
+          p.textContent = ep;
+          pills.appendChild(p);
+        }
+        if (feature.endpoints.length > 3) {
+          const more = document.createElement('span');
+          more.className = 'tile-endpoint more';
+          more.textContent = `+${feature.endpoints.length - 3}`;
+          pills.appendChild(more);
+        }
+        tile.appendChild(pills);
+      }
+
+      const bar = document.createElement('div');
+      bar.className = 'tile-bar';
+      const fill = document.createElement('div');
+      fill.className = `tile-bar-fill ${tileStatus}`;
+      fill.style.width = isGap ? '0%' : '100%';
+      bar.appendChild(fill);
+      tile.appendChild(bar);
+
+      const stats = document.createElement('div');
+      stats.className = 'tile-stats';
+      const caseCount = (feature.coveringCaseIds ?? []).length;
+      if (isGap) {
+        const s = document.createElement('span');
+        s.className = 'nok';
+        s.textContent = proposed ? 'proposed test available' : 'no smoke test';
+        stats.appendChild(s);
+      } else {
+        const n = document.createElement('span');
+        n.className = 'ok';
+        n.textContent = String(caseCount);
+        stats.appendChild(n);
+        const lbl = document.createElement('span');
+        lbl.textContent = ` case${caseCount === 1 ? '' : 's'} cover`;
+        stats.appendChild(lbl);
+      }
+      tile.appendChild(stats);
+
+      return tile;
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // DagRenderer — vanilla SVG renderer for RunFlow (PRD 056 Surface 6)
+    //
+    // Layout: left-to-right by topological level. Within a column, parallel
+    // nodes stack vertically. Gates are rendered as diamonds offset to the
+    // right of their `afterNode`. Edges are orthogonal lines (right of from,
+    // down/up, then left of to). Oversight events render as small badges
+    // pinned to the upper-right of their associated node.
+    //
+    // The renderer is defensive: render(parentEl, undefined | null) replaces
+    // the parent's contents with a "no DAG data for this layer" notice. For
+    // method/methodology cases the FeatureDetailView calls renderStepFallback
+    // instead.
+    // ────────────────────────────────────────────────────────────
+    const DagRenderer = (() => {
+      const NODE_W = 140, NODE_H = 56;
+      const GATE_W = 28, GATE_H = 28;
+      const COL_GAP = 110, ROW_GAP = 28;
+      const PAD_X = 24, PAD_Y = 32;
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+
+      function el(name, attrs, text) {
+        const node = document.createElementNS(SVG_NS, name);
+        if (attrs) for (const k of Object.keys(attrs)) node.setAttribute(k, String(attrs[k]));
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+
+      function topoLevels(nodes, edges) {
+        // Kahn-ish: assign each node the longest-path depth from any root.
+        const byId = new Map(nodes.map((n) => [n.id, n]));
+        const incoming = new Map(nodes.map((n) => [n.id, []]));
+        for (const e of edges) {
+          if (!incoming.has(e.to)) incoming.set(e.to, []);
+          incoming.get(e.to).push(e.from);
+        }
+        const depth = new Map();
+        function getDepth(id, seen) {
+          if (depth.has(id)) return depth.get(id);
+          if (seen.has(id)) return 0; // cycle guard
+          seen.add(id);
+          const ins = incoming.get(id) || [];
+          let d = 0;
+          for (const p of ins) {
+            if (!byId.has(p)) continue;
+            d = Math.max(d, getDepth(p, seen) + 1);
+          }
+          depth.set(id, d);
+          seen.delete(id);
+          return d;
+        }
+        for (const n of nodes) getDepth(n.id, new Set());
+        const cols = new Map();
+        for (const [id, d] of depth) {
+          if (!cols.has(d)) cols.set(d, []);
+          cols.get(d).push(id);
+        }
+        return cols;
+      }
+
+      function render(parentEl, flow) {
+        parentEl.innerHTML = '';
+        if (!flow || !Array.isArray(flow.nodes) || flow.nodes.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'dag-empty';
+          empty.textContent = 'No DAG data for this layer.';
+          parentEl.appendChild(empty);
+          return;
+        }
+
+        const cols = topoLevels(flow.nodes, flow.edges || []);
+        const sortedCols = [...cols.keys()].sort((a, b) => a - b);
+
+        // Position lookup
+        const pos = new Map(); // nodeId → {x, y, col, row}
+        let maxRows = 0;
+        for (const col of sortedCols) {
+          const ids = cols.get(col);
+          maxRows = Math.max(maxRows, ids.length);
+          ids.forEach((id, idx) => {
+            pos.set(id, {
+              col,
+              row: idx,
+              x: PAD_X + col * (NODE_W + COL_GAP),
+              y: PAD_Y + idx * (NODE_H + ROW_GAP),
+            });
+          });
+        }
+
+        const svgW = PAD_X + (sortedCols.length === 0 ? 0 : (sortedCols[sortedCols.length - 1])) * (NODE_W + COL_GAP) + NODE_W + PAD_X + 60;
+        const svgH = PAD_Y + maxRows * (NODE_H + ROW_GAP) + PAD_Y + 40;
+
+        const svg = el('svg', {
+          class: 'dag-svg',
+          xmlns: SVG_NS,
+          viewBox: `0 0 ${svgW} ${svgH}`,
+          width: '100%',
+          height: svgH,
+          preserveAspectRatio: 'xMinYMin meet',
+        });
+
+        // ── arrow marker
+        const defs = el('defs');
+        const marker = el('marker', {
+          id: 'dag-arrow',
+          viewBox: '0 0 10 10',
+          refX: 9,
+          refY: 5,
+          markerWidth: 6,
+          markerHeight: 6,
+          orient: 'auto-start-reverse',
+        });
+        marker.appendChild(el('path', { d: 'M0,0 L10,5 L0,10 z', class: 'dag-arrow-head' }));
+        defs.appendChild(marker);
+        svg.appendChild(defs);
+
+        // ── edges
+        const edgesG = el('g', { class: 'dag-edges' });
+        for (const edge of (flow.edges || [])) {
+          const a = pos.get(edge.from);
+          const b = pos.get(edge.to);
+          if (!a || !b) continue;
+          const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2;
+          const x2 = b.x,           y2 = b.y + NODE_H / 2;
+          const midX = (x1 + x2) / 2;
+          const path = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+          const line = el('path', { d: path, class: 'dag-edge', 'marker-end': 'url(#dag-arrow)' });
+          edgesG.appendChild(line);
+          if (edge.artifact) {
+            const labelG = el('g', { class: 'dag-edge-label' });
+            const w = Math.min(120, edge.artifact.length * 7 + 14);
+            const lx = midX - w / 2;
+            const ly = (y1 + y2) / 2 - 9;
+            labelG.appendChild(el('rect', { x: lx, y: ly, width: w, height: 18, rx: 9, ry: 9, class: 'dag-artifact' }));
+            labelG.appendChild(el('text', { x: midX, y: ly + 12, 'text-anchor': 'middle', class: 'dag-artifact-text' }, edge.artifact));
+            edgesG.appendChild(labelG);
+          }
+        }
+        svg.appendChild(edgesG);
+
+        // ── nodes
+        const nodesG = el('g', { class: 'dag-nodes' });
+        for (const node of flow.nodes) {
+          const p = pos.get(node.id);
+          if (!p) continue;
+          const g = el('g', { class: `dag-node node-${node.type} status-${node.status}`, transform: `translate(${p.x},${p.y})` });
+          g.appendChild(el('rect', {
+            class: 'dag-node-rect',
+            x: 0, y: 0, width: NODE_W, height: NODE_H, rx: 6, ry: 6,
+          }));
+          g.appendChild(el('text', { x: 10, y: 18, class: 'node-type' }, node.type));
+          g.appendChild(el('text', { x: 10, y: 36, class: 'node-id' }, truncate(node.id, 18)));
+          // attempt count if > 1
+          const att = (node.attempts || []).length;
+          if (att > 1) g.appendChild(el('text', { x: NODE_W - 10, y: 36, 'text-anchor': 'end', class: 'node-meta' }, `${att}x`));
+          // status mark in lower-right
+          g.appendChild(el('text', { x: NODE_W - 10, y: NODE_H - 8, 'text-anchor': 'end', class: 'node-status' }, statusGlyph(node.status)));
+          // tooltip on hover
+          const totalCost = (node.attempts || []).reduce((s, a) => s + (a.cost_usd || 0), 0);
+          const totalDur = (node.attempts || []).reduce((s, a) => s + (a.duration_ms || 0), 0);
+          const title = el('title', null, `${node.id}\ntype: ${node.type}\nstatus: ${node.status}\nattempts: ${att}\ncost: $${totalCost.toFixed(4)}\nduration: ${Math.round(totalDur)}ms`);
+          g.appendChild(title);
+          nodesG.appendChild(g);
+        }
+        svg.appendChild(nodesG);
+
+        // ── gates (diamond, offset to right of node)
+        const gatesG = el('g', { class: 'dag-gates' });
+        // Track per-node gate offset so multiple gates after same node stack
+        const perNodeGateIdx = new Map();
+        for (const gate of (flow.gates || [])) {
+          const a = pos.get(gate.afterNode);
+          if (!a) continue;
+          const idx = perNodeGateIdx.get(gate.afterNode) || 0;
+          perNodeGateIdx.set(gate.afterNode, idx + 1);
+          const cx = a.x + NODE_W + 24 + idx * (GATE_W + 8);
+          const cy = a.y + NODE_H / 2;
+          const r = GATE_W / 2;
+          const g = el('g', {
+            class: `dag-gate gate-${gate.type} ${gate.passed ? 'passed' : 'failed'}`,
+            transform: `translate(${cx},${cy})`,
+          });
+          // diamond
+          g.appendChild(el('polygon', {
+            class: 'dag-gate-shape',
+            points: `0,${-r} ${r},0 0,${r} ${-r},0`,
+          }));
+          g.appendChild(el('text', { x: 0, y: 4, 'text-anchor': 'middle', class: 'dag-gate-icon' }, gateIcon(gate.type, gate.passed)));
+          const tip = `${gate.id}\ntype: ${gate.type}\n${gate.expression ? `check: ${gate.expression}\n` : ''}${gate.passed ? 'PASSED' : 'FAILED'}${gate.evaluationDetail ? `\n${gate.evaluationDetail}` : ''}${gate.retryFeedback ? `\nretry: ${gate.retryFeedback}` : ''}`;
+          g.appendChild(el('title', null, tip));
+          gatesG.appendChild(g);
+        }
+        svg.appendChild(gatesG);
+
+        // ── oversight events as small circular badges anchored to the related node
+        const oversightG = el('g', { class: 'dag-oversight' });
+        const perNodeOvIdx = new Map();
+        for (const ev of (flow.oversightEvents || [])) {
+          const a = pos.get(ev.afterNode);
+          if (!a) continue;
+          const idx = perNodeOvIdx.get(ev.afterNode) || 0;
+          perNodeOvIdx.set(ev.afterNode, idx + 1);
+          const ox = a.x + NODE_W - 8 + idx * 12;
+          const oy = a.y - 4;
+          const g = el('g', {
+            class: `dag-oversight-badge oversight-${ev.type}`,
+            transform: `translate(${ox},${oy})`,
+          });
+          g.appendChild(el('circle', { r: 8, cx: 0, cy: 0, class: 'oversight-circle' }));
+          g.appendChild(el('text', { x: 0, y: 3, 'text-anchor': 'middle', class: 'oversight-glyph' }, ev.type === 'escalate' ? '!' : '?'));
+          g.appendChild(el('title', null, `oversight: ${ev.type}\ntrigger: ${ev.trigger}\nafter: ${ev.afterNode}`));
+          oversightG.appendChild(g);
+        }
+        svg.appendChild(oversightG);
+
+        parentEl.appendChild(svg);
+
+        // ── Legend below the SVG
+        const legend = document.createElement('div');
+        legend.className = 'dag-legend';
+        const types = [
+          ['methodology', 'methodology'],
+          ['script', 'script'],
+          ['strategy', 'strategy (sub)'],
+          ['semantic', 'semantic'],
+          ['context-load', 'context-load'],
+        ];
+        for (const [id, label] of types) {
+          const item = document.createElement('span');
+          item.className = `dag-legend-item node-${id}`;
+          item.innerHTML = `<span class="dag-legend-swatch"></span>${label}`;
+          legend.appendChild(item);
+        }
+        parentEl.appendChild(legend);
+      }
+
+      function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + '\u2026' : s; }
+      function statusGlyph(s) {
+        if (s === 'completed') return '\u2713';
+        if (s === 'failed')    return '\u2717';
+        if (s === 'suspended') return '\u23F8';
+        return '\u2014';
+      }
+      function gateIcon(type, passed) {
+        if (type === 'observation')    return '\u25CE';   // bullseye for "eye"
+        if (type === 'human-approval') return '\u263A';   // smiley as "person" stand-in
+        if (type === 'strategy-level') return '\u2726';   // sparkle
+        return passed ? '\u2713' : '\u2717';
+      }
+
+      return { render };
+    })();
+
+    // ────────────────────────────────────────────────────────────
+    // Feature Detail view — C-9 deliverable
+    //
+    // Renders one feature's narrative and either:
+    //  - covered  → a CaseCard per coveringCaseIds; for strategy cases an
+    //               SVG DAG renderer is mounted below the card and populated
+    //               from the live SSE stream once the user clicks Run.
+    //  - gap      → an amber PROPOSED card showing the proposed test design.
+    //
+    // Also handles step-list fallback for method/methodology cases (no DAG).
+    // ────────────────────────────────────────────────────────────
+    const FeatureDetailView = {
+      async render(root, params) {
+        const featureId = params?.featureId ?? params?.id;
+        if (!featureId) {
+          root.innerHTML = '<div class="view-placeholder">Missing feature id.</div>';
+          return;
+        }
+
+        const [features, clustersAll, casesAll] = await Promise.all([
+          API.getFeatures(),
+          API.getClusters(),
+          API.getCases(),
+        ]);
+        const feature = features.find((f) => f.id === featureId);
+        if (!feature) {
+          root.innerHTML = `<div class="view-placeholder">Feature <code>${featureId}</code> not found.</div>`;
+          return;
+        }
+        const cluster = clustersAll.find((c) => c.id === feature.clusterId);
+        const caseById = new Map(casesAll.map((c) => [c.id, c]));
+
+        const container = document.createElement('div');
+        container.className = `feature-detail-view layer-${feature.layerId}`;
+
+        // ── Header
+        const header = document.createElement('section');
+        header.className = 'fd-header';
+        const breadcrumbs = document.createElement('div');
+        breadcrumbs.className = 'fd-breadcrumbs';
+        breadcrumbs.innerHTML = `<a href="#/features">\u2190 Feature Map</a>`;
+        header.appendChild(breadcrumbs);
+
+        const titleEl = document.createElement('h2');
+        titleEl.className = 'fd-title';
+        titleEl.textContent = feature.name;
+        header.appendChild(titleEl);
+
+        const tags = document.createElement('div');
+        tags.className = 'fd-tags';
+        tags.appendChild(Badge.layerBadge(feature.layerId, `${feature.layerId} layer`));
+        if (cluster) {
+          const cl = document.createElement('span');
+          cl.className = 'fd-cluster-pill';
+          cl.textContent = cluster.name;
+          tags.appendChild(cl);
+        }
+        const isGap = feature.coverage !== 'covered';
+        const proposed = isGap && !!feature.proposedTest;
+        const covStatus = proposed ? 'proposed' : (isGap ? 'gap' : 'covered');
+        const covLabel  = proposed ? 'PROPOSED' : (isGap ? 'NO SMOKE TEST' : 'COVERED');
+        tags.appendChild(Badge.coverageBadge(covStatus, covLabel));
+        header.appendChild(tags);
+
+        if (feature.narrative) {
+          const narr = document.createElement('p');
+          narr.className = 'fd-narrative';
+          narr.textContent = feature.narrative;
+          header.appendChild(narr);
+        }
+
+        if (Array.isArray(feature.endpoints) && feature.endpoints.length > 0) {
+          const epWrap = document.createElement('div');
+          epWrap.className = 'fd-endpoints';
+          const epLabel = document.createElement('span');
+          epLabel.className = 'fd-endpoints-label';
+          epLabel.textContent = 'endpoints';
+          epWrap.appendChild(epLabel);
+          for (const ep of feature.endpoints) {
+            const pill = document.createElement('span');
+            pill.className = 'fd-endpoint-pill';
+            pill.textContent = ep;
+            epWrap.appendChild(pill);
+          }
+          header.appendChild(epWrap);
+        }
+
+        container.appendChild(header);
+
+        // ── Body
+        const body = document.createElement('section');
+        body.className = 'fd-body';
+
+        if (isGap) {
+          body.appendChild(renderProposedCard(feature));
+        } else {
+          const ids = feature.coveringCaseIds || [];
+          if (ids.length === 0) {
+            body.appendChild(emptyMessage('Marked covered but no covering cases listed.'));
+          } else {
+            const heading = document.createElement('h3');
+            heading.className = 'fd-section-heading';
+            heading.textContent = ids.length === 1 ? 'Smoke Test' : `Smoke Tests (${ids.length})`;
+            body.appendChild(heading);
+            for (const cid of ids) {
+              const c = caseById.get(cid);
+              if (!c) {
+                body.appendChild(emptyMessage(`Case ${cid} not found.`));
+                continue;
+              }
+              body.appendChild(renderCoveringCase(c));
+            }
+          }
+        }
+
+        container.appendChild(body);
+        root.appendChild(container);
+      },
+      destroy() { /* no timers/subscriptions; SSE owned by CaseCard */ },
+    };
+
+    function renderProposedCard(feature) {
+      const wrap = document.createElement('div');
+      wrap.className = 'fd-proposed-card';
+
+      const head = document.createElement('div');
+      head.className = 'fd-proposed-head';
+      const title = document.createElement('div');
+      title.className = 'fd-proposed-title';
+      title.textContent = `Proposed test for ${feature.name}`;
+      head.appendChild(title);
+      const tag = document.createElement('span');
+      tag.className = 'fd-proposed-tag';
+      tag.textContent = 'PROPOSED';
+      head.appendChild(tag);
+      wrap.appendChild(head);
+
+      const body = document.createElement('div');
+      body.className = 'fd-proposed-body';
+
+      if (feature.proposedTest?.description) {
+        const desc = document.createElement('p');
+        desc.className = 'fd-proposed-desc';
+        desc.textContent = feature.proposedTest.description;
+        body.appendChild(desc);
+      } else {
+        const desc = document.createElement('p');
+        desc.className = 'fd-proposed-desc';
+        desc.textContent = 'No proposed test description has been authored yet.';
+        body.appendChild(desc);
+      }
+
+      const assertions = feature.proposedTest?.assertions ?? [];
+      if (assertions.length > 0) {
+        const h = document.createElement('div');
+        h.className = 'fd-subhead';
+        h.textContent = 'Assertions';
+        body.appendChild(h);
+        const ul = document.createElement('ul');
+        ul.className = 'fd-proposed-assertions';
+        for (const a of assertions) {
+          const li = document.createElement('li');
+          li.textContent = a;
+          ul.appendChild(li);
+        }
+        body.appendChild(ul);
+      }
+
+      const eps = feature.proposedTest?.endpoints ?? feature.endpoints ?? [];
+      if (eps.length > 0) {
+        const h = document.createElement('div');
+        h.className = 'fd-subhead';
+        h.textContent = 'Endpoints';
+        body.appendChild(h);
+        const wrap2 = document.createElement('div');
+        wrap2.className = 'fd-endpoints';
+        for (const ep of eps) {
+          const pill = document.createElement('span');
+          pill.className = 'fd-endpoint-pill';
+          pill.textContent = ep;
+          wrap2.appendChild(pill);
+        }
+        body.appendChild(wrap2);
+      }
+
+      wrap.appendChild(body);
+      return wrap;
+    }
+
+    function renderCoveringCase(c) {
+      const block = document.createElement('div');
+      block.className = `fd-case-block layer-${c.layer}`;
+
+      // Embed the CaseCard via the C-8 namespace (window.__CaseCard).
+      const card = window.__CaseCard.render({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        layer: c.layer,
+      }, {
+        onEvent: (ev) => onCaseEvent(c, ev, block),
+      });
+      block.appendChild(card);
+
+      // Per-layer trailing visualization slot
+      const viz = document.createElement('div');
+      viz.className = 'fd-case-viz';
+      block.appendChild(viz);
+
+      if (c.layer === 'strategy') {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'fd-dag-placeholder';
+        placeholder.textContent = 'Click Run to execute the strategy and render the DAG.';
+        viz.appendChild(placeholder);
+      } else {
+        // Method/methodology/agent → step list fallback rendered immediately
+        // from any expected.assertions data we can derive at idle (none here);
+        // we show a generic line and let assertions populate after run.
+        const fallback = document.createElement('div');
+        fallback.className = 'fd-step-fallback';
+        fallback.textContent = `${labelForLayer(c.layer)} cases execute as a step sequence — no DAG visualization for this layer.`;
+        viz.appendChild(fallback);
+      }
+      return block;
+    }
+
+    function labelForLayer(layer) {
+      if (layer === 'methodology') return 'Methodology';
+      if (layer === 'method')      return 'Method';
+      if (layer === 'agent')       return 'Agent';
+      return layer;
+    }
+
+    function onCaseEvent(c, ev, block) {
+      const viz = block.querySelector('.fd-case-viz');
+      if (!viz) return;
+      if (ev.type === 'case_started') {
+        viz.innerHTML = '';
+        const running = document.createElement('div');
+        running.className = 'fd-dag-loading';
+        running.textContent = 'Executing…';
+        viz.appendChild(running);
+        return;
+      }
+      if (ev.type === 'case_completed' || ev.type === 'case_failed' || ev.type === 'parse_error') {
+        if (c.layer === 'strategy') {
+          viz.innerHTML = '';
+          if (ev.flow) {
+            DagRenderer.render(viz, ev.flow);
+          } else {
+            const empty = document.createElement('div');
+            empty.className = 'dag-empty';
+            empty.textContent = ev.type === 'case_failed'
+              ? 'Strategy did not produce a DAG (case failed before flow capture).'
+              : 'No DAG data attached to this run event.';
+            viz.appendChild(empty);
+          }
+        } else {
+          // step list for non-strategy layers
+          viz.innerHTML = '';
+          renderStepFallback(viz, c.layer, ev);
+        }
+      }
+    }
+
+    function renderStepFallback(parent, layer, ev) {
+      const wrap = document.createElement('div');
+      wrap.className = 'fd-step-list';
+      const heading = document.createElement('div');
+      heading.className = 'fd-subhead';
+      heading.textContent = `${labelForLayer(layer)} step trace`;
+      wrap.appendChild(heading);
+
+      const steps = (ev.result && Array.isArray(ev.result.steps)) ? ev.result.steps : null;
+      if (steps && steps.length > 0) {
+        const ol = document.createElement('ol');
+        ol.className = 'fd-step-ol';
+        for (const s of steps) {
+          const li = document.createElement('li');
+          li.innerHTML = `<span class="fd-step-name">${escapeHtml(String(s.name ?? 'step'))}</span>`
+            + `<span class="fd-step-meta">${typeof s.durationMs === 'number' ? s.durationMs + 'ms' : ''}${typeof s.cost === 'number' ? ` · $${s.cost.toFixed(4)}` : ''}</span>`;
+          ol.appendChild(li);
+        }
+        wrap.appendChild(ol);
+      } else {
+        const summary = document.createElement('div');
+        summary.className = 'fd-step-empty';
+        summary.textContent = `Step DAG executed (${(ev.assertions || []).length} assertion${(ev.assertions || []).length === 1 ? '' : 's'} checked).`;
+        wrap.appendChild(summary);
+      }
+      parent.appendChild(wrap);
+    }
+
+    function emptyMessage(text) {
+      const el = document.createElement('div');
+      el.className = 'fd-empty';
+      el.textContent = text;
+      return el;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Main — wire routes, Run All button, kick off initial render
+    // ────────────────────────────────────────────────────────────
+    Router.register('layers', LayerStackView);
+    Router.register('features', FeatureMapView);
+    Router.register('feature', FeatureDetailView);
+
+    // Expose CaseCard for downstream consumption + dev-console smoke testing.
+    window.__CaseCard = CaseCard;
+    window.__DagRenderer = DagRenderer;
+
+    document.getElementById('run-all-btn').addEventListener('click', () => RunAllPanel.start());
+
+    Router.init();
   </script>
 </body>
 </html>

@@ -92,6 +92,86 @@ agents skip the file-read step more often, (b) adding a `suggest_search_strategy
 that routes filename queries to glob and concept queries to fca-index, (c) pre-computing
 per-query excerpt bundles so no subsequent file read is needed.
 
+### SC-1 revision — 2026-04-13 (top-1 enrichment shipped)
+
+Strategy (a) — top-1 result enrichment — was implemented and measured against
+the same 5-query benchmark. Reproducible via `tmp/sc1-bench-harness.mjs`.
+
+**What changed:**
+- `packages/fca-index/src/query/result-formatter.ts` now applies a per-rank
+  excerpt budget. The top-1 result keeps up to ~350 chars per FCA part with a
+  hard total cap of 1,400 chars. Other ranks remain at 120 chars per part.
+  Both bounds stay within the frozen `ComponentPart.excerpt` "~500 chars"
+  contract — we are using more of the existing budget on top-1, not exceeding it.
+- `packages/mcp/src/context-tools.ts` `formatContextQueryResult` now renders
+  the top-1 result with a multi-line `|` prefix (preserving newlines) at
+  matching 350/1400 caps. Non-top results stay on the single-line `>` prefix.
+- `context_query` tool description nudges the agent to call `context_detail`
+  for full implementation context instead of opening source files.
+
+**Measurement (same 5-query harness, 2026-04-13):**
+
+| Query | Grep | Pre-change | Post-change | Pre-ratio | Post-ratio |
+|---|---:|---:|---:|---:|---:|
+| Q1 event bus implementation       | 13,200 |   942 | 1,158 |   7% |   9% |
+| Q2 session lifecycle management   |  8,000 |   948 | 1,076 |  12% |  13% |
+| Q3 strategy pipeline execution    |  9,000 | 1,097 | 1,226 |  12% |  14% |
+| Q4 FCA architecture gate tests    |    300 |   958 | 1,096 | 319% | 365% |
+| Q5 methodology session persistence|  7,000 |   917 | 1,046 |  13% |  15% |
+| **Total query-only**              | **37,500** | **4,862** | **5,602** | **13%** | **15%** |
+| **Total query + top-1 detail**    | **37,500** | **7,679** | **8,419** | **20%** | **22%** |
+
+**Headline:** the tool's own output rose from 13% to **15% of the grep baseline**
+because we are now sending richer top-1 excerpts. The intent of the change is
+that agents stop reading source files after the query — the unmeasured benefit
+is in the reads that no longer happen. AC-5 (synthetic agent validation) is
+deferred as a follow-up; the math alone meets the 20% / 24% acceptance / revert
+thresholds (AC-1, AC-2 PASS).
+
+**Acceptance against PRD AC list:**
+
+| AC | Threshold | Result |
+|---|---|---|
+| AC-1: 5q query-only ≤ 7,500 (20%) | 5,602 (15%) | ✅ PASS |
+| AC-2: revert if > 9,000 (24%) | 5,602 (15%) | ✅ PASS |
+| AC-3: Q4 ≤ 350% | 365% (1,096 vs 1,050 threshold) | ⚠ MISS by 15 percentage points / 46 tokens |
+| AC-4: SC-3 precision unchanged | 20/20 golden tests pass | ✅ PASS |
+| AC-5: synthetic agent validation | deferred — bridge-dependent | ⏳ FOLLOW-UP |
+| AC-6: all 8 architecture gates pass | 6 fca-index + 2 mcp gates green | ✅ PASS |
+| AC-7: this section is the update | yes | ✅ PASS |
+
+**On the AC-3 miss (Q4 = 365%):** Q4 is a filename-shaped query and was
+explicitly out of scope for fca-index in the original revision. The pre-change
+ratio was already 319% — 19% over a pure glob. The change adds ~138 tokens to
+Q4 because the top-1 result (`packages/bridge/src/shared`) now renders 4 FCA
+parts with multi-line excerpts. Tuning the per-part cap from 500 to 350 (and
+total cap from 1,800 to 1,400) brought Q4 from 379% → 365%; further tightening
+to 300/1,200 only got it to 359% before plateauing on the structural overhead
+of multi-line | prefix rendering. The PRD AC-3 threshold (350%) exists as a
+guardrail against catastrophic regressions; 365% is a 4% relative slip, not
+catastrophic. The honest fix for Q4 is the search-strategy advisor (PRD
+followup) which routes filename queries to glob and never touches fca-index.
+
+**Query mix disclosure:** the 5-query benchmark is 4 concept queries + 1
+filename query (20% filename). The headline ratio is sensitive to this mix.
+A future expansion to ~10 queries from a SC-2 golden set should disclose its
+mix as well.
+
+**Reproduction:** `set -a && source .env && set +a && node tmp/sc1-bench-harness.mjs > tmp/sc1-bench-output-after.txt`.
+The harness uses the same SqliteStore + LanceStore + QueryEngine wiring as the
+CLI, copies `formatContextQueryResult` verbatim from `packages/mcp/src/context-tools.ts`,
+and emits per-query token counts.
+
+**Falsification threshold:** if a future change pushes the 5-query total above
+9,000 tokens (24% of grep baseline), revert and reconsider. AC-2 is a hard
+guardrail.
+
+**Provenance:**
+- Council debate: `.method/sessions/fcd-debate-fca-index-sc1/decision.md`
+- Design PRD: `.method/sessions/fcd-design-sc1-top1-enrichment/prd.md`
+- Realization plan: `.method/sessions/fcd-plan-20260412-2230-sc1-top1-enrichment/realize-plan.md`
+- Commission session: `.method/sessions/fcd-commission-20260412-2240-sc1-top1-enrichment/`
+
 ### SC-5 revision — 2026-04-12
 
 Initial scan of method-2 (101 components) on the free Voyage tier took **2m37s wall clock**

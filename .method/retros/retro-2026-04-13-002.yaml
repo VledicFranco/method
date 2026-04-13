@@ -1,0 +1,140 @@
+session_id: "autonomous-overnight-sc1-followups"
+methodology: P2-SD
+method: autonomous
+date: "2026-04-13"
+prior_session: ".method/retros/retro-2026-04-13-001.yaml"
+hardest_decision: >
+  Whether to attempt the real synthetic agent run (AC-5) autonomously via
+  the bridge. Decided against it: the bridge spin-up + multi-agent runs
+  consume real Claude API budget, and the user was already at the budget
+  edge ("out of extra usage, resets 12am") at the start of the session.
+  Doing this overnight without supervision risks burning meaningful budget
+  on results the user can't immediately verify. Substituted with a
+  qualitative analysis (PR #165) that predicts the qualitative outcome and
+  surfaces a previously-invisible indexing problem (top-1 strict precision
+  is 20% on the benchmark — pacta-playground dominates 3 unrelated queries).
+  Honest substitute > risky goal-fitted experiment.
+
+scope: >
+  Autonomous overnight follow-ups to PR #163 (SC-1 top-1 enrichment).
+  User instruction: "do validations, merges, pushes and cleanups as needed,
+  just ensure quality." Conservative interpretation: execute low-risk
+  follow-ups, do not create new frozen ports without user co-design.
+
+prs_merged_overnight:
+  - number: 164
+    title: "refactor(sc1-bench): harness imports MCP formatter from dist"
+    base: master
+    merge_sha: "2c565f0"
+    risk: low
+    summary: >
+      Addresses retro #1 follow-up #3. The bench harness no longer keeps
+      a stale inline copy of formatContextQueryResult — it imports from
+      packages/mcp/dist/context-tools.js so it always measures what the
+      agent actually sees. Numbers identical (5,602 query-only, 15%) —
+      behavior-preserving refactor.
+
+  - number: 165
+    title: "chore(sc1): qualitative AC-5 analysis + post-merge bench reproduction"
+    base: master
+    merge_sha: "13fa23b"
+    risk: very low (docs-only)
+    summary: >
+      Substitute for the AC-5 synthetic agent run. Reads the rendered MCP
+      output for each of the 5 benchmark queries and judges whether
+      top-1 enrichment achieves its goal (let agent decide without source
+      reads). Conclusion: yes for all 5 queries. Side finding: top-1 strict
+      precision on this benchmark is 20% — pacta-playground appears as
+      top-1 for 3 unrelated queries (Q2, Q3, Q5) due to its broad README.
+      This is an indexing problem PR #163 made observable rather than
+      caused. Filed as a future follow-up in the analysis doc.
+
+prs_skipped_with_reason:
+  - title: "Real synthetic agent run via bridge (AC-5)"
+    reason: >
+      Bridge spin-up + multi-agent runs consume real Claude API budget.
+      User was at "out of extra usage" at session start. Risk too high to
+      run autonomously without user verification of results.
+    follow_up: >
+      Schedule for a session with user attended. Substituted by
+      qualitative analysis in PR #165.
+
+  - title: "Search-strategy advisor (Q4 / AC-3 fix)"
+    reason: >
+      New MCP tool surface = new frozen port = needs /fcd-surface co-design
+      session. Should not autonomously create frozen ports without user
+      involvement.
+    follow_up: >
+      Tracked in PR #163 retro and PR #165 recommendations. Needs a
+      dedicated PRD when scheduled.
+
+  - title: "Formal ObservabilityPort (FU#4)"
+    reason: >
+      Same reason as advisor — new frozen port, needs co-design.
+      The current stderr logs from PR #163 cover the immediate need.
+    follow_up: >
+      Tracked in PR #163 retro. When bridge-side event collection becomes
+      necessary, schedule the /fcd-surface session.
+
+cleanup_actions:
+  - "Pruned 3 stale remote branches via git remote prune (not mine)"
+  - "Deleted 3 merged remote branches I created (feat/053-sc1-top1-enrichment, feat/sc1-harness-use-mcp-dist, chore/sc1-ac5-qualitative-analysis)"
+  - "Verified method-ctl.js clean (line-ending normalization absorbed earlier stash content)"
+  - "Pre-existing stash@{0} (WIP on master prd019) left untouched — not mine"
+
+observations:
+  - >
+    The harness inline-copy issue (PR #164) is exactly the kind of bug that
+    erodes trust in benchmark numbers. Importing from production code is
+    the only sustainable pattern. Worth checking other research scripts
+    in tmp/ for the same anti-pattern.
+  - >
+    The qualitative analysis (PR #165) surfaced a finding that is arguably
+    more important than the SC-1 number itself: the index has weak top-1
+    precision because some components have over-broad READMEs. The fix
+    (split components, narrower embedding doc) is its own PRD and likely
+    a bigger leverage point than further per-rank tuning.
+  - >
+    Three PRs merged overnight, all single-purpose, all reviewable in
+    isolation. PR #164 (refactor) and PR #165 (docs) carry essentially
+    zero implementation risk. The only material change of the night was
+    PR #164's added export — additive, JSDoc-marked @internal, behavior
+    preserved by harness reproducing identical numbers.
+  - >
+    Root npm test got stuck on output flush throughout the session.
+    Per-package tests (fca-index 197/197, mcp 21/21) are the reliable
+    verification path on Windows for now. Worth investigating the root
+    test flush issue, but separately.
+
+state_left_for_user:
+  master_sha: "13fa23b"
+  open_prs: 0
+  uncommitted_changes: "none in working tree"
+  pending_stash: "stash@{0} (pre-existing prd019 WIP, not mine — leave or pop at user's discretion)"
+  outstanding_followups:
+    - "Synthetic agent validation (AC-5) — when budget + bandwidth allow"
+    - "Search-strategy advisor for filename queries — separate PRD with /fcd-surface session"
+    - "Formal ObservabilityPort — when bridge-side collection needed"
+    - "Index precision investigation (NEW — surfaced by PR #165 analysis)"
+
+card_feedback:
+  essence: >
+    Faithfulness held: did not modify frozen ports, did not invent ACs,
+    documented every miss honestly.
+  delivery_rules: >
+    DR-04 respected throughout. DR-09 (real fixtures) — all tests use
+    real harness output not mocks. DR-15 (port discipline) — declined to
+    autonomously create new ports.
+
+proposed_deltas:
+  - >
+    Add a "tmp/ research script audit" to periodic project hygiene —
+    catch the inline-copy anti-pattern (PR #164) earlier next time.
+    Could be a one-liner: grep tmp/*.mjs for inline duplicates of
+    production functions.
+  - >
+    Consider an autonomous-mode runbook for /fcd-commission overnight
+    work — explicit "do not auto-create frozen ports" rule, explicit
+    "verify per-package tests before relying on root npm test on Windows"
+    note, explicit "skip Claude API spend if user at budget edge" rule.
+    This session worked but would be tighter with the runbook.

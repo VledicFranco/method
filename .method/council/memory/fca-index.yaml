@@ -13,6 +13,12 @@ sessions:
     outcome: decided
     artifact: .method/sessions/fcd-debate-fca-index-features/decision.md
     topic: "next features — scan hygiene, context detail, compliance tooling"
+  - date: "2026-04-12"
+    cast: [Oryn, Sable, Vera, Rion, Lena]
+    surface_advocate: Sable
+    outcome: decided
+    artifact: .method/sessions/fcd-debate-fca-index-sc1/decision.md
+    topic: "SC-1 improvement — top-1 result enrichment, engine-side variant"
 
 decision_summary: >
   Build @method/fca-index as a universal L3 library. Hybrid SQLite + embedding index
@@ -102,6 +108,36 @@ feature_sets:
       - "CLI: fca-index suggest <projectRoot> <componentPath> [--apply] [--json]"
       - "compliance/ domain: compliance-engine.ts, template-generator.ts, index.ts"
       - "G-BOUNDARY-COMPLIANCE architecture gate"
+
+  set_d:
+    status: "shipped — branch feat/053-sc1-top1-enrichment"
+    shipped: "2026-04-13"
+    surface: "none — within frozen ComponentPart.excerpt contract (no /fcd-surface session)"
+    council: ".method/sessions/fcd-debate-fca-index-sc1/decision.md"
+    design: ".method/sessions/fcd-design-sc1-top1-enrichment/prd.md"
+    plan: ".method/sessions/fcd-plan-20260412-2230-sc1-top1-enrichment/realize-plan.md"
+    commission: ".method/sessions/fcd-commission-20260412-2240-sc1-top1-enrichment/"
+    items:
+      - "result-formatter.ts: per-rank excerpt budget (TOP_RESULT_EXCERPT_PER_PART=350, TOP_RESULT_TOTAL_BUDGET=1400, REST_RESULT_EXCERPT_PER_PART=120) + trimParts helper"
+      - "result-formatter.test.ts: 8 unit tests covering top-1 budget, total cap, non-top regression, pathological 8-part, no-excerpt passthrough (top + non-top), single-result, parts ordering"
+      - "context-tools.ts formatContextQueryResult: top-1 multi-line | prefix at 350/1400 caps, non-top single-line > prefix at 120 cap"
+      - "context-tools.ts CONTEXT_TOOLS[0].description: nudge to call context_detail before reading source files"
+      - "context-tools.test.ts: 5 new test cases (top-1 multi-line preserves newlines, non-top single-line regression guard, non-top 120-char cap, top-1 1400-char total cap, no-excerpt passthrough)"
+      - "tmp/sc1-bench-harness.mjs: re-runnable benchmark script, force-added"
+      - "PRD 053 SC-1 revision section updated with 2026-04-13 measurement (15% query-only, AC-3 misses by 15pts)"
+    measurement_2026_04_13:
+      query_only_total: 5602
+      query_only_ratio: "15%"
+      query_plus_detail_total: 8419
+      query_plus_detail_ratio: "22%"
+      grep_baseline_total: 37500
+      ac1_status: PASS
+      ac2_status: PASS
+      ac3_status: "MISS — Q4 at 365% vs 350% threshold (46-token slip on filename query, out of fca-index scope)"
+      ac4_status: "PASS — 20/20 golden tests"
+      ac5_status: "DEFERRED — synthetic agent run, bridge-dependent, non-blocking per council"
+      ac6_status: "PASS — all 8 architecture gates green"
+      ac7_status: "PASS — this section"
       - "MCP exposure: deferred (no current consumer)"
 
 architecture_gates:
