@@ -24,7 +24,11 @@ export const CONTEXT_TOOLS = [
       'efficient context gathering — reads far fewer tokens than filesystem search. ' +
       'The top result is rendered with expanded excerpts so you can usually act on it ' +
       'without reading source files. For full implementation details on any result, ' +
-      'call context_detail — it is cheaper than opening the source file.',
+      'call context_detail — it is cheaper than opening the source file. ' +
+      'Use Glob (NOT this tool) for filename-shaped queries — e.g., looking for ' +
+      'a specific file like "architecture.test.ts" or pattern like "**/*.contract.test.ts". ' +
+      'fca-index is optimized for concept queries ("event bus implementation", ' +
+      '"session lifecycle"), not filename lookups.',
     inputSchema: {
       type: 'object' as const,
       required: ['query'],
