@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { allCases, allFeatures, type SmokeTestCase } from './cases/index.js';
 import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executor/mock-executor.js';
+import type { RunFlow } from './executor/run-flow.js';
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
 import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
@@ -160,6 +161,12 @@ interface RunEvent {
   allPassed?: boolean;
   error?: string;
   durationMs?: number;
+  /**
+   * Strategy-layer run flow (PRD 056 Surface 6 — consumed by the SVG DAG renderer
+   * in the feature detail view). Populated for strategy cases via runMockStrategy;
+   * undefined for method/methodology cases (renderer handles defensively).
+   */
+  flow?: RunFlow;
 }
 
 async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
@@ -466,7 +473,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
   try {
     const yaml = loadFixtureYaml(fixturePath);
     const options = getMockOptions(testCase);
-    const { result } = await runMockStrategy(yaml, options);
+    const { result, flow } = await runMockStrategy(yaml, options);
     const assertions = checkResult(result, testCase.expected);
     const passed = assertions.every((a) => a.passed);
 
@@ -485,6 +492,7 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
       assertions,
       allPassed: passed,
       durationMs: Date.now() - startMs,
+      flow,
     };
   } catch (err) {
     // If the test case expects failure, check error message
