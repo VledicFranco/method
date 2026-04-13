@@ -15,7 +15,6 @@ import {
   type Method,
   type Methodology,
   type Step,
-  type Predicate,
 } from '@method/methodts';
 import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
 import {

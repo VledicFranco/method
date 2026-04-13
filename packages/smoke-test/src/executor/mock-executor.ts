@@ -30,7 +30,6 @@ import type {
   OversightEvent,
 } from '@method/methodts/strategy/dag-types.js';
 import { readFileSync } from 'node:fs';
-import { load as loadYaml } from 'js-yaml';
 import type { RunFlow } from './run-flow.js';
 
 // ── Scripted outputs per node ID ────────────────────────────────
@@ -89,7 +88,7 @@ export function makeMockNodeExecutor(
 export function makeMockContextLoadExecutor(): ContextLoadExecutor {
   return {
     async executeContextLoad(
-      config: ContextLoadNodeConfig,
+      _config: ContextLoadNodeConfig,
       _projectRoot: string,
     ): Promise<ContextLoadResult> {
       return {

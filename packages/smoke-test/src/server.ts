@@ -13,7 +13,6 @@ import { allCases, allFeatures, type SmokeTestCase } from './cases/index.js';
 import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executor/mock-executor.js';
 import type { RunFlow } from './executor/run-flow.js';
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
-import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
 import { createAgent, type Pact } from '@method/pacta';
 import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
