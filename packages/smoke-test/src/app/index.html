@@ -1,774 +1,447 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>Smoke Tests — Method</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg-0:#0a0c10;--bg-1:#12151c;--bg-2:#1a1e2a;--bg-3:#222838;--bg-4:#2a3040;
-  --border:#2a3148;
-  --text-1:#e4e7f0;--text-2:#a0a8be;--text-3:#6b7494;
-  --accent:#6ea0f7;--accent-dim:#3a5a9a;
-  --green:#5ccf6f;--green-dim:rgba(92,207,111,.12);
-  --red:#f06080;--red-dim:rgba(240,96,128,.12);
-  --amber:#e0af68;--amber-dim:rgba(224,175,104,.12);
-  --purple:#b48efa;
-  --font:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  --mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,monospace;
-  /* Layer colors */
-  --l-methodology:#c792ea;--l-method:#82aaff;--l-strategy:#c3e88d;--l-agent:#f78c6c;
-  --l-methodology-bg:rgba(199,146,234,.08);--l-method-bg:rgba(130,170,255,.08);
-  --l-strategy-bg:rgba(195,232,141,.08);--l-agent-bg:rgba(247,140,108,.08);
-  --l-methodology-border:rgba(199,146,234,.25);--l-method-border:rgba(130,170,255,.25);
-  --l-strategy-border:rgba(195,232,141,.25);--l-agent-border:rgba(247,140,108,.25);
-}
-html,body{height:100%;background:var(--bg-0);color:var(--text-1);font:13px/1.5 var(--font);overflow:hidden}
-button{font:inherit;cursor:pointer;border:none;outline:none}
-
-/* Header */
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:var(--bg-1);border-bottom:1px solid var(--bg-3);position:relative;z-index:10}
-.header h1{font-size:15px;font-weight:700;letter-spacing:-0.3px}
-.header .sub{font-size:11px;color:var(--text-3);margin-top:1px}
-.header-left{display:flex;align-items:center;gap:12px}
-.header-right{display:flex;align-items:center;gap:10px}
-.nav-tabs{display:flex;gap:2px;background:var(--bg-2);border-radius:6px;padding:2px}
-.nav-tab{padding:5px 14px;border-radius:4px;font-size:11px;font-weight:600;color:var(--text-3);background:transparent;transition:all .15s}
-.nav-tab:hover{color:var(--text-2)}
-.nav-tab.active{background:var(--bg-4);color:var(--text-1)}
-.progress-text{font-size:11px;color:var(--text-3);font-family:var(--mono)}
-.run-all-btn{background:var(--accent);color:#0a0c10;border:none;padding:6px 14px;font-size:12px;font-weight:700;border-radius:5px;cursor:pointer}
-.run-all-btn:disabled{opacity:.4;cursor:not-allowed}
-.back-btn{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;color:var(--accent);background:rgba(110,160,247,.1);border:1px solid rgba(110,160,247,.2)}
-.back-btn:hover{background:rgba(110,160,247,.18)}
-
-/* Views */
-.view{display:none;height:calc(100vh - 52px);overflow-y:auto;padding:24px 32px}
-.view.active{display:block}
-
-/* Layer badge */
-.layer-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:2px 8px;border-radius:3px}
-.layer-badge.methodology{background:var(--l-methodology-bg);color:var(--l-methodology);border:1px solid var(--l-methodology-border)}
-.layer-badge.method{background:var(--l-method-bg);color:var(--l-method);border:1px solid var(--l-method-border)}
-.layer-badge.strategy{background:var(--l-strategy-bg);color:var(--l-strategy);border:1px solid var(--l-strategy-border)}
-.layer-badge.agent{background:var(--l-agent-bg);color:var(--l-agent);border:1px solid var(--l-agent-border)}
-
-/* Coverage badge */
-.cov-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
-.cov-badge.covered{background:rgba(92,207,111,.12);color:var(--green);border:1px solid rgba(92,207,111,.2)}
-.cov-badge.gap{background:rgba(240,96,128,.12);color:var(--red);border:1px solid rgba(240,96,128,.2)}
-.cov-badge.partial{background:rgba(224,175,104,.12);color:var(--amber);border:1px solid rgba(224,175,104,.2)}
-
-/* Summary bar */
-.summary-bar{display:flex;gap:20px;margin-bottom:24px;padding:14px 20px;background:var(--bg-1);border-radius:8px;border:1px solid var(--bg-3);flex-wrap:wrap}
-.summary-stat{text-align:center;min-width:70px}
-.summary-stat .val{font-size:20px;font-weight:700;font-family:var(--mono)}
-.summary-stat .label{font-size:10px;color:var(--text-3);margin-top:2px}
-.summary-stat .val.green{color:var(--green)}
-.summary-stat .val.red{color:var(--red)}
-
-/* Layer stack diagram */
-.layer-stack{display:flex;flex-direction:column;gap:0;max-width:860px;margin:0 auto 32px}
-.layer-row{display:flex;align-items:stretch;border:1.5px solid var(--bg-3);border-bottom:none;position:relative;transition:all .2s;cursor:pointer}
-.layer-row:last-child{border-bottom:1.5px solid var(--bg-3)}
-.layer-row:hover{border-color:var(--accent);z-index:1}
-.layer-row.methodology{border-left:4px solid var(--l-methodology)}
-.layer-row.method{border-left:4px solid var(--l-method)}
-.layer-row.strategy{border-left:4px solid var(--l-strategy)}
-.layer-row.agent{border-left:4px solid var(--l-agent)}
-.layer-label{width:130px;padding:16px;display:flex;flex-direction:column;justify-content:center;flex-shrink:0}
-.layer-label .lname{font-size:13px;font-weight:700}
-.layer-label .lsub{font-size:10px;color:var(--text-3);margin-top:2px}
-.layer-body{flex:1;padding:16px;border-left:1px solid var(--bg-3)}
-.layer-body .ldesc{font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px}
-.layer-body .lstats{display:flex;gap:16px;font-size:10px;color:var(--text-3)}
-.layer-body .lstats .lval{font-weight:700;font-family:var(--mono)}
-
-/* Layer doc section */
-.layer-doc{margin-bottom:32px;max-width:860px}
-.layer-doc-title{font-size:16px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.layer-doc-body{font-size:12px;color:var(--text-2);line-height:1.7}
-.layer-doc-body p{margin-bottom:10px}
-.layer-doc-body strong{color:var(--text-1)}
-.layer-example{margin:12px 0;padding:12px 16px;background:var(--bg-1);border:1px solid var(--bg-3);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--text-2);line-height:1.6;white-space:pre;overflow-x:auto}
-.layer-contains{margin-top:12px}
-.layer-contains-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px}
-.layer-contains-list{display:flex;flex-wrap:wrap;gap:6px}
-
-/* Cluster sections */
-.cluster{margin-bottom:28px}
-.cluster-header{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bg-3)}
-.cluster-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3)}
-.cluster-narrative{font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:14px;max-width:860px}
-.cluster-grid{display:flex;flex-wrap:wrap;gap:10px}
-
-/* Feature tiles */
-.feature-tile{width:200px;padding:14px 16px;border-radius:8px;background:var(--bg-2);border:1.5px solid var(--bg-3);cursor:pointer;transition:all .18s;position:relative}
-.feature-tile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
-.feature-tile.covered{border-color:rgba(92,207,111,.25)}
-.feature-tile.gap{border-color:rgba(240,96,128,.25);border-style:dashed}
-.tile-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.tile-name{font-size:12px;font-weight:600;line-height:1.3}
-.tile-desc{font-size:10px;color:var(--text-3);margin-bottom:8px;line-height:1.4}
-.tile-bar{height:4px;border-radius:2px;background:var(--bg-4);overflow:hidden;margin-bottom:6px}
-.tile-bar-fill{height:100%;border-radius:2px;transition:width .4s}
-.tile-bar-fill.covered{background:var(--green)}
-.tile-bar-fill.gap{background:var(--red)}
-.tile-stats{font-size:10px;color:var(--text-3);font-family:var(--mono)}
-.tile-stats .ok{color:var(--green)}
-.tile-stats .nok{color:var(--red)}
-
-/* Feature detail */
-.fd-title{font-size:18px;font-weight:700;margin-bottom:4px}
-.fd-desc{font-size:13px;color:var(--text-2);line-height:1.5;max-width:760px}
-.fd-narrative{font-size:12px;color:var(--text-2);line-height:1.65;margin:12px 0 20px;max-width:760px;padding:12px 16px;background:var(--bg-1);border-left:3px solid var(--accent);border-radius:0 6px 6px 0}
-.fd-tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-.fd-tag{font-size:10px;padding:2px 8px;border-radius:3px;background:rgba(180,142,250,.12);color:var(--purple);border:1px solid rgba(180,142,250,.2)}
-
-/* Case cards */
-.case-card{background:var(--bg-1);border:1px solid var(--bg-3);border-radius:8px;margin-bottom:12px;overflow:hidden}
-.case-card.pass{border-left:3px solid var(--green)}
-.case-card.fail{border-left:3px solid var(--red)}
-.case-card.proposed{border-left:3px dashed var(--amber);opacity:.85}
-.case-card.pending{border-left:3px solid var(--bg-3)}
-.case-card-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg-2);cursor:pointer}
-.case-card-header:hover{background:var(--bg-3)}
-.case-card-title{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
-.case-card-badge{display:flex;gap:8px;align-items:center}
-.case-card-status{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
-.case-card-status.pass{background:rgba(92,207,111,.15);color:var(--green)}
-.case-card-status.fail{background:rgba(240,96,128,.15);color:var(--red)}
-.case-card-status.proposed{background:rgba(224,175,104,.15);color:var(--amber)}
-.case-card-status.pending{background:rgba(107,116,148,.15);color:var(--text-3)}
-.case-card-time{font-size:10px;color:var(--text-3);font-family:var(--mono)}
-.case-card-body{padding:14px 16px}
-.case-card-body.collapsed{display:none}
-.case-narrative{font-size:11px;color:var(--text-2);line-height:1.6;margin-bottom:10px;padding:10px 14px;background:var(--bg-0);border-radius:6px;border:1px solid var(--bg-3)}
-
-/* Assertions in detail */
-.assertions{margin-top:10px;border-top:1px solid var(--bg-3);padding-top:8px}
-.assertion{display:flex;align-items:flex-start;gap:8px;padding:3px 0;font-size:11px}
-.assert-icon{width:16px;text-align:center;font-weight:700;flex-shrink:0}
-.assert-icon.pass{color:var(--green)}
-.assert-icon.fail{color:var(--red)}
-.assert-name{color:var(--text-2)}
-.assert-detail{font-size:10px;color:var(--text-3);font-family:var(--mono)}
-
-/* Run button in detail */
-.run-btn{background:var(--green);color:#0a0c10;border:none;padding:5px 14px;font-size:12px;font-weight:700;border-radius:5px;cursor:pointer;margin-top:8px}
-.run-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* Status banner */
-.status-banner{padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;margin-bottom:10px}
-.status-banner.pass{background:var(--green-dim);color:var(--green);border:1px solid rgba(92,207,111,.3)}
-.status-banner.fail{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,96,128,.3)}
-.status-banner.running{background:rgba(110,160,247,.1);color:var(--accent);border:1px solid var(--accent-dim)}
-
-/* Exec summary */
-.exec-summary{display:flex;gap:0;background:var(--bg-1);border:1px solid var(--bg-3);border-radius:8px;overflow:hidden;margin-bottom:12px}
-.exec-stat{flex:1;text-align:center;padding:8px;border-right:1px solid var(--bg-3)}
-.exec-stat:last-child{border-right:none}
-.exec-stat .label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
-.exec-stat .val{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:2px}
-
-/* Spinner */
-.spinner{width:12px;height:12px;border:2px solid var(--accent-dim);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* Scrollbar */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:var(--bg-0)}
-::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:3px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Methodology Smoke Tests</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+  <header class="top-nav">
+    <div class="brand">Methodology Smoke Tests</div>
+    <nav class="nav-links">
+      <a href="#/layers" data-route="layers">Layers</a>
+      <a href="#/features" data-route="features">Features</a>
+    </nav>
+    <button id="run-all-btn" class="btn-run-all" type="button">Run All (mock)</button>
+  </header>
 
-<div class="header">
-  <div class="header-left">
-    <button class="back-btn" id="back-btn" style="display:none" onclick="goBack()">Back</button>
-    <div>
-      <h1>Methodology Smoke Tests</h1>
-      <div class="sub">Abstraction layers, feature coverage, and gaps</div>
+  <main id="view-root" aria-live="polite"></main>
+
+  <footer id="run-all-panel" class="run-all-panel" hidden>
+    <div class="rap-header">
+      <span class="rap-title">Run All</span>
+      <div class="rap-counts">
+        <span class="c-pass"><span data-c="pass">0</span> passed</span>
+        <span class="c-fail"><span data-c="fail">0</span> failed</span>
+        <span class="c-running"><span data-c="running">0</span> running</span>
+        <span class="c-total">of <span data-c="total">0</span></span>
+      </div>
+      <button id="run-all-close" class="rap-close" type="button" aria-label="close">&times;</button>
     </div>
-  </div>
-  <div class="header-right">
-    <div class="nav-tabs">
-      <button class="nav-tab active" data-view="layers" onclick="switchView('layers',this)">Layers</button>
-      <button class="nav-tab" data-view="map" onclick="switchView('map',this)">Feature Map</button>
-      <button class="nav-tab" data-view="detail" onclick="switchView('detail',this)" style="display:none">Detail</button>
-    </div>
-    <span class="progress-text" id="progress"></span>
-    <button class="run-all-btn" id="run-all">Run All (mock)</button>
-  </div>
-</div>
+    <div class="rap-list" id="run-all-list"></div>
+  </footer>
 
-<div class="view active" id="view-layers"></div>
-<div class="view" id="view-map"></div>
-<div class="view" id="view-detail"></div>
+  <!--
+    C-7 deliverable: client modules inlined as a single ES module block.
+    Rationale: server.ts (forbidden in C-7 scope) currently only serves
+    /, /styles.css, and /api/*. Until server gains a static asset
+    handler, the client lives here. Module boundaries preserved via
+    const namespaces (API, Badge, Router, RunAllPanel, LayerStackView)
+    so extraction to packages/smoke-test/src/app/client/** is a
+    mechanical follow-up.
+  -->
+  <script type="module">
+    // ────────────────────────────────────────────────────────────
+    // API — fetch wrappers over the smoke-test HTTP surface (PRD 056 §Surface 5)
+    // ────────────────────────────────────────────────────────────
+    const API = {
+      async getLayers()   { return (await fetch('/api/layers')).json(); },
+      async getClusters() { return (await fetch('/api/clusters')).json(); },
+      async getFeatures() { return (await fetch('/api/features')).json(); },
+      async getCases()    { return (await fetch('/api/cases')).json(); },
+      /** Opens an SSE stream for a single case run. Returns the EventSource. */
+      runCase(id) { return new EventSource(`/api/run/${encodeURIComponent(id)}`); },
+      /** Opens an SSE stream for the full run-all flow. Returns the EventSource. */
+      runAll() { return new EventSource('/api/run-all'); },
+    };
 
-<script>
-// ======================================================================
-// DATA MODEL
-// ======================================================================
+    // ────────────────────────────────────────────────────────────
+    // Badge components — layerBadge, coverageBadge
+    // ────────────────────────────────────────────────────────────
+    const Badge = {
+      layerBadge(layerId, label) {
+        const el = document.createElement('span');
+        el.className = `layer-badge ${layerId}`;
+        el.textContent = label ?? layerId;
+        return el;
+      },
+      coverageBadge(status, text) {
+        const el = document.createElement('span');
+        el.className = `cov-badge ${status}`;
+        el.textContent = text;
+        return el;
+      },
+    };
 
-const LAYERS = [
-  {
-    id: 'methodology', name: 'Methodology', aka: 'L4', color: 'methodology',
-    summary: 'What workflow to follow and when to switch',
-    desc: 'A methodology is a coalgebraic transition system that governs which methods run and in what order. It does not execute work \u2014 it selects work by evaluating routing predicates against the current state. The methodology maintains a session that tracks which methods have been completed, what outputs they produced, and whether the global objective is satisfied.',
-    lifecycle: 'methodology_list \u2192 methodology_start \u2192 methodology_route \u2192 methodology_select \u2192 [method runs] \u2192 methodology_transition \u2192 methodology_route \u2192 ... \u2192 complete',
-    contains: ['Session lifecycle', 'Routing arms', 'Predicate evaluation', 'Method completion records', 'Global objective tracking'],
-  },
-  {
-    id: 'method', name: 'Method', aka: 'L3', color: 'method',
-    summary: 'What steps to execute in what order',
-    desc: 'A method groups steps into a directed acyclic graph (DAG) and manages the step execution lifecycle. Steps are ordered via topological sort and executed one at a time. Each step has preconditions, postconditions, and execution semantics. The method tracks step outputs and makes them available to subsequent steps as context.',
-    lifecycle: 'load_method \u2192 step_current \u2192 step_context \u2192 [agent executes] \u2192 step_validate \u2192 step_advance \u2192 step_current \u2192 ... \u2192 terminal step \u2192 method complete',
-    contains: ['Step DAG ordering', 'Step context assembly', 'Output validation', 'Pre/postconditions', 'Progress tracking'],
-  },
-  {
-    id: 'strategy', name: 'Strategy', aka: 'L2', color: 'strategy',
-    summary: 'How to orchestrate nodes, gates, and artifacts',
-    desc: 'A strategy is a YAML-defined execution plan with nodes, gates, artifacts, and oversight rules. The strategy executor traverses the DAG, scheduling nodes in topological order, running gates after each node, managing the artifact store, and enforcing budget and oversight constraints.',
-    lifecycle: 'parse YAML \u2192 validate DAG \u2192 topological sort \u2192 execute nodes \u2192 evaluate gates \u2192 store artifacts \u2192 check oversight \u2192 generate retro',
-    contains: ['5 node types', '5 gate types', 'Artifact store', 'Oversight rules', 'Parallel execution', 'Budget enforcement', 'Retro generation'],
-  },
-  {
-    id: 'agent', name: 'Agent', aka: 'L1', color: 'agent',
-    summary: 'How a single LLM invocation behaves',
-    desc: 'An agent is a single LLM invocation configured by a Pact. The Pacta SDK manages the agent lifecycle: prompt construction, tool execution, output validation, retry with feedback, context compaction, and reflexion.',
-    lifecycle: 'createAgent(pact, provider) \u2192 agent.invoke(prompt) \u2192 [LLM call] \u2192 [tool use?] \u2192 [validate output] \u2192 [retry?] \u2192 return result',
-    contains: ['Multi-step chains', 'Tool use', 'Schema retry', 'Context compaction', 'Reflexion', 'Budget exhaustion'],
-  },
-];
+    // ────────────────────────────────────────────────────────────
+    // Router — hash-based; dispatches render/destroy
+    // Registered routes: #/layers (default), #/features, #/feature/:id
+    // ────────────────────────────────────────────────────────────
+    const Router = (() => {
+      const routes = new Map();
+      let currentView = null;
 
-const CLUSTERS = [
-  // METHODOLOGY LAYER (all gaps)
-  {
-    id: 'meth-session', title: 'Session Lifecycle', layer: 'methodology',
-    narrative: 'The methodology session is the top-level orchestration state machine. It tracks which methodology is active, which methods have been completed, what their outputs were, and whether the global objective has been satisfied.',
-    features: [
-      { id: 'methodology-start', name: 'Session Start', desc: 'Initialize a methodology session with a challenge description', gap: true,
-        narrative: 'Creates a new methodology session state. The session tracks completed methods, global objective status, and current routing info. Requires a methodology ID and a challenge description. Returns methodology metadata and transition function summary.' },
-      { id: 'methodology-list', name: 'Methodology Listing', desc: 'Discover available methodologies and their method repertoires', gap: true,
-        narrative: 'Queries the stdlib catalog via the MethodologySource port and returns all available methodologies with their methods. Each entry includes methodology ID, name, description, and an array of methods with step counts.' },
-      { id: 'methodology-status', name: 'Session Status', desc: 'Query current method, step position, and progress', gap: true,
-        narrative: 'Returns the current state of a methodology session: which methodology is loaded, which method is active, what step the agent is on, and overall progress. Session status can be: initialized, routing, executing, transitioning, completed, or failed.' },
-      { id: 'session-isolation', name: 'Session Isolation', desc: 'Multiple independent sessions with separate state', gap: true,
-        narrative: 'Different session IDs maintain completely independent state \u2014 separate step pointers, separate output histories, separate methodology progress. Enables multiple agents to work through the same methodology concurrently without interference.' },
-    ]
-  },
-  {
-    id: 'meth-routing', title: 'Routing & Transition', layer: 'methodology',
-    narrative: 'The transition function is the core of a methodology. It evaluates predicate conditions against the current state to decide which method should run next. Arms are evaluated in priority order \u2014 first match wins.',
-    features: [
-      { id: 'routing-inspection', name: 'Routing Inspection', desc: 'Read the transition function arms, predicates, and evaluation order', gap: true,
-        narrative: 'Returns the full transition function structure: all predicates with descriptions and truth conditions, all arms with priority, condition, selected method, and rationale, and the evaluation order (priority-stack).' },
-      { id: 'route-evaluation', name: 'Route Evaluation', desc: 'Evaluate routing against predicates to recommend next method', gap: true,
-        narrative: 'The core routing operation. Takes optional challenge predicates and evaluates arms in priority order. Returns which predicates were evaluated, which arm matched, and which method was selected.' },
-      { id: 'method-selection', name: 'Method Selection', desc: 'Record routing decision and load selected method into session', gap: true,
-        narrative: 'After routing recommends a method, selection records the decision and loads the method step DAG into the session. Validates that the method is in the methodology repertoire and initializes step tracking.' },
-      { id: 'methodology-transition', name: 'Method Transition', desc: 'Complete current method, record outputs, re-route for next method', gap: true,
-        narrative: 'The main state transition. Gathers all step outputs from the completed method, records a CompletedMethodRecord, re-evaluates routing with updated predicates, and either loads the next method or marks the methodology as complete.' },
-    ]
-  },
-  // METHOD LAYER (all gaps)
-  {
-    id: 'step-exec', title: 'Step Execution', layer: 'method',
-    narrative: 'Steps are the atomic units of work within a method. Each step has a role, preconditions, postconditions, and execution semantics. The step execution cycle is: inspect, assemble context, execute, validate output, advance.',
-    features: [
-      { id: 'step-current', name: 'Step Inspection', desc: 'Get current step details: role, pre/postcondition, guidance, schema', gap: true,
-        narrative: 'Returns the full step record: ID, name, role, precondition label, postcondition label, execution guidance, and output schema.' },
-      { id: 'step-context', name: 'Context Assembly', desc: 'Assemble enriched context with prior outputs, progress, and objective', gap: true,
-        narrative: 'Builds the full context an agent needs to execute a step: methodology progress, method objective, current step details, prior step outputs, and prior method outputs.' },
-      { id: 'step-advance', name: 'Step Advancement', desc: 'Mark current step complete and move to next in DAG order', gap: true,
-        narrative: 'Increments the step pointer in topological order. Returns the previous step (just completed) and next step (about to begin), or null if at the terminal step.' },
-      { id: 'step-validate', name: 'Output Validation', desc: 'Validate agent output against schema and postcondition keywords', gap: true,
-        narrative: 'Two-phase validation. Phase 1 (schema): checks required fields, validates types. Phase 2 (postcondition): extracts keywords from postcondition label and performs substring matching. Returns recommendation: advance, retry, or escalate.' },
-      { id: 'step-preconditions', name: 'Precondition Display', desc: 'Extract and display step preconditions from first-order predicates', gap: true,
-        narrative: 'Preconditions are first-order predicates that define what must be true before a step can begin. The system extracts human-readable labels from check predicates for display.' },
-    ]
-  },
-  // STRATEGY LAYER (all covered)
-  {
-    id: 'strat-nodes', title: 'Node Types', layer: 'strategy',
-    narrative: 'A strategy DAG is composed of nodes, each representing a unit of work. Five node types are supported, each with different execution semantics.',
-    features: [
-      { id: 'methodology-node', name: 'Methodology Node', desc: 'LLM agent invocation with prompt, role, and capabilities', gap: false },
-      { id: 'script-node', name: 'Script Node', desc: 'Sandboxed JS execution, zero cost, deterministic', gap: false },
-      { id: 'strategy-node', name: 'Strategy Node', desc: 'Sub-strategy invocation via SubStrategySource port', gap: false },
-      { id: 'semantic-node', name: 'Semantic Node', desc: 'SPL algorithm dispatch (explore, design, implement, review)', gap: false },
-      { id: 'context-load-node', name: 'Context Load', desc: 'FCA component retrieval via ContextLoadExecutor port', gap: false },
-    ]
-  },
-  {
-    id: 'strat-gates', title: 'Gates & Control Flow', layer: 'strategy',
-    narrative: 'Gates are quality checkpoints inserted after nodes. They evaluate conditions on node outputs or execution metadata before allowing the strategy to proceed.',
-    features: [
-      { id: 'algorithmic-gate', name: 'Algorithmic Gate', desc: 'JS expression evaluated against node output', gap: false },
-      { id: 'observation-gate', name: 'Observation Gate', desc: 'Checks on cost, duration, and execution metadata', gap: false },
-      { id: 'human-approval-gate', name: 'Human Approval', desc: 'Async approval flow with awaiting_approval event', gap: false },
-      { id: 'gate-retry', name: 'Gate Retry + Feedback', desc: 'Retry node with failure reason injected into prompt', gap: false },
-      { id: 'strategy-level-gate', name: 'Strategy Gate', desc: 'Post-completion aggregate evaluation', gap: false },
-    ]
-  },
-  {
-    id: 'strat-data', title: 'Data Flow & Oversight', layer: 'strategy',
-    narrative: 'Nodes communicate through an artifact store. Oversight rules monitor execution metrics against thresholds.',
-    features: [
-      { id: 'artifact-passing', name: 'Artifact Passing', desc: 'Data flow between nodes via ArtifactStore', gap: false },
-      { id: 'artifact-versioning', name: 'Artifact Versioning', desc: 'Immutable versioned store, multiple writes preserved', gap: false },
-      { id: 'oversight-escalate', name: 'Escalate', desc: 'Suspend execution on threshold breach', gap: false },
-      { id: 'oversight-warn', name: 'Warn', desc: 'Emit warning but continue execution', gap: false },
-    ]
-  },
-  {
-    id: 'strat-engine', title: 'Execution Engine', layer: 'strategy',
-    narrative: 'The engine handles scheduling, prompt assembly, session management, budget enforcement, validation, and retrospective generation.',
-    features: [
-      { id: 'parallel-execution', name: 'Parallel Execution', desc: 'Concurrent nodes at same topological level', gap: false },
-      { id: 'prompt-construction', name: 'Prompt Assembly', desc: 'Template + injection + hints + capabilities', gap: false },
-      { id: 'scope-contract', name: 'Scope Contract', desc: 'Capability boundaries and tool whitelisting', gap: false },
-      { id: 'budget-enforcement', name: 'Budget Enforce', desc: 'Max cost limit with budget_exhausted event', gap: false },
-      { id: 'output-validation-s', name: 'Output Validation', desc: 'Schema checking on node outputs', gap: false },
-      { id: 'dag-validation', name: 'DAG Validation', desc: 'Structure validation and cycle detection', gap: false },
-      { id: 'retro-generation', name: 'Retro Generation', desc: 'Post-run timing, cost, gates, artifacts', gap: false },
-      { id: 'critical-path', name: 'Critical Path', desc: 'CPM computation and speedup ratio', gap: false },
-    ]
-  },
-  // AGENT LAYER (all covered)
-  {
-    id: 'agent-features', title: 'Agent Execution', layer: 'agent',
-    narrative: 'Agent-level features test the Pacta SDK \u2014 how individual LLM invocations behave. These are the lowest level: a single agent processing a prompt, using tools, validating output, and handling budget or reasoning policies.',
-    features: [
-      { id: 'method-steps', name: 'Multi-Step Chain', desc: 'Sequential agent invocations with data flow', gap: false },
-      { id: 'tool-use', name: 'Tool Use', desc: 'Agent tool invocation across multiple turns', gap: false },
-      { id: 'schema-retry', name: 'Schema Retry', desc: 'Output validation + feedback retry at agent level', gap: false },
-      { id: 'context-compaction', name: 'Context Compaction', desc: 'Context length reduction mid-session', gap: false },
-      { id: 'reflexion', name: 'Reflexion', desc: 'Self-critique on failure before retry', gap: false },
-      { id: 'budget-exhausted', name: 'Budget Exhausted', desc: 'Graceful stop when agent exceeds maxCostUsd', gap: false },
-    ]
-  },
-];
+      function register(name, view) { routes.set(name, view); }
 
-// Map feature IDs to case IDs for linking server data to features
-const FEATURE_TO_CASE = {
-  'methodology-node': 'node-methodology',
-  'script-node': 'node-script',
-  'strategy-node': 'node-strategy-sub',
-  'semantic-node': 'node-semantic',
-  'context-load-node': 'node-context-load',
-  'algorithmic-gate': 'gate-algorithmic',
-  'observation-gate': 'gate-observation',
-  'human-approval-gate': 'gate-human-approval',
-  'gate-retry': 'gate-retry-feedback',
-  'strategy-level-gate': 'gate-strategy-level',
-  'artifact-passing': 'artifact-passing',
-  'artifact-versioning': 'artifact-versioning',
-  'oversight-escalate': 'oversight-escalate',
-  'oversight-warn': 'oversight-warn',
-  'parallel-execution': 'parallel-execution',
-  'prompt-construction': 'prompt-construction',
-  'scope-contract': 'scope-contract',
-  'budget-enforcement': 'budget-enforcement',
-  'output-validation-s': 'output-validation',
-  'dag-validation': 'dag-validation-errors',
-  'retro-generation': 'retro-generation',
-  'critical-path': 'critical-path',
-  'method-steps': 'method-multi-step',
-  'tool-use': 'method-tool-use',
-  'schema-retry': 'method-schema-retry',
-  'context-compaction': 'method-context-compaction',
-  'reflexion': 'method-reflexion',
-  'budget-exhausted': 'method-budget-exhaust',
-};
+      function parse(hash) {
+        const clean = (hash || '').replace(/^#\/?/, '');
+        if (!clean) return { route: 'layers', params: {} };
+        const parts = clean.split('/');
+        const head = parts[0];
+        if (head === 'feature' && parts[1]) return { route: 'feature', params: { id: parts[1] } };
+        return { route: head, params: {} };
+      }
 
-// Proposed tests for gap features
-const PROPOSED = {
-  'methodology-start': { name: 'Start & List', narrative: 'Discover methodologies via methodology_list, then start a session with methodology_start. Verify session state is "initialized" and routing metadata is returned.' },
-  'methodology-list': { name: 'Methodology Catalog', narrative: 'Query methodology_list and verify P0-META and P2-SD methodologies are returned with correct method counts and descriptions.' },
-  'methodology-status': { name: 'Session Status', narrative: 'Start session, load method, check methodology_status returns correct method ID, step index, and total steps.' },
-  'session-isolation': { name: 'Session Isolation', narrative: 'Start two sessions with different IDs. Advance steps in one. Verify the other session\u2019s state is unaffected.' },
-  'routing-inspection': { name: 'Routing Inspection', narrative: 'Call methodology_get_routing and verify the transition function returns arms with priorities, predicates with descriptions, and evaluation order.' },
-  'route-evaluation': { name: 'Route Evaluation', narrative: 'Start session, call methodology_route with challenge predicates. Verify correct arm matches and method is recommended based on priority order.' },
-  'method-selection': { name: 'Method Selection', narrative: 'After routing recommends a method, call methodology_select. Verify method is loaded, step DAG is initialized, first step is accessible.' },
-  'methodology-transition': { name: 'Method Transition', narrative: 'Complete a method\u2019s steps, call methodology_transition. Verify outputs are recorded, routing re-evaluates, and next method is selected (or methodology completes).' },
-  'step-current': { name: 'Step Inspection', narrative: 'Load a method, call step_current. Verify step details: ID, name, role, precondition label, postcondition label, guidance, and output schema.' },
-  'step-context': { name: 'Context Assembly', narrative: 'Advance through two steps, calling step_context at each. Verify prior step outputs appear in context, methodology progress is accurate, and method objective is included.' },
-  'step-advance': { name: 'Step Advancement', narrative: 'Advance through all steps in a method. Verify topological order, event emission (step_completed, step_started), and terminal step returns null.' },
-  'step-validate': { name: 'Output Validation', narrative: 'Submit valid and invalid outputs to step_validate. Verify schema checking (required fields, type mismatches) and postcondition keyword matching (50% threshold). Check recommendation: advance vs retry vs escalate.' },
-  'step-preconditions': { name: 'Precondition Display', narrative: 'Load a method with steps that have check predicates. Verify precondition labels are correctly extracted and displayed.' },
-};
-
-// ======================================================================
-// STATE
-// ======================================================================
-
-let serverCases = [];       // from /api/cases
-let serverFeatures = [];    // from /api/cases
-let caseResults = {};       // caseId -> { allPassed, assertions, result, error, durationMs }
-let currentDetailFeature = null;
-
-// ======================================================================
-// LOAD CASES FROM SERVER
-// ======================================================================
-
-async function loadCases() {
-  try {
-    const res = await fetch('/api/cases');
-    const data = await res.json();
-    serverCases = data.cases;
-    serverFeatures = data.features;
-  } catch (e) {
-    console.error('Failed to load cases:', e);
-  }
-  renderAll();
-}
-
-function getCaseById(caseId) {
-  return serverCases.find(c => c.id === caseId);
-}
-
-function getCaseForFeature(featureId) {
-  const caseId = FEATURE_TO_CASE[featureId];
-  return caseId ? getCaseById(caseId) : null;
-}
-
-function getResultForFeature(featureId) {
-  const caseId = FEATURE_TO_CASE[featureId];
-  return caseId ? caseResults[caseId] : null;
-}
-
-// ======================================================================
-// VIEW SWITCHING
-// ======================================================================
-
-function switchView(viewId, tabEl) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + viewId).classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  if (tabEl) tabEl.classList.add('active');
-  document.getElementById('back-btn').style.display = (viewId === 'layers' || viewId === 'map') ? 'none' : 'inline-flex';
-  document.querySelector('[data-view="detail"]').style.display = viewId === 'detail' ? '' : 'none';
-}
-function goBack() { switchView('map', document.querySelector('[data-view="map"]')); }
-
-// ======================================================================
-// RENDER: LAYERS VIEW
-// ======================================================================
-
-function computeLayerCoverage(layerId) {
-  const layerClusters = CLUSTERS.filter(c => c.layer === layerId);
-  const total = layerClusters.reduce((s, c) => s + c.features.length, 0);
-  const tested = layerClusters.reduce((s, c) => s + c.features.filter(f => !f.gap).length, 0);
-  return { tested, total };
-}
-
-function renderLayers() {
-  const el = document.getElementById('view-layers');
-  const totalFeatures = CLUSTERS.reduce((s, c) => s + c.features.length, 0);
-  const coveredFeatures = CLUSTERS.reduce((s, c) => s + c.features.filter(f => !f.gap).length, 0);
-  const gapFeatures = totalFeatures - coveredFeatures;
-
-  let html = '<div style="max-width:860px;margin:0 auto">';
-
-  // Summary bar
-  html += '<div class="summary-bar">';
-  html += '<div class="summary-stat"><div class="val">' + totalFeatures + '</div><div class="label">Total Features</div></div>';
-  html += '<div class="summary-stat"><div class="val green">' + coveredFeatures + '</div><div class="label">Smoke-Tested</div></div>';
-  html += '<div class="summary-stat"><div class="val red">' + gapFeatures + '</div><div class="label">Gaps</div></div>';
-  for (const L of LAYERS) {
-    const cov = computeLayerCoverage(L.id);
-    html += '<div class="summary-stat"><div class="val" style="color:var(--l-' + L.color + ')">' + cov.tested + '/' + cov.total + '</div><div class="label">' + L.name + '</div></div>';
-  }
-  html += '</div>';
-
-  // Intro
-  html += '<div style="margin-bottom:28px"><h2 style="font-size:16px;margin-bottom:8px">The Four Abstraction Layers</h2>';
-  html += '<p style="font-size:12px;color:var(--text-2);line-height:1.6;max-width:760px">The method runtime operates across four nested layers. Each layer has a distinct responsibility and should be tested independently. The layers compose from top to bottom: a methodology selects methods, a method orders steps, a step may invoke a strategy, and a strategy may invoke agents. Currently, <strong>only the bottom two layers have smoke test coverage</strong>. The top two (methodology and method) have unit tests but no end-to-end smoke tests.</p></div>';
-
-  // Stack diagram
-  html += '<div class="layer-stack">';
-  for (let i = 0; i < LAYERS.length; i++) {
-    const L = LAYERS[i];
-    const cov = computeLayerCoverage(L.id);
-    const covClass = cov.tested === cov.total ? 'covered' : cov.tested === 0 ? 'gap' : 'partial';
-    const covLabel = cov.tested + '/' + cov.total + ' features smoke-tested';
-    html += '<div class="layer-row ' + L.color + '" onclick="showLayerDoc(\'' + L.id + '\')">';
-    html += '<div class="layer-label"><div class="lname" style="color:var(--l-' + L.color + ')">' + L.name + '</div><div class="lsub">' + L.aka + '</div></div>';
-    html += '<div class="layer-body"><div class="ldesc">' + L.summary + '</div>';
-    html += '<div class="lstats"><div><span class="lval">' + covLabel + '</span></div>';
-    html += '<div><span class="cov-badge ' + covClass + '">' + (covClass === 'covered' ? 'COVERED' : covClass === 'gap' ? 'NO COVERAGE' : 'PARTIAL') + '</span></div></div></div></div>';
-    if (i < LAYERS.length - 1) {
-      html += '<div style="text-align:center;padding:2px 0;color:var(--text-3);font-size:11px">\u25BC selects / invokes</div>';
-    }
-  }
-  html += '</div>';
-
-  // Layer documentation
-  for (const L of LAYERS) {
-    html += '<div class="layer-doc" id="layer-doc-' + L.id + '">';
-    html += '<div class="layer-doc-title"><span class="layer-badge ' + L.color + '">' + L.name + '</span> ' + L.name + ' Layer</div>';
-    html += '<div class="layer-doc-body"><p>' + L.desc + '</p>';
-    html += '<div class="layer-example">' + L.lifecycle + '</div>';
-    html += '<div class="layer-contains"><div class="layer-contains-title">Key concepts at this layer</div>';
-    html += '<div class="layer-contains-list">' + L.contains.map(c => '<span class="fd-tag">' + c + '</span>').join('') + '</div></div>';
-    html += '</div></div>';
-  }
-
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-function showLayerDoc(layerId) {
-  const el = document.getElementById('layer-doc-' + layerId);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// ======================================================================
-// RENDER: FEATURE MAP VIEW
-// ======================================================================
-
-function renderFeatureMap() {
-  const el = document.getElementById('view-map');
-  let html = '';
-
-  for (const cluster of CLUSTERS) {
-    const layer = cluster.layer;
-    const gaps = cluster.features.filter(f => f.gap).length;
-    const covered = cluster.features.length - gaps;
-    const covClass = gaps === 0 ? 'covered' : covered === 0 ? 'gap' : 'partial';
-
-    html += '<div class="cluster">';
-    html += '<div class="cluster-header"><span class="layer-badge ' + layer + '">' + layer + '</span>';
-    html += '<span class="cluster-title">' + cluster.title + '</span>';
-    html += '<span class="cov-badge ' + covClass + '">' + covered + '/' + cluster.features.length + ' covered</span></div>';
-    html += '<div class="cluster-narrative">' + cluster.narrative + '</div>';
-    html += '<div class="cluster-grid">';
-
-    for (const f of cluster.features) {
-      const tileClass = f.gap ? 'gap' : 'covered';
-      const r = getResultForFeature(f.id);
-      const passCount = r && r.allPassed ? 1 : 0;
-      const pct = f.gap ? 0 : 100;
-
-      html += '<div class="feature-tile ' + tileClass + '" onclick="showFeatureDetail(\'' + f.id + '\')">';
-      html += '<div class="tile-top"><div class="tile-name">' + f.name + '</div>';
-      html += '<span class="cov-badge ' + (f.gap ? 'gap' : 'covered') + '" style="font-size:8px">' + (f.gap ? 'GAP' : 'OK') + '</span></div>';
-      html += '<div class="tile-desc">' + f.desc + '</div>';
-      html += '<div class="tile-bar"><div class="tile-bar-fill ' + tileClass + '" style="width:' + pct + '%"></div></div>';
-      if (f.gap) {
-        html += '<div class="tile-stats"><span class="nok">proposed test needed</span></div>';
-      } else {
-        const caseObj = getCaseForFeature(f.id);
-        if (r) {
-          html += '<div class="tile-stats"><span class="' + (r.allPassed ? 'ok' : 'nok') + '">' + (r.allPassed ? '1 case pass' : 'FAIL') + '</span></div>';
+      async function dispatch() {
+        const { route, params } = parse(location.hash);
+        const view = routes.get(route);
+        const root = document.getElementById('view-root');
+        if (currentView && typeof currentView.destroy === 'function') {
+          try { currentView.destroy(); } catch (err) { console.error('destroy error', err); }
+        }
+        root.innerHTML = '';
+        if (!view) {
+          root.innerHTML = `<div class="view-placeholder">Route <code>${route}</code> is not yet implemented. Pending commission (C-8 Feature Map, C-9 Feature Detail).</div>`;
+          currentView = null;
         } else {
-          html += '<div class="tile-stats"><span class="ok">1 case</span></div>';
+          currentView = view;
+          try {
+            await view.render(root, params);
+          } catch (err) {
+            console.error('[router] render error', err);
+            root.innerHTML = `<div class="view-placeholder">Failed to render view: ${err?.message ?? err}</div>`;
+          }
+        }
+        document.querySelectorAll('.top-nav .nav-links a').forEach((a) => {
+          const match = a.dataset.route === route || (route === 'feature' && a.dataset.route === 'features');
+          a.classList.toggle('active', match);
+        });
+      }
+
+      function init() {
+        window.addEventListener('hashchange', dispatch);
+        if (!location.hash) location.hash = '#/layers';
+        else dispatch();
+      }
+
+      return { register, init, dispatch };
+    })();
+
+    // ────────────────────────────────────────────────────────────
+    // Run-All Panel — minimal counts + per-case status dots (D-5)
+    // (C-9 will polish; C-7 ships the SSE wiring)
+    // ────────────────────────────────────────────────────────────
+    const RunAllPanel = (() => {
+      const panelEl = document.getElementById('run-all-panel');
+      const listEl  = document.getElementById('run-all-list');
+      const closeBtn = document.getElementById('run-all-close');
+      const counts = { pass: 0, fail: 0, running: 0, total: 0 };
+      const rows = new Map();
+      let source = null;
+
+      function setCount(k, v) {
+        counts[k] = v;
+        const el = panelEl.querySelector(`[data-c="${k}"]`);
+        if (el) el.textContent = String(v);
+      }
+
+      function reset() {
+        for (const k of ['pass', 'fail', 'running', 'total']) setCount(k, 0);
+        rows.clear();
+        listEl.innerHTML = '';
+      }
+
+      function ensureRow(caseId) {
+        let row = rows.get(caseId);
+        if (row) return row;
+        row = document.createElement('div');
+        row.className = 'rap-row';
+        const dot = document.createElement('span');
+        dot.className = 'rap-dot';
+        row.appendChild(dot);
+        const id = document.createElement('span');
+        id.className = 'rap-id';
+        id.textContent = caseId;
+        row.appendChild(id);
+        const status = document.createElement('span');
+        status.className = 'rap-status';
+        status.textContent = '…';
+        row.appendChild(status);
+        listEl.appendChild(row);
+        rows.set(caseId, row);
+        return row;
+      }
+
+      function setRowStatus(caseId, cls, label) {
+        const row = ensureRow(caseId);
+        const dot = row.querySelector('.rap-dot');
+        const status = row.querySelector('.rap-status');
+        if (dot) dot.className = `rap-dot ${cls}`;
+        if (status) status.textContent = label;
+      }
+
+      function show() { panelEl.hidden = false; }
+      function hide() {
+        panelEl.hidden = true;
+        if (source) { source.close(); source = null; }
+      }
+
+      /**
+       * Consumes one RunEvent from the /api/run-all SSE stream.
+       * Server emits {type: 'case_started'|'case_completed'|'case_failed'|'parse_error',
+       * caseId, allPassed?, error?, durationMs?, total?, completed?}.
+       * Treat case_completed+allPassed===true as pass; anything else terminal as fail.
+       */
+      function update(ev) {
+        const caseId = ev.caseId ?? 'unknown';
+        if (typeof ev.total === 'number' && ev.total !== counts.total) {
+          setCount('total', ev.total);
+        }
+        if (ev.type === 'case_started') {
+          setRowStatus(caseId, 'running', 'running…');
+          setCount('running', counts.running + 1);
+          return;
+        }
+        if (ev.type === 'case_completed' || ev.type === 'case_failed' || ev.type === 'parse_error') {
+          const passed = ev.type === 'case_completed' && ev.allPassed === true;
+          const label = passed
+            ? `PASS${typeof ev.durationMs === 'number' ? ` (${ev.durationMs}ms)` : ''}`
+            : ev.error ? `FAIL: ${String(ev.error).slice(0, 100)}` : 'FAIL';
+          setRowStatus(caseId, passed ? 'pass' : 'fail', label);
+          setCount('running', Math.max(0, counts.running - 1));
+          if (passed) setCount('pass', counts.pass + 1);
+          else setCount('fail', counts.fail + 1);
         }
       }
-      html += '</div>';
-    }
-    html += '</div></div>';
-  }
-  el.innerHTML = html;
-}
 
-// ======================================================================
-// RENDER: FEATURE DETAIL VIEW
-// ======================================================================
-
-function showFeatureDetail(featureId) {
-  let feature = null, cluster = null;
-  for (const cl of CLUSTERS) {
-    const f = cl.features.find(f => f.id === featureId);
-    if (f) { feature = f; cluster = cl; break; }
-  }
-  if (!feature) return;
-
-  currentDetailFeature = featureId;
-  const el = document.getElementById('view-detail');
-  const caseObj = getCaseForFeature(featureId);
-  const r = caseObj ? caseResults[caseObj.id] : null;
-  const proposed = PROPOSED[featureId];
-
-  let html = '<div style="max-width:860px">';
-
-  // Header
-  html += '<div style="margin-bottom:20px">';
-  html += '<div class="fd-title">' + feature.name + '</div>';
-  html += '<div class="fd-desc">' + feature.desc + '</div>';
-  html += '<div class="fd-tags"><span class="layer-badge ' + cluster.layer + '">' + cluster.layer + ' layer</span>';
-  html += '<span class="fd-tag">' + cluster.title + '</span>';
-  html += '<span class="cov-badge ' + (feature.gap ? 'gap' : 'covered') + '">' + (feature.gap ? 'NO SMOKE TEST' : 'COVERED') + '</span></div>';
-  if (feature.narrative) {
-    html += '<div class="fd-narrative">' + feature.narrative + '</div>';
-  }
-  html += '</div>';
-
-  // Existing test case
-  if (caseObj) {
-    const statusClass = r ? (r.allPassed ? 'pass' : 'fail') : 'pending';
-    const statusLabel = r ? (r.allPassed ? 'PASS' : 'FAIL') : 'NOT RUN';
-    const timeLabel = r ? r.durationMs + 'ms' : '';
-
-    html += '<h3 style="font-size:13px;margin-bottom:8px;color:var(--text-2)">Smoke Test</h3>';
-    html += '<div class="case-card ' + statusClass + '">';
-    html += '<div class="case-card-header" onclick="this.nextElementSibling.classList.toggle(\'collapsed\')">';
-    html += '<div class="case-card-title"><span class="layer-badge ' + (caseObj.layer || cluster.layer) + '">' + (caseObj.layer || cluster.layer) + '</span>' + caseObj.name + '</div>';
-    html += '<div class="case-card-badge">';
-    if (timeLabel) html += '<span class="case-card-time">' + timeLabel + '</span>';
-    html += '<span class="case-card-status ' + statusClass + '">' + statusLabel + '</span></div></div>';
-    html += '<div class="case-card-body">';
-    html += '<div class="case-narrative">' + caseObj.description + '</div>';
-
-    // Run button
-    html += '<button class="run-btn" id="run-detail-btn" onclick="runSingleFromDetail(\'' + caseObj.id + '\')">Run</button>';
-
-    // Assertions
-    if (r && r.assertions && r.assertions.length) {
-      html += '<div class="assertions">';
-      for (const a of r.assertions) {
-        html += '<div class="assertion"><div class="assert-icon ' + (a.passed ? 'pass' : 'fail') + '">' + (a.passed ? '\u2713' : '\u2717') + '</div>';
-        html += '<div><div class="assert-name">' + a.name + '</div>';
-        html += '<div class="assert-detail">expected: ' + a.expected + ' | actual: ' + a.actual + '</div></div></div>';
+      function start() {
+        reset();
+        show();
+        if (source) source.close();
+        source = API.runAll();
+        source.onmessage = (msg) => {
+          try { update(JSON.parse(msg.data)); }
+          catch (err) { console.error('[run-all] parse error', err, msg.data); }
+        };
+        source.onerror = () => {
+          if (source && source.readyState === 2) { source.close(); source = null; }
+        };
       }
-      html += '</div>';
+
+      closeBtn.addEventListener('click', hide);
+      return { show, hide, update, start };
+    })();
+
+    // ────────────────────────────────────────────────────────────
+    // Layer Stack view — the C-7 deliverable
+    // ────────────────────────────────────────────────────────────
+    const ARROW_TOOLTIPS = {
+      'methodology->method': 'Methodology selects which Method to run next',
+      'method->strategy':    'Method orders Steps; each Step invokes a Strategy',
+      'strategy->agent':     'Strategy invokes an Agent for each agent-typed node',
+    };
+
+    const LayerStackView = {
+      async render(root) {
+        const [layers, features] = await Promise.all([API.getLayers(), API.getFeatures()]);
+
+        // Per-layer coverage rollup from the feature registry (single source of truth).
+        const rollup = new Map();
+        for (const l of layers) rollup.set(l.id, { total: 0, covered: 0 });
+        for (const f of features) {
+          const bucket = rollup.get(f.layerId);
+          if (!bucket) continue;
+          bucket.total += 1;
+          if (f.coverage === 'covered') bucket.covered += 1;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'layer-stack-view';
+
+        const intro = document.createElement('section');
+        intro.innerHTML = `
+          <h2>The Four Abstraction Layers</h2>
+          <p class="intro">
+            The method runtime operates across four nested layers. Each has a distinct
+            responsibility and is tested independently. The layers <strong>compose top
+            to bottom</strong>: Methodology selects Methods, a Method orders Steps,
+            each Step invokes a Strategy, and a Strategy invokes Agents.
+          </p>`;
+        container.appendChild(intro);
+
+        // Layer stack + composition arrows between every adjacent pair (D-4)
+        const stack = document.createElement('div');
+        stack.className = 'layer-stack';
+        for (let i = 0; i < layers.length; i++) {
+          stack.appendChild(renderLayerRow(layers[i], rollup.get(layers[i].id)));
+          if (i < layers.length - 1) {
+            stack.appendChild(renderCompArrow(layers[i].id, layers[i + 1].id));
+          }
+        }
+        container.appendChild(stack);
+
+        // Per-layer documentation
+        const docs = document.createElement('div');
+        docs.className = 'layer-docs';
+        for (const layer of layers) docs.appendChild(renderLayerDoc(layer));
+        container.appendChild(docs);
+
+        root.appendChild(container);
+      },
+      destroy() { /* no timers/subscriptions */ },
+    };
+
+    function renderLayerRow(layer, bucket) {
+      const row = document.createElement('div');
+      row.className = `layer-row ${layer.id}`;
+      row.id = `layer-row-${layer.id}`;
+      row.addEventListener('click', () => {
+        const doc = document.getElementById(`layer-doc-${layer.id}`);
+        if (doc) doc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      const label = document.createElement('div');
+      label.className = `layer-label ${layer.id}`;
+      label.innerHTML = `
+        <div class="lname">${layer.name}</div>
+        <div class="lsub">${layer.level} — ${levelSubtitle(layer.level)}</div>`;
+      row.appendChild(label);
+
+      const body = document.createElement('div');
+      body.className = 'layer-body';
+
+      const summary = document.createElement('div');
+      summary.className = 'lsummary';
+      summary.textContent = summaryLine(layer);
+      body.appendChild(summary);
+
+      const stats = document.createElement('div');
+      stats.className = 'lstats';
+      const covered = bucket?.covered ?? 0;
+      const total   = bucket?.total ?? 0;
+      const status  = total === 0 ? 'gap' : covered === total ? 'covered' : covered === 0 ? 'gap' : 'partial';
+      const count = document.createElement('span');
+      count.className = `lcount ${status}`;
+      count.textContent = `${covered}/${total} features tested`;
+      stats.appendChild(count);
+      stats.appendChild(Badge.coverageBadge(status, status === 'covered' ? 'COVERED' : status === 'partial' ? 'PARTIAL' : 'NO COVERAGE'));
+      stats.appendChild(levelPill(layer.level));
+      body.appendChild(stats);
+
+      const pills = document.createElement('div');
+      pills.className = 'concept-pills';
+      for (const c of layer.keyConcepts.slice(0, 6)) {
+        const p = document.createElement('span');
+        p.className = 'concept-pill';
+        p.textContent = c;
+        pills.appendChild(p);
+      }
+      body.appendChild(pills);
+
+      row.appendChild(body);
+      return row;
     }
 
-    // Exec summary
-    if (r && r.result) {
-      html += '<div class="exec-summary" style="margin-top:12px">';
-      html += '<div class="exec-stat"><div class="label">Status</div><div class="val">' + (r.result.status || '-') + '</div></div>';
-      html += '<div class="exec-stat"><div class="label">Cost</div><div class="val">$' + (r.result.cost_usd || 0).toFixed(4) + '</div></div>';
-      html += '<div class="exec-stat"><div class="label">Duration</div><div class="val">' + Math.round(r.result.duration_ms || 0) + 'ms</div></div>';
-      html += '<div class="exec-stat"><div class="label">Nodes</div><div class="val">' + (r.result.node_count || 0) + '</div></div>';
-      html += '<div class="exec-stat"><div class="label">Artifacts</div><div class="val">' + (r.result.artifact_count || 0) + '</div></div>';
-      html += '</div>';
+    function renderCompArrow(fromId, toId) {
+      const tip = ARROW_TOOLTIPS[`${fromId}->${toId}`] ?? `${fromId} → ${toId}`;
+      const el = document.createElement('div');
+      el.className = 'comp-arrow';
+      el.title = tip;
+      el.setAttribute('aria-label', tip);
+      el.innerHTML = `<span class="glyph">&#9660;</span><span class="label">${tip}</span>`;
+      return el;
     }
 
-    html += '</div></div>';
-  }
+    function renderLayerDoc(layer) {
+      const el = document.createElement('section');
+      el.className = `layer-doc ${layer.id}`;
+      el.id = `layer-doc-${layer.id}`;
 
-  // Proposed test for gap features
-  if (proposed) {
-    html += '<h3 style="font-size:13px;margin-bottom:8px;color:var(--amber)">Proposed Smoke Test</h3>';
-    html += '<div class="case-card proposed">';
-    html += '<div class="case-card-header"><div class="case-card-title"><span class="layer-badge ' + cluster.layer + '">' + cluster.layer + '</span>' + proposed.name + '</div>';
-    html += '<div class="case-card-badge"><span class="case-card-status proposed">PROPOSED</span></div></div>';
-    html += '<div class="case-card-body"><div class="case-narrative">' + proposed.narrative + '</div></div></div>';
-  }
+      const h = document.createElement('h3');
+      h.appendChild(Badge.layerBadge(layer.id, layer.name));
+      h.appendChild(levelPill(layer.level));
+      const htitle = document.createElement('span');
+      htitle.textContent = `${layer.name} Layer`;
+      h.appendChild(htitle);
+      el.appendChild(h);
 
-  if (!caseObj && !proposed) {
-    html += '<div style="color:var(--text-3);padding:20px;text-align:center">No test case or proposal for this feature yet.</div>';
-  }
+      const narr = document.createElement('p');
+      narr.className = 'narrative';
+      narr.textContent = layer.narrative;
+      el.appendChild(narr);
 
-  html += '</div>';
-  el.innerHTML = html;
-  switchView('detail', null);
-  document.querySelector('[data-view="detail"]').style.display = '';
-}
+      const lifeHead = document.createElement('div');
+      lifeHead.className = 'doc-subhead';
+      lifeHead.textContent = 'Lifecycle';
+      el.appendChild(lifeHead);
 
-// ======================================================================
-// RUN SINGLE CASE (from detail view)
-// ======================================================================
+      const life = document.createElement('div');
+      life.className = 'lifecycle-pills';
+      layer.lifecycle.forEach((op, idx) => {
+        const pill = document.createElement('span');
+        pill.className = 'lifecycle-pill';
+        pill.textContent = op;
+        life.appendChild(pill);
+        if (idx < layer.lifecycle.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'lifecycle-sep';
+          sep.textContent = '→';
+          life.appendChild(sep);
+        }
+      });
+      el.appendChild(life);
 
-window.runSingleFromDetail = async function(caseId) {
-  const btn = document.getElementById('run-detail-btn');
-  if (btn) btn.disabled = true;
-  caseResults[caseId] = null; // mark running
+      const conceptHead = document.createElement('div');
+      conceptHead.className = 'doc-subhead';
+      conceptHead.textContent = 'Key concepts';
+      el.appendChild(conceptHead);
 
-  const es = new EventSource('/api/run/' + caseId);
-  es.onmessage = (e) => {
-    const ev = JSON.parse(e.data);
-    if (ev.type === 'case_completed' || ev.type === 'case_failed') {
-      caseResults[caseId] = {
-        allPassed: ev.allPassed || false,
-        assertions: ev.assertions || [],
-        result: ev.result || null,
-        error: ev.error || null,
-        durationMs: ev.durationMs || 0,
-      };
-      renderFeatureMap();
-      if (currentDetailFeature) showFeatureDetail(currentDetailFeature);
-      updateProgress();
-      es.close();
+      const concepts = document.createElement('div');
+      concepts.className = 'concept-pills';
+      for (const c of layer.keyConcepts) {
+        const p = document.createElement('span');
+        p.className = 'concept-pill';
+        p.textContent = c;
+        concepts.appendChild(p);
+      }
+      el.appendChild(concepts);
+
+      return el;
     }
-  };
-  es.onerror = () => {
-    es.close();
-    if (btn) btn.disabled = false;
-  };
-};
 
-// ======================================================================
-// RUN ALL
-// ======================================================================
-
-document.getElementById('run-all').addEventListener('click', async () => {
-  const btn = document.getElementById('run-all');
-  btn.disabled = true;
-  const prog = document.getElementById('progress');
-
-  const es = new EventSource('/api/run-all');
-  es.onmessage = (e) => {
-    const ev = JSON.parse(e.data);
-    if (ev.type === 'case_started') {
-      caseResults[ev.caseId] = null;
-      prog.textContent = (ev.completed || 0) + '/' + (ev.total || '?');
-      renderFeatureMap();
+    function levelPill(level) {
+      const el = document.createElement('span');
+      el.className = 'level-pill';
+      el.textContent = level;
+      return el;
     }
-    if (ev.type === 'case_completed' || ev.type === 'case_failed') {
-      caseResults[ev.caseId] = {
-        allPassed: ev.allPassed || false,
-        assertions: ev.assertions || [],
-        result: ev.result || null,
-        error: ev.error || null,
-        durationMs: ev.durationMs || 0,
-      };
-      prog.textContent = (ev.completed || 0) + '/' + (ev.total || '?');
-      renderFeatureMap();
-      if (currentDetailFeature) {
-        const caseId = FEATURE_TO_CASE[currentDetailFeature];
-        if (caseId === ev.caseId) showFeatureDetail(currentDetailFeature);
+
+    function levelSubtitle(level) {
+      switch (level) {
+        case 'L4': return 'Coalgebraic Session';
+        case 'L3': return 'Step DAG';
+        case 'L2': return 'DAG Executor';
+        case 'L1': return 'Pacta SDK';
+        default:   return level;
       }
     }
-  };
-  es.onerror = () => {
-    es.close();
-    btn.disabled = false;
-    const total = serverCases.filter(c => c.mode !== 'live').length;
-    const passed = Object.values(caseResults).filter(r => r && r.allPassed).length;
-    const failed = Object.values(caseResults).filter(r => r && !r.allPassed && r !== null).length;
-    prog.textContent = 'Done: ' + passed + ' pass, ' + failed + ' fail / ' + total;
-  };
-});
 
-// ======================================================================
-// PROGRESS
-// ======================================================================
+    function summaryLine(layer) {
+      const s = layer.narrative || '';
+      const i = s.indexOf('. ');
+      return i === -1 ? s : s.slice(0, i + 1);
+    }
 
-function updateProgress() {
-  const total = CLUSTERS.reduce((s, c) => s + c.features.length, 0);
-  const covered = CLUSTERS.reduce((s, c) => s + c.features.filter(f => !f.gap).length, 0);
-  document.getElementById('progress').textContent = covered + '/' + total + ' covered';
-}
+    // ────────────────────────────────────────────────────────────
+    // Main — wire routes, Run All button, kick off initial render
+    // ────────────────────────────────────────────────────────────
+    Router.register('layers', LayerStackView);
+    // 'features' + 'feature' routes are registered by C-8 and C-9.
 
-// ======================================================================
-// RENDER ALL
-// ======================================================================
+    document.getElementById('run-all-btn').addEventListener('click', () => RunAllPanel.start());
 
-function renderAll() {
-  renderLayers();
-  renderFeatureMap();
-  updateProgress();
-}
-
-// ======================================================================
-// INIT
-// ======================================================================
-
-loadCases();
-</script>
+    Router.init();
+  </script>
 </body>
 </html>

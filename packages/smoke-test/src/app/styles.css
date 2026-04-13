@@ -1,6 +1,524 @@
 /*
- * Smoke Test UI Styles
+ * Smoke Test UI — visual language
  *
- * All styles are now inlined in index.html for self-contained serving.
- * This file is kept for the server's /styles.css route to not 404.
+ * Color tokens + layer/badge/shell styles lifted from
+ * method-1/tmp/smoke-test-viz-mock.html (mock HTML is the visual target
+ * for PRD 056). C-7 ships the Layer Stack view + global shell. C-8 will
+ * add feature-map rules, C-9 will add detail + DAG rules.
  */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Surface */
+  --bg-0: #0a0c10;
+  --bg-1: #12151c;
+  --bg-2: #1a1e2a;
+  --bg-3: #222838;
+  --bg-4: #2a3040;
+
+  /* Text */
+  --text-1: #e4e7f0;
+  --text-2: #a0a8be;
+  --text-3: #6b7494;
+
+  /* Accents */
+  --accent: #6ea0f7;
+  --green:  #5ccf6f;
+  --red:    #f06080;
+  --amber:  #e0af68;
+  --purple: #b090e0;
+
+  /* Fonts */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "SF Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  /* Layer colors (per design doc §Visual Language, PRD 056 D-4) */
+  --l-methodology:        #c792ea;
+  --l-method:             #82aaff;
+  --l-strategy:           #c3e88d;
+  --l-agent:              #f78c6c;
+  --l-methodology-bg:     rgba(199,146,234,.08);
+  --l-method-bg:          rgba(130,170,255,.08);
+  --l-strategy-bg:        rgba(195,232,141,.08);
+  --l-agent-bg:           rgba(247,140,108,.08);
+  --l-methodology-border: rgba(199,146,234,.25);
+  --l-method-border:      rgba(130,170,255,.25);
+  --l-strategy-border:    rgba(195,232,141,.25);
+  --l-agent-border:       rgba(247,140,108,.25);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--text-1);
+  font: 13px/1.5 var(--font);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ─── Top nav ───────────────────────────────────────────────────── */
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.top-nav .brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.top-nav .nav-links {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-2);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.top-nav .nav-links a {
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  transition: all .15s;
+}
+
+.top-nav .nav-links a:hover {
+  color: var(--text-2);
+}
+
+.top-nav .nav-links a.active {
+  background: var(--bg-4);
+  color: var(--text-1);
+}
+
+.btn-run-all {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(110,160,247,.12);
+  border: 1px solid rgba(110,160,247,.28);
+  transition: all .15s;
+}
+
+.btn-run-all:hover {
+  background: rgba(110,160,247,.22);
+  color: var(--text-1);
+}
+
+.btn-run-all[disabled] {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* ─── View root ─────────────────────────────────────────────────── */
+
+#view-root {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+}
+
+/* ─── Badges ────────────────────────────────────────────────────── */
+
+.layer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: var(--font);
+}
+
+.layer-badge.methodology { background: var(--l-methodology-bg); color: var(--l-methodology); border: 1px solid var(--l-methodology-border); }
+.layer-badge.method      { background: var(--l-method-bg);      color: var(--l-method);      border: 1px solid var(--l-method-border); }
+.layer-badge.strategy    { background: var(--l-strategy-bg);    color: var(--l-strategy);    border: 1px solid var(--l-strategy-border); }
+.layer-badge.agent       { background: var(--l-agent-bg);       color: var(--l-agent);       border: 1px solid var(--l-agent-border); }
+
+.level-pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--text-3);
+  background: var(--bg-3);
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+.cov-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: .5px;
+}
+.cov-badge.covered { background: rgba(92,207,111,.12); color: var(--green); border: 1px solid rgba(92,207,111,.2); }
+.cov-badge.gap     { background: rgba(240,96,128,.12); color: var(--red);   border: 1px solid rgba(240,96,128,.2); }
+.cov-badge.partial { background: rgba(224,175,104,.12); color: var(--amber); border: 1px solid rgba(224,175,104,.2); }
+
+/* ─── Layer Stack view ─────────────────────────────────────────── */
+
+.layer-stack-view {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.layer-stack-view h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.layer-stack-view .intro {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.6;
+  max-width: 760px;
+  margin-bottom: 24px;
+}
+
+.layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 40px;
+}
+
+.layer-row {
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid var(--bg-3);
+  border-bottom: none;
+  background: var(--bg-1);
+  transition: all .2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.layer-row:last-child { border-bottom: 1.5px solid var(--bg-3); }
+
+.layer-row:hover {
+  border-color: var(--accent);
+  z-index: 1;
+}
+
+.layer-row.methodology { border-left: 4px solid var(--l-methodology); }
+.layer-row.method      { border-left: 4px solid var(--l-method); }
+.layer-row.strategy    { border-left: 4px solid var(--l-strategy); }
+.layer-row.agent       { border-left: 4px solid var(--l-agent); }
+
+.layer-label {
+  width: 160px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--bg-3);
+}
+
+.layer-label .lname {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.layer-label.methodology .lname { color: var(--l-methodology); }
+.layer-label.method      .lname { color: var(--l-method); }
+.layer-label.strategy    .lname { color: var(--l-strategy); }
+.layer-label.agent       .lname { color: var(--l-agent); }
+
+.layer-label .lsub {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: .3px;
+}
+
+.layer-body {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.layer-body .lsummary {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+.layer-body .lstats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.layer-body .lstats .lcount {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+.layer-body .lstats .lcount.covered { color: var(--green); }
+.layer-body .lstats .lcount.partial { color: var(--amber); }
+.layer-body .lstats .lcount.gap     { color: var(--red); }
+
+.layer-body .concept-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.concept-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1px solid var(--bg-4);
+  white-space: nowrap;
+}
+
+.lifecycle-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.lifecycle-pill {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--bg-3);
+}
+
+.lifecycle-sep {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+/* Composition arrows (D-4) */
+.comp-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+  color: var(--text-3);
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: help;
+  position: relative;
+}
+
+.comp-arrow .glyph {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.comp-arrow .label {
+  letter-spacing: .4px;
+}
+
+.comp-arrow:hover { color: var(--accent); }
+.comp-arrow:hover .glyph { color: var(--accent); }
+
+/* Layer documentation section */
+.layer-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 8px;
+}
+
+.layer-doc {
+  padding: 16px 20px;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 8px;
+  border-left: 3px solid var(--bg-3);
+}
+
+.layer-doc.methodology { border-left-color: var(--l-methodology); }
+.layer-doc.method      { border-left-color: var(--l-method); }
+.layer-doc.strategy    { border-left-color: var(--l-strategy); }
+.layer-doc.agent       { border-left-color: var(--l-agent); }
+
+.layer-doc h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.layer-doc .narrative {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+
+.layer-doc .doc-subhead {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-3);
+  margin: 10px 0 6px;
+}
+
+/* ─── Run All panel (footer) ───────────────────────────────────── */
+
+.run-all-panel {
+  background: var(--bg-1);
+  border-top: 1px solid var(--bg-3);
+  padding: 12px 24px;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.run-all-panel[hidden] { display: none; }
+
+.run-all-panel .rap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.run-all-panel .rap-title {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.run-all-panel .rap-counts {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+}
+
+.run-all-panel .rap-counts .c-pass    { color: var(--green); }
+.run-all-panel .rap-counts .c-fail    { color: var(--red); }
+.run-all-panel .rap-counts .c-running { color: var(--amber); }
+.run-all-panel .rap-counts .c-total   { color: var(--text-3); }
+
+.run-all-panel .rap-close {
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.run-all-panel .rap-close:hover {
+  color: var(--text-1);
+  background: var(--bg-3);
+}
+
+.run-all-panel .rap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bg-3);
+}
+
+.run-all-panel .rap-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 2px 0;
+  color: var(--text-2);
+}
+
+.run-all-panel .rap-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--bg-4);
+}
+.run-all-panel .rap-dot.pass    { background: var(--green); }
+.run-all-panel .rap-dot.fail    { background: var(--red); }
+.run-all-panel .rap-dot.running { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+.run-all-panel .rap-id     { color: var(--text-2); min-width: 180px; }
+.run-all-panel .rap-status { color: var(--text-3); margin-left: auto; }
+
+/* ─── Scrollbar ────────────────────────────────────────────────── */
+
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--bg-0); }
+::-webkit-scrollbar-thumb  { background: var(--bg-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--bg-4); }
+
+/* ─── Placeholder view (C-8/C-9 will replace) ─────────────────── */
+
+.view-placeholder {
+  max-width: 720px;
+  margin: 48px auto;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  background: var(--bg-1);
+  border: 1px dashed var(--bg-3);
+  border-radius: 8px;
+}
