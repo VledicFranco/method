@@ -208,7 +208,14 @@ const TOP_EXCERPT_RENDER_LIMIT = 350;
 const TOP_TOTAL_RENDER_LIMIT = 1400;
 const REST_EXCERPT_RENDER_LIMIT = 120;
 
-function formatContextQueryResult(
+/**
+ * Render a `ContextQueryResult` to the text envelope an MCP client receives.
+ *
+ * Exported primarily so `tmp/sc1-bench-harness.mjs` can measure the exact
+ * rendering the agent sees — keeping the harness in sync with the production
+ * formatter. Not part of the stable public surface; treat as @internal.
+ */
+export function formatContextQueryResult(
   result: import('@method/fca-index').ContextQueryResult,
   query: string,
 ): string {

@@ -22,6 +22,9 @@ import { LanceStore } from '../packages/fca-index/dist/index-store/lance-store.j
 import { SqliteLanceIndexStore } from '../packages/fca-index/dist/index-store/index-store.js';
 import { QueryEngine } from '../packages/fca-index/dist/query/query-engine.js';
 import { ComponentDetailEngine } from '../packages/fca-index/dist/query/component-detail-engine.js';
+// Import the production formatter directly from the MCP dist so the harness
+// always measures what the agent actually sees — no more inline stale copy.
+import { formatContextQueryResult } from '../packages/mcp/dist/context-tools.js';
 
 const QUERIES = [
   { id: 'Q1', q: 'event bus implementation',           grepBaseline: 13200 },
@@ -31,51 +34,9 @@ const QUERIES = [
   { id: 'Q5', q: 'methodology session persistence',    grepBaseline:  7000 },
 ];
 
-// ── MCP formatter (copied verbatim from packages/mcp/src/context-tools.ts) ──
-// Per-rank render shape (PRD 053 SC-1 — council 2026-04-12):
-// top-1 multi-line | prefix at 500 per part / 1800 total; rest single-line > at 120.
-const TOP_EXCERPT_RENDER_LIMIT = 350;
-const TOP_TOTAL_RENDER_LIMIT = 1400;
-const REST_EXCERPT_RENDER_LIMIT = 120;
-
-function formatContextQueryResult(result, query) {
-  const lines = [
-    `[mode: ${result.mode}]`,
-    `[${result.results.length} results for "${query}"]`,
-    '',
-  ];
-  for (let i = 0; i < result.results.length; i++) {
-    const c = result.results[i];
-    const isTop = i === 0;
-    lines.push(
-      `${i + 1}. ${c.path} (${c.level}) — relevance: ${c.relevanceScore.toFixed(2)}, coverage: ${c.coverageScore.toFixed(2)}`,
-    );
-
-    let topUsed = 0;
-    for (const p of c.parts) {
-      lines.push(`   ${p.part}: ${p.filePath}`);
-      if (!p.excerpt) continue;
-
-      if (isTop) {
-        const remaining = TOP_TOTAL_RENDER_LIMIT - topUsed;
-        if (remaining <= 0) continue;
-        const limit = Math.min(TOP_EXCERPT_RENDER_LIMIT, remaining);
-        const excerpt = p.excerpt.slice(0, limit);
-        const indented = excerpt
-          .split('\n')
-          .map((l) => `     | ${l}`)
-          .join('\n');
-        lines.push(indented);
-        topUsed += excerpt.length;
-      } else {
-        const excerpt = p.excerpt.slice(0, REST_EXCERPT_RENDER_LIMIT).replace(/\n/g, ' ');
-        lines.push(`     > ${excerpt}`);
-      }
-    }
-    lines.push('');
-  }
-  return lines.join('\n').trimEnd();
-}
+// `formatContextQueryResult` is imported above from the MCP dist. If the MCP
+// rendering changes, this harness reports the new numbers automatically — no
+// manual sync needed.
 
 function formatComponentDetail(detail) {
   const lines = [
