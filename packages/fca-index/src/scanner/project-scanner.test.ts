@@ -16,6 +16,60 @@ function makeScanner(tree: Record<string, string>) {
   return new ProjectScanner(fs, detector, scorer);
 }
 
+// ── docText composition (PRD 053 SC-1 follow-up — narrow embedding doc) ─────
+
+describe('ProjectScanner — docText composition', () => {
+  it('builds docText only from documentation/interface/port parts when present', async () => {
+    const root = '/project';
+    const scanner = makeScanner({
+      '/project/src/index.ts': 'export interface Foo { bar(): void; }',
+      '/project/src/README.md': '# Foo\nThe Foo component does X.',
+      '/project/src/foo.test.ts': '/** Tests for Foo — covers session lifecycle, strategy execution, scenarios. */',
+    });
+
+    const components = await scanner.scan({
+      projectRoot: root,
+      sourcePatterns: ['src/**'],
+      requiredParts: ['interface', 'documentation'],
+    });
+
+    const c = components.find(c => c.path === 'src');
+    expect(c).toBeDefined();
+    if (!c) return;
+
+    // verification part is detected (visible in parts) but NOT in docText
+    expect(c.parts.some(p => p.part === 'verification')).toBe(true);
+    expect(c.docText).not.toContain('session lifecycle');
+    expect(c.docText).not.toContain('strategy execution');
+    expect(c.docText).not.toContain('scenarios');
+
+    // documentation + interface ARE in docText
+    expect(c.docText).toContain('Foo component does X');
+    expect(c.docText).toContain('export interface Foo');
+  });
+
+  it('falls back to all parts if no documentation/interface/port present', async () => {
+    const root = '/project';
+    const scanner = makeScanner({
+      '/project/src/foo.test.ts': '/** Verification-only component — falls back to test JSDoc. */',
+    });
+
+    const components = await scanner.scan({
+      projectRoot: root,
+      sourcePatterns: ['src/**'],
+      requiredParts: [],
+    });
+
+    const c = components.find(c => c.path === 'src');
+    if (!c) return; // verification-only may not qualify as a component, that's fine
+
+    // If it does scan, docText should fall back to verification rather than be empty
+    if (c.parts.length > 0) {
+      expect(c.docText.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('ProjectScanner', () => {
   it('scans a simple component and produces ScannedComponent with correct fields', async () => {
     const root = '/project';

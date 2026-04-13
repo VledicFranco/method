@@ -1,0 +1,582 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q1: "event bus implementation"  (224ms)
+  query result tokens :   907  (3627 chars)
+  +top-1 detail tokens:   180  (720 chars)
+  combined            :  1087
+  grep baseline       : 13200
+  ratio (query only)  : 7%
+  ratio (q+detail)    : 8%
+
+--- query rendering ---
+[mode: production]
+[5 results for "event bus implementation"]
+
+1. packages/bridge/src/shared/event-bus (L2) — relevance: 1.00, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\adapters.test.ts
+     | /**
+     |  * PRD 026 Phase 2: MCP Adapter Layer Tests
+     |  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\index.ts
+     | /** Shared event bus module — PRD 026. */
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\README.md
+     | # event-bus/ — Universal Event Bus (PRD 026)
+
+2. packages/cluster/src/federation (L2) — relevance: 0.80, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\federation\event-relay.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import { EventRelay, type Relayable
+   interface: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\federation\index.ts
+     > /**  * federation/ — Event federation across cluster peers (PRD 039).  *  * EventRelay: decides which local BridgeEve
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\cluster\src\federation\README.md
+     > # Federation
+
+3. packages/bridge/src/shared/persistence (L2) — relevance: 0.60, coverage: 0.50
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\persistence\index.ts
+     > /**  * Projection-based state persistence library.  *  * Provides a uniform pattern for domains to persist in-memory 
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\persistence\integration.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import { ProjectionStoreImpl } from
+
+4. packages/bridge/src (L2) — relevance: 0.40, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\health-instance-name.test.ts
+     > /**  * Health endpoint — instance_name field tests (PRD 038 C-2).  *  * Verifies that INSTANCE_NAME env var is surfac
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\index.ts
+     > /**  * @method/bridge — L4 Application Entry Point  *  * The bridge is the composition root for the entire method run
+   port: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\ports\checkpoint.ts
+     > /**  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.  *  * Saves and loads pipeline checkpo
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\README.md
+     > # @method/bridge — Bridge Application
+
+5. packages/bridge/src/domains/triggers (L2) — relevance: 0.20, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\triggers\index.ts
+     > /**  * PRD 018: Event Triggers — Module Exports (Phase 2a-1 + Phase 2a-2 + Phase 2a-3)  */
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\triggers\README.md
+     > --- title: Triggers scope: domain package: bridge contents:   - index.ts   - types.ts   - config.ts   - trigger-
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\triggers\triggers.test.ts
+     > /**  * PRD 018: Event Triggers — Tests (Phase 2a-1)  *  * Tests for:  *   1. DebounceEngine: leading-edge, trailing-
+
+--- top-1 detail rendering ---
+path: packages/bridge/src/shared/event-bus
+level: L2
+indexedAt: 2026-04-13T14:01:17.660Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\adapters.test.ts
+    > /**
+     * PRD 026 Phase 2: MCP Adapter Layer Tests
+     */
+  interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\index.ts
+    > /** Shared event bus module — PRD 026. */
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\event-bus\README.md
+    > # event-bus/ — Universal Event Bus (PRD 026)
+
+docText:
+/**
+ * PRD 026 Phase 2: MCP Adapter Layer Tests
+ */
+
+/** Shared event bus module — PRD 026. */
+
+# event-bus/ — Universal Event Bus (PRD 026)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q2: "session lifecycle management"  (147ms)
+  query result tokens :  1060  (4239 chars)
+  +top-1 detail tokens:   885  (3540 chars)
+  combined            :  1945
+  grep baseline       :  8000
+  ratio (query only)  : 13%
+  ratio (q+detail)    : 24%
+
+--- query rendering ---
+[mode: production]
+[5 results for "session lifecycle management"]
+
+1. packages/bridge/src/domains/sessions (L2) — relevance: 1.00, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\auto-retro.test.ts
+     | import { describe, it, beforeEach, afterEach } from 'node:test';
+     | import assert from 'node:assert/strict';
+     | import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
+     | import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+     | import { join } from 'node:path';
+     | import os from 'node:os';
+     | import type { ActivityObservation
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\index.ts
+     | /** Sessions domain barrel — pool, channels, routes, and supporting infrastructure. */
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\README.md
+     | ---
+     | title: Sessions
+     | scope: domain
+     | package: bridge
+     | contents:
+     |   - auto-retro.ts
+     |   - auto-retro.test.ts
+     |   - bridge-tools.ts
+     |   - channels.ts
+     |   - channels.test.ts
+     |   - cognitive-modules.ts
+     |   - cognitive-provider.ts
+     |   - cognitive-sink.ts
+     |   - glyph-lint.ts
+     |   - config.ts
+     |   - diagnostics.ts
+     |   - diagnostics.test.ts
+     |   - index.ts
+     |   - persisten
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\__tests__\bridge-tools.test.ts
+     | import { describe, it, beforeEach, afterEach } from 'node:test';
+     | import assert from 'node:assert/strict';
+     | import { mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+     | import { join } from 'node:path';
+     | import os from 'node:os';
+     | import { createBridgeToolProvider } from '../bridge-tools.js';
+     | 
+     | describe('Edit tool (PRD 040 C-1)', () 
+
+2. packages/bridge/src/domains/methodology (L2) — relevance: 0.80, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\index.ts
+     > export { MethodologySessionStore } from './store.js'; export { registerMethodologyRoutes } from './routes.js';
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\README.md
+     > # methodology/ — Methodology Session Domain
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\routes.test.ts
+     > /**  * Methodology HTTP Routes Tests  *  * Tests the Fastify route handlers registered by registerMethodologyRoutes()
+
+3. packages/method-ctl/src (L2) — relevance: 0.60, coverage: 0.50
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\commands\index.ts
+     > /**  * commands/ — method-ctl command handler functions.  *  * statusCommand: fetches bridge health + cluster overvie
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\README.md
+     > # method-ctl — Cluster Management CLI
+
+4. packages/pacta/src/cognitive/partitions/operational (L2) — relevance: 0.40, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\partitions\operational\index.ts
+     > /**  * partitions/operational/ — Operational partition (execution state).  *  * Stores what the agent is doing right 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\partitions\operational\README.md
+     > # partitions/operational/ — Operational Partition
+
+5. packages/pacta/src/context (L2) — relevance: 0.20, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\context\context-managers.test.ts
+     > /**  * Unit tests for context management implementations.  *  * Tests: compactionManager, noteTakingManager, subagent
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\context\index.ts
+     > /**  * context/ — Context window budget management.  *  * compactionManager(): middleware that triggers compaction at
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\context\README.md
+     > # context/ — Context Window Management
+
+--- top-1 detail rendering ---
+path: packages/bridge/src/domains/sessions
+level: L2
+indexedAt: 2026-04-13T14:01:17.659Z
+
+parts:
+  verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\auto-retro.test.ts
+    > import { describe, it, beforeEach, afterEach } from 'node:test';
+    import assert from 'node:assert/strict';
+    import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
+    import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+    import { join } from 'node:path';
+    import os 
+  interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\index.ts
+    > /** Sessions domain barrel — pool, channels, routes, and supporting infrastructure. */
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\README.md
+    > ---
+    title: Sessions
+    scope: domain
+    package: bridge
+    contents:
+      - auto-retro.ts
+      - auto-retro.test.ts
+      - bridge-tools.ts
+      - channels.ts
+      - channels.test.ts
+      - cognitive-modules.ts
+      - cognitive-provider.ts
+      - cognitive-sink.ts
+      - glyph-lint.ts
+      - config.ts
+      - diagnostics.ts
+      
+  boundary: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\sessions\__tests__\bridge-tools.test.ts
+    > import { describe, it, beforeEach, afterEach } from 'node:test';
+    import assert from 'node:assert/strict';
+    import { mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+    import { join } from 'node:path';
+    import os from 'node:os';
+    import { createBridgeToolProvider } from '../bridge-too
+
+docText:
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
+import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import os from 'node:os';
+import type { ActivityObservation } from './auto-retro.js';
+import { NodeFileSystemProvider } from '../../ports/file-system.js';
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+const testFs = new NodeFileSystemProvider();
+
+function makeInput(projectRoot
+
+/** Sessions domain barrel — pool, channels, routes, and supporting infrastructure. */
+
+---
+title: Sessions
+scope: domain
+package: bridge
+contents:
+  - auto-retro.ts
+  - auto-retro.test.ts
+  - bridge-tools.ts
+  - channels.ts
+  - channels.test.ts
+  - cognitive-modules.ts
+  - cognitive-provider.ts
+  - cognitive-sink.ts
+  - glyph-lint.ts
+  - config.ts
+  - diagnostics.ts
+  - diagnostics.test.ts
+  - index.ts
+  - persistence-routes.ts
+  - pool.ts
+  - pool.test.ts
+  - print-session.ts
+  - print-session.test.ts
+  - routes.ts
+  - scope-hook.ts
+  - scope-hook.test.ts
+  - session-persistence.ts
+  - session-persistence.test.ts
+  - spawn-queue.ts
+  - spawn-queue.t
+
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import os from 'node:os';
+import { createBridgeToolProvider } from '../bridge-tools.js';
+
+describe('Edit tool (PRD 040 C-1)', () => {
+  let tmpDir: string;
+  let provider: ReturnType<typeof createBridgeToolProvider>;
+
+  beforeEach(() => {
+    tmpDir = join(os.tmpdir(), `bridge-tools-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(tmpDir, { recu
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q3: "strategy pipeline execution"  (150ms)
+  query result tokens :   958  (3829 chars)
+  +top-1 detail tokens:   500  (2000 chars)
+  combined            :  1458
+  grep baseline       :  9000
+  ratio (query only)  : 11%
+  ratio (q+detail)    : 16%
+
+--- query rendering ---
+[mode: production]
+[5 results for "strategy pipeline execution"]
+
+1. packages/methodts/src/strategy (L2) — relevance: 1.00, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\index.ts
+     | /**
+     |  * strategy/ — DAG-based strategy execution system.
+     |  *
+     |  * StrategyController: routes strategy decisions to the right executor.
+     |  * DagStrategyExecutor: DAG executor — topological ordering, parallel nodes.
+     |  * DagParser: parses strategy YAML → StrategyDAG.
+     |  * DagGates, DagArtifactStore, DagRetro: gate eval, artifact store, retros.
+     |  * Strate
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\README.md
+     | # strategy/ — Strategy Execution System
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\__tests__\agent-steered.test.ts
+     | /**
+     |  * Tests for agentSteeredController — agent-driven strategy decisions.
+     |  *
+     |  * Uses MockAgentProvider to supply canned JSON responses, and the
+     |  * agentExecute callback pattern to satisfy the StrategyController type
+     |  * (onComplete returns Effect<StrategyDecision, never, never>).
+     |  *
+     |  * @see agent-steered.ts
+     |  */
+
+2. packages/methodts/src/stdlib/methods/p1 (L2) — relevance: 0.80, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\stdlib\methods\p1\index.ts
+     > /**  * stdlib/methods/p1/ — P1-EXEC (Execution) method definitions.  *  * M1-COUNCIL: synthetic agents council debate
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\stdlib\methods\p1\README.md
+     > # stdlib/methods/p1/ — P1-EXEC Method Definitions
+
+3. packages/pacta/src/cognitive/engine (L2) — relevance: 0.60, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\engine\index.ts
+     > /**  * Cognitive Engine — barrel export.  *  * Cycle orchestrator, composition function, and flat agent adapter.  * 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\engine\README.md
+     > # cognitive/engine/ — Cognitive Execution Engine (PRD 030)
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\engine\__tests__\as-flat-agent.test.ts
+     > /**  * Unit tests for asFlatAgent adapter (PRD 030, C-5).  */
+
+4. packages/bridge/src/domains/strategies (L2) — relevance: 0.40, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\strategies\artifact-store.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import { InMemoryArtifactStore, cre
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\strategies\index.ts
+     > // Strategy module barrel exports (PRD 017) // Pure logic lives locally (formerly in @method/core); bridge-only items (
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\strategies\README.md
+     > --- title: Strategies scope: domain package: bridge contents:   - index.ts   - types.ts   - config.ts   - strate
+
+5. packages/methodts/src/gate (L2) — relevance: 0.20, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\gate\index.ts
+     > /**  * gate/ — Composable quality gates for methodology execution.  *  * Gate<S>: async predicate over world state S 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\gate\README.md
+     > # gate/ — Gate System
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\gate\runners\callback-gate.ts
+     > /**  * callbackGate — webhook-style external trigger gate.  *  * A gate that waits for an external callback to resolv
+
+--- top-1 detail rendering ---
+path: packages/methodts/src/strategy
+level: L2
+indexedAt: 2026-04-13T14:01:17.644Z
+
+parts:
+  interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\index.ts
+    > /**
+     * strategy/ — DAG-based strategy execution system.
+     *
+     * StrategyController: routes strategy decisions to the right executor.
+     * DagStrategyExecutor: DAG executor — topological ordering, parallel nodes.
+     * DagParser: parses strategy YAML → StrategyDAG.
+     * DagGates, DagArtifactStore, DagRe
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\README.md
+    > # strategy/ — Strategy Execution System
+  boundary: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\strategy\__tests__\agent-steered.test.ts
+    > /**
+     * Tests for agentSteeredController — agent-driven strategy decisions.
+     *
+     * Uses MockAgentProvider to supply canned JSON responses, and the
+     * agentExecute callback pattern to satisfy the StrategyController type
+     * (onComplete returns Effect<StrategyDecision, never, never>).
+     *
+     * @see a
+
+docText:
+/**
+ * strategy/ — DAG-based strategy execution system.
+ *
+ * StrategyController: routes strategy decisions to the right executor.
+ * DagStrategyExecutor: DAG executor — topological ordering, parallel nodes.
+ * DagParser: parses strategy YAML → StrategyDAG.
+ * DagGates, DagArtifactStore, DagRetro: gate eval, artifact store, retros.
+ * StrategySource port + StdlibStrategySource implementation.
+ * AgentSteered: agent-controlled navigation mode.
+ * Prebuilt, compat: pre-built strategies and legacy format shims.
+ */
+
+# strategy/ — Strategy Execution System
+
+/**
+ * Tests for agentSteeredController — agent-driven strategy decisions.
+ *
+ * Uses MockAgentProvider to supply canned JSON responses, and the
+ * agentExecute callback pattern to satisfy the StrategyController type
+ * (onComplete returns Effect<StrategyDecision, never, never>).
+ *
+ * @see agent-steered.ts
+ */
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q4: "FCA architecture gate tests"  (197ms)
+  query result tokens :   927  (3705 chars)
+  +top-1 detail tokens:   296  (1181 chars)
+  combined            :  1223
+  grep baseline       :   300
+  ratio (query only)  : 309%
+  ratio (q+detail)    : 408%
+
+--- query rendering ---
+[mode: production]
+[5 results for "FCA architecture gate tests"]
+
+1. packages/methodts/src/testkit/assertions (L2) — relevance: 1.00, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\assertions\index.ts
+     | /**
+     |  * testkit/assertions/ — Assertion functions for methodology tests.
+     |  *
+     |  * domain: assertions about DomainTheory validity.
+     |  * method: assertions about Method execution (step outputs, gate results).
+     |  * methodology: assertions about Methodology execution (arm transitions, completion).
+     |  * predicate: assertions about Predicate evaluation resul
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\assertions\README.md
+     | # testkit/assertions/ — Methodology Test Assertions
+
+2. packages/fca-index/src/testkit (L2) — relevance: 0.80, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\testkit\index.ts
+     > /**  * @method/fca-index/testkit — Test doubles for fca-index port interfaces.  *  * Re-exports recording doubles sui
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\testkit\README.md
+     > # Testkit — @method/fca-index/testkit
+   port: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\testkit\recording-component-detail-port.ts
+     > /**  * RecordingComponentDetailPort — Test double for ComponentDetailPort.  *  * Records calls and returns configurab
+
+3. packages/fca-index/src/ports (L2) — relevance: 0.60, coverage: 1.00
+   port: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\ports\coverage-report.ts
+     > /**  * CoverageReportPort — Port for retrieving FCA documentation coverage analysis.  *  * Owned by @method/fca-index
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\ports\index.ts
+     > /**  * ports/ — Public port interfaces for @method/fca-index.  *  * External ports (frozen, co-designed with consumer
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\ports\internal\embedding-client.ts
+     > /**  * EmbeddingClientPort — Internal port isolating index-store domain from HTTP calls.  *  * Owner: @method/fca-ind
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\ports\README.md
+     > # Port Interfaces — @method/fca-index
+
+4. packages/fca-index/src/scanner (L2) — relevance: 0.40, coverage: 1.00
+   verification: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\scanner\coverage-scorer.test.ts
+     > /**  * CoverageScorer — unit tests.  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\scanner\index.ts
+     > /**  * scanner/ — FCA component detection and coverage scoring domain.  *  * ProjectScanner: walks the project using 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\scanner\README.md
+     > # Scanner Domain — @method/fca-index
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\fca-index\src\scanner\test-helpers\in-memory-fs.ts
+     > /**  * InMemoryFileSystem — Test helper implementing FileSystemPort backed by a plain object tree.  *  * Usage:  *  
+
+5. packages/methodts/src/semantic/algorithms (L2) — relevance: 0.20, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\semantic\algorithms\index.ts
+     > /**  * semantic/algorithms/ — Semantic algorithm implementations (incubating).  *  * explore: project structure → sem
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\semantic\algorithms\README.md
+     > # semantic/algorithms/ — Semantic Algorithm Implementations (Incubating)
+
+--- top-1 detail rendering ---
+path: packages/methodts/src/testkit/assertions
+level: L2
+indexedAt: 2026-04-13T14:01:17.671Z
+
+parts:
+  interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\assertions\index.ts
+    > /**
+     * testkit/assertions/ — Assertion functions for methodology tests.
+     *
+     * domain: assertions about DomainTheory validity.
+     * method: assertions about Method execution (step outputs, gate results).
+     * methodology: assertions about Methodology execution (arm transitions, completion).
+     * pred
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\assertions\README.md
+    > # testkit/assertions/ — Methodology Test Assertions
+
+docText:
+/**
+ * testkit/assertions/ — Assertion functions for methodology tests.
+ *
+ * domain: assertions about DomainTheory validity.
+ * method: assertions about Method execution (step outputs, gate results).
+ * methodology: assertions about Methodology execution (arm transitions, completion).
+ * predicate: assertions about Predicate evaluation results.
+ * retraction: assertions about retraction behavior on failure.
+ */
+
+# testkit/assertions/ — Methodology Test Assertions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q5: "methodology session persistence"  (154ms)
+  query result tokens :   793  (3170 chars)
+  +top-1 detail tokens:   387  (1546 chars)
+  combined            :  1180
+  grep baseline       :  7000
+  ratio (query only)  : 11%
+  ratio (q+detail)    : 17%
+
+--- query rendering ---
+[mode: production]
+[5 results for "methodology session persistence"]
+
+1. packages/bridge/src/domains/methodology (L2) — relevance: 1.00, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\index.ts
+     | export { MethodologySessionStore } from './store.js';
+     | export { registerMethodologyRoutes } from './routes.js';
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\README.md
+     | # methodology/ — Methodology Session Domain
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\routes.test.ts
+     | /**
+     |  * Methodology HTTP Routes Tests
+     |  *
+     |  * Tests the Fastify route handlers registered by registerMethodologyRoutes().
+     |  * Uses Fastify's inject() method for HTTP-level testing. The store is real
+     |  * (backed by stdlib catalog), while the SessionPool is mocked since it
+     |  * involves PTY infrastructure.
+     |  *
+     |  * Coverage targets: input validation br
+
+2. packages/bridge/src/shared/persistence (L2) — relevance: 0.80, coverage: 0.50
+   interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\persistence\index.ts
+     > /**  * Projection-based state persistence library.  *  * Provides a uniform pattern for domains to persist in-memory 
+   verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\shared\persistence\integration.test.ts
+     > import { describe, it } from 'node:test'; import assert from 'node:assert/strict'; import { ProjectionStoreImpl } from
+
+3. packages/pacta/src/cognitive/partitions/operational (L2) — relevance: 0.60, coverage: 1.00
+   interface: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\partitions\operational\index.ts
+     > /**  * partitions/operational/ — Operational partition (execution state).  *  * Stores what the agent is doing right 
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\pacta\src\cognitive\partitions\operational\README.md
+     > # partitions/operational/ — Operational Partition
+
+4. packages/methodts/src/testkit (L2) — relevance: 0.40, coverage: 1.00
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\assertions\domain.ts
+     > /**  * Domain theory assertions — validate signature, axioms, and axiom violations.  */
+   interface: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\index.ts
+     > /**  * @method/testkit — Testing and validation toolkit for MethodTS.  *  * Provides builders, assertions, harnesses,
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\methodts\src\testkit\README.md
+     > # testkit/ — Methodology Testing Framework
+
+5. packages/method-ctl/src (L2) — relevance: 0.20, coverage: 0.50
+   boundary: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\commands\index.ts
+     > /**  * commands/ — method-ctl command handler functions.  *  * statusCommand: fetches bridge health + cluster overvie
+   documentation: C:\Users\atfm0\Repositories\method-1\packages\method-ctl\src\README.md
+     > # method-ctl — Cluster Management CLI
+
+--- top-1 detail rendering ---
+path: packages/bridge/src/domains/methodology
+level: L2
+indexedAt: 2026-04-13T14:01:17.653Z
+
+parts:
+  interface: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\index.ts
+    > export { MethodologySessionStore } from './store.js';
+    export { registerMethodologyRoutes } from './routes.js';
+  documentation: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\README.md
+    > # methodology/ — Methodology Session Domain
+  verification: C:\Users\atfm0\Repositories\method-1\packages\bridge\src\domains\methodology\routes.test.ts
+    > /**
+     * Methodology HTTP Routes Tests
+     *
+     * Tests the Fastify route handlers registered by registerMethodologyRoutes().
+     * Uses Fastify's inject() method for HTTP-level testing. The store is real
+     * (backed by stdlib catalog), while the SessionPool is mocked since it
+     * involves PTY infrastruct
+
+docText:
+export { MethodologySessionStore } from './store.js';
+export { registerMethodologyRoutes } from './routes.js';
+
+# methodology/ — Methodology Session Domain
+
+/**
+ * Methodology HTTP Routes Tests
+ *
+ * Tests the Fastify route handlers registered by registerMethodologyRoutes().
+ * Uses Fastify's inject() method for HTTP-level testing. The store is real
+ * (backed by stdlib catalog), while the SessionPool is mocked since it
+ * involves PTY infrastructure.
+ *
+ * Coverage targets: input validation branches, error discrimination (404/409/500),
+ * advance step channel emission, and compound condition checks.
+ */
+
+════════════════════════════════════════════════════════════════════════════════
+TOTALS
+════════════════════════════════════════════════════════════════════════════════
+grep baseline total       : 37500
+query-only total          : 4645  (12%)
+query+top-1 detail total  : 6893  (18%)
+
+Per-query summary (tokens):
+id  query                                  grep   q-only  +det   ratio
+Q1  event bus implementation               13200     907   1087      7%
+Q2  session lifecycle management            8000    1060   1945     13%
+Q3  strategy pipeline execution             9000     958   1458     11%
+Q4  FCA architecture gate tests              300     927   1223    309%
+Q5  methodology session persistence         7000     793   1180     11%

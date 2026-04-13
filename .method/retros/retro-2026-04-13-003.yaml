@@ -1,0 +1,106 @@
+session_id: "fca-index-narrow-doctext-2026-04-13"
+methodology: P2-SD
+method: focused-fix
+date: "2026-04-13"
+prior_session: ".method/retros/retro-2026-04-13-002.yaml"
+hardest_decision: >
+  Whether to fix the precision issue at the scanner level (narrow docText for
+  all components) or with a band-aid (add a focused README to pacta-playground).
+  The band-aid would have fixed the visible symptom; the scanner fix addresses
+  the root cause and benefits every component with test-heavy JSDoc. Picked
+  the scanner fix because it generalises and the trade-off (Q4 loses its
+  verification-driven match) is consistent with the existing PRD policy
+  ("filename queries should use glob"). The empirical result confirmed the
+  call: top-1 strict precision on concept queries jumped 0/4 → 4/4.
+
+scope: >
+  Continuation of overnight follow-up work. Item #1 from the deferred queue:
+  index precision investigation triggered by PR #165's qualitative analysis.
+  Single-PR scope: scanner change + tests + PRD update + bench reproduction.
+
+ship:
+  pr_target: "to be created — feat/fca-index-narrow-doctext"
+  files_changed:
+    - "packages/fca-index/src/scanner/project-scanner.ts (~10 LoC + comments)"
+    - "packages/fca-index/src/scanner/project-scanner.test.ts (+2 test cases, 13 → 15)"
+    - "docs/prds/053-fca-index-library.md (new SC-1 revision section dated 2026-04-13)"
+    - ".method/council/memory/fca-index.yaml (set_e entry)"
+    - ".method/retros/retro-2026-04-13-003.yaml (this file)"
+    - "tmp/sc1-bench-output-narrowdoctext.txt (force-added evidence)"
+
+results:
+  bench_before:
+    query_only: 5602  # 15%
+    q4_ratio: "365%"
+    top1_concept_precision: "0/4"
+  bench_after:
+    query_only: 4645  # 12%
+    q4_ratio: "309%"
+    top1_concept_precision: "4/4"
+  test_pass_rate:
+    fca_index: "199/199 (was 197 — added 2 new scanner tests)"
+    mcp: "21/21 (unchanged)"
+    architecture_gates: "8/8 green"
+
+per_query_top1_now:
+  Q1_event_bus: "packages/bridge/src/shared/event-bus ✓ (was packages/cluster/src ✗)"
+  Q2_session_lifecycle: "packages/bridge/src/domains/sessions ✓ (was pacta-playground ✗)"
+  Q3_strategy_pipeline: "packages/methodts/src/strategy ✓ (was pacta-playground ✗)"
+  Q4_FCA_gate_tests: "packages/methodts/src/testkit/assertions ✗ (was bridge/src/shared ✓ — verification-driven match lost as expected)"
+  Q5_methodology_persistence: "packages/bridge/src/domains/methodology ✓ (was pacta-playground ✗)"
+
+observations:
+  - >
+    The fix was structurally tiny — single function, ~10 LoC of real change
+    inside scanner. The leverage came from understanding WHY pacta-playground
+    dominated (test-file JSDoc in embedding doc) rather than from cleverness
+    in the fix itself. The qualitative analysis (PR #165) earned its keep by
+    surfacing this in the first place.
+  - >
+    Top-1 precision metric is a useful operating metric distinct from SC-3
+    (top-5 inclusion). Worth promoting to a regular dashboard. Currently we
+    only track SC-1 (token cost) and SC-2 (top-5 inclusion) — top-1 strict
+    precision is a third dimension that fell out of this work.
+  - >
+    The Q4 trade-off (loses verification-driven precise match) confirms the
+    original PRD's stance that filename queries are out of fca-index scope.
+    Future search-strategy advisor (still deferred) will route Q4 to glob
+    entirely; until then, Q4 stays a known weakness with a known reason.
+  - >
+    Required a full rescan to evaluate (rm -rf .fca-index && fca-index scan .).
+    Scanner changes have a non-trivial validation cost — every change requires
+    re-embedding all 101 components. Worth noting for future scanner work.
+  - >
+    The narrowed-docText approach generalises. Promoting EMBEDDING_PARTS to a
+    ProjectScanConfig field would let projects tune it (e.g., a heavily-tested
+    project might want to include verification). Deferred until a real
+    consumer asks.
+
+card_feedback:
+  essence: >
+    Faithfulness held: implemented the council's "engine variant" spirit by
+    fixing the producer (scanner), not the consumer. Honest about the Q4
+    trade-off rather than over-tuning to keep the old top-1.
+  delivery_rules: >
+    DR-09 (real fixtures) — new scanner tests use real component fixtures
+    via InMemoryFileSystem. DR-15 (port discipline) — no port changes,
+    no new node:fs imports. Still respects all FCA gates (G-PORT, G-BOUNDARY,
+    G-LAYER passing).
+
+proposed_deltas:
+  - >
+    Add a top-1 strict precision metric to the SC-1 bench harness so we can
+    watch this dimension over time, not just total tokens. Would have caught
+    the playground domination at the original PR #163 measurement instead of
+    requiring a follow-up qualitative analysis.
+  - >
+    Consider promoting EMBEDDING_PARTS to ProjectScanConfig so per-project
+    tuning is possible. Currently hard-coded as a private constant.
+  - >
+    Document the "scanner change requires rescan" lifecycle in the fca-index
+    README so future contributors don't measure stale embeddings.
+
+next_deferred_items:
+  - "Search-strategy advisor (FU#2) — new MCP tool for filename query routing. Needs /fcd-surface session for the new tool interface."
+  - "Formal ObservabilityPort (FU#4) — promote stderr logs to a port-based signal. Needs /fcd-surface."
+  - "Synthetic agent run (AC-5) — bridge-dependent, real Claude API spend. Now even more interesting because top-1 is correct on 4/5 queries — would directly test 'agent skips file reads'."

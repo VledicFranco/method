@@ -9,7 +9,18 @@
  *
  * ID: sha256(projectRoot + ':' + relativePath), hex prefix 16 chars.
  *
- * docText: concatenation of all excerpt fields from detected parts, separated by '\n\n'.
+ * docText: concatenation of excerpt fields from parts that describe what the
+ * component IS (documentation, interface, port). Parts that describe what the
+ * component DOES at the test/structural level (verification, boundary,
+ * observability, architecture, domain) are kept in `parts` for display but
+ * excluded from the embedding doc. See PRD 053 follow-up
+ * `tmp/sc1-ac5-analysis-20260413.md` — using verification JSDoc in docText
+ * over-broadens the embedding (e.g. pacta-playground's cognitive-scenario.test.ts
+ * made the component match "session lifecycle", "strategy", "persistence").
+ *
+ * Fallback: if the "describe what it IS" parts produce an empty docText
+ * (e.g. a component with only a test file), fall back to all parts to avoid
+ * creating an un-embeddable component.
  */
 
 import { createHash } from 'node:crypto';
@@ -18,6 +29,13 @@ import type { ProjectScanConfig } from '../ports/manifest-reader.js';
 import type { FcaLevel, FcaPart } from '../ports/context-query.js';
 import { FcaDetector } from './fca-detector.js';
 import { CoverageScorer } from './coverage-scorer.js';
+
+/**
+ * Parts whose excerpts are used to build `docText` for embedding. These are
+ * the parts that describe what the component IS, not what its tests or
+ * structural markers cover.
+ */
+const EMBEDDING_PARTS: ReadonlySet<FcaPart> = new Set(['documentation', 'interface', 'port']);
 
 export interface ScannedComponent {
   /** Deterministic ID: sha256(projectRoot + ':' + relativePath), hex prefix 16 chars. */
@@ -123,8 +141,11 @@ export class ProjectScanner {
     const detectedPartNames = parts.map(p => p.part);
     const coverageScore = this.scorer.score(detectedPartNames, requiredParts);
 
-    const docText = parts
-      .filter(p => p.excerpt)
+    // Prefer "describes what the component IS" parts for the embedding doc.
+    // Fall back to all parts if those produce nothing (e.g. a component that
+    // has only a verification file) — keeps the component embeddable.
+    const embeddingParts = parts.filter(p => EMBEDDING_PARTS.has(p.part) && p.excerpt);
+    const docText = (embeddingParts.length > 0 ? embeddingParts : parts.filter(p => p.excerpt))
       .map(p => p.excerpt)
       .join('\n\n');
 
