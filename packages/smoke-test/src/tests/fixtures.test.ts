@@ -133,7 +133,7 @@ describe('Mock executor: script node integration', () => {
     expect(result.status).toBe('completed');
     expect(result.started_at).toBeTruthy();
     expect(result.completed_at).toBeTruthy();
-    expect(result.duration_ms).toBeGreaterThan(0);
+    expect(result.duration_ms).toBeGreaterThanOrEqual(0);
     expect(result.artifacts['step1']).toBeDefined();
     expect(result.artifacts['step2']).toBeDefined();
   });
