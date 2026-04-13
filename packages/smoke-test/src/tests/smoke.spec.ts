@@ -67,44 +67,162 @@ test.describe('Smoke test suite: run-all endpoint', () => {
 });
 
 test.describe('Smoke test suite: browser UI', () => {
-  test('loads the UI and displays test cases', async ({ page }) => {
+  // ─────────────────────────────────────────────────────────────
+  // Layer Stack (/#/layers — default route)
+  // ─────────────────────────────────────────────────────────────
+  test('layer stack: top nav + brand + nav links + Run All button are visible', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Methodology Smoke Tests' })).toBeVisible();
-
-    // Sidebar should have cases
-    await expect(page.locator('.case-item').first()).toBeVisible();
-    const caseCount = await page.locator('.case-item').count();
-    expect(caseCount).toBeGreaterThan(20);
+    await expect(page.locator('header.top-nav .brand')).toHaveText('Methodology Smoke Tests');
+    await expect(page.locator('.top-nav .nav-links a[data-route="layers"]')).toBeVisible();
+    await expect(page.locator('.top-nav .nav-links a[data-route="features"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Run All (mock)' })).toBeVisible();
   });
 
-  test('can select and run a single test case', async ({ page }) => {
+  test('layer stack: renders 4 layer rows in canonical order with coverage counts', async ({ page }) => {
     await page.goto('/');
+    const rows = page.locator('.layer-stack .layer-row');
+    await expect(rows).toHaveCount(4);
 
-    // Click on the first strategy case
-    await page.locator('.case-item').first().click();
+    // Assert layer-row classes carry the expected layer accent (one of the four)
+    await expect(rows.nth(0)).toHaveClass(/methodology/);
+    await expect(rows.nth(1)).toHaveClass(/method/);
+    await expect(rows.nth(2)).toHaveClass(/strategy/);
+    await expect(rows.nth(3)).toHaveClass(/agent/);
 
-    // Should show case detail
-    await expect(page.locator('.case-header h2')).toBeVisible();
-
-    // Click Run
-    await page.getByRole('button', { name: 'Run' }).click();
-
-    // Wait for result
-    await expect(page.locator('.status-banner')).toBeVisible({ timeout: 30_000 });
-
-    // Should show assertions
-    const assertionCount = await page.locator('.assertion').count();
-    expect(assertionCount).toBeGreaterThan(0);
+    // Each row exposes a coverage count ("N/M features tested")
+    for (let i = 0; i < 4; i++) {
+      await expect(rows.nth(i).locator('.lcount')).toContainText(/\d+\/\d+ features tested/);
+    }
   });
 
-  test('filter narrows the case list', async ({ page }) => {
+  test('layer stack: 3 composition arrows between adjacent layers with tooltips', async ({ page }) => {
     await page.goto('/');
-    const initialCount = await page.locator('.case-item').count();
+    const arrows = page.locator('.layer-stack .comp-arrow');
+    await expect(arrows).toHaveCount(3);
+    // Methodology → Method arrow should mention "selects" per the ARROW_TOOLTIPS map
+    await expect(arrows.nth(0)).toHaveAttribute('aria-label', /selects/i);
+  });
 
-    await page.getByPlaceholder('Filter').fill('gate');
-    const filteredCount = await page.locator('.case-item').count();
+  test('layer stack: per-layer documentation sections render narrative + concept pills + lifecycle pills', async ({ page }) => {
+    await page.goto('/');
+    const docs = page.locator('.layer-docs .layer-doc');
+    await expect(docs).toHaveCount(4);
+    // Spot-check methodology doc for narrative + pill groups
+    const methDoc = page.locator('#layer-doc-methodology');
+    await expect(methDoc).toBeVisible();
+    await expect(methDoc.locator('.narrative')).not.toBeEmpty();
+    await expect(methDoc.locator('.lifecycle-pills .lifecycle-pill').first()).toBeVisible();
+    await expect(methDoc.locator('.concept-pills .concept-pill').first()).toBeVisible();
+  });
 
-    expect(filteredCount).toBeLessThan(initialCount);
-    expect(filteredCount).toBeGreaterThan(0);
+  // ─────────────────────────────────────────────────────────────
+  // Feature Map (/#/features)
+  // ─────────────────────────────────────────────────────────────
+  test('feature map: navigate via nav link, render cluster sections ordered by layer', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.top-nav .nav-links a[data-route="features"]').click();
+    await expect(page).toHaveURL(/#\/features$/);
+
+    await expect(page.locator('.feature-map-view h2')).toHaveText('Feature Map');
+
+    const clusters = page.locator('.feature-map-view .cluster');
+    const clusterCount = await clusters.count();
+    expect(clusterCount).toBeGreaterThan(0);
+
+    // Each cluster header has a layer badge + title + count
+    await expect(clusters.first().locator('.cluster-header .cluster-title')).toBeVisible();
+    await expect(clusters.first().locator('.cluster-header .cluster-count')).toContainText(/\d+\/\d+ covered/);
+
+    // Layer ordering: first cluster is methodology, last is agent
+    await expect(clusters.first()).toHaveClass(/methodology/);
+    await expect(clusters.last()).toHaveClass(/agent/);
+  });
+
+  test('feature map: renders at least 30 feature tiles and supports click-through', async ({ page }) => {
+    await page.goto('/#/features');
+
+    const tiles = page.locator('.feature-map-view .feature-tile');
+    await expect(tiles.first()).toBeVisible();
+    const tileCount = await tiles.count();
+    expect(tileCount).toBeGreaterThanOrEqual(30);
+
+    // Click the known covered strategy feature by its data-feature-id
+    await page.locator('.feature-tile[data-feature-id="methodology-node"]').click();
+    await expect(page).toHaveURL(/#\/feature\/methodology-node$/);
+    await expect(page.locator('.feature-detail-view')).toBeVisible();
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Feature Detail (/#/feature/:id)
+  // ─────────────────────────────────────────────────────────────
+  test('feature detail (strategy): narrative + case card + Run triggers DAG SVG render', async ({ page }) => {
+    await page.goto('/#/feature/methodology-node');
+
+    const view = page.locator('.feature-detail-view');
+    await expect(view).toBeVisible();
+    await expect(view.locator('.fd-title')).toBeVisible();
+    await expect(view.locator('.fd-narrative')).not.toBeEmpty();
+
+    const caseBlock = view.locator('.fd-case-block').first();
+    await expect(caseBlock).toBeVisible();
+    await expect(caseBlock.locator('.case-card')).toBeVisible();
+
+    // Pre-run: placeholder prompt to click Run
+    await expect(caseBlock.locator('.fd-dag-placeholder')).toBeVisible();
+
+    // Click the Run button inside the first covering case card
+    await caseBlock.locator('.case-run-btn').click();
+
+    // Wait for terminal status pill (PASS or FAIL) — SSE completion
+    await expect(caseBlock.locator('.case-card-status.pass, .case-card-status.fail')).toBeVisible({ timeout: 30_000 });
+
+    // DAG SVG rendered with at least one node rect (don't over-specify layout)
+    await expect(caseBlock.locator('svg.dag-svg')).toBeVisible();
+    const nodeRects = caseBlock.locator('svg.dag-svg .dag-node rect');
+    expect(await nodeRects.count()).toBeGreaterThan(0);
+
+    // Assertion list populated
+    const assertions = caseBlock.locator('.assertions .assertion');
+    expect(await assertions.count()).toBeGreaterThan(0);
+  });
+
+  test('feature detail (method): narrative loads, no DAG SVG, step-list fallback present', async ({ page }) => {
+    await page.goto('/#/feature/step-current');
+
+    const view = page.locator('.feature-detail-view');
+    await expect(view).toBeVisible();
+    await expect(view.locator('.fd-title')).toBeVisible();
+    await expect(view.locator('.fd-narrative')).not.toBeEmpty();
+
+    const caseBlock = view.locator('.fd-case-block').first();
+    await expect(caseBlock).toBeVisible();
+    // Idle state for non-strategy layers: step-list fallback line is visible
+    await expect(caseBlock.locator('.fd-step-fallback')).toBeVisible();
+    // No DAG rendered at idle for method-layer features
+    await expect(caseBlock.locator('svg.dag-svg')).toHaveCount(0);
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Run All panel
+  // ─────────────────────────────────────────────────────────────
+  test('run all: clicking the button reveals the panel with aggregate counts', async ({ page }) => {
+    await page.goto('/');
+
+    const panel = page.locator('#run-all-panel');
+    await expect(panel).toBeHidden();
+
+    await page.getByRole('button', { name: 'Run All (mock)' }).click();
+
+    // Panel becomes visible
+    await expect(panel).toBeVisible();
+    await expect(panel.locator('.rap-title')).toHaveText('Run All');
+
+    // Total count resolves to a positive number shortly after the run starts
+    const totalEl = panel.locator('[data-c="total"]');
+    await expect(totalEl).not.toHaveText('0', { timeout: 15_000 });
+
+    // Close button hides panel again — keeps test independent
+    await panel.locator('#run-all-close').click();
+    await expect(panel).toBeHidden();
   });
 });
