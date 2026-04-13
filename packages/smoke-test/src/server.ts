@@ -201,8 +201,8 @@ async function runCase(testCase: SmokeTestCase): Promise<RunEvent> {
     }
   }
 
-  // Methodology test cases — run via MethodologyMock (no bridge needed)
-  if (testCase.layer === 'methodology') {
+  // Methodology + method test cases — run via MethodologyMock (no bridge needed)
+  if (testCase.layer === 'methodology' || testCase.layer === 'method') {
     try {
       const mock = new MethodologyMock();
       const assertions: Array<{ name: string; passed: boolean; expected: string; actual: string }> = [];
