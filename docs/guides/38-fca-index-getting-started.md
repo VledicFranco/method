@@ -54,6 +54,8 @@ npm run build
 npx fca-index --help
 ```
 
+A standalone MCP server is also bundled as `fca-index-mcp`, which any MCP-compatible client (Claude Code, etc.) can consume directly — no `@method/mcp` needed. See Guide 39 for `.mcp.json` config.
+
 ## Step 1: Scan your project
 
 The scan reads the project's FCA structure, extracts documentation, scores coverage, and builds the SQLite + Lance index.
