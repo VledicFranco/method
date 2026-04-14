@@ -10,7 +10,7 @@
  * — to respect G-BOUNDARY. The composition root wires the callback.
  */
 
-import type { BridgeEvent, EventSink, EventSeverity } from '../../ports/event-bus.js';
+import type { RuntimeEvent, EventSink, EventSeverity } from '../ports/event-bus.js';
 
 // ── Configuration ───────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ export class GenesisSink implements EventSink {
   private readonly batchWindowMs: number;
   private readonly severityFilter: Set<EventSeverity>;
 
-  private buffer: BridgeEvent[] = [];
+  private buffer: RuntimeEvent[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
 
@@ -57,7 +57,7 @@ export class GenesisSink implements EventSink {
 
   // ── EventSink interface ──────────────────────────────────────
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     if (this.disposed) return;
 
     // Severity filter
@@ -71,7 +71,7 @@ export class GenesisSink implements EventSink {
     }
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     console.error(`[genesis-sink] Error processing event ${event.id}:`, error.message);
   }
 
@@ -106,9 +106,9 @@ export class GenesisSink implements EventSink {
    * Summarize buffered events into a human-readable prompt for Genesis.
    * Groups by domain and severity for efficient consumption.
    */
-  static summarize(events: BridgeEvent[]): string {
+  static summarize(events: RuntimeEvent[]): string {
     // Group by domain
-    const byDomain = new Map<string, BridgeEvent[]>();
+    const byDomain = new Map<string, RuntimeEvent[]>();
     for (const e of events) {
       const group = byDomain.get(e.domain) ?? [];
       group.push(e);

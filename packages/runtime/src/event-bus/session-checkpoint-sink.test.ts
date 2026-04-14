@@ -5,11 +5,11 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { SessionCheckpointSink, type SessionStatusInfo, type PersistedSessionInput } from './session-checkpoint-sink.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
 // ── Test helpers ───────────────────────────────────────────────
 
-function makeEvent(seq: number, overrides: Partial<BridgeEvent> = {}): BridgeEvent {
+function makeEvent(seq: number, overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
     id: `evt-${seq}`,
     version: 1,

@@ -12,20 +12,31 @@
  *   - save(): writes a PersistedSession record
  */
 
-import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
+import type { RuntimeEvent, EventSink } from '../ports/event-bus.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
 /**
  * Minimal persisted session shape accepted by the save callback.
- * Mirrors PersistedSession from sessions/session-persistence.ts.
+ *
+ * Q2 audit (S2 §14, PRD-057 §10 Q2): The only bridge-specific field was the
+ * `mode: 'pty' | 'print'` union — that narrowing is transport-specific (bridge
+ * runs PTY and print sessions; agent-runtime uses different modes). Here we
+ * keep `mode: string` in the runtime-level port and let the bridge-side save
+ * callback narrow it when persisting its own `PersistedSession` record.
+ *
+ * Every other field (`session_id`, `workdir`, `nickname`, `purpose`, `status`,
+ * `created_at`, `last_activity_at`, `prompt_count`, `depth`,
+ * `parent_session_id`, `isolation`, `metadata`) is session-generic and stays
+ * strongly typed.
  */
 export interface PersistedSessionInput {
   session_id: string;
   workdir: string;
   nickname: string;
   purpose: string | null;
-  mode: 'pty' | 'print';
+  /** Session mode — opaque string at the runtime level. Bridge narrows to 'pty' | 'print'; agent-runtime may use its own modes. */
+  mode: string;
   status: string;
   created_at: string;
   last_activity_at: string;
@@ -100,7 +111,7 @@ export class SessionCheckpointSink implements EventSink {
 
   // ── EventSink interface ──────────────────────────────────────
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     // Only react to session-domain lifecycle events
     if (!SESSION_EVENT_TYPES.has(event.type)) return;
 
@@ -122,7 +133,7 @@ export class SessionCheckpointSink implements EventSink {
     this.pendingTimers.set(sessionId, timer);
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     console.error(`[session-checkpoint-sink] Error processing event ${event.id}:`, error.message);
   }
 
@@ -143,7 +154,7 @@ export class SessionCheckpointSink implements EventSink {
         workdir: info.workdir,
         nickname: info.nickname,
         purpose: info.purpose,
-        mode: info.mode as 'pty' | 'print',
+        mode: info.mode,
         status: info.status,
         created_at: info.lastActivityAt.toISOString(), // best available
         last_activity_at: info.lastActivityAt.toISOString(),

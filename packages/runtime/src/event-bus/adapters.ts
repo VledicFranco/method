@@ -1,16 +1,16 @@
 /**
  * PRD 026 Phase 2: MCP Adapter Layer
  *
- * Translates BridgeEvent → legacy channel/event shapes so that
+ * Translates RuntimeEvent → legacy channel/event shapes so that
  * bridge_read_events and bridge_all_events MCP tools return
  * backward-compatible JSON. Used during the transition from channels
  * to bus-native reads (Phase 3).
  */
 
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
 /**
- * Convert a BridgeEvent to the legacy ChannelMessage shape used by
+ * Convert a RuntimeEvent to the legacy ChannelMessage shape used by
  * `bridge_read_events` (session-scoped channel reads).
  *
  * Legacy shape:
@@ -18,7 +18,7 @@ import type { BridgeEvent } from '../../ports/event-bus.js';
  * { "sequence": N, "timestamp": "...", "sender": "...", "type": "...", "content": {...} }
  * ```
  */
-export function toChannelMessage(event: BridgeEvent): {
+export function toChannelMessage(event: RuntimeEvent): {
   sequence: number;
   timestamp: string;
   sender: string;
@@ -35,7 +35,7 @@ export function toChannelMessage(event: BridgeEvent): {
 }
 
 /**
- * Convert an array of BridgeEvents to the legacy all-events wrapper shape
+ * Convert an array of RuntimeEvents to the legacy all-events wrapper shape
  * used by `bridge_all_events` (cross-session event polling).
  *
  * Legacy shape:
@@ -48,7 +48,7 @@ export function toChannelMessage(event: BridgeEvent): {
  * ```
  */
 export function toAllEventsWrapper(
-  events: BridgeEvent[],
+  events: RuntimeEvent[],
   hasMore = false,
 ): {
   messages: Array<{

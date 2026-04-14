@@ -5,11 +5,11 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { GenesisSink } from './genesis-sink.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
 // ── Test helpers ───────────────────────────────────────────────
 
-function makeEvent(seq: number, overrides: Partial<BridgeEvent> = {}): BridgeEvent {
+function makeEvent(seq: number, overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
     id: `evt-${seq}`,
     version: 1,
@@ -145,7 +145,7 @@ describe('GenesisSink', () => {
 
   describe('summarize', () => {
     it('groups by domain', () => {
-      const events: BridgeEvent[] = [
+      const events: RuntimeEvent[] = [
         makeEvent(1, { domain: 'session', type: 'session.stale', severity: 'warning' }),
         makeEvent(2, { domain: 'strategy', type: 'strategy.gate_failed', severity: 'error', payload: { gate: 'G-TEST' } }),
         makeEvent(3, { domain: 'session', type: 'session.killed', severity: 'error' }),
@@ -160,7 +160,7 @@ describe('GenesisSink', () => {
     });
 
     it('includes severity counts', () => {
-      const events: BridgeEvent[] = [
+      const events: RuntimeEvent[] = [
         makeEvent(1, { severity: 'critical' }),
         makeEvent(2, { severity: 'error' }),
         makeEvent(3, { severity: 'warning' }),
@@ -175,7 +175,7 @@ describe('GenesisSink', () => {
     });
 
     it('includes session and project context', () => {
-      const events: BridgeEvent[] = [
+      const events: RuntimeEvent[] = [
         makeEvent(1, { sessionId: 'abcdef12', projectId: 'my-project', severity: 'error' }),
       ];
 
@@ -186,7 +186,7 @@ describe('GenesisSink', () => {
     });
 
     it('includes payload details', () => {
-      const events: BridgeEvent[] = [
+      const events: RuntimeEvent[] = [
         makeEvent(1, { severity: 'error', payload: { error: 'connection timeout' } }),
       ];
 

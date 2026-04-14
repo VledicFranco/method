@@ -5,9 +5,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { toChannelMessage, toAllEventsWrapper } from './adapters.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
-function makeBridgeEvent(overrides?: Partial<BridgeEvent>): BridgeEvent {
+function makeRuntimeEvent(overrides?: Partial<RuntimeEvent>): RuntimeEvent {
   return {
     id: 'evt-001',
     version: 1,
@@ -23,8 +23,8 @@ function makeBridgeEvent(overrides?: Partial<BridgeEvent>): BridgeEvent {
 }
 
 describe('toChannelMessage', () => {
-  it('maps BridgeEvent fields to legacy channel shape', () => {
-    const event = makeBridgeEvent();
+  it('maps RuntimeEvent fields to legacy channel shape', () => {
+    const event = makeRuntimeEvent();
     const result = toChannelMessage(event);
 
     assert.equal(result.sequence, 42);
@@ -39,7 +39,7 @@ describe('toChannelMessage', () => {
   });
 
   it('preserves sessionId and projectId in payload if present', () => {
-    const event = makeBridgeEvent({
+    const event = makeRuntimeEvent({
       sessionId: 'ses-1',
       projectId: 'proj-1',
       payload: { key: 'value' },
@@ -53,8 +53,8 @@ describe('toChannelMessage', () => {
 describe('toAllEventsWrapper', () => {
   it('wraps events in legacy all-events shape', () => {
     const events = [
-      makeBridgeEvent({ sequence: 1 }),
-      makeBridgeEvent({ sequence: 2, type: 'strategy.failed' }),
+      makeRuntimeEvent({ sequence: 1 }),
+      makeRuntimeEvent({ sequence: 2, type: 'strategy.failed' }),
     ];
     const result = toAllEventsWrapper(events);
 
@@ -73,7 +73,7 @@ describe('toAllEventsWrapper', () => {
   });
 
   it('respects hasMore flag', () => {
-    const events = [makeBridgeEvent({ sequence: 10 })];
+    const events = [makeRuntimeEvent({ sequence: 10 })];
     const result = toAllEventsWrapper(events, true);
     assert.equal(result.has_more, true);
     assert.equal(result.last_sequence, 10);

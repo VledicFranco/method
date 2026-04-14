@@ -20,7 +20,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { SessionPool } from './pool.js';
 import { readMessages, type ChannelMessage, type SessionChannels } from './channels.js';
-import type { ChannelSink } from '../../shared/event-bus/channel-sink.js';
+import type { ChannelSink } from '@method/runtime/event-bus';
 import type { EventBus } from '../../ports/event-bus.js';
 import { lintGlyphBlocks, buildRepairPrompt, patchResponse } from './glyph-lint.js';
 

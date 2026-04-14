@@ -10,7 +10,7 @@
  */
 
 import type { AgentEvent } from '@method/pacta';
-import type { EventBus, BridgeEventInput, EventSeverity } from '../../ports/event-bus.js';
+import type { EventBus, RuntimeEventInput, EventSeverity } from '../ports/event-bus.js';
 
 // ── Severity mapping ─────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export function createAgentEventAdapter(
   projectId: string,
 ): (event: AgentEvent) => void {
   return (event: AgentEvent): void => {
-    const bridgeEvent: BridgeEventInput = {
+    const runtimeEvent: RuntimeEventInput = {
       version: 1,
       domain: 'agent',
       type: `agent.${event.type}`,
@@ -52,9 +52,9 @@ export function createAgentEventAdapter(
         sessionId,
         projectId,
       },
-      source: `bridge/agent/${sessionId}`,
+      source: `runtime/event-bus/agent-event-adapter/${sessionId}`,
     };
 
-    eventBus.emit(bridgeEvent);
+    eventBus.emit(runtimeEvent);
   };
 }

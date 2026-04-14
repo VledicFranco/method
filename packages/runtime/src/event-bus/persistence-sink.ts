@@ -1,7 +1,7 @@
 /**
  * PersistenceSink — PRD 026 Phase 3.
  *
- * Writes every BridgeEvent to a JSONL file via the FileSystemProvider port.
+ * Writes every RuntimeEvent to a JSONL file via the FileSystemProvider port.
  * Uses write-ahead batching: events accumulate in memory and flush every
  * 1 second or 100 events (whichever comes first). On flush failure, emits
  * system.sink_overflow via a callback — never crashes.
@@ -13,9 +13,9 @@
  * On restart, sinks resume from their last cursor.
  */
 
-import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
-import type { EventReader } from '../../ports/event-reader.js';
-import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { RuntimeEvent, EventSink } from '../ports/event-bus.js';
+import type { EventReader } from '../ports/event-reader.js';
+import type { FileSystemProvider } from '../ports/file-system.js';
 
 // ── Configuration ───────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ export class PersistenceSink implements EventSink, EventReader {
   private readonly flushIntervalMs: number;
   private readonly flushBatchSize: number;
 
-  private buffer: BridgeEvent[] = [];
+  private buffer: RuntimeEvent[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private flushing = false;
   private lastSequence = 0;
@@ -79,7 +79,7 @@ export class PersistenceSink implements EventSink, EventReader {
 
   // ── EventSink interface ──────────────────────────────────────
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     // Skip events already persisted (cursor recovery on replay)
     if (event.sequence <= this.lastSequence) return;
 
@@ -97,7 +97,7 @@ export class PersistenceSink implements EventSink, EventReader {
     }
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     console.error(`[persistence-sink] Error processing event ${event.id}:`, error.message);
   }
 
@@ -143,7 +143,7 @@ export class PersistenceSink implements EventSink, EventReader {
    * Skips corrupt lines gracefully. Returns empty array if the log is missing.
    * Shared by replay() (time-window filter) and readEventsSince() (cursor filter).
    */
-  private async readAllEvents(): Promise<BridgeEvent[]> {
+  private async readAllEvents(): Promise<RuntimeEvent[]> {
     let content: string;
     try {
       content = await this.fs.readFile(this.logPath, 'utf-8');
@@ -152,14 +152,14 @@ export class PersistenceSink implements EventSink, EventReader {
       return [];
     }
 
-    const events: BridgeEvent[] = [];
+    const events: RuntimeEvent[] = [];
 
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
       try {
-        const event = JSON.parse(trimmed) as BridgeEvent;
+        const event = JSON.parse(trimmed) as RuntimeEvent;
         events.push(event);
       } catch {
         console.warn('[persistence-sink] Skipping corrupt JSONL line');
@@ -173,7 +173,7 @@ export class PersistenceSink implements EventSink, EventReader {
    * Read events from JSONL file for replay into the bus.
    * Filters by replay window. Skips corrupt lines gracefully.
    */
-  async replay(): Promise<BridgeEvent[]> {
+  async replay(): Promise<RuntimeEvent[]> {
     const all = await this.readAllEvents();
     const windowMs = this.replayWindowHours * 60 * 60 * 1000;
     const cutoff = Date.now() - windowMs;
@@ -186,7 +186,7 @@ export class PersistenceSink implements EventSink, EventReader {
    * Read events from the persistent log where sequence > sinceSeq.
    * Returns events in append order. Corrupt JSONL lines are skipped gracefully.
    */
-  async readEventsSince(sinceSeq: number): Promise<BridgeEvent[]> {
+  async readEventsSince(sinceSeq: number): Promise<RuntimeEvent[]> {
     const all = await this.readAllEvents();
     return all.filter(e => e.sequence > sinceSeq);
   }

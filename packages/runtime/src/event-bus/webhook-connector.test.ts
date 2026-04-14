@@ -6,11 +6,11 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { WebhookConnector } from './webhook-connector.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
 // ── Test helpers ───────────────────────────────────────────────
 
-function makeEvent(seq: number, overrides: Partial<BridgeEvent> = {}): BridgeEvent {
+function makeEvent(seq: number, overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
     id: `evt-${seq}`,
     version: 1,

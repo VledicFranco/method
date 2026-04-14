@@ -5,11 +5,11 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { ChannelSink, getChannelTarget } from './channel-sink.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
 
 // ── Test helpers ───────────────────────────────────────────────
 
-function makeEvent(seq: number, overrides: Partial<BridgeEvent> = {}): BridgeEvent {
+function makeEvent(seq: number, overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
     id: `evt-${seq}`,
     version: 1,
@@ -211,7 +211,7 @@ describe('ChannelSink', () => {
 
   describe('push notifications', () => {
     it('calls pushToParent for warning/error/critical events', () => {
-      const pushed: Array<{ sessionId: string; event: BridgeEvent }> = [];
+      const pushed: Array<{ sessionId: string; event: RuntimeEvent }> = [];
       const pushSink = new ChannelSink({
         capacity: 10,
         pushToParent: (sid, evt) => pushed.push({ sessionId: sid, event: evt }),

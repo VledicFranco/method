@@ -1,7 +1,7 @@
 /**
  * WebhookConnector — PRD 026 Phase 5.
  *
- * POSTs BridgeEvents to a configured URL. Implements EventConnector with:
+ * POSTs RuntimeEvents to a configured URL. Implements EventConnector with:
  * - Configurable event filter (domain/type/severity, supports glob patterns in type)
  * - Exponential backoff retry (1s, 2s, 4s — max 3 attempts; 4xx errors not retried)
  * - Rate limiting (max 10 events/second, excess dropped with warning)
@@ -22,11 +22,11 @@
 import type {
   EventConnector,
   ConnectorHealth,
-  BridgeEvent,
+  RuntimeEvent,
   EventFilter,
   EventDomain,
   EventSeverity,
-} from '../../ports/event-bus.js';
+} from '../ports/event-bus.js';
 
 // ── Configuration ───────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ function globToRegex(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
-function matchesFilter(event: BridgeEvent, filter: EventFilter): boolean {
+function matchesFilter(event: RuntimeEvent, filter: EventFilter): boolean {
   if (filter.domain !== undefined) {
     const domains = Array.isArray(filter.domain) ? filter.domain : [filter.domain];
     if (!domains.includes(event.domain as EventDomain)) return false;
@@ -155,7 +155,7 @@ export class WebhookConnector implements EventConnector {
 
   // ── EventSink interface ──────────────────────────────────────
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     // Filter check
     if (this.filter && !matchesFilter(event, this.filter)) return;
 
@@ -175,7 +175,7 @@ export class WebhookConnector implements EventConnector {
     this.postWithRetry(event);
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     this._errorCount++;
     console.error(`[webhook-connector] ${this.name}: sink error for ${event.type}: ${error.message}`);
   }
@@ -183,7 +183,7 @@ export class WebhookConnector implements EventConnector {
   // ── Internal ─────────────────────────────────────────────────
 
   /** POST with exponential backoff retry. 4xx responses are not retried. */
-  private async postWithRetry(event: BridgeEvent): Promise<void> {
+  private async postWithRetry(event: RuntimeEvent): Promise<void> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         const controller = new AbortController();

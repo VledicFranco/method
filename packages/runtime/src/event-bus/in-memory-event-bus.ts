@@ -14,11 +14,11 @@ import type {
   ConnectorHealth,
   EventFilter,
   EventSubscription,
-  BridgeEvent,
-  BridgeEventInput,
+  RuntimeEvent,
+  RuntimeEventInput,
   EventDomain,
   EventSeverity,
-} from '../../ports/event-bus.js';
+} from '../ports/event-bus.js';
 
 // ── Filter matching ─────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ function globToRegex(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
-function matchesFilter(event: BridgeEvent, filter: EventFilter): boolean {
+function matchesFilter(event: RuntimeEvent, filter: EventFilter): boolean {
   // Domain filter
   if (filter.domain !== undefined) {
     const domains = Array.isArray(filter.domain) ? filter.domain : [filter.domain];
@@ -74,13 +74,13 @@ function matchesFilter(event: BridgeEvent, filter: EventFilter): boolean {
 interface Subscriber {
   id: number;
   filter: EventFilter;
-  handler: (event: BridgeEvent) => void;
+  handler: (event: RuntimeEvent) => void;
 }
 
 // ── Ring buffer ─────────────────────────────────────────────────
 
 class EventRingBuffer {
-  private buf: (BridgeEvent | undefined)[];
+  private buf: (RuntimeEvent | undefined)[];
   private head = 0;
   private count = 0;
   private readonly capacity: number;
@@ -93,7 +93,7 @@ class EventRingBuffer {
 
   get length(): number { return this.count; }
 
-  push(event: BridgeEvent): void {
+  push(event: RuntimeEvent): void {
     const writeIdx = (this.head + this.count) % this.capacity;
     this.buf[writeIdx] = event;
     if (this.count === this.capacity) {
@@ -104,8 +104,8 @@ class EventRingBuffer {
   }
 
   /** Return events matching a filter, oldest first. */
-  query(filter: EventFilter, options?: { limit?: number; since?: string }): BridgeEvent[] {
-    const result: BridgeEvent[] = [];
+  query(filter: EventFilter, options?: { limit?: number; since?: string }): RuntimeEvent[] {
+    const result: RuntimeEvent[] = [];
     const limit = options?.limit ?? this.count;
     const sinceTime = options?.since ? new Date(options.since).getTime() : 0;
 
@@ -167,12 +167,12 @@ export class InMemoryEventBus implements EventBus {
     this.buffer = new EventRingBuffer(this.capacity);
   }
 
-  emit(input: BridgeEventInput): BridgeEvent {
+  emit(input: RuntimeEventInput): RuntimeEvent {
     // Enforce max payload size
     const payloadStr = JSON.stringify(input.payload);
     if (payloadStr.length > MAX_PAYLOAD_SIZE) {
       // Emit a system error event about the oversized payload, then reject
-      const errorEvent: BridgeEvent = {
+      const errorEvent: RuntimeEvent = {
         id: randomUUID(),
         version: 1,
         timestamp: new Date().toISOString(),
@@ -186,14 +186,14 @@ export class InMemoryEventBus implements EventBus {
           size: payloadStr.length,
           max: MAX_PAYLOAD_SIZE,
         },
-        source: 'bridge/event-bus',
+        source: 'runtime/event-bus/in-memory',
       };
       this.buffer.push(errorEvent);
       this.dispatch(errorEvent);
       return errorEvent;
     }
 
-    const event: BridgeEvent = {
+    const event: RuntimeEvent = {
       ...input,
       id: randomUUID(),
       version: 1,
@@ -212,7 +212,7 @@ export class InMemoryEventBus implements EventBus {
     return event;
   }
 
-  subscribe(filter: EventFilter, handler: (event: BridgeEvent) => void): EventSubscription {
+  subscribe(filter: EventFilter, handler: (event: RuntimeEvent) => void): EventSubscription {
     const id = this.nextSubscriberId++;
     const subscriber: Subscriber = { id, filter, handler };
     this.subscribers.push(subscriber);
@@ -225,7 +225,7 @@ export class InMemoryEventBus implements EventBus {
     };
   }
 
-  query(filter: EventFilter, options?: { limit?: number; since?: string }): BridgeEvent[] {
+  query(filter: EventFilter, options?: { limit?: number; since?: string }): RuntimeEvent[] {
     return this.buffer.query(filter, options);
   }
 
@@ -241,7 +241,7 @@ export class InMemoryEventBus implements EventBus {
     };
   }
 
-  importEvent(event: BridgeEvent): void {
+  importEvent(event: RuntimeEvent): void {
     // Update sequence to prevent collisions with future emits
     if (event.sequence > this.sequence) {
       this.sequence = event.sequence;
@@ -306,7 +306,7 @@ export class InMemoryEventBus implements EventBus {
 
   // ── Internal dispatch ───────────────────────────────────────
 
-  private dispatch(event: BridgeEvent): void {
+  private dispatch(event: RuntimeEvent): void {
     // Snapshot arrays to guard against mutation during dispatch
     // (e.g., a handler calling unsubscribe or registerSink)
     const sinks = [...this.sinks];

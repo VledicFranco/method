@@ -6,8 +6,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { PersistenceSink } from './persistence-sink.js';
-import type { BridgeEvent } from '../../ports/event-bus.js';
-import type { FileSystemProvider, FileStat } from '../../ports/file-system.js';
+import type { RuntimeEvent } from '../ports/event-bus.js';
+import type { FileSystemProvider, FileStat } from '../ports/file-system.js';
 
 // ── In-memory FileSystem mock ──────────────────────────────────
 
@@ -77,7 +77,7 @@ function createMemoryFs(): FileSystemProvider & { files: Map<string, string> } {
 
 // ── Test helpers ───────────────────────────────────────────────
 
-function makeEvent(seq: number, overrides: Partial<BridgeEvent> = {}): BridgeEvent {
+function makeEvent(seq: number, overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
     id: `evt-${seq}`,
     version: 1,

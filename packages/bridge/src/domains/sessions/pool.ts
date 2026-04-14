@@ -9,7 +9,7 @@ import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
 import type { FileSystemProvider } from '../../ports/file-system.js';
 import type { EventBus } from '../../ports/event-bus.js';
-import { createAgentEventAdapter } from '../../shared/event-bus/agent-event-adapter.js';
+import { createAgentEventAdapter } from '@method/runtime/event-bus';
 import type { AgentProvider } from '@method/pacta';
 import { CognitiveSink } from './cognitive-sink.js';
 

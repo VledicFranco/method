@@ -5,11 +5,11 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { InMemoryEventBus } from './in-memory-event-bus.js';
-import type { BridgeEvent, BridgeEventInput, EventSink, EventConnector, ConnectorHealth } from '../../ports/event-bus.js';
+import type { RuntimeEvent, RuntimeEventInput, EventSink, EventConnector, ConnectorHealth } from '../ports/event-bus.js';
 
 // ── Test helpers ────────────────────────────────────────────────
 
-function makeEvent(overrides: Partial<BridgeEventInput> = {}): BridgeEventInput {
+function makeEvent(overrides: Partial<RuntimeEventInput> = {}): RuntimeEventInput {
   return {
     version: 1,
     domain: 'session',
@@ -21,12 +21,12 @@ function makeEvent(overrides: Partial<BridgeEventInput> = {}): BridgeEventInput 
   };
 }
 
-function collectingSink(name = 'test-sink'): EventSink & { events: BridgeEvent[] } {
-  const events: BridgeEvent[] = [];
+function collectingSink(name = 'test-sink'): EventSink & { events: RuntimeEvent[] } {
+  const events: RuntimeEvent[] = [];
   return {
     name,
     events,
-    onEvent(event: BridgeEvent) { events.push(event); },
+    onEvent(event: RuntimeEvent) { events.push(event); },
   };
 }
 
@@ -167,7 +167,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('async sink that resolves works normally', async () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       const asyncSink: EventSink = {
         name: 'async-sink',
         async onEvent(event) { received.push(event); },
@@ -183,7 +183,7 @@ describe('InMemoryEventBus', () => {
 
   describe('subscribe', () => {
     it('delivers matching events to subscriber', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({ domain: 'session' }, (event) => received.push(event));
 
       bus.emit(makeEvent({ domain: 'session', type: 'session.spawned' }));
@@ -194,7 +194,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('supports unsubscribe', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       const sub = bus.subscribe({}, (event) => received.push(event));
 
       bus.emit(makeEvent());
@@ -205,7 +205,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('filters by type with glob pattern', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({ type: 'strategy.gate_*' }, (event) => received.push(event));
 
       bus.emit(makeEvent({ type: 'strategy.gate_passed' }));
@@ -218,7 +218,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('filters by severity array', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({ severity: ['error', 'critical'] }, (event) => received.push(event));
 
       bus.emit(makeEvent({ severity: 'info' }));
@@ -229,7 +229,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('filters by projectId and sessionId', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({ projectId: 'p1', sessionId: 's1' }, (event) => received.push(event));
 
       bus.emit(makeEvent({ projectId: 'p1', sessionId: 's1' }));
@@ -240,7 +240,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('subscriber errors do not block other subscribers', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({}, () => { throw new Error('bad subscriber'); });
       bus.subscribe({}, (event) => received.push(event));
 
@@ -309,7 +309,7 @@ describe('InMemoryEventBus', () => {
 
   describe('importEvent', () => {
     it('imports event without reassigning id, timestamp, or sequence', () => {
-      const event: BridgeEvent = {
+      const event: RuntimeEvent = {
         id: 'custom-id',
         version: 1,
         timestamp: '2026-01-01T00:00:00.000Z',
@@ -352,7 +352,7 @@ describe('InMemoryEventBus', () => {
       const sink = collectingSink();
       bus.registerSink(sink);
 
-      const event: BridgeEvent = {
+      const event: RuntimeEvent = {
         id: 'sink-test',
         version: 1,
         timestamp: new Date().toISOString(),
@@ -371,7 +371,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('dispatches to matching subscribers', () => {
-      const received: BridgeEvent[] = [];
+      const received: RuntimeEvent[] = [];
       bus.subscribe({ domain: 'session' }, e => received.push(e));
 
       bus.importEvent({
@@ -533,7 +533,7 @@ describe('InMemoryEventBus', () => {
     });
 
     it('increments totalImported on importEvent', () => {
-      const event: BridgeEvent = {
+      const event: RuntimeEvent = {
         id: 'imported-1',
         version: 1,
         timestamp: new Date().toISOString(),

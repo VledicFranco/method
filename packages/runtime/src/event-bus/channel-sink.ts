@@ -10,7 +10,7 @@
  * based on type and payload, matching the legacy dual-channel design.
  */
 
-import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
+import type { RuntimeEvent, EventSink } from '../ports/event-bus.js';
 import { toChannelMessage } from './adapters.js';
 
 // ── Configuration ───────────────────────────────────────────────
@@ -19,7 +19,7 @@ export interface ChannelSinkOptions {
   /** Per-session buffer capacity (default: 200). */
   capacity?: number;
   /** Callback for push notifications to parent agents. */
-  pushToParent?: (sessionId: string, event: BridgeEvent) => void;
+  pushToParent?: (sessionId: string, event: RuntimeEvent) => void;
 }
 
 const DEFAULT_CAPACITY = 200;
@@ -27,10 +27,10 @@ const DEFAULT_CAPACITY = 200;
 // ── Channel classification ──────────────────────────────────────
 
 /**
- * Classify a BridgeEvent as belonging to the 'progress' or 'events' channel.
+ * Classify a RuntimeEvent as belonging to the 'progress' or 'events' channel.
  * Matches legacy dual-channel behavior from channels.ts.
  */
-export function getChannelTarget(event: BridgeEvent): 'progress' | 'events' {
+export function getChannelTarget(event: RuntimeEvent): 'progress' | 'events' {
   // Explicit channel target in payload (from pty-watcher)
   if (event.payload.channelTarget === 'progress') return 'progress';
   if (event.payload.channelTarget === 'events') return 'events';
@@ -47,7 +47,7 @@ export function getChannelTarget(event: BridgeEvent): 'progress' | 'events' {
 // ── Per-session buffer ──────────────────────────────────────────
 
 interface SessionBuffer {
-  events: BridgeEvent[];
+  events: RuntimeEvent[];
   capacity: number;
 }
 
@@ -55,7 +55,7 @@ function createSessionBuffer(capacity: number): SessionBuffer {
   return { events: [], capacity };
 }
 
-function pushToBuffer(buf: SessionBuffer, event: BridgeEvent): void {
+function pushToBuffer(buf: SessionBuffer, event: RuntimeEvent): void {
   buf.events.push(event);
   if (buf.events.length > buf.capacity) {
     buf.events.shift(); // evict oldest
@@ -72,7 +72,7 @@ export class ChannelSink implements EventSink {
 
   private readonly capacity: number;
   private readonly sessions = new Map<string, SessionBuffer>();
-  private readonly pushToParent: ((sessionId: string, event: BridgeEvent) => void) | null;
+  private readonly pushToParent: ((sessionId: string, event: RuntimeEvent) => void) | null;
   private lastSequence = 0;
 
   constructor(options: ChannelSinkOptions = {}) {
@@ -94,7 +94,7 @@ export class ChannelSink implements EventSink {
 
   // ── EventSink interface ──────────────────────────────────────
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     // Cursor recovery: skip already-processed events
     if (event.sequence <= this.lastSequence) return;
     this.lastSequence = event.sequence;
@@ -113,7 +113,7 @@ export class ChannelSink implements EventSink {
     }
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     console.error(`[channel-sink] Error processing event ${event.id}:`, error.message);
   }
 

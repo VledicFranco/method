@@ -1,24 +1,24 @@
 /**
- * Unit tests for AgentEvent-to-BridgeEvent adapter (PRD 029 Phase C-2).
+ * Unit tests for AgentEvent-to-RuntimeEvent adapter (PRD 029 Phase C-2).
  */
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAgentEventAdapter } from './agent-event-adapter.js';
 import type { AgentEvent } from '@method/pacta';
-import type { BridgeEvent, BridgeEventInput, EventBus, EventFilter, EventSink, EventSubscription } from '../../ports/event-bus.js';
+import type { RuntimeEvent, RuntimeEventInput, EventBus, EventFilter, EventSink, EventSubscription } from '../ports/event-bus.js';
 
 // ── Mock EventBus ─────────────────────────────────────────────────
 
-function createMockBus(): EventBus & { emitted: BridgeEvent[] } {
+function createMockBus(): EventBus & { emitted: RuntimeEvent[] } {
   let seq = 0;
-  const emitted: BridgeEvent[] = [];
+  const emitted: RuntimeEvent[] = [];
 
   return {
     emitted,
-    emit(input: BridgeEventInput): BridgeEvent {
+    emit(input: RuntimeEventInput): RuntimeEvent {
       seq++;
-      const event: BridgeEvent = {
+      const event: RuntimeEvent = {
         ...input,
         id: `evt-${seq}`,
         timestamp: new Date().toISOString(),
@@ -27,11 +27,11 @@ function createMockBus(): EventBus & { emitted: BridgeEvent[] } {
       emitted.push(event);
       return event;
     },
-    importEvent(_event: BridgeEvent): void {},
-    subscribe(_filter: EventFilter, _handler: (event: BridgeEvent) => void): EventSubscription {
+    importEvent(_event: RuntimeEvent): void {},
+    subscribe(_filter: EventFilter, _handler: (event: RuntimeEvent) => void): EventSubscription {
       return { unsubscribe: () => {} };
     },
-    query(_filter: EventFilter): BridgeEvent[] { return []; },
+    query(_filter: EventFilter): RuntimeEvent[] { return []; },
     registerSink(_sink: EventSink): void {},
   };
 }
@@ -183,13 +183,13 @@ describe('createAgentEventAdapter', () => {
   });
 
   describe('session and project attachment', () => {
-    it('attaches sessionId to the BridgeEvent', () => {
+    it('attaches sessionId to the RuntimeEvent', () => {
       onEvent({ type: 'text', content: 'hi' });
 
       assert.equal(bus.emitted[0].sessionId, SESSION_ID);
     });
 
-    it('attaches projectId to the BridgeEvent', () => {
+    it('attaches projectId to the RuntimeEvent', () => {
       onEvent({ type: 'text', content: 'hi' });
 
       assert.equal(bus.emitted[0].projectId, PROJECT_ID);
@@ -215,10 +215,13 @@ describe('createAgentEventAdapter', () => {
   });
 
   describe('source', () => {
-    it('sets source to bridge/agent/{sessionId}', () => {
+    it('sets source to runtime/event-bus/agent-event-adapter/{sessionId}', () => {
       onEvent({ type: 'text', content: 'hi' });
 
-      assert.equal(bus.emitted[0].source, `bridge/agent/${SESSION_ID}`);
+      assert.equal(
+        bus.emitted[0].source,
+        `runtime/event-bus/agent-event-adapter/${SESSION_ID}`,
+      );
     });
   });
 });
