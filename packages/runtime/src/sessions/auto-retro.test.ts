@@ -1,15 +1,80 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
-import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+  renameSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
+import {
+  readFile as nodeReadFile,
+  writeFile as nodeWriteFile,
+  appendFile as nodeAppendFile,
+  readdir as nodeReaddir,
+  stat as nodeStat,
+  access as nodeAccess,
+  mkdir as nodeMkdir,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import os from 'node:os';
 import type { ActivityObservation } from './auto-retro.js';
-import { NodeFileSystemProvider } from '../../ports/file-system.js';
+import type { FileSystemProvider, DirEntry, FileStat } from '../ports/file-system.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const testFs = new NodeFileSystemProvider();
+// Local test FS — mirrors NodeFileSystemProvider (bridge-only) without a
+// cross-package import. Keeps auto-retro.test.ts inside @method/runtime.
+class TestNodeFs implements FileSystemProvider {
+  readFileSync(path: string, encoding: BufferEncoding): string {
+    return readFileSync(path, encoding);
+  }
+  writeFileSync(path: string, content: string, options?: { encoding?: BufferEncoding; mode?: number }): void {
+    writeFileSync(path, content, options);
+  }
+  existsSync(path: string): boolean {
+    return existsSync(path);
+  }
+  readdirSync(path: string): string[];
+  readdirSync(path: string, options: { withFileTypes: true }): DirEntry[];
+  readdirSync(path: string, options?: { withFileTypes: true }): string[] | DirEntry[] {
+    return options?.withFileTypes
+      ? readdirSync(path, { withFileTypes: true })
+      : readdirSync(path);
+  }
+  statSync(path: string): FileStat {
+    return statSync(path);
+  }
+  unlinkSync(path: string): void { unlinkSync(path); }
+  mkdirSync(path: string, options?: { recursive?: boolean }): void {
+    mkdirSync(path, options);
+  }
+  renameSync(oldPath: string, newPath: string): void { renameSync(oldPath, newPath); }
+  realpathSync(path: string): string { return realpathSync(path); }
+  async readFile(path: string, encoding: BufferEncoding): Promise<string> {
+    return nodeReadFile(path, encoding);
+  }
+  async writeFile(path: string, content: string, encoding: BufferEncoding): Promise<void> {
+    await nodeWriteFile(path, content, encoding);
+  }
+  async appendFile(path: string, content: string, encoding: BufferEncoding): Promise<void> {
+    await nodeAppendFile(path, content, encoding);
+  }
+  async readdir(path: string): Promise<string[]> { return nodeReaddir(path); }
+  async stat(path: string): Promise<FileStat> { return nodeStat(path); }
+  async access(path: string): Promise<void> { return nodeAccess(path); }
+  async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+    await nodeMkdir(path, options);
+  }
+}
+
+const testFs = new TestNodeFs();
 
 function makeInput(projectRoot: string, overrides?: Partial<AutoRetroInput>): AutoRetroInput {
   return {

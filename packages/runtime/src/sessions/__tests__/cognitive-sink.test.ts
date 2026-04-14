@@ -18,8 +18,8 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { CognitiveSink } from '../cognitive-sink.js';
-import type { BridgeEvent, BridgeEventInput, EventBus, EventFilter, EventSubscription } from '../../../ports/event-bus.js';
+import { CognitiveEventBusSink as CognitiveSink } from '../cognitive-sink.js';
+import type { RuntimeEvent as BridgeEvent, RuntimeEventInput as BridgeEventInput, EventBus, EventFilter, EventSubscription } from '../../ports/event-bus.js';
 import type { CognitiveEvent, MonitorMonitoring } from '@method/pacta';
 import { moduleId } from '@method/pacta';
 
@@ -177,7 +177,7 @@ describe('CognitiveSink', () => {
       const e = bus.emitted[0];
       assert.equal(e.type, 'cognitive.module_step');
       assert.equal(e.severity, 'info');
-      assert.equal(e.source, 'bridge/sessions/cognitive-sink');
+      assert.equal(e.source, 'runtime/sessions/cognitive-sink');
     });
 
     it('preserves all event fields in payload', () => {
@@ -378,7 +378,7 @@ describe('CognitiveSink', () => {
       assert.equal(result.domain, 'cognitive');
       assert.equal(result.type, 'cognitive.cycle_aborted');
       assert.equal(result.severity, 'error');
-      assert.equal(result.source, 'bridge/sessions/cognitive-sink');
+      assert.equal(result.source, 'runtime/sessions/cognitive-sink');
     });
 
     it('version is always 1', () => {

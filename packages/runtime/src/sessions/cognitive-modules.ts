@@ -26,7 +26,7 @@ import type {
 import { moduleId } from '@method/pacta';
 import type { StreamEvent } from './pool.js';
 import type { StreamChunkCallback } from './print-session.js';
-import type { CognitiveSink } from './cognitive-sink.js';
+import type { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
 
 // ── Constants (duplicated from cognitive-provider.ts — forbidden to import) ──
 

@@ -1,18 +1,12 @@
 /**
  * SessionPool Port — Cross-domain interface for session pool access.
  *
- * Domains that need session lifecycle operations (genesis, methodology,
- * strategies) depend on this port instead of importing the concrete
- * SessionPool directly from domains/sessions/pool.ts.
- *
- * The composition root (server-entry.ts) wires the real pool implementation
- * to consumers. This satisfies FCA G-BOUNDARY: no cross-domain imports.
- *
- * Re-exports the SessionPool interface and associated types from the sessions
- * domain. The port file is the sanctioned import path for cross-domain use.
+ * PRD-057 / S2 §3.3 / C5: session-pool types moved to
+ * `@method/runtime/ports` + `@method/runtime/sessions`. This shim stays
+ * on the bridge side so historical imports of
+ * `./ports/session-pool.js` continue to work during the migration
+ * window. C7 removes the shim.
  */
-
-// ── Port interface + associated types ──────────────────────────
 
 export type {
   SessionPool,
@@ -24,4 +18,4 @@ export type {
   IsolationMode,
   WorktreeAction,
   StreamEvent,
-} from '../domains/sessions/pool.js';
+} from '@method/runtime/sessions';

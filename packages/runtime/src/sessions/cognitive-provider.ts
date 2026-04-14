@@ -23,7 +23,7 @@ import type {
 import { moduleId, createWorkspace } from '@method/pacta';
 import type { PtySession, SessionStatus, StreamChunkCallback } from './print-session.js';
 import type { StreamEvent } from './pool.js';
-import type { CognitiveSink } from './cognitive-sink.js';
+import type { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
 import {
   createBridgeReasonerActorModule,
   createBridgeMonitorModule,

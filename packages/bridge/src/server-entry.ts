@@ -6,7 +6,8 @@ import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
 import { SessionCheckpointSink } from '@method/runtime/event-bus';
 import Fastify from 'fastify';
-import { createPool } from './domains/sessions/pool.js';
+// PRD-057 / S2 §3.3 / C5: session pool + channels moved to @method/runtime/sessions.
+import { createPool, createSessionChannels } from '@method/runtime/sessions';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
 import { createTokenTracker } from './domains/tokens/tracker.js';
 import { registerTokenRoutes } from './domains/tokens/routes.js';
@@ -14,7 +15,6 @@ import { registerTranscriptRoutes } from './domains/sessions/transcript-route.js
 import { createTranscriptReader } from './domains/sessions/transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
-import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
 import { createSessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';

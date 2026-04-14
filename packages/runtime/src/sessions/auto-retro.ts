@@ -3,7 +3,7 @@
 // when a session terminates. Writes to .method/retros/.
 
 import { join } from 'node:path';
-import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { FileSystemProvider } from '../ports/file-system.js';
 
 /** Observation record produced by the PTY watcher (PRD 010). Retained for auto-retro after PTY removal. */
 export interface ActivityObservation {

@@ -3,15 +3,16 @@ import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { createPrintSession, type PtySession, type PrintMetadata, type SessionStatus } from './print-session.js';
 import { createCognitiveSession, type CognitiveSessionConfig } from './cognitive-provider.js';
-import { createBridgeToolProvider } from './bridge-tools.js';
+import { createRuntimeToolProvider } from './runtime-tools.js';
 import { createSessionChannels, type SessionChannels } from './channels.js';
 import { DiagnosticsTracker, type SessionDiagnostics } from './diagnostics.js';
 import { installScopeHook } from './scope-hook.js';
-import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { EventBus } from '../../ports/event-bus.js';
-import { createAgentEventAdapter } from '@method/runtime/event-bus';
+import type { FileSystemProvider } from '../ports/file-system.js';
+import type { EventBus } from '../ports/event-bus.js';
+import type { SessionProviderFactory, SessionProviderOptions, StreamEvent as PortStreamEvent } from '../ports/session-pool.js';
+import { createAgentEventAdapter } from '../event-bus/agent-event-adapter.js';
 import type { AgentProvider } from '@method/pacta';
-import { CognitiveSink } from './cognitive-sink.js';
+import { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -201,6 +202,15 @@ export interface PoolOptions {
   eventBus?: EventBus;
   /** PRD 041: CognitiveSink for routing typed CognitiveEvents to the event bus. */
   cognitiveSink?: CognitiveSink;
+  /**
+   * PRD-057 / S2 §6 / C5: Injected session-creation factory. When supplied,
+   * the pool delegates "how does a prompt actually execute" to the factory
+   * (bridge supplies a PTY+print+cognitive factory; agent-runtime supplies a
+   * Cortex-`ctx.llm` factory). When absent, the pool falls back to its
+   * built-in print + cognitive session paths for backwards compatibility
+   * during the migration window.
+   */
+  providerFactory?: SessionProviderFactory;
 }
 
 const DEFAULT_MAX_SESSIONS = 10;
@@ -370,7 +380,7 @@ export function createPool(options?: PoolOptions): SessionPool {
   // ── LLM provider resolution for cognitive-agent mode ────────
   async function resolveProvider(
     providerName: string | undefined,
-    config: { model?: string; baseUrl?: string; toolProvider?: ReturnType<typeof createBridgeToolProvider> },
+    config: { model?: string; baseUrl?: string; toolProvider?: ReturnType<typeof createRuntimeToolProvider> },
   ): Promise<AgentProvider> {
     switch (providerName ?? 'anthropic') {
       case 'anthropic': {
@@ -528,11 +538,58 @@ export function createPool(options?: PoolOptions): SessionPool {
 
       let session: PtySession;
 
-      if (effectiveMode === 'cognitive-agent') {
+      // PRD-057 / S2 §6 / C5: if a SessionProviderFactory was supplied at pool
+      // construction, delegate the "how does a prompt actually execute" part
+      // to the factory. Otherwise fall back to the built-in print + cognitive
+      // paths. Both paths set up the cognitive SSE sink in the same way when
+      // applicable so `promptStream` behavior is identical.
+      if (options?.providerFactory) {
+        let sseSink: ((event: StreamEvent) => void) | null = null;
+        if (effectiveMode === 'cognitive-agent') {
+          cognitiveSSESinks.set(sessionId, (cb) => { sseSink = cb; });
+        }
+
+        const sessionCognitiveSink = (effectiveMode === 'cognitive-agent' && experiment_id && run_id && eventBus)
+          ? new CognitiveSink(eventBus, { sessionId, experimentId: experiment_id, runId: run_id })
+          : cognitiveSink;
+
+        const factoryOptions: SessionProviderOptions = {
+          sessionId,
+          mode: effectiveMode,
+          workdir: effectiveWorkdir,
+          allowedTools: spawnArgs,
+          allowedPaths: effectiveAllowedPaths,
+          metadata,
+          onEvent: (event: PortStreamEvent) => {
+            // Forward to active SSE stream (if any) and emit cognitive
+            // events onto the bus for PRD 041 experiment tracing.
+            sseSink?.(event as unknown as StreamEvent);
+            if (eventBus && effectiveMode === 'cognitive-agent') {
+              eventBus.emit({
+                version: 1,
+                domain: 'session',
+                type: `session.cognitive.${event.type}`,
+                severity: 'info',
+                sessionId,
+                payload: event as unknown as Record<string, unknown>,
+                source: 'runtime/sessions/pool',
+              });
+            }
+          },
+          cognitiveConfig: cognitive_config as Record<string, unknown> | undefined,
+          cognitiveSink: sessionCognitiveSink,
+        };
+
+        const handle = await options.providerFactory.createSession(factoryOptions);
+        // The factory returns a handle structurally compatible with
+        // PtySession; cast once here — every method the pool invokes is
+        // guaranteed present by the PtySessionHandle contract.
+        session = handle as unknown as PtySession;
+      } else if (effectiveMode === 'cognitive-agent') {
         // PRD 033: Cognitive agent session — runs reasoning cycle internally
         const { createProviderAdapter } = await import('@method/pacta');
 
-        const tools = createBridgeToolProvider(effectiveWorkdir);
+        const tools = createRuntimeToolProvider(effectiveWorkdir);
         const model = llm_config?.model ?? (typeof metadata?.model === 'string' ? metadata.model : undefined);
         const agentProvider = await resolveProvider(llm_provider, { model, baseUrl: llm_config?.baseUrl, toolProvider: tools });
         const adapter = createProviderAdapter(agentProvider, {
@@ -545,7 +602,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         cognitiveSSESinks.set(sessionId, (cb) => { sseSink = cb; });
 
         // PRD 041: Create a per-session CognitiveSink with experiment context so that
-        // ExperimentEventSink can route emitted BridgeEvents to the correct JSONL file.
+        // ExperimentEventSink can route emitted RuntimeEvents to the correct JSONL file.
         // Falls back to the pool-level sink when no experiment context is present.
         const sessionCognitiveSink = (experiment_id && run_id && eventBus)
           ? new CognitiveSink(eventBus, { sessionId, experimentId: experiment_id, runId: run_id })
@@ -579,7 +636,7 @@ export function createPool(options?: PoolOptions): SessionPool {
                 severity: 'info',
                 sessionId,
                 payload: event as unknown as Record<string, unknown>,
-                source: 'bridge/sessions/cognitive-provider',
+                source: 'runtime/sessions/cognitive-provider',
               });
             }
           },
@@ -664,7 +721,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             workdir,
             nickname,
           },
-          source: 'bridge/sessions/pool',
+          source: 'runtime/sessions/pool',
         });
       }
 
@@ -893,7 +950,7 @@ export function createPool(options?: PoolOptions): SessionPool {
             worktree_action: worktreeAction ?? 'keep',
             worktree_cleaned: worktreeCleaned,
           },
-          source: 'bridge/sessions/pool',
+          source: 'runtime/sessions/pool',
         });
       }
 
@@ -1029,7 +1086,7 @@ export function createPool(options?: PoolOptions): SessionPool {
                 inactive_ms: inactiveMs,
                 action: 'auto_killed',
               },
-              source: 'bridge/sessions/pool',
+              source: 'runtime/sessions/pool',
             });
           }
 
@@ -1056,7 +1113,7 @@ export function createPool(options?: PoolOptions): SessionPool {
                 action: 'marked_stale',
                 kill_in_ms: config.kill_timeout_ms - inactiveMs,
               },
-              source: 'bridge/sessions/pool',
+              source: 'runtime/sessions/pool',
             });
           }
 
@@ -1224,7 +1281,7 @@ export function createPool(options?: PoolOptions): SessionPool {
                   killed_by: 'startup_recovery',
                   reason: 'cognitive sessions are in-memory only and cannot survive a restart',
                 },
-                source: 'bridge/sessions/pool',
+                source: 'runtime/sessions/pool',
               });
             }
           }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import { createBridgeToolProvider } from '../bridge-tools.js';
+import { createBridgeToolProvider } from '../runtime-tools.js';
 
 describe('Edit tool (PRD 040 C-1)', () => {
   let tmpDir: string;

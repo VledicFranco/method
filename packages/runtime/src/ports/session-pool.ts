@@ -112,17 +112,32 @@ export interface SessionSnapshot {
 // ── SessionProviderFactory (new in PRD-057, S2 §6) ─────────────
 
 /**
- * Forward-declared minimal PtySession shape for the factory contract.
+ * Minimal handle returned by the SessionProviderFactory. Mirrors the
+ * shape of `PtySession` (defined in `@method/runtime/sessions`) with
+ * only the attributes the pool needs to route lifecycle calls.
  *
- * The real PtySession interface is defined in the sessions subpath (C5);
- * this forward declaration keeps C1 self-contained. Consumers that import
- * `PtySession` directly should continue to import from
- * `@method/runtime/sessions` once C5 lands.
+ * C5 completes the sessions subpath migration; the concrete `PtySession`
+ * interface in `@method/runtime/sessions/print-session.ts` is assignable
+ * to `PtySessionHandle` structurally — the pool stores the factory's
+ * result directly as a `PtySession`.
  */
 export interface PtySessionHandle {
-  sessionId: string;
-  nickname?: string;
+  /** Unique session ID (stable across lifecycle). */
+  id: string;
+  /** OS process ID (print-mode = null; PTY-backed = number). */
+  pid: number | null;
+  /** Session status. */
+  status: string;
+  queueDepth: number;
+  promptCount: number;
+  lastActivityAt: Date;
+  readonly transcript: string;
+  onOutput(cb: (data: string) => void): () => void;
+  onExit(cb: (exitCode: number) => void): void;
+  sendPrompt(prompt: string, timeoutMs?: number, settleDelayMs?: number): Promise<{ output: string; timedOut: boolean }>;
+  resize(cols: number, rows: number): void;
   kill(): void;
+  interrupt(): boolean;
 }
 
 /**

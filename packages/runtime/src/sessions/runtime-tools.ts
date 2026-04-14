@@ -1,8 +1,13 @@
 /**
- * Bridge Tool Provider — real filesystem-backed tools for cognitive sessions.
+ * Runtime Tool Provider — real filesystem-backed tools for cognitive sessions.
  *
  * Provides Read, Write, Edit, Glob, Grep, and Bash tools scoped to a workdir.
  * Used by cognitive-provider.ts to give the reasoner-actor real file access.
+ *
+ * PRD-057 / S2 §3.3 / C5: moved from `bridge/domains/sessions/bridge-tools.ts`
+ * to `runtime/sessions/runtime-tools.ts`. Legacy `createBridgeToolProvider`
+ * is retained as an alias export for existing callers; new callers should
+ * use `createRuntimeToolProvider`.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -45,7 +50,10 @@ function checkPathArg(workdir: string, pathArg: string): ToolResult | null {
   return checkPathTraversal(workdir, resolved, pathArg);
 }
 
-export function createBridgeToolProvider(workdir: string): ToolProvider {
+/**
+ * Canonical name after C5 rename (PRD-057 / S2 §3.3). Use this for new code.
+ */
+export function createRuntimeToolProvider(workdir: string): ToolProvider {
   return {
     list: () => TOOL_DEFS,
 
@@ -149,3 +157,9 @@ export function createBridgeToolProvider(workdir: string): ToolProvider {
     },
   };
 }
+
+/**
+ * @deprecated Use `createRuntimeToolProvider`. Legacy alias preserved for
+ * bridge-internal callers during the PRD-057 migration window; removed in C7.
+ */
+export const createBridgeToolProvider = createRuntimeToolProvider;
