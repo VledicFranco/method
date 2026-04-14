@@ -15,6 +15,7 @@
     "@method/types": "*",
     "@method/methodts": "*",
     "@method/pacta": "*",
+    "@method/runtime": "*",
     "@method/pacta-provider-anthropic": "*",
     "@method/cluster": "*",
     "@method/pacta-provider-claude-cli": "*",

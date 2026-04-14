@@ -1,0 +1,33 @@
+{
+  "name": "@method/runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./strategy": "./dist/strategy/index.js",
+    "./sessions": "./dist/sessions/index.js",
+    "./event-bus": "./dist/event-bus/index.js",
+    "./cost-governor": "./dist/cost-governor/index.js",
+    "./ports": "./dist/ports/index.js",
+    "./config": "./dist/config/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/types": "*",
+    "@method/methodts": "*",
+    "@method/pacta": "*",
+    "js-yaml": "^4.1.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@method/pacta-testkit": "*",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
