@@ -1,14 +1,16 @@
 /**
- * ContextLoadExecutorImpl — Bridge implementation of the ContextLoadExecutor port.
+ * ContextLoadExecutorImpl — runtime implementation of the ContextLoadExecutor port.
  *
  * Implements the co-designed surface between methodts (DagStrategyExecutor) and
  * @method/fca-index. Adapts ContextQueryPort → ContextLoadExecutor, mapping
  * ComponentContext → RetrievedComponent.
  *
- * Layer: L4 (bridge) — correctly imports both @method/methodts (L2) and
- * @method/fca-index (L3). Neither lower layer knows about the other.
+ * Layer: L3 (runtime) — correctly imports both @method/methodts (L2) and
+ * @method/fca-index (L3 sibling). Neither lower layer knows about the other.
  *
  * Co-design record: .method/sessions/fcd-surface-context-load-executor/record.md
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
  */
 
 import type {

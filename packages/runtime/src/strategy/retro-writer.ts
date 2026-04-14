@@ -1,26 +1,37 @@
 /**
  * PRD 017: Strategy Pipelines — Retrospective Writer
  *
- * Filesystem operations for saving strategy retrospectives.
- * Split from retro-generator.ts per DR-03: pure logic lives locally,
- * I/O operations stay in @method/bridge.
+ * Filesystem operations for saving strategy retrospectives. The runtime accepts
+ * a FileSystemProvider via injection (no Node-specific impl bound here).
+ *
+ * Per DR-03: pure logic + injected ports live in runtime; the concrete
+ * NodeFileSystemProvider stays in @method/bridge.
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
+ *   - Module-level fs port pattern preserved (retain setRetroWriterFs() API).
+ *   - Default fallback removed (NodeFileSystemProvider lives in bridge).
+ *     Callers MUST configure the fs port at composition time.
  */
 
 import { join } from 'node:path';
-import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
+import type { FileSystemProvider } from '../ports/file-system.js';
 import { retroToYaml } from './retro-generator.js';
 import type { StrategyRetro } from './retro-generator.js';
 
-// PRD 024 MG-1: Module-level fs port, set via setRetroWriterFs()
+// Module-level fs port, set via setRetroWriterFs()
 let _fs: FileSystemProvider | null = null;
 
-/** PRD 024: Configure FileSystemProvider for retro-writer. Called from composition root. */
+/** Configure FileSystemProvider for retro-writer. Called from composition root. */
 export function setRetroWriterFs(fs: FileSystemProvider): void {
   _fs = fs;
 }
 
 function getFs(): FileSystemProvider {
-  if (!_fs) _fs = new NodeFileSystemProvider();
+  if (!_fs) {
+    throw new Error(
+      'retro-writer: FileSystemProvider not configured — call setRetroWriterFs() from the composition root before saveRetro().',
+    );
+  }
   return _fs;
 }
 

@@ -4,7 +4,7 @@ import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
 import { exec as nodeExec } from 'node:child_process';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
-import { SessionCheckpointSink } from './shared/event-bus/session-checkpoint-sink.js';
+import { SessionCheckpointSink } from '@method/runtime/event-bus';
 import Fastify from 'fastify';
 import { createPool } from './domains/sessions/pool.js';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
@@ -55,7 +55,7 @@ import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisS
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
 import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/index.js';
-import { StrategyExecutor } from './domains/strategies/strategy-executor.js';
+import { StrategyExecutor } from '@method/runtime/strategy';
 import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 import { createCostGovernorDomain, loadCostGovernorConfig } from './domains/cost-governor/index.js';
@@ -87,13 +87,15 @@ const clusterConfig = loadClusterConfig({
   mkdirSync: (p, opts) => fsProvider.mkdirSync(p, opts),
 });
 
-// Strategies domain
-import { setRetroWriterFs } from './domains/strategies/retro-writer.js';
+// Strategies domain — engine logic now lives in @method/runtime/strategy (PRD-057 / S2 §3.2 / C2)
+import {
+  setRetroWriterFs,
+  setStrategyParserYaml,
+  setRetroGeneratorYaml,
+  EventBusHumanApprovalResolver,
+  FsSubStrategySource,
+} from '@method/runtime/strategy';
 import { setStrategyRoutesPorts, setStrategyRoutesHumanApprovalResolver, setStrategyRoutesSubStrategySource } from './domains/strategies/strategy-routes.js';
-import { setStrategyParserYaml } from './domains/strategies/strategy-parser.js';
-import { setRetroGeneratorYaml } from './domains/strategies/retro-generator.js';
-import { BridgeHumanApprovalResolver } from './domains/strategies/human-approval-resolver.js';
-import { BridgeSubStrategySource } from './domains/strategies/sub-strategy-source.js';
 setRetroWriterFs(fsProvider);
 setStrategyRoutesPorts(fsProvider, yamlLoader);
 setStrategyParserYaml(yamlLoader);
@@ -170,8 +172,9 @@ setProjectRoutesEventBus(eventBus);
 
 // PRD-044: Wire HumanApprovalResolver and SubStrategySource into the strategies domain.
 // Created once at startup and reused across all executions (singleton lifecycle).
-const humanApprovalResolver = new BridgeHumanApprovalResolver(eventBus);
-const subStrategySource = new BridgeSubStrategySource(
+// PRD-057 / S2 §3.2 / C2: classes renamed and moved to @method/runtime/strategy.
+const humanApprovalResolver = new EventBusHumanApprovalResolver(eventBus);
+const subStrategySource = new FsSubStrategySource(
   process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies',
   fsProvider,
 );
@@ -213,7 +216,7 @@ const transcriptReader = createTranscriptReader({
 });
 
 // PRD 026 Phase 4: GenesisSink replaces polling loop (module-scoped for shutdown disposal)
-let genesisSink: import('./shared/event-bus/genesis-sink.js').GenesisSink | null = null;
+let genesisSink: import('@method/runtime/event-bus').GenesisSink | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 

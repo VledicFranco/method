@@ -1,15 +1,17 @@
 /**
- * PRD 017: Strategy Pipelines — Strategy YAML Parser (Phase 1c)
+ * PRD 017: Strategy Pipelines — Strategy YAML Parser
  *
- * WS-2: Now a thin re-export from @method/methodts canonical parser.
- * All parsing, validation, and topological sort logic lives in methodts.
- * This file preserves the bridge's import surface for backward compatibility.
+ * Re-export from @method/methodts canonical parser. All parsing, validation,
+ * and topological sort logic lives in methodts. This file preserves the
+ * runtime's import surface.
  *
- * The setStrategyParserYaml() port configuration is retained for bridge-level
+ * The setStrategyParserYaml() port configuration is retained for composition-root
  * YAML loader injection (PRD 024 MG-2), but parsing itself delegates to methodts.
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
  */
 
-import type { YamlLoader } from '../../ports/yaml-loader.js';
+import type { YamlLoader } from '../ports/yaml-loader.js';
 import {
   parseStrategyYaml as methodtsParseYaml,
   parseStrategyObject as methodtsParseObject,
@@ -17,7 +19,7 @@ import {
   topologicalSort as methodtsTopoSort,
 } from '@method/methodts/strategy/dag-parser.js';
 
-// Re-export types from methodts dag-types (preserving bridge's type surface)
+// Re-export types from methodts dag-types (preserving the runtime's type surface)
 export type {
   StrategyYaml,
   MethodologyNodeConfig,

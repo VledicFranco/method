@@ -7,6 +7,8 @@
  * executes that step.
  *
  * This is ADDITIVE — the existing strategy executor is not modified.
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
  */
 
 import type {

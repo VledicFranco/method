@@ -1,11 +1,12 @@
 /**
  * PRD 017: Strategy Pipelines — DAG Executor (Phase 1c)
  *
- * WS-2: Now a thin adapter over @method/methodts DagStrategyExecutor.
- * The bridge StrategyExecutor wires the AgentProvider into the methodts
- * DagNodeExecutor port, then delegates all execution logic to methodts.
+ * Thin adapter over @method/methodts DagStrategyExecutor. Wires the AgentProvider
+ * into the methodts DagNodeExecutor port, then delegates all execution logic to
+ * methodts.
  *
  * PRD 028 C-5: Migrated from LlmProvider to AgentProvider (@method/pacta).
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
  */
 
 import type { AgentProvider, AgentResult, Pact } from '@method/pacta';
@@ -23,7 +24,7 @@ import {
 import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
 import type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
 
-// Re-export types from methodts (preserving bridge's type surface)
+// Re-export types from methodts (preserving the runtime's type surface)
 export type {
   NodeStatus,
   NodeResult,
@@ -37,18 +38,18 @@ export type {
 
 export type { ContextLoadExecutor } from '@method/methodts/strategy/dag-executor.js';
 
-// Re-export SemanticNodeExecutor port type for bridge composition root
+// Re-export SemanticNodeExecutor port type for the composition root
 export type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
 
 // Re-export ExecutionState as an opaque type (callers use getState() snapshot)
 export type { ExecutionStateSnapshot as ExecutionState } from '@method/methodts/strategy/dag-types.js';
 
-// ── Bridge Adapter: AgentProvider -> DagNodeExecutor ────────────
+// ── Adapter: AgentProvider -> DagNodeExecutor ───────────────────
 
 /**
  * Adapts Pacta's AgentProvider to the methodts DagNodeExecutor port.
  *
- * This is the only bridge-specific logic remaining — it builds prompts
+ * This is the only methodology-specific logic in this module — it builds prompts
  * from methodology node configs, invokes the agent, and parses the output.
  * All execution orchestration (DAG walking, gates, retries, oversight)
  * is handled by methodts DagStrategyExecutor.
@@ -276,7 +277,7 @@ function parseNodeOutput(result: string): Record<string, unknown> {
 // ── Executor ────────────────────────────────────────────────────
 
 /**
- * Bridge-level StrategyExecutor — thin wrapper over methodts DagStrategyExecutor.
+ * Runtime-level StrategyExecutor — thin wrapper over methodts DagStrategyExecutor.
  *
  * Wires Pacta's AgentProvider into the methodts DagNodeExecutor port,
  * then delegates all execution orchestration to methodts.

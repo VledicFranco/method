@@ -1,13 +1,13 @@
 /**
- * PRD 017: Strategy Pipelines — Gate Framework (Phase 1b)
+ * PRD 017: Strategy Pipelines — Gate Framework
  *
- * WS-2: Now a thin re-export from @method/methodts canonical gate evaluator.
- * All gate evaluation, expression sandboxing, and retry feedback logic lives
- * in methodts. This file preserves the bridge's import surface for backward
- * compatibility.
+ * Re-export from @method/methodts canonical gate evaluator. All gate evaluation,
+ * expression sandboxing, and retry feedback logic lives in methodts. This file
+ * preserves the runtime's import surface.
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
  */
 
-// Re-export types from methodts (preserving bridge's type surface)
 export type {
   DagGateType as GateType,
   DagGateConfig as GateConfig,
@@ -15,7 +15,6 @@ export type {
   DagGateResult as GateResult,
 } from '@method/methodts/strategy/dag-types.js';
 
-// Re-export functions from methodts
 export {
   evaluateGateExpression,
   evaluateGate,

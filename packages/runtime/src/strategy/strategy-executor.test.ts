@@ -18,12 +18,18 @@ import type { StrategyYaml, StrategyDAG } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig } from './strategy-executor.js';
 import type { AgentProvider, AgentRequest, AgentResult, Pact, ProviderCapabilities } from '@method/pacta';
-import { JsYamlLoader } from '../../ports/yaml-loader.js';
 import { setStrategyParserYaml } from './strategy-parser.js';
 import { setRetroGeneratorYaml } from './retro-generator.js';
+import type { YamlLoader } from '../ports/yaml-loader.js';
+import yaml from 'js-yaml';
 
-// PRD 024: Configure ports for tests
-const testYaml = new JsYamlLoader();
+// PRD 024 / PRD-057 C2: Configure YAML port for tests with an inline
+// js-yaml-backed loader. The runtime stays transport-free — the bridge's
+// JsYamlLoader implementation lives in @method/bridge.
+const testYaml: YamlLoader = {
+  load: (text: string) => yaml.load(text),
+  dump: (obj: unknown) => yaml.dump(obj),
+};
 setStrategyParserYaml(testYaml);
 setRetroGeneratorYaml(testYaml);
 

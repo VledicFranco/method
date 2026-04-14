@@ -1,5 +1,5 @@
 /**
- * PRD-044: BridgeHumanApprovalResolver — EventBus-backed HumanApprovalResolver port.
+ * EventBusHumanApprovalResolver — EventBus-backed HumanApprovalResolver port.
  *
  * Implements the HumanApprovalResolver port from @method/methodts.
  * When a human_approval gate fires:
@@ -9,12 +9,15 @@
  *   4. Resolves with { approved: false, feedback: "...timed out" } after ctx.timeout_ms
  *
  * Transport-agnostic: depends only on EventBus port — no HTTP, WebSocket, or fs imports.
+ *
+ * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/
+ * (renamed from `BridgeHumanApprovalResolver` → `EventBusHumanApprovalResolver`).
  */
 
 import type { HumanApprovalResolver, HumanApprovalContext, HumanApprovalDecision } from '@method/methodts/strategy/dag-types.js';
-import type { EventBus, StrategyGateAwaitingApprovalPayload, StrategyGateApprovalResponsePayload } from '../../ports/event-bus.js';
+import type { EventBus, StrategyGateAwaitingApprovalPayload, StrategyGateApprovalResponsePayload } from '../ports/event-bus.js';
 
-export class BridgeHumanApprovalResolver implements HumanApprovalResolver {
+export class EventBusHumanApprovalResolver implements HumanApprovalResolver {
   constructor(private readonly eventBus: EventBus) {}
 
   async requestApproval(ctx: HumanApprovalContext): Promise<HumanApprovalDecision> {
@@ -88,7 +91,7 @@ export class BridgeHumanApprovalResolver implements HumanApprovalResolver {
           type: 'gate.awaiting_approval',
           severity: 'info',
           payload: awaitingPayload as unknown as Record<string, unknown>,
-          source: 'bridge/strategies/human-approval-resolver',
+          source: 'runtime/strategy/human-approval-resolver',
           correlationId: ctx.execution_id,
         });
       } catch {
