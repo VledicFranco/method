@@ -1,9 +1,22 @@
+/**
+ * Bridge-side Fastify wrapper for the runtime cost-governor.
+ *
+ * PRD-057 / S2 §3.5 / C4: the `createCostGovernor` factory in
+ * `@method/runtime/cost-governor` no longer owns route registration —
+ * that's a transport concern that stays in bridge. This module consumes
+ * the runtime primitives (`oracle`, `rateGovernor`, `observations`) and
+ * wires them to Fastify. HTTP API is unchanged (PRD 051).
+ */
+
 import type { FastifyInstance } from 'fastify';
 import type { InvocationSignature } from '@method/types';
-import type { HistoricalObservations } from '../../ports/historical-observations.js';
-import type { HistogramCostOracle } from './cost-oracle-impl.js';
-import type { SingleAccountRateGovernor } from './rate-governor-impl.js';
-import { buildSignature } from './signature-builder.js';
+import type {
+  CostGovernor,
+  HistogramCostOracle,
+  SingleAccountRateGovernor,
+} from '@method/runtime/cost-governor';
+import { buildSignature } from '@method/runtime/cost-governor';
+import type { HistoricalObservations } from '@method/runtime/ports';
 
 export interface CostGovernorRouteContext {
   oracle: HistogramCostOracle;
@@ -11,10 +24,24 @@ export interface CostGovernorRouteContext {
   observations: HistoricalObservations;
 }
 
+/**
+ * Register the `/api/cost-governor/*` routes on a Fastify instance.
+ * Accepts either the flat context shape (legacy call-site) or a
+ * `CostGovernor` value produced by `createCostGovernor` — both resolve
+ * to the same primitives.
+ */
 export function registerCostGovernorRoutes(
   app: FastifyInstance,
-  ctx: CostGovernorRouteContext,
+  ctxOrGovernor: CostGovernorRouteContext | CostGovernor,
 ): void {
+  const ctx: CostGovernorRouteContext = isCostGovernor(ctxOrGovernor)
+    ? {
+        oracle: ctxOrGovernor.oracle,
+        rateGovernor: ctxOrGovernor.rateGovernor,
+        observations: ctxOrGovernor.observations,
+      }
+    : ctxOrGovernor;
+
   /** Query estimate for a single signature. */
   app.get<{
     Querystring: {
@@ -78,4 +105,10 @@ export function registerCostGovernorRoutes(
     const estimate = ctx.oracle.estimateStrategy(signatures, dagEdges);
     return reply.status(200).send(estimate);
   });
+}
+
+function isCostGovernor(
+  value: CostGovernorRouteContext | CostGovernor,
+): value is CostGovernor {
+  return 'appendToken' in (value as CostGovernor);
 }

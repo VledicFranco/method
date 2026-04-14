@@ -6,8 +6,8 @@
  */
 
 import type { InvocationSignature, CostBand } from '@method/types';
-import type { CostOracle, StrategyEstimate } from '../../ports/cost-oracle.js';
-import type { HistoricalObservations } from '../../ports/historical-observations.js';
+import type { CostOracle, StrategyEstimate } from '../ports/cost-oracle.js';
+import type { HistoricalObservations } from '../ports/historical-observations.js';
 import { computeBands } from './percentile.js';
 import { estimateStrategy as walkDag } from './estimator.js';
 

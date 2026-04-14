@@ -2,12 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { ObservationsStore } from './observations-store.js';
-import { createAppendToken } from '../../ports/historical-observations.js';
+import { createAppendToken } from '../ports/historical-observations.js';
 import type {
   FileSystemProvider,
   FileStat,
   DirEntry,
-} from '../../ports/file-system.js';
+} from '../ports/file-system.js';
 import type {
   InvocationSignature,
   AccountId,

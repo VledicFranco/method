@@ -4,7 +4,7 @@
  */
 
 import type { InvocationSignature, CostBand } from '@method/types';
-import type { NodeEstimate, StrategyEstimate } from '../../ports/cost-oracle.js';
+import type { NodeEstimate, StrategyEstimate } from '../ports/cost-oracle.js';
 
 export interface SignatureEstimator {
   (sig: InvocationSignature): { cost: CostBand; durationMs: CostBand } | null;

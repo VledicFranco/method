@@ -1,10 +1,15 @@
 /**
- * SingleAccountRateGovernor — implements BridgeRateGovernor for a single
+ * SingleAccountRateGovernor — implements RuntimeRateGovernor for a single
  * account (no routing, no policies). Multi-account deferred to a future PRD.
  *
  * Uses TokenBucket for rate limiting and BackpressureQueue for callers
  * waiting for capacity. On releaseSlot, optionally persists an observation
  * via the injected onObservation callback.
+ *
+ * PRD-057 / S2 §8: Optional per-`appId` scoping. When `appId` is supplied
+ * to the constructor, slots track both `accountId` and `appId`, and
+ * `utilization()` accepts an optional `appId` filter. Absent = today's
+ * bridge behavior (bit-identical).
  */
 
 import type {
@@ -15,14 +20,23 @@ import type {
   InvocationSignature,
 } from '@method/types';
 import type {
-  BridgeRateGovernor,
+  RuntimeRateGovernor,
   DispatchSlot,
   AcquireOptions,
   ObserveOutcome,
-} from '../../ports/rate-governor.js';
+} from '../ports/rate-governor.js';
 import { SaturationError } from '@method/pacta';
 import { TokenBucket } from './token-bucket.js';
 import { BackpressureQueue } from './backpressure-queue.js';
+
+/**
+ * Per-PRD-057 / S2 §8: Optional application identifier for per-tenant
+ * (Cortex AppId) scoping. Branded string to avoid collision with other
+ * string types. Declared locally in runtime until `@method/types` defines
+ * a canonical `AppId`; the downstream `@method/agent-runtime` (PRD-058)
+ * will likely re-brand.
+ */
+export type AppId = string & { readonly __brand: 'AppId' };
 
 export interface RateGovernorImplConfig {
   burstCapacity: number;
@@ -40,17 +54,25 @@ export interface SlotRecord {
 
 export type OnObservation = (outcome: ObserveOutcome, record: SlotRecord) => void;
 
-export class SingleAccountRateGovernor implements BridgeRateGovernor {
+export class SingleAccountRateGovernor implements RuntimeRateGovernor {
   private readonly bucket: TokenBucket;
   private readonly queue = new BackpressureQueue();
   private readonly active = new Map<SlotId, SlotRecord>();
   private slotCounter = 0;
   private readonly accountId: AccountId;
   private readonly defaultTimeoutMs: number;
+  /**
+   * Optional per-tenant scope (PRD-057 / S2 §8). When undefined, the
+   * governor behaves bit-identically to bridge's today. When set, the
+   * slot-key becomes `${accountId}:${appId}` and emitted observations
+   * carry the `appId` via the optional slot field.
+   */
+  private readonly appId: AppId | undefined;
 
   constructor(
     private readonly config: RateGovernorImplConfig,
     private readonly onObservation?: OnObservation,
+    options?: { appId?: AppId },
   ) {
     this.bucket = new TokenBucket({
       burstCapacity: config.burstCapacity,
@@ -59,6 +81,7 @@ export class SingleAccountRateGovernor implements BridgeRateGovernor {
     });
     this.accountId = 'default' as AccountId;
     this.defaultTimeoutMs = config.queueWaitTimeoutMs ?? 30_000;
+    this.appId = options?.appId;
   }
 
   async acquireSlot(opts: AcquireOptions): Promise<DispatchSlot> {
@@ -103,7 +126,17 @@ export class SingleAccountRateGovernor implements BridgeRateGovernor {
     }
   }
 
-  utilization(_providerClass: ProviderClass): readonly AccountUtilization[] {
+  utilization(
+    _providerClass: ProviderClass,
+    appIdFilter?: AppId,
+  ): readonly AccountUtilization[] {
+    // PRD-057 / S2 §8: when `appIdFilter` is supplied and this governor
+    // was constructed with a different `appId`, return empty (scope miss).
+    // When neither is supplied, or both match, return the bucket snapshot.
+    if (appIdFilter !== undefined && this.appId !== appIdFilter) {
+      return [];
+    }
+
     const util = this.bucket.utilization();
     const status: AccountUtilization['status'] =
       util.burstPct >= 100 || util.weeklyPct >= 100
@@ -117,6 +150,11 @@ export class SingleAccountRateGovernor implements BridgeRateGovernor {
       backpressureActive: this.queue.size > 0,
       status,
     }];
+  }
+
+  /** Expose the scoped `appId` (undefined = no scoping). */
+  getAppId(): AppId | undefined {
+    return this.appId;
   }
 
   activeSlots(): readonly DispatchSlot[] {

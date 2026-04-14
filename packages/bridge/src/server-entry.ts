@@ -58,7 +58,10 @@ import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/inde
 import { StrategyExecutor } from '@method/runtime/strategy';
 import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-import { createCostGovernorDomain, loadCostGovernorConfig } from './domains/cost-governor/index.js';
+// PRD-057 / S2 §3.5 / C4: cost-governor factory moved to @method/runtime.
+// Bridge keeps its Fastify route registration locally.
+import { createCostGovernor, loadCostGovernorConfig } from '@method/runtime/cost-governor';
+import { registerCostGovernorRoutes } from './domains/cost-governor/routes.js';
 import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
@@ -572,17 +575,21 @@ async function start() {
     });
     buildDomain.registerRoutes(app);
 
-    // PRD 051: Register Cost Governor domain
+    // PRD 051 / PRD-057 C4: Register Cost Governor.
+    // Factory lives in @method/runtime/cost-governor (transport-free).
+    // Route registration stays in bridge (Fastify coupling).
     const costGovernorConfig = loadCostGovernorConfig();
-    const costGovernorDomain = costGovernorConfig.enabled
-      ? createCostGovernorDomain({
+    const costGovernor = costGovernorConfig.enabled
+      ? createCostGovernor({
           eventBus,
           fileSystem: fsProvider,
           config: costGovernorConfig,
+          // No appId: bridge is the process-wide cost governor.
+          // Agent-runtime (PRD-058) wires per-tenant AppId scoping.
         })
       : null;
-    if (costGovernorDomain) {
-      costGovernorDomain.registerRoutes(app);
+    if (costGovernor) {
+      registerCostGovernorRoutes(app, costGovernor);
       app.log.info('Cost Governor domain enabled');
     }
 

@@ -4,12 +4,18 @@
  * All cost events carry domain='cost' on the Universal Event Bus.
  * The accountId field is included for forward-compatibility with
  * multi-account routing — currently always 'default'.
+ *
+ * PRD-057 / S2 §8: Each emitter accepts an optional `appId` field. When
+ * present (agent-runtime / Cortex case), the emitted RuntimeEvent carries
+ * `payload.appId`. When absent (bridge case), behavior is bit-identical
+ * to pre-PRD-057.
  */
 
-import type { EventBus, BridgeEventInput } from '../../ports/event-bus.js';
+import type { EventBus, RuntimeEventInput } from '../ports/event-bus.js';
 import type { InvocationSignature, AccountId, ProviderClass } from '@method/types';
+import type { AppId } from './rate-governor-impl.js';
 
-const SOURCE = 'bridge/domains/cost-governor';
+const SOURCE = 'runtime/cost-governor';
 
 export type CostEventType =
   | 'cost.observation_recorded'
@@ -30,6 +36,7 @@ export function emitObservationRecorded(
     costUsd: number;
     durationMs: number;
     accountId: AccountId;
+    appId?: AppId;
     correlationId?: string;
   },
 ): void {
@@ -41,6 +48,7 @@ export function emitRateLimited(
   payload: {
     accountId: AccountId;
     providerClass: ProviderClass;
+    appId?: AppId;
     retryAfterMs?: number;
     correlationId?: string;
   },
@@ -56,6 +64,7 @@ export function emitEstimateEmitted(
     totalCostP90Usd: number;
     durationMsP50: number;
     confidence: 'low' | 'medium' | 'high';
+    appId?: AppId;
     correlationId?: string;
   },
 ): void {
@@ -64,7 +73,7 @@ export function emitEstimateEmitted(
 
 export function emitSlotLeaked(
   bus: EventBus,
-  payload: { slotId: string; accountId: AccountId; ageMs: number },
+  payload: { slotId: string; accountId: AccountId; ageMs: number; appId?: AppId },
 ): void {
   emit(bus, 'cost.slot_leaked', 'error', payload as Record<string, unknown>);
 }
@@ -76,6 +85,7 @@ export function emitAccountSaturated(
     providerClass: ProviderClass;
     window: 'burst' | 'weekly';
     usedPct: number;
+    appId?: AppId;
   },
 ): void {
   emit(bus, 'cost.account_saturated', 'warning', payload as Record<string, unknown>);
@@ -83,14 +93,19 @@ export function emitAccountSaturated(
 
 export function emitIntegrityViolation(
   bus: EventBus,
-  payload: { lineNumber: number; reason: string },
+  payload: { lineNumber: number; reason: string; appId?: AppId },
 ): void {
   emit(bus, 'cost.integrity_violation', 'error', payload as Record<string, unknown>);
 }
 
 export function emitObservationsCorrupted(
   bus: EventBus,
-  payload: { renamedTo: string; recordsLoaded: number; recordsSkipped: number },
+  payload: {
+    renamedTo: string;
+    recordsLoaded: number;
+    recordsSkipped: number;
+    appId?: AppId;
+  },
 ): void {
   emit(bus, 'cost.observations_corrupted', 'error', payload as Record<string, unknown>);
 }
@@ -100,7 +115,7 @@ export function emitObservationsCorrupted(
 function emit(
   bus: EventBus,
   type: CostEventType,
-  severity: BridgeEventInput['severity'],
+  severity: RuntimeEventInput['severity'],
   payload: Record<string, unknown>,
   correlationId?: string,
 ): void {

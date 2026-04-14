@@ -11,12 +11,12 @@
 import { createHmac } from 'node:crypto';
 import { join } from 'node:path';
 import type { InvocationSignature } from '@method/types';
-import type { FileSystemProvider } from '../../ports/file-system.js';
+import type { FileSystemProvider } from '../ports/file-system.js';
 import type {
   HistoricalObservations,
   Observation,
   AppendToken,
-} from '../../ports/historical-observations.js';
+} from '../ports/historical-observations.js';
 import { signatureKey } from './signature-builder.js';
 
 export interface ObservationsStoreConfig {
