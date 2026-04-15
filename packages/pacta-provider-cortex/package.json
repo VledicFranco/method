@@ -1,0 +1,20 @@
+{
+  "name": "@method/pacta-provider-cortex",
+  "version": "0.1.0",
+  "description": "Cortex service adapters for Pacta — LLM provider, audit middleware, RFC-8693 token-exchange middleware",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/pacta": "*"
+  },
+  "peerDependencies": {
+    "@method/pacta": "*"
+  }
+}
