@@ -84,6 +84,82 @@ export interface CortexEventsFacade {
   publish(topic: string, payload: Readonly<Record<string, unknown>>): Promise<void> | void;
 }
 
+/**
+ * PRD-072 §5.2 — the richer `ctx.events` facade `CortexEventConnector`
+ * invokes. `emit(topic, payload)` returns an `{ eventId, subscriberCount }`
+ * pair and can reject (schema-rejected, topic-unknown, 429, 5xx) — the
+ * connector categorises the rejection and decides retry/drop/dual-write.
+ *
+ * This port is **narrower than the full PRD-072 facade** — it covers the
+ * exact method `CortexEventConnector` consumes. If a tenant app ships only
+ * `publish` (no `emit`), the connector falls back to wrapping `publish` —
+ * see `wrapPublishAsEmit` in `event-connector.ts`.
+ */
+export interface CortexEventsCtx {
+  emit(
+    topic: string,
+    payload: Readonly<Record<string, unknown>>,
+  ): Promise<{ readonly eventId: string; readonly subscriberCount: number }>;
+}
+
+/**
+ * PRD-072 classification levels — fields above a subscriber's clearance cap
+ * are stripped by Cortex before delivery.
+ *
+ * - `0` — public, no restriction
+ * - `1` — internal (default for identifiers)
+ * - `2` — confidential (tool inputs, approval artifacts)
+ * - `3` — secret (never currently used by method topics)
+ */
+export type EventClassificationLevel = 0 | 1 | 2 | 3;
+
+/**
+ * One classification entry inside a topic descriptor. `field` is a JSONPath
+ * expression interpreted by Cortex (PRD-072 §5.3).
+ */
+export interface EventFieldClassification {
+  readonly field: string;
+  readonly level: EventClassificationLevel;
+}
+
+/**
+ * Topic descriptor — one entry per Cortex topic the method runtime emits.
+ * Collected in `METHOD_TOPIC_REGISTRY` (see `event-topic-registry.ts`).
+ *
+ * S6 §2.3. Frozen surface — do not add/remove fields without a new
+ * `/fcd-surface` session.
+ */
+export interface MethodTopicDescriptor {
+  /** Cortex topic name, dotted, namespaced under 'method.'. */
+  readonly topic: string;
+  /** Which RuntimeEvent `type` values project into this topic. */
+  readonly sourceEventTypes: readonly string[];
+  /** Semver of the payload schema (integer for v1 registry). */
+  readonly schemaVersion: number;
+  /** JSONPath classifications applied by Cortex at fan-out. */
+  readonly classifications: readonly EventFieldClassification[];
+  /** Human description (for manifest docs + admin UI). */
+  readonly description: string;
+  /**
+   * Optional relative path (from `packages/agent-runtime/dist/cortex/`) to
+   * the shipped JSON schema. Consumed by `generateManifestEmitSection`.
+   */
+  readonly schemaRef?: string;
+}
+
+/**
+ * Audit-mapping entry — every RuntimeEvent type in
+ * `METHOD_TOPIC_REGISTRY.sourceEventTypes` must have a matching entry in
+ * `METHOD_RUNTIME_EVENT_AUDIT_MAP`, guaranteeing the **G-AUDIT-SUPERSET**
+ * invariant from S3 §3: every events-path emission is also compliance-covered.
+ */
+export interface RuntimeEventAuditMapping {
+  /** Cortex audit eventType the RuntimeEvent projects into. */
+  readonly auditEventType: string;
+  /** Short rationale, surfaced in audit drift reports. */
+  readonly rationale?: string;
+}
+
 // ── ctx.storage (PRD-064) ─────────────────────────────────────────
 
 export interface CortexStorageFacade {
