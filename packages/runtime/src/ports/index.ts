@@ -105,3 +105,41 @@ export type {
   CheckpointSinkOptions,
   CheckpointCapture,
 } from './checkpoint-sink.js';
+
+// ── Job-backed executor + continuation envelope (PRD-062 / S5) ──
+// NOTE: `NextAction` from `./continuation-envelope.js` is intentionally
+// NOT re-exported here — it collides with the S4 `NextAction` (checkpoint
+// resume hint) above. Consumers import the envelope-scoped variant via
+// `@method/runtime/ports/continuation-envelope` directly, or as
+// `ContinuationNextAction` below.
+export type {
+  ContinuationEnvelope,
+  CheckpointRef,
+  BudgetRef,
+  BudgetCarryStrategy,
+  TokenContext,
+  NextAction as ContinuationNextAction,
+} from './continuation-envelope.js';
+export {
+  EnvelopeVersionError,
+  BudgetExpiredError,
+  ENVELOPE_SIZE_SOFT_CAP_BYTES,
+  parseContinuationEnvelope,
+} from './continuation-envelope.js';
+export type {
+  JobBackedExecutor,
+  JobClient,
+  JobHandlerCtx,
+  PactFactory,
+  PactStartInput,
+} from './job-backed-executor.js';
+export {
+  DuplicateAttachError,
+  PactRegistrationError,
+  BudgetStrategyNotImplemented,
+} from './job-backed-executor.js';
+export type {
+  DlqObserver,
+  DlqRecord,
+} from './dlq-observer.js';
+export type { ScheduleClient } from './schedule-client.js';

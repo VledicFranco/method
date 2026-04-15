@@ -10,7 +10,10 @@
     "./event-bus": "./dist/event-bus/index.js",
     "./cost-governor": "./dist/cost-governor/index.js",
     "./ports": "./dist/ports/index.js",
-    "./config": "./dist/config/index.js"
+    "./config": "./dist/config/index.js",
+    "./executors": "./dist/executors/index.js",
+    "./scheduling": "./dist/scheduling/index.js",
+    "./dlq": "./dist/dlq/index.js"
   },
   "scripts": {
     "build": "tsc",

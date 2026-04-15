@@ -121,6 +121,63 @@ describe('@method/runtime — architecture gates (PRD-057 / S2 §11)', () => {
   // G-BRIDGE-USES-RUNTIME-PORTS is asserted on the bridge side (bridge's
   // architecture test). Activated in C7 per PRD-057 §8.
 
+  // ── PRD-062 / S5 §8 ────────────────────────────────────────────
+  // JobBackedExecutor + CortexScheduledPact surface gates.
+
+  it('G-ENVELOPE-VERSION: ContinuationEnvelope.version is locked to 1', () => {
+    const src = readFileSync(
+      join(srcDir, 'ports', 'continuation-envelope.ts'),
+      'utf-8',
+    );
+    assert.match(src, /version:\s*1/, 'continuation-envelope.ts must freeze version: 1');
+  });
+
+  it('G-IDEMPOTENCY: continuation handler references lastAckedTurn + turnIndex', () => {
+    const src = readFileSync(
+      join(srcDir, 'executors', 'cortex-job-backed-executor.ts'),
+      'utf-8',
+    );
+    assert.match(src, /lastAckedTurn/, 'executor must consult lastAckedTurn');
+    assert.match(src, /turnIndex/, 'executor must reference turnIndex');
+  });
+
+  it("G-ONE-HANDLER: exactly one handle('method.pact.continue', ...) call", () => {
+    const src = readFileSync(
+      join(srcDir, 'executors', 'cortex-job-backed-executor.ts'),
+      'utf-8',
+    );
+    // Match the literal `handle(JOB_TYPE, ...)` registration — S5 §3.
+    const matches = src.match(/\.handle\s*\(\s*JOB_TYPE\b/g) ?? [];
+    assert.equal(matches.length, 1, `expected exactly one handle(JOB_TYPE, ...) — got ${matches.length}`);
+    assert.match(src, /const\s+JOB_TYPE\s*=\s*['"]method\.pact\.continue['"]/);
+  });
+
+  it('G-PORT: CortexJobBackedExecutor imports only from port files', () => {
+    const src = readFileSync(
+      join(srcDir, 'executors', 'cortex-job-backed-executor.ts'),
+      'utf-8',
+    );
+    const specs = extractImportSpecifiers(src);
+    const forbidden = ['@cortex/sdk', '@cortex/infra'];
+    const violations = specs.filter((s) =>
+      forbidden.some((f) => s === f || s.startsWith(`${f}/`)),
+    );
+    assert.deepEqual(violations, []);
+  });
+
+  it('G-BOUNDARY: ScheduledPact does not import from EventBridge / cortex infra', () => {
+    const src = readFileSync(
+      join(srcDir, 'scheduling', 'scheduled-pact.ts'),
+      'utf-8',
+    );
+    const specs = extractImportSpecifiers(src);
+    const forbidden = ['EventBridgeScheduler', '@cortex/infra', '@cortex/sdk'];
+    const violations = specs.filter((s) =>
+      forbidden.some((f) => s.includes(f)),
+    );
+    assert.deepEqual(violations, []);
+  });
+
   // ── PRD-064 / S7 §11 ───────────────────────────────────────────
   it('G-METHODOLOGY-SOURCE-CORE-SYNC: core reads remain synchronous', () => {
     const portPath = join(srcDir, 'ports', 'methodology-source.ts');
