@@ -5,7 +5,8 @@
     "rootDir": "src"
   },
   "references": [
-    { "path": "../fca-index" }
+    { "path": "../fca-index" },
+    { "path": "../methodts" }
   ],
   "include": ["src"]
 }

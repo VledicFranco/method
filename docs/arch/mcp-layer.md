@@ -1,5 +1,50 @@
 # MCP Layer
 
+## Cortex transport (PRD-066 Track A)
+
+`packages/mcp/src/cortex/` contains the Track A surface for S9
+`MCPCortexTransport` — the path by which a Cortex-hosted methodology
+agent registers its methodology-derived tools into Cortex's platform
+tool registry so platform authz gates every tool call.
+
+**Track A ships now:**
+
+- `methodtsToCortex()` — pure `methodts → Cortex` mapping in
+  `cortex-mapping.ts` (mapping table in PRD-066 §7.2 / S9 §4.3).
+- `CortexToolRegistrationClient` — frozen surface in
+  `cortex-tool-registration-client.ts`. Constructor requires
+  `ctx.auth.issueServiceToken` (S1 amendment) and throws
+  `MissingCtxError` otherwise.
+- `MethodologyToolPublisher` — composition-root-only, enforced by
+  the `G-NO-RUNTIME-DISCOVERY` architecture gate in
+  `cortex/architecture.test.ts`.
+- `generateStaticToolsSection()` — helper that emits a deploy-time
+  `cortex-app.yaml spec.tools[] / spec.operations[]` block from a
+  methodology's Hoare tools. This is the v1 fallback (Model A) tenant
+  apps use until Track B unblocks.
+
+**Model A fallback (hand-curated `cortex-app.yaml`):**
+
+1. Run `generateStaticToolsSection({ methodologyId, tools })` at
+   deploy time (from a tenant-app build script).
+2. Paste the resulting yaml under `spec:` in `cortex-app.yaml`.
+3. Redeploy. Cortex accepts the static tools via the existing
+   `POST /v1/platform/apps/:appId/tools` admin path.
+4. Adding a methodology requires a redeploy + admin re-approval.
+5. The `MethodologySource` dynamic-curation capability is NOT
+   available under Model A — acknowledged gap, not a design failure.
+
+**Track B is deferred (pending Cortex O5/O6/O7):**
+
+- Dynamic runtime registration / DELETE verb / auto-approval via
+  `authzTemplate`. Client methods throw `NotImplementedError` pinned
+  to the corresponding O-code so callers fail loudly rather than
+  silently registering.
+
+See `.method/sessions/fcd-design-prd-066-mcp-cortex-transport/prd.md`
+and `.method/sessions/fcd-surface-mcp-cortex-transport/decision.md`
+for the full contract.
+
 ## Responsibility
 
 `packages/mcp/src/index.ts` is a thin adapter. It:
