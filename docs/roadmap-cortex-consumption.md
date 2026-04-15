@@ -236,6 +236,10 @@ Phase 5 — MCP + multi-app + cognitive          Jul 1 – Sep 1 (8 wk)
 Nine surfaces were co-designed in parallel via `/fcd-surface` sessions. Eight
 frozen, one needs-follow-up pending Cortex clarification.
 
+> Ratification materials live in `co-design/` — see `co-design/CHANGES.md` for
+> the amendment process and `co-design/method-agent-port.md` for the first
+> bilateral signoff (S1, PRD-060).
+
 | ID | Surface | Producer ↔ Consumer | Status | Decision file |
 |----|---------|---------------------|--------|---------------|
 | **S1** | `MethodAgentPort` | `@method/agent-runtime` ↔ Cortex tenant app | ✔️ frozen | `.method/sessions/fcd-surface-method-agent-port/decision.md` |
