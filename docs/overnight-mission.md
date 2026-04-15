@@ -52,11 +52,40 @@ Each time the loop fires, the running agent MUST:
 
 ### Quality bar per PRD
 
-- Commission via `/fcd-commission` skill → concrete code + tests
-- Post-commission `/fcd-review` subagent spawned → findings must be addressed before merge (either in the same PR via additional commits, or explicitly deferred with a follow-up issue/escalation marker and reviewer sign-off of that deferral)
-- `npm run build` green, affected workspace tests green (pre-existing non-scope failures acceptable, documented)
-- PR opened via `mcp__github-personal__create_pull_request`, merged via `mcp__github-personal__merge_pull_request` after gates pass
-- Co-author trailer on every commit: `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+**IMPORTANT — subagents tend to stop short when context pressure hits.** The loop MUST verify completeness independently before trusting any subagent's "complete" report. A reported PR is necessary but NOT sufficient evidence of completion.
+
+Each PRD gates through this pipeline (NO merge until all five gates pass):
+
+**Gate 1 — Commission landed**
+- Commission subagent invoked `/fcd-commission` and opened a PR via `mcp__github-personal__create_pull_request`
+- Branch pushed to origin with commits carrying co-author trailer
+
+**Gate 2 — Completeness audit (the loop does this, not the subagent)**
+- Loop checks out the feat branch locally: `git fetch origin && git checkout <branch>`
+- `npm run build` → must exit 0 with no TypeScript errors
+- Grep for placeholder markers in changed files: `rg -n 'TODO\|FIXME\|STUB\|not yet implemented\|placeholder\|throw new Error.*TBD' <changed-paths>` → must return 0 matches in code added by this PR (comments referencing deferred open questions O1-O11 are acceptable if explicitly tied to a roadmap follow-up)
+- File count: compare files changed by the PR to the in-scope file list from the PRD's §Scope / §Architecture section. If expected files are missing → INCOMPLETE.
+- Acceptance gates: each PRD defines gates (G-*). Count active vs placeholder vs deferred. Any active gate without a passing test is INCOMPLETE.
+- Workspace tests: `npm --workspace=<workspace> test` → must be green except for the known pre-existing failure list documented in the mission
+- Sample-app tests (if this PRD touches them): must be green
+
+**Gate 3 — Fill gaps (continuation subagent if needed)**
+- If Gate 2 finds gaps, fire a continuation subagent with a tight scoped prompt listing every gap by file/line and requiring all to be addressed before reporting complete
+- Gate 2 runs again after the continuation returns
+- Maximum two continuation rounds per PRD before escalating — if still incomplete, write `.method/sessions/ESCALATION-PRD-XXX-incomplete.md` and park the PRD
+
+**Gate 4 — `/fcd-review` signoff**
+- Separate review subagent invokes `/fcd-review` against the PR + branch
+- Review findings are classified: "no blocking" / "resolvable in-PR" / "architectural escalation"
+- Resolvable findings addressed with additional commits before merge
+- Blocking architectural findings → ESCALATION file, pause PRD
+
+**Gate 5 — Final tests + merge**
+- After review fixes land: `npm run build` green, all relevant workspace tests green
+- Merge via `mcp__github-personal__merge_pull_request(merge_method='merge')`
+- Delete feature branch; pull master; verify master builds green
+
+Per-commit discipline: Conventional Commits + co-author trailer `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>` on every commit including continuation fixes and review fixes.
 
 ---
 
@@ -106,7 +135,8 @@ loop (Wave N+1 doesn't fire until Wave N is fully merged to master).
 
 **Iteration log:** (agent appends here each wake)
 
-- _(mission kickoff — loop will populate entries below)_
+- **2026-04-15 kickoff** — mission doc committed at `0b71030`. Wave 1 fired in background: 4 async subagents (PRD-061 session-store, PRD-063 event-connector, PRD-064 methodology-source, PRD-065 conformance-testkit). Each in its own worktree at `.claude/worktrees/agent-<id>/`. First wake-up scheduled for ~25 min.
+- **2026-04-15 protocol update** — **adaptation triggered by user feedback + mid-flight LSP diagnostics** showing partial work in worktree states: PRD-061 (`checkpoint-sink-impl.ts` type mismatches + uninitialized `_workerId`), PRD-064 (`MethodologyChange` missing export + `MethodologyDocument` index-signature failures), PRD-065 (missing fixture files + broken imports, `TokenUsage` mismatch). These are subagent-in-flight states but confirm the risk pattern. Protocol tightened: §Quality bar replaced with 5-gate pipeline, §4 decision tree rewritten with Gate-2 locally-run completeness audit, TRUST MODEL added. Subagent "complete" reports are no longer sufficient — loop independently runs Gate 2 (`npm run build` + grep markers + file count + gates + tests) LOCALLY before advancing status. Continuation cap = 2 rounds before escalation.
 
 **Escalation markers:** (agent creates files at `.method/sessions/ESCALATION-*.md` if an architectural contradiction arises; list them here)
 
@@ -121,33 +151,61 @@ ORIENT
   fetch origin; list open PRs; read §3 state tracker; read last iteration log
   │
   ▼
-PLAN
-  IF Wave 1 has PRDs with status="pending" AND no subagents in flight for that PRD:
-    → fire PRD commission subagent (isolation=worktree)
+PLAN — per PRD, apply the 5-gate pipeline from §Quality bar per PRD:
+
+  IF Wave N has PRDs with status="pending" AND no subagent in flight for that PRD:
+    → fire PRD commission subagent (isolation=worktree, run_in_background=true)
     → update §3: status="commissioned"
 
-  IF a commission subagent returned with a PR:
-    → fire /fcd-review subagent for that PR (isolation=worktree)
-    → update §3: status="review"
+  IF a commission subagent returned with a PR (Gate 1 passed):
+    → run Gate 2 (completeness audit) LOCALLY — loop does this, not the subagent:
+        • git fetch + checkout the feat branch
+        • npm run build → must exit 0
+        • rg for TODO/FIXME/STUB/placeholder in changed files → must be 0
+        • file count check vs PRD §Scope
+        • acceptance gates check (G-* tests passing)
+        • workspace tests green
+    → IF Gate 2 PASSES: status="audited", proceed to Gate 4
+    → IF Gate 2 FAILS: Gate 3 — fire continuation subagent with explicit gap list
+        ◦ continuation_count++; if continuation_count > 2 → ESCALATE (see below)
+        ◦ Gate 2 re-runs after the continuation returns
 
-  IF /fcd-review subagent returned with findings:
-    IF findings = "no blocking" or resolved-in-PR:
-      → merge the PR; delete branch; pull master
-      → update §3: status="merged"
-    IF findings = "blocking, resolvable in same PR":
-      → fire fix subagent that addresses findings in-branch; loop back
-    IF findings = "blocking, architectural":
-      → create .method/sessions/ESCALATION-PRD-XXX.md; halt that PRD; continue others
+  IF status="audited":
+    → fire /fcd-review subagent (Gate 4)
+    → classify findings: "no blocking" / "resolvable in-PR" / "architectural escalation"
+    → resolvable: fire fix subagent, re-run Gate 2 + Gate 4 after fixes land
+    → blocking architectural: ESCALATION file, pause PRD, continue other PRDs
 
-  IF Wave N fully merged (all PRDs status="merged" or "escalated"):
+  IF Gate 4 clean AND Gate 5 (final tests green) passes:
+    → merge via mcp__github-personal__merge_pull_request(merge_method='merge')
+    → delete feature branch on origin
+    → git checkout master; git pull; verify master still builds green
+    → update §3: status="merged"
+
+  IF Wave N fully resolved (all PRDs status="merged" or "escalated"):
     → promote Wave N+1 from "blocked" to "pending"
 
-  IF all 3 waves resolved (merged or escalated):
+  IF all 3 waves resolved:
     → run §5 final checklist; omit ScheduleWakeup to end loop
 
-EXECUTE → VERIFY → COMMIT → UPDATE (state tracker + iteration log) → ESCALATE?
+ESCALATE triggers (halt PRD, continue mission):
+  • Surface contradiction (architectural — can't fix without mutating frozen decision.md)
+  • Continuation count > 2 without reaching completeness
+  • /fcd-review finds architectural violation
+
+ESCALATE marker file: .method/sessions/ESCALATION-PRD-XXX-<reason>.md with:
+  • What gate failed
+  • What's missing
+  • What the subagent tried
+  • Recommended resolution (e.g. Cortex follow-up needed, surface amendment needed)
+
+EXECUTE → VERIFY (Gates 2+5) → COMMIT → UPDATE (state tracker + iteration log) → ESCALATE?
   if yes → halt this PRD, continue mission with remaining PRDs
   if no  → ScheduleWakeup 1200-1800s with sentinel <<autonomous-loop-dynamic>>
+
+TRUST MODEL: subagents report what they intended, not what they finished. The loop
+verifies independently. Every subagent claim is audited against the filesystem +
+build + tests before status advances. No PR gets merged on a subagent's word alone.
 ```
 
 ---
