@@ -145,6 +145,8 @@ export type {
   PersistentMode,
   BudgetContract,
   OutputContract,
+  SchemaDefinition,
+  SchemaResult,
   ScopeContract,
   ContextPolicy,
   ReasoningPolicy,

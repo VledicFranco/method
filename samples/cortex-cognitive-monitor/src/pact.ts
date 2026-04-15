@@ -18,13 +18,78 @@
  * anomaly/confidence emissions.
  */
 
-import type { Pact } from '@method/agent-runtime';
+import type { Pact, SchemaDefinition, SchemaResult } from '@method/agent-runtime';
 
 /** Summary of the most recent Monitor pass — returned by the oneshot pact. */
 export interface MonitorReport {
   readonly severity: 'ok' | 'warning' | 'anomaly';
   readonly confidence: number;
   readonly detail: string;
+}
+
+/**
+ * Hand-written SchemaDefinition for MonitorReport.
+ *
+ * Accepts either a JSON string (CLI-style agent output) or a structured
+ * object (native API / Cortex `ctx.llm.structured` path). Both are
+ * normalized into a validated `MonitorReport` object on success.
+ *
+ * Uses no schema library — pacta's `SchemaDefinition<T>` contract is a
+ * plain `parse(raw) → { success, data | errors }` pair.
+ */
+const monitorReportSchema: SchemaDefinition<MonitorReport> = {
+  description: 'MonitorReport { severity, confidence, detail }',
+  parse(raw: unknown): SchemaResult<MonitorReport> {
+    const value = typeof raw === 'string' ? tryJsonParse(raw) : raw;
+    if (value === undefined) {
+      return { success: false, errors: ['output is not a valid JSON object'] };
+    }
+    if (value === null || typeof value !== 'object') {
+      return {
+        success: false,
+        errors: [`expected object, got ${value === null ? 'null' : typeof value}`],
+      };
+    }
+    const obj = value as Record<string, unknown>;
+    const errors: string[] = [];
+
+    const severity = obj.severity;
+    if (severity !== 'ok' && severity !== 'warning' && severity !== 'anomaly') {
+      errors.push(
+        `severity must be 'ok' | 'warning' | 'anomaly', got ${JSON.stringify(severity)}`,
+      );
+    }
+    const confidence = obj.confidence;
+    if (typeof confidence !== 'number' || !Number.isFinite(confidence)) {
+      errors.push(`confidence must be a finite number, got ${typeof confidence}`);
+    } else if (confidence < 0 || confidence > 1) {
+      errors.push(`confidence must be in [0, 1], got ${confidence}`);
+    }
+    const detail = obj.detail;
+    if (typeof detail !== 'string') {
+      errors.push(`detail must be a string, got ${typeof detail}`);
+    }
+
+    if (errors.length > 0) {
+      return { success: false, errors };
+    }
+    return {
+      success: true,
+      data: {
+        severity: severity as MonitorReport['severity'],
+        confidence: confidence as number,
+        detail: detail as string,
+      },
+    };
+  },
+};
+
+function tryJsonParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -40,15 +105,7 @@ export const monitorPact: Pact<MonitorReport> = {
     onExhaustion: 'stop',
   },
   output: {
-    schema: {
-      type: 'object',
-      required: ['severity', 'confidence', 'detail'],
-      properties: {
-        severity: { enum: ['ok', 'warning', 'anomaly'] },
-        confidence: { type: 'number', minimum: 0, maximum: 1 },
-        detail: { type: 'string' },
-      },
-    },
+    schema: monitorReportSchema,
     retryOnValidationFailure: true,
     maxRetries: 2,
   },

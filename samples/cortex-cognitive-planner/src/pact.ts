@@ -7,7 +7,7 @@
  * (PRD-068 §5.1).
  */
 
-import type { Pact } from '@method/agent-runtime';
+import type { Pact, SchemaDefinition, SchemaResult } from '@method/agent-runtime';
 
 /**
  * Plan update shape — returned by a single Planner pass.
@@ -21,6 +21,84 @@ export interface PlanUpdate {
   readonly rationale: string;
 }
 
+/**
+ * Hand-written SchemaDefinition for PlanUpdate.
+ *
+ * Accepts either a JSON string (CLI-style) or a structured object
+ * (Cortex `ctx.llm.structured`). Validates field types and enforces
+ * `changedSteps` is an array of strings.
+ */
+const planUpdateSchema: SchemaDefinition<PlanUpdate> = {
+  description:
+    'PlanUpdate { goalId, statement, planSummary, changedSteps, requiresMemoryRecall, rationale }',
+  parse(raw: unknown): SchemaResult<PlanUpdate> {
+    const value = typeof raw === 'string' ? tryJsonParse(raw) : raw;
+    if (value === undefined) {
+      return { success: false, errors: ['output is not a valid JSON object'] };
+    }
+    if (value === null || typeof value !== 'object') {
+      return {
+        success: false,
+        errors: [`expected object, got ${value === null ? 'null' : typeof value}`],
+      };
+    }
+    const obj = value as Record<string, unknown>;
+    const errors: string[] = [];
+
+    const goalId = obj.goalId;
+    if (typeof goalId !== 'string' || goalId.length === 0) {
+      errors.push('goalId must be a non-empty string');
+    }
+    const statement = obj.statement;
+    if (typeof statement !== 'string') {
+      errors.push(`statement must be a string, got ${typeof statement}`);
+    }
+    const planSummary = obj.planSummary;
+    if (typeof planSummary !== 'string') {
+      errors.push(`planSummary must be a string, got ${typeof planSummary}`);
+    }
+    const changedSteps = obj.changedSteps;
+    if (!Array.isArray(changedSteps)) {
+      errors.push(`changedSteps must be an array, got ${typeof changedSteps}`);
+    } else if (!changedSteps.every((s) => typeof s === 'string')) {
+      errors.push('changedSteps must contain only strings');
+    }
+    const requiresMemoryRecall = obj.requiresMemoryRecall;
+    if (typeof requiresMemoryRecall !== 'boolean') {
+      errors.push(
+        `requiresMemoryRecall must be a boolean, got ${typeof requiresMemoryRecall}`,
+      );
+    }
+    const rationale = obj.rationale;
+    if (typeof rationale !== 'string') {
+      errors.push(`rationale must be a string, got ${typeof rationale}`);
+    }
+
+    if (errors.length > 0) {
+      return { success: false, errors };
+    }
+    return {
+      success: true,
+      data: {
+        goalId: goalId as string,
+        statement: statement as string,
+        planSummary: planSummary as string,
+        changedSteps: (changedSteps as string[]).slice(),
+        requiresMemoryRecall: requiresMemoryRecall as boolean,
+        rationale: rationale as string,
+      },
+    };
+  },
+};
+
+function tryJsonParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
 export const plannerPact: Pact<PlanUpdate> = {
   mode: { type: 'resumable' },
   budget: {
@@ -29,25 +107,7 @@ export const plannerPact: Pact<PlanUpdate> = {
     onExhaustion: 'stop',
   },
   output: {
-    schema: {
-      type: 'object',
-      required: [
-        'goalId',
-        'statement',
-        'planSummary',
-        'changedSteps',
-        'requiresMemoryRecall',
-        'rationale',
-      ],
-      properties: {
-        goalId: { type: 'string' },
-        statement: { type: 'string' },
-        planSummary: { type: 'string' },
-        changedSteps: { type: 'array', items: { type: 'string' } },
-        requiresMemoryRecall: { type: 'boolean' },
-        rationale: { type: 'string' },
-      },
-    },
+    schema: planUpdateSchema,
     retryOnValidationFailure: true,
     maxRetries: 2,
   },
