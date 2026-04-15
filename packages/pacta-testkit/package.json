@@ -1,17 +1,31 @@
 {
   "name": "@method/pacta-testkit",
   "version": "0.1.0",
-  "description": "Pacta verification affordances — RecordingProvider, builders, assertions",
+  "description": "Pacta verification affordances — RecordingProvider, builders, assertions, and the Cortex agent conformance testkit (`./conformance` subpath, S8/PRD-065).",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./dist/index.js",
+    "./conformance": "./dist/conformance/index.js",
+    "./conformance/fixtures": "./dist/conformance/fixtures/index.js"
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --test \"src/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\"",
+    "test-conformance": "tsx --test \"src/conformance/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\""
   },
   "dependencies": {
     "@method/pacta": "*"
+  },
+  "peerDependencies": {
+    "@method/agent-runtime": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@method/agent-runtime": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

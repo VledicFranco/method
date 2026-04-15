@@ -224,11 +224,63 @@ src/
   mock-tool-provider.ts    MockToolProvider — scripted ToolResult sequences per tool name
   builders.ts              PactBuilder, AgentRequestBuilder — fluent test object construction
   assertions.ts            assertToolsCalled, assertBudgetUnder, assertOutputMatches
+  conformance/             Cortex agent conformance testkit (S8 / PRD-065)
+    conformance-runner.ts    runCortexAgentConformance entry point
+    mock-cortex-ctx.ts       MockCortexCtx + CallRecorder
+    compliance-report.ts     ComplianceReport schema + JCS-lite canonicalization + Ed25519 signer
+    cortex-types.ts          Structural mirrors of CortexCtx / MethodAgentResult (sync'd to @method/agent-runtime)
+    plugin.ts                ConformancePlugin interface + DEFAULT_REQUIRED_PLUGIN_IDS
+    plugins/                 Built-in s1-method-agent-port + s3-service-adapters plugins
+    fixtures/                Three canonical v1 fixtures
 ```
+
+## Cortex Agent Conformance (`./conformance` subpath — PRD-065)
+
+Cortex tenant apps of `category: agent` run the conformance suite from their
+own CI to self-certify compliance with `MethodAgentPort` (S1) and the Cortex
+service adapters (S3). The produced `ComplianceReport.json` is uploaded to
+Cortex, which verifies the detached Ed25519 signature and flips
+`certified: true`.
+
+```typescript
+import { runCortexAgentConformance } from '@method/pacta-testkit/conformance';
+import app from '../src/agent.js';            // default export: (ctx) => unknown
+
+const report = await runCortexAgentConformance({
+  app,
+  appId: 'incident-triage',
+  outputPath: './compliance-report.json',
+  signer: await loadSignerFromCi(),           // optional, required for prod
+  keyId: process.env.METHOD_CONFORMANCE_KEY_ID,
+});
+if (!report.passed) throw new Error(report.summary);
+```
+
+**What runs:** every canonical fixture (`incident-triage`,
+`feature-dev-commission`, `daily-report`) against a fresh `MockCortexCtx`,
+followed by the two required plugins checking six S1 invariants
+(C1–C6) and three S3 adapter invariants (A1–A3). Future S4/S5/S6/S7 plugins
+extend the set via `opts.plugins: [...DEFAULT_PLUGINS, myPlugin]`.
+
+**Signing recipe** — load a PEM key via 1Password and pass
+`createEd25519Signer` as the signer:
+
+```typescript
+import { createEd25519Signer } from '@method/pacta-testkit/conformance';
+
+const pem = process.env.METHOD_CONFORMANCE_SIGNING_KEY_PEM!;
+const signer = createEd25519Signer(pem);
+// …pass signer to runCortexAgentConformance opts
+```
+
+Peer dependency on `@method/agent-runtime` is declared **optional**; the
+conformance subpath uses structural type mirrors (`cortex-types.ts`) so
+non-conformance consumers of the testkit do not need to install it.
 
 ## Development
 
 ```bash
-npm run build            # TypeScript build
-npm test                 # Run all tests
+npm run build              # TypeScript build
+npm test                   # Run all tests (core + conformance)
+npm run test-conformance   # Run only the conformance suite
 ```
