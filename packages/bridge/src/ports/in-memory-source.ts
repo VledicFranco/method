@@ -4,11 +4,18 @@
  * WS-1 success criterion 6: "a 20-line InMemorySource for tests proves
  * the port interface is a real seam, not a port-shaped wrapper."
  *
+ * PRD-064 / S7: gains no-op lifecycle stubs + a controllable `onChange`
+ *   trigger (`emitChange()`) so tests can simulate methodology-update
+ *   fan-out without a real Cortex events port.
+ *
  * Accepts catalog entries and typed values in the constructor.
  * No I/O, no external dependencies — pure data container.
  */
 
-import type { MethodologySource } from './methodology-source.js';
+import type {
+  MethodologySource,
+  MethodologyChange,
+} from './methodology-source.js';
 import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
 import type { Method } from '@method/methodts';
 import type { Methodology } from '@method/methodts';
@@ -18,6 +25,7 @@ export class InMemorySource implements MethodologySource {
   private readonly methods: Map<string, Method<any>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly methodologies: Map<string, Methodology<any>>;
+  private readonly listeners = new Set<(c: MethodologyChange) => void>();
 
   constructor(
     private readonly catalog: CatalogMethodologyEntry[],
@@ -38,5 +46,20 @@ export class InMemorySource implements MethodologySource {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getMethodology(methodologyId: string): Methodology<any> | undefined {
     return this.methodologies.get(methodologyId);
+  }
+
+  // ── PRD-064 / S7 lifecycle stubs ──────────────────────────────────
+
+  async init(): Promise<void> { /* no-op */ }
+  async reload(_methodologyId?: string): Promise<void> { /* no-op */ }
+  onChange(listener: (c: MethodologyChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+  async close(): Promise<void> { this.listeners.clear(); }
+
+  /** Test helper — fires `change` to every registered listener. */
+  emitChange(change: MethodologyChange): void {
+    for (const l of this.listeners) l(change);
   }
 }

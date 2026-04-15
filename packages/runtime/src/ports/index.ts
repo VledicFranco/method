@@ -6,7 +6,7 @@ export type { YamlLoader } from './yaml-loader.js';
 export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session-discovery.js';
 
 // ── Methodology source + in-memory test double ──
-export type { MethodologySource } from './methodology-source.js';
+export type { MethodologySource, MethodologyChange } from './methodology-source.js';
 export { InMemorySource } from './in-memory-source.js';
 
 // ── Event bus ──
