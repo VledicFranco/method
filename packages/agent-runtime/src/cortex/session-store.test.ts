@@ -16,6 +16,10 @@ import type {
   Checkpoint,
   PersistedSessionSnapshot as SessionSnapshot,
 } from '@method/runtime/ports';
+import {
+  DEFAULT_SESSION_STORE_FIXTURES,
+  runSessionStoreConformance,
+} from '@method/runtime/sessions';
 
 function makeInMemoryStorage(): CortexStorageFacade {
   const data = new Map<string, Record<string, unknown>>();
@@ -180,6 +184,16 @@ describe('CortexSessionStore — checkpoints', () => {
     assert.equal(listed.length, 3);
     assert.equal(listed[0]?.sequence, 5);
     assert.equal(await store.loadCheckpoint('ses_1', 1), null);
+  });
+
+  it('passes all SessionStore conformance fixtures', async () => {
+    const storage = makeInMemoryStorage();
+    const store = createCortexSessionStore({ ctx: { storage } });
+    const results = await runSessionStoreConformance(() => store, DEFAULT_SESSION_STORE_FIXTURES);
+    for (const r of results) {
+      assert.equal(r.result.passed, true, `${r.name}: ${r.result.passed ? '' : r.result.reason}`);
+    }
+    assert.equal(results.length, 3);
   });
 
   it('finalize + destroy clean up', async () => {

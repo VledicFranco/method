@@ -17,6 +17,10 @@ import type {
   Checkpoint,
   PersistedSessionSnapshot as SessionSnapshot,
 } from '@method/runtime/ports';
+import {
+  DEFAULT_SESSION_STORE_FIXTURES,
+  runSessionStoreConformance,
+} from '@method/runtime/sessions';
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), 'fs-session-store-'));
@@ -165,6 +169,24 @@ describe('FsSessionStore — disk round-trip', () => {
       assert.equal(listed.length, 3);
       assert.equal(listed[0]?.sequence, 6);
       assert.equal(await store.loadCheckpoint('ses_1', 1), null);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('passes all SessionStore conformance fixtures', async () => {
+    const dir = makeTmpDir();
+    try {
+      // Share one store across "workers" — simulates multi-worker on same disk.
+      const store = createFsSessionStore({
+        baseDir: dir,
+        fs: createNodeFileSystemProvider(),
+      });
+      const results = await runSessionStoreConformance(() => store, DEFAULT_SESSION_STORE_FIXTURES);
+      for (const r of results) {
+        assert.equal(r.result.passed, true, `${r.name}: ${r.result.passed ? '' : r.result.reason}`);
+      }
+      assert.equal(results.length, 3);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
