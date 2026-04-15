@@ -1,0 +1,15 @@
+{
+  "name": "sample-cortex-incident-triage-agent",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PRD-058 sample — embeds a method-governed agent in a (mocked) Cortex tenant app",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/agent-runtime": "*",
+    "@method/pacta": "*"
+  }
+}

@@ -2,11 +2,12 @@
   "name": "method",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "samples/*"
   ],
   "scripts": {
     "build": "tsc -b && npm run build --workspace=packages/bridge --if-present",
-    "test": "npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\" && npx vitest run --config packages/fca-index/vitest.config.ts && npx vitest run --config packages/mcp/vitest.config.ts",
+    "test": "npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\" \"packages/agent-runtime/src/**/*.test.ts\" \"samples/cortex-incident-triage-agent/test/**/*.test.ts\" && npx vitest run --config packages/fca-index/vitest.config.ts && npx vitest run --config packages/mcp/vitest.config.ts",
     "test:coverage": "c8 --reporter=text --reporter=html npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
