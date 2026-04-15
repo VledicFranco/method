@@ -35,11 +35,11 @@ import { setStrategyRoutesEventBus, setStrategyRoutesPool } from './domains/stra
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
-import { loadSessionsConfig } from './domains/sessions/config.js';
+// PRD-057 / S2 §3.6 / C7: config schemas live in @method/runtime/config.
+import { loadSessionsConfig, loadStrategiesConfig } from '@method/runtime/config';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
-import { loadStrategiesConfig } from './domains/strategies/config.js';
 import { loadClusterConfig } from './domains/cluster/config.js';
 import { ClusterDomain } from './domains/cluster/core.js';
 import { registerClusterRoutes } from './domains/cluster/routes.js';
@@ -62,7 +62,11 @@ import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
 // Bridge keeps its Fastify route registration locally.
 import { createCostGovernor, loadCostGovernorConfig } from '@method/runtime/cost-governor';
 import { registerCostGovernorRoutes } from './domains/cost-governor/routes.js';
-import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
+// PRD-057 / S2 §14 Q6 / C7: cognitive sink class renamed to CognitiveEventBusSink
+// and lives in @method/runtime/sessions. Bridge-side alias shim removed.
+import { CognitiveEventBusSink } from '@method/runtime/sessions';
+// PRD-057 / S2 §6 / C7: inject bridge PTY/print session factory into createPool.
+import { createBridgeSessionProviderFactory } from './domains/sessions/factory.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -184,8 +188,15 @@ const subStrategySource = new FsSubStrategySource(
 setStrategyRoutesHumanApprovalResolver(humanApprovalResolver);
 setStrategyRoutesSubStrategySource(subStrategySource);
 
-// PRD 041: CognitiveSink — adapts algebra-level CognitiveEvents to BridgeEvent bus
-const cognitiveSink = new CognitiveSink(eventBus);
+// PRD 041 / PRD-057 C7: CognitiveEventBusSink — adapts algebra-level CognitiveEvents
+// to RuntimeEvent bus. (Bridge-side `CognitiveSink` alias retired; runtime owns the name.)
+const cognitiveSink = new CognitiveEventBusSink(eventBus);
+
+// PRD-057 / S2 §6 / C7: bridge-side SessionProviderFactory produces PTY/print/cognitive
+// sessions. Injected into the runtime pool so the provider boundary is explicit.
+const bridgeSessionProviderFactory = createBridgeSessionProviderFactory({
+  eventBus,
+});
 
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
@@ -195,6 +206,7 @@ const pool = createPool({
   fsProvider,
   eventBus,
   cognitiveSink,
+  providerFactory: bridgeSessionProviderFactory,
 });
 
 // Adaptive oversight: wire pool into strategy routes for auto-spawn on escalation

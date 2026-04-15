@@ -1,13 +1,10 @@
 /**
  * Architecture gate tests for @method/bridge (PRD-057 / S2 §11).
  *
- * - G-BRIDGE-USES-RUNTIME-PORTS: disabled via `it.skip` during commissions
- *   C1–C6 so in-flight subpath migrations can land incrementally. Activated
- *   (swap `it.skip` → `it`) in C7 (`runtime-cleanup-and-gate-activation`).
- *
- * The gate enforces that bridge cross-domain imports of strategy /
- * event-bus / cost-governor / sessions engine internals go through
- * `@method/runtime/*` subpaths, not relative paths into moved directories.
+ * - G-BRIDGE-USES-RUNTIME-PORTS: ACTIVE in C7. The gate enforces that bridge
+ *   cross-domain imports of strategy / event-bus / cost-governor / sessions
+ *   engine internals go through `@method/runtime/*` subpaths, not relative
+ *   paths into moved directories. Violations are bugs.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -35,8 +32,8 @@ function walkTsFiles(dir: string, out: string[] = []): string[] {
 }
 
 describe('@method/bridge — architecture gates (PRD-057 / S2 §11)', () => {
-  // Gate is disabled during the PRD-057 migration window. C7 flips this to `it(...)`.
-  it.skip('G-BRIDGE-USES-RUNTIME-PORTS: bridge imports engine internals via @method/runtime/*', () => {
+  // PRD-057 C7: gate activated. Runs on every build.
+  it('G-BRIDGE-USES-RUNTIME-PORTS: bridge imports engine internals via @method/runtime/*', () => {
     const roots = [
       join(SRC_DIR, 'domains'),
       join(SRC_DIR, 'shared'),
