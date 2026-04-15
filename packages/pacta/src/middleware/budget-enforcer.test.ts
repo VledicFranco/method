@@ -171,4 +171,110 @@ describe('budgetEnforcer', () => {
       assert.equal(result.completed, true);
     });
   });
+
+  // ── PRD-059 / S3 §4 — Predictive mode ────────────────────────────
+  describe('predictive mode (PRD-059)', () => {
+    it('emits tokens budget_exhausted event but does NOT stop', async () => {
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxTokens: 150 } };
+      const events: AgentEvent[] = [];
+      const { fn } = makeInner(makeResult('ok', { usage: makeUsage(200) }));
+      const enforced = budgetEnforcer(fn, pact, (e) => events.push(e), { mode: 'predictive' });
+
+      const result = await enforced(pact, { prompt: 'test' });
+
+      // Inner result flows through — no stopReason override, no throw.
+      assert.equal(result.stopReason, 'complete');
+      assert.equal(result.completed, true);
+
+      // But the event IS emitted (observability path).
+      const exhausted = events.find(e => e.type === 'budget_exhausted');
+      assert.ok(exhausted, 'predictive mode should still emit budget_exhausted');
+      if (exhausted?.type === 'budget_exhausted') {
+        assert.equal(exhausted.resource, 'tokens');
+      }
+    });
+
+    it('emits cost budget_exhausted event but does NOT stop', async () => {
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxCostUsd: 0.5 } };
+      const events: AgentEvent[] = [];
+      const { fn } = makeInner(makeResult('ok', { cost: makeCost(1.0) }));
+      const enforced = budgetEnforcer(fn, pact, (e) => events.push(e), { mode: 'predictive' });
+
+      const result = await enforced(pact, { prompt: 'test' });
+      assert.equal(result.stopReason, 'complete');
+      assert.equal(result.completed, true);
+
+      const exhausted = events.find(e => e.type === 'budget_exhausted');
+      assert.ok(exhausted);
+      if (exhausted?.type === 'budget_exhausted') {
+        assert.equal(exhausted.resource, 'cost');
+      }
+    });
+
+    it('does NOT throw on onExhaustion=error for cost/tokens in predictive mode', async () => {
+      const pact: Pact = {
+        mode: { type: 'oneshot' },
+        budget: { maxTokens: 50, onExhaustion: 'error' },
+      };
+      const { fn } = makeInner(makeResult('ok', { usage: makeUsage(200) }));
+      const enforced = budgetEnforcer(fn, pact, undefined, { mode: 'predictive' });
+
+      // Should NOT throw — predictive mode downgrades cost/tokens.
+      const result = await enforced(pact, { prompt: 'test' });
+      assert.equal(result.completed, true);
+    });
+
+    it('still enforces turns authoritatively in predictive mode (pre-check stop)', async () => {
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxTurns: 1 } };
+      const { fn, getCalls } = makeInner(makeResult('ok'));
+      const enforced = budgetEnforcer(fn, pact, undefined, { mode: 'predictive' });
+
+      await enforced(pact, { prompt: '1' });
+      const r2 = await enforced(pact, { prompt: '2' });
+
+      assert.equal(r2.stopReason, 'budget_exhausted');
+      assert.equal(r2.completed, false);
+      assert.equal(getCalls(), 1, 'provider should only be called once');
+    });
+
+    it('still enforces turns authoritatively on post-check in predictive mode', async () => {
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxTurns: 1 } };
+      const { fn } = makeInner(makeResult('ok'));
+      const enforced = budgetEnforcer(fn, pact, undefined, { mode: 'predictive' });
+
+      // First call — turns reaches the limit on post-check.
+      const r1 = await enforced(pact, { prompt: '1' });
+      assert.equal(r1.stopReason, 'budget_exhausted', 'post-check turns should stop');
+    });
+
+    it('still enforces duration authoritatively in predictive mode', async () => {
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxDurationMs: 0 } };
+      const { fn } = makeInner(makeResult('ok'));
+      const enforced = budgetEnforcer(fn, pact, undefined, { mode: 'predictive' });
+
+      // maxDurationMs: 0 with any post-check delay triggers exhaustion.
+      const r1 = await enforced(pact, { prompt: '1' });
+      // The first invocation's pre-check sees elapsed=0 which is not >= 0? Actually
+      // the pre-check uses `elapsed >= budget.maxDurationMs` so 0 >= 0 => exhausted on first call.
+      assert.equal(r1.stopReason, 'budget_exhausted');
+      assert.equal(r1.completed, false);
+    });
+
+    it('default mode (authoritative) is byte-equivalent to omitting options', async () => {
+      // Regression: passing { mode: 'authoritative' } must behave identically
+      // to calling without options.
+      const pact: Pact = { mode: { type: 'oneshot' }, budget: { maxTokens: 50 } };
+      const { fn: fnA } = makeInner(makeResult('ok', { usage: makeUsage(200) }));
+      const enforcedA = budgetEnforcer(fnA, pact);
+      const rA = await enforcedA(pact, { prompt: 'test' });
+
+      const { fn: fnB } = makeInner(makeResult('ok', { usage: makeUsage(200) }));
+      const enforcedB = budgetEnforcer(fnB, pact, undefined, { mode: 'authoritative' });
+      const rB = await enforcedB(pact, { prompt: 'test' });
+
+      assert.equal(rA.stopReason, rB.stopReason);
+      assert.equal(rA.completed, rB.completed);
+      assert.equal(rA.stopReason, 'budget_exhausted');
+    });
+  });
 });

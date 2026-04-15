@@ -7,6 +7,17 @@
  *
  * Middleware ordering: Budget Enforcer → Output Validator → Provider
  * (budget enforcer is the outermost wrapper).
+ *
+ * Modes (see {@link BudgetEnforcerOptions}):
+ * - `'authoritative'` (default) — tokens + cost + turns + duration all
+ *   reject/stop on exhaustion, preserving the pre-PRD-059 behavior.
+ * - `'predictive'` — tokens + cost exhaustion EMIT warning/exhausted
+ *   events but never reject / stop / throw; turns + duration remain
+ *   authoritative. Use when the downstream provider enforces cost/tokens
+ *   atomically (e.g., a `CortexLLMProvider` whose
+ *   `capabilities().budgetEnforcement === 'native'`). See PRD-059 §4 and
+ *   S3 (`fcd-surface-cortex-service-adapters`) §4 "Budget double-count
+ *   resolution" for the full contract.
  */
 
 import type { Pact, AgentRequest, AgentResult, TokenUsage, CostReport } from '../pact.js';
@@ -16,6 +27,39 @@ import type { BudgetContract } from '../budget/budget-contract.js';
 type InvokeFn<T> = (pact: Pact<T>, request: AgentRequest) => Promise<AgentResult<T>>;
 
 const WARNING_THRESHOLD = 0.8;
+
+/** Which resources predictive mode downgrades to events-only. Turns + duration stay authoritative. */
+const PREDICTIVE_DOWNGRADED_RESOURCES: ReadonlySet<AgentBudgetWarning['resource']> = new Set([
+  'tokens',
+  'cost',
+]);
+
+/**
+ * Optional options for {@link budgetEnforcer}.
+ *
+ * Added in PRD-059 as an additive, backward-compatible extension. Omitting
+ * the argument yields the previous behavior byte-for-byte (mode defaults to
+ * `'authoritative'`).
+ */
+export interface BudgetEnforcerOptions {
+  /**
+   * `'authoritative'` (default) — the enforcer rejects calls on
+   * cost / token / turn / duration exhaustion, as it has always done.
+   *
+   * `'predictive'` — the enforcer only EMITS `budget_warning` /
+   * `budget_exhausted` events for **cost and tokens**; it does NOT throw,
+   * NOT short-circuit, and NOT set `stopReason: 'budget_exhausted'` for
+   * those resources. **Turns and duration** continue to reject
+   * authoritatively because Cortex's `ctx.llm` does not own them.
+   *
+   * Use `'predictive'` when the composed provider reports
+   * `capabilities().budgetEnforcement === 'native'` — typically a
+   * `CortexLLMProvider`, where `ctx.llm` is the atomic cost/token
+   * authority. The downstream authority emits the real budget decisions;
+   * this layer only mirrors them for observability.
+   */
+  readonly mode?: 'authoritative' | 'predictive';
+}
 
 function emitWarning(
   onEvent: ((e: AgentEvent) => void) | undefined,
@@ -86,13 +130,18 @@ function exhaustedResult<T>(
 /**
  * Wraps an invoke function with budget enforcement.
  * Pre-checks turn budget before calling inner. Post-checks all budgets after.
+ *
+ * @param options Optional mode selector — see {@link BudgetEnforcerOptions}.
+ *                Default mode is `'authoritative'` (pre-PRD-059 behavior).
  */
 export function budgetEnforcer<T>(
   inner: InvokeFn<T>,
   pact: Pact<T>,
   onEvent?: (event: AgentEvent) => void,
+  options?: BudgetEnforcerOptions,
 ): InvokeFn<T> {
   const budget: BudgetContract = pact.budget ?? {};
+  const mode = options?.mode ?? 'authoritative';
   const state: BudgetState = {
     turns: 0,
     totalTokens: 0,
@@ -161,8 +210,18 @@ export function budgetEnforcer<T>(
 
     for (const { resource, consumed, limit } of checks) {
       const status = checkLimit(consumed, limit);
+      // PRD-059 / S3 §4: in predictive mode, cost + tokens become events-only;
+      // turns + duration remain authoritative (Cortex doesn't track them).
+      const downgraded =
+        mode === 'predictive' && PREDICTIVE_DOWNGRADED_RESOURCES.has(resource);
+
       if (status === 'exhausted') {
         emitExhausted(onEvent, resource, consumed, limit!);
+        if (downgraded) {
+          // Observability only — never throw, never stop. The downstream
+          // provider (e.g., ctx.llm) owns the real enforcement decision.
+          continue;
+        }
         const policy = budget.onExhaustion ?? 'stop';
         if (policy === 'error') {
           throw new BudgetExhaustedError(resource, consumed, limit!);
