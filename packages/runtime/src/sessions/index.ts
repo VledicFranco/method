@@ -98,3 +98,39 @@ export {
   createRuntimeToolProvider,
   createBridgeToolProvider,
 } from './runtime-tools.js';
+
+// ── Session store (PRD-061) ─────────────────────────────────────
+
+export {
+  createCheckpointSink,
+  createInMemorySessionStore,
+  performResume,
+  startLeaseHeartbeat,
+  SESSION_LIFECYCLE_TYPES,
+  SessionStoreError,
+  isSessionStoreError,
+} from './session-store/index.js';
+export type {
+  SessionStore,
+  CheckpointSink,
+  CheckpointSinkOptions,
+  CheckpointCapture,
+  Checkpoint,
+  CheckpointMeta,
+  AgentStateBlob,
+  BudgetReservation,
+  EventCursor,
+  NextAction,
+  PactRef,
+  ResumeOptions,
+  ResumeContext,
+  SessionSnapshot as PersistedSessionSnapshot,
+  SessionStoreErrorCode,
+  SessionStoreErrorOptions,
+  BudgetEnforcer,
+  ResumedPact,
+  LeaseHeartbeat,
+  PerformResumeArgs,
+  ResumeOutcome,
+  InMemorySessionStoreOptions,
+} from './session-store/index.js';
