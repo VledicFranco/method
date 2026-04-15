@@ -22,7 +22,7 @@ describe('generateManifestEmitSection', () => {
   it('returns an entry per registry topic', () => {
     const entries = generateManifestEmitSection();
     assert.equal(entries.length, METHOD_TOPIC_REGISTRY.length);
-    assert.equal(entries.length, 24);
+    assert.equal(entries.length, 37);
     const topics = new Set(entries.map((e) => e.type));
     for (const d of METHOD_TOPIC_REGISTRY) {
       assert.ok(topics.has(d.topic), `missing topic ${d.topic}`);
@@ -103,14 +103,14 @@ describe('cliMain', () => {
     const out = cliMain(['node', 'script']);
     assert.match(out, /^emit:/);
     const matches = out.match(/- type:/g);
-    assert.equal(matches?.length, 24);
+    assert.equal(matches?.length, 37);
   });
 
   it('--format=json returns a JSON array', () => {
     const out = cliMain(['node', 'script', '--format=json']);
     const parsed = JSON.parse(out);
     assert.equal(Array.isArray(parsed), true);
-    assert.equal(parsed.length, 24);
+    assert.equal(parsed.length, 37);
   });
 
   it('--topics filters', () => {

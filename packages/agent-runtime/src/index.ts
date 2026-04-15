@@ -82,6 +82,29 @@ export type {
   ManifestEmitClassification,
 } from './cortex/manifest-emit-section.js';
 
+// ── Cortical workspace (PRD-068 / S10 + S11) ─────────────────────
+export {
+  CORTICAL_WORKSPACE_TOPICS,
+  CORTICAL_WORKSPACE_HEARTBEAT_INTERVAL_MS,
+  CORTICAL_WORKSPACE_HEARTBEAT_CRON,
+  CORTICAL_WORKSPACE_IMPLICIT_OFFLINE_MS,
+  WAVE_1_MODULE_ROLES,
+  cognitiveEmitTopics,
+  cognitiveSubscribeTopics,
+  createWorkspaceEventEmitter,
+  generateCortexCognitiveEmitSection,
+  withCorticalWorkspaceMembership,
+} from './cortex/cortical-workspace.js';
+export type {
+  ModuleRole,
+  ManifestOnEntry,
+  ModuleOnlinePayload,
+  ModuleOfflinePayload,
+  CorticalWorkspaceMembershipOptions,
+  CorticalWorkspaceMembershipHandle,
+  WorkspaceEventEmitter,
+} from './cortex/cortical-workspace.js';
+
 // ── Errors (new taxonomy) ────────────────────────────────────────
 export {
   ConfigurationError,
