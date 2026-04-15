@@ -131,6 +131,42 @@ export type {
   AgentProvider,
 } from '@method/pacta';
 
+// ── PRD-062 / S5 re-exports — JobBackedExecutor + ScheduledPact ──
+// Tenant apps consume these symbols from @method/agent-runtime rather
+// than deep-importing @method/runtime/* (S5 §7 consumer-facing surface).
+export { ScheduledPact, isScheduledPactPayload } from '@method/runtime/scheduling';
+export type {
+  ScheduleOptions,
+  ScheduledPactPayload,
+  ScheduleBindOptions,
+} from '@method/runtime/scheduling';
+export type {
+  JobBackedExecutor,
+  JobClient,
+  JobHandlerCtx,
+  PactFactory,
+  PactStartInput,
+  ContinuationEnvelope,
+  CheckpointRef,
+  BudgetRef,
+  BudgetCarryStrategy,
+  TokenContext,
+  ContinuationNextAction,
+  DlqObserver,
+  DlqRecord,
+  ScheduleClient,
+} from '@method/runtime/ports';
+export {
+  EnvelopeVersionError,
+  BudgetExpiredError,
+  ENVELOPE_SIZE_SOFT_CAP_BYTES,
+  parseContinuationEnvelope,
+  DuplicateAttachError,
+  PactRegistrationError,
+  BudgetStrategyNotImplemented,
+} from '@method/runtime/ports';
+export type { PactDeadLetterEvent } from '@method/pacta';
+
 // ── Re-exported pacta error taxonomy (S1 §4.6) ───────────────────
 export {
   ProviderError,
