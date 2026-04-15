@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       '@method/fca-index/testkit': resolve(__dirname, '../fca-index/src/testkit/index.ts'),
       '@method/fca-index': resolve(__dirname, '../fca-index/src/index.ts'),
+      '@method/methodts': resolve(__dirname, '../methodts/src/index.ts'),
     },
   },
   test: {
