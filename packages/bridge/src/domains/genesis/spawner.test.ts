@@ -10,7 +10,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import type { SessionPool, SessionStatusInfo } from '../../ports/session-pool.js';
+import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
 import {
   spawnGenesis,
   getGenesisStatus,
