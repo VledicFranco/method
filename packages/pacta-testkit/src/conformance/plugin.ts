@@ -9,10 +9,9 @@ import type { FixtureId, ConformanceFixture } from './fixtures/index.js';
 import type { MockCortexCtx, CallRecorder } from './mock-cortex-ctx.js';
 import type { FixtureRunResult, CheckVerdict } from './compliance-report.js';
 
-// Type-only import from the optional peer dep. If the peer is absent at
-// build time this compiles because we only reference the type; value
-// imports are forbidden by G-BOUNDARY.
-import type { MethodAgentResult } from '@method/agent-runtime';
+// Structural mirror — see cortex-types.ts. Duplicated rather than imported
+// to keep the pacta-testkit .d.ts free of transitive project references.
+import type { MethodAgentResult } from './cortex-types.js';
 
 export interface PluginRunInput {
   readonly fixture: ConformanceFixture;

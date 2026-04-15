@@ -14,8 +14,10 @@
 import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 
-// Type-only — no value imports from agent-runtime (G-BOUNDARY).
-import type { CortexCtx, MethodAgentResult } from '@method/agent-runtime';
+// Structural mirrors — see cortex-types.ts. Real tenant apps pass in
+// agent-runtime's CortexCtx / MethodAgentResult; structural typing makes
+// them compatible with our mirror without a project reference.
+import type { CortexCtx, MethodAgentResult } from './cortex-types.js';
 
 import { ConformanceRunError } from './errors.js';
 import type { ConformancePlugin } from './plugin.js';
@@ -92,20 +94,29 @@ async function executeFixture(
   appFn: (ctx: CortexCtx) => unknown | Promise<unknown>,
   appId: string,
 ): Promise<FixtureExecution> {
-  const ctx = createMockCortexCtx({ appId });
+  const mock = createMockCortexCtx({ appId });
   for (const script of fixture.scriptedLlm) {
-    ctx.scriptLlmResponse(script);
+    mock.scriptLlmResponse(script);
   }
+  // Surface the fixture id to the app via ctx.input. Real tenant apps
+  // ignore it; test harnesses and the stub sample app read it to select
+  // per-fixture behaviour.
+  const ctxForApp: typeof mock = Object.assign({}, mock, {
+    input: {
+      ...(mock.input ?? {}),
+      __conformanceFixtureId: fixture.id,
+    },
+  });
   const start = Date.now();
   try {
-    const returned = await appFn(ctx);
+    const returned = await appFn(ctxForApp);
     const durationMs = Date.now() - start;
     const maybeResult = coerceMethodAgentResult(returned);
-    return { ctx, result: maybeResult, durationMs };
+    return { ctx: mock, result: maybeResult, durationMs };
   } catch (error) {
     const durationMs = Date.now() - start;
     const err = error instanceof Error ? error : new Error(String(error));
-    return { ctx, error: err, durationMs };
+    return { ctx: mock, error: err, durationMs };
   }
 }
 

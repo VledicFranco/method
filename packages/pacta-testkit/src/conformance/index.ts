@@ -75,3 +75,18 @@ export type {
   FixtureId,
   FixtureExpectations,
 } from './fixtures/index.js';
+
+// ── Cortex type mirrors (structural — must stay in sync with @method/agent-runtime) ──
+export type {
+  CortexCtx,
+  CortexAppFacade,
+  CortexLlmFacade,
+  CortexAuditFacade,
+  CortexEventsFacade,
+  CortexStorageFacade,
+  CortexJobsFacade,
+  CortexScheduleFacade,
+  CortexAuthFacade,
+  CortexLogger,
+  MethodAgentResult,
+} from './cortex-types.js';

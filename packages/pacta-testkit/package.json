@@ -11,8 +11,8 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "tsx --test \"src/**/*.test.ts\"",
-    "test-conformance": "tsx --test \"src/conformance/**/*.test.ts\""
+    "test": "tsx --test \"src/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\"",
+    "test-conformance": "tsx --test \"src/conformance/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\""
   },
   "dependencies": {
     "@method/pacta": "*"

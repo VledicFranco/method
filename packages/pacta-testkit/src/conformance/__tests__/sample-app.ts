@@ -6,20 +6,20 @@
  * published conformance subpath by virtue of living under `__tests__/`.
  */
 
-import type { CortexCtx, MethodAgentResult } from '@method/agent-runtime';
+import type { CortexCtx, MethodAgentResult } from '../cortex-types.js';
 
 export interface SampleAppMeta {
   readonly scriptedTurns: number;
   readonly expectsDelegation: boolean;
   readonly expectsResume: boolean;
-  readonly toolsRequestedByTurn?: ReadonlyArray<ReadonlyArray<string>>;
   readonly publishDailyReport?: boolean;
 }
 
 /**
- * A tenant app that conforms to MethodAgentPort for every canonical fixture.
- * Behaviour is parameterised by `meta` — callers pick the right parameters
- * for the fixture under test (the test file, not the runner, does this).
+ * Build a tenant app that conforms to MethodAgentPort for the parameters
+ * given. Emits the minimum S1 audit kinds, registers budget handlers,
+ * performs depth-2 delegation when requested, and returns a
+ * MethodAgentResult-shaped object.
  */
 export function buildConformingApp(
   meta: SampleAppMeta,
@@ -97,15 +97,15 @@ export function buildConformingApp(
 }
 
 /**
- * Fixture-aware wrapper: inspects the fixture id baked into `ctx.input`
- * (set by test code) and routes to the appropriate `buildConformingApp`
- * parametrization, so one app function can pass every fixture.
+ * Fixture-aware wrapper — reads `__conformanceFixtureId` stamped by the
+ * runner on `ctx.input` to select the right behaviour per fixture. One
+ * function passes every canonical fixture.
  */
-export function passAllFixturesApp(
+export async function passAllFixturesApp(
   ctx: CortexCtx,
 ): Promise<MethodAgentResult<unknown>> {
-  const input = (ctx.input ?? {}) as { readonly fixtureId?: string };
-  switch (input.fixtureId) {
+  const input = (ctx.input ?? {}) as { readonly __conformanceFixtureId?: string };
+  switch (input.__conformanceFixtureId) {
     case 'incident-triage':
       return buildConformingApp({
         scriptedTurns: 2,

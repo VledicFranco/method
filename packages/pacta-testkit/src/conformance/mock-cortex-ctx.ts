@@ -17,7 +17,7 @@ import type {
   CortexScheduleFacade,
   CortexAuthFacade,
   CortexLogger,
-} from '@method/agent-runtime';
+} from './cortex-types.js';
 
 import { ConformanceRunError } from './errors.js';
 
