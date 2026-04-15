@@ -24,17 +24,19 @@ export {
 export { cortexLLMProvider } from './llm-provider.js';
 export type {
   CortexLLMProviderConfig,
+  CortexLLMProviderAdapter,
   ComposedCortexLLMProvider,
   TierFromEffortFn,
 } from './llm-provider.js';
 
-// Audit middleware (S3 §3) — stubbed until Wave 4
+// Audit middleware (S3 §3)
 export {
   cortexAuditMiddleware,
   AUDIT_EVENT_MAP,
 } from './audit-middleware.js';
 export type {
   CortexAuditMiddlewareConfig,
+  CortexAuditMiddlewareAdapter,
   ComposedCortexAuditMiddleware,
   AuditMappingEntry,
 } from './audit-middleware.js';
@@ -50,6 +52,7 @@ export {
 } from './token-exchange-middleware.js';
 export type {
   CortexTokenExchangeConfig,
+  CortexTokenExchangeMiddlewareAdapter,
   ComposedCortexTokenExchangeMiddleware,
 } from './token-exchange-middleware.js';
 

@@ -189,16 +189,30 @@ function nowIso(): string {
 const ADAPTER_NAME = 'cortex-llm' as const;
 
 /**
+ * Factory return shape — satisfies {@link CortexServiceAdapter} AND narrows
+ * `compose`'s return type to {@link ComposedCortexLLMProvider} so callers
+ * get `.invoke`, `.capabilities`, `.stream` without needing a cast.
+ */
+export interface CortexLLMProviderAdapter
+  extends CortexServiceAdapter<
+    { llm: CortexLlmCtx },
+    Pact<unknown>,
+    CortexLLMProviderConfig
+  > {
+  compose(args: {
+    ctx: { llm: CortexLlmCtx };
+    pact: Pact<unknown>;
+    config?: CortexLLMProviderConfig;
+  }): ComposedCortexLLMProvider;
+}
+
+/**
  * The only public entrypoint of this module. Returns a
  * `CortexServiceAdapter`; call `.compose({ ctx, pact })` to bind.
  */
 export function cortexLLMProvider(
   config: CortexLLMProviderConfig,
-): CortexServiceAdapter<
-  { llm: CortexLlmCtx },
-  Pact<unknown>,
-  CortexLLMProviderConfig
-> {
+): CortexLLMProviderAdapter {
   return {
     name: ADAPTER_NAME,
 

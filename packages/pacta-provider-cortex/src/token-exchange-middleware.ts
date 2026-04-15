@@ -145,13 +145,22 @@ export interface ComposedCortexTokenExchangeMiddleware
 const ADAPTER_NAME = 'cortex-token-exchange' as const;
 const SUBJECT_TOKEN_TYPE_JWT = 'urn:ietf:params:oauth:token-type:jwt';
 
+export interface CortexTokenExchangeMiddlewareAdapter
+  extends CortexServiceAdapter<
+    { auth: CortexAuthCtx },
+    Pact<unknown>,
+    CortexTokenExchangeConfig
+  > {
+  compose(args: {
+    ctx: { auth: CortexAuthCtx };
+    pact: Pact<unknown>;
+    config?: CortexTokenExchangeConfig;
+  }): ComposedCortexTokenExchangeMiddleware;
+}
+
 export function cortexTokenExchangeMiddleware(
   config: CortexTokenExchangeConfig,
-): CortexServiceAdapter<
-  { auth: CortexAuthCtx },
-  Pact<unknown>,
-  CortexTokenExchangeConfig
-> {
+): CortexTokenExchangeMiddlewareAdapter {
   return {
     name: ADAPTER_NAME,
 

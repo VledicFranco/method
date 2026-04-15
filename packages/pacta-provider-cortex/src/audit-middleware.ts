@@ -255,13 +255,22 @@ export interface ComposedCortexAuditMiddleware
 
 const ADAPTER_NAME = 'cortex-audit' as const;
 
+export interface CortexAuditMiddlewareAdapter
+  extends CortexServiceAdapter<
+    { audit: CortexAuditCtx },
+    Pact<unknown>,
+    CortexAuditMiddlewareConfig
+  > {
+  compose(args: {
+    ctx: { audit: CortexAuditCtx };
+    pact: Pact<unknown>;
+    config?: CortexAuditMiddlewareConfig;
+  }): ComposedCortexAuditMiddleware;
+}
+
 export function cortexAuditMiddleware(
   config: CortexAuditMiddlewareConfig,
-): CortexServiceAdapter<
-  { audit: CortexAuditCtx },
-  Pact<unknown>,
-  CortexAuditMiddlewareConfig
-> {
+): CortexAuditMiddlewareAdapter {
   return {
     name: ADAPTER_NAME,
 
